@@ -1,0 +1,112 @@
+[00:00:00.660] Server  LOG     ✓ Ready in 487ms
+[00:00:04.632] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:13.544] Server  ERROR   ⨯ Error: The default export is not a React Component in "/page"
+[00:00:13.639] Server  ERROR   ⨯ Error: The default export is not a React Component in "/page"
+[00:00:13.749] Server  ERROR   ⨯ Error: The default export is not a React Component in "/page"
+[00:00:13.857] Server  ERROR   ⨯ Error: The default export is not a React Component in "/page"
+[00:00:14.109] Browser ERROR   uncaughtError: Error: The default export is not a React Component in "/page"
+[00:00:15.552] Server  ERROR   ⨯ ReferenceError: e is not defined
+[00:00:15.652] Server  ERROR   ⨯ ReferenceError: e is not defined
+[00:00:15.720] Browser ERROR   uncaughtError: ReferenceError: e is not defined
+[00:00:16.032] Server  ERROR   ⨯ ReferenceError: edf is not defined
+[00:00:16.146] Server  ERROR   ⨯ ReferenceError: edf is not defined
+[00:00:16.210] Browser ERROR   uncaughtError: ReferenceError: edf is not defined
+[00:00:20.130] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:29.258] Browser ERROR   ./app/page.tsx:2:10
+Parsing ecmascript source code failed
+  1 | export default function Home() {
+> 2 |   return ()
+    |          ^^
+  3 | };
+  4 |
+
+Parenthesized expression cannot be empty
+[00:00:29.905] Browser ERROR   ./app/page.tsx:2:10
+Parsing ecmascript source code failed
+  1 | export default function Home() {
+> 2 |   return (
+    |          ^
+> 3 |
+    | ^
+> 4 |     
+    | ^
+> 5 |   )
+    | ^^^^
+  6 | };
+  7 |
+
+Parenthesized expression cannot be empty
+[00:00:30.358] Browser ERROR   ./app/page.tsx:2:10
+Parsing ecmascript source code failed
+  1 | export default function Home() {
+> 2 |   return (
+    |          ^
+> 3 |
+    | ^
+> 4 |   
+    | ^
+> 5 |   )
+    | ^^^^
+  6 | };
+  7 |
+
+Parenthesized expression cannot be empty
+[00:00:30.612] Browser ERROR   ./app/page.tsx:2:10
+Parsing ecmascript source code failed
+  1 | export default function Home() {
+> 2 |   return (
+    |          ^
+> 3 |
+    | ^
+> 4 |
+    | ^
+> 5 |   )
+    | ^^^^
+  6 | };
+  7 |
+
+Parenthesized expression cannot be empty
+[00:00:31.256] Browser ERROR   ./app/page.tsx:2:10
+Parsing ecmascript source code failed
+  1 | export default function Home() {
+> 2 |   return (
+    |          ^
+> 3 |     
+    | ^^^^
+> 4 |   )
+    | ^^^^
+  5 | };
+  6 |
+
+Parenthesized expression cannot be empty
+[00:00:32.219] Browser ERROR   ./app/page.tsx:3:5
+Parsing ecmascript source code failed
+  1 | export default function Home() {
+  2 |   return (
+> 3 |     <
+    |     ^
+  4 |   )
+  5 | };
+  6 |
+
+Expression expected
+[00:00:32.711] Browser ERROR   ./app/page.tsx:4:3
+Parsing ecmascript source code failed
+  2 |   return (
+  3 |     <dib
+> 4 |   )
+    |   ^
+  5 | };
+  6 |
+
+Unexpected token `)`. Expected jsx identifier
+[00:00:33.259] Browser ERROR   ./app/page.tsx:4:3
+Parsing ecmascript source code failed
+  2 |   return (
+  3 |     <div
+> 4 |   )
+    |   ^
+  5 | };
+  6 |
+
+Unexpected token `)`. Expected jsx identifier

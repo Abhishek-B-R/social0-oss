@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 18, "column": 0}, "map": {"version":3,"sources":["file:///Users/abhishekmacbook/WebDev/Projects/social0/frontend/app/page.tsx"],"sourcesContent":["export default function Home() {\n  return (\n    <div>\n      hi there\n    </div>\n  )\n};"],"names":[],"mappings":";;;;;;AAAe,SAAS;IACtB,qBACE,8OAAC;kBAAI;;;;;;AAIT"}}]
+}
