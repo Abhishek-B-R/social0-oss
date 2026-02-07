@@ -246,3 +246,34 @@
 [09:32:28.977] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
 [09:41:38.249] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  enable debug logging with { debug: true }
 [09:41:59.173] Server  LOG     ✓ Compiled in 11ms
+[09:55:37.419] Server  LOG       Reload env: .env.local
+[09:55:37.648] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+[09:55:37.809] Server  ERROR   [
+  {
+    "validation": "url",
+    "code": "invalid_string",
+    "message": "Invalid url",
+    "path": [
+      "DATABASE_URL"
+    ]
+  }
+]
+[09:55:37.817] Server  ERROR   TypeError: Cannot set property message of [object Object] which has only a getter
+[09:55:37.819] Server  ERROR   ⨯ "unhandledRejection:" TypeError: Cannot set property message of [object Object] which has only a getter
+[09:55:37.822] Server  ERROR   ⨯ "unhandledRejection: " TypeError: Cannot set property message of [object Object] which has only a getter
+[09:55:38.366] Server  ERROR   [
+  {
+    "validation": "url",
+    "code": "invalid_string",
+    "message": "Invalid url",
+    "path": [
+      "DATABASE_URL"
+    ]
+  }
+]
+[09:55:38.381] Server  ERROR   TypeError: Cannot set property message of [object Object] which has only a getter
+[09:55:38.386] Server  ERROR   ⨯ "unhandledRejection:" TypeError: Cannot set property message of [object Object] which has only a getter
+[09:55:38.390] Server  ERROR   ⨯ "unhandledRejection: " TypeError: Cannot set property message of [object Object] which has only a getter
+[09:55:38.530] Server  LOG       Reload env: .env.local
+[09:55:41.566] Server  LOG       Reload env: .env.local
+[10:03:30.219] Server  LOG     ✓ Compiled in 7ms

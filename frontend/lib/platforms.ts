@@ -81,6 +81,6 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     tokenUrl: "https://open.tiktokapis.com/v2/oauth/token/",
     // TikTok OAuth scopes
     // user.info.basic: read profile, video.publish: post videos
-    scope: "user.info.basic video.publish",
+    scope: "user.info.basic",
   },
 };
