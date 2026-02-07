@@ -8,6 +8,13 @@
       "when": 1770348931522,
       "tag": "0000_thin_sharon_ventura",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1770402150676,
+      "tag": "0001_aromatic_longshot",
+      "breakpoints": true
     }
   ]
 }

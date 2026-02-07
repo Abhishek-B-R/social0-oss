@@ -1,112 +1,122 @@
-[00:00:00.660] Server  LOG     ✓ Ready in 487ms
-[00:00:04.632] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:13.544] Server  ERROR   ⨯ Error: The default export is not a React Component in "/page"
-[00:00:13.639] Server  ERROR   ⨯ Error: The default export is not a React Component in "/page"
-[00:00:13.749] Server  ERROR   ⨯ Error: The default export is not a React Component in "/page"
-[00:00:13.857] Server  ERROR   ⨯ Error: The default export is not a React Component in "/page"
-[00:00:14.109] Browser ERROR   uncaughtError: Error: The default export is not a React Component in "/page"
-[00:00:15.552] Server  ERROR   ⨯ ReferenceError: e is not defined
-[00:00:15.652] Server  ERROR   ⨯ ReferenceError: e is not defined
-[00:00:15.720] Browser ERROR   uncaughtError: ReferenceError: e is not defined
-[00:00:16.032] Server  ERROR   ⨯ ReferenceError: edf is not defined
-[00:00:16.146] Server  ERROR   ⨯ ReferenceError: edf is not defined
-[00:00:16.210] Browser ERROR   uncaughtError: ReferenceError: edf is not defined
-[00:00:20.130] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:29.258] Browser ERROR   ./app/page.tsx:2:10
-Parsing ecmascript source code failed
-  1 | export default function Home() {
-> 2 |   return ()
-    |          ^^
-  3 | };
-  4 |
-
-Parenthesized expression cannot be empty
-[00:00:29.905] Browser ERROR   ./app/page.tsx:2:10
-Parsing ecmascript source code failed
-  1 | export default function Home() {
-> 2 |   return (
-    |          ^
-> 3 |
-    | ^
-> 4 |     
-    | ^
-> 5 |   )
-    | ^^^^
-  6 | };
-  7 |
-
-Parenthesized expression cannot be empty
-[00:00:30.358] Browser ERROR   ./app/page.tsx:2:10
-Parsing ecmascript source code failed
-  1 | export default function Home() {
-> 2 |   return (
-    |          ^
-> 3 |
-    | ^
-> 4 |   
-    | ^
-> 5 |   )
-    | ^^^^
-  6 | };
-  7 |
-
-Parenthesized expression cannot be empty
-[00:00:30.612] Browser ERROR   ./app/page.tsx:2:10
-Parsing ecmascript source code failed
-  1 | export default function Home() {
-> 2 |   return (
-    |          ^
-> 3 |
-    | ^
-> 4 |
-    | ^
-> 5 |   )
-    | ^^^^
-  6 | };
-  7 |
-
-Parenthesized expression cannot be empty
-[00:00:31.256] Browser ERROR   ./app/page.tsx:2:10
-Parsing ecmascript source code failed
-  1 | export default function Home() {
-> 2 |   return (
-    |          ^
-> 3 |     
-    | ^^^^
-> 4 |   )
-    | ^^^^
-  5 | };
-  6 |
-
-Parenthesized expression cannot be empty
-[00:00:32.219] Browser ERROR   ./app/page.tsx:3:5
-Parsing ecmascript source code failed
-  1 | export default function Home() {
-  2 |   return (
-> 3 |     <
-    |     ^
-  4 |   )
-  5 | };
-  6 |
-
-Expression expected
-[00:00:32.711] Browser ERROR   ./app/page.tsx:4:3
-Parsing ecmascript source code failed
-  2 |   return (
-  3 |     <dib
-> 4 |   )
-    |   ^
-  5 | };
-  6 |
-
-Unexpected token `)`. Expected jsx identifier
-[00:00:33.259] Browser ERROR   ./app/page.tsx:4:3
-Parsing ecmascript source code failed
-  2 |   return (
-  3 |     <div
-> 4 |   )
-    |   ^
-  5 | };
-  6 |
-
-Unexpected token `)`. Expected jsx identifier
+[00:00:00.457] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+[00:00:00.522] Server  LOG     ✓ Ready in 388ms
+[00:00:26.125] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[00:00:26.410] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:29.546] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[00:00:30.068] Server  LOG     🔍 OAuth Debug: {}
+[00:00:30.068] Server  LOG     🔍 Final OAuth URL: "https://accounts.google.com/o/oauth2/v2/auth?client_id=577272057068-4873oto24iooh4saqvtbjr3t0p781gsr.apps.googleusercontent.com&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Fyoutube%2Fcallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fyoutube.upload+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fyoutube&state=NkfUIXMDQbiex7Gr3c8ibQ%3D%3D%3An8ZeP3ZTTl5%2F6ndiKJtNLQ3oJYWK4%2FS5KYKpggWJWxhSwYnb2UzBXThgkC5azHoD95BEFpJV2N2mou6vWZU4uwDO%3ALQDM7QyYFxoDOrAaiAnnyg%3D%3D&access_type=offline&prompt=consent"
+[00:00:43.261] Server  ERROR   OAuth callback error: Error: NEXT_REDIRECT
+[00:00:43.436] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:51.617] Server  LOG     🔍 OAuth Debug: {}
+[00:00:51.617] Server  LOG     🔍 Final OAuth URL: "https://api.instagram.com/oauth/authorize?client_id=762796059748658&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Finstagram%2Fcallback&response_type=code&scope=instagram_business_basic&state=XRTTsWkpcfzDYHqaGkJIHA%3D%3D%3Ah58ySkgtBQNs%2B0UAo8tp6OQD3wJVY3ovPT00MyRbUIYu9L2zUfvbueJBIUAI5bVdbzc5VQluZhT8gUD2AkQoGteZm%2B8%3D%3AqDwTVZzSw2AyxxNyO%2F0Ouw%3D%3D"
+[00:00:55.806] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:57.154] Server  LOG     🔍 OAuth Debug: {}
+[00:00:57.154] Server  LOG     🔍 Final OAuth URL: "https://www.linkedin.com/oauth/v2/authorization?client_id=86uyrghyloxq3g&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Flinkedin%2Fcallback&response_type=code&scope=openid+profile+email+w_member_social&state=U0X8auea5lma67Eo3c05MA%3D%3D%3AKIZr%2ByDhAuAbt0WTwFv87kSzlkRrKx92vLPKGwPGaXsIzC3VmGhOMkaHHjjvw04AVb4iaIt7XQq7RzF%2F3qb0IkyRjQ%3D%3D%3AyQS75kwMgBQvP%2FYYWfGF7g%3D%3D"
+[00:00:59.430] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:04:57.037] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  enable debug logging with { debug: true }
+[00:05:00.338] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[00:05:01.043] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[00:05:25.881] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[00:05:25.927] Server  LOG     🔍 OAuth Debug: {}
+[00:05:25.928] Server  LOG     🔍 Final OAuth URL: "https://www.linkedin.com/oauth/v2/authorization?client_id=86uyrghyloxq3g&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Flinkedin%2Fcallback&response_type=code&scope=openid+profile+email+w_member_social&state=9k9URlqhVyh5HS4gtp%2BPnw%3D%3D%3AuS7T8tLn2I%2BGwq5WDUqeCxqtJZ3XXYjJyA8%2FJBKY2qq3tJiT7EUYVbVPjbWGdq%2Bb5e3B0xl6A4sNzVivButAOwbaaA%3D%3D%3AsrLNdJWKkG1crJthq6BYjA%3D%3D"
+[00:05:31.645] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:05:31.705] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:05:40.770] Server  LOG     🔍 OAuth Debug: {}
+[00:05:40.770] Server  LOG     🔍 Final OAuth URL: "https://www.linkedin.com/oauth/v2/authorization?client_id=86uyrghyloxq3g&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Flinkedin%2Fcallback&response_type=code&scope=openid+profile+email+w_member_social&state=GnXExN7S0H%2Fas%2Fvkzi0CNg%3D%3D%3AkQNSJg4OhdMe4q8TU6AxcVtTg0pyhYwb4K%2BL49E4bJoyMxCd2SS0USKx2FA%2BnX6HTbg1fszeWS93Gfd12H6m0Ouvhw%3D%3D%3ANUt3DCvPoevgwGs8BwB%2Fgg%3D%3D"
+[00:05:46.588] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:05:51.334] Server  LOG     🔍 OAuth Debug: {}
+[00:05:51.334] Server  LOG     🔍 Final OAuth URL: "https://www.linkedin.com/oauth/v2/authorization?client_id=86uyrghyloxq3g&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Flinkedin%2Fcallback&response_type=code&scope=openid+profile+email+w_member_social&state=mPS%2BnO41ZT02lfMCXd0edg%3D%3D%3AbaZdgOS5V34ejoPvUU6395VGtrJTqtOauWlXV3gr1gcKQIgiFlnn5KzasoU1V9XeqkdjZ%2FPmIyov%2BKdhfEp5UeEmXw%3D%3D%3AcwFHfYNJkYv5yElgUe1G%2BQ%3D%3D"
+[00:05:57.913] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:06:00.707] Server  LOG     🔍 OAuth Debug: {}
+[00:06:00.707] Server  LOG     🔍 Final OAuth URL: "https://www.linkedin.com/oauth/v2/authorization?client_id=86uyrghyloxq3g&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Flinkedin%2Fcallback&response_type=code&scope=openid+profile+email+w_member_social&state=dnY2IxBtTQtNvHO9fGBxUA%3D%3D%3AUdP4MsoCXkcy6xCJ%2FfpWkCw0dEQa9UStCDF%2FnueuLPGcXXXyIcrHZPkLNVFBq00NrsScrIIfFsFIgHbg9GAtqQtcyg%3D%3D%3A0lZvd66jX7Il87wmauWBtg%3D%3D"
+[00:06:06.868] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:07:26.573] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[00:07:30.488] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[00:07:30.536] Server  LOG     🔍 OAuth Debug: {}
+[00:07:30.536] Server  LOG     🔍 Final OAuth URL: "https://www.linkedin.com/oauth/v2/authorization?client_id=86uyrghyloxq3g&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Flinkedin%2Fcallback&response_type=code&scope=openid+profile+email&state=irjOB2s6OQ4RNDFP6Sv8pA%3D%3D%3AVtz6E0u8lM4kCi%2FMuAKKxHocVSSw6z%2BATJFy5rorfpV8%2B6ougoXsNYXeT8zMKzYyGlv4VfI%2B7i7JhTOLO%2B5wAS0vfw%3D%3D%3AelQAANirSqjaYn2Ymru8dw%3D%3D"
+[00:10:22.905] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[00:10:25.480] Server  ERROR   OAuth callback error: Error: NEXT_REDIRECT
+[00:10:25.706] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:17:24.571] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[00:17:24.920] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[00:18:49.171] Server  LOG       Reload env: .env.local
+[00:18:49.361] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+[00:18:49.593] Server  LOG       Reload env: .env.local
+[00:18:49.750] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[00:18:53.756] Server  LOG       Reload env: .env.local
+[00:18:53.951] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[05:39:27.450] Server  LOG       Reload env: .env.local
+[05:39:34.356] Server  LOG       Reload env: .env.local
+[05:42:41.796] Server  LOG       Reload env: .env.local
+[05:42:42.884] Server  LOG       Reload env: .env.local
+[05:42:44.406] Server  LOG       Reload env: .env.local
+[05:42:45.461] Server  LOG       Reload env: .env.local
+[05:42:46.160] Server  LOG       Reload env: .env.local
+[05:42:46.861] Server  LOG       Reload env: .env.local
+[05:42:47.392] Server  LOG       Reload env: .env.local
+[05:42:47.787] Server  LOG       Reload env: .env.local
+[05:42:48.269] Server  LOG       Reload env: .env.local
+[05:42:49.038] Server  LOG       Reload env: .env.local
+[05:42:49.853] Server  LOG       Reload env: .env.local
+[05:42:53.044] Server  LOG       Reload env: .env.local
+[05:42:53.970] Server  LOG       Reload env: .env.local
+[05:42:59.567] Server  LOG       Reload env: .env.local
+[05:43:00.723] Server  LOG       Reload env: .env.local
+[05:43:01.467] Server  LOG       Reload env: .env.local
+[05:43:01.992] Server  LOG       Reload env: .env.local
+[05:43:02.657] Server  LOG       Reload env: .env.local
+[05:43:03.775] Server  LOG       Reload env: .env.local
+[05:43:08.746] Server  LOG       Reload env: .env.local
+[05:43:09.078] Server  LOG       Reload env: .env.local
+[05:43:09.909] Server  LOG       Reload env: .env.local
+[05:43:10.670] Server  LOG       Reload env: .env.local
+[05:43:11.292] Server  LOG       Reload env: .env.local
+[05:43:11.461] Server  LOG       Reload env: .env.local
+[05:43:12.097] Server  LOG       Reload env: .env.local
+[05:43:13.264] Server  LOG       Reload env: .env.local
+[05:43:13.453] Server  LOG       Reload env: .env.local
+[05:43:14.219] Server  LOG       Reload env: .env.local
+[05:43:14.739] Server  LOG       Reload env: .env.local
+[05:43:15.597] Server  LOG       Reload env: .env.local
+[05:43:16.013] Server  LOG       Reload env: .env.local
+[05:43:16.420] Server  LOG       Reload env: .env.local
+[05:43:16.842] Server  LOG       Reload env: .env.local
+[05:43:18.119] Server  LOG       Reload env: .env.local
+[05:43:19.043] Server  LOG       Reload env: .env.local
+[05:45:38.052] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  suppress all logs with { quiet: true }
+[05:45:38.270] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[05:58:04.082] Server  LOG       Reload env: .env.local
+[05:58:09.411] Server  LOG       Reload env: .env.local
+[05:58:09.817] Server  LOG       Reload env: .env.local
+[05:59:56.474] Server  LOG       Reload env: .env.local
+[05:59:57.301] Server  LOG       Reload env: .env.local
+[05:59:58.820] Server  LOG       Reload env: .env.local
+[05:59:59.532] Server  LOG       Reload env: .env.local
+[05:59:59.959] Server  LOG       Reload env: .env.local
+[06:00:00.184] Server  LOG       Reload env: .env.local
+[06:00:00.603] Server  LOG       Reload env: .env.local
+[06:00:01.401] Server  LOG       Reload env: .env.local
+[06:00:02.224] Server  LOG       Reload env: .env.local
+[06:00:02.680] Server  LOG       Reload env: .env.local
+[06:00:03.360] Server  LOG       Reload env: .env.local
+[06:00:03.814] Server  LOG       Reload env: .env.local
+[06:00:04.355] Server  LOG       Reload env: .env.local
+[06:00:09.123] Server  LOG       Reload env: .env.local
+[06:00:10.049] Server  LOG       Reload env: .env.local
+[06:00:10.780] Server  LOG       Reload env: .env.local
+[06:00:12.774] Server  LOG       Reload env: .env.local
+[06:00:13.292] Server  LOG       Reload env: .env.local
+[06:00:13.734] Server  LOG       Reload env: .env.local
+[06:03:22.662] Server  LOG       Reload env: .env.local
+[06:03:27.044] Server  LOG       Reload env: .env.local
+[06:03:38.076] Server  LOG       Reload env: .env.local
+[06:03:38.407] Server  LOG       Reload env: .env.local
+[06:03:42.667] Server  LOG       Reload env: .env.local
+[06:03:42.967] Server  LOG       Reload env: .env.local
+[06:19:58.913] Server  LOG     ✓ Compiled in 13ms
+[06:21:00.852] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+[06:21:01.064] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[06:21:02.458] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[06:21:41.532] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[06:21:42.165] Browser LOG     Connected as abhitwt
+[06:21:42.316] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold

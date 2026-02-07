@@ -16,7 +16,7 @@ import { relations, sql } from "drizzle-orm";
 
 export const platformEnum = pgEnum("platform", [
   "linkedin",
-  "reddit",
+  "instagram",
   "youtube",
   "peerlist",
   "twitter_x",
@@ -40,17 +40,64 @@ export const publicationStatusEnum = pgEnum("publication_status", [
   "failed",
 ]);
 
-// ===== BETTER AUTH USER TABLE REFERENCE =====
-// Better Auth creates and owns the 'user' table.
-// We reference it here for foreign key relationships.
-// Better Auth's user table has: id (text), email, emailVerified, name, image, createdAt, updatedAt
-// We don't create this table - Better Auth does. This is just a reference for type safety.
+// ===== BETTER AUTH TABLES =====
+// Better Auth creates and owns these tables.
+// We reference them here for foreign key relationships and to pass to Better Auth adapter.
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   email: text("email").notNull(),
   emailVerified: boolean("email_verified"),
   name: text("name"),
   image: text("image"),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
+});
+
+// Session table (Better Auth)
+export const session = pgTable("session", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .references(() => user.id, { onDelete: "cascade" })
+    .notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  token: text("token").notNull().unique(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
+});
+
+// Account table (Better Auth - for OAuth providers)
+export const account = pgTable(
+  "account",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .references(() => user.id, { onDelete: "cascade" })
+      .notNull(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at"),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (table) => ({
+    uniqueProviderAccount: unique().on(table.providerId, table.accountId),
+  })
+);
+
+// Verification table (Better Auth - for email verification, password reset, etc.)
+export const verification = pgTable("verification", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at"),
   updatedAt: timestamp("updated_at"),
 });
@@ -80,15 +127,17 @@ export const connectedAccounts = pgTable(
     uniqueAccount: unique().on(
       table.userId,
       table.platform,
-      table.platformUserId
+      table.platformUserId,
     ),
-  })
+  }),
 );
 
 // ===== MEDIA UPLOADS =====
 export const mediaUploads = pgTable("media_uploads", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: text("user_id").references(() => user.id).notNull(),
+  userId: text("user_id")
+    .references(() => user.id)
+    .notNull(),
   filename: text("filename").notNull(),
   originalFilename: text("original_filename").notNull(),
   mimeType: text("mime_type").notNull(), // e.g. image/jpeg, video/mp4
@@ -112,7 +161,9 @@ export const posts = pgTable(
   "posts",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: text("user_id").references(() => user.id).notNull(),
+    userId: text("user_id")
+      .references(() => user.id)
+      .notNull(),
     originalContent: text("original_content").notNull(), // User's raw input
     finalContent: text("final_content").notNull(), // What gets posted (can be AI-edited)
     isAiEnhanced: boolean("is_ai_enhanced").default(false),
@@ -123,14 +174,14 @@ export const posts = pgTable(
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
-  (table) => ({
+  () => ({
     // CHECK constraint: at least one of finalContent (non-empty) or mediaIds (non-empty)
     // This ensures posts have either text content or media (or both)
     contentOrMediaCheck: check(
       "content_or_media_check",
-      sql`(trim(final_content) != '' OR array_length(media_ids, 1) > 0)`
+      sql`(trim(final_content) != '' OR array_length(media_ids, 1) > 0)`,
     ),
-  })
+  }),
 );
 
 // ===== POST PUBLICATIONS =====
@@ -152,20 +203,23 @@ export const postPublications = pgTable(
     maxRetries: integer("max_retries").default(3),
     nextRetryAt: timestamp("next_retry_at"),
     lastError: text("last_error"),
-    errorHistory: jsonb("error_history").$type<
-      Array<{ timestamp: string; error: string; retryCount: number }>
-    >(),
+    errorHistory:
+      jsonb("error_history").$type<
+        Array<{ timestamp: string; error: string; retryCount: number }>
+      >(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
   (table) => ({
     uniquePublication: unique().on(table.postId, table.connectedAccountId),
-  })
+  }),
 );
 
 // ===== USER SETTINGS =====
 export const userSettings = pgTable("user_settings", {
-  userId: text("user_id").references(() => user.id).primaryKey(),
+  userId: text("user_id")
+    .references(() => user.id)
+    .primaryKey(),
   timezone: text("timezone").default("UTC"),
   defaultPlatforms: platformEnum("default_platforms").array(),
   emailNotifications: boolean("email_notifications").default(true),
@@ -187,11 +241,14 @@ export const platformRateLimits = pgTable("platform_rate_limits", {
 
 // ===== RELATIONS =====
 
-export const userRelations = relations(user, ({ many }) => ({
+export const userRelations = relations(user, ({ one, many }) => ({
   connectedAccounts: many(connectedAccounts),
   posts: many(posts),
   mediaUploads: many(mediaUploads),
-  settings: userSettings,
+  settings: one(userSettings, {
+    fields: [user.id],
+    references: [userSettings.userId],
+  }),
 }));
 
 export const connectedAccountsRelations = relations(
@@ -203,7 +260,7 @@ export const connectedAccountsRelations = relations(
     }),
     publications: many(postPublications),
     rateLimits: many(platformRateLimits),
-  })
+  }),
 );
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
@@ -225,7 +282,7 @@ export const postPublicationsRelations = relations(
       fields: [postPublications.connectedAccountId],
       references: [connectedAccounts.id],
     }),
-  })
+  }),
 );
 
 export const mediaUploadsRelations = relations(mediaUploads, ({ one }) => ({
@@ -249,5 +306,5 @@ export const platformRateLimitsRelations = relations(
       fields: [platformRateLimits.connectedAccountId],
       references: [connectedAccounts.id],
     }),
-  })
+  }),
 );

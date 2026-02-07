@@ -1,7 +1,20 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as dotenv from "dotenv";
-import * as schema from "./schema";
+import {
+  // Better Auth tables
+  user,
+  session,
+  account,
+  verification,
+  // App tables
+  connectedAccounts,
+  mediaUploads,
+  posts,
+  postPublications,
+  userSettings,
+  platformRateLimits,
+} from "./schema";
 
 dotenv.config({ path: ".env.local" });
 
@@ -13,4 +26,22 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-export const db = drizzle(pool, { schema });
+// Create drizzle instance with tables only
+// Relations are defined in schema.ts but not passed here to avoid compatibility issues
+// They can still be used for type-safe queries via db.query
+export const db = drizzle(pool, {
+  schema: {
+    // Better Auth tables (required by Better Auth adapter)
+    user,
+    session,
+    account,
+    verification,
+    // App tables
+    connectedAccounts,
+    mediaUploads,
+    posts,
+    postPublications,
+    userSettings,
+    platformRateLimits,
+  },
+});
