@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { encryptToken } from "@/lib/encryption";
 import crypto from "crypto";
 import { z } from "zod";
+import { NextRequest } from "next/server";
 
 const byokSchema = z.object({
   handle: z.string().min(1, "Handle is required").refine(
@@ -15,7 +16,7 @@ const byokSchema = z.object({
   appPassword: z.string().min(1, "App password is required"),
 });
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
 

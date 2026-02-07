@@ -7,12 +7,20 @@ import { decrypt, encryptToken } from "@/lib/encryption";
 import { redirect } from "next/navigation";
 import crypto from "crypto";
 import { normalizeAppUrl } from "@/lib/url-utils";
+import { NextRequest } from "next/server";
 
 export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ platform: Platform }> },
+  req: NextRequest,
+  { params }: { params: Promise<{ platform: string }> },
 ) {
-  const { platform } = await params;
+  const { platform: platformParam } = await params;
+  
+  // Validate platform is a valid Platform type
+  if (!(platformParam in PLATFORM_OAUTH_CONFIG)) {
+    return redirect(`/dashboard?error=invalid_platform&platform=${platformParam}`);
+  }
+  
+  const platform = platformParam as Platform;
   const url = new URL(req.url);
   
   // Instagram appends #_ to redirect URI - strip it

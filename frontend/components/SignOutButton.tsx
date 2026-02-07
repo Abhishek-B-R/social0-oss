@@ -3,8 +3,9 @@
 import { signOut } from "@/lib/auth-client";
 
 export function SignOutButton() {
-  const handleSignOut = () => {
-    signOut({ callbackURL: "/" });
+  const handleSignOut = async () => {
+    await signOut();
+    window.location.href = "/";
   };
 
   return (

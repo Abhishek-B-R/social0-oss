@@ -7,6 +7,7 @@ import { TwitterApi } from "twitter-api-v2";
 import { encryptToken } from "@/lib/encryption";
 import crypto from "crypto";
 import { z } from "zod";
+import { NextRequest } from "next/server";
 
 const byokSchema = z.object({
   consumerKey: z.string().min(1, "Consumer Key is required"),
@@ -15,7 +16,7 @@ const byokSchema = z.object({
   accessTokenSecret: z.string().min(1, "Access Token Secret is required"),
 });
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
 

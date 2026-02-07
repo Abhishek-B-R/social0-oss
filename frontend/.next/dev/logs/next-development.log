@@ -244,3 +244,5 @@
 [09:32:20.748] Server  LOG     🔍 State in URL: "4kWAxtW5c3oWvAE622x/wA==:r1ZCaBHk6iYraWEHl4XJSplY9..."
 [09:32:20.748] Server  LOG     ✅ code_challenge encoding OK
 [09:32:28.977] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[09:41:38.249] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  enable debug logging with { debug: true }
+[09:41:59.173] Server  LOG     ✓ Compiled in 11ms

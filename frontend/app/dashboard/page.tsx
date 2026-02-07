@@ -42,7 +42,7 @@ async function DashboardContent() {
                     ? {
                         platformUsername: account.platformUsername,
                         profileImageUrl: account.profileImageUrl,
-                        isActive: account.isActive,
+                        isActive: account.isActive ?? false,
                       }
                     : undefined
                 }

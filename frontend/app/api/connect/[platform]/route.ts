@@ -8,12 +8,20 @@ import { normalizeAppUrl } from "@/lib/url-utils";
 import crypto from "crypto";
 import { db } from "@/db";
 import { verification } from "@/db/schema";
+import { NextRequest } from "next/server";
 
 export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ platform: Platform }> },
+  req: NextRequest,
+  { params }: { params: Promise<{ platform: string }> },
 ) {
-  const { platform } = await params;
+  const { platform: platformParam } = await params;
+  
+  // Validate platform is a valid Platform type
+  if (!(platformParam in PLATFORM_OAUTH_CONFIG)) {
+    return Response.json({ error: "Invalid platform" }, { status: 400 });
+  }
+  
+  const platform = platformParam as Platform;
   const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session) {

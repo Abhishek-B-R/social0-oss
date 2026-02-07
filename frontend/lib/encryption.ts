@@ -71,13 +71,14 @@ export function encryptToken(
   const salt = crypto.randomBytes(16);
 
   // Derive key using HKDF with per-account salt
-  const derivedKey = crypto.hkdfSync(
+  const derivedKeyBuffer = crypto.hkdfSync(
     "sha256",
     key,
     salt,
     `account-${accountId}`,
     32,
   );
+  const derivedKey = Buffer.from(derivedKeyBuffer);
 
   // Generate IV (12 bytes for GCM)
   const iv = crypto.randomBytes(12);
@@ -119,13 +120,14 @@ export function decryptToken(
   const authTag = Buffer.from(authTagBase64, "base64");
 
   // Derive key using HKDF with per-account salt
-  const derivedKey = crypto.hkdfSync(
+  const derivedKeyBuffer = crypto.hkdfSync(
     "sha256",
     key,
     salt,
     `account-${accountId}`,
     32,
   );
+  const derivedKey = Buffer.from(derivedKeyBuffer);
 
   // Decrypt token
   const decipher = crypto.createDecipheriv("aes-256-gcm", derivedKey, iv);
