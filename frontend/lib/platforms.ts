@@ -2,9 +2,9 @@ export const PLATFORMS = [
   { id: "linkedin", name: "LinkedIn", icon: null }, // Add icons later
   { id: "instagram", name: "Instagram", icon: null },
   { id: "youtube", name: "YouTube", icon: null },
-  { id: "peerlist", name: "Peerlist", icon: null },
+  { id: "pinterest", name: "Pinterest", icon: null },
+  { id: "tiktok", name: "TikTok", icon: null },
   { id: "twitter_x", name: "X (Twitter)", icon: null },
-  { id: "mastodon", name: "Mastodon", icon: null },
   { id: "threads", name: "Threads", icon: null },
   { id: "bluesky", name: "Bluesky", icon: null },
 ] as const;
@@ -64,33 +64,23 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     // threads_content_publish: required for publishing posts
     scope: "threads_basic threads_content_publish",
   },
-  mastodon: {
-    clientIdEnv: "MASTODON_CLIENT_ID",
-    clientSecretEnv: "MASTODON_CLIENT_SECRET",
-    // Mastodon is decentralized - each instance has its own OAuth endpoints
-    // Default to mastodon.social, but users can configure their instance
-    // Note: This requires MASTODON_INSTANCE_URL env var
-    authUrl: "https://mastodon.social/oauth/authorize",
-    tokenUrl: "https://mastodon.social/oauth/token",
-    // Mastodon scopes: read (read posts), write (post), follow (follow users), push (notifications)
-    scope: "read write follow",
+  bluesky: null, // Bluesky uses BYOK (Bring Your Own Keys) - handle + app password
+  pinterest: {
+    clientIdEnv: "PINTEREST_CLIENT_ID",
+    clientSecretEnv: "PINTEREST_CLIENT_SECRET",
+    authUrl: "https://www.pinterest.com/oauth/",
+    tokenUrl: "https://api.pinterest.com/v5/oauth/token",
+    // Pinterest OAuth scopes
+    // boards:read, boards:write, pins:read, pins:write for full access
+    scope: "boards:read boards:write pins:read pins:write",
   },
-  bluesky: {
-    clientIdEnv: "BLUESKY_CLIENT_ID",
-    clientSecretEnv: "BLUESKY_CLIENT_SECRET",
-    authUrl: "https://bsky.app/oauth/authorize",
-    tokenUrl: "https://bsky.app/xrpc/com.atproto.oauth.getToken",
-    // Bluesky AT Protocol OAuth scopes
-    // read: read posts and profiles, write: create posts
-    scope: "read write",
-  },
-  peerlist: {
-    clientIdEnv: "PEERLIST_CLIENT_ID",
-    clientSecretEnv: "PEERLIST_CLIENT_SECRET",
-    // Peerlist OAuth endpoints (if available)
-    // Note: Peerlist may use different auth - verify with their API docs
-    authUrl: "https://peerlist.io/oauth/authorize",
-    tokenUrl: "https://peerlist.io/oauth/token",
-    scope: "read write",
+  tiktok: {
+    clientIdEnv: "TIKTOK_CLIENT_ID",
+    clientSecretEnv: "TIKTOK_CLIENT_SECRET",
+    authUrl: "https://www.tiktok.com/v2/auth/authorize/",
+    tokenUrl: "https://open.tiktokapis.com/v2/oauth/token/",
+    // TikTok OAuth scopes
+    // user.info.basic: read profile, video.publish: post videos
+    scope: "user.info.basic video.publish",
   },
 };

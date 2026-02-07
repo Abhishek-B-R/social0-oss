@@ -1,6 +1,6 @@
 import { PLATFORM_OAUTH_CONFIG, Platform } from "@/lib/platforms";
 import { db } from "@/db";
-import { connectedAccounts } from "@/db/schema";
+import { connectedAccounts, verification } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { decrypt, encryptToken } from "@/lib/encryption";
@@ -38,17 +38,47 @@ export async function GET(
     );
   }
 
-  // Decrypt state to get userId (and code_verifier for X/Twitter PKCE)
+  // Decrypt state to get userId (and stateId for TikTok PKCE verifier lookup)
   let userId: string;
   let codeVerifier: string | undefined;
   try {
     const decrypted = decrypt(state);
     userId = decrypted.userId;
-    codeVerifier = decrypted.codeVerifier; // For X/Twitter PKCE
+    
     if (decrypted.platform !== platform) {
       return redirect(
         `/dashboard?error=state_mismatch&platform=${platform}`,
       );
+    }
+
+    // TikTok: Retrieve verifier from DB using stateId
+    if (platform === "tiktok" && decrypted.stateId) {
+      const verifierRecord = await db.query.verification.findFirst({
+        where: eq(verification.id, decrypted.stateId),
+      });
+
+      if (!verifierRecord || new Date(verifierRecord.expiresAt) < new Date()) {
+        console.error("❌ TikTok PKCE: Verifier not found or expired", {
+          stateId: decrypted.stateId,
+          found: !!verifierRecord,
+          expired: verifierRecord ? new Date(verifierRecord.expiresAt) < new Date() : true,
+        });
+        return redirect(
+          `/dashboard?error=verifier_expired&platform=${platform}`,
+        );
+      }
+
+      codeVerifier = verifierRecord.value;
+      
+      // CRITICAL DEBUG LOGGING
+      console.log("🔍 TikTok PKCE Callback Debug:", {
+        stateId: decrypted.stateId,
+        verifierLength: codeVerifier.length,
+        verifierPreview: codeVerifier.substring(0, 20) + "...",
+      });
+
+      // Clean up verifier from DB (one-time use)
+      await db.delete(verification).where(eq(verification.id, decrypted.stateId));
     }
   } catch (err) {
     console.error("Failed to decrypt state:", err);
@@ -86,12 +116,8 @@ export async function GET(
     const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
     const redirectUri = `${baseUrl}/api/connect/${platform}/callback`;
 
-    // Handle Mastodon instance URL (decentralized platform)
-    let tokenUrl = config.tokenUrl;
-    if (platform === "mastodon" && env.MASTODON_INSTANCE_URL) {
-      const instanceUrl = env.MASTODON_INSTANCE_URL.replace(/\/$/, ""); // Remove trailing slash
-      tokenUrl = `${instanceUrl}/oauth/token`;
-    }
+    // Use platform's token URL
+    const tokenUrl = config.tokenUrl;
 
     if (platform === "instagram" || platform === "threads") {
       // Instagram and Threads use Meta Graph API (same format)
@@ -122,6 +148,76 @@ export async function GET(
         // Tokens expire in 1 hour (3600 seconds) initially
         tokens.expires_in = tokens.expires_in || 3600;
       }
+    } else if (platform === "tiktok") {
+      // TikTok OAuth 2.0 with PKCE
+      if (!codeVerifier) {
+        console.error("❌ TikTok PKCE: Missing code_verifier");
+        throw new Error("Missing code_verifier for TikTok PKCE");
+      }
+
+      // CRITICAL: Manually verify challenge matches verifier
+      const expectedChallenge = crypto
+        .createHash("sha256")
+        .update(codeVerifier)
+        .digest("base64url");
+      
+      console.log("🔍 TikTok Token Exchange Debug:", {
+        verifierLength: codeVerifier.length,
+        verifierPreview: codeVerifier.substring(0, 20) + "...",
+        expectedChallengePreview: expectedChallenge.substring(0, 20) + "...",
+        codeLength: code?.length,
+        redirectUri,
+      });
+
+      const tokenRequestBody = new URLSearchParams({
+        client_key: clientId, // TikTok uses client_key instead of client_id
+        client_secret: clientSecret,
+        code: code!,
+        grant_type: "authorization_code",
+        redirect_uri: redirectUri,
+        code_verifier: codeVerifier, // Required for PKCE
+      });
+
+      console.log("🔍 TikTok Token Request Body:", {
+        client_key: clientId.substring(0, 10) + "...",
+        hasCode: !!code,
+        hasVerifier: !!codeVerifier,
+        bodyLength: tokenRequestBody.toString().length,
+      });
+
+      tokenResponse = await fetch(tokenUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: tokenRequestBody,
+      });
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        let errorJson;
+        try {
+          errorJson = JSON.parse(errorText);
+        } catch {
+          errorJson = { raw: errorText };
+        }
+        
+        console.error("❌ TikTok token exchange failed:", {
+          status: tokenResponse.status,
+          statusText: tokenResponse.statusText,
+          error: errorJson,
+          rawError: errorText,
+        });
+        
+        throw new Error(`TikTok token exchange failed: ${errorJson.error_description || errorJson.error || errorText}`);
+      }
+
+      tokens = await tokenResponse.json();
+      console.log("✅ TikTok token exchange successful:", {
+        hasAccessToken: !!tokens.access_token,
+        hasRefreshToken: !!tokens.refresh_token,
+        expiresIn: tokens.expires_in,
+      });
     } else {
       // Standard OAuth 2.0 flow (LinkedIn, YouTube, Mastodon, Bluesky, Peerlist)
       tokenResponse = await fetch(tokenUrl, {
@@ -382,12 +478,11 @@ async function fetchPlatformUserInfo(
       }
       break;
 
-    case "mastodon":
-      // Mastodon API - get account info
+    case "pinterest":
+      // Pinterest API v5 - get user info
       try {
-        const instanceUrl = env.MASTODON_INSTANCE_URL?.replace(/\/$/, "") || "https://mastodon.social";
         const response = await fetch(
-          `${instanceUrl}/api/v1/accounts/verify_credentials`,
+          "https://api.pinterest.com/v5/user_account",
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -397,94 +492,45 @@ async function fetchPlatformUserInfo(
         if (response.ok) {
           const data = await response.json();
           return {
-            id: data.id || `mastodon-${Date.now()}`,
-            username: data.username || data.acct || null,
-            profileImageUrl: data.avatar || data.avatar_static || null,
+            id: data.id || data.username || `pinterest-${Date.now()}`,
+            username: data.username || null,
+            profileImageUrl: data.profile_image || null,
           };
         } else {
           const errorText = await response.text();
-          console.error("Mastodon userinfo error:", errorText);
+          console.error("Pinterest userinfo error:", errorText);
         }
       } catch (err) {
-        console.error("Mastodon user info fetch failed:", err);
+        console.error("Pinterest user info fetch failed:", err);
       }
       break;
 
-    case "bluesky":
-      // Bluesky AT Protocol - get profile info
+    case "tiktok":
+      // TikTok API v2 - get user info
       try {
         const response = await fetch(
-          "https://bsky.social/xrpc/com.atproto.identity.resolveHandle",
+          "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name",
           {
-            method: "POST",
             headers: {
-              "Content-Type": "application/json",
               Authorization: `Bearer ${accessToken}`,
             },
-            body: JSON.stringify({
-              handle: "me", // Resolve own handle
-            }),
           },
         );
         if (response.ok) {
           const data = await response.json();
-          // Then fetch profile
-          const profileResponse = await fetch(
-            `https://bsky.social/xrpc/com.atproto.repo.getRecord?repo=${data.did}&collection=app.bsky.actor.profile&rkey=self`,
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-              },
-            },
-          );
-          if (profileResponse.ok) {
-            const profileData = await profileResponse.json();
+          if (data.data && data.data.user) {
             return {
-              id: data.did || `bluesky-${Date.now()}`,
-              username: data.handle || null,
-              profileImageUrl: profileData.value?.avatar?.ref || null,
+              id: data.data.user.open_id || `tiktok-${Date.now()}`,
+              username: data.data.user.display_name || null,
+              profileImageUrl: data.data.user.avatar_url || null,
             };
           }
-          // Fallback to just DID/handle
-          return {
-            id: data.did || `bluesky-${Date.now()}`,
-            username: data.handle || null,
-            profileImageUrl: null,
-          };
         } else {
           const errorText = await response.text();
-          console.error("Bluesky userinfo error:", errorText);
+          console.error("TikTok userinfo error:", errorText);
         }
       } catch (err) {
-        console.error("Bluesky user info fetch failed:", err);
-      }
-      break;
-
-    case "peerlist":
-      // Peerlist API - get user info
-      // Note: Verify Peerlist API documentation for correct endpoint
-      try {
-        const response = await fetch(
-          "https://peerlist.io/api/v1/me",
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          },
-        );
-        if (response.ok) {
-          const data = await response.json();
-          return {
-            id: data.id || data.user_id || `peerlist-${Date.now()}`,
-            username: data.username || data.name || null,
-            profileImageUrl: data.avatar || data.profile_image || null,
-          };
-        } else {
-          const errorText = await response.text();
-          console.error("Peerlist userinfo error:", errorText);
-        }
-      } catch (err) {
-        console.error("Peerlist user info fetch failed:", err);
+        console.error("TikTok user info fetch failed:", err);
       }
       break;
 

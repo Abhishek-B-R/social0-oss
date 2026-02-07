@@ -18,9 +18,9 @@ export const platformEnum = pgEnum("platform", [
   "linkedin",
   "instagram",
   "youtube",
-  "peerlist",
+  "pinterest",
+  "tiktok",
   "twitter_x",
-  "mastodon",
   "threads",
   "bluesky",
 ]);

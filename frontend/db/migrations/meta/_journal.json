@@ -15,6 +15,13 @@
       "when": 1770402150676,
       "tag": "0001_aromatic_longshot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770464945726,
+      "tag": "0002_lonely_bedlam",
+      "breakpoints": true
     }
   ]
 }

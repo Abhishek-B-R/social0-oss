@@ -3,6 +3,7 @@
 import { PLATFORMS } from "@/lib/platforms";
 import { useState } from "react";
 import { XByokModal } from "./XByokModal";
+import { BlueskyByokModal } from "./BlueskyByokModal";
 
 type PlatformCardProps = {
   platform: (typeof PLATFORMS)[number];
@@ -16,11 +17,16 @@ type PlatformCardProps = {
 export function PlatformCard({ platform, account }: PlatformCardProps) {
   const isConnected = !!account;
   const [showXModal, setShowXModal] = useState(false);
+  const [showBlueskyModal, setShowBlueskyModal] = useState(false);
 
   const handleConnect = () => {
-    // X (Twitter) uses BYOK instead of OAuth
+    // X (Twitter) and Bluesky use BYOK instead of OAuth
     if (platform.id === "twitter_x") {
       setShowXModal(true);
+      return;
+    }
+    if (platform.id === "bluesky") {
+      setShowBlueskyModal(true);
       return;
     }
 
@@ -73,6 +79,16 @@ export function PlatformCard({ platform, account }: PlatformCardProps) {
           onSuccess={(username) => {
             console.log("Connected as", username);
             setShowXModal(false);
+          }}
+        />
+      )}
+      {platform.id === "bluesky" && (
+        <BlueskyByokModal
+          isOpen={showBlueskyModal}
+          onClose={() => setShowBlueskyModal(false)}
+          onSuccess={(username) => {
+            console.log("Connected as", username);
+            setShowBlueskyModal(false);
           }}
         />
       )}

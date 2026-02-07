@@ -120,3 +120,127 @@
 [06:21:41.532] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
 [06:21:42.165] Browser LOG     Connected as abhitwt
 [06:21:42.316] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[07:32:31.465] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[07:39:27.484] Server  LOG     ✓ Compiled in 14ms
+[07:39:32.043] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[07:39:34.341] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[07:39:37.372] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[07:39:41.470] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+[07:39:45.995] Server  LOG     ✓ Compiled in 14ms
+[07:39:46.419] Server  LOG     ✓ Compiled in 7ms
+[07:39:47.476] Server  LOG     ✓ Compiled in 11ms
+[07:39:48.420] Server  LOG     ✓ Compiled in 22ms
+[07:40:35.780] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  override existing env vars with { override: true }
+[07:43:53.880] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[07:44:05.129] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[07:44:08.899] Browser LOG     Connected as abhishekbr.bsky.social
+[07:44:09.096] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[07:44:49.772] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[07:44:50.487] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[07:44:50.710] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[07:44:50.913] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[07:44:51.115] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[07:44:51.566] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[07:44:51.772] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[07:44:51.964] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[07:44:52.135] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[07:45:57.752] Browser LOG     Connected as abhishekbr.bsky.social
+[07:59:10.287] Server  LOG       Reload env: .env.local
+[07:59:10.546] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[07:59:11.455] Server  LOG       Reload env: .env.local
+[07:59:11.613] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  suppress all logs with { quiet: true }
+[07:59:12.012] Server  LOG       Reload env: .env.local
+[07:59:12.169] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+[07:59:12.381] Server  LOG       Reload env: .env.local
+[07:59:12.589] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+[07:59:12.791] Server  LOG       Reload env: .env.local
+[07:59:12.943] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[07:59:13.052] Server  LOG       Reload env: .env.local
+[07:59:13.199] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[07:59:13.282] Server  LOG       Reload env: .env.local
+[07:59:13.417] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+[07:59:13.783] Server  LOG       Reload env: .env.local
+[07:59:13.930] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[07:59:14.033] Server  LOG       Reload env: .env.local
+[07:59:14.184] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[07:59:14.392] Server  LOG       Reload env: .env.local
+[07:59:14.526] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[07:59:15.553] Server  LOG       Reload env: .env.local
+[07:59:15.696] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[07:59:17.322] Server  LOG       Reload env: .env.local
+[07:59:17.478] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[07:59:17.606] Server  LOG       Reload env: .env.local
+[07:59:17.757] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[07:59:19.257] Server  LOG       Reload env: .env.local
+[07:59:19.417] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[07:59:19.552] Server  LOG       Reload env: .env.local
+[07:59:19.694] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[07:59:20.407] Server  LOG       Reload env: .env.local
+[07:59:20.554] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[07:59:24.933] Server  LOG       Reload env: .env.local
+[07:59:25.084] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[07:59:25.626] Server  LOG       Reload env: .env.local
+[07:59:25.831] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  override existing env vars with { override: true }
+[07:59:25.931] Server  LOG       Reload env: .env.local
+[07:59:26.073] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+[07:59:26.407] Server  LOG       Reload env: .env.local
+[07:59:26.546] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[07:59:26.768] Server  LOG       Reload env: .env.local
+[07:59:26.929] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[07:59:27.036] Server  LOG       Reload env: .env.local
+[07:59:27.176] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[07:59:27.635] Server  LOG       Reload env: .env.local
+[07:59:27.788] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  suppress all logs with { quiet: true }
+[07:59:27.951] Server  LOG       Reload env: .env.local
+[07:59:28.097] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+[07:59:28.372] Server  LOG       Reload env: .env.local
+[07:59:28.523] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[07:59:29.297] Server  LOG       Reload env: .env.local
+[07:59:29.454] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+[07:59:30.003] Server  LOG       Reload env: .env.local
+[07:59:30.164] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[07:59:30.352] Server  LOG       Reload env: .env.local
+[07:59:30.508] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  override existing env vars with { override: true }
+[07:59:31.015] Server  LOG       Reload env: .env.local
+[07:59:31.171] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  suppress all logs with { quiet: true }
+[07:59:43.488] Server  LOG       Reload env: .env.local
+[07:59:43.654] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[07:59:50.769] Server  LOG       Reload env: .env.local
+[07:59:50.977] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[08:00:00.502] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[08:00:00.557] Server  LOG     🔍 OAuth Debug: {}
+[08:00:00.557] Server  LOG     🔍 Final OAuth URL: "https://www.tiktok.com/v2/auth/authorize/?client_id=aw3xhhmrrotmyctt&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Ftiktok%2Fcallback&response_type=code&scope=user.info.basic+video.publish&state=pn1vuXNcWL5h2gEJMIzZ9Q%3D%3D%3A679yPVYGWlihvVd5z9KS%2FfGNHHmeDs8duxLdBlHonLy6Tdf%2BIpU2PzGr68%2FweMupZDe0wxJ3kW98jbmaYpl5RmI%3D%3ALSrtpBSbXURNw69FZTsT9g%3D%3D"
+[08:10:58.183] Server  LOG       Reload env: .env.local
+[08:11:04.366] Server  LOG       Reload env: .env.local
+[09:18:42.241] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+[09:18:42.562] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[09:18:45.129] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[09:18:45.177] Server  LOG     🔍 OAuth Debug: {}
+[09:18:45.178] Server  LOG     🔍 Final OAuth URL: "https://www.tiktok.com/v2/auth/authorize/?client_id=sbaw7m71k9az9z5huv&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Ftiktok%2Fcallback&response_type=code&scope=user.info.basic+video.publish&state=6E1vcmfhR2iRcluaOMh8DA%3D%3D%3AJTULWECbScZYSPiU9n0R5l%2FTaBVb0Qy%2B1dY7TT3iWC130qJUMrTJQlgaKKJgv%2Fo8ZFodgIzbDqu3obutItgGCrE%3D%3APNNiuCT492ssqs2kivvhgQ%3D%3D"
+[09:23:21.475] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[09:23:23.346] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[09:23:23.394] Server  LOG     🔍 OAuth Debug: {}
+[09:23:23.394] Server  LOG     🔍 Final OAuth URL: "https://www.tiktok.com/v2/auth/authorize/?client_key=sbaw7m71k9az9z5huv&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Ftiktok%2Fcallback&response_type=code&scope=user.info.basic+video.publish&code_challenge=PrI6MTmImdo9KTwUrQFjFzGHxqDVENKJ2AEVmbi17Nk&code_challenge_method=S256&state=BvmGxhh2klJ82evcaxxD6w%3D%3D%3AfYxDqqjc4wArHJfrkWdSbEqWx7NL5ba3MP%2FWgVN6M0hvWXbY0kp89h78R3SdlBpO%2Bm0OPY4Sv0PY2b7Z5vOA2jbaFbbTscbXsySg72XyCKC9%2FFC91qv1Q97eK7fYtGUTfBeW44U0cSqiYpnqi0Ophc59CTr%2F98hcBNWts1ad%3Arg1Z5W8lFTUlom4KZ%2FRlhQ%3D%3D"
+[09:25:34.921] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[09:25:36.667] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[09:25:36.718] Server  LOG     🔍 OAuth Debug: {}
+[09:25:36.720] Server  LOG     🔍 TikTok PKCE Debug: {}
+[09:25:36.720] Server  LOG     🔍 Final OAuth URL: "https://www.tiktok.com/v2/auth/authorize/?client_key=sbaw7m71k9az9z5huv&code_challenge=FZdwJATSP-zwntAEd4-EKPLf1ZpdGXXuRNBMhpWkqQg&code_challenge_method=S256&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Ftiktok%2Fcallback&response_type=code&scope=user.info.basic+video.publish&state=BuxEqzC8dD9%2B%2F4Xz8yKOpA%3D%3D%3AJer0oMX6Tip3HIsjEkk8ohDJJTRBUwjG6uD9ou0av0%2BnHMqaeYRavRDYeM03RacsTWE4d7RfLvVm%2BiKSa6cjblWAUD%2F9z7vlzV558byBjt0f8juZnLORBHfHVaxCl42aS3otrx56mGsX%2FlfXrpw%3D%3ANTVldiT%2FlhXIw1feXfnEkA%3D%3D"
+[09:25:36.720] Server  LOG     🔍 URL Length: 525
+[09:25:36.721] Server  LOG     🔍 State in URL: "BuxEqzC8dD9+/4Xz8yKOpA==:Jer0oMX6Tip3HIsjEkk8ohDJJ..."
+[09:25:36.721] Server  LOG     ✅ code_challenge encoding OK
+[09:26:35.405] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[09:26:36.590] Server  LOG     🔍 OAuth Debug: {}
+[09:26:36.592] Server  LOG     🔍 TikTok PKCE Debug: {}
+[09:26:36.592] Server  LOG     🔍 Final OAuth URL: "https://www.tiktok.com/v2/auth/authorize/?client_key=sbaw7m71k9az9z5huv&code_challenge=oljjuZZrk48rWYkwb7hb1UAXyQMgf8TRcKMXJUEH3w8&code_challenge_method=S256&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Ftiktok%2Fcallback&response_type=code&scope=user.info.basic+video.publish&state=SQCUt75gYEyU1dr5xA4sew%3D%3D%3AFfxPY7%2FcejAHIlSzFhO2dMRXuYTaxaUzwrS8kRALeWNiFyiC3VyOcqzbvPLnMqiY7Rpigxb9lpXhlminNz5SARxsRmwWLcpKY5YGt%2FJqL12Hddx%2FuVBjpQIRMOyvhNd841BHzojrNfj708eVA7s%3D%3ALh5E2Mya9J5cNWmn%2BshCxA%3D%3D"
+[09:26:36.592] Server  LOG     🔍 URL Length: 519
+[09:26:36.592] Server  LOG     🔍 State in URL: "SQCUt75gYEyU1dr5xA4sew==:FfxPY7/cejAHIlSzFhO2dMRXu..."
+[09:26:36.592] Server  LOG     ✅ code_challenge encoding OK
+[09:26:39.362] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[09:32:20.746] Server  LOG     🔍 OAuth Debug: {}
+[09:32:20.748] Server  LOG     🔍 TikTok PKCE Debug: {}
+[09:32:20.748] Server  LOG     🔍 Final OAuth URL: "https://www.tiktok.com/v2/auth/authorize/?client_key=sbaw7m71k9az9z5huv&code_challenge=3vyid_xxKgHhYVidWS9MCmkjS6C0huHODojJTJvJZLQ&code_challenge_method=S256&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Ftiktok%2Fcallback&response_type=code&scope=user.info.basic+video.publish&state=4kWAxtW5c3oWvAE622x%2FwA%3D%3D%3Ar1ZCaBHk6iYraWEHl4XJSplY9Zx7y4k5QWak%2F3U%2BUi89CvDwi2UT%2BpmlUSWO6q9wmGcDAfAb%2B65Ih3MJHsoVqglojrunJIUC1DOexy5EcL%2FEzbj2NIwJg6ReOSpO4K9QnMbTJk06Ej1Gh7j1u%2BY%3D%3AdPbNAMMFgrrD6rBXn0rzzg%3D%3D"
+[09:32:20.748] Server  LOG     🔍 URL Length: 525
+[09:32:20.748] Server  LOG     🔍 State in URL: "4kWAxtW5c3oWvAE622x/wA==:r1ZCaBHk6iYraWEHl4XJSplY9..."
+[09:32:20.748] Server  LOG     ✅ code_challenge encoding OK
+[09:32:28.977] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold

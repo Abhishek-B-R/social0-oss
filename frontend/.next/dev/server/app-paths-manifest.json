@@ -1,6 +1,9 @@
 {
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/auth/[...all]/route": "app/api/auth/[...all]/route.js",
   "/api/connect/[platform]/callback/route": "app/api/connect/[platform]/callback/route.js",
   "/api/connect/[platform]/route": "app/api/connect/[platform]/route.js",
+  "/api/connect/bluesky/byok/route": "app/api/connect/bluesky/byok/route.js",
   "/api/connect/twitter_x/byok/route": "app/api/connect/twitter_x/byok/route.js",
   "/dashboard/page": "app/dashboard/page.js",
   "/page": "app/page.js"

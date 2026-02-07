@@ -101,6 +101,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../../app/api/connect/bluesky/byok/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/connect/bluesky/byok">> = Specific
+  const handler = {} as typeof import("../../../app/api/connect/bluesky/byok/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../../app/api/connect/twitter_x/byok/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/connect/twitter_x/byok">> = Specific

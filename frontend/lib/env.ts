@@ -18,13 +18,10 @@ const envSchema = z.object({
   TWITTER_X_CLIENT_SECRET: z.string().optional(),
   THREADS_CLIENT_ID: z.string().optional(),
   THREADS_CLIENT_SECRET: z.string().optional(),
-  MASTODON_CLIENT_ID: z.string().optional(),
-  MASTODON_CLIENT_SECRET: z.string().optional(),
-  MASTODON_INSTANCE_URL: z.string().url().optional(), // For custom Mastodon instances
-  BLUESKY_CLIENT_ID: z.string().optional(),
-  BLUESKY_CLIENT_SECRET: z.string().optional(),
-  PEERLIST_CLIENT_ID: z.string().optional(),
-  PEERLIST_CLIENT_SECRET: z.string().optional(),
+  PINTEREST_CLIENT_ID: z.string().optional(),
+  PINTEREST_CLIENT_SECRET: z.string().optional(),
+  TIKTOK_CLIENT_ID: z.string().optional(),
+  TIKTOK_CLIENT_SECRET: z.string().optional(),
   // Encryption key for OAuth state and tokens
   ENCRYPTION_KEY: z.string().min(32), // 32-byte key (64 hex chars)
 });

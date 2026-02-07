@@ -1,12 +1,13 @@
 import { env } from "@/lib/env";
 import crypto from "crypto";
 
-// Simple encryption for OAuth state (userId + platform, optionally codeVerifier for PKCE)
+// Simple encryption for OAuth state (userId + platform, optionally stateId for PKCE verifier lookup)
 // Uses AES-256-GCM for state encryption
 export function encrypt(data: {
   userId: string;
   platform: string;
-  codeVerifier?: string;
+  codeVerifier?: string; // Legacy: kept for backwards compatibility
+  stateId?: string; // New: reference to verifier stored in DB
 }): string {
   const key = Buffer.from(env.ENCRYPTION_KEY, "hex");
   if (key.length !== 32) {
@@ -29,7 +30,8 @@ export function encrypt(data: {
 export function decrypt(encrypted: string): {
   userId: string;
   platform: string;
-  codeVerifier?: string;
+  codeVerifier?: string; // Legacy: kept for backwards compatibility
+  stateId?: string; // New: reference to verifier stored in DB
 } {
   const key = Buffer.from(env.ENCRYPTION_KEY, "hex");
   if (key.length !== 32) {
