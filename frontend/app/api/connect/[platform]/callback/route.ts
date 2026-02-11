@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import crypto from "crypto";
 import { normalizeAppUrl } from "@/lib/url-utils";
 import { NextRequest } from "next/server";
+import { cookies } from "next/headers";
 
 export async function GET(
   req: NextRequest,
@@ -87,6 +88,29 @@ export async function GET(
 
       // Clean up verifier from DB (one-time use)
       await db.delete(verification).where(eq(verification.id, decrypted.stateId));
+    }
+
+    // X (Twitter): Retrieve code_verifier from cookie
+    if (platform === "twitter_x") {
+      const cookieStore = await cookies();
+      const verifierCookie = cookieStore.get("twitter_code_verifier");
+      
+      if (!verifierCookie?.value) {
+        console.error("❌ X PKCE: Missing code_verifier cookie");
+        return redirect(
+          `/dashboard?error=verifier_missing&platform=${platform}`,
+        );
+      }
+
+      codeVerifier = verifierCookie.value;
+      
+      console.log("🔍 X PKCE Callback Debug:", {
+        verifierLength: codeVerifier.length,
+        verifierPreview: codeVerifier.substring(0, 20) + "...",
+      });
+
+      // Delete cookie after use (one-time use)
+      cookieStore.delete("twitter_code_verifier");
     }
   } catch (err) {
     console.error("Failed to decrypt state:", err);
@@ -225,6 +249,64 @@ export async function GET(
         hasAccessToken: !!tokens.access_token,
         hasRefreshToken: !!tokens.refresh_token,
         expiresIn: tokens.expires_in,
+      });
+    } else if (platform === "twitter_x") {
+      // X (Twitter) OAuth 2.0 with PKCE
+      if (!codeVerifier) {
+        console.error("❌ X PKCE: Missing code_verifier");
+        throw new Error("Missing code_verifier for X PKCE");
+      }
+
+      // X requires Basic Auth header with client_id:client_secret
+      const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+
+      const tokenRequestBody = new URLSearchParams({
+        grant_type: "authorization_code",
+        code: code!,
+        redirect_uri: redirectUri,
+        code_verifier: codeVerifier, // Required for PKCE
+      });
+
+      console.log("🔍 X Token Exchange Debug:", {
+        verifierLength: codeVerifier.length,
+        hasCode: !!code,
+        redirectUri,
+      });
+
+      tokenResponse = await fetch(tokenUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${basicAuth}`,
+        },
+        body: tokenRequestBody,
+      });
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        let errorJson;
+        try {
+          errorJson = JSON.parse(errorText);
+        } catch {
+          errorJson = { raw: errorText };
+        }
+        
+        console.error("❌ X token exchange failed:", {
+          status: tokenResponse.status,
+          statusText: tokenResponse.statusText,
+          error: errorJson,
+          rawError: errorText,
+        });
+        
+        throw new Error(`X token exchange failed: ${errorJson.error_description || errorJson.error || errorText}`);
+      }
+
+      tokens = await tokenResponse.json();
+      console.log("✅ X token exchange successful:", {
+        hasAccessToken: !!tokens.access_token,
+        hasRefreshToken: !!tokens.refresh_token,
+        expiresIn: tokens.expires_in,
+        tokenType: tokens.token_type,
       });
     } else {
       // Standard OAuth 2.0 flow (LinkedIn, YouTube, Mastodon, Bluesky, Peerlist)

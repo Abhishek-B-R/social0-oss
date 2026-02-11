@@ -11,7 +11,6 @@ export const PLATFORMS = [
 
 export type Platform = (typeof PLATFORMS)[number]["id"];
 
-// OAuth config per platform (add as you implement)
 export const PLATFORM_OAUTH_CONFIG: Record<
   Platform,
   {
@@ -53,7 +52,18 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     // youtube.upload for posting videos, youtube for full access
     scope: "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube",
   },
-  twitter_x: null, // X (Twitter) uses BYOK (Bring Your Own Keys) instead of OAuth
+  twitter_x: {
+    clientIdEnv: "TWITTER_CLIENT_ID",
+    clientSecretEnv: "TWITTER_CLIENT_SECRET",
+    authUrl: "https://twitter.com/i/oauth2/authorize",
+    tokenUrl: "https://api.twitter.com/2/oauth2/token",
+    // X (Twitter) OAuth 2.0 scopes
+    // tweet.read: read tweets
+    // tweet.write: post tweets
+    // users.read: read user profile
+    // offline.access: required to get refresh_token
+    scope: "tweet.read tweet.write users.read offline.access",
+  },
   threads: {
     clientIdEnv: "THREADS_CLIENT_ID",
     clientSecretEnv: "THREADS_CLIENT_SECRET",

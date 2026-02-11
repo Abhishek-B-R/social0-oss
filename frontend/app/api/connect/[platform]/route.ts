@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { PLATFORM_OAUTH_CONFIG, Platform } from "@/lib/platforms";
 import { env } from "@/lib/env";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { encrypt } from "@/lib/encryption";
 import { normalizeAppUrl } from "@/lib/url-utils";
@@ -64,7 +64,7 @@ export async function GET(
 
   const url = new URL(authUrl);
   
-  // TikTok requires PKCE and uses client_key instead of client_id
+  // TikTok and X (Twitter) require PKCE
   let state: string;
   if (platform === "tiktok") {
     // Generate PKCE code verifier and challenge
@@ -109,6 +109,39 @@ export async function GET(
       stateLength: state.length,
       statePreview: state.substring(0, 50) + "...",
     });
+  } else if (platform === "twitter_x") {
+    // X (Twitter) OAuth 2.0 with PKCE - store code_verifier in cookie
+    const codeVerifier = crypto.randomBytes(32).toString("base64url");
+    const codeChallenge = crypto
+      .createHash("sha256")
+      .update(codeVerifier)
+      .digest("base64url");
+
+    // Store code_verifier in HTTP-only cookie (10 minutes expiry)
+    const cookieStore = await cookies();
+    cookieStore.set("twitter_code_verifier", codeVerifier, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 600, // 10 minutes
+    });
+
+    // Standard state for CSRF protection
+    state = encrypt({
+      userId: session.user.id,
+      platform: platform,
+    });
+
+    // X OAuth 2.0 parameters
+    url.searchParams.set("client_id", clientId);
+    url.searchParams.set("code_challenge", codeChallenge);
+    url.searchParams.set("code_challenge_method", "S256");
+
+    console.log("🔍 X (Twitter) PKCE Debug:", {
+      verifierLength: codeVerifier.length,
+      challengeLength: codeChallenge.length,
+      stateLength: state.length,
+    });
   } else {
     // Standard OAuth flow - encrypt userId + platform in state
     state = encrypt({
@@ -137,7 +170,7 @@ export async function GET(
   console.log("🔍 State in URL:", url.searchParams.get("state")?.substring(0, 50) + "...");
   
   // Verify code_challenge encoding (should NOT contain %3D or double encoding)
-  if (platform === "tiktok") {
+  if (platform === "tiktok" || platform === "twitter_x") {
     const challengeParam = url.searchParams.get("code_challenge");
     if (challengeParam?.includes("%3D") || challengeParam?.includes("%253D")) {
       console.error("❌ CRITICAL: code_challenge is double-encoded!");
