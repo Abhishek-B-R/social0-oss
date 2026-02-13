@@ -1,7 +1,7 @@
-[00:00:01.412] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-[00:00:01.481] Server  LOG     ✓ Ready in 1283ms
-[00:00:16.186] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
-[00:00:16.247] Server  ERROR   (node:57517) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+[00:00:00.516] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+[00:00:00.580] Server  LOG     ✓ Ready in 422ms
+[46:12:11.754] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[46:12:11.813] Server  ERROR   (node:99056) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
 In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
 
 To prepare for this change:
@@ -10,18 +10,4 @@ To prepare for this change:
 
 See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
 (Use `node --trace-warnings ...` to show where the warning was created)
-[00:00:18.418] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:20.032] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  enable debug logging with { debug: true }
-[00:00:21.227] Server  LOG     🔍 OAuth Debug: {}
-[00:00:21.230] Server  LOG     🔍 Final OAuth URL: "https://www.linkedin.com/oauth/v2/authorization?client_id=86uyrghyloxq3g&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Flinkedin%2Fcallback&response_type=code&scope=openid+profile+email+w_member_social&state=DAQb8LrioZLat2oZ61udfQ%3D%3D%3A5w%2F1%2BLpojqG3xsFIQw2Ms2o7vDqAYxFaUnDeRq%2B3Op6KTBOFv0iDjPF%2B6rLx6T7eywYbTojXdl3IsOKL6ohrimJtng%3D%3D%3ASsPXBdjT5OztOL75Fmhd2g%3D%3D"
-[00:00:21.231] Server  LOG     🔍 URL Length: 389
-[00:00:21.231] Server  LOG     🔍 State in URL: "DAQb8LrioZLat2oZ61udfQ==:5w/1+LpojqG3xsFIQw2Ms2o7v..."
-[00:00:25.301] Server  LOG     ✓ Compiled in 9ms
-[00:00:26.513] Server  LOG     ✓ Compiled in 9ms
-[00:00:27.700] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
-[00:00:28.644] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:29.957] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
-[00:00:30.636] Server  LOG     🔍 OAuth Debug: {}
-[00:00:30.637] Server  LOG     🔍 Final OAuth URL: "https://www.linkedin.com/oauth/v2/authorization?client_id=86uyrghyloxq3g&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Flinkedin%2Fcallback&response_type=code&scope=openid+profile+email&state=F2FTbNXOkpz8A6C%2BW23Zig%3D%3D%3A4vrXg9kKMe4xZYpR6NZNot%2F%2BVhBZ6OAmH2N8p4oMJgmYoyQO6SEALdWYbd9ufsYDDUuY766eJ4aEYZ5ns6wZUY6Uvw%3D%3D%3A54MeeSoDui7z%2FxPPr%2BNhAw%3D%3D"
-[00:00:30.638] Server  LOG     🔍 URL Length: 375
-[00:00:30.638] Server  LOG     🔍 State in URL: "F2FTbNXOkpz8A6C+W23Zig==:4vrXg9kKMe4xZYpR6NZNot/+V..."
+[46:12:14.242] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold

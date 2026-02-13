@@ -2,3 +2,4 @@
 
 */node_modules/
 database/postgres_data/
+*.md

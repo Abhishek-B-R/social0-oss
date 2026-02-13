@@ -1,5 +1,3 @@
 {
-  "/api/connect/[platform]/callback/route": "app/api/connect/[platform]/callback/route.js",
-  "/api/connect/[platform]/route": "app/api/connect/[platform]/route.js",
   "/dashboard/page": "app/dashboard/page.js"
 }
