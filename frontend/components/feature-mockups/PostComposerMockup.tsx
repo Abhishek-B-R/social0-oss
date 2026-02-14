@@ -32,6 +32,9 @@ export function PostComposerMockup() {
         <span className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 text-xs font-semibold">
           Thread
         </span>
+        <span className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 text-xs font-semibold">
+          Blog
+        </span>
       </div>
       <div className="h-24 rounded-lg border-2 border-dashed border-gray-200 bg-gray-50/50 flex items-center justify-center mb-4 relative overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
