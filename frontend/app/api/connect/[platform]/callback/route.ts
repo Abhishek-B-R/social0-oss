@@ -16,12 +16,20 @@ export async function GET(
 ) {
   const { platform: platformParam } = await params;
   
-  // Validate platform is a valid Platform type
-  if (!(platformParam in PLATFORM_OAUTH_CONFIG)) {
+  // Validate platform is a valid Platform type (including BYOK platforms)
+  const validPlatforms: Platform[] = ["linkedin", "instagram", "youtube", "pinterest", "tiktok", "twitter_x", "threads", "bluesky"];
+  if (!validPlatforms.includes(platformParam as Platform)) {
     return redirect(`/dashboard?error=invalid_platform&platform=${platformParam}`);
   }
   
   const platform = platformParam as Platform;
+  
+  // Check if platform uses OAuth (not BYOK)
+  if (!PLATFORM_OAUTH_CONFIG[platform]) {
+    return redirect(
+      `/dashboard?error=platform_not_configured&platform=${platform}`,
+    );
+  }
   const url = new URL(req.url);
   
   // Instagram appends #_ to redirect URI - strip it
