@@ -22,6 +22,8 @@ const envSchema = z.object({
   PINTEREST_CLIENT_SECRET: z.string().optional(),
   TIKTOK_CLIENT_ID: z.string().optional(),
   TIKTOK_CLIENT_SECRET: z.string().optional(),
+  FACEBOOK_CLIENT_ID: z.string().optional(),
+  FACEBOOK_CLIENT_SECRET: z.string().optional(),
   // Encryption key for OAuth state and tokens
   ENCRYPTION_KEY: z.string().min(32), // 32-byte key (64 hex chars)
 });

@@ -43,7 +43,7 @@ export default function Home() {
               <PlatformMarquee />
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight mb-6">
-              One post. Eight platforms. Zero hassle.
+              One post. All your social accounts. Zero hassle.
             </h1>
             <p className="text-lg sm:text-xl text-gray-500 mb-10 max-w-2xl mx-auto font-medium">
               Plan, schedule and publish your content with ease. Write once and

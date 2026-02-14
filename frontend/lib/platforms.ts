@@ -1,12 +1,17 @@
+// Order: color groups — blues → reds → gradient → blacks (visually consistent everywhere)
 export const PLATFORMS = [
-  { id: "linkedin", name: "LinkedIn", icon: null }, // Add icons later
-  { id: "instagram", name: "Instagram", icon: null },
+  { id: "linkedin", name: "LinkedIn", icon: null },
+  { id: "facebook", name: "Facebook", icon: null },
+  { id: "bluesky", name: "Bluesky", icon: null },
+  { id: "hashnode", name: "Hashnode", icon: null },
   { id: "youtube", name: "YouTube", icon: null },
   { id: "pinterest", name: "Pinterest", icon: null },
+  { id: "instagram", name: "Instagram", icon: null },
   { id: "tiktok", name: "TikTok", icon: null },
   { id: "twitter_x", name: "X (Twitter)", icon: null },
   { id: "threads", name: "Threads", icon: null },
-  { id: "bluesky", name: "Bluesky", icon: null },
+  { id: "devto", name: "Dev.to", icon: null },
+  { id: "medium", name: "Medium", icon: null },
 ] as const;
 
 export type Platform = (typeof PLATFORMS)[number]["id"];
@@ -89,8 +94,16 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "TIKTOK_CLIENT_SECRET",
     authUrl: "https://www.tiktok.com/v2/auth/authorize/",
     tokenUrl: "https://open.tiktokapis.com/v2/oauth/token/",
-    // TikTok OAuth scopes
-    // user.info.basic: read profile, video.publish: post videos
     scope: "user.info.basic",
   },
+  facebook: {
+    clientIdEnv: "FACEBOOK_CLIENT_ID",
+    clientSecretEnv: "FACEBOOK_CLIENT_SECRET",
+    authUrl: "https://www.facebook.com/v21.0/dialog/oauth",
+    tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
+    scope: "pages_manage_posts,pages_read_engagement,pages_show_list",
+  },
+  devto: null, // BYOK - API key
+  hashnode: null, // BYOK - API key + Publication ID
+  medium: null, // BYOK - Integration token (medium.com/me/settings)
 };

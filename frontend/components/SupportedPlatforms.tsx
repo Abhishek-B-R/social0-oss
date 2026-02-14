@@ -10,10 +10,20 @@ import {
   SiX,
   SiThreads,
   SiBluesky,
+  SiFacebook,
+  SiDevdotto,
+  SiHashnode,
+  SiMedium,
 } from "react-icons/si";
 
+// Same order as lib/platforms.ts: blues → reds → gradient → blacks
 const PLATFORMS = [
   { name: "LinkedIn", icon: SiLinkedin, color: "bg-[#0A66C2]", textColor: "text-white", capabilities: "Text, Images, Video" },
+  { name: "Facebook", icon: SiFacebook, color: "bg-[#1877F2]", textColor: "text-white", capabilities: "Pages, Posts" },
+  { name: "Bluesky", icon: SiBluesky, color: "bg-[#0085FF]", textColor: "text-white", capabilities: "Text, Images" },
+  { name: "Hashnode", icon: SiHashnode, color: "bg-[#2962FF]", textColor: "text-white", capabilities: "Blog posts" },
+  { name: "YouTube", icon: SiYoutube, color: "bg-[#FF0000]", textColor: "text-white", capabilities: "Videos, Shorts" },
+  { name: "Pinterest", icon: SiPinterest, color: "bg-[#E60023]", textColor: "text-white", capabilities: "Images, Pins" },
   {
     name: "Instagram",
     icon: SiInstagram,
@@ -21,12 +31,11 @@ const PLATFORMS = [
     textColor: "text-white",
     capabilities: "Images, Video, Reels",
   },
-  { name: "YouTube", icon: SiYoutube, color: "bg-[#FF0000]", textColor: "text-white", capabilities: "Videos, Shorts" },
-  { name: "Pinterest", icon: SiPinterest, color: "bg-[#E60023]", textColor: "text-white", capabilities: "Images, Pins" },
   { name: "TikTok", icon: SiTiktok, color: "bg-[#000000]", textColor: "text-white", capabilities: "Videos, Shorts" },
   { name: "X", icon: SiX, color: "bg-[#000000]", textColor: "text-white", capabilities: "Text, Images, Video" },
   { name: "Threads", icon: SiThreads, color: "bg-[#000000]", textColor: "text-white", capabilities: "Text, Images" },
-  { name: "Bluesky", icon: SiBluesky, color: "bg-[#0085FF]", textColor: "text-white", capabilities: "Text, Images" },
+  { name: "Dev.to", icon: SiDevdotto, color: "bg-[#0A0A0A]", textColor: "text-white", capabilities: "Articles" },
+  { name: "Medium", icon: SiMedium, color: "bg-[#000000]", textColor: "text-white", capabilities: "Stories, Articles" },
 ];
 
 export function SupportedPlatforms() {

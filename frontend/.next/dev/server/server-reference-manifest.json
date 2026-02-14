@@ -1,5 +1,21 @@
 {
-  "node": {},
+  "node": {
+    "78a9053488fe03395ee1dbece74c04579a6de2370f": {
+      "workers": {
+        "app/dashboard/posts/new/page": {
+          "moduleId": "[project]/.next-internal/server/app/dashboard/posts/new/page/actions.js { ACTIONS_MODULE0 => \"[project]/app/actions/posts.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": true,
+          "exportedName": "createPost",
+          "filename": "app/actions/posts.ts"
+        }
+      },
+      "layer": {
+        "app/dashboard/posts/new/page": "action-browser"
+      },
+      "filename": "app/actions/posts.ts",
+      "exportedName": "createPost"
+    }
+  },
   "edge": {},
   "encryptionKey": "puoXv+79s+5ys19dgrvvn8b8jM05C7g8Do64T4CAWUk="
 }

@@ -17,7 +17,7 @@ export async function GET(
   const { platform: platformParam } = await params;
   
   // Validate platform is a valid Platform type (including BYOK platforms)
-  const validPlatforms: Platform[] = ["linkedin", "instagram", "youtube", "pinterest", "tiktok", "twitter_x", "threads", "bluesky"];
+  const validPlatforms: Platform[] = ["linkedin", "instagram", "youtube", "pinterest", "tiktok", "twitter_x", "threads", "bluesky", "facebook"];
   if (!validPlatforms.includes(platformParam as Platform)) {
     return redirect(`/dashboard?error=invalid_platform&platform=${platformParam}`);
   }
@@ -159,7 +159,7 @@ export async function GET(
     // Use platform's token URL
     const tokenUrl = config.tokenUrl;
 
-    if (platform === "instagram" || platform === "threads") {
+    if (platform === "instagram" || platform === "threads" || platform === "facebook") {
       // Instagram and Threads use Meta Graph API (same format)
       tokenResponse = await fetch(tokenUrl, {
         method: "POST",
@@ -339,6 +339,62 @@ export async function GET(
       }
 
       tokens = await tokenResponse.json();
+    }
+
+    // Facebook: fetch Pages and either save one or redirect to page selection
+    if (platform === "facebook") {
+      const pagesRes = await fetch(
+        "https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token",
+        {
+          headers: {
+            Authorization: `Bearer ${tokens.access_token}`,
+          },
+        },
+      );
+      if (!pagesRes.ok) {
+        console.error("Facebook pages fetch failed:", await pagesRes.text());
+        return redirect(
+          `/dashboard?error=oauth_failed&platform=${platform}`,
+        );
+      }
+      const pagesData = await pagesRes.json();
+      const pages: { id: string; name: string; access_token: string }[] =
+        pagesData.data || [];
+      if (pages.length === 0) {
+        return redirect(
+          `/dashboard?error=no_facebook_pages&platform=${platform}`,
+        );
+      }
+      if (pages.length === 1) {
+        const page = pages[0];
+        const accountId = crypto.randomUUID();
+        await db.insert(connectedAccounts).values({
+          id: accountId,
+          userId,
+          platform: "facebook",
+          platformUserId: page.id,
+          platformUsername: page.name,
+          profileImageUrl: null,
+          encryptedAccessToken: encryptToken(page.access_token, accountId),
+          encryptedRefreshToken: null,
+          tokenExpiresAt: null,
+        });
+        return redirect(`/dashboard?connected=facebook`);
+      }
+      // Multiple pages: store in verification and redirect to select
+      const stateId = crypto.randomBytes(16).toString("hex");
+      const payload = JSON.stringify({
+        userId,
+        pages: pages.map((p) => ({ id: p.id, name: p.name, access_token: p.access_token })),
+      });
+      await db.insert(verification).values({
+        id: stateId,
+        identifier: "facebook_pages",
+        value: encryptToken(payload, stateId),
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      });
+      const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
+      return redirect(`${baseUrl}/dashboard/connect/facebook/select?token=${stateId}`);
     }
 
     // Check if account already connected

@@ -1,0 +1,68 @@
+import { auth } from "@/lib/auth";
+import { db } from "@/db";
+import { connectedAccounts, verification } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { decryptToken, encryptToken } from "@/lib/encryption";
+import crypto from "crypto";
+import { NextRequest } from "next/server";
+
+export async function POST(req: NextRequest) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  let body: { tokenId?: string; pageId?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: "Invalid body" }, { status: 400 });
+  }
+  const { tokenId, pageId } = body;
+  if (!tokenId || !pageId) {
+    return Response.json(
+      { error: "tokenId and pageId are required" },
+      { status: 400 },
+    );
+  }
+  const record = await db.query.verification.findFirst({
+    where: eq(verification.id, tokenId),
+  });
+  if (!record || record.identifier !== "facebook_pages") {
+    return Response.json({ error: "Invalid or expired token" }, { status: 400 });
+  }
+  if (new Date(record.expiresAt) < new Date()) {
+    return Response.json({ error: "Token expired" }, { status: 400 });
+  }
+  try {
+    const payload = JSON.parse(decryptToken(record.value, tokenId));
+    if (payload.userId !== session.user.id) {
+      return Response.json({ error: "Unauthorized" }, { status: 403 });
+    }
+    const pages = payload.pages as { id: string; name: string; access_token: string }[];
+    const page = pages.find((p) => p.id === pageId);
+    if (!page) {
+      return Response.json({ error: "Page not found" }, { status: 400 });
+    }
+    const accountId = crypto.randomUUID();
+    await db.insert(connectedAccounts).values({
+      id: accountId,
+      userId: session.user.id,
+      platform: "facebook",
+      platformUserId: page.id,
+      platformUsername: page.name,
+      profileImageUrl: null,
+      encryptedAccessToken: encryptToken(page.access_token, accountId),
+      encryptedRefreshToken: null,
+      tokenExpiresAt: null,
+    });
+    await db.delete(verification).where(eq(verification.id, tokenId));
+    return Response.json({
+      success: true,
+      pageName: page.name,
+      message: "Facebook Page connected successfully",
+    });
+  } catch {
+    return Response.json({ error: "Invalid token data" }, { status: 400 });
+  }
+}

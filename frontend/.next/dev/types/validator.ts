@@ -47,10 +47,37 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 }
 
 
+// Validate ../../../app/dashboard/connect/facebook/select/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/dashboard/connect/facebook/select">> = Specific
+  const handler = {} as typeof import("../../../app/dashboard/connect/facebook/select/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../../app/dashboard/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/dashboard">> = Specific
   const handler = {} as typeof import("../../../app/dashboard/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../app/dashboard/posts/new/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/dashboard/posts/new">> = Specific
+  const handler = {} as typeof import("../../../app/dashboard/posts/new/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../app/dashboard/posts/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/dashboard/posts">> = Specific
+  const handler = {} as typeof import("../../../app/dashboard/posts/page.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
@@ -123,6 +150,60 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/connect/bluesky/byok">> = Specific
   const handler = {} as typeof import("../../../app/api/connect/bluesky/byok/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../app/api/connect/devto/byok/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/connect/devto/byok">> = Specific
+  const handler = {} as typeof import("../../../app/api/connect/devto/byok/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../app/api/connect/facebook/connect-page/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/connect/facebook/connect-page">> = Specific
+  const handler = {} as typeof import("../../../app/api/connect/facebook/connect-page/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../app/api/connect/facebook/select/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/connect/facebook/select">> = Specific
+  const handler = {} as typeof import("../../../app/api/connect/facebook/select/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../app/api/connect/hashnode/byok/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/connect/hashnode/byok">> = Specific
+  const handler = {} as typeof import("../../../app/api/connect/hashnode/byok/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../app/api/connect/medium/byok/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/connect/medium/byok">> = Specific
+  const handler = {} as typeof import("../../../app/api/connect/medium/byok/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../app/api/media/upload/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/media/upload">> = Specific
+  const handler = {} as typeof import("../../../app/api/media/upload/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check

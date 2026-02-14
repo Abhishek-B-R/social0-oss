@@ -21,15 +21,21 @@ async function DashboardContent() {
     where: eq(connectedAccounts.userId, session.user.id),
   });
 
-  const connectedMap = new Map(accounts.map((a) => [a.platform, a]));
+  const connectedMap = new Map<string, (typeof accounts)[0]>();
+  for (const a of accounts) {
+    if (!connectedMap.has(a.platform)) connectedMap.set(a.platform, a);
+  }
 
   return (
     <>
       <OAuthErrorHandler />
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+        <h2 className="text-2xl font-extrabold text-gray-900 mb-2">
           Connect your accounts
         </h2>
+        <p className="text-gray-500 mb-6 font-medium">
+          Link your social accounts to publish from one place.
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {PLATFORMS.map((platform) => {
             const account = connectedMap.get(platform.id);

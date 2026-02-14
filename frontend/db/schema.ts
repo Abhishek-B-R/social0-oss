@@ -23,6 +23,10 @@ export const platformEnum = pgEnum("platform", [
   "twitter_x",
   "threads",
   "bluesky",
+  "facebook",
+  "devto",
+  "hashnode",
+  "medium",
 ]);
 
 export const postStatusEnum = pgEnum("post_status", [
@@ -120,6 +124,7 @@ export const connectedAccounts = pgTable(
     encryptedAccessToken: text("encrypted_access_token").notNull(),
     encryptedRefreshToken: text("encrypted_refresh_token"),
     tokenExpiresAt: timestamp("token_expires_at"),
+    platformMetadata: jsonb("platform_metadata").$type<Record<string, unknown>>(), // e.g. { publicationId } for Hashnode
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

@@ -34,6 +34,9 @@ export function OAuthErrorHandler() {
         case "credentials_not_configured":
           setMessage("OAuth credentials not configured");
           break;
+        case "no_facebook_pages":
+          setMessage("No Facebook Pages found. You need a Page to connect.");
+          break;
         default:
           setMessage("An error occurred during connection");
       }
@@ -56,12 +59,12 @@ export function OAuthErrorHandler() {
   return (
     <div className="mb-6">
       {showError && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded-lg">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 font-medium">
           {message}
         </div>
       )}
       {showSuccess && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-200 px-4 py-3 rounded-lg">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 font-medium">
           {message}
         </div>
       )}

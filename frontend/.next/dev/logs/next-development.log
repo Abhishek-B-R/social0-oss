@@ -1,5 +1,31 @@
-[00:00:00.437] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-[00:00:00.488] Server  LOG     ✓ Ready in 368ms
-[00:00:02.694] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:02.972] Browser WARN    Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
-[00:00:25.252] Server  LOG     ✓ Compiled in 22.5s
+[00:00:00.431] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+[00:00:00.477] Server  LOG     ✓ Ready in 360ms
+[00:00:05.464] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[00:00:05.972] Server  ERROR   (node:71591) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[00:00:07.946] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+[00:00:08.949] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:14.368] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:04:13.865] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:04:17.932] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:17:49.115] Server  LOG     ✓ Compiled in 60ms
+[00:17:50.469] Server  LOG     ✓ Compiled in 28ms
+[00:19:41.957] Server  LOG     ✓ Compiled in 18ms
+[00:19:46.076] Server  LOG     ✓ Compiled in 11ms
+[00:19:48.224] Server  LOG     ✓ Compiled in 12ms
+[00:23:02.096] Server  LOG     ✓ Compiled in 16ms
+[00:27:39.667] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:27:39.923] Browser WARN    Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[00:29:15.829] Server  LOG     ✓ Compiled in 28.1s
+[00:31:04.944] Server  LOG     ✓ Compiled in 109.1s
+[00:31:23.302] Server  LOG     ✓ Compiled in 18.4s
+[00:31:38.927] Server  LOG     ✓ Compiled in 15.6s
+[00:34:12.111] Server  LOG     ✓ Compiled in 152.9s
+[00:36:21.124] Server  LOG     ✓ Compiled in 129.3s

@@ -17,7 +17,7 @@ export async function GET(
   const { platform: platformParam } = await params;
   
   // Validate platform is a valid Platform type (including BYOK platforms)
-  const validPlatforms: Platform[] = ["linkedin", "instagram", "youtube", "pinterest", "tiktok", "twitter_x", "threads", "bluesky"];
+  const validPlatforms: Platform[] = ["linkedin", "instagram", "youtube", "pinterest", "tiktok", "twitter_x", "threads", "bluesky", "facebook"];
   if (!validPlatforms.includes(platformParam as Platform)) {
     return Response.json({ error: "Invalid platform" }, { status: 400 });
   }
