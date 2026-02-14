@@ -35,9 +35,9 @@ export function HeroMockup() {
         {/* Fake browser chrome */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50">
           <div className="flex gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-red-400/80" />
-            <div className="w-3 h-3 rounded-full bg-amber-400/80" />
-            <div className="w-3 h-3 rounded-full bg-red-400/80" />
+            <div className="w-3 h-3 rounded-full bg-red-400" />
+            <div className="w-3 h-3 rounded-full bg-yellow-400" />
+            <div className="w-3 h-3 rounded-full bg-green-400" />
           </div>
           <div className="flex-1 mx-4 h-6 rounded-md bg-white border border-gray-200 text-gray-400 text-xs flex items-center px-3">
             app.social0.com/dashboard
@@ -54,7 +54,7 @@ export function HeroMockup() {
               Excited to announce our new product launch! 🚀
             </div>
             <div className="text-sm text-gray-700 leading-relaxed">
-              After months of development, we're thrilled to share what we've been building. This is a game-changer for our industry.
+              After months of development, we&apos;re thrilled to share what we&apos;ve been building. This is a game-changer for our industry.
             </div>
             <div className="text-sm text-gray-600 leading-relaxed">
               #innovation #productlaunch #tech
