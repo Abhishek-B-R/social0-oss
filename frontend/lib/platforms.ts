@@ -70,7 +70,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientIdEnv: "THREADS_CLIENT_ID",
     clientSecretEnv: "THREADS_CLIENT_SECRET",
     authUrl: "https://threads.net/oauth/authorize",
-    tokenUrl: "https://graph.facebook.com/v18.0/oauth/access_token",
+    tokenUrl: "https://graph.threads.net/oauth/access_token",
     // Threads API scopes (Meta Graph API)
     // threads_basic: required for all Threads endpoints
     // threads_content_publish: required for publishing posts
@@ -95,9 +95,9 @@ export const PLATFORM_OAUTH_CONFIG: Record<
   facebook: {
     clientIdEnv: "FACEBOOK_CLIENT_ID",
     clientSecretEnv: "FACEBOOK_CLIENT_SECRET",
-    authUrl: "https://www.facebook.com/v21.0/dialog/oauth",
+    authUrl: "https://www.facebook.com/dialog/oauth",
     tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
-    scope: "pages_manage_posts,pages_read_engagement,pages_show_list",
+    scope: "pages_show_list,pages_read_engagement,pages_manage_posts",
   },
   devto: null, // BYOK - API key
   hashnode: null, // BYOK - API key + Publication ID
