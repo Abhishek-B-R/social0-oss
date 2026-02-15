@@ -10,6 +10,15 @@ import { normalizeAppUrl } from "@/lib/url-utils";
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
+/** Ensure we only ever redirect to a string URL. Passing an object (e.g. from state/callbackUrl) would 404. */
+function safeRedirect(url: unknown, fallback: string): never {
+  const s =
+    typeof url === "string" && url.trim().length > 0 && (url.startsWith("/") || url.startsWith("http"))
+      ? url.trim()
+      : fallback;
+  return redirect(s);
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ platform: string }> },
@@ -19,24 +28,28 @@ export async function GET(
   // Validate platform is a valid Platform type (including BYOK platforms)
   const validPlatforms: Platform[] = ["linkedin", "instagram", "youtube", "pinterest", "tiktok", "twitter_x", "threads", "bluesky", "facebook"];
   if (!validPlatforms.includes(platformParam as Platform)) {
-    return redirect(`/dashboard?error=invalid_platform&platform=${platformParam}`);
+    return safeRedirect(
+      `/dashboard?error=invalid_platform&platform=${platformParam}`,
+      "/dashboard",
+    );
   }
-  
+
   const platform = platformParam as Platform;
-  
+
   // Check if platform uses OAuth (not BYOK)
   if (!PLATFORM_OAUTH_CONFIG[platform]) {
-    return redirect(
+    return safeRedirect(
       `/dashboard?error=platform_not_configured&platform=${platform}`,
+      "/dashboard",
     );
   }
   const url = new URL(req.url);
-  
+
   // Instagram appends #_ to redirect URI - strip it
   if (url.hash === "#_") {
     url.hash = "";
   }
-  
+
   const { searchParams } = url;
   const code = searchParams.get("code");
   const state = searchParams.get("state");
@@ -44,14 +57,16 @@ export async function GET(
 
   // Handle OAuth errors
   if (error) {
-    return redirect(
+    return safeRedirect(
       `/dashboard?error=oauth_failed&platform=${platform}`,
+      "/dashboard",
     );
   }
 
   if (!code || !state) {
-    return redirect(
+    return safeRedirect(
       `/dashboard?error=invalid_callback&platform=${platform}`,
+      "/dashboard",
     );
   }
 
@@ -63,8 +78,9 @@ export async function GET(
     userId = decrypted.userId;
     
     if (decrypted.platform !== platform) {
-      return redirect(
+      return safeRedirect(
         `/dashboard?error=state_mismatch&platform=${platform}`,
+        "/dashboard",
       );
     }
 
@@ -80,8 +96,9 @@ export async function GET(
           found: !!verifierRecord,
           expired: verifierRecord ? new Date(verifierRecord.expiresAt) < new Date() : true,
         });
-        return redirect(
+        return safeRedirect(
           `/dashboard?error=verifier_expired&platform=${platform}`,
+          "/dashboard",
         );
       }
 
@@ -105,8 +122,9 @@ export async function GET(
       
       if (!verifierCookie?.value) {
         console.error("❌ X PKCE: Missing code_verifier cookie");
-        return redirect(
+        return safeRedirect(
           `/dashboard?error=verifier_missing&platform=${platform}`,
+          "/dashboard",
         );
       }
 
@@ -122,15 +140,17 @@ export async function GET(
     }
   } catch (err) {
     console.error("Failed to decrypt state:", err);
-    return redirect(
+    return safeRedirect(
       `/dashboard?error=invalid_state&platform=${platform}`,
+      "/dashboard",
     );
   }
 
   const config = PLATFORM_OAUTH_CONFIG[platform];
   if (!config) {
-    return redirect(
+    return safeRedirect(
       `/dashboard?error=platform_not_configured&platform=${platform}`,
+      "/dashboard",
     );
   }
 
@@ -141,8 +161,9 @@ export async function GET(
   ] as string;
 
   if (!clientId || !clientSecret) {
-    return redirect(
+    return safeRedirect(
       `/dashboard?error=credentials_not_configured&platform=${platform}`,
+      "/dashboard",
     );
   }
 
@@ -376,16 +397,18 @@ export async function GET(
       );
       if (!pagesRes.ok) {
         console.error("Facebook pages fetch failed:", await pagesRes.text());
-        return redirect(
+        return safeRedirect(
           `/dashboard?error=oauth_failed&platform=${platform}`,
+          "/dashboard",
         );
       }
       const pagesData = await pagesRes.json();
       const pages: { id: string; name: string; access_token: string }[] =
         pagesData.data || [];
       if (pages.length === 0) {
-        return redirect(
+        return safeRedirect(
           `/dashboard?error=no_facebook_pages&platform=${platform}`,
+          "/dashboard",
         );
       }
       if (pages.length === 1) {
@@ -402,7 +425,7 @@ export async function GET(
           encryptedRefreshToken: null,
           tokenExpiresAt: null,
         });
-        return redirect(`/dashboard?connected=facebook`);
+        return safeRedirect("/dashboard?connected=facebook", "/dashboard");
       }
       // Multiple pages: store in verification and redirect to select
       const stateId = crypto.randomBytes(16).toString("hex");
@@ -417,7 +440,11 @@ export async function GET(
         expiresAt: new Date(Date.now() + 10 * 60 * 1000),
       });
       const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
-      return redirect(`${baseUrl}/dashboard/connect/facebook/select?token=${stateId}`);
+      const facebookSelectUrl =
+        typeof baseUrl === "string" && baseUrl
+          ? `${baseUrl}/dashboard/connect/facebook/select?token=${stateId}`
+          : `/dashboard/connect/facebook/select?token=${stateId}`;
+      return safeRedirect(facebookSelectUrl, "/dashboard");
     }
 
     // Check if account already connected
@@ -488,7 +515,10 @@ export async function GET(
         })
         .where(eq(connectedAccounts.id, existing.id));
 
-      return redirect(`/dashboard?connected=${platform}&updated=true`);
+      return safeRedirect(
+        `/dashboard?connected=${platform}&updated=true`,
+        "/dashboard",
+      );
     }
 
     // Generate UUID for account ID (needed for encryption)
@@ -511,7 +541,10 @@ export async function GET(
         : null,
     });
 
-    return redirect(`/dashboard?connected=${platform}`);
+    return safeRedirect(
+      `/dashboard?connected=${platform}`,
+      "/dashboard",
+    );
   } catch (err) {
     // NEXT_REDIRECT is how Next.js implements redirect() - don't catch it
     if (err && typeof err === "object" && "digest" in err) {
@@ -522,8 +555,9 @@ export async function GET(
     }
 
     console.error("OAuth callback error:", err);
-    return redirect(
+    return safeRedirect(
       `/dashboard?error=oauth_failed&platform=${platform}`,
+      "/dashboard",
     );
   }
 }
