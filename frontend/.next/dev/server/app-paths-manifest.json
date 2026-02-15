@@ -1,6 +1,7 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/api/connect/[platform]/callback/route": "app/api/connect/[platform]/callback/route.js",
+  "/api/auth/[...all]/route": "app/api/auth/[...all]/route.js",
   "/api/connect/[platform]/route": "app/api/connect/[platform]/route.js",
-  "/dashboard/page": "app/dashboard/page.js"
+  "/dashboard/page": "app/dashboard/page.js",
+  "/page": "app/page.js"
 }

@@ -513,6 +513,14 @@ export async function GET(
 
     return redirect(`/dashboard?connected=${platform}`);
   } catch (err) {
+    // NEXT_REDIRECT is how Next.js implements redirect() - don't catch it
+    if (err && typeof err === "object" && "digest" in err) {
+      const digest = (err as { digest?: string }).digest;
+      if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
+        throw err; // Re-throw so Next.js can handle the redirect
+      }
+    }
+
     console.error("OAuth callback error:", err);
     return redirect(
       `/dashboard?error=oauth_failed&platform=${platform}`,
