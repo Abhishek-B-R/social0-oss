@@ -31,10 +31,8 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "LINKEDIN_CLIENT_SECRET",
     authUrl: "https://www.linkedin.com/oauth/v2/authorization",
     tokenUrl: "https://www.linkedin.com/oauth/v2/accessToken",
-    // LinkedIn deprecated r_liteprofile and r_emailaddress in Aug 2023
-    // Now requires OpenID Connect scopes: openid, profile, email
-    // w_member_social is still needed for posting
-    scope: "openid profile email",
+    // OpenID Connect + w_member_social for profile and future posting
+    scope: "openid profile email w_member_social",
   },
   instagram: {
     clientIdEnv: "INSTAGRAM_CLIENT_ID",
@@ -53,9 +51,8 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "YOUTUBE_CLIENT_SECRET",
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
     tokenUrl: "https://oauth2.googleapis.com/token",
-    // YouTube Data API v3 scopes
-    // youtube.upload for posting videos, youtube for full access
-    scope: "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube",
+    // YouTube + userinfo.profile for channel/name and avatar
+    scope: "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/userinfo.profile",
   },
   twitter_x: {
     clientIdEnv: "TWITTER_CLIENT_ID",
@@ -85,9 +82,8 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "PINTEREST_CLIENT_SECRET",
     authUrl: "https://www.pinterest.com/oauth/",
     tokenUrl: "https://api.pinterest.com/v5/oauth/token",
-    // Pinterest OAuth scopes
-    // boards:read, boards:write, pins:read, pins:write for full access
-    scope: "boards:read boards:write pins:read pins:write",
+    // Pinterest OAuth scopes (user_accounts:read required for profile fetch in callback)
+    scope: "boards:read boards:write pins:read pins:write user_accounts:read",
   },
   tiktok: {
     clientIdEnv: "TIKTOK_CLIENT_ID",

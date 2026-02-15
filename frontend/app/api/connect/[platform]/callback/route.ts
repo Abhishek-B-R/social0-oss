@@ -316,8 +316,31 @@ export async function GET(
         expiresIn: tokens.expires_in,
         tokenType: tokens.token_type,
       });
+    } else if (platform === "pinterest") {
+      // Pinterest: Basic Auth + form body only (no client_id/client_secret in body)
+      const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+      tokenResponse = await fetch("https://api.pinterest.com/v5/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${basicAuth}`,
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code: code!,
+          redirect_uri: redirectUri,
+        }).toString(),
+      });
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        console.error("Pinterest token exchange failed:", errorText);
+        throw new Error("Token exchange failed");
+      }
+
+      tokens = await tokenResponse.json();
     } else {
-      // Standard OAuth 2.0 flow (LinkedIn, YouTube, Mastodon, Bluesky, Peerlist)
+      // Standard OAuth 2.0 flow (LinkedIn, YouTube, etc.)
       tokenResponse = await fetch(tokenUrl, {
         method: "POST",
         headers: {
@@ -507,32 +530,26 @@ async function fetchPlatformUserInfo(
   profileImageUrl: string | null;
 }> {
   switch (platform) {
-    case "linkedin":
-      // LinkedIn OpenID Connect userinfo endpoint
+    case "linkedin": {
+      // LinkedIn OpenID Connect userinfo
       try {
-        const response = await fetch(
-          "https://api.linkedin.com/v2/userinfo",
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          },
-        );
-        if (response.ok) {
-          const data = await response.json();
+        const response = await fetch("https://api.linkedin.com/v2/userinfo", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data.sub) {
           return {
-            id: data.sub || `linkedin-${Date.now()}`,
-            username: data.name || data.given_name || null,
+            id: data.sub,
+            username: data.name || data.given_name || "LinkedIn User",
             profileImageUrl: data.picture || null,
           };
-        } else {
-          const errorText = await response.text();
-          console.error("LinkedIn userinfo error:", errorText);
         }
+        console.error("LinkedIn userinfo error:", response.status, data);
       } catch (err) {
         console.error("LinkedIn user info fetch failed:", err);
       }
       break;
+    }
 
     case "instagram":
       // Instagram Graph API - get user info
@@ -556,30 +573,40 @@ async function fetchPlatformUserInfo(
       }
       break;
 
-    case "youtube":
-      // YouTube Data API v3 - get channel info
+    case "youtube": {
+      // YouTube: try channel first (channel name/avatar), then Google userinfo
+      const headers = { Authorization: `Bearer ${accessToken}` };
       try {
-        const response = await fetch(
-          `https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true&access_token=${accessToken}`,
+        const channelResponse = await fetch(
+          "https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true",
+          { headers },
         );
-        if (response.ok) {
-          const data = await response.json();
-          if (data.items && data.items.length > 0) {
-            const channel = data.items[0];
+        if (channelResponse.ok) {
+          const channelData = await channelResponse.json();
+          const channel = channelData.items?.[0];
+          if (channel) {
             return {
-              id: channel.id || `youtube-${Date.now()}`,
-              username: channel.snippet?.title || channel.snippet?.customUrl || null,
+              id: channel.id,
+              username: channel.snippet?.title || channel.snippet?.customUrl || "YouTube User",
               profileImageUrl: channel.snippet?.thumbnails?.default?.url || null,
             };
           }
-        } else {
-          const errorText = await response.text();
-          console.error("YouTube userinfo error:", errorText);
         }
+        const userResponse = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", { headers });
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          return {
+            id: userData.id || `youtube-${Date.now()}`,
+            username: userData.name || "YouTube User",
+            profileImageUrl: userData.picture || null,
+          };
+        }
+        console.error("YouTube profile fetch failed: channels", channelResponse.status, "userinfo", userResponse.status);
       } catch (err) {
         console.error("YouTube user info fetch failed:", err);
       }
       break;
+    }
 
     case "twitter_x":
       // X (Twitter) API v2 - get user info
@@ -632,32 +659,26 @@ async function fetchPlatformUserInfo(
       }
       break;
 
-    case "pinterest":
-      // Pinterest API v5 - get user info
+    case "pinterest": {
+      // Pinterest API v5 - user_account (requires user_accounts:read scope)
       try {
-        const response = await fetch(
-          "https://api.pinterest.com/v5/user_account",
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          },
-        );
-        if (response.ok) {
-          const data = await response.json();
+        const response = await fetch("https://api.pinterest.com/v5/user_account", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && (data.username || data.id)) {
           return {
-            id: data.id || data.username || `pinterest-${Date.now()}`,
-            username: data.username || null,
+            id: data.id || data.username,
+            username: data.username || "Pinterest User",
             profileImageUrl: data.profile_image || null,
           };
-        } else {
-          const errorText = await response.text();
-          console.error("Pinterest userinfo error:", errorText);
         }
+        console.error("Pinterest user_account error:", response.status, data);
       } catch (err) {
         console.error("Pinterest user info fetch failed:", err);
       }
       break;
+    }
 
     case "tiktok":
       // TikTok API v2 - get user info

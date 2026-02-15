@@ -1,7 +1,7 @@
-[00:00:00.431] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-[00:00:00.477] Server  LOG     ✓ Ready in 360ms
-[00:00:05.464] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
-[00:00:05.972] Server  ERROR   (node:71591) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+[00:00:00.591] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+[00:00:00.651] Server  LOG     ✓ Ready in 487ms
+[00:00:02.497] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[00:00:02.558] Server  ERROR   (node:14649) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
 In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
 
 To prepare for this change:
@@ -10,22 +10,20 @@ To prepare for this change:
 
 See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
 (Use `node --trace-warnings ...` to show where the warning was created)
-[00:00:07.946] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
-[00:00:08.949] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:14.368] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
-[00:04:13.865] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:04:17.932] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
-[00:17:49.115] Server  LOG     ✓ Compiled in 60ms
-[00:17:50.469] Server  LOG     ✓ Compiled in 28ms
-[00:19:41.957] Server  LOG     ✓ Compiled in 18ms
-[00:19:46.076] Server  LOG     ✓ Compiled in 11ms
-[00:19:48.224] Server  LOG     ✓ Compiled in 12ms
-[00:23:02.096] Server  LOG     ✓ Compiled in 16ms
-[00:27:39.667] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:27:39.923] Browser WARN    Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
-[00:29:15.829] Server  LOG     ✓ Compiled in 28.1s
-[00:31:04.944] Server  LOG     ✓ Compiled in 109.1s
-[00:31:23.302] Server  LOG     ✓ Compiled in 18.4s
-[00:31:38.927] Server  LOG     ✓ Compiled in 15.6s
-[00:34:12.111] Server  LOG     ✓ Compiled in 152.9s
-[00:36:21.124] Server  LOG     ✓ Compiled in 129.3s
+[00:00:08.119] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:18.085] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[00:00:23.549] Server  LOG     🔍 OAuth Debug: {}
+[00:00:23.550] Server  LOG     🔍 Final OAuth URL: "https://accounts.google.com/o/oauth2/v2/auth?client_id=577272057068-4873oto24iooh4saqvtbjr3t0p781gsr.apps.googleusercontent.com&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Fyoutube%2Fcallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fyoutube.upload+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fyoutube&state=bpbLdBrX0LDU7vPCdiAqZA%3D%3D%3AaoSuMjeHR%2BUoR6%2BGxrl%2BK3jHOKznjGLGrNAFk40mQXza1honC4tNj7Ebpdydx4HQzsDjFKbw0zN8%2Fjf7xUte7xHx%3A5SWo1vjSytXsY4dYzttO%2Bw%3D%3D&access_type=offline&prompt=consent"
+[00:00:23.550] Server  LOG     🔍 URL Length: 542
+[00:00:23.550] Server  LOG     🔍 State in URL: "bpbLdBrX0LDU7vPCdiAqZA==:aoSuMjeHR+UoR6+Gxrl+K3jHO..."
+[00:01:29.782] Server  ERROR   OAuth callback error: Error: NEXT_REDIRECT
+[00:01:35.561] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:01:49.902] Server  LOG     🔍 OAuth Debug: {}
+[00:01:49.902] Server  LOG     🔍 Final OAuth URL: "https://www.linkedin.com/oauth/v2/authorization?client_id=86uyrghyloxq3g&redirect_uri=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fconnect%2Flinkedin%2Fcallback&response_type=code&scope=openid+profile+email&state=wk2Jah1nrq4yrTriDWOW0A%3D%3D%3Abjl9la0PiKSXvUPXojyrIugPXMc5GUHh70o5cICJx6MQzMqAGHZpKx9X61T3Z6gkN72LhcTCHAo8KC2DH5pY1WPIXg%3D%3D%3A%2FuS785DxfPck%2BhFoGP1GEw%3D%3D"
+[00:01:49.902] Server  LOG     🔍 URL Length: 369
+[00:01:49.902] Server  LOG     🔍 State in URL: "wk2Jah1nrq4yrTriDWOW0A==:bjl9la0PiKSXvUPXojyrIugPX..."
+[00:02:18.220] Server  ERROR   OAuth callback error: Error: NEXT_REDIRECT
+[00:02:23.500] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:03:18.899] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:04:28.404] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[00:04:28.752] Server  LOG     [dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  write to custom object with { processEnv: myObject }
