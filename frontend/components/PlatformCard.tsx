@@ -7,6 +7,7 @@ import { DevToByokModal } from "./DevToByokModal";
 import { HashnodeByokModal } from "./HashnodeByokModal";
 import { MediumByokModal } from "./MediumByokModal";
 import { PreConnectModal } from "./PreConnectModal";
+import { InstagramConnectionModal } from "./InstagramConnectionModal";
 
 type PlatformCardProps = {
   platform: (typeof PLATFORMS)[number];
@@ -42,6 +43,7 @@ export function PlatformCard({ platform, account }: PlatformCardProps) {
   const [showHashnodeModal, setShowHashnodeModal] = useState(false);
   const [showMediumModal, setShowMediumModal] = useState(false);
   const [showPreConnectModal, setShowPreConnectModal] = useState(false);
+  const [showInstagramModal, setShowInstagramModal] = useState(false);
 
   const preConnect = PRE_CONNECT[platform.id];
 
@@ -62,6 +64,10 @@ export function PlatformCard({ platform, account }: PlatformCardProps) {
       setShowMediumModal(true);
       return;
     }
+    if (platform.id === "instagram") {
+      setShowInstagramModal(true);
+      return;
+    }
     if (preConnect) {
       setShowPreConnectModal(true);
       return;
@@ -72,6 +78,16 @@ export function PlatformCard({ platform, account }: PlatformCardProps) {
   const handlePreConnectContinue = () => {
     setShowPreConnectModal(false);
     window.location.href = `/api/connect/${platform.id}`;
+  };
+
+  const handleInstagramDirect = () => {
+    setShowInstagramModal(false);
+    window.location.href = `/api/connect/instagram`;
+  };
+
+  const handleInstagramFacebookPage = () => {
+    setShowInstagramModal(false);
+    window.location.href = `/api/connect/instagram-facebook`;
   };
 
   return (
@@ -148,6 +164,14 @@ export function PlatformCard({ platform, account }: PlatformCardProps) {
           isOpen={showMediumModal}
           onClose={() => setShowMediumModal(false)}
           onSuccess={() => setShowMediumModal(false)}
+        />
+      )}
+      {platform.id === "instagram" && (
+        <InstagramConnectionModal
+          isOpen={showInstagramModal}
+          onClose={() => setShowInstagramModal(false)}
+          onSelectDirect={handleInstagramDirect}
+          onSelectFacebookPage={handleInstagramFacebookPage}
         />
       )}
     </>

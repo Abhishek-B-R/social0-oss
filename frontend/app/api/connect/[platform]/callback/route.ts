@@ -495,24 +495,43 @@ export async function GET(
 
     if (existing) {
       // Update existing
+      const updateData: {
+        encryptedAccessToken: string;
+        encryptedRefreshToken: string | null;
+        tokenExpiresAt: Date | null;
+        platformUserId: string;
+        platformUsername: string | null;
+        profileImageUrl: string | null;
+        platformMetadata?: Record<string, unknown>;
+        updatedAt: Date;
+      } = {
+        encryptedAccessToken: encryptToken(
+          tokens.access_token,
+          existing.id,
+        ),
+        encryptedRefreshToken: tokens.refresh_token
+          ? encryptToken(tokens.refresh_token, existing.id)
+          : null,
+        tokenExpiresAt: tokens.expires_in
+          ? new Date(Date.now() + tokens.expires_in * 1000)
+          : null,
+        platformUserId: userInfo.id,
+        platformUsername: userInfo.username,
+        profileImageUrl: userInfo.profileImageUrl,
+        updatedAt: new Date(),
+      };
+
+      // Set connectionMethod for Instagram direct OAuth
+      if (platform === "instagram") {
+        updateData.platformMetadata = {
+          ...(existing.platformMetadata as Record<string, unknown> || {}),
+          connectionMethod: "direct",
+        };
+      }
+
       await db
         .update(connectedAccounts)
-        .set({
-          encryptedAccessToken: encryptToken(
-            tokens.access_token,
-            existing.id,
-          ),
-          encryptedRefreshToken: tokens.refresh_token
-            ? encryptToken(tokens.refresh_token, existing.id)
-            : null,
-          tokenExpiresAt: tokens.expires_in
-            ? new Date(Date.now() + tokens.expires_in * 1000)
-            : null,
-          platformUserId: userInfo.id,
-          platformUsername: userInfo.username,
-          profileImageUrl: userInfo.profileImageUrl,
-          updatedAt: new Date(),
-        })
+        .set(updateData)
         .where(eq(connectedAccounts.id, existing.id));
 
       return safeRedirect(
@@ -523,6 +542,12 @@ export async function GET(
 
     // Generate UUID for account ID (needed for encryption)
     const accountId = crypto.randomUUID();
+
+    // Prepare metadata for Instagram direct OAuth
+    const platformMetadata: Record<string, unknown> | undefined =
+      platform === "instagram"
+        ? { connectionMethod: "direct" }
+        : undefined;
 
     // Insert new account with encrypted tokens
     await db.insert(connectedAccounts).values({
@@ -539,6 +564,7 @@ export async function GET(
       tokenExpiresAt: tokens.expires_in
         ? new Date(Date.now() + tokens.expires_in * 1000)
         : null,
+      platformMetadata,
     });
 
     return safeRedirect(
