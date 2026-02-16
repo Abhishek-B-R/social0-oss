@@ -18,8 +18,8 @@ type Account = {
   isActive: boolean | null;
 };
 
-type ImageFile = { file: File; preview: string };
-type VideoFile = { file: File; preview: string } | null;
+type ImageFile = { file: File; preview: string; order: number };
+type VideoFile = { file: File; preview: string; order: number };
 
 export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
   const router = useRouter();
@@ -27,23 +27,24 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const [content, setContent] = useState("");
   const [images, setImages] = useState<ImageFile[]>([]);
-  const [video, setVideo] = useState<VideoFile>(null);
+  const [videos, setVideos] = useState<VideoFile[]>([]);
   const imagesRef = useRef<ImageFile[]>([]);
-  const videoRef = useRef<VideoFile>(null);
+  const videosRef = useRef<VideoFile[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     imagesRef.current = images;
-    videoRef.current = video;
-  }, [images, video]);
+    videosRef.current = videos;
+  }, [images, videos]);
   useEffect(() => {
     return () => {
       imagesRef.current.forEach((i) => URL.revokeObjectURL(i.preview));
-      if (videoRef.current) URL.revokeObjectURL(videoRef.current.preview);
+      videosRef.current.forEach((v) => URL.revokeObjectURL(v.preview));
     };
   }, []);
 
@@ -64,17 +65,28 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
     }
   };
 
+  const getMaxOrder = () => {
+    const imageOrders = images.map((i) => i.order);
+    const videoOrders = videos.map((v) => v.order);
+    return Math.max(0, ...imageOrders, ...videoOrders);
+  };
+
   const onImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length) return;
     const newImages: ImageFile[] = [];
+    const maxOrder = getMaxOrder();
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (!file.type.startsWith("image/")) {
         setError("Please select only image files.");
         continue;
       }
-      newImages.push({ file, preview: URL.createObjectURL(file) });
+      newImages.push({
+        file,
+        preview: URL.createObjectURL(file),
+        order: maxOrder + i + 1,
+      });
     }
     setError(null);
     setImages((prev) => [...prev, ...newImages]);
@@ -82,29 +94,116 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
   };
 
   const onVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file?.type.startsWith("video/")) {
-      if (file) setError("Please select a video file.");
-      return;
+    const files = e.target.files;
+    if (!files?.length) return;
+    const newVideos: VideoFile[] = [];
+    const maxOrder = getMaxOrder();
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file.type.startsWith("video/")) {
+        setError("Please select only video files.");
+        continue;
+      }
+      newVideos.push({
+        file,
+        preview: URL.createObjectURL(file),
+        order: maxOrder + i + 1,
+      });
     }
     setError(null);
-    if (video) URL.revokeObjectURL(video.preview);
-    setVideo({ file, preview: URL.createObjectURL(file) });
+    setVideos((prev) => [...prev, ...newVideos]);
     if (videoInputRef.current) videoInputRef.current.value = "";
+  };
+
+  const getAllItems = () => {
+    return [
+      ...images.map((img) => ({ ...img, type: "image" as const })),
+      ...videos.map((vid) => ({ ...vid, type: "video" as const })),
+    ].sort((a, b) => a.order - b.order);
+  };
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    const sorted = getAllItems();
+    const draggedItem = sorted[draggedIndex];
+    const newSorted = [...sorted];
+    newSorted.splice(draggedIndex, 1);
+    newSorted.splice(index, 0, draggedItem);
+    const reordered = newSorted.map((item, idx) => ({ ...item, order: idx + 1 }));
+    const newImages = reordered
+      .filter((i) => i.type === "image")
+      .map((i) => ({
+        file: i.file,
+        preview: i.preview,
+        order: i.order,
+      }));
+    const newVideos = reordered
+      .filter((i) => i.type === "video")
+      .map((i) => ({
+        file: i.file,
+        preview: i.preview,
+        order: i.order,
+      }));
+    setImages(newImages);
+    setVideos(newVideos);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
   };
 
   const removeImage = (preview: string) => {
     setImages((prev) => {
       const item = prev.find((i) => i.preview === preview);
       if (item) URL.revokeObjectURL(item.preview);
-      return prev.filter((i) => i.preview !== preview);
+      const filtered = prev.filter((i) => i.preview !== preview);
+      const allItems = [...filtered, ...videos].sort((a, b) => a.order - b.order);
+      return filtered.map((img) => {
+        const newOrder = allItems.findIndex((i) => i.preview === img.preview) + 1;
+        return { ...img, order: newOrder };
+      });
     });
+    const allItems = [
+      ...images.filter((i) => i.preview !== preview),
+      ...videos,
+    ].sort((a, b) => a.order - b.order);
+    setVideos((prev) =>
+      prev.map((vid) => {
+        const newOrder = allItems.findIndex((i) => i.preview === vid.preview) + 1;
+        return { ...vid, order: newOrder };
+      }),
+    );
+    setDraggedIndex(null);
   };
 
-  const removeVideo = () => {
-    if (video) URL.revokeObjectURL(video.preview);
-    setVideo(null);
-    if (videoInputRef.current) videoInputRef.current.value = "";
+  const removeVideo = (preview: string) => {
+    setVideos((prev) => {
+      const item = prev.find((v) => v.preview === preview);
+      if (item) URL.revokeObjectURL(item.preview);
+      const filtered = prev.filter((v) => v.preview !== preview);
+      const allItems = [...images, ...filtered].sort((a, b) => a.order - b.order);
+      return filtered.map((vid) => {
+        const newOrder = allItems.findIndex((i) => i.preview === vid.preview) + 1;
+        return { ...vid, order: newOrder };
+      });
+    });
+    const allItems = [
+      ...images,
+      ...videos.filter((v) => v.preview !== preview),
+    ].sort((a, b) => a.order - b.order);
+    setImages((prev) =>
+      prev.map((img) => {
+        const newOrder = allItems.findIndex((i) => i.preview === img.preview) + 1;
+        return { ...img, order: newOrder };
+      }),
+    );
+    setDraggedIndex(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,29 +211,21 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
     setError(null);
     setLoading(true);
 
+    const allMedia: Array<{ file: File; order: number }> = [
+      ...images.map((img) => ({ file: img.file, order: img.order })),
+      ...videos.map((vid) => ({ file: vid.file, order: vid.order })),
+    ].sort((a, b) => a.order - b.order);
+
     const mediaIds: string[] = [];
-    for (const img of images) {
+    for (const item of allMedia) {
       try {
         const fd = new FormData();
-        fd.set("file", img.file);
+        fd.set("file", item.file);
         const res = await fetch("/api/media/upload", { method: "POST", body: fd });
         const data = await res.json();
         if (data.id) mediaIds.push(data.id);
       } catch {
-        setError("Failed to upload an image.");
-        setLoading(false);
-        return;
-      }
-    }
-    if (video) {
-      try {
-        const fd = new FormData();
-        fd.set("file", video.file);
-        const res = await fetch("/api/media/upload", { method: "POST", body: fd });
-        const data = await res.json();
-        if (data.id) mediaIds.push(data.id);
-      } catch {
-        setError("Failed to upload video.");
+        setError("Failed to upload media.");
         setLoading(false);
         return;
       }
@@ -142,8 +233,8 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
 
     const text =
       content.trim() ||
-      (images.length || video
-        ? `[${images.length} image(s)${video ? " + video" : ""}]`
+      (images.length || videos.length
+        ? `[${images.length} image(s)${videos.length ? ` + ${videos.length} video(s)` : ""}]`
         : "");
     const result = await createPost(
       text,
@@ -162,7 +253,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
   };
 
   const hasContent =
-    content.trim().length > 0 || images.length > 0 || video !== null;
+    content.trim().length > 0 || images.length > 0 || videos.length > 0;
   const submitLabel =
     mode === "draft"
       ? "Save draft"
@@ -230,56 +321,74 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
             className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 cursor-pointer"
           >
             <MdOutlineVideocam className="w-5 h-5" />
-            Video
+            Videos
+            {videos.length > 0 && (
+              <span className="text-gray-500">({videos.length})</span>
+            )}
           </label>
           <input
             id="collection-video"
             type="file"
             accept="video/*"
+            multiple
             onChange={onVideoChange}
             className="hidden"
           />
         </div>
 
-        {(images.length > 0 || video) && (
-          <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
-            {images.map((img) => (
-              <div
-                key={img.preview}
-                className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */}
-                <img
-                  src={img.preview}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeImage(img.preview)}
-                  className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
-                >
-                  <MdClose className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-            {video && (
-              <div className="relative flex h-12 w-16 shrink-0 overflow-hidden rounded border border-gray-200">
-                <video
-                  src={video.preview}
-                  className="h-full w-full object-cover"
-                  muted
-                  playsInline
-                />
-                <button
-                  type="button"
-                  onClick={removeVideo}
-                  className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 rounded text-white transition-opacity"
-                >
-                  <MdClose className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
+        {(images.length > 0 || videos.length > 0) && (
+          <div className="space-y-3 pt-2 border-t border-gray-100">
+            <p className="text-xs text-gray-500">
+              Carousel post: Drag to reorder (mainly for Instagram)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {getAllItems().map((item, index) => {
+                const isVideo = item.type === "video";
+                return (
+                  <div
+                    key={item.preview}
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className={`relative shrink-0 cursor-move overflow-hidden rounded-lg border border-gray-200 hover:border-emerald-400 transition-colors ${
+                      isVideo ? "h-12 w-16" : "h-20 w-20"
+                    }`}
+                  >
+                    {isVideo ? (
+                      <video
+                        src={item.preview}
+                        className="h-full w-full object-cover"
+                        muted
+                        playsInline
+                        draggable={false}
+                      />
+                    ) : (
+                      /* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */
+                      <img
+                        src={item.preview}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        draggable={false}
+                      />
+                    )}
+                    <div className="absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center">
+                      <span className="text-xs font-bold text-white">{item.order}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        isVideo ? removeVideo(item.preview) : removeImage(item.preview)
+                      }
+                      className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      <MdClose className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

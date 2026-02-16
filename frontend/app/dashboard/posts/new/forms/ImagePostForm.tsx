@@ -14,7 +14,7 @@ type Account = {
   isActive: boolean | null;
 };
 
-type ImageFile = { file: File; preview: string };
+type ImageFile = { file: File; preview: string; order: number };
 
 export function ImagePostForm({ accounts }: { accounts: Account[] }) {
   const router = useRouter();
@@ -27,6 +27,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     imagesRef.current = images;
@@ -58,31 +59,75 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
     const files = e.target.files;
     if (!files?.length) return;
     const newImages: ImageFile[] = [];
+    const maxOrder = images.length > 0 ? Math.max(...images.map((i) => i.order)) : 0;
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (!file.type.startsWith("image/")) {
         setError("Please select only image files (JPEG, PNG, GIF, WebP).");
         continue;
       }
-      newImages.push({ file, preview: URL.createObjectURL(file) });
+      newImages.push({
+        file,
+        preview: URL.createObjectURL(file),
+        order: maxOrder + i + 1,
+      });
     }
     setError(null);
     setImages((prev) => [...prev, ...newImages]);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    const sorted = [...images].sort((a, b) => a.order - b.order);
+    const draggedItem = sorted[draggedIndex];
+    const newSorted = [...sorted];
+    newSorted.splice(draggedIndex, 1);
+    newSorted.splice(index, 0, draggedItem);
+    setImages(newSorted.map((img, idx) => ({ ...img, order: idx + 1 })));
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
   const removeImage = (preview: string) => {
     setImages((prev) => {
       const item = prev.find((i) => i.preview === preview);
       if (item) URL.revokeObjectURL(item.preview);
-      return prev.filter((i) => i.preview !== preview);
+      const filtered = prev.filter((i) => i.preview !== preview);
+      return filtered.map((img, idx) => ({ ...img, order: idx + 1 }));
     });
+    setDraggedIndex(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
+    const sortedImages = [...images].sort((a, b) => a.order - b.order);
+    const mediaIds: string[] = [];
+    for (const img of sortedImages) {
+      try {
+        const fd = new FormData();
+        fd.set("file", img.file);
+        const res = await fetch("/api/media/upload", { method: "POST", body: fd });
+        const data = await res.json();
+        if (data.id) mediaIds.push(data.id);
+      } catch {
+        setError("Failed to upload an image.");
+        setLoading(false);
+        return;
+      }
+    }
+
     const text =
       content.trim() ||
       (images.length ? `[${images.length} image(s)]` : "");
@@ -91,6 +136,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
       Array.from(selectedIds),
       mode,
       scheduledAt,
+      mediaIds,
     );
     setLoading(false);
     if (result.success) {
@@ -135,35 +181,49 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
             </span>
           </button>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            {images.map((img) => (
-              <div
-                key={img.preview}
-                className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */}
-                <img
-                  src={img.preview}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeImage(img.preview)}
-                  className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
+          <div className="space-y-3">
+            <p className="text-xs text-gray-500">
+              Carousel post: Drag to reorder (mainly for Instagram)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[...images].sort((a, b) => a.order - b.order).map((img, index) => (
+                <div
+                  key={img.preview}
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragEnd={handleDragEnd}
+                  className="relative h-20 w-20 shrink-0 cursor-move overflow-hidden rounded-lg border border-gray-200 hover:border-emerald-400 transition-colors"
                 >
-                  <MdClose className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/50 text-gray-500 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-600"
-            >
-              <MdOutlineAddPhotoAlternate className="h-6 w-6" />
-              <span className="text-xs mt-0.5">Add more</span>
-            </button>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */}
+                  <img
+                    src={img.preview}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    draggable={false}
+                  />
+                  <div className="absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center">
+                    <span className="text-xs font-bold text-white">{img.order}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeImage(img.preview)}
+                    className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    <MdClose className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/50 text-gray-500 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-600"
+              >
+                <MdOutlineAddPhotoAlternate className="h-6 w-6" />
+                <span className="text-xs mt-0.5">Add more</span>
+              </button>
+            </div>
           </div>
         )}
         <textarea
