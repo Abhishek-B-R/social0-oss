@@ -17,6 +17,7 @@ export async function createPost(
   selectedAccountIds: string[],
   mode: PublishMode,
   scheduledAt: Date | null,
+  mediaIds: string[] = [],
 ): Promise<CreatePostResult> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
@@ -52,7 +53,7 @@ export async function createPost(
         finalContent: trimmed,
         status,
         scheduledAt: resolvedScheduledAt,
-        mediaIds: [],
+        mediaIds: mediaIds.length > 0 ? mediaIds : [],
       })
       .returning({ id: posts.id });
 
