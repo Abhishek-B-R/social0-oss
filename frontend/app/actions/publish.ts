@@ -12,10 +12,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { decryptToken } from "@/lib/encryption";
 import { revalidatePath } from "next/cache";
-import {
-  uploadLinkedInImage,
-  uploadLinkedInVideo,
-} from "@/lib/linkedin-media";
+import { uploadLinkedInImage, uploadLinkedInVideo } from "@/lib/linkedin-media";
 
 /** Extract a readable error from LinkedIn API response (status, message, serviceErrorCode). */
 function parseLinkedInError(
@@ -100,17 +97,6 @@ export async function executePublish(
   let accessToken: string;
 
   for (const pub of publicationsWithAccounts) {
-    // TODO: Uncomment LinkedIn publishing when Vercel Pro is available for cron jobs
-    if (pub.platform === "linkedin") {
-      results.push({
-        platform: pub.platform,
-        connectedAccountId: pub.connectedAccountId,
-        status: "failed",
-        error: "LinkedIn publishing is temporarily disabled. Will be enabled when Vercel Pro is available.",
-      });
-      continue;
-    }
-    
     if (pub.platform !== "linkedin") {
       results.push({
         platform: pub.platform,
@@ -121,8 +107,6 @@ export async function executePublish(
       continue;
     }
 
-    // TODO: Uncomment when Vercel Pro is available for cron jobs
-    /* 
     if (pub.publicationStatus === "published") {
       results.push({
         platform: pub.platform,
@@ -160,7 +144,7 @@ export async function executePublish(
     const authorUrn = `urn:li:person:${pub.platformUserId}`;
 
     // Fetch media if post has mediaIds
-    let mediaAssets: string[] = [];
+    const mediaAssets: string[] = [];
     let shareMediaCategory: "NONE" | "IMAGE" | "VIDEO" = "NONE";
 
     if (post.mediaIds && post.mediaIds.length > 0) {
@@ -174,9 +158,7 @@ export async function executePublish(
         .where(inArray(mediaUploads.id, post.mediaIds));
 
       if (media.length > 0) {
-        const images = media.filter((m) =>
-          m.mimeType?.startsWith("image/"),
-        );
+        const images = media.filter((m) => m.mimeType?.startsWith("image/"));
         const videos = media.filter((m) => m.mimeType?.startsWith("video/"));
 
         const videoWithUrl = videos.find((v) => v.url);
@@ -312,7 +294,7 @@ export async function executePublish(
 
     const responseData = await linkedInRes
       .json()
-      .catch(() => ({} as Record<string, unknown>));
+      .catch(() => ({}) as Record<string, unknown>);
 
     if (!linkedInRes.ok) {
       const errMessage = parseLinkedInError(responseData, linkedInRes.status);
@@ -356,7 +338,6 @@ export async function executePublish(
       status: "published",
       platformPostUrl,
     });
-    */
   }
 
   const allPublished = results.every((r) => r.status === "published");
@@ -397,7 +378,11 @@ export async function publishPost(postId: string): Promise<PublishResult> {
   }
 
   // Validate UUID format
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(postId)) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      postId,
+    )
+  ) {
     return {
       success: false,
       error: "Invalid post ID format",
