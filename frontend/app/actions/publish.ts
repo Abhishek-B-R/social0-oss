@@ -13,6 +13,8 @@ import { headers } from "next/headers";
 import { decryptToken } from "@/lib/encryption";
 import { revalidatePath } from "next/cache";
 import { uploadLinkedInImage, uploadLinkedInVideo } from "@/lib/linkedin-media";
+import { uploadTwitterImage, uploadTwitterVideo } from "@/lib/twitter-media";
+import { TwitterApi } from "twitter-api-v2";
 
 /** Extract a readable error from LinkedIn API response (status, message, serviceErrorCode). */
 function parseLinkedInError(
@@ -30,6 +32,25 @@ function parseLinkedInError(
   if (status != null) parts.push(`HTTP ${status}`);
   if (parts.length) return parts.join(" ");
   return `LinkedIn API error: ${fallbackStatus}`;
+}
+
+/** Extract a readable error from Twitter/X API response */
+function parseTwitterError(
+  data: Record<string, unknown>,
+  fallbackStatus: number,
+): string {
+  const title = data.title as string | undefined;
+  const detail = data.detail as string | undefined;
+  const errors = data.errors as Array<{ message?: string; code?: number }> | undefined;
+  const parts: string[] = [];
+  if (title) parts.push(title);
+  if (detail) parts.push(detail);
+  if (errors && errors.length > 0) {
+    const errorMessages = errors.map((e) => e.message || `Error ${e.code || ""}`).join(", ");
+    parts.push(errorMessages);
+  }
+  if (parts.length) return parts.join(" ");
+  return `Twitter API error: ${fallbackStatus}`;
 }
 
 export type PublishResult = {
@@ -97,7 +118,8 @@ export async function executePublish(
   let accessToken: string;
 
   for (const pub of publicationsWithAccounts) {
-    if (pub.platform !== "linkedin") {
+    // Skip platforms that aren't implemented yet
+    if (pub.platform !== "linkedin" && pub.platform !== "twitter_x") {
       results.push({
         platform: pub.platform,
         connectedAccountId: pub.connectedAccountId,
@@ -141,11 +163,13 @@ export async function executePublish(
       continue;
     }
 
-    const authorUrn = `urn:li:person:${pub.platformUserId}`;
+    // Handle LinkedIn publishing
+    if (pub.platform === "linkedin") {
+      const authorUrn = `urn:li:person:${pub.platformUserId}`;
 
-    // Fetch media if post has mediaIds
-    const mediaAssets: string[] = [];
-    let shareMediaCategory: "NONE" | "IMAGE" | "VIDEO" = "NONE";
+      // Fetch media if post has mediaIds
+      const mediaAssets: string[] = [];
+      let shareMediaCategory: "NONE" | "IMAGE" | "VIDEO" = "NONE";
 
     if (post.mediaIds && post.mediaIds.length > 0) {
       const media = await db
@@ -282,62 +306,239 @@ export async function executePublish(
       },
     };
 
-    const linkedInRes = await fetch("https://api.linkedin.com/v2/ugcPosts", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Restli-Protocol-Version": "2.0.0",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(body),
-    });
+      const linkedInRes = await fetch("https://api.linkedin.com/v2/ugcPosts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Restli-Protocol-Version": "2.0.0",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(body),
+      });
 
-    const responseData = await linkedInRes
-      .json()
-      .catch(() => ({}) as Record<string, unknown>);
+      const responseData = await linkedInRes
+        .json()
+        .catch(() => ({}) as Record<string, unknown>);
 
-    if (!linkedInRes.ok) {
-      const errMessage = parseLinkedInError(responseData, linkedInRes.status);
+      if (!linkedInRes.ok) {
+        const errMessage = parseLinkedInError(responseData, linkedInRes.status);
+        await db
+          .update(postPublications)
+          .set({
+            status: "failed",
+            lastError: errMessage,
+            updatedAt: new Date(),
+          })
+          .where(eq(postPublications.id, pub.publicationId));
+        results.push({
+          platform: pub.platform,
+          connectedAccountId: pub.connectedAccountId,
+          status: "failed",
+          error: errMessage,
+        });
+        continue;
+      }
+
+      const postUrn = (responseData as { id?: string }).id;
+      const platformPostUrl = postUrn
+        ? `https://www.linkedin.com/feed/update/${postUrn}`
+        : null;
+
       await db
         .update(postPublications)
         .set({
-          status: "failed",
-          lastError: errMessage,
+          status: "published",
+          publishedAt: new Date(),
+          platformPostId: postUrn ?? null,
+          platformPostUrl,
+          lastError: null,
           updatedAt: new Date(),
         })
         .where(eq(postPublications.id, pub.publicationId));
+
       results.push({
         platform: pub.platform,
         connectedAccountId: pub.connectedAccountId,
-        status: "failed",
-        error: errMessage,
-      });
-      continue;
-    }
-
-    const postUrn = (responseData as { id?: string }).id;
-    const platformPostUrl = postUrn
-      ? `https://www.linkedin.com/feed/update/${postUrn}`
-      : null;
-
-    await db
-      .update(postPublications)
-      .set({
         status: "published",
-        publishedAt: new Date(),
-        platformPostId: postUrn ?? null,
         platformPostUrl,
-        lastError: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(postPublications.id, pub.publicationId));
+      });
+    } else if (pub.platform === "twitter_x") {
+      // Handle X/Twitter publishing
+      const client = new TwitterApi(accessToken);
+      const mediaIds: string[] = [];
 
-    results.push({
-      platform: pub.platform,
-      connectedAccountId: pub.connectedAccountId,
-      status: "published",
-      platformPostUrl,
-    });
+      // Fetch media if post has mediaIds
+      if (post.mediaIds && post.mediaIds.length > 0) {
+        const media = await db
+          .select({
+            id: mediaUploads.id,
+            url: mediaUploads.url,
+            mimeType: mediaUploads.mimeType,
+          })
+          .from(mediaUploads)
+          .where(inArray(mediaUploads.id, post.mediaIds));
+
+        if (media.length > 0) {
+          const images = media.filter((m) => m.mimeType?.startsWith("image/"));
+          const videos = media.filter((m) => m.mimeType?.startsWith("video/"));
+
+          const videoWithUrl = videos.find((v) => v.url);
+          if (videoWithUrl) {
+            // Twitter supports one video per tweet
+            try {
+              const videoMediaId = await uploadTwitterVideo(
+                videoWithUrl.url!,
+                accessToken,
+              );
+              mediaIds.push(videoMediaId);
+            } catch (e) {
+              const err =
+                e instanceof Error ? e.message : "Failed to upload video";
+              await db
+                .update(postPublications)
+                .set({
+                  status: "failed",
+                  lastError: `Video upload failed: ${err}`,
+                  updatedAt: new Date(),
+                })
+                .where(eq(postPublications.id, pub.publicationId));
+              results.push({
+                platform: pub.platform,
+                connectedAccountId: pub.connectedAccountId,
+                status: "failed",
+                error: `Video upload failed: ${err}`,
+              });
+              continue;
+            }
+          } else {
+            const imagesWithUrl = images.filter((i) => i.url);
+            if (imagesWithUrl.length > 0) {
+              // Twitter supports up to 4 images per tweet
+              try {
+                for (const img of imagesWithUrl.slice(0, 4)) {
+                  const imageMediaId = await uploadTwitterImage(
+                    img.url!,
+                    accessToken,
+                  );
+                  mediaIds.push(imageMediaId);
+                }
+              } catch (e) {
+                const err =
+                  e instanceof Error ? e.message : "Failed to upload images";
+                await db
+                  .update(postPublications)
+                  .set({
+                    status: "failed",
+                    lastError: `Image upload failed: ${err}`,
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(postPublications.id, pub.publicationId));
+                results.push({
+                  platform: pub.platform,
+                  connectedAccountId: pub.connectedAccountId,
+                  status: "failed",
+                  error: `Image upload failed: ${err}`,
+                });
+                continue;
+              }
+            } else if (images.length > 0) {
+              // Post has image media but no URL
+              await db
+                .update(postPublications)
+                .set({
+                  status: "failed",
+                  lastError:
+                    "Image has no URL. Re-upload the image and try again.",
+                  updatedAt: new Date(),
+                })
+                .where(eq(postPublications.id, pub.publicationId));
+              results.push({
+                platform: pub.platform,
+                connectedAccountId: pub.connectedAccountId,
+                status: "failed",
+                error: "Image has no URL. Re-upload and retry.",
+              });
+              continue;
+            }
+          }
+        }
+      }
+
+      // Post tweet using Twitter API v2
+      try {
+        const tweetPayload: {
+          text: string;
+          media?: {
+            media_ids: [string] | [string, string] | [string, string, string] | [string, string, string, string];
+          };
+        } = {
+          text: post.finalContent || "",
+        };
+
+        if (mediaIds.length > 0) {
+          // Twitter API requires tuple types for media_ids (1-4 items)
+          if (mediaIds.length === 1) {
+            tweetPayload.media = { media_ids: [mediaIds[0]] as [string] };
+          } else if (mediaIds.length === 2) {
+            tweetPayload.media = { media_ids: [mediaIds[0], mediaIds[1]] as [string, string] };
+          } else if (mediaIds.length === 3) {
+            tweetPayload.media = { media_ids: [mediaIds[0], mediaIds[1], mediaIds[2]] as [string, string, string] };
+          } else {
+            tweetPayload.media = { media_ids: [mediaIds[0], mediaIds[1], mediaIds[2], mediaIds[3]] as [string, string, string, string] };
+          }
+        }
+
+        const tweetData = await client.v2.tweet(tweetPayload as any);
+
+        const tweetId = tweetData.data?.id;
+        const platformPostUrl = tweetId
+          ? `https://twitter.com/${pub.platformUserId}/status/${tweetId}`
+          : null;
+
+        await db
+          .update(postPublications)
+          .set({
+            status: "published",
+            publishedAt: new Date(),
+            platformPostId: tweetId ?? null,
+            platformPostUrl,
+            lastError: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(postPublications.id, pub.publicationId));
+
+        results.push({
+          platform: pub.platform,
+          connectedAccountId: pub.connectedAccountId,
+          status: "published",
+          platformPostUrl,
+        });
+      } catch (e) {
+        const err = e instanceof Error ? e.message : "Failed to post tweet";
+        let errorMessage = err;
+        
+        // Try to parse Twitter API error
+        if (e && typeof e === "object" && "data" in e) {
+          const errorData = e.data as Record<string, unknown>;
+          errorMessage = parseTwitterError(errorData, 500);
+        }
+
+        await db
+          .update(postPublications)
+          .set({
+            status: "failed",
+            lastError: errorMessage,
+            updatedAt: new Date(),
+          })
+          .where(eq(postPublications.id, pub.publicationId));
+        results.push({
+          platform: pub.platform,
+          connectedAccountId: pub.connectedAccountId,
+          status: "failed",
+          error: errorMessage,
+        });
+      }
+    }
   }
 
   const allPublished = results.every((r) => r.status === "published");
