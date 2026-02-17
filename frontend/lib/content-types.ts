@@ -61,7 +61,6 @@ export const CONTENT_TYPES = [
     slug: "collection",
     platforms: [
       "facebook",
-      "linkedin",
       "twitter_x",
       "threads",
       "bluesky",

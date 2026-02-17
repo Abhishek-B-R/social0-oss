@@ -4,6 +4,7 @@ import { posts, postPublications, connectedAccounts } from "@/db/schema";
 import { eq, desc, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import Link from "next/link";
+import { PublishButton } from "./PublishButton";
 
 export default async function PostsPage() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -30,6 +31,7 @@ export default async function PostsPage() {
             status: postPublications.status,
             platformPostUrl: postPublications.platformPostUrl,
             platform: connectedAccounts.platform,
+            lastError: postPublications.lastError,
           })
           .from(postPublications)
           .innerJoin(
@@ -47,7 +49,12 @@ export default async function PostsPage() {
     },
     {} as Record<
       string,
-      { status: string | null; platformPostUrl: string | null; platform: string }[]
+      {
+        status: string | null;
+        platformPostUrl: string | null;
+        platform: string;
+        lastError: string | null;
+      }[]
     >,
   );
 
@@ -141,9 +148,30 @@ export default async function PostsPage() {
                         ? "s"
                         : ""}
                     </span>
+                    {post.status === "failed" &&
+                      (() => {
+                        const err = (publicationsByPostId[post.id] ?? []).find(
+                          (p) => p.lastError,
+                        )?.lastError;
+                        return err ? (
+                          <p className="mt-2 text-sm text-red-600 font-medium">
+                            Why it failed: {err}
+                          </p>
+                        ) : null;
+                      })()}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  {(post.status === "draft" ||
+                    post.status === "scheduled" ||
+                    post.status === "failed") && (
+                    <PublishButton
+                      postId={post.id}
+                      label={
+                        post.status === "failed" ? "Retry publish" : "Publish now"
+                      }
+                    />
+                  )}
                   {(publicationsByPostId[post.id] ?? [])
                     .filter((p) => p.platformPostUrl)
                     .map((pub, i) => (

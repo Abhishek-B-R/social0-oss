@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { posts, postPublications } from "@/db/schema";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { executePublish } from "@/app/actions/publish";
 
 export type CreatePostResult =
   | { success: true; postId: string }
@@ -33,6 +34,19 @@ export async function createPost(
     return {
       success: false,
       error: "Select at least one account to publish to",
+    };
+  }
+
+  // Validate UUIDs
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (
+    !selectedAccountIds.every((id) => uuidRegex.test(id)) ||
+    !mediaIds.every((id) => uuidRegex.test(id))
+  ) {
+    return {
+      success: false,
+      error: "Invalid ID format",
     };
   }
 
@@ -68,6 +82,10 @@ export async function createPost(
         status: "pending" as const,
       })),
     );
+
+    if (mode === "now") {
+      await executePublish(postRow.id, session.user.id);
+    }
 
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/posts");

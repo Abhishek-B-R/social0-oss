@@ -28,13 +28,18 @@ export default function InstagramFacebookSelectPage() {
       return;
     }
     try {
-      const res = await fetch(`/api/connect/instagram-facebook/select?token=${encodeURIComponent(token)}`);
+      const res = await fetch(
+        `/api/connect/instagram-facebook/select?token=${encodeURIComponent(token)}`,
+      );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load Instagram accounts");
+      if (!res.ok)
+        throw new Error(data.error || "Failed to load Instagram accounts");
       setPages(data.pages || []);
       if (data.pages?.length) setSelectedId(data.pages[0].instagramAccountId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load Instagram accounts");
+      setError(
+        e instanceof Error ? e.message : "Failed to load Instagram accounts",
+      );
     } finally {
       setLoading(false);
     }
@@ -53,10 +58,14 @@ export default function InstagramFacebookSelectPage() {
       const res = await fetch("/api/connect/instagram-facebook/connect-page", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tokenId: token, instagramAccountId: selectedId }),
+        body: JSON.stringify({
+          tokenId: token,
+          instagramAccountId: selectedId,
+        }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to connect Instagram account");
+      if (!res.ok)
+        throw new Error(data.error || "Failed to connect Instagram account");
       window.location.href = "/dashboard?connected=instagram";
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to connect");
@@ -68,7 +77,9 @@ export default function InstagramFacebookSelectPage() {
   if (loading) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-        <p className="text-gray-600 font-medium">Loading your Instagram accounts...</p>
+        <p className="text-gray-600 font-medium">
+          Loading your Instagram accounts...
+        </p>
       </div>
     );
   }
@@ -100,7 +111,7 @@ export default function InstagramFacebookSelectPage() {
           {pages.map((page) => (
             <label
               key={page.instagramAccountId}
-              className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white cursor-pointer hover:bg-gray-50 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/50"
+              className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white cursor-pointer hover:bg-gray-50 has-checked:border-emerald-500 has-checked:bg-emerald-50/50"
             >
               <input
                 type="radio"
@@ -112,6 +123,7 @@ export default function InstagramFacebookSelectPage() {
               />
               <div className="flex items-center gap-3 flex-1">
                 {page.instagramProfilePictureUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={page.instagramProfilePictureUrl}
                     alt={page.instagramUsername || "Instagram"}
@@ -130,9 +142,7 @@ export default function InstagramFacebookSelectPage() {
             </label>
           ))}
         </div>
-        {error && (
-          <p className="text-sm font-medium text-red-600">{error}</p>
-        )}
+        {error && <p className="text-sm font-medium text-red-600">{error}</p>}
         <div className="flex gap-3">
           <Link
             href="/dashboard"

@@ -26,6 +26,13 @@ const envSchema = z.object({
   FACEBOOK_CLIENT_SECRET: z.string().optional(),
   // Encryption key for OAuth state and tokens
   ENCRYPTION_KEY: z.string().min(32), // 32-byte key (64 hex chars)
+  // Cloudflare R2 (S3-compatible)
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET_NAME: z.string().optional(),
+  R2_PUBLIC_URL: z.string().url().optional(),
+  R2_ENDPOINT: z.string().url().optional(),
 });
 
 export const env = envSchema.parse(process.env);

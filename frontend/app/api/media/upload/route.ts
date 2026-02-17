@@ -2,6 +2,8 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { mediaUploads } from "@/db/schema";
 import { headers } from "next/headers";
+import { isR2Configured, uploadToR2 } from "@/lib/r2";
+import { sanitizeFilename, validateFileContent } from "@/lib/validation";
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024; // 100MB
@@ -17,6 +19,13 @@ export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!isR2Configured()) {
+    return Response.json(
+      { error: "Media storage (R2) is not configured" },
+      { status: 503 },
+    );
   }
 
   let formData: FormData;
@@ -55,21 +64,37 @@ export async function POST(request: Request) {
     );
   }
 
-  // Unique filename for storage (when CDN is added, use this as object key)
   const ext = file.name.split(".").pop() || "bin";
   const storageFilename = `${crypto.randomUUID()}.${ext}`;
+  const objectKey = `uploads/${session.user.id}/${storageFilename}`;
 
   try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Validate file content matches declared MIME type
+    const isValidContent = await validateFileContent(buffer, file.type);
+    if (!isValidContent) {
+      return Response.json(
+        {
+          error: `File content does not match declared type: ${file.type}`,
+        },
+        { status: 400 },
+      );
+    }
+
+    const url = await uploadToR2(objectKey, buffer, file.type);
+
     const [row] = await db
       .insert(mediaUploads)
       .values({
         userId: session.user.id,
         filename: storageFilename,
-        originalFilename: file.name,
+        originalFilename: sanitizeFilename(file.name),
         mimeType: file.type,
         sizeBytes: file.size,
         status: "uploaded",
-        // url/cdnUrl left null until CDN (S3/R2/CloudFront) is integrated
+        url,
+        cdnUrl: url,
       })
       .returning({
         id: mediaUploads.id,
@@ -78,6 +103,7 @@ export async function POST(request: Request) {
         mimeType: mediaUploads.mimeType,
         sizeBytes: mediaUploads.sizeBytes,
         status: mediaUploads.status,
+        url: mediaUploads.url,
       });
 
     if (!row) {
@@ -94,10 +120,16 @@ export async function POST(request: Request) {
       mimeType: row.mimeType,
       sizeBytes: row.sizeBytes,
       status: row.status,
-      url: null, // Set when CDN is integrated
+      url: row.url,
     });
   } catch (e) {
     console.error("Media upload error:", e);
-    return Response.json({ error: "Failed to save media" }, { status: 500 });
+    return Response.json(
+      {
+        error:
+          e instanceof Error ? e.message : "Failed to upload media to storage",
+      },
+      { status: 500 },
+    );
   }
 }
