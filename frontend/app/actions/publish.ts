@@ -100,6 +100,17 @@ export async function executePublish(
   let accessToken: string;
 
   for (const pub of publicationsWithAccounts) {
+    // TODO: Uncomment LinkedIn publishing when Vercel Pro is available for cron jobs
+    if (pub.platform === "linkedin") {
+      results.push({
+        platform: pub.platform,
+        connectedAccountId: pub.connectedAccountId,
+        status: "failed",
+        error: "LinkedIn publishing is temporarily disabled. Will be enabled when Vercel Pro is available.",
+      });
+      continue;
+    }
+    
     if (pub.platform !== "linkedin") {
       results.push({
         platform: pub.platform,
@@ -110,6 +121,8 @@ export async function executePublish(
       continue;
     }
 
+    // TODO: Uncomment when Vercel Pro is available for cron jobs
+    /* 
     if (pub.publicationStatus === "published") {
       results.push({
         platform: pub.platform,
@@ -343,6 +356,7 @@ export async function executePublish(
       status: "published",
       platformPostUrl,
     });
+    */
   }
 
   const allPublished = results.every((r) => r.status === "published");

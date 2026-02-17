@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { SignOutButton } from "@/components/SignOutButton";
+import { DevScheduledPostPoller } from "@/components/DevScheduledPostPoller";
 import Link from "next/link";
 
 export default async function DashboardLayout({
@@ -64,6 +65,7 @@ export default async function DashboardLayout({
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
+      <DevScheduledPostPoller />
     </div>
   );
 }
