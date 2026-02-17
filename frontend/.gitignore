@@ -40,6 +40,15 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# certificates (for HTTPS dev server)
 certificates
 
+# IDE
 .cursor/
+
+# logs
+*.log
+.next/dev/logs/
+
+# lock files (keep package-lock.json, remove bun.lock if using npm)
+bun.lock
