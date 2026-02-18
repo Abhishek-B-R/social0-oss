@@ -52,7 +52,7 @@ export const CONTENT_TYPES = [
     name: "Threads",
     description: "Multi-post thread (Twitter / Threads style)",
     slug: "threads",
-    platforms: ["twitter_x", "threads", "bluesky", "facebook", "linkedin"],
+    platforms: ["twitter_x", "threads", "bluesky", "facebook"],
   },
   {
     id: "collection",

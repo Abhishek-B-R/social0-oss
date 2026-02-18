@@ -9,11 +9,14 @@ import crypto from "crypto";
 import { normalizeAppUrl } from "@/lib/url-utils";
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
+import { TwitterApi } from "twitter-api-v2";
 
 /** Ensure we only ever redirect to a string URL. Passing an object (e.g. from state/callbackUrl) would 404. */
 function safeRedirect(url: unknown, fallback: string): never {
   const s =
-    typeof url === "string" && url.trim().length > 0 && (url.startsWith("/") || url.startsWith("http"))
+    typeof url === "string" &&
+    url.trim().length > 0 &&
+    (url.startsWith("/") || url.startsWith("http"))
       ? url.trim()
       : fallback;
   return redirect(s);
@@ -24,9 +27,19 @@ export async function GET(
   { params }: { params: Promise<{ platform: string }> },
 ) {
   const { platform: platformParam } = await params;
-  
+
   // Validate platform is a valid Platform type (including BYOK platforms)
-  const validPlatforms: Platform[] = ["linkedin", "instagram", "youtube", "pinterest", "tiktok", "twitter_x", "threads", "bluesky", "facebook"];
+  const validPlatforms: Platform[] = [
+    "linkedin",
+    "instagram",
+    "youtube",
+    "pinterest",
+    "tiktok",
+    "twitter_x",
+    "threads",
+    "bluesky",
+    "facebook",
+  ];
   if (!validPlatforms.includes(platformParam as Platform)) {
     return safeRedirect(
       `/dashboard?error=invalid_platform&platform=${platformParam}`,
@@ -35,14 +48,6 @@ export async function GET(
   }
 
   const platform = platformParam as Platform;
-
-  // Check if platform uses OAuth (not BYOK)
-  if (!PLATFORM_OAUTH_CONFIG[platform]) {
-    return safeRedirect(
-      `/dashboard?error=platform_not_configured&platform=${platform}`,
-      "/dashboard",
-    );
-  }
   const url = new URL(req.url);
 
   // Instagram appends #_ to redirect URI - strip it
@@ -54,11 +59,133 @@ export async function GET(
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const error = searchParams.get("error");
+  const oauthToken = searchParams.get("oauth_token");
+  const oauthVerifier = searchParams.get("oauth_verifier");
 
   // Handle OAuth errors
   if (error) {
     return safeRedirect(
       `/dashboard?error=oauth_failed&platform=${platform}`,
+      "/dashboard",
+    );
+  }
+
+  // Twitter OAuth 1.0a callback: oauth_token + oauth_verifier (no "code"; state not returned by Twitter)
+  if (platform === "twitter_x") {
+    if (!oauthToken || !oauthVerifier) {
+      return safeRedirect(
+        `/dashboard?error=invalid_callback&platform=${platform}`,
+        "/dashboard",
+      );
+    }
+    try {
+      const cookieStore = await cookies();
+      const secretCookie = cookieStore.get("twitter_oauth1_request_secret");
+      if (!secretCookie?.value) {
+        return safeRedirect(
+          `/dashboard?error=verifier_missing&platform=${platform}`,
+          "/dashboard",
+        );
+      }
+      const secretDecrypted = decrypt(secretCookie.value);
+      const requestTokenSecret = secretDecrypted.oauth_token_secret;
+      const userId = secretDecrypted.userId;
+      cookieStore.delete("twitter_oauth1_request_secret");
+
+      if (!requestTokenSecret) {
+        return safeRedirect(
+          `/dashboard?error=invalid_state&platform=${platform}`,
+          "/dashboard",
+        );
+      }
+
+      const consumerKey = env.TWITTER_CONSUMER_KEY;
+      const consumerSecret = env.TWITTER_CONSUMER_SECRET;
+      if (!consumerKey || !consumerSecret) {
+        return safeRedirect(
+          `/dashboard?error=credentials_not_configured&platform=${platform}`,
+          "/dashboard",
+        );
+      }
+
+      const client = new TwitterApi({
+        appKey: consumerKey,
+        appSecret: consumerSecret,
+        accessToken: oauthToken,
+        accessSecret: requestTokenSecret,
+      });
+      const { accessToken, accessSecret } = await client.login(oauthVerifier);
+
+      const userClient = new TwitterApi({
+        appKey: consumerKey,
+        appSecret: consumerSecret,
+        accessToken,
+        accessSecret,
+      });
+      const me = await userClient.v2.me();
+      const userInfo = {
+        id: me.data?.id ?? `twitter_x-${Date.now()}`,
+        username: me.data?.username ?? me.data?.name ?? null,
+        profileImageUrl: me.data?.profile_image_url ?? null,
+      };
+
+      if (!userId) {
+        return safeRedirect(
+          `/dashboard?error=invalid_state&platform=${platform}`,
+          "/dashboard",
+        );
+      }
+      const existing = await db.query.connectedAccounts.findFirst({
+        where: and(
+          eq(connectedAccounts.userId, userId),
+          eq(connectedAccounts.platform, "twitter_x"),
+        ),
+      });
+
+      const accountId = existing?.id ?? crypto.randomUUID();
+      const encryptedAccess = encryptToken(accessToken, accountId);
+      const encryptedSecret = encryptToken(accessSecret, accountId);
+
+      if (existing) {
+        await db
+          .update(connectedAccounts)
+          .set({
+            encryptedAccessToken: encryptedAccess,
+            encryptedRefreshToken: encryptedSecret,
+            tokenExpiresAt: null,
+            platformUserId: userInfo.id,
+            platformUsername: userInfo.username,
+            profileImageUrl: userInfo.profileImageUrl,
+            updatedAt: new Date(),
+          })
+          .where(eq(connectedAccounts.id, existing.id));
+      } else {
+        await db.insert(connectedAccounts).values({
+          id: accountId,
+          userId,
+          platform: "twitter_x",
+          platformUserId: userInfo.id,
+          platformUsername: userInfo.username,
+          profileImageUrl: userInfo.profileImageUrl,
+          encryptedAccessToken: encryptedAccess,
+          encryptedRefreshToken: encryptedSecret,
+          tokenExpiresAt: null,
+        });
+      }
+      return safeRedirect("/dashboard?connected=twitter_x", "/dashboard");
+    } catch (err) {
+      console.error("Twitter OAuth 1.0a callback error:", err);
+      return safeRedirect(
+        `/dashboard?error=oauth_failed&platform=${platform}`,
+        "/dashboard",
+      );
+    }
+  }
+
+  // Check if platform uses OAuth (not BYOK)
+  if (!PLATFORM_OAUTH_CONFIG[platform]) {
+    return safeRedirect(
+      `/dashboard?error=platform_not_configured&platform=${platform}`,
       "/dashboard",
     );
   }
@@ -76,7 +203,7 @@ export async function GET(
   try {
     const decrypted = decrypt(state);
     userId = decrypted.userId;
-    
+
     if (decrypted.platform !== platform) {
       return safeRedirect(
         `/dashboard?error=state_mismatch&platform=${platform}`,
@@ -91,11 +218,7 @@ export async function GET(
       });
 
       if (!verifierRecord || new Date(verifierRecord.expiresAt) < new Date()) {
-        console.error("❌ TikTok PKCE: Verifier not found or expired", {
-          stateId: decrypted.stateId,
-          found: !!verifierRecord,
-          expired: verifierRecord ? new Date(verifierRecord.expiresAt) < new Date() : true,
-        });
+        console.error("TikTok PKCE: verifier not found or expired");
         return safeRedirect(
           `/dashboard?error=verifier_expired&platform=${platform}`,
           "/dashboard",
@@ -103,43 +226,14 @@ export async function GET(
       }
 
       codeVerifier = verifierRecord.value;
-      
-      // CRITICAL DEBUG LOGGING
-      console.log("🔍 TikTok PKCE Callback Debug:", {
-        stateId: decrypted.stateId,
-        verifierLength: codeVerifier.length,
-        verifierPreview: codeVerifier.substring(0, 20) + "...",
-      });
 
       // Clean up verifier from DB (one-time use)
-      await db.delete(verification).where(eq(verification.id, decrypted.stateId));
+      await db
+        .delete(verification)
+        .where(eq(verification.id, decrypted.stateId));
     }
-
-    // X (Twitter): Retrieve code_verifier from cookie
-    if (platform === "twitter_x") {
-      const cookieStore = await cookies();
-      const verifierCookie = cookieStore.get("twitter_code_verifier");
-      
-      if (!verifierCookie?.value) {
-        console.error("❌ X PKCE: Missing code_verifier cookie");
-        return safeRedirect(
-          `/dashboard?error=verifier_missing&platform=${platform}`,
-          "/dashboard",
-        );
-      }
-
-      codeVerifier = verifierCookie.value;
-      
-      console.log("🔍 X PKCE Callback Debug:", {
-        verifierLength: codeVerifier.length,
-        verifierPreview: codeVerifier.substring(0, 20) + "...",
-      });
-
-      // Delete cookie after use (one-time use)
-      cookieStore.delete("twitter_code_verifier");
-    }
-  } catch (err) {
-    console.error("Failed to decrypt state:", err);
+  } catch {
+    console.error("OAuth state decryption failed");
     return safeRedirect(
       `/dashboard?error=invalid_state&platform=${platform}`,
       "/dashboard",
@@ -180,34 +274,93 @@ export async function GET(
     // Use platform's token URL
     const tokenUrl = config.tokenUrl;
 
-    if (platform === "instagram" || platform === "threads" || platform === "facebook") {
-      // Instagram and Threads use Meta Graph API (same format)
-      tokenResponse = await fetch(tokenUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
-          grant_type: "authorization_code",
-          redirect_uri: redirectUri,
-          code,
-        }),
+    if (
+      platform === "instagram" ||
+      platform === "threads" ||
+      platform === "facebook"
+    ) {
+      // Instagram, Threads, and Facebook use Meta Graph API (same format)
+      const tokenParams = new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: "authorization_code",
+        redirect_uri: redirectUri,
+        code,
       });
+
+      console.log(`🔍 ${platform} token exchange:`, {
+        tokenUrl,
+        redirectUri,
+        hasCode: !!code,
+        codeLength: code?.length,
+      });
+
+      try {
+        tokenResponse = await fetch(tokenUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: tokenParams,
+        });
+      } catch (fetchError) {
+        const err = fetchError as Error & { code?: string; cause?: Error };
+        console.error(`${platform} token exchange fetch error:`, {
+          error: err.message,
+          code: err.code,
+          cause: err.cause?.message,
+          tokenUrl,
+          redirectUri,
+          stack: err.stack,
+        });
+        throw new Error(
+          `Failed to connect to ${platform} API: ${err.code === "ECONNRESET" ? "Connection was reset. This may be a temporary network issue - please try again." : err.message}`,
+        );
+      }
 
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
-        console.error(`${platform} token exchange failed:`, errorText);
-        throw new Error("Token exchange failed");
+        let errorJson;
+        try {
+          errorJson = JSON.parse(errorText);
+        } catch {
+          errorJson = { raw: errorText };
+        }
+        console.error(`${platform} token exchange failed:`, {
+          status: tokenResponse.status,
+          statusText: tokenResponse.statusText,
+          error: errorJson,
+          tokenUrl,
+        });
+        throw new Error(
+          `Token exchange failed: ${errorJson.error?.message || errorJson.error_description || errorJson.error || errorText}`,
+        );
       }
 
       tokens = await tokenResponse.json();
       // Meta Graph API returns: { access_token, token_type, expires_in }
       // Normalize to standard format
       if (tokens.access_token && !tokens.refresh_token) {
-        // Tokens expire in 1 hour (3600 seconds) initially
         tokens.expires_in = tokens.expires_in || 3600;
+      }
+      // Threads: exchange short-lived token for long-lived (60 days)
+      if (platform === "threads" && tokens.access_token) {
+        const exchangeUrl = new URL("https://graph.threads.net/access_token");
+        exchangeUrl.searchParams.set("grant_type", "th_exchange_token");
+        exchangeUrl.searchParams.set("client_secret", clientSecret);
+        exchangeUrl.searchParams.set("access_token", tokens.access_token);
+        const exchangeRes = await fetch(exchangeUrl.toString());
+        if (exchangeRes.ok) {
+          const longLived = (await exchangeRes.json()) as {
+            access_token?: string;
+            token_type?: string;
+            expires_in?: number;
+          };
+          if (longLived.access_token) {
+            tokens.access_token = longLived.access_token;
+            tokens.expires_in = longLived.expires_in ?? 60 * 24 * 60 * 60; // 60 days in seconds
+          }
+        }
       }
     } else if (platform === "tiktok") {
       // TikTok OAuth 2.0 with PKCE
@@ -221,14 +374,6 @@ export async function GET(
         .createHash("sha256")
         .update(codeVerifier)
         .digest("base64url");
-      
-      console.log("🔍 TikTok Token Exchange Debug:", {
-        verifierLength: codeVerifier.length,
-        verifierPreview: codeVerifier.substring(0, 20) + "...",
-        expectedChallengePreview: expectedChallenge.substring(0, 20) + "...",
-        codeLength: code?.length,
-        redirectUri,
-      });
 
       const tokenRequestBody = new URLSearchParams({
         client_key: clientId, // TikTok uses client_key instead of client_id
@@ -239,13 +384,6 @@ export async function GET(
         code_verifier: codeVerifier, // Required for PKCE
       });
 
-      console.log("🔍 TikTok Token Request Body:", {
-        client_key: clientId.substring(0, 10) + "...",
-        hasCode: !!code,
-        hasVerifier: !!codeVerifier,
-        bodyLength: tokenRequestBody.toString().length,
-      });
-
       tokenResponse = await fetch(tokenUrl, {
         method: "POST",
         headers: {
@@ -262,100 +400,44 @@ export async function GET(
         } catch {
           errorJson = { raw: errorText };
         }
-        
-        console.error("❌ TikTok token exchange failed:", {
-          status: tokenResponse.status,
-          statusText: tokenResponse.statusText,
-          error: errorJson,
-          rawError: errorText,
-        });
-        
-        throw new Error(`TikTok token exchange failed: ${errorJson.error_description || errorJson.error || errorText}`);
+
+        const errMsg =
+          errorJson.error_description ??
+          errorJson.error ??
+          "Token exchange failed";
+        console.error(
+          "TikTok token exchange failed:",
+          tokenResponse.status,
+          errMsg,
+        );
+        throw new Error(`TikTok: ${errMsg}`);
       }
 
       tokens = await tokenResponse.json();
-      console.log("✅ TikTok token exchange successful:", {
-        hasAccessToken: !!tokens.access_token,
-        hasRefreshToken: !!tokens.refresh_token,
-        expiresIn: tokens.expires_in,
-      });
-    } else if (platform === "twitter_x") {
-      // X (Twitter) OAuth 2.0 with PKCE
-      if (!codeVerifier) {
-        console.error("❌ X PKCE: Missing code_verifier");
-        throw new Error("Missing code_verifier for X PKCE");
-      }
-
-      // X requires Basic Auth header with client_id:client_secret
-      const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-
-      const tokenRequestBody = new URLSearchParams({
-        grant_type: "authorization_code",
-        code: code!,
-        redirect_uri: redirectUri,
-        code_verifier: codeVerifier, // Required for PKCE
-      });
-
-      console.log("🔍 X Token Exchange Debug:", {
-        verifierLength: codeVerifier.length,
-        hasCode: !!code,
-        redirectUri,
-      });
-
-      tokenResponse = await fetch(tokenUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Authorization: `Basic ${basicAuth}`,
-        },
-        body: tokenRequestBody,
-      });
-
-      if (!tokenResponse.ok) {
-        const errorText = await tokenResponse.text();
-        let errorJson;
-        try {
-          errorJson = JSON.parse(errorText);
-        } catch {
-          errorJson = { raw: errorText };
-        }
-        
-        console.error("❌ X token exchange failed:", {
-          status: tokenResponse.status,
-          statusText: tokenResponse.statusText,
-          error: errorJson,
-          rawError: errorText,
-        });
-        
-        throw new Error(`X token exchange failed: ${errorJson.error_description || errorJson.error || errorText}`);
-      }
-
-      tokens = await tokenResponse.json();
-      console.log("✅ X token exchange successful:", {
-        hasAccessToken: !!tokens.access_token,
-        hasRefreshToken: !!tokens.refresh_token,
-        expiresIn: tokens.expires_in,
-        tokenType: tokens.token_type,
-      });
     } else if (platform === "pinterest") {
       // Pinterest: Basic Auth + form body only (no client_id/client_secret in body)
-      const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-      tokenResponse = await fetch("https://api.pinterest.com/v5/oauth/token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Authorization: `Basic ${basicAuth}`,
+      // Using sandbox API for trial access
+      const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString(
+        "base64",
+      );
+      tokenResponse = await fetch(
+        "https://api-sandbox.pinterest.com/v5/oauth/token",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: `Basic ${basicAuth}`,
+          },
+          body: new URLSearchParams({
+            grant_type: "authorization_code",
+            code: code!,
+            redirect_uri: redirectUri,
+          }).toString(),
         },
-        body: new URLSearchParams({
-          grant_type: "authorization_code",
-          code: code!,
-          redirect_uri: redirectUri,
-        }).toString(),
-      });
+      );
 
       if (!tokenResponse.ok) {
-        const errorText = await tokenResponse.text();
-        console.error("Pinterest token exchange failed:", errorText);
+        console.error("Pinterest token exchange failed:", tokenResponse.status);
         throw new Error("Token exchange failed");
       }
 
@@ -377,12 +459,71 @@ export async function GET(
       });
 
       if (!tokenResponse.ok) {
-        const errorText = await tokenResponse.text();
-        console.error("Token exchange failed:", errorText);
+        console.error("Token exchange failed:", tokenResponse.status);
         throw new Error("Token exchange failed");
       }
 
       tokens = await tokenResponse.json();
+    }
+
+    // Pinterest: fetch boards and redirect to selection (store in verification table)
+    // Using sandbox API for trial access
+    if (platform === "pinterest") {
+      const boardsRes = await fetch(
+        "https://api-sandbox.pinterest.com/v5/boards",
+        {
+          headers: { Authorization: `Bearer ${tokens.access_token}` },
+        },
+      );
+      const boardsData = (await boardsRes.json().catch(() => ({}))) as {
+        items?: { id: string; name?: string }[];
+      };
+      if (!boardsData.items?.length) {
+        // No boards yet: send user to "create board" flow (sandbox helper)
+        const stateId = crypto.randomBytes(16).toString("hex");
+        const payload = JSON.stringify({
+          userId,
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token || null,
+          expires_in: tokens.expires_in || null,
+        });
+        await db.insert(verification).values({
+          id: stateId,
+          identifier: "pinterest_create_board",
+          value: encryptToken(payload, stateId),
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+        });
+        const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
+        const createBoardUrl =
+          typeof baseUrl === "string" && baseUrl
+            ? `${baseUrl}/dashboard/connect/pinterest/create-board?token=${stateId}`
+            : `/dashboard/connect/pinterest/create-board?token=${stateId}`;
+        return safeRedirect(createBoardUrl, "/dashboard");
+      }
+      // Store boards and tokens in verification table for selection page
+      const stateId = crypto.randomBytes(16).toString("hex");
+      const payload = JSON.stringify({
+        userId,
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token || null,
+        expires_in: tokens.expires_in || null,
+        boards: boardsData.items.map((b) => ({
+          id: b.id,
+          name: b.name || b.id,
+        })),
+      });
+      await db.insert(verification).values({
+        id: stateId,
+        identifier: "pinterest_boards",
+        value: encryptToken(payload, stateId),
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+      });
+      const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
+      const pinterestSelectUrl =
+        typeof baseUrl === "string" && baseUrl
+          ? `${baseUrl}/dashboard/connect/pinterest/select?token=${stateId}`
+          : `/dashboard/connect/pinterest/select?token=${stateId}`;
+      return safeRedirect(pinterestSelectUrl, "/dashboard");
     }
 
     // Facebook: fetch Pages and either save one or redirect to page selection
@@ -431,7 +572,11 @@ export async function GET(
       const stateId = crypto.randomBytes(16).toString("hex");
       const payload = JSON.stringify({
         userId,
-        pages: pages.map((p) => ({ id: p.id, name: p.name, access_token: p.access_token })),
+        pages: pages.map((p) => ({
+          id: p.id,
+          name: p.name,
+          access_token: p.access_token,
+        })),
       });
       await db.insert(verification).values({
         id: stateId,
@@ -463,7 +608,10 @@ export async function GET(
     };
 
     // Instagram/Threads return user_id in token response, use it if available
-    if ((platform === "instagram" || platform === "threads") && tokens.user_id) {
+    if (
+      (platform === "instagram" || platform === "threads") &&
+      tokens.user_id
+    ) {
       try {
         userInfo = await fetchPlatformUserInfo(platform, tokens.access_token);
         // Use user_id from token response as fallback
@@ -505,10 +653,7 @@ export async function GET(
         platformMetadata?: Record<string, unknown>;
         updatedAt: Date;
       } = {
-        encryptedAccessToken: encryptToken(
-          tokens.access_token,
-          existing.id,
-        ),
+        encryptedAccessToken: encryptToken(tokens.access_token, existing.id),
         encryptedRefreshToken: tokens.refresh_token
           ? encryptToken(tokens.refresh_token, existing.id)
           : null,
@@ -524,7 +669,7 @@ export async function GET(
       // Set connectionMethod for Instagram direct OAuth
       if (platform === "instagram") {
         updateData.platformMetadata = {
-          ...(existing.platformMetadata as Record<string, unknown> || {}),
+          ...((existing.platformMetadata as Record<string, unknown>) || {}),
           connectionMethod: "direct",
         };
       }
@@ -545,9 +690,7 @@ export async function GET(
 
     // Prepare metadata for Instagram direct OAuth
     const platformMetadata: Record<string, unknown> | undefined =
-      platform === "instagram"
-        ? { connectionMethod: "direct" }
-        : undefined;
+      platform === "instagram" ? { connectionMethod: "direct" } : undefined;
 
     // Insert new account with encrypted tokens
     await db.insert(connectedAccounts).values({
@@ -567,10 +710,7 @@ export async function GET(
       platformMetadata,
     });
 
-    return safeRedirect(
-      `/dashboard?connected=${platform}`,
-      "/dashboard",
-    );
+    return safeRedirect(`/dashboard?connected=${platform}`, "/dashboard");
   } catch (err) {
     // NEXT_REDIRECT is how Next.js implements redirect() - don't catch it
     if (err && typeof err === "object" && "digest" in err) {
@@ -655,12 +795,19 @@ async function fetchPlatformUserInfo(
           if (channel) {
             return {
               id: channel.id,
-              username: channel.snippet?.title || channel.snippet?.customUrl || "YouTube User",
-              profileImageUrl: channel.snippet?.thumbnails?.default?.url || null,
+              username:
+                channel.snippet?.title ||
+                channel.snippet?.customUrl ||
+                "YouTube User",
+              profileImageUrl:
+                channel.snippet?.thumbnails?.default?.url || null,
             };
           }
         }
-        const userResponse = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", { headers });
+        const userResponse = await fetch(
+          "https://www.googleapis.com/oauth2/v2/userinfo",
+          { headers },
+        );
         if (userResponse.ok) {
           const userData = await userResponse.json();
           return {
@@ -669,7 +816,12 @@ async function fetchPlatformUserInfo(
             profileImageUrl: userData.picture || null,
           };
         }
-        console.error("YouTube profile fetch failed: channels", channelResponse.status, "userinfo", userResponse.status);
+        console.error(
+          "YouTube profile fetch failed: channels",
+          channelResponse.status,
+          "userinfo",
+          userResponse.status,
+        );
       } catch (err) {
         console.error("YouTube user info fetch failed:", err);
       }
@@ -729,10 +881,14 @@ async function fetchPlatformUserInfo(
 
     case "pinterest": {
       // Pinterest API v5 - user_account (requires user_accounts:read scope)
+      // Using sandbox API for trial access
       try {
-        const response = await fetch("https://api.pinterest.com/v5/user_account", {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
+        const response = await fetch(
+          "https://api-sandbox.pinterest.com/v5/user_account",
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          },
+        );
         const data = await response.json().catch(() => ({}));
         if (response.ok && (data.username || data.id)) {
           return {

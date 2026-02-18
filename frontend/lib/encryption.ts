@@ -1,13 +1,14 @@
 import { env } from "@/lib/env";
 import crypto from "crypto";
 
-// Simple encryption for OAuth state (userId + platform, optionally stateId for PKCE verifier lookup)
+// Simple encryption for OAuth state (userId + platform, optionally stateId for PKCE verifier lookup, oauth_token_secret for Twitter OAuth 1.0a)
 // Uses AES-256-GCM for state encryption
 export function encrypt(data: {
   userId: string;
   platform: string;
   codeVerifier?: string; // Legacy: kept for backwards compatibility
   stateId?: string; // New: reference to verifier stored in DB
+  oauth_token_secret?: string; // Twitter OAuth 1.0a request token secret
 }): string {
   const key = Buffer.from(env.ENCRYPTION_KEY, "hex");
   if (key.length !== 32) {
@@ -32,6 +33,7 @@ export function decrypt(encrypted: string): {
   platform: string;
   codeVerifier?: string; // Legacy: kept for backwards compatibility
   stateId?: string; // New: reference to verifier stored in DB
+  oauth_token_secret?: string; // Twitter OAuth 1.0a request token secret
 } {
   const key = Buffer.from(env.ENCRYPTION_KEY, "hex");
   if (key.length !== 32) {

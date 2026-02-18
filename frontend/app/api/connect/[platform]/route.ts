@@ -9,6 +9,7 @@ import crypto from "crypto";
 import { db } from "@/db";
 import { verification } from "@/db/schema";
 import { NextRequest } from "next/server";
+import { TwitterApi } from "twitter-api-v2";
 
 export async function GET(
   req: NextRequest,
@@ -23,15 +24,50 @@ export async function GET(
   }
   
   const platform = platformParam as Platform;
-  
-  // Check if platform uses OAuth (not BYOK)
-  if (!PLATFORM_OAUTH_CONFIG[platform]) {
-    return Response.json({ error: "Platform not configured for OAuth" }, { status: 400 });
-  }
   const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Twitter/X: OAuth 1.0a flow (separate from standard OAuth 2.0)
+  if (platform === "twitter_x") {
+    const consumerKey = env.TWITTER_CONSUMER_KEY;
+    const consumerSecret = env.TWITTER_CONSUMER_SECRET;
+    if (!consumerKey || !consumerSecret) {
+      return Response.json(
+        { error: "Twitter OAuth 1.0a credentials not configured (TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET)" },
+        { status: 400 },
+      );
+    }
+    const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
+    const callbackUrl = `${baseUrl}/api/connect/twitter_x/callback`;
+
+    const client = new TwitterApi({ appKey: consumerKey, appSecret: consumerSecret });
+    const { url: authUrl, oauth_token_secret } = await client.generateAuthLink(callbackUrl);
+
+    // Store request token secret in encrypted cookie (needed in callback)
+    const cookieStore = await cookies();
+    const state = encrypt({
+      userId: session.user.id,
+      platform: "twitter_x",
+      oauth_token_secret: oauth_token_secret,
+    });
+    cookieStore.set("twitter_oauth1_request_secret", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 600, // 10 minutes
+    });
+    // State for CSRF: userId + platform (callback will verify)
+    const csrfState = encrypt({ userId: session.user.id, platform: "twitter_x" });
+    const finalUrl = `${authUrl}&state=${encodeURIComponent(csrfState)}`;
+    return redirect(finalUrl);
+  }
+
+  // Check if platform uses OAuth (not BYOK)
+  if (!PLATFORM_OAUTH_CONFIG[platform]) {
+    return Response.json({ error: "Platform not configured for OAuth" }, { status: 400 });
   }
 
   const config = PLATFORM_OAUTH_CONFIG[platform];
@@ -55,15 +91,6 @@ export async function GET(
   // Construct redirect URI - normalize URL (https for production, http for localhost)
   const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
   const redirectUri = `${baseUrl}/api/connect/${platform}/callback`;
-
-  // Debug logging - check server console for this
-  console.log("🔍 OAuth Debug:", {
-    platform,
-    redirectUri,
-    originalUrl: env.NEXT_PUBLIC_APP_URL,
-    normalizedUrl: baseUrl,
-    clientId,
-  });
 
   // Use platform's auth URL
   const authUrl = config.authUrl;
@@ -105,49 +132,6 @@ export async function GET(
     url.searchParams.set("code_challenge", codeChallenge);
     url.searchParams.set("code_challenge_method", "S256");
 
-    // CRITICAL DEBUG LOGGING
-    console.log("🔍 TikTok PKCE Debug:", {
-      verifier: codeVerifier,
-      verifierLength: codeVerifier.length,
-      challenge: codeChallenge,
-      challengeLength: codeChallenge.length,
-      stateId,
-      stateLength: state.length,
-      statePreview: state.substring(0, 50) + "...",
-    });
-  } else if (platform === "twitter_x") {
-    // X (Twitter) OAuth 2.0 with PKCE - store code_verifier in cookie
-    const codeVerifier = crypto.randomBytes(32).toString("base64url");
-    const codeChallenge = crypto
-      .createHash("sha256")
-      .update(codeVerifier)
-      .digest("base64url");
-
-    // Store code_verifier in HTTP-only cookie (10 minutes expiry)
-    const cookieStore = await cookies();
-    cookieStore.set("twitter_code_verifier", codeVerifier, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 600, // 10 minutes
-    });
-
-    // Standard state for CSRF protection
-    state = encrypt({
-      userId: session.user.id,
-      platform: platform,
-    });
-
-    // X OAuth 2.0 parameters
-    url.searchParams.set("client_id", clientId);
-    url.searchParams.set("code_challenge", codeChallenge);
-    url.searchParams.set("code_challenge_method", "S256");
-
-    console.log("🔍 X (Twitter) PKCE Debug:", {
-      verifierLength: codeVerifier.length,
-      challengeLength: codeChallenge.length,
-      stateLength: state.length,
-    });
   } else {
     // Standard OAuth flow - encrypt userId + platform in state
     state = encrypt({
@@ -169,21 +153,5 @@ export async function GET(
   }
 
   const finalUrl = url.toString();
-  
-  // CRITICAL: Log final URL to verify encoding
-  console.log("🔍 Final OAuth URL:", finalUrl);
-  console.log("🔍 URL Length:", finalUrl.length);
-  console.log("🔍 State in URL:", url.searchParams.get("state")?.substring(0, 50) + "...");
-  
-  // Verify code_challenge encoding (should NOT contain %3D or double encoding)
-  if (platform === "tiktok" || platform === "twitter_x") {
-    const challengeParam = url.searchParams.get("code_challenge");
-    if (challengeParam?.includes("%3D") || challengeParam?.includes("%253D")) {
-      console.error("❌ CRITICAL: code_challenge is double-encoded!");
-    } else {
-      console.log("✅ code_challenge encoding OK");
-    }
-  }
-
   return redirect(finalUrl);
 }

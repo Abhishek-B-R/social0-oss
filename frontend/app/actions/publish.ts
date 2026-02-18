@@ -13,6 +13,8 @@ import { headers } from "next/headers";
 import { decryptToken } from "@/lib/encryption";
 import { revalidatePath } from "next/cache";
 import { uploadLinkedInImage, uploadLinkedInVideo } from "@/lib/linkedin-media";
+import { publishToPlatform } from "@/lib/publish-platform";
+import { isValidPostId } from "@/lib/publish-validation";
 import { uploadTwitterImage, uploadTwitterVideo } from "@/lib/twitter-media";
 import { TwitterApi } from "twitter-api-v2";
 
@@ -41,12 +43,16 @@ function parseTwitterError(
 ): string {
   const title = data.title as string | undefined;
   const detail = data.detail as string | undefined;
-  const errors = data.errors as Array<{ message?: string; code?: number }> | undefined;
+  const errors = data.errors as
+    | Array<{ message?: string; code?: number }>
+    | undefined;
   const parts: string[] = [];
   if (title) parts.push(title);
   if (detail) parts.push(detail);
   if (errors && errors.length > 0) {
-    const errorMessages = errors.map((e) => e.message || `Error ${e.code || ""}`).join(", ");
+    const errorMessages = errors
+      .map((e) => e.message || `Error ${e.code || ""}`)
+      .join(", ");
     parts.push(errorMessages);
   }
   if (parts.length) return parts.join(" ");
@@ -105,7 +111,11 @@ export async function executePublish(
       connectedAccountId: connectedAccounts.id,
       platform: connectedAccounts.platform,
       platformUserId: connectedAccounts.platformUserId,
+      platformUsername: connectedAccounts.platformUsername,
       encryptedAccessToken: connectedAccounts.encryptedAccessToken,
+      encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
+      tokenExpiresAt: connectedAccounts.tokenExpiresAt,
+      platformMetadata: connectedAccounts.platformMetadata,
     })
     .from(postPublications)
     .innerJoin(
@@ -118,13 +128,12 @@ export async function executePublish(
   let accessToken: string;
 
   for (const pub of publicationsWithAccounts) {
-    // Skip platforms that aren't implemented yet
-    if (pub.platform !== "linkedin" && pub.platform !== "twitter_x") {
+    if (pub.platform === "medium") {
       results.push({
         platform: pub.platform,
         connectedAccountId: pub.connectedAccountId,
         status: "failed",
-        error: "Publishing to this platform is not implemented yet",
+        error: "Publishing to Medium is not supported yet",
       });
       continue;
     }
@@ -163,6 +172,54 @@ export async function executePublish(
       continue;
     }
 
+    // Twitter OAuth 1.0a: require access secret as well
+    let accessSecret: string | null = null;
+    if (pub.platform === "twitter_x") {
+      if (!pub.encryptedRefreshToken) {
+        await db
+          .update(postPublications)
+          .set({
+            status: "failed",
+            lastError:
+              "Twitter account missing access secret. Please reconnect the account.",
+            updatedAt: new Date(),
+          })
+          .where(eq(postPublications.id, pub.publicationId));
+        results.push({
+          platform: pub.platform,
+          connectedAccountId: pub.connectedAccountId,
+          status: "failed",
+          error:
+            "Twitter account missing access secret. Please reconnect the account.",
+        });
+        continue;
+      }
+      try {
+        accessSecret = decryptToken(
+          pub.encryptedRefreshToken,
+          pub.connectedAccountId,
+        );
+      } catch (e) {
+        const err =
+          e instanceof Error ? e.message : "Failed to decrypt Twitter secret";
+        await db
+          .update(postPublications)
+          .set({
+            status: "failed",
+            lastError: err,
+            updatedAt: new Date(),
+          })
+          .where(eq(postPublications.id, pub.publicationId));
+        results.push({
+          platform: pub.platform,
+          connectedAccountId: pub.connectedAccountId,
+          status: "failed",
+          error: err,
+        });
+        continue;
+      }
+    }
+
     // Handle LinkedIn publishing
     if (pub.platform === "linkedin") {
       const authorUrn = `urn:li:person:${pub.platformUserId}`;
@@ -171,72 +228,39 @@ export async function executePublish(
       const mediaAssets: string[] = [];
       let shareMediaCategory: "NONE" | "IMAGE" | "VIDEO" = "NONE";
 
-    if (post.mediaIds && post.mediaIds.length > 0) {
-      const media = await db
-        .select({
-          id: mediaUploads.id,
-          url: mediaUploads.url,
-          mimeType: mediaUploads.mimeType,
-        })
-        .from(mediaUploads)
-        .where(inArray(mediaUploads.id, post.mediaIds));
+      if (post.mediaIds && post.mediaIds.length > 0) {
+        const media = await db
+          .select({
+            id: mediaUploads.id,
+            url: mediaUploads.url,
+            mimeType: mediaUploads.mimeType,
+          })
+          .from(mediaUploads)
+          .where(inArray(mediaUploads.id, post.mediaIds));
 
-      if (media.length > 0) {
-        const images = media.filter((m) => m.mimeType?.startsWith("image/"));
-        const videos = media.filter((m) => m.mimeType?.startsWith("video/"));
+        if (media.length > 0) {
+          const images = media.filter((m) => m.mimeType?.startsWith("image/"));
+          const videos = media.filter((m) => m.mimeType?.startsWith("video/"));
 
-        const videoWithUrl = videos.find((v) => v.url);
-        if (videoWithUrl) {
-          // LinkedIn supports one video per post
-          shareMediaCategory = "VIDEO";
-          try {
-            const videoUrn = await uploadLinkedInVideo(
-              videoWithUrl.url!,
-              accessToken,
-              authorUrn,
-            );
-            mediaAssets.push(videoUrn);
-          } catch (e) {
-            const err =
-              e instanceof Error ? e.message : "Failed to upload video";
-            await db
-              .update(postPublications)
-              .set({
-                status: "failed",
-                lastError: `Video upload failed: ${err}`,
-                updatedAt: new Date(),
-              })
-              .where(eq(postPublications.id, pub.publicationId));
-            results.push({
-              platform: pub.platform,
-              connectedAccountId: pub.connectedAccountId,
-              status: "failed",
-              error: `Video upload failed: ${err}`,
-            });
-            continue;
-          }
-        } else {
-          const imagesWithUrl = images.filter((i) => i.url);
-          if (imagesWithUrl.length > 0) {
-            // LinkedIn supports multiple images (up to 9)
-            shareMediaCategory = "IMAGE";
+          const videoWithUrl = videos.find((v) => v.url);
+          if (videoWithUrl) {
+            // LinkedIn supports one video per post
+            shareMediaCategory = "VIDEO";
             try {
-              for (const img of imagesWithUrl.slice(0, 9)) {
-                const imageUrn = await uploadLinkedInImage(
-                  img.url!,
-                  accessToken,
-                  authorUrn,
-                );
-                mediaAssets.push(imageUrn);
-              }
+              const videoUrn = await uploadLinkedInVideo(
+                videoWithUrl.url!,
+                accessToken,
+                authorUrn,
+              );
+              mediaAssets.push(videoUrn);
             } catch (e) {
               const err =
-                e instanceof Error ? e.message : "Failed to upload images";
+                e instanceof Error ? e.message : "Failed to upload video";
               await db
                 .update(postPublications)
                 .set({
                   status: "failed",
-                  lastError: `Image upload failed: ${err}`,
+                  lastError: `Video upload failed: ${err}`,
                   updatedAt: new Date(),
                 })
                 .where(eq(postPublications.id, pub.publicationId));
@@ -244,67 +268,100 @@ export async function executePublish(
                 platform: pub.platform,
                 connectedAccountId: pub.connectedAccountId,
                 status: "failed",
-                error: `Image upload failed: ${err}`,
+                error: `Video upload failed: ${err}`,
               });
               continue;
             }
-          } else if (images.length > 0) {
-            // Post has image media but no URL (e.g. upload failed or legacy)
-            await db
-              .update(postPublications)
-              .set({
+          } else {
+            const imagesWithUrl = images.filter((i) => i.url);
+            if (imagesWithUrl.length > 0) {
+              // LinkedIn supports multiple images (up to 9)
+              shareMediaCategory = "IMAGE";
+              try {
+                for (const img of imagesWithUrl.slice(0, 9)) {
+                  const imageUrn = await uploadLinkedInImage(
+                    img.url!,
+                    accessToken,
+                    authorUrn,
+                  );
+                  mediaAssets.push(imageUrn);
+                }
+              } catch (e) {
+                const err =
+                  e instanceof Error ? e.message : "Failed to upload images";
+                await db
+                  .update(postPublications)
+                  .set({
+                    status: "failed",
+                    lastError: `Image upload failed: ${err}`,
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(postPublications.id, pub.publicationId));
+                results.push({
+                  platform: pub.platform,
+                  connectedAccountId: pub.connectedAccountId,
+                  status: "failed",
+                  error: `Image upload failed: ${err}`,
+                });
+                continue;
+              }
+            } else if (images.length > 0) {
+              // Post has image media but no URL (e.g. upload failed or legacy)
+              await db
+                .update(postPublications)
+                .set({
+                  status: "failed",
+                  lastError:
+                    "Image has no URL. Re-upload the image and try again.",
+                  updatedAt: new Date(),
+                })
+                .where(eq(postPublications.id, pub.publicationId));
+              results.push({
+                platform: pub.platform,
+                connectedAccountId: pub.connectedAccountId,
                 status: "failed",
-                lastError:
-                  "Image has no URL. Re-upload the image and try again.",
-                updatedAt: new Date(),
-              })
-              .where(eq(postPublications.id, pub.publicationId));
-            results.push({
-              platform: pub.platform,
-              connectedAccountId: pub.connectedAccountId,
-              status: "failed",
-              error: "Image has no URL. Re-upload and retry.",
-            });
-            continue;
+                error: "Image has no URL. Re-upload and retry.",
+              });
+              continue;
+            }
           }
         }
       }
-    }
 
-    const body: {
-      author: string;
-      lifecycleState: "PUBLISHED";
-      specificContent: {
-        "com.linkedin.ugc.ShareContent": {
-          shareCommentary: { text: string };
-          shareMediaCategory: "NONE" | "IMAGE" | "VIDEO";
-          media?: Array<{ status: "READY"; media: string }>;
+      const body: {
+        author: string;
+        lifecycleState: "PUBLISHED";
+        specificContent: {
+          "com.linkedin.ugc.ShareContent": {
+            shareCommentary: { text: string };
+            shareMediaCategory: "NONE" | "IMAGE" | "VIDEO";
+            media?: Array<{ status: "READY"; media: string }>;
+          };
         };
-      };
-      visibility: {
-        "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC";
-      };
-    } = {
-      author: authorUrn,
-      lifecycleState: "PUBLISHED" as const,
-      specificContent: {
-        "com.linkedin.ugc.ShareContent": {
-          shareCommentary: {
-            text: post.finalContent || "",
+        visibility: {
+          "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC";
+        };
+      } = {
+        author: authorUrn,
+        lifecycleState: "PUBLISHED" as const,
+        specificContent: {
+          "com.linkedin.ugc.ShareContent": {
+            shareCommentary: {
+              text: post.finalContent || "",
+            },
+            shareMediaCategory,
+            ...(mediaAssets.length > 0 && {
+              media: mediaAssets.map((asset) => ({
+                status: "READY" as const,
+                media: asset,
+              })),
+            }),
           },
-          shareMediaCategory,
-          ...(mediaAssets.length > 0 && {
-            media: mediaAssets.map((asset) => ({
-              status: "READY" as const,
-              media: asset,
-            })),
-          }),
         },
-      },
-      visibility: {
-        "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC" as const,
-      },
-    };
+        visibility: {
+          "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC" as const,
+        },
+      };
 
       const linkedInRes = await fetch("https://api.linkedin.com/v2/ugcPosts", {
         method: "POST",
@@ -363,8 +420,33 @@ export async function executePublish(
         platformPostUrl,
       });
     } else if (pub.platform === "twitter_x") {
-      // Handle X/Twitter publishing
-      const client = new TwitterApi(accessToken);
+      // Handle X/Twitter publishing (OAuth 1.0a: access token + access secret)
+      const appKey = process.env.TWITTER_CONSUMER_KEY;
+      const appSecret = process.env.TWITTER_CONSUMER_SECRET;
+      if (!appKey || !appSecret || !accessSecret) {
+        await db
+          .update(postPublications)
+          .set({
+            status: "failed",
+            lastError:
+              "Twitter OAuth 1.0a not configured or missing access secret",
+            updatedAt: new Date(),
+          })
+          .where(eq(postPublications.id, pub.publicationId));
+        results.push({
+          platform: pub.platform,
+          connectedAccountId: pub.connectedAccountId,
+          status: "failed",
+          error: "Twitter OAuth 1.0a not configured or missing access secret",
+        });
+        continue;
+      }
+      const client = new TwitterApi({
+        appKey,
+        appSecret,
+        accessToken,
+        accessSecret,
+      });
       const mediaIds: string[] = [];
 
       // Fetch media if post has mediaIds
@@ -389,6 +471,7 @@ export async function executePublish(
               const videoMediaId = await uploadTwitterVideo(
                 videoWithUrl.url!,
                 accessToken,
+                accessSecret,
               );
               mediaIds.push(videoMediaId);
             } catch (e) {
@@ -419,6 +502,7 @@ export async function executePublish(
                   const imageMediaId = await uploadTwitterImage(
                     img.url!,
                     accessToken,
+                    accessSecret,
                   );
                   mediaIds.push(imageMediaId);
                 }
@@ -464,43 +548,130 @@ export async function executePublish(
         }
       }
 
-      // Post tweet using Twitter API v2
-      try {
-        const tweetPayload: {
-          text: string;
-          media?: {
-            media_ids: [string] | [string, string] | [string, string, string] | [string, string, string, string];
-          };
-        } = {
-          text: post.finalContent || "",
-        };
+      // Twitter thread: split by "---" for native thread (reply chain)
+      const TWITTER_MAX_LENGTH = 280;
+      const rawContent = post.finalContent || "";
+      const parts = rawContent
+        .split("---")
+        .map((p) => p.trim())
+        .filter(Boolean);
 
-        if (mediaIds.length > 0) {
-          // Twitter API requires tuple types for media_ids (1-4 items)
-          if (mediaIds.length === 1) {
-            tweetPayload.media = { media_ids: [mediaIds[0]] as [string] };
-          } else if (mediaIds.length === 2) {
-            tweetPayload.media = { media_ids: [mediaIds[0], mediaIds[1]] as [string, string] };
-          } else if (mediaIds.length === 3) {
-            tweetPayload.media = { media_ids: [mediaIds[0], mediaIds[1], mediaIds[2]] as [string, string, string] };
-          } else {
-            tweetPayload.media = { media_ids: [mediaIds[0], mediaIds[1], mediaIds[2], mediaIds[3]] as [string, string, string, string] };
+      if (parts.length === 0) {
+        await db
+          .update(postPublications)
+          .set({
+            status: "failed",
+            lastError: "Tweet content is empty",
+            updatedAt: new Date(),
+          })
+          .where(eq(postPublications.id, pub.publicationId));
+        results.push({
+          platform: pub.platform,
+          connectedAccountId: pub.connectedAccountId,
+          status: "failed",
+          error: "Tweet content is empty",
+        });
+        continue;
+      }
+
+      // Validate each thread part ≤ 280 characters
+      const overLimit = parts.findIndex((p) => p.length > TWITTER_MAX_LENGTH);
+      if (overLimit !== -1) {
+        const partNum = overLimit + 1;
+        const len = parts[overLimit].length;
+        const msg = `Twitter: Part ${partNum} is ${len} characters (max ${TWITTER_MAX_LENGTH}). Shorten it to publish.`;
+        await db
+          .update(postPublications)
+          .set({
+            status: "failed",
+            lastError: msg,
+            updatedAt: new Date(),
+          })
+          .where(eq(postPublications.id, pub.publicationId));
+        results.push({
+          platform: pub.platform,
+          connectedAccountId: pub.connectedAccountId,
+          status: "failed",
+          error: msg,
+        });
+        continue;
+      }
+
+      type MediaIdsTuple =
+        | [string]
+        | [string, string]
+        | [string, string, string]
+        | [string, string, string, string];
+      const mediaTuple =
+        mediaIds.length === 1
+          ? ([mediaIds[0]] as MediaIdsTuple)
+          : mediaIds.length === 2
+            ? ([mediaIds[0], mediaIds[1]] as MediaIdsTuple)
+            : mediaIds.length === 3
+              ? ([mediaIds[0], mediaIds[1], mediaIds[2]] as MediaIdsTuple)
+              : mediaIds.length >= 4
+                ? ([
+                    mediaIds[0],
+                    mediaIds[1],
+                    mediaIds[2],
+                    mediaIds[3],
+                  ] as MediaIdsTuple)
+                : undefined;
+
+      try {
+        let firstTweetId: string | undefined;
+
+        if (parts.length === 1) {
+          // Single tweet
+          const payload: {
+            text: string;
+            media?: { media_ids: MediaIdsTuple };
+          } = {
+            text: parts[0],
+          };
+          if (mediaTuple) payload.media = { media_ids: mediaTuple };
+          const tweetData = await client.v2.tweet(
+            payload as Parameters<typeof client.v2.tweet>[0],
+          );
+          firstTweetId = tweetData.data?.id ?? undefined;
+        } else {
+          // Thread: first tweet, then each part as reply to the previous tweet
+          let previousTweetId: string | undefined;
+          for (let i = 0; i < parts.length; i++) {
+            const text = parts[i];
+            const isFirst = i === 0;
+            const payload: {
+              text: string;
+              media?: { media_ids: MediaIdsTuple };
+              reply?: { in_reply_to_tweet_id: string };
+            } = { text };
+            if (isFirst && mediaTuple) {
+              payload.media = { media_ids: mediaTuple };
+            }
+            if (!isFirst && previousTweetId) {
+              payload.reply = { in_reply_to_tweet_id: previousTweetId };
+            }
+            const tweetData = await client.v2.tweet(
+              payload as Parameters<typeof client.v2.tweet>[0],
+            );
+            const id = tweetData.data?.id;
+            if (!id) throw new Error("Twitter did not return tweet ID");
+            if (isFirst) firstTweetId = id;
+            previousTweetId = id;
           }
         }
 
-        const tweetData = await client.v2.tweet(tweetPayload as any);
-
-        const tweetId = tweetData.data?.id;
-        const platformPostUrl = tweetId
-          ? `https://twitter.com/${pub.platformUserId}/status/${tweetId}`
-          : null;
+        const platformPostUrl =
+          firstTweetId != null
+            ? `https://twitter.com/${pub.platformUsername || pub.platformUserId}/status/${firstTweetId}`
+            : null;
 
         await db
           .update(postPublications)
           .set({
             status: "published",
             publishedAt: new Date(),
-            platformPostId: tweetId ?? null,
+            platformPostId: firstTweetId ?? null,
             platformPostUrl,
             lastError: null,
             updatedAt: new Date(),
@@ -516,13 +687,10 @@ export async function executePublish(
       } catch (e) {
         const err = e instanceof Error ? e.message : "Failed to post tweet";
         let errorMessage = err;
-        
-        // Try to parse Twitter API error
         if (e && typeof e === "object" && "data" in e) {
           const errorData = e.data as Record<string, unknown>;
           errorMessage = parseTwitterError(errorData, 500);
         }
-
         await db
           .update(postPublications)
           .set({
@@ -538,6 +706,100 @@ export async function executePublish(
           error: errorMessage,
         });
       }
+    } else if (
+      pub.platform === "facebook" ||
+      pub.platform === "bluesky" ||
+      pub.platform === "hashnode" ||
+      pub.platform === "youtube" ||
+      pub.platform === "pinterest" ||
+      pub.platform === "instagram" ||
+      pub.platform === "tiktok" ||
+      pub.platform === "threads" ||
+      pub.platform === "devto"
+    ) {
+      if (
+        pub.platform === "threads" &&
+        pub.tokenExpiresAt &&
+        new Date(pub.tokenExpiresAt) <= new Date()
+      ) {
+        const msg =
+          "Your Threads session has expired. Please reconnect Threads from the dashboard.";
+        await db
+          .update(postPublications)
+          .set({ status: "failed", lastError: msg, updatedAt: new Date() })
+          .where(eq(postPublications.id, pub.publicationId));
+        results.push({
+          platform: pub.platform,
+          connectedAccountId: pub.connectedAccountId,
+          status: "failed",
+          error: msg,
+        });
+        continue;
+      }
+      let platformAccessSecret = accessSecret;
+      if (pub.platform === "bluesky" && pub.encryptedRefreshToken) {
+        try {
+          platformAccessSecret = decryptToken(
+            pub.encryptedRefreshToken,
+            pub.connectedAccountId,
+          );
+        } catch (e) {
+          const err =
+            e instanceof Error
+              ? e.message
+              : "Failed to decrypt Bluesky app password";
+          await db
+            .update(postPublications)
+            .set({
+              status: "failed",
+              lastError: err,
+              updatedAt: new Date(),
+            })
+            .where(eq(postPublications.id, pub.publicationId));
+          results.push({
+            platform: pub.platform,
+            connectedAccountId: pub.connectedAccountId,
+            status: "failed",
+            error: err,
+          });
+          continue;
+        }
+      }
+      const platformPostResult = await publishToPlatform(
+        {
+          publicationId: pub.publicationId,
+          connectedAccountId: pub.connectedAccountId,
+          platform: pub.platform,
+          platformUserId: pub.platformUserId,
+          platformUsername: pub.platformUsername,
+          platformMetadata: pub.platformMetadata ?? null,
+        },
+        {
+          id: post.id,
+          finalContent: post.finalContent,
+          mediaIds: post.mediaIds,
+        },
+        accessToken,
+        platformAccessSecret,
+      );
+      await db
+        .update(postPublications)
+        .set({
+          status: platformPostResult.status,
+          publishedAt: platformPostResult.publishedAt ?? undefined,
+          platformPostId: platformPostResult.platformPostId ?? undefined,
+          platformPostUrl: platformPostResult.platformPostUrl ?? undefined,
+          lastError: platformPostResult.lastError ?? null,
+          updatedAt: new Date(),
+        })
+        .where(eq(postPublications.id, pub.publicationId));
+      results.push({
+        platform: pub.platform,
+        connectedAccountId: pub.connectedAccountId,
+        status: platformPostResult.status,
+        platformPostUrl: platformPostResult.platformPostUrl ?? undefined,
+        error: platformPostResult.error,
+      });
     }
   }
 
@@ -578,12 +840,7 @@ export async function publishPost(postId: string): Promise<PublishResult> {
     };
   }
 
-  // Validate UUID format
-  if (
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      postId,
-    )
-  ) {
+  if (!isValidPostId(postId)) {
     return {
       success: false,
       error: "Invalid post ID format",

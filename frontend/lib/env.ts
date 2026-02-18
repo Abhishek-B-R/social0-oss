@@ -14,8 +14,10 @@ const envSchema = z.object({
   INSTAGRAM_CLIENT_SECRET: z.string().optional(),
   YOUTUBE_CLIENT_ID: z.string().optional(),
   YOUTUBE_CLIENT_SECRET: z.string().optional(),
-  TWITTER_CLIENT_ID: z.string().optional(),
-  TWITTER_CLIENT_SECRET: z.string().optional(),
+  TWITTER_CLIENT_ID: z.string().optional(), // Legacy OAuth 2.0 (deprecated)
+  TWITTER_CLIENT_SECRET: z.string().optional(), // Legacy OAuth 2.0 (deprecated)
+  TWITTER_CONSUMER_KEY: z.string().optional(), // OAuth 1.0a Consumer Key
+  TWITTER_CONSUMER_SECRET: z.string().optional(), // OAuth 1.0a Consumer Secret
   THREADS_CLIENT_ID: z.string().optional(),
   THREADS_CLIENT_SECRET: z.string().optional(),
   PINTEREST_CLIENT_ID: z.string().optional(),

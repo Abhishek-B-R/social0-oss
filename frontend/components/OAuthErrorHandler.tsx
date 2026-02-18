@@ -37,6 +37,9 @@ export function OAuthErrorHandler() {
         case "no_facebook_pages":
           setMessage("No Facebook Pages found. You need a Page to connect.");
           break;
+        case "no_pinterest_boards":
+          setMessage("Create at least one board on Pinterest first.");
+          break;
         default:
           setMessage("An error occurred during connection");
       }

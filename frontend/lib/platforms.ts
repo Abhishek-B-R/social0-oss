@@ -39,12 +39,10 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "INSTAGRAM_CLIENT_SECRET",
     authUrl: "https://api.instagram.com/oauth/authorize",
     tokenUrl: "https://api.instagram.com/oauth/access_token",
-    // Instagram Graph API (Basic Display API was deprecated Dec 2024)
-    // Requires Instagram Business or Creator account
-    // Requires Facebook Page to be linked to Instagram account
+    // Instagram Graph API: Business/Creator account + Facebook Page linked
     // instagram_business_basic: read profile, media, insights
-    // instagram_content_publish: publish posts (requires additional permissions)
-    scope: "instagram_business_basic",
+    // instagram_content_publish: required to publish posts
+    scope: "instagram_business_basic instagram_content_publish",
   },
   youtube: {
     clientIdEnv: "YOUTUBE_CLIENT_ID",
@@ -52,20 +50,10 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
     tokenUrl: "https://oauth2.googleapis.com/token",
     // YouTube + userinfo.profile for channel/name and avatar
-    scope: "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/userinfo.profile",
+    scope:
+      "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/userinfo.profile",
   },
-  twitter_x: {
-    clientIdEnv: "TWITTER_CLIENT_ID",
-    clientSecretEnv: "TWITTER_CLIENT_SECRET",
-    authUrl: "https://twitter.com/i/oauth2/authorize",
-    tokenUrl: "https://api.twitter.com/2/oauth2/token",
-    // X (Twitter) OAuth 2.0 scopes
-    // tweet.read: read tweets
-    // tweet.write: post tweets
-    // users.read: read user profile
-    // offline.access: required to get refresh_token
-    scope: "tweet.read tweet.write users.read offline.access",
-  },
+  twitter_x: null, // OAuth 1.0a - handled separately in route handler
   threads: {
     clientIdEnv: "THREADS_CLIENT_ID",
     clientSecretEnv: "THREADS_CLIENT_SECRET",
@@ -81,7 +69,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientIdEnv: "PINTEREST_CLIENT_ID",
     clientSecretEnv: "PINTEREST_CLIENT_SECRET",
     authUrl: "https://www.pinterest.com/oauth/",
-    tokenUrl: "https://api.pinterest.com/v5/oauth/token",
+    tokenUrl: "https://api-sandbox.pinterest.com/v5/oauth/token",
     // Pinterest OAuth scopes (user_accounts:read required for profile fetch in callback)
     scope: "boards:read boards:write pins:read pins:write user_accounts:read",
   },
@@ -90,14 +78,17 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "TIKTOK_CLIENT_SECRET",
     authUrl: "https://www.tiktok.com/v2/auth/authorize/",
     tokenUrl: "https://open.tiktokapis.com/v2/oauth/token/",
-    scope: "user.info.basic",
+    // user.info.basic: profile; video.upload + video.publish: Content Posting API (Direct Post with PULL_FROM_URL)
+    scope: "user.info.basic video.upload video.publish",
   },
   facebook: {
     clientIdEnv: "FACEBOOK_CLIENT_ID",
     clientSecretEnv: "FACEBOOK_CLIENT_SECRET",
     authUrl: "https://www.facebook.com/dialog/oauth",
     tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
-    scope: "pages_show_list,pages_read_engagement,pages_manage_posts",
+    // pages_manage_metadata required for posting as Page; others for page list and feed
+    scope:
+      "pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata",
   },
   devto: null, // BYOK - API key
   hashnode: null, // BYOK - API key + Publication ID

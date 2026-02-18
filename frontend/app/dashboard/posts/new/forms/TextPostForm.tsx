@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { PostFormOptions } from "../PostFormOptions";
 
+const TWITTER_MAX_LENGTH = 280;
+const TWITTER_THREAD_SEP = "---";
+
 type Account = {
   id: string;
   platform: string;
@@ -21,6 +24,22 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+  const hasTwitter = selectedAccounts.some((a) => a.platform === "twitter_x");
+  const isThread = content.includes(TWITTER_THREAD_SEP);
+  const threadParts = isThread
+    ? content.split(TWITTER_THREAD_SEP).map((p) => p.trim()).filter(Boolean)
+    : [];
+  const twitterPartOverLimit =
+    hasTwitter && isThread
+      ? threadParts.findIndex((p) => p.length > TWITTER_MAX_LENGTH)
+      : -1;
+  const twitterThreadWarning = hasTwitter && isThread && threadParts.length > 1;
+  const twitterValidationError =
+    twitterPartOverLimit !== -1
+      ? `Twitter: Part ${twitterPartOverLimit + 1} is ${threadParts[twitterPartOverLimit].length} characters (max ${TWITTER_MAX_LENGTH}). Shorten it to publish.`
+      : null;
 
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
@@ -42,6 +61,10 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (twitterValidationError) {
+      setError(twitterValidationError);
+      return;
+    }
     setLoading(true);
     const result = await createPost(
       content.trim(),
@@ -78,11 +101,16 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
           id="content"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Write your post..."
+          placeholder="Write your post... Use --- on its own line to split into a Twitter thread (each part max 280 characters)."
           rows={6}
           className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
           required
         />
+        {twitterThreadWarning && (
+          <p className="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            Twitter: This will post as a thread (each part between <code className="bg-amber-100 px-1 rounded">---</code> is a separate tweet). Max {TWITTER_MAX_LENGTH} characters per part. Media will only appear on the first tweet.
+          </p>
+        )}
       </div>
 
       <PostFormOptions
@@ -101,7 +129,8 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
         submitDisabled={
           accounts.length === 0 ||
           !content.trim() ||
-          (mode === "scheduled" && !scheduledAt)
+          (mode === "scheduled" && !scheduledAt) ||
+          !!twitterValidationError
         }
       />
     </form>
