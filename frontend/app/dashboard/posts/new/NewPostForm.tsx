@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState } from "react";
@@ -30,7 +31,10 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
   const hasTwitter = selectedAccounts.some((a) => a.platform === "twitter_x");
   const isThread = content.includes(TWITTER_THREAD_SEP);
   const threadParts = isThread
-    ? content.split(TWITTER_THREAD_SEP).map((p) => p.trim()).filter(Boolean)
+    ? content
+        .split(TWITTER_THREAD_SEP)
+        .map((p) => p.trim())
+        .filter(Boolean)
     : [];
   const twitterPartOverLimit =
     hasTwitter && isThread
@@ -74,7 +78,7 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
       content.trim(),
       Array.from(selectedIds),
       mode,
-      scheduledAt
+      scheduledAt,
     );
     setLoading(false);
     if (result.success) {
@@ -105,7 +109,10 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
         />
         {twitterThreadWarning && (
           <p className="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            Twitter: This will post as a thread (each part between <code className="bg-amber-100 px-1 rounded">---</code> is a separate tweet). Max {TWITTER_MAX_LENGTH} characters per part. Media will only appear on the first tweet.
+            Twitter: This will post as a thread (each part between{" "}
+            <code className="bg-amber-100 px-1 rounded">---</code> is a separate
+            tweet). Max {TWITTER_MAX_LENGTH} characters per part. Media will
+            only appear on the first tweet.
           </p>
         )}
       </div>
@@ -134,7 +141,7 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
             {accounts.map((acc) => (
               <label
                 key={acc.id}
-                className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 hover:border-gray-300 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/50"
+                className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 hover:border-gray-300 has-checked:border-emerald-500 has-checked:bg-emerald-50/50"
               >
                 <input
                   type="checkbox"
@@ -152,7 +159,10 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
                 <span className="text-sm font-medium text-gray-900">
                   {platformName(acc.platform)}
                   {acc.platform === "medium" && (
-                    <span className="ml-1.5 inline-flex items-center rounded bg-amber-100 text-amber-800 px-1.5 py-0.5 text-xs font-medium" title="Editing and deleting not supported">
+                    <span
+                      className="ml-1.5 inline-flex items-center rounded bg-amber-100 text-amber-800 px-1.5 py-0.5 text-xs font-medium"
+                      title="Editing and deleting not supported"
+                    >
                       Publish only
                     </span>
                   )}
@@ -174,7 +184,7 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
           When do you want to publish?
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/50 transition-colors">
+          <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 has-checked:border-emerald-500 has-checked:bg-emerald-50/50 transition-colors">
             <input
               type="radio"
               name="publishMode"
@@ -189,7 +199,7 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
               </span>
             </div>
           </label>
-          <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/50 transition-colors">
+          <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 has-checked:border-emerald-500 has-checked:bg-emerald-50/50 transition-colors">
             <input
               type="radio"
               name="publishMode"
@@ -218,7 +228,9 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
         )}
         <p className="mt-4 text-sm text-gray-500">
           {mode === "draft" ? (
-            <span className="text-emerald-700 font-medium">Saving as draft — you can publish later from Posts.</span>
+            <span className="text-emerald-700 font-medium">
+              Saving as draft — you can publish later from Posts.
+            </span>
           ) : (
             <>
               Or{" "}
