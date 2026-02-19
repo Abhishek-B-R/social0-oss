@@ -29,9 +29,11 @@ export async function GET(req: NextRequest) {
     if (payload.userId !== session.user.id) {
       return Response.json({ error: "Unauthorized" }, { status: 403 });
     }
-    const boards = (payload.boards as { id: string; name: string }[]).map(
-      (b) => ({ id: b.id, name: b.name }),
-    );
+    const rawBoards = Array.isArray(payload.boards) ? payload.boards : [];
+    const boards = rawBoards.map((b: { id?: string; name?: string }) => ({
+      id: String(b?.id ?? ""),
+      name: String(b?.name ?? b?.id ?? ""),
+    }));
     return Response.json({ boards });
   } catch {
     return Response.json({ error: "Invalid token data" }, { status: 400 });

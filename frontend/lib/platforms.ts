@@ -79,7 +79,8 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     authUrl: "https://www.tiktok.com/v2/auth/authorize/",
     tokenUrl: "https://open.tiktokapis.com/v2/oauth/token/",
     // user.info.basic: profile; video.upload + video.publish: Content Posting API (Direct Post with PULL_FROM_URL)
-    scope: "user.info.basic video.upload video.publish",
+    // TikTok Login Kit for Web requires comma-separated scopes.
+    scope: "user.info.basic,video.upload,video.publish",
   },
   facebook: {
     clientIdEnv: "FACEBOOK_CLIENT_ID",

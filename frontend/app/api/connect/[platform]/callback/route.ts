@@ -288,13 +288,6 @@ export async function GET(
         code,
       });
 
-      console.log(`🔍 ${platform} token exchange:`, {
-        tokenUrl,
-        redirectUri,
-        hasCode: !!code,
-        codeLength: code?.length,
-      });
-
       try {
         tokenResponse = await fetch(tokenUrl, {
           method: "POST",

@@ -80,6 +80,13 @@ export async function executePublish(
   postId: string,
   userId?: string,
 ): Promise<PublishResult> {
+  if (!postId || !isValidPostId(postId)) {
+    return {
+      success: false,
+      error: "Invalid post ID",
+      results: [],
+    };
+  }
   const postWhere = userId
     ? and(eq(posts.id, postId), eq(posts.userId, userId))
     : eq(posts.id, postId);
@@ -124,11 +131,34 @@ export async function executePublish(
     )
     .where(eq(postPublications.postId, postId));
 
+  // Mark post and pending publications as "publishing" so UI shows progress and we avoid double-publish
+  await db
+    .update(posts)
+    .set({ status: "publishing", updatedAt: new Date() })
+    .where(eq(posts.id, postId));
+  const pendingPublicationIds = publicationsWithAccounts
+    .filter((p) => p.publicationStatus === "pending")
+    .map((p) => p.publicationId);
+  if (pendingPublicationIds.length > 0) {
+    await db
+      .update(postPublications)
+      .set({ status: "publishing", updatedAt: new Date() })
+      .where(inArray(postPublications.id, pendingPublicationIds));
+  }
+
   const results: PublishResult["results"] = [];
   let accessToken: string;
 
   for (const pub of publicationsWithAccounts) {
     if (pub.platform === "medium") {
+      await db
+        .update(postPublications)
+        .set({
+          status: "failed",
+          lastError: "Publishing to Medium is not supported yet",
+          updatedAt: new Date(),
+        })
+        .where(eq(postPublications.id, pub.publicationId));
       results.push({
         platform: pub.platform,
         connectedAccountId: pub.connectedAccountId,
@@ -144,6 +174,16 @@ export async function executePublish(
         connectedAccountId: pub.connectedAccountId,
         status: "published",
         platformPostUrl: null,
+      });
+      continue;
+    }
+    // Skip if already in progress (e.g. concurrent request); leave DB as "publishing" for other request to complete
+    if (pub.publicationStatus === "publishing") {
+      results.push({
+        platform: pub.platform,
+        connectedAccountId: pub.connectedAccountId,
+        status: "failed",
+        error: "Publish already in progress",
       });
       continue;
     }

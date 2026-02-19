@@ -42,7 +42,9 @@ export async function POST(req: NextRequest) {
     if (payload.userId !== session.user.id) {
       return Response.json({ error: "Unauthorized" }, { status: 403 });
     }
-    const boards = payload.boards as { id: string; name: string }[];
+    const boards = Array.isArray(payload.boards)
+      ? (payload.boards as { id: string; name: string }[])
+      : [];
     const board = boards.find((b) => b.id === boardId);
     if (!board) {
       return Response.json({ error: "Board not found" }, { status: 400 });

@@ -39,7 +39,9 @@ export async function POST(req: NextRequest) {
     if (payload.userId !== session.user.id) {
       return Response.json({ error: "Unauthorized" }, { status: 403 });
     }
-    const pages = payload.pages as { id: string; name: string; access_token: string }[];
+    const pages = Array.isArray(payload.pages)
+      ? (payload.pages as { id: string; name: string; access_token: string }[])
+      : [];
     const page = pages.find((p) => p.id === pageId);
     if (!page) {
       return Response.json({ error: "Page not found" }, { status: 400 });

@@ -46,7 +46,8 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const pages = payload.pages as Array<{
+    const rawPages = Array.isArray(payload.pages) ? payload.pages : [];
+    const pages = rawPages as Array<{
       pageId: string;
       pageName: string;
       pageAccessToken: string;

@@ -2,7 +2,13 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { posts, postPublications } from "@/db/schema";
+import {
+  posts,
+  postPublications,
+  connectedAccounts,
+  mediaUploads,
+} from "@/db/schema";
+import { eq, inArray, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { executePublish } from "@/app/actions/publish";
@@ -54,6 +60,48 @@ export async function createPost(
     return { success: false, error: "Please pick a date and time to schedule" };
   }
 
+  // Ensure all selected accounts belong to the current user
+  const ownedAccounts = await db
+    .select({ id: connectedAccounts.id })
+    .from(connectedAccounts)
+    .where(
+      and(
+        eq(connectedAccounts.userId, session.user.id),
+        inArray(connectedAccounts.id, selectedAccountIds),
+      ),
+    );
+  const ownedAccountIds = new Set(ownedAccounts.map((a) => a.id));
+  const validSelectedIds = [...new Set(selectedAccountIds)];
+  if (
+    validSelectedIds.length !== ownedAccountIds.size ||
+    !validSelectedIds.every((id) => ownedAccountIds.has(id))
+  ) {
+    return {
+      success: false,
+      error: "One or more selected accounts are invalid or do not belong to you",
+    };
+  }
+
+  // Ensure all media IDs belong to the current user (when provided)
+  if (mediaIds.length > 0) {
+    const ownedMedia = await db
+      .select({ id: mediaUploads.id })
+      .from(mediaUploads)
+      .where(
+        and(
+          eq(mediaUploads.userId, session.user.id),
+          inArray(mediaUploads.id, mediaIds),
+        ),
+      );
+    const ownedMediaIds = new Set(ownedMedia.map((m) => m.id));
+    if (!mediaIds.every((id) => ownedMediaIds.has(id))) {
+      return {
+        success: false,
+        error: "One or more media files are invalid or do not belong to you",
+      };
+    }
+  }
+
   const status = mode === "draft" ? "draft" : "scheduled";
   const resolvedScheduledAt =
     mode === "now" ? new Date() : mode === "scheduled" ? scheduledAt : null;
@@ -76,7 +124,7 @@ export async function createPost(
     }
 
     await db.insert(postPublications).values(
-      selectedAccountIds.map((connectedAccountId) => ({
+      validSelectedIds.map((connectedAccountId) => ({
         postId: postRow.id,
         connectedAccountId,
         status: "pending" as const,

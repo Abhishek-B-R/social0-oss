@@ -120,17 +120,27 @@ async function publishToFacebook(
     ? await getMediaWithUrls(post.mediaIds)
     : [];
   const firstImage = media.find((m) => m.mimeType.startsWith("image/"));
+  const firstVideo = media.find((m) => m.mimeType.startsWith("video/"));
 
   const params = new URLSearchParams({
     access_token: pageAccessToken,
     message,
   });
   let endpoint = `https://graph.facebook.com/v21.0/${pageId}/feed`;
+  let isVideo = false;
   if (firstImage?.url) {
     endpoint = `https://graph.facebook.com/v21.0/${pageId}/photos`;
     params.set("url", firstImage.url);
     params.set("caption", message);
     params.delete("message");
+  } else if (firstVideo?.url) {
+    // Page video publishing uses the Video API. Using a hosted URL keeps us from uploading bytes ourselves.
+    // Use graph-video domain for video publishing per Meta docs.
+    endpoint = `https://graph-video.facebook.com/v21.0/${pageId}/videos`;
+    params.set("file_url", firstVideo.url);
+    params.set("description", message);
+    params.delete("message");
+    isVideo = true;
   }
 
   const res = await fetch(endpoint, {
@@ -153,7 +163,9 @@ async function publishToFacebook(
   }
   const postId = data.post_id ?? data.id?.split("_")[1] ?? data.id;
   const platformPostUrl = postId
-    ? `https://www.facebook.com/${pageId}/posts/${postId}`
+    ? isVideo
+      ? `https://www.facebook.com/${pageId}/videos/${postId}/`
+      : `https://www.facebook.com/${pageId}/posts/${postId}`
     : null;
   return {
     status: "published",
@@ -810,6 +822,13 @@ async function publishToThreads(
   const imageUrl = media.find((m) => m.mimeType.startsWith("image/"))?.url;
 
   const safeText = truncate(text, 500);
+  if (!imageUrl && !safeText) {
+    return {
+      status: "failed",
+      lastError: "Threads post must have text or an image.",
+      error: "Content required",
+    };
+  }
   const threadParams = new URLSearchParams({ access_token: accessToken });
   let creationId: string;
   if (imageUrl) {
