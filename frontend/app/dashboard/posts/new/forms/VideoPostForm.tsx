@@ -17,7 +17,7 @@ type Account = {
 };
 
 const defaultTiktokSettings: TikTokPostSettings = {
-  privacy_level: "",
+  privacy_level: "SELF_ONLY",
   disable_comment: false,
   disable_duet: false,
   disable_stitch: false,
@@ -39,9 +39,6 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
   const [error, setError] = useState<string | null>(null);
   const [tiktokSettings, setTiktokSettings] = useState<
     Record<string, TikTokPostSettings>
-  >({});
-  const [tiktokCreatorInfo, setTiktokCreatorInfo] = useState<
-    Record<string, { max_video_duration?: number }>
   >({});
   const [tiktokModalAccountId, setTiktokModalAccountId] = useState<string | null>(null);
 
@@ -78,49 +75,9 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
       return;
     }
     setError(null);
-    
-    // Check video duration if TikTok is selected (async check)
-    if (hasTikTok && tiktokAccounts.length > 0) {
-      const videoUrl = URL.createObjectURL(file);
-      const video = document.createElement("video");
-      video.preload = "metadata";
-      
-      video.onloadedmetadata = () => {
-        window.URL.revokeObjectURL(videoUrl);
-        const duration = video.duration;
-        
-        // Check against max duration for each TikTok account
-        for (const tiktokAccount of tiktokAccounts) {
-          const maxDuration = tiktokCreatorInfo[tiktokAccount.id]?.max_video_duration;
-          if (maxDuration && duration > maxDuration) {
-            setError(
-              `TikTok: Video duration (${Math.round(duration)}s) exceeds maximum allowed duration (${maxDuration}s) for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
-            );
-            if (fileInputRef.current) fileInputRef.current.value = "";
-            return;
-          }
-        }
-        
-        // Duration OK - set video file
-        if (videoPreview) URL.revokeObjectURL(videoPreview);
-        setVideoFile(file);
-        setVideoPreview(URL.createObjectURL(file));
-      };
-      
-      video.onerror = () => {
-        window.URL.revokeObjectURL(videoUrl);
-        setError("Failed to load video. Please try a different file.");
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      };
-      
-      video.src = videoUrl;
-    } else {
-      // No TikTok selected - set video file immediately
-      if (videoPreview) URL.revokeObjectURL(videoPreview);
-      setVideoFile(file);
-      setVideoPreview(URL.createObjectURL(file));
-    }
-    
+    if (videoPreview) URL.revokeObjectURL(videoPreview);
+    setVideoFile(file);
+    setVideoPreview(URL.createObjectURL(file));
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -163,12 +120,6 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
             `TikTok: Branded content visibility cannot be set to private. Please select Public or Friends.`,
           );
           return;
-        }
-        
-        // Validate video duration if creator info is loaded
-        if (videoFile && tiktokCreatorInfo[tiktokAccount.id]?.max_video_duration) {
-          // Duration check happens in onFileChange, but double-check here
-          // (onFileChange might have passed before creator info loaded)
         }
       }
     }
@@ -297,13 +248,6 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
           }}
           onSave={() => setTiktokModalAccountId(null)}
           onClose={() => setTiktokModalAccountId(null)}
-          onError={(err) => setError(err)}
-          onCreatorInfoLoaded={(info) => {
-            setTiktokCreatorInfo((prev) => ({
-              ...prev,
-              [tiktokModalAccountId]: { max_video_duration: info.max_video_duration },
-            }));
-          }}
         />
       )}
 

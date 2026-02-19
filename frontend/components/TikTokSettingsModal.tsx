@@ -11,8 +11,6 @@ type TikTokSettingsModalProps = {
   onChange: (settings: TikTokPostSettings) => void;
   onSave: () => void;
   onClose: () => void;
-  onError: (error: string) => void;
-  onCreatorInfoLoaded?: (info: { max_video_duration?: number }) => void;
   /** When set, show inline in modal and do not allow close on save until fixed */
   validationError?: string | null;
 };
@@ -25,8 +23,6 @@ export function TikTokSettingsModal({
   onChange,
   onSave,
   onClose,
-  onError,
-  onCreatorInfoLoaded,
   validationError = null,
 }: TikTokSettingsModalProps) {
   const [localValidation, setLocalValidation] = useState<string | null>(null);
@@ -96,8 +92,6 @@ export function TikTokSettingsModal({
               setLocalValidation(null);
               onChange(s);
             }}
-            onError={onError}
-            onCreatorInfoLoaded={onCreatorInfoLoaded}
           />
         </div>
 
