@@ -98,6 +98,7 @@ export async function executePublish(
       finalContent: posts.finalContent,
       status: posts.status,
       mediaIds: posts.mediaIds,
+      metadata: posts.metadata,
     })
     .from(posts)
     .where(postWhere)
@@ -818,6 +819,7 @@ export async function executePublish(
           id: post.id,
           finalContent: post.finalContent,
           mediaIds: post.mediaIds,
+          metadata: post.metadata,
         },
         accessToken,
         platformAccessSecret,

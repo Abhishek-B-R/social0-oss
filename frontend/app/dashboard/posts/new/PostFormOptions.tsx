@@ -26,6 +26,10 @@ type PostFormOptionsProps = {
   onCancel: () => void;
   submitLabel: string;
   submitDisabled?: boolean;
+  /** For TikTok: account ids that have settings saved (privacy level set). Shows green check on badge. */
+  tiktokConfiguredIds?: Set<string>;
+  /** Called when user clicks the TikTok Settings badge to open the modal */
+  onOpenTikTokSettings?: (accountId: string) => void;
 };
 
 export function PostFormOptions({
@@ -42,6 +46,8 @@ export function PostFormOptions({
   onCancel,
   submitLabel,
   submitDisabled = false,
+  tiktokConfiguredIds,
+  onOpenTikTokSettings,
 }: PostFormOptionsProps) {
   const platformName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
@@ -84,13 +90,16 @@ export function PostFormOptions({
                   <img
                     src={acc.profileImageUrl}
                     alt=""
-                    className="size-9 rounded-full"
+                    className="size-9 rounded-full shrink-0"
                   />
                 )}
-                <span className="text-sm font-medium text-gray-900">
+                <span className="min-w-0 flex-1 text-sm font-medium text-gray-900">
                   {platformName(acc.platform)}
                   {acc.platform === "medium" && (
-                    <span className="ml-1.5 inline-flex items-center rounded bg-amber-100 text-amber-800 px-1.5 py-0.5 text-xs font-medium" title="Editing and deleting not supported">
+                    <span
+                      className="ml-1.5 inline-flex items-center rounded bg-amber-100 text-amber-800 px-1.5 py-0.5 text-xs font-medium"
+                      title="Editing and deleting not supported"
+                    >
                       Publish only
                     </span>
                   )}
@@ -101,6 +110,26 @@ export function PostFormOptions({
                     </span>
                   )}
                 </span>
+                {acc.platform === "tiktok" && onOpenTikTokSettings && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onOpenTikTokSettings(acc.id);
+                    }}
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                    title={tiktokConfiguredIds?.has(acc.id) ? "TikTok settings (configured)" : "TikTok settings (not configured)"}
+                  >
+                    {tiktokConfiguredIds?.has(acc.id) ? (
+                      <span className="size-4 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0" aria-hidden>
+                        <svg className="size-2.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>
+                    ) : (
+                      <span className="size-2 rounded-full bg-red-500 flex-shrink-0" aria-hidden />
+                    )}
+                    <span>⚙ TikTok Settings</span>
+                  </button>
+                )}
               </label>
             ))}
           </div>
@@ -156,7 +185,9 @@ export function PostFormOptions({
         )}
         <p className="mt-4 text-sm text-gray-500">
           {mode === "draft" ? (
-            <span className="text-emerald-700 font-medium">Saving as draft — you can publish later from Posts.</span>
+            <span className="text-emerald-700 font-medium">
+              Saving as draft — you can publish later from Posts.
+            </span>
           ) : (
             <>
               Or{" "}

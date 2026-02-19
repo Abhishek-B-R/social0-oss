@@ -73,7 +73,8 @@ export async function GET(
 
   const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
   const redirectUri = `${baseUrl}/api/connect/instagram-facebook/callback`;
-  const tokenUrl = "https://graph.facebook.com/v18.0/oauth/access_token";
+  // Use latest API version (v21.0) to match OAuth dialog
+  const tokenUrl = "https://graph.facebook.com/v21.0/oauth/access_token";
 
   try {
     // Exchange code for Facebook access token

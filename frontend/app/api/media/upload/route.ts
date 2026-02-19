@@ -13,7 +13,12 @@ const ALLOWED_IMAGE_TYPES = [
   "image/gif",
   "image/webp",
 ];
-const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
+const ALLOWED_VIDEO_TYPES = [
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "video/mov",
+];
 
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });

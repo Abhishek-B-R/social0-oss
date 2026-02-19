@@ -236,6 +236,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
       (images.length || videos.length
         ? `[${images.length} image(s)${videos.length ? ` + ${videos.length} video(s)` : ""}]`
         : "");
+
     const result = await createPost(
       text,
       Array.from(selectedIds),

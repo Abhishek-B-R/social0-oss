@@ -6,7 +6,12 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { PublishButton } from "./PublishButton";
 
-export default async function PostsPage() {
+export default async function PostsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tiktok_published?: string }>;
+}) {
+  const params = await searchParams;
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return null;
 
@@ -66,8 +71,17 @@ export default async function PostsPage() {
     failed: "Failed",
   };
 
+  const showTikTokMessage = params?.tiktok_published === "true";
+
   return (
     <div>
+      {showTikTokMessage && (
+        <div className="mb-6 rounded-xl bg-blue-50 border border-blue-200 p-4">
+          <p className="text-sm text-blue-800 font-medium">
+            ✅ Post published successfully! Your TikTok content may take a few minutes to process and appear on your profile.
+          </p>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-extrabold text-gray-900">

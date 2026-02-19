@@ -176,6 +176,7 @@ export const posts = pgTable(
     mediaIds: uuid("media_ids").array().default([]), // References media_uploads.id
     status: postStatusEnum("status").default("draft"),
     scheduledAt: timestamp("scheduled_at"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(), // Platform-specific settings (e.g. TikTok privacy, toggles)
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

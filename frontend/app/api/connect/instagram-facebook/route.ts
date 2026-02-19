@@ -29,10 +29,11 @@ export async function GET(req: NextRequest) {
   const redirectUri = `${baseUrl}/api/connect/instagram-facebook/callback`;
 
   // Facebook OAuth URL for Instagram via Pages
-  const authUrl = "https://www.facebook.com/v18.0/dialog/oauth";
+  // Note: Some Instagram scopes require using the base OAuth URL without version
+  const authUrl = "https://www.facebook.com/dialog/oauth";
 
-  // Scopes: instagram_basic, instagram_content_publish, pages_show_list, pages_read_engagement
-  const scope = "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement";
+  // Scopes: instagram_business_basic (not instagram_basic - Basic Display API is deprecated), instagram_content_publish, pages_show_list, pages_read_engagement
+  const scope = "instagram_business_basic,instagram_content_publish,pages_show_list,pages_read_engagement";
 
   // Encrypt state with userId and platform identifier
   const state = encrypt({
@@ -50,6 +51,9 @@ export async function GET(req: NextRequest) {
   const finalUrl = url.toString();
 
   console.log("🔍 Instagram-Facebook OAuth URL:", finalUrl);
+  console.log("🔍 Client ID:", clientId);
+  console.log("🔍 Redirect URI:", redirectUri);
+  console.log("🔍 Scopes:", scope);
 
   return redirect(finalUrl);
 }

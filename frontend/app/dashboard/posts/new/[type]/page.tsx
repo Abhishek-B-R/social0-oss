@@ -56,6 +56,7 @@ export default async function NewPostByTypePage({
     },
   });
 
+  // Only pass accounts whose platform is in this content type's allowed list (see lib/content-types.ts)
   const allowedPlatforms = new Set(contentType.platforms);
   const filtered = sortAccountsByPlatformOrder(
     accounts.filter(

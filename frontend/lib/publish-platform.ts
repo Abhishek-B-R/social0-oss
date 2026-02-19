@@ -37,6 +37,7 @@ type Post = {
   id: string;
   finalContent: string | null;
   mediaIds: string[] | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 export async function publishToPlatform(
@@ -708,7 +709,92 @@ async function publishToTikTok(
     return { status: "failed", lastError: hint, error: "No video" };
   }
 
+  // Get TikTok settings from post metadata
+  const tiktokMetadata = post.metadata?.tiktok as
+    | Record<string, {
+        privacy_level: string;
+        disable_comment: boolean;
+        disable_duet: boolean;
+        disable_stitch: boolean;
+        brand_content_toggle: boolean;
+        brand_organic?: boolean; // "Your brand" checkbox
+        brand_content?: boolean; // "Branded content" checkbox
+        brand_organic_toggle?: boolean; // Legacy field for migration
+      }>
+    | undefined;
+
+  const accountSettings = tiktokMetadata?.[pub.connectedAccountId];
+  
+  // Validate required fields
+  if (!accountSettings || !accountSettings.privacy_level) {
+    return {
+      status: "failed",
+      lastError:
+        "TikTok privacy level is required. Please set TikTok post settings before publishing.",
+      error: "Missing TikTok settings",
+    };
+  }
+  
+  // Validate branded content cannot be private
+  if (accountSettings.brand_content && accountSettings.privacy_level === "SELF_ONLY") {
+    return {
+      status: "failed",
+      lastError:
+        "TikTok: Branded content visibility cannot be set to private. Please select Public or Friends.",
+      error: "Invalid privacy for branded content",
+    };
+  }
+
   const caption = truncate(post.finalContent?.trim() ?? "", 2200);
+  
+  // Build post_info with TikTok settings
+  const postInfo: {
+    privacy_level: string;
+    title?: string;
+    disable_comment?: boolean;
+    disable_duet?: boolean;
+    disable_stitch?: boolean;
+    brand_content_toggle?: boolean;
+    brand_organic_toggle?: boolean;
+  } = {
+    privacy_level: accountSettings.privacy_level,
+  };
+
+  if (caption) {
+    postInfo.title = caption;
+  }
+
+  // Add interaction toggles (only if disabled)
+  if (accountSettings.disable_comment) {
+    postInfo.disable_comment = true;
+  }
+  if (accountSettings.disable_duet) {
+    postInfo.disable_duet = true;
+  }
+  if (accountSettings.disable_stitch) {
+    postInfo.disable_stitch = true;
+  }
+
+  // Add brand content toggles (only if disclosure toggle is enabled)
+  if (accountSettings.brand_content_toggle) {
+    postInfo.brand_content_toggle = true;
+    
+    // Support both new (brand_organic, brand_content) and legacy (brand_organic_toggle) fields
+    const hasOrganic = accountSettings.brand_organic ?? accountSettings.brand_organic_toggle === true;
+    const hasBranded = accountSettings.brand_content ?? (accountSettings.brand_organic_toggle === false && accountSettings.brand_content_toggle);
+    
+    // TikTok API: brand_organic_toggle=true for "Your brand", false/omitted for "Branded content"
+    // If both are selected, per guidelines: label as "Paid partnership" (send brand_organic_toggle=false)
+    if (hasOrganic && !hasBranded) {
+      // Only "Your brand" selected -> Brand Organic
+      postInfo.brand_organic_toggle = true;
+    } else if (hasBranded) {
+      // "Branded content" selected (with or without "Your brand") -> Paid partnership
+      // Per guidelines: if both selected, label as "Paid partnership"
+      postInfo.brand_organic_toggle = false;
+    }
+  }
+
   const initRes = await fetch(
     "https://open.tiktokapis.com/v2/post/publish/video/init/",
     {
@@ -718,10 +804,7 @@ async function publishToTikTok(
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        post_info: {
-          privacy_level: "PUBLIC_TO_EVERYONE",
-          title: caption || undefined,
-        },
+        post_info: postInfo,
         source_info: {
           source: "PULL_FROM_URL",
           video_url: videoEntry.url,
@@ -730,10 +813,23 @@ async function publishToTikTok(
     },
   );
 
-  const initData = (await initRes.json().catch(() => ({}))) as {
+  const initData = (await initRes.json().catch((e) => {
+    console.error("TikTok publish/init: failed to parse JSON", e);
+    return {};
+  })) as {
     data?: { publish_id?: string };
-    error?: { code?: string; message?: string };
+    error?: { code?: string; message?: string; log_id?: string };
   };
+
+  // Log full TikTok API response before any error return (for debugging)
+  if (!initRes.ok || (initData.error?.code && initData.error.code !== "ok")) {
+    console.error("TikTok publish/init API response:", {
+      httpStatus: initRes.status,
+      body: initData,
+      errorCode: initData.error?.code,
+      errorMessage: initData.error?.message,
+    });
+  }
 
   if (!initRes.ok) {
     const err = initData.error?.message ?? `HTTP ${initRes.status}`;
@@ -750,6 +846,10 @@ async function publishToTikTok(
 
   const publishId = initData.data?.publish_id;
   if (!publishId) {
+    console.error("TikTok publish/init: no publish_id in response", {
+      httpStatus: initRes.status,
+      body: initData,
+    });
     return {
       status: "failed",
       lastError: "TikTok did not return a publish ID",
@@ -771,11 +871,24 @@ async function publishToTikTok(
         body: JSON.stringify({ publish_id: publishId }),
       },
     );
-    const statusData = (await statusRes.json().catch(() => ({}))) as {
+    const statusData = (await statusRes.json().catch((e) => {
+      console.error("TikTok publish/status: failed to parse JSON", e);
+      return {};
+    })) as {
       data?: { status?: string; publicaly_available_post_id?: string[] };
-      error?: { code?: string };
+      error?: { code?: string; message?: string };
     };
     const status = statusData.data?.status;
+
+    if (status === "FAILED" || (statusData.error && statusData.error.code !== "ok")) {
+      console.error("TikTok publish/status API response (failure):", {
+        httpStatus: statusRes.status,
+        body: statusData,
+        errorCode: statusData.error?.code,
+        errorMessage: statusData.error?.message,
+      });
+    }
+
     if (status === "PUBLISH_COMPLETE") {
       const postIds = statusData.data?.publicaly_available_post_id;
       const videoId = Array.isArray(postIds) ? postIds[0] : undefined;
@@ -793,9 +906,12 @@ async function publishToTikTok(
       };
     }
     if (status === "FAILED") {
+      const lastError =
+        (statusData.error as { message?: string } | undefined)?.message ||
+        "TikTok rejected or failed to process the video.";
       return {
         status: "failed",
-        lastError: "TikTok rejected or failed to process the video.",
+        lastError,
         error: "Publish failed",
       };
     }
