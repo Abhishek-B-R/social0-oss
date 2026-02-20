@@ -36,9 +36,10 @@ export const CONTENT_TYPES = [
       "bluesky",
       "twitter_x",
       "linkedin",
-      "instagram",
+      "threads",
       "youtube",
       "tiktok",
+      "instagram",
     ],
   },
   {

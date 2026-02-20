@@ -1851,13 +1851,15 @@ async function publishToThreads(
     ? await getMediaWithUrls(post.mediaIds)
     : [];
   const images = media.filter((m) => m.mimeType.startsWith("image/"));
+  const videos = media.filter((m) => m.mimeType.startsWith("video/"));
   const imageUrl = images[0]?.url;
+  const videoUrl = videos[0]?.url;
 
   const safeText = truncate(text, 500);
-  if (!imageUrl && !safeText) {
+  if (!imageUrl && !videoUrl && !safeText) {
     return {
       status: "failed",
-      lastError: "Threads post must have text or an image.",
+      lastError: "Threads post must have text, an image, or a video.",
       error: "Content required",
     };
   }
@@ -1949,6 +1951,31 @@ async function publishToThreads(
     });
 
     creationId = carouselData.id;
+  } else if (videoUrl) {
+    // Single video
+    const createRes = await fetch(
+      `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          media_type: "VIDEO",
+          video_url: videoUrl,
+          text: safeText,
+        }),
+      },
+    );
+    const createData = (await createRes.json().catch(() => ({}))) as {
+      id?: string;
+      error?: { message?: string };
+    };
+    if (!createRes.ok || !createData.id) {
+      const err = createData.error?.message ?? `HTTP ${createRes.status}`;
+      return { status: "failed", lastError: err, error: err };
+    }
+    creationId = createData.id;
+    // Threads recommends waiting for video processing before publishing (at least 30s)
+    await new Promise((r) => setTimeout(r, 30000));
   } else if (imageUrl) {
     // Single image
     const createRes = await fetch(
