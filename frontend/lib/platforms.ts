@@ -35,14 +35,11 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     scope: "openid profile email w_member_social",
   },
   instagram: {
-    clientIdEnv: "INSTAGRAM_CLIENT_ID",
+    clientIdEnv: "INSTAGRAM_CLIENT_ID", // Your Meta app ID
     clientSecretEnv: "INSTAGRAM_CLIENT_SECRET",
-    authUrl: "https://api.instagram.com/oauth/authorize",
-    tokenUrl: "https://api.instagram.com/oauth/access_token",
-    // Instagram Graph API: Business/Creator account + Facebook Page linked
-    // instagram_business_basic: read profile, media, insights
-    // instagram_content_publish: required to publish posts
-    scope: "instagram_business_basic instagram_content_publish",
+    authUrl: "https://www.instagram.com/oauth/authorize", // ✅ This is correct
+    tokenUrl: "https://api.instagram.com/oauth/access_token", // ✅ This too
+    scope: "instagram_business_basic,instagram_business_content_publish", // ✅ Correct scopes
   },
   youtube: {
     clientIdEnv: "YOUTUBE_CLIENT_ID",

@@ -78,7 +78,7 @@ export function PostFormOptions({
             {accounts.map((acc) => (
               <label
                 key={acc.id}
-                className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 hover:border-gray-300 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/50"
+                className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 hover:border-gray-300 has-checked:border-emerald-500 has-checked:bg-emerald-50/50"
               >
                 <input
                   type="checkbox"
@@ -87,6 +87,7 @@ export function PostFormOptions({
                   className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
                 />
                 {acc.profileImageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={acc.profileImageUrl}
                     alt=""
@@ -126,7 +127,7 @@ export function PostFormOptions({
                     }
                   >
                     <span
-                      className="size-2 rounded-full bg-red-500 flex-shrink-0"
+                      className="size-2 rounded-full bg-red-500 shrink-0"
                       aria-hidden
                     />
                     <span>⚙ Settings</span>
@@ -143,7 +144,7 @@ export function PostFormOptions({
           When do you want to publish?
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/50 transition-colors">
+          <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 has-checked:border-emerald-500 has-checked:bg-emerald-50/50 transition-colors">
             <input
               type="radio"
               name="publishMode"
@@ -158,7 +159,7 @@ export function PostFormOptions({
               </span>
             </div>
           </label>
-          <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/50 transition-colors">
+          <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 has-checked:border-emerald-500 has-checked:bg-emerald-50/50 transition-colors">
             <input
               type="radio"
               name="publishMode"
