@@ -355,6 +355,23 @@ export async function GET(
           }
         }
       }
+
+      // Instagram: exchange short-lived token for long-lived (60 days)
+      if (platform === "instagram" && tokens.access_token) {
+        const exchangeUrl = new URL("https://graph.instagram.com/access_token");
+        exchangeUrl.searchParams.set("grant_type", "ig_exchange_token");
+        exchangeUrl.searchParams.set("client_secret", clientSecret);
+        exchangeUrl.searchParams.set("access_token", tokens.access_token);
+
+        const exchangeRes = await fetch(exchangeUrl.toString());
+        if (exchangeRes.ok) {
+          const longLived = await exchangeRes.json();
+          if (longLived.access_token) {
+            tokens.access_token = longLived.access_token;
+            tokens.expires_in = longLived.expires_in ?? 60 * 24 * 60 * 60; // 60 days
+          }
+        }
+      }
     } else if (platform === "tiktok") {
       // TikTok OAuth 2.0 with PKCE
       if (!codeVerifier) {
