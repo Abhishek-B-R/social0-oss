@@ -358,6 +358,11 @@ export async function GET(
 
       // Instagram: exchange short-lived token for long-lived (60 days)
       if (platform === "instagram" && tokens.access_token) {
+        console.log(
+          "Instagram token BEFORE exchange:",
+          tokens.access_token.substring(0, 30) + "...",
+        );
+
         const exchangeUrl = new URL("https://graph.instagram.com/access_token");
         exchangeUrl.searchParams.set("grant_type", "ig_exchange_token");
         exchangeUrl.searchParams.set("client_secret", clientSecret);
@@ -367,9 +372,19 @@ export async function GET(
         if (exchangeRes.ok) {
           const longLived = await exchangeRes.json();
           if (longLived.access_token) {
+            console.log(
+              "Instagram token AFTER exchange:",
+              longLived.access_token.substring(0, 30) + "...",
+            );
+            console.log("Instagram token expires_in:", longLived.expires_in);
             tokens.access_token = longLived.access_token;
-            tokens.expires_in = longLived.expires_in ?? 60 * 24 * 60 * 60; // 60 days
+            tokens.expires_in = longLived.expires_in ?? 60 * 24 * 60 * 60;
           }
+        } else {
+          console.error(
+            "Instagram token exchange failed:",
+            await exchangeRes.text(),
+          );
         }
       }
     } else if (platform === "tiktok") {
