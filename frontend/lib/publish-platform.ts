@@ -629,13 +629,19 @@ async function publishToInstagram(
   accessToken: string,
 ): Promise<PublishPlatformResult> {
   const igUserId = pub.platformUserId;
+  console.log("🔍 Instagram publish attempt:", {
+    igUserId,
+    tokenPrefix: accessToken.substring(0, 30),
+  });
   const caption = truncate(post.finalContent?.trim() ?? "", 2200);
   const media = post.mediaIds?.length
     ? await getMediaWithUrls(post.mediaIds)
     : [];
+
   const imageUrl = media.find((m) => m.mimeType.startsWith("image/"))?.url;
   const videoUrl = media.find((m) => m.mimeType.startsWith("video/"))?.url;
   const mediaUrl = imageUrl ?? videoUrl;
+
   if (!mediaUrl) {
     const hint =
       post.mediaIds?.length && media.length === 0
@@ -644,46 +650,135 @@ async function publishToInstagram(
     return { status: "failed", lastError: hint, error: "No media" };
   }
 
+  // Step 1: Create media container
+  const containerBody: {
+    caption?: string;
+    image_url?: string;
+    video_url?: string;
+    media_type?: string;
+  } = {
+    caption: caption || undefined,
+  };
+
+  // Set correct media type and URL
+  if (imageUrl) {
+    containerBody.image_url = imageUrl;
+  } else if (videoUrl) {
+    containerBody.video_url = videoUrl;
+    containerBody.media_type = "REELS"; // Videos must be posted as Reels
+  }
+
   const containerRes = await fetch(
-    `https://graph.facebook.com/v21.0/${igUserId}/media?access_token=${encodeURIComponent(accessToken)}`,
+    `https://graph.instagram.com/v21.0/${igUserId}/media`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        image_url: mediaUrl,
-        caption: caption || undefined,
-      }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`, // Use header, not query param
+      },
+      body: JSON.stringify(containerBody),
     },
   );
+
   const containerData = (await containerRes.json().catch(() => ({}))) as {
     id?: string;
-    error?: { message?: string };
+    error?: { message?: string; type?: string; code?: number };
   };
+
   if (!containerRes.ok || !containerData.id) {
     const err = containerData.error?.message ?? `HTTP ${containerRes.status}`;
+    console.error("Instagram container creation failed:", {
+      status: containerRes.status,
+      error: containerData.error,
+      body: containerBody,
+    });
     return { status: "failed", lastError: err, error: err };
   }
 
-  await new Promise((r) => setTimeout(r, 3000));
+  // Step 2: Wait for media processing
+  if (videoUrl) {
+    // Poll container status for videos
+    let retries = 0;
+    const maxRetries = 60; // 60 seconds max
+
+    while (retries < maxRetries) {
+      const statusRes = await fetch(
+        `https://graph.instagram.com/v21.0/${containerData.id}?fields=status_code`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
+
+      if (statusRes.ok) {
+        const statusData = (await statusRes.json()) as {
+          status_code?: string;
+        };
+
+        console.log(
+          `Instagram video processing status: ${statusData.status_code} (attempt ${retries + 1})`,
+        );
+
+        if (statusData.status_code === "FINISHED") {
+          break; // Ready to publish
+        }
+
+        if (statusData.status_code === "ERROR") {
+          return {
+            status: "failed",
+            lastError: "Video processing failed on Instagram",
+            error: "Processing error",
+          };
+        }
+      }
+
+      await new Promise((r) => setTimeout(r, 2000)); // Wait 2 seconds between checks
+      retries++;
+    }
+
+    if (retries >= maxRetries) {
+      return {
+        status: "failed",
+        lastError:
+          "Video processing timeout (60s). Try a shorter video.",
+        error: "Timeout",
+      };
+    }
+  } else {
+    // Images process quickly
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+
+  // Step 3: Publish the container
   const publishRes = await fetch(
-    `https://graph.facebook.com/v21.0/${igUserId}/media_publish?access_token=${encodeURIComponent(accessToken)}`,
+    `https://graph.instagram.com/v21.0/${igUserId}/media_publish`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
       body: JSON.stringify({ creation_id: containerData.id }),
     },
   );
+
   const publishData = (await publishRes.json().catch(() => ({}))) as {
     id?: string;
     error?: { message?: string };
   };
+
   if (!publishRes.ok) {
     const err = publishData.error?.message ?? `HTTP ${publishRes.status}`;
+    console.error("Instagram publish failed:", {
+      status: publishRes.status,
+      error: publishData.error,
+    });
     return { status: "failed", lastError: err, error: err };
   }
+
   const platformPostUrl = publishData.id
     ? `https://www.instagram.com/p/${publishData.id}/`
     : null;
+
   return {
     status: "published",
     platformPostId: publishData.id ?? null,
@@ -716,16 +811,19 @@ async function publishToTikTok(
 
   // Get TikTok settings from post metadata
   const tiktokMetadata = post.metadata?.tiktok as
-    | Record<string, {
-        privacy_level: string;
-        disable_comment: boolean;
-        disable_duet: boolean;
-        disable_stitch: boolean;
-        brand_content_toggle: boolean;
-        brand_organic?: boolean;
-        brand_content?: boolean;
-        brand_organic_toggle?: boolean;
-      }>
+    | Record<
+        string,
+        {
+          privacy_level: string;
+          disable_comment: boolean;
+          disable_duet: boolean;
+          disable_stitch: boolean;
+          brand_content_toggle: boolean;
+          brand_organic?: boolean;
+          brand_content?: boolean;
+          brand_organic_toggle?: boolean;
+        }
+      >
     | undefined;
 
   const accountSettings = tiktokMetadata?.[pub.connectedAccountId];
@@ -739,7 +837,10 @@ async function publishToTikTok(
     };
   }
 
-  if (accountSettings.brand_content && accountSettings.privacy_level === "SELF_ONLY") {
+  if (
+    accountSettings.brand_content &&
+    accountSettings.privacy_level === "SELF_ONLY"
+  ) {
     return {
       status: "failed",
       lastError:
@@ -780,10 +881,12 @@ async function publishToTikTok(
   if (accountSettings.brand_content_toggle) {
     basePostInfo.brand_content_toggle = true;
     const hasOrganic =
-      accountSettings.brand_organic ?? accountSettings.brand_organic_toggle === true;
+      accountSettings.brand_organic ??
+      accountSettings.brand_organic_toggle === true;
     const hasBranded =
       accountSettings.brand_content ??
-      (accountSettings.brand_organic_toggle === false && accountSettings.brand_content_toggle);
+      (accountSettings.brand_organic_toggle === false &&
+        accountSettings.brand_content_toggle);
     if (hasOrganic && !hasBranded) {
       basePostInfo.brand_organic_toggle = true;
     } else if (hasBranded) {
@@ -796,9 +899,13 @@ async function publishToTikTok(
     // Photo Post API: content/init with media_type PHOTO, post_mode DIRECT_POST
     const photoUrls = imageEntries.map((m) => m.url).filter(Boolean);
     if (photoUrls.length === 0) {
-      return { status: "failed", lastError: "No valid image URLs.", error: "No images" };
+      return {
+        status: "failed",
+        lastError: "No valid image URLs.",
+        error: "No images",
+      };
     }
-    
+
     // Build photo-specific post_info (no duet/stitch, different brand content structure)
     const photoPostInfo: {
       privacy_level: string;
@@ -824,9 +931,14 @@ async function publishToTikTok(
     // brand_content_toggle: true if promoting third-party business (Branded content radio)
     // brand_organic_toggle: true if promoting creator's own business (Your brand radio)
     if (accountSettings.brand_content_toggle) {
-      const hasOrganic = accountSettings.brand_organic ?? accountSettings.brand_organic_toggle === true;
-      const hasBranded = accountSettings.brand_content ?? (accountSettings.brand_organic_toggle === false && accountSettings.brand_content_toggle);
-      
+      const hasOrganic =
+        accountSettings.brand_organic ??
+        accountSettings.brand_organic_toggle === true;
+      const hasBranded =
+        accountSettings.brand_content ??
+        (accountSettings.brand_organic_toggle === false &&
+          accountSettings.brand_content_toggle);
+
       if (hasBranded) {
         // "Branded content" selected: third-party paid partnership
         photoPostInfo.brand_content_toggle = true;
@@ -849,7 +961,10 @@ async function publishToTikTok(
       },
     };
 
-    console.log("TikTok photo post request:", JSON.stringify(requestBody, null, 2));
+    console.log(
+      "TikTok photo post request:",
+      JSON.stringify(requestBody, null, 2),
+    );
 
     initRes = await fetch(
       "https://open.tiktokapis.com/v2/post/publish/content/init/",
@@ -893,12 +1008,15 @@ async function publishToTikTok(
 
   const mediaLabel = isPhotoPost ? "Image" : "Video";
   if (!initRes.ok || (initData.error?.code && initData.error.code !== "ok")) {
-    console.error(`TikTok publish/init (${isPhotoPost ? "photo" : "video"}) API response:`, {
-      httpStatus: initRes.status,
-      body: initData,
-      errorCode: initData.error?.code,
-      errorMessage: initData.error?.message,
-    });
+    console.error(
+      `TikTok publish/init (${isPhotoPost ? "photo" : "video"}) API response:`,
+      {
+        httpStatus: initRes.status,
+        body: initData,
+        errorCode: initData.error?.code,
+        errorMessage: initData.error?.message,
+      },
+    );
   }
 
   if (!initRes.ok) {
@@ -949,7 +1067,10 @@ async function publishToTikTok(
     };
     const status = statusData.data?.status;
 
-    if (status === "FAILED" || (statusData.error && statusData.error.code !== "ok")) {
+    if (
+      status === "FAILED" ||
+      (statusData.error && statusData.error.code !== "ok")
+    ) {
       console.error("TikTok publish/status API response (failure):", {
         httpStatus: statusRes.status,
         body: statusData,
