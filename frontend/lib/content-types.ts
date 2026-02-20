@@ -33,6 +33,7 @@ export const CONTENT_TYPES = [
     slug: "video",
     platforms: [
       "facebook",
+      "bluesky",
       "twitter_x",
       "linkedin",
       "instagram",

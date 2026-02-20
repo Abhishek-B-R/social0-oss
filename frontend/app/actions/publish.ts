@@ -263,6 +263,31 @@ export async function executePublish(
 
     // Handle LinkedIn publishing
     if (pub.platform === "linkedin") {
+      // Get fresh token (auto-refreshes if needed)
+      let linkedInToken: string;
+      try {
+        const { getValidToken } = await import("@/lib/token-refresh");
+        linkedInToken = await getValidToken(pub.connectedAccountId, "linkedin");
+      } catch (err) {
+        const errorMsg =
+          err instanceof Error ? err.message : "Failed to get valid token";
+        await db
+          .update(postPublications)
+          .set({
+            status: "failed",
+            lastError: errorMsg,
+            updatedAt: new Date(),
+          })
+          .where(eq(postPublications.id, pub.publicationId));
+        results.push({
+          platform: pub.platform,
+          connectedAccountId: pub.connectedAccountId,
+          status: "failed",
+          error: errorMsg,
+        });
+        continue;
+      }
+
       const authorUrn = `urn:li:person:${pub.platformUserId}`;
 
       // Fetch media if post has mediaIds
@@ -290,7 +315,7 @@ export async function executePublish(
             try {
               const videoUrn = await uploadLinkedInVideo(
                 videoWithUrl.url!,
-                accessToken,
+                linkedInToken,
                 authorUrn,
               );
               mediaAssets.push(videoUrn);
@@ -322,7 +347,7 @@ export async function executePublish(
                 for (const img of imagesWithUrl.slice(0, 9)) {
                   const imageUrn = await uploadLinkedInImage(
                     img.url!,
-                    accessToken,
+                    linkedInToken,
                     authorUrn,
                   );
                   mediaAssets.push(imageUrn);
@@ -409,7 +434,7 @@ export async function executePublish(
         headers: {
           "Content-Type": "application/json",
           "X-Restli-Protocol-Version": "2.0.0",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${linkedInToken}`,
         },
         body: JSON.stringify(body),
       });
