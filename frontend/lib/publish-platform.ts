@@ -701,12 +701,17 @@ async function publishToTikTok(
     ? await getMediaWithUrls(post.mediaIds)
     : [];
   const videoEntry = media.find((m) => m.mimeType.startsWith("video/"));
-  if (!videoEntry?.url) {
+  const imageEntries = media.filter((m) => m.mimeType.startsWith("image/"));
+
+  const isPhotoPost = imageEntries.length > 0 && !videoEntry;
+  const isVideoPost = !!videoEntry?.url;
+
+  if (!isVideoPost && !isPhotoPost) {
     const hint =
       post.mediaIds?.length && media.length === 0
-        ? "Upload video through this app; external URLs are not allowed."
-        : "TikTok requires a video. Upload a video and try again.";
-    return { status: "failed", lastError: hint, error: "No video" };
+        ? "Upload media through this app; external URLs are not allowed."
+        : "TikTok requires a video or image. Upload media and try again.";
+    return { status: "failed", lastError: hint, error: "No media" };
   }
 
   // Get TikTok settings from post metadata
@@ -717,15 +722,14 @@ async function publishToTikTok(
         disable_duet: boolean;
         disable_stitch: boolean;
         brand_content_toggle: boolean;
-        brand_organic?: boolean; // "Your brand" checkbox
-        brand_content?: boolean; // "Branded content" checkbox
-        brand_organic_toggle?: boolean; // Legacy field for migration
+        brand_organic?: boolean;
+        brand_content?: boolean;
+        brand_organic_toggle?: boolean;
       }>
     | undefined;
 
   const accountSettings = tiktokMetadata?.[pub.connectedAccountId];
-  
-  // Validate required fields
+
   if (!accountSettings || !accountSettings.privacy_level) {
     return {
       status: "failed",
@@ -734,8 +738,7 @@ async function publishToTikTok(
       error: "Missing TikTok settings",
     };
   }
-  
-  // Validate branded content cannot be private
+
   if (accountSettings.brand_content && accountSettings.privacy_level === "SELF_ONLY") {
     return {
       status: "failed",
@@ -745,12 +748,14 @@ async function publishToTikTok(
     };
   }
 
-  const caption = truncate(post.finalContent?.trim() ?? "", 2200);
-  
-  // Build post_info with TikTok settings
-  const postInfo: {
+  const caption = post.finalContent?.trim() ?? "";
+  const captionTruncated = truncate(caption, 2200);
+
+  // Base post_info shared by video and photo
+  const basePostInfo: {
     privacy_level: string;
     title?: string;
+    description?: string;
     disable_comment?: boolean;
     disable_duet?: boolean;
     disable_stitch?: boolean;
@@ -760,58 +765,123 @@ async function publishToTikTok(
     privacy_level: accountSettings.privacy_level,
   };
 
-  if (caption) {
-    postInfo.title = caption;
+  if (captionTruncated) {
+    basePostInfo.title = captionTruncated;
   }
 
-  // Add interaction toggles (only if disabled)
   if (accountSettings.disable_comment) {
-    postInfo.disable_comment = true;
+    basePostInfo.disable_comment = true;
   }
-  if (accountSettings.disable_duet) {
-    postInfo.disable_duet = true;
-  }
-  if (accountSettings.disable_stitch) {
-    postInfo.disable_stitch = true;
+  if (!isPhotoPost) {
+    if (accountSettings.disable_duet) basePostInfo.disable_duet = true;
+    if (accountSettings.disable_stitch) basePostInfo.disable_stitch = true;
   }
 
-  // Add brand content toggles (only if disclosure toggle is enabled)
   if (accountSettings.brand_content_toggle) {
-    postInfo.brand_content_toggle = true;
-    
-    // Support both new (brand_organic, brand_content) and legacy (brand_organic_toggle) fields
-    const hasOrganic = accountSettings.brand_organic ?? accountSettings.brand_organic_toggle === true;
-    const hasBranded = accountSettings.brand_content ?? (accountSettings.brand_organic_toggle === false && accountSettings.brand_content_toggle);
-    
-    // TikTok API: brand_organic_toggle=true for "Your brand", false/omitted for "Branded content"
-    // If both are selected, per guidelines: label as "Paid partnership" (send brand_organic_toggle=false)
+    basePostInfo.brand_content_toggle = true;
+    const hasOrganic =
+      accountSettings.brand_organic ?? accountSettings.brand_organic_toggle === true;
+    const hasBranded =
+      accountSettings.brand_content ??
+      (accountSettings.brand_organic_toggle === false && accountSettings.brand_content_toggle);
     if (hasOrganic && !hasBranded) {
-      // Only "Your brand" selected -> Brand Organic
-      postInfo.brand_organic_toggle = true;
+      basePostInfo.brand_organic_toggle = true;
     } else if (hasBranded) {
-      // "Branded content" selected (with or without "Your brand") -> Paid partnership
-      // Per guidelines: if both selected, label as "Paid partnership"
-      postInfo.brand_organic_toggle = false;
+      basePostInfo.brand_organic_toggle = false;
     }
   }
 
-  const initRes = await fetch(
-    "https://open.tiktokapis.com/v2/post/publish/video/init/",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json; charset=UTF-8",
-        Authorization: `Bearer ${accessToken}`,
+  let initRes: Response;
+  if (isPhotoPost) {
+    // Photo Post API: content/init with media_type PHOTO, post_mode DIRECT_POST
+    const photoUrls = imageEntries.map((m) => m.url).filter(Boolean);
+    if (photoUrls.length === 0) {
+      return { status: "failed", lastError: "No valid image URLs.", error: "No images" };
+    }
+    
+    // Build photo-specific post_info (no duet/stitch, different brand content structure)
+    const photoPostInfo: {
+      privacy_level: string;
+      title?: string;
+      description?: string;
+      disable_comment?: boolean;
+      brand_content_toggle?: boolean;
+      brand_organic_toggle?: boolean;
+    } = {
+      privacy_level: accountSettings.privacy_level,
+    };
+
+    if (caption) {
+      photoPostInfo.title = truncate(caption, 90); // Photo title max 90 UTF-16 runes
+      photoPostInfo.description = truncate(caption, 4000); // Photo description max 4000
+    }
+
+    if (accountSettings.disable_comment) {
+      photoPostInfo.disable_comment = true;
+    }
+
+    // Photo posts: brand_content_toggle and brand_organic_toggle are independent booleans
+    // brand_content_toggle: true if promoting third-party business (Branded content radio)
+    // brand_organic_toggle: true if promoting creator's own business (Your brand radio)
+    if (accountSettings.brand_content_toggle) {
+      const hasOrganic = accountSettings.brand_organic ?? accountSettings.brand_organic_toggle === true;
+      const hasBranded = accountSettings.brand_content ?? (accountSettings.brand_organic_toggle === false && accountSettings.brand_content_toggle);
+      
+      if (hasBranded) {
+        // "Branded content" selected: third-party paid partnership
+        photoPostInfo.brand_content_toggle = true;
+        photoPostInfo.brand_organic_toggle = false;
+      } else if (hasOrganic) {
+        // "Your brand" selected: creator's own business
+        photoPostInfo.brand_organic_toggle = true;
+        // brand_content_toggle stays false/undefined for "Your brand"
+      }
+    }
+
+    const requestBody = {
+      media_type: "PHOTO",
+      post_mode: "DIRECT_POST",
+      post_info: photoPostInfo,
+      source_info: {
+        source: "PULL_FROM_URL",
+        photo_images: photoUrls,
+        photo_cover_index: 0,
       },
-      body: JSON.stringify({
-        post_info: postInfo,
-        source_info: {
-          source: "PULL_FROM_URL",
-          video_url: videoEntry.url,
+    };
+
+    console.log("TikTok photo post request:", JSON.stringify(requestBody, null, 2));
+
+    initRes = await fetch(
+      "https://open.tiktokapis.com/v2/post/publish/content/init/",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json; charset=UTF-8",
+          Authorization: `Bearer ${accessToken}`,
         },
-      }),
-    },
-  );
+        body: JSON.stringify(requestBody),
+      },
+    );
+  } else {
+    // Video: existing video/init flow
+    initRes = await fetch(
+      "https://open.tiktokapis.com/v2/post/publish/video/init/",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json; charset=UTF-8",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          post_info: basePostInfo,
+          source_info: {
+            source: "PULL_FROM_URL",
+            video_url: videoEntry!.url,
+          },
+        }),
+      },
+    );
+  }
 
   const initData = (await initRes.json().catch((e) => {
     console.error("TikTok publish/init: failed to parse JSON", e);
@@ -821,9 +891,9 @@ async function publishToTikTok(
     error?: { code?: string; message?: string; log_id?: string };
   };
 
-  // Log full TikTok API response before any error return (for debugging)
+  const mediaLabel = isPhotoPost ? "Image" : "Video";
   if (!initRes.ok || (initData.error?.code && initData.error.code !== "ok")) {
-    console.error("TikTok publish/init API response:", {
+    console.error(`TikTok publish/init (${isPhotoPost ? "photo" : "video"}) API response:`, {
       httpStatus: initRes.status,
       body: initData,
       errorCode: initData.error?.code,
@@ -836,8 +906,7 @@ async function publishToTikTok(
     if (initData.error?.code === "url_ownership_unverified") {
       return {
         status: "failed",
-        lastError:
-          "Video URL domain is not verified in your TikTok app. Verify the domain in TikTok for Developers.",
+        lastError: `${mediaLabel} URL domain is not verified in your TikTok app. Verify the domain in TikTok for Developers.`,
         error: err,
       };
     }
@@ -908,7 +977,7 @@ async function publishToTikTok(
     if (status === "FAILED") {
       const lastError =
         (statusData.error as { message?: string } | undefined)?.message ||
-        "TikTok rejected or failed to process the video.";
+        `TikTok rejected or failed to process the ${isPhotoPost ? "photo" : "video"}.`;
       return {
         status: "failed",
         lastError,

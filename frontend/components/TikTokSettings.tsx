@@ -19,7 +19,7 @@ export type TikTokPostSettings = {
 };
 
 const DEFAULT_SETTINGS: TikTokPostSettings = {
-  privacy_level: "PUBLIC",
+  privacy_level: "PUBLIC_TO_EVERYONE", // Default to Public
   disable_comment: false, // Allow comments (checked = allowed)
   disable_duet: false, // Allow duet (checked = allowed)
   disable_stitch: false, // Allow stitch (checked = allowed)
@@ -97,7 +97,7 @@ export function TikTokSettings({
         </p>
       </div>
 
-      {/* Privacy Level - Only me selectable until app approval */}
+      {/* Privacy Level - Public is default */}
       <div>
         <label className="block text-sm font-medium text-gray-900 mb-2">
           Privacy Level <span className="text-red-500">*</span>
@@ -107,7 +107,7 @@ export function TikTokSettings({
           onChange={(e) => updateSetting("privacy_level", e.target.value)}
           className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
         >
-          <option value="PUBLIC">Public (default)</option>
+          <option value="PUBLIC_TO_EVERYONE">Public (default)</option>
           <option value="MUTUAL_FOLLOW_FRIENDS">Friends</option>
           <option value="SELF_ONLY">Only me</option>
         </select>
@@ -184,7 +184,11 @@ export function TikTokSettings({
                 name={`brand-type-${accountId}`}
                 checked={settings.brand_organic && !settings.brand_content}
                 onChange={() => {
-                  const next = { ...settings, brand_organic: true, brand_content: false };
+                  const next = {
+                    ...settings,
+                    brand_organic: true,
+                    brand_content: false,
+                  };
                   setSettings(next);
                   onChange(next);
                 }}
@@ -194,7 +198,8 @@ export function TikTokSettings({
                 <span className="text-sm text-gray-700">Your brand</span>
                 {settings.brand_organic && !settings.brand_content && (
                   <p className="text-xs text-amber-700 mt-1 italic">
-                    Your video will be labeled as &quot;Promotional content&quot;
+                    Your video will be labeled as &quot;Promotional
+                    content&quot;
                   </p>
                 )}
               </div>
@@ -205,7 +210,11 @@ export function TikTokSettings({
                 name={`brand-type-${accountId}`}
                 checked={!settings.brand_organic && settings.brand_content}
                 onChange={() => {
-                  const next = { ...settings, brand_organic: false, brand_content: true };
+                  const next = {
+                    ...settings,
+                    brand_organic: false,
+                    brand_content: true,
+                  };
                   setSettings(next);
                   onChange(next);
                 }}
@@ -222,7 +231,8 @@ export function TikTokSettings({
             </label>
             {!settings.brand_organic && !settings.brand_content && (
               <p className="text-xs text-red-600 ml-7">
-                Please select whether your content promotes your brand or branded content.
+                Please select whether your content promotes your brand or
+                branded content.
               </p>
             )}
           </div>

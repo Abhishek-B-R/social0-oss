@@ -9,6 +9,8 @@ import {
   MdOutlineVideocam,
   MdClose,
 } from "react-icons/md";
+import { type TikTokPostSettings } from "@/components/TikTokSettings";
+import { TikTokSettingsModal } from "@/components/TikTokSettingsModal";
 
 type Account = {
   id: string;
@@ -36,6 +38,20 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [tiktokSettings, setTiktokSettings] = useState<
+    Record<string, TikTokPostSettings>
+  >({});
+  const [tiktokModalAccountId, setTiktokModalAccountId] = useState<string | null>(null);
+
+  const defaultTiktokSettings: TikTokPostSettings = {
+    privacy_level: "PUBLIC_TO_EVERYONE", // Default to Public
+    disable_comment: false,
+    disable_duet: false,
+    disable_stitch: false,
+    brand_content_toggle: false,
+    brand_organic: false,
+    brand_content: false,
+  };
 
   useEffect(() => {
     imagesRef.current = images;
@@ -51,8 +67,14 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+        // Close modal if this account's modal was open
+        if (tiktokModalAccountId === id) setTiktokModalAccountId(null);
+      } else {
+        next.add(id);
+        // Don't auto-open modal - only open when badge is clicked
+      }
       return next;
     });
   };
@@ -209,6 +231,38 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+    const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
+    const tiktokAccounts = selectedAccounts.filter((a) => a.platform === "tiktok");
+
+    if (hasTikTok) {
+      for (const tiktokAccount of tiktokAccounts) {
+        const settings = tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
+        // Default settings have privacy_level: "PUBLIC_TO_EVERYONE", so this should always pass
+        if (!settings.privacy_level) {
+          setError(
+            `TikTok: Privacy level is required. Please select a privacy level for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
+          );
+          return;
+        }
+
+        if (settings.brand_content_toggle && !settings.brand_organic && !settings.brand_content) {
+          setError(
+            `TikTok: If promoting a brand/product/service, you must select at least one option (Your brand or Branded content).`,
+          );
+          return;
+        }
+
+        if (settings.brand_content && settings.privacy_level === "SELF_ONLY") {
+          setError(
+            `TikTok: Branded content visibility cannot be set to private. Please select Public or Friends.`,
+          );
+          return;
+        }
+      }
+    }
+
     setLoading(true);
 
     const allMedia: Array<{ file: File; order: number }> = [
@@ -237,12 +291,25 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
         ? `[${images.length} image(s)${videos.length ? ` + ${videos.length} video(s)` : ""}]`
         : "");
 
+    const metadata: Record<string, unknown> = {};
+    if (hasTikTok) {
+      metadata.tiktok = tiktokAccounts.reduce<Record<string, TikTokPostSettings>>(
+        (acc, tiktokAccount) => {
+          acc[tiktokAccount.id] =
+            tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
+          return acc;
+        },
+        {},
+      );
+    }
+
     const result = await createPost(
       text,
       Array.from(selectedIds),
       mode,
       scheduledAt,
       mediaIds,
+      Object.keys(metadata).length > 0 ? metadata : undefined,
     );
     setLoading(false);
     if (result.success) {
@@ -252,6 +319,10 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
       setError(result.error);
     }
   };
+
+  const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+  const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
+  const tiktokAccounts = selectedAccounts.filter((a) => a.platform === "tiktok");
 
   const hasContent =
     content.trim().length > 0 || images.length > 0 || videos.length > 0;
@@ -394,6 +465,23 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
         )}
       </div>
 
+      {tiktokModalAccountId && (
+        <TikTokSettingsModal
+          isOpen={true}
+          accountId={tiktokModalAccountId}
+          accountUsername={accounts.find((a) => a.id === tiktokModalAccountId)?.platformUsername}
+          value={tiktokSettings[tiktokModalAccountId] ?? defaultTiktokSettings}
+          onChange={(settings) => {
+            setTiktokSettings((prev) => ({
+              ...prev,
+              [tiktokModalAccountId]: settings,
+            }));
+          }}
+          onSave={() => setTiktokModalAccountId(null)}
+          onClose={() => setTiktokModalAccountId(null)}
+        />
+      )}
+
       <PostFormOptions
         accounts={accounts}
         selectedIds={selectedIds}
@@ -412,6 +500,16 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
           (mode === "scheduled" && !scheduledAt) ||
           !hasContent
         }
+        tiktokConfiguredIds={
+          hasTikTok
+            ? new Set(
+                tiktokAccounts
+                  .filter((a) => tiktokSettings[a.id]?.privacy_level)
+                  .map((a) => a.id)
+              )
+            : undefined
+        }
+        onOpenTikTokSettings={setTiktokModalAccountId}
       />
     </form>
   );

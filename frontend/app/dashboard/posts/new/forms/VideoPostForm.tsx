@@ -17,7 +17,7 @@ type Account = {
 };
 
 const defaultTiktokSettings: TikTokPostSettings = {
-  privacy_level: "SELF_ONLY",
+  privacy_level: "PUBLIC_TO_EVERYONE", // Default to Public
   disable_comment: false,
   disable_duet: false,
   disable_stitch: false,
@@ -43,17 +43,15 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
   const [tiktokModalAccountId, setTiktokModalAccountId] = useState<string | null>(null);
 
   const toggleAccount = (id: string) => {
-    const account = accounts.find((a) => a.id === id);
-    const isTiktok = account?.platform === "tiktok";
-    
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
+        // Close modal if this account's modal was open
         if (tiktokModalAccountId === id) setTiktokModalAccountId(null);
       } else {
         next.add(id);
-        if (isTiktok) setTiktokModalAccountId(id);
+        // Don't auto-open modal - only open when badge is clicked
       }
       return next;
     });
@@ -98,8 +96,9 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
 
     if (hasTikTok) {
       for (const tiktokAccount of tiktokAccounts) {
-        const settings = tiktokSettings[tiktokAccount.id];
-        if (!settings || !settings.privacy_level) {
+        const settings = tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
+        // Default settings have privacy_level: "PUBLIC_TO_EVERYONE", so this should always pass
+        if (!settings.privacy_level) {
           setError(
             `TikTok: Privacy level is required. Please select a privacy level for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
           );

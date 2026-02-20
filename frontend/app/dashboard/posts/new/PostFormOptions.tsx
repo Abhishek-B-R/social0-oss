@@ -118,16 +118,18 @@ export function PostFormOptions({
                       e.stopPropagation();
                       onOpenTikTokSettings(acc.id);
                     }}
-                    className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
-                    title={tiktokConfiguredIds?.has(acc.id) ? "TikTok settings (configured)" : "TikTok settings (not configured)"}
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors cursor-pointer"
+                    title={
+                      tiktokConfiguredIds?.has(acc.id)
+                        ? "TikTok settings (configured)"
+                        : "TikTok settings (not configured)"
+                    }
                   >
-                    {tiktokConfiguredIds?.has(acc.id) ? (
-                      <span className="size-4 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0" aria-hidden>
-                        <svg className="size-2.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>
-                    ) : (
-                      <span className="size-2 rounded-full bg-red-500 flex-shrink-0" aria-hidden />
-                    )}
-                    <span>⚙ TikTok Settings</span>
+                    <span
+                      className="size-2 rounded-full bg-red-500 flex-shrink-0"
+                      aria-hidden
+                    />
+                    <span>⚙ Settings</span>
                   </button>
                 )}
               </label>

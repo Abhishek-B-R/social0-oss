@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { PostFormOptions } from "../PostFormOptions";
 import { MdOutlineAddPhotoAlternate, MdClose } from "react-icons/md";
+import { type TikTokPostSettings } from "@/components/TikTokSettings";
+import { TikTokSettingsModal } from "@/components/TikTokSettingsModal";
 
 type Account = {
   id: string;
@@ -28,6 +30,22 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [tiktokSettings, setTiktokSettings] = useState<
+    Record<string, TikTokPostSettings>
+  >({});
+  const [tiktokModalAccountId, setTiktokModalAccountId] = useState<
+    string | null
+  >(null);
+
+  const defaultTiktokSettings: TikTokPostSettings = {
+    privacy_level: "PUBLIC_TO_EVERYONE", // Default to Public
+    disable_comment: false,
+    disable_duet: false,
+    disable_stitch: false,
+    brand_content_toggle: false,
+    brand_organic: false,
+    brand_content: false,
+  };
 
   useEffect(() => {
     imagesRef.current = images;
@@ -41,8 +59,14 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+        // Close modal if this account's modal was open
+        if (tiktokModalAccountId === id) setTiktokModalAccountId(null);
+      } else {
+        next.add(id);
+        // Don't auto-open modal - only open when badge is clicked
+      }
       return next;
     });
   };
@@ -59,7 +83,8 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
     const files = e.target.files;
     if (!files?.length) return;
     const newImages: ImageFile[] = [];
-    const maxOrder = images.length > 0 ? Math.max(...images.map((i) => i.order)) : 0;
+    const maxOrder =
+      images.length > 0 ? Math.max(...images.map((i) => i.order)) : 0;
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (!file.type.startsWith("image/")) {
@@ -110,6 +135,38 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (hasTikTok) {
+      for (const tiktokAccount of tiktokAccounts) {
+        const settings = tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
+        // Default settings have privacy_level: "PUBLIC_TO_EVERYONE", so this should always pass
+        if (!settings.privacy_level) {
+          setError(
+            `TikTok: Privacy level is required. Please select a privacy level for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
+          );
+          return;
+        }
+
+        if (
+          settings.brand_content_toggle &&
+          !settings.brand_organic &&
+          !settings.brand_content
+        ) {
+          setError(
+            `TikTok: If promoting a brand/product/service, you must select at least one option (Your brand or Branded content).`,
+          );
+          return;
+        }
+
+        if (settings.brand_content && settings.privacy_level === "SELF_ONLY") {
+          setError(
+            `TikTok: Branded content visibility cannot be set to private. Please select Public or Friends.`,
+          );
+          return;
+        }
+      }
+    }
+
     setLoading(true);
 
     const sortedImages = [...images].sort((a, b) => a.order - b.order);
@@ -118,7 +175,10 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
       try {
         const fd = new FormData();
         fd.set("file", img.file);
-        const res = await fetch("/api/media/upload", { method: "POST", body: fd });
+        const res = await fetch("/api/media/upload", {
+          method: "POST",
+          body: fd,
+        });
         const data = await res.json();
         if (data.id) mediaIds.push(data.id);
       } catch {
@@ -129,14 +189,26 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
     }
 
     const text =
-      content.trim() ||
-      (images.length ? `[${images.length} image(s)]` : "");
+      content.trim() || (images.length ? `[${images.length} image(s)]` : "");
+
+    const metadata: Record<string, unknown> = {};
+    if (hasTikTok) {
+      metadata.tiktok = tiktokAccounts.reduce<
+        Record<string, TikTokPostSettings>
+      >((acc, tiktokAccount) => {
+        acc[tiktokAccount.id] =
+          tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
+        return acc;
+      }, {});
+    }
+
     const result = await createPost(
       text,
       Array.from(selectedIds),
       mode,
       scheduledAt,
       mediaIds,
+      Object.keys(metadata).length > 0 ? metadata : undefined,
     );
     setLoading(false);
     if (result.success) {
@@ -146,6 +218,12 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
       setError(result.error);
     }
   };
+
+  const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+  const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
+  const tiktokAccounts = selectedAccounts.filter(
+    (a) => a.platform === "tiktok",
+  );
 
   const submitLabel =
     mode === "draft"
@@ -186,35 +264,39 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
               Carousel post: Drag to reorder (mainly for Instagram)
             </p>
             <div className="flex flex-wrap gap-2">
-              {[...images].sort((a, b) => a.order - b.order).map((img, index) => (
-                <div
-                  key={img.preview}
-                  draggable
-                  onDragStart={() => handleDragStart(index)}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDragEnd={handleDragEnd}
-                  className="relative h-20 w-20 shrink-0 cursor-move overflow-hidden rounded-lg border border-gray-200 hover:border-emerald-400 transition-colors"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */}
-                  <img
-                    src={img.preview}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    draggable={false}
-                  />
-                  <div className="absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center">
-                    <span className="text-xs font-bold text-white">{img.order}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeImage(img.preview)}
-                    className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
-                    onMouseDown={(e) => e.stopPropagation()}
+              {[...images]
+                .sort((a, b) => a.order - b.order)
+                .map((img, index) => (
+                  <div
+                    key={img.preview}
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className="relative h-20 w-20 shrink-0 cursor-move overflow-hidden rounded-lg border border-gray-200 hover:border-emerald-400 transition-colors"
                   >
-                    <MdClose className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
+                    {/* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */}
+                    <img
+                      src={img.preview}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      draggable={false}
+                    />
+                    <div className="absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center">
+                      <span className="text-xs font-bold text-white">
+                        {img.order}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeImage(img.preview)}
+                      className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      <MdClose className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -235,6 +317,26 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
         />
       </div>
 
+      {tiktokModalAccountId && (
+        <TikTokSettingsModal
+          isOpen={true}
+          accountId={tiktokModalAccountId}
+          accountUsername={
+            accounts.find((a) => a.id === tiktokModalAccountId)
+              ?.platformUsername
+          }
+          value={tiktokSettings[tiktokModalAccountId] ?? defaultTiktokSettings}
+          onChange={(settings) => {
+            setTiktokSettings((prev) => ({
+              ...prev,
+              [tiktokModalAccountId]: settings,
+            }));
+          }}
+          onSave={() => setTiktokModalAccountId(null)}
+          onClose={() => setTiktokModalAccountId(null)}
+        />
+      )}
+
       <PostFormOptions
         accounts={accounts}
         selectedIds={selectedIds}
@@ -253,6 +355,16 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
           (mode === "scheduled" && !scheduledAt) ||
           (!content.trim() && images.length === 0)
         }
+        tiktokConfiguredIds={
+          hasTikTok
+            ? new Set(
+                tiktokAccounts
+                  .filter((a) => tiktokSettings[a.id]?.privacy_level)
+                  .map((a) => a.id),
+              )
+            : undefined
+        }
+        onOpenTikTokSettings={setTiktokModalAccountId}
       />
     </form>
   );

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TikTokSettings, type TikTokPostSettings } from "@/components/TikTokSettings";
+import {
+  TikTokSettings,
+  type TikTokPostSettings,
+} from "@/components/TikTokSettings";
 
 type TikTokSettingsModalProps = {
   isOpen: boolean;
@@ -28,6 +31,7 @@ export function TikTokSettingsModal({
   const [localValidation, setLocalValidation] = useState<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (validationError) setLocalValidation(validationError);
     else setLocalValidation(null);
   }, [validationError]);
@@ -39,12 +43,20 @@ export function TikTokSettingsModal({
       setLocalValidation("Please select a privacy level.");
       return;
     }
-    if (value.brand_content_toggle && !value.brand_organic && !value.brand_content) {
-      setLocalValidation("Select at least one option (Your brand or Branded content) when promoting a brand.");
+    if (
+      value.brand_content_toggle &&
+      !value.brand_organic &&
+      !value.brand_content
+    ) {
+      setLocalValidation(
+        "Select at least one option (Your brand or Branded content) when promoting a brand.",
+      );
       return;
     }
     if (value.brand_content && value.privacy_level === "SELF_ONLY") {
-      setLocalValidation("Branded content cannot be set to private. Please select Public or Friends.");
+      setLocalValidation(
+        "Branded content cannot be set to private. Please select Public or Friends.",
+      );
       return;
     }
     setLocalValidation(null);
@@ -66,10 +78,15 @@ export function TikTokSettingsModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between shrink-0 p-4 border-b border-gray-100">
-          <h2 id="tiktok-settings-title" className="text-lg font-semibold text-gray-900">
+          <h2
+            id="tiktok-settings-title"
+            className="text-lg font-semibold text-gray-900"
+          >
             TikTok settings
             {accountUsername && (
-              <span className="text-gray-500 font-normal ml-1">@{accountUsername}</span>
+              <span className="text-gray-500 font-normal ml-1">
+                @{accountUsername}
+              </span>
             )}
           </h2>
           <button
@@ -78,8 +95,18 @@ export function TikTokSettingsModal({
             className="text-gray-400 hover:text-gray-600 rounded-lg p-1.5 transition-colors"
             aria-label="Close"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
