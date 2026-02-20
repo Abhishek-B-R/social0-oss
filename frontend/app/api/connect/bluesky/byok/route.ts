@@ -9,10 +9,13 @@ import { z } from "zod";
 import { NextRequest } from "next/server";
 
 const byokSchema = z.object({
-  handle: z.string().min(1, "Handle is required").refine(
-    (val) => val.startsWith("@") || val.includes(".bsky.social"),
-    "Handle should be in format @username.bsky.social",
-  ),
+  handle: z
+    .string()
+    .min(1, "Handle is required")
+    .refine(
+      (val) => val.startsWith("@") || val.includes(".bsky.social"),
+      "Handle should be in format @username.bsky.social",
+    ),
   appPassword: z.string().min(1, "App password is required"),
 });
 
@@ -28,7 +31,9 @@ export async function POST(req: NextRequest) {
     const validated = byokSchema.parse(body);
 
     // Normalize handle (remove @ if present, ensure it's a full handle)
-    let handle = validated.handle.trim();
+    let handle = validated.handle
+      .trim()
+      .replace(/[\u200B-\u200D\uFEFF\u202A-\u202E]/g, "");
     if (handle.startsWith("@")) {
       handle = handle.slice(1);
     }
@@ -41,27 +46,36 @@ export async function POST(req: NextRequest) {
     // Use com.atproto.server.createSession endpoint
     let userInfo;
     try {
-      const sessionResponse = await fetch("https://bsky.social/xrpc/com.atproto.server.createSession", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          identifier: handle,
-          password: validated.appPassword,
-        }),
+      console.log("🔍 Bluesky auth attempt:", {
+        handle,
+        passwordLength: validated.appPassword.length,
+        passwordPrefix: validated.appPassword.substring(0, 4), // First 4 chars only
       });
+      const sessionResponse = await fetch(
+        "https://bsky.social/xrpc/com.atproto.server.createSession",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            identifier: handle,
+            password: validated.appPassword,
+          }),
+        },
+      );
 
       if (!sessionResponse.ok) {
         const errorData = await sessionResponse.json();
         console.error("Bluesky session creation error:", errorData);
         throw new Error(
-          errorData.message || "Failed to authenticate with Bluesky. Please check your handle and app password.",
+          errorData.message ||
+            "Failed to authenticate with Bluesky. Please check your handle and app password.",
         );
       }
 
       const sessionData = await sessionResponse.json();
-      
+
       // Get profile info
       const profileResponse = await fetch(
         `https://bsky.social/xrpc/com.atproto.repo.getRecord?repo=${sessionData.did}&collection=app.bsky.actor.profile&rkey=self`,
@@ -75,7 +89,12 @@ export async function POST(req: NextRequest) {
       let profileImageUrl = null;
       if (profileResponse.ok) {
         const profileData = await profileResponse.json();
-        profileImageUrl = profileData.value?.avatar?.ref || null;
+        const avatarCid =
+          profileData.value?.avatar?.ref?.$link ||
+          profileData.value?.avatar?.ref;
+        profileImageUrl = avatarCid
+          ? `https://cdn.bsky.app/img/avatar/plain/${sessionData.did}/${avatarCid}@jpeg`
+          : null;
       }
 
       userInfo = {
@@ -85,7 +104,9 @@ export async function POST(req: NextRequest) {
       };
     } catch (err: unknown) {
       const errorMessage =
-        err instanceof Error ? err.message : "Failed to validate Bluesky credentials";
+        err instanceof Error
+          ? err.message
+          : "Failed to validate Bluesky credentials";
       console.error("Bluesky validation error:", err);
       return Response.json(
         {
@@ -110,7 +131,10 @@ export async function POST(req: NextRequest) {
     // Encrypt handle and app password
     // Store handle in encryptedAccessToken and app password in encryptedRefreshToken
     const encryptedAccessToken = encryptToken(handle, accountId);
-    const encryptedRefreshToken = encryptToken(validated.appPassword, accountId);
+    const encryptedRefreshToken = encryptToken(
+      validated.appPassword,
+      accountId,
+    );
 
     if (existing) {
       // Update existing account

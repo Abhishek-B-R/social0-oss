@@ -3,7 +3,6 @@ export const PLATFORMS = [
   { id: "linkedin", name: "LinkedIn", icon: null },
   { id: "facebook", name: "Facebook", icon: null },
   { id: "bluesky", name: "Bluesky", icon: null },
-  { id: "hashnode", name: "Hashnode", icon: null },
   { id: "youtube", name: "YouTube", icon: null },
   { id: "pinterest", name: "Pinterest", icon: null },
   { id: "instagram", name: "Instagram", icon: null },
@@ -11,6 +10,7 @@ export const PLATFORMS = [
   { id: "twitter_x", name: "X (Twitter)", icon: null },
   { id: "threads", name: "Threads", icon: null },
   { id: "devto", name: "Dev.to", icon: null },
+  { id: "hashnode", name: "Hashnode", icon: null },
   { id: "medium", name: "Medium", icon: null },
 ] as const;
 
