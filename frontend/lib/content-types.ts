@@ -38,6 +38,7 @@ export const CONTENT_TYPES = [
       "linkedin",
       "threads",
       "youtube",
+      "pinterest",
       "tiktok",
       "instagram",
     ],

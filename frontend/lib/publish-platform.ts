@@ -1104,21 +1104,36 @@ async function publishToPinterest(
   const media = post.mediaIds?.length
     ? await getMediaWithUrls(post.mediaIds)
     : [];
-  const imageUrl = media.find((m) => m.mimeType.startsWith("image/"))?.url;
-  if (!imageUrl) {
+  const imageEntry = media.find((m) => m.mimeType.startsWith("image/"));
+  const videoEntry = media.find((m) => m.mimeType.startsWith("video/"));
+  const imageUrl = imageEntry?.url;
+  const videoUrl = videoEntry?.url;
+
+  if (!imageUrl && !videoUrl) {
     const hint =
       post.mediaIds?.length && media.length === 0
-        ? "Upload images through this app; external URLs are not allowed."
-        : "Pinterest pins require at least one image.";
-    return { status: "failed", lastError: hint, error: "No image" };
+        ? "Upload images or video through this app; external URLs are not allowed."
+        : "Pinterest pins require at least one image or video.";
+    return { status: "failed", lastError: hint, error: "No media" };
   }
 
   const rawDesc = post.finalContent?.trim() ?? "";
   const title = truncate(rawDesc, 100) || "Pin";
   const description = truncate(rawDesc, 500);
-  const mimeType =
-    media.find((m) => m.mimeType.startsWith("image/"))?.mimeType ??
-    "image/jpeg";
+
+  const isVideo = !!videoUrl;
+  const media_source = isVideo
+    ? {
+        source_type: "video_url" as const,
+        url: videoUrl,
+        content_type: videoEntry?.mimeType ?? "video/mp4",
+      }
+    : {
+        source_type: "image_url" as const,
+        url: imageUrl!,
+        content_type: imageEntry?.mimeType ?? "image/jpeg",
+      };
+
   // Using sandbox API for trial access
   const res = await fetch("https://api-sandbox.pinterest.com/v5/pins", {
     method: "POST",
@@ -1130,11 +1145,7 @@ async function publishToPinterest(
       board_id: boardId,
       title,
       description: description || undefined,
-      media_source: {
-        source_type: "image_url",
-        url: imageUrl,
-        content_type: mimeType,
-      },
+      media_source,
     }),
   });
   const data = (await res.json().catch(() => ({}))) as {
