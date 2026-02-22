@@ -334,6 +334,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
           }}
           onSave={() => setTiktokModalAccountId(null)}
           onClose={() => setTiktokModalAccountId(null)}
+          mediaType="photo"
         />
       )}
 

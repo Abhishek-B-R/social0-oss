@@ -479,6 +479,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
           }}
           onSave={() => setTiktokModalAccountId(null)}
           onClose={() => setTiktokModalAccountId(null)}
+          mediaType={videos.length > 0 ? "video" : "photo"}
         />
       )}
 

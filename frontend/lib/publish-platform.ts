@@ -15,6 +15,10 @@ import {
   truncate,
 } from "@/lib/publish-validation";
 import { getValidToken } from "@/lib/token-refresh";
+import {
+  processImageForTikTok,
+  TikTokImageError,
+} from "@/lib/tiktok-photo-process";
 
 export type PublishPlatformResult = {
   status: "published" | "failed";
@@ -1545,6 +1549,28 @@ async function publishToTikTok(
     return { status: "failed", lastError: hint, error: "No media" };
   }
 
+  // Photo post: TikTok supports JPG/JPEG/WEBP only — PNG is not supported
+  if (isPhotoPost) {
+    const hasPng = imageEntries.some(
+      (m) => m.mimeType === "image/png" || m.mimeType?.toLowerCase().includes("png"),
+    );
+    if (hasPng) {
+      return {
+        status: "failed",
+        lastError:
+          "TikTok does not support PNG images. Please use JPG or WEBP.",
+        error: "PNG not supported",
+      };
+    }
+    if (imageEntries.length > 35) {
+      return {
+        status: "failed",
+        lastError: "TikTok allows at most 35 images per post.",
+        error: "Too many images",
+      };
+    }
+  }
+
   // Get TikTok settings from post metadata
   const tiktokMetadata = post.metadata?.tiktok as
     | Record<
@@ -1633,11 +1659,38 @@ async function publishToTikTok(
   let initRes: Response;
   if (isPhotoPost) {
     // Photo Post API: content/init with media_type PHOTO, post_mode DIRECT_POST
-    const photoUrls = imageEntries.map((m) => m.url).filter(Boolean);
-    if (photoUrls.length === 0) {
+    const hasAnyUrl = imageEntries.some((m) => m.url);
+    if (!hasAnyUrl) {
       return {
         status: "failed",
         lastError: "No valid image URLs.",
+        error: "No images",
+      };
+    }
+
+    // Validate and process each image for TikTok (dimensions, size, aspect ratio); re-upload with -tiktok suffix
+    const photoUrls: string[] = [];
+    for (let i = 0; i < imageEntries.length; i++) {
+      const entry = imageEntries[i];
+      if (!entry.url) continue;
+      try {
+        const processedUrl = await processImageForTikTok(entry.url, entry.mimeType);
+        photoUrls.push(processedUrl);
+      } catch (err) {
+        const msg =
+          err instanceof TikTokImageError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "Failed to process image for TikTok";
+        return { status: "failed", lastError: msg, error: msg };
+      }
+    }
+
+    if (photoUrls.length === 0) {
+      return {
+        status: "failed",
+        lastError: "No valid image URLs after processing.",
         error: "No images",
       };
     }
@@ -1692,8 +1745,8 @@ async function publishToTikTok(
       post_info: photoPostInfo,
       source_info: {
         source: "PULL_FROM_URL",
+        photo_cover_index: 1,
         photo_images: photoUrls,
-        photo_cover_index: 0,
       },
     };
 

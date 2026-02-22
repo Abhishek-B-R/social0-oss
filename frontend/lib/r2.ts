@@ -16,6 +16,23 @@ export function isR2Configured(): boolean {
   return getR2Config() !== null;
 }
 
+/** Base URL for R2 (no trailing slash). Used to derive object key from a public URL. */
+export function getR2PublicBaseUrl(): string | null {
+  const url = getR2Config()?.publicUrl;
+  return url ? url.replace(/\/$/, "") : null;
+}
+
+/**
+ * If the given URL is under our R2 public URL, return the object key; otherwise null.
+ * Used to build a -tiktok variant key for re-uploaded processed images.
+ */
+export function getR2KeyFromUrl(url: string): string | null {
+  const base = getR2PublicBaseUrl();
+  if (!base || !url.startsWith(base)) return null;
+  const key = url.slice(base.length).replace(/^\//, "");
+  return key || null;
+}
+
 export function getR2Client(): S3Client {
   const config = getR2Config();
   if (!config) {

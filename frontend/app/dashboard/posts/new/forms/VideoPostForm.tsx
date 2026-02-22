@@ -247,6 +247,7 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
           }}
           onSave={() => setTiktokModalAccountId(null)}
           onClose={() => setTiktokModalAccountId(null)}
+          mediaType="video"
         />
       )}
 

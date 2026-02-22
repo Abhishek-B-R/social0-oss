@@ -16,6 +16,8 @@ type TikTokSettingsModalProps = {
   onClose: () => void;
   /** When set, show inline in modal and do not allow close on save until fixed */
   validationError?: string | null;
+  /** When "photo", only Allow Comments is shown (Duet/Stitch do not apply to photo posts). */
+  mediaType?: "video" | "photo";
 };
 
 export function TikTokSettingsModal({
@@ -27,6 +29,7 @@ export function TikTokSettingsModal({
   onSave,
   onClose,
   validationError = null,
+  mediaType,
 }: TikTokSettingsModalProps) {
   const [localValidation, setLocalValidation] = useState<string | null>(null);
 
@@ -119,6 +122,7 @@ export function TikTokSettingsModal({
               setLocalValidation(null);
               onChange(s);
             }}
+            mediaType={mediaType}
           />
         </div>
 

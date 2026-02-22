@@ -6,6 +6,8 @@ type TikTokSettingsProps = {
   accountId: string;
   value: TikTokPostSettings;
   onChange: (settings: TikTokPostSettings) => void;
+  /** When "photo", only Allow Comments is shown (Duet/Stitch do not apply to photo posts). */
+  mediaType?: "video" | "photo";
 };
 
 export type TikTokPostSettings = {
@@ -32,7 +34,9 @@ export function TikTokSettings({
   accountId,
   value,
   onChange,
+  mediaType,
 }: TikTokSettingsProps) {
+  const isPhotoOnly = mediaType === "photo";
   const [settings, setSettings] = useState<TikTokPostSettings>(() => ({
     ...DEFAULT_SETTINGS,
     ...value,
@@ -117,7 +121,7 @@ export function TikTokSettings({
         </p>
       </div>
 
-      {/* Interaction toggles - all checked by default (allowed) */}
+      {/* Interaction toggles. For photo posts only Allow Comments applies (Duet/Stitch are video-only). */}
       <div className="space-y-3">
         <p className="text-sm font-medium text-gray-900">Allow Interactions</p>
         <div className="space-y-2">
@@ -132,26 +136,32 @@ export function TikTokSettings({
             />
             <span className="text-sm text-gray-700">Allow Comments</span>
           </label>
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={!settings.disable_duet}
-              onChange={(e) => updateSetting("disable_duet", !e.target.checked)}
-              className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
-            />
-            <span className="text-sm text-gray-700">Allow Duet</span>
-          </label>
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={!settings.disable_stitch}
-              onChange={(e) =>
-                updateSetting("disable_stitch", !e.target.checked)
-              }
-              className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
-            />
-            <span className="text-sm text-gray-700">Allow Stitch</span>
-          </label>
+          {!isPhotoOnly && (
+            <>
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={!settings.disable_duet}
+                  onChange={(e) =>
+                    updateSetting("disable_duet", !e.target.checked)
+                  }
+                  className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
+                />
+                <span className="text-sm text-gray-700">Allow Duet</span>
+              </label>
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={!settings.disable_stitch}
+                  onChange={(e) =>
+                    updateSetting("disable_stitch", !e.target.checked)
+                  }
+                  className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
+                />
+                <span className="text-sm text-gray-700">Allow Stitch</span>
+              </label>
+            </>
+          )}
         </div>
       </div>
 
