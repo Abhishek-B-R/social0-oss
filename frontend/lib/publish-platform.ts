@@ -1658,7 +1658,7 @@ async function publishToTikTok(
 
   let initRes: Response;
   if (isPhotoPost) {
-    // Photo Post API: content/init with media_type PHOTO, post_mode DIRECT_POST
+    // Photo Post API: content/init with media_type PHOTO, post_mode MEDIA_UPLOAD (try MEDIA_UPLOAD for unaudited apps)
     const hasAnyUrl = imageEntries.some((m) => m.url);
     if (!hasAnyUrl) {
       return {
@@ -1741,11 +1741,11 @@ async function publishToTikTok(
 
     const requestBody = {
       media_type: "PHOTO",
-      post_mode: "DIRECT_POST",
+      post_mode: "MEDIA_UPLOAD",
       post_info: photoPostInfo,
       source_info: {
         source: "PULL_FROM_URL",
-        photo_cover_index: 1,
+        photo_cover_index: 0,
         photo_images: photoUrls,
       },
     };
