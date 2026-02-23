@@ -209,7 +209,6 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
             await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
           }
         }
-      }
     }
     setOverlayPhase("done");
     router.refresh();
