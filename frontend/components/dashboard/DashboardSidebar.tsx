@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -81,9 +82,16 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       <div className="flex flex-col gap-6 p-4">
         <Link
           href="/dashboard"
-          className="font-semibold text-lg text-gray-900 hover:text-gray-700"
+          className="flex items-center gap-3 font-semibold text-lg text-gray-900 hover:text-gray-700"
         >
-          Social0
+          <Image
+            src="/logo-circular.png"
+            alt="Social0"
+            width={40}
+            height={40}
+            className="h-10 w-10 shrink-0 rounded-full object-contain"
+          />
+          <span>Social0</span>
         </Link>
 
         <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
