@@ -1,25 +1,21 @@
 "use client";
 
-import { PLATFORMS } from "@/lib/platforms";
 import { useState } from "react";
-import { AccountAvatar } from "./AccountAvatar";
-import { BlueskyByokModal } from "./BlueskyByokModal";
-import { DevToByokModal } from "./DevToByokModal";
-import { HashnodeByokModal } from "./HashnodeByokModal";
-import { MediumByokModal } from "./MediumByokModal";
-import { PreConnectModal } from "./PreConnectModal";
-import { InstagramConnectionModal } from "./InstagramConnectionModal";
+import { Plus } from "lucide-react";
+import { PLATFORMS } from "@/lib/platforms";
+import { BlueskyByokModal } from "@/components/BlueskyByokModal";
+import { DevToByokModal } from "@/components/DevToByokModal";
+import { HashnodeByokModal } from "@/components/HashnodeByokModal";
+import { MediumByokModal } from "@/components/MediumByokModal";
+import { PreConnectModal } from "@/components/PreConnectModal";
+import { InstagramConnectionModal } from "@/components/InstagramConnectionModal";
 
-type PlatformCardProps = {
-  platform: (typeof PLATFORMS)[number];
-  account?: {
-    platformUsername: string | null;
-    profileImageUrl: string | null;
-    isActive: boolean;
-  };
-};
+type Platform = (typeof PLATFORMS)[number];
 
-const PRE_CONNECT: Record<string, { title: string; checkmark: string; info: string }> = {
+const PRE_CONNECT: Record<
+  string,
+  { title: string; checkmark: string; info: string }
+> = {
   facebook: {
     title: "Connect Facebook Page",
     checkmark: "Must be a Facebook Page",
@@ -37,15 +33,21 @@ const PRE_CONNECT: Record<string, { title: string; checkmark: string; info: stri
   },
 };
 
-export function PlatformCard({ platform, account }: PlatformCardProps) {
-  const isConnected = !!account;
+export function ConnectPlatformButton({
+  platform,
+  size = "default",
+  className,
+}: {
+  platform: Platform;
+  size?: "default" | "sm";
+  className?: string;
+}) {
   const [showBlueskyModal, setShowBlueskyModal] = useState(false);
   const [showDevToModal, setShowDevToModal] = useState(false);
   const [showHashnodeModal, setShowHashnodeModal] = useState(false);
   const [showMediumModal, setShowMediumModal] = useState(false);
   const [showPreConnectModal, setShowPreConnectModal] = useState(false);
   const [showInstagramModal, setShowInstagramModal] = useState(false);
-
   const preConnect = PRE_CONNECT[platform.id];
 
   const handleConnect = () => {
@@ -76,65 +78,27 @@ export function PlatformCard({ platform, account }: PlatformCardProps) {
     window.location.href = `/api/connect/${platform.id}`;
   };
 
-  const handlePreConnectContinue = () => {
-    setShowPreConnectModal(false);
-    window.location.href = `/api/connect/${platform.id}`;
-  };
-
-  const handleInstagramDirect = () => {
-    setShowInstagramModal(false);
-    window.location.href = `/api/connect/instagram`;
-  };
-
-  const handleInstagramFacebookPage = () => {
-    setShowInstagramModal(false);
-    window.location.href = `/api/connect/instagram-facebook`;
-  };
-
   return (
     <>
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          {platform.name}
-        </h3>
-        {isConnected ? (
-          <div className="space-y-3">
-            <div className="flex justify-center">
-              <AccountAvatar
-                profileImageUrl={account.profileImageUrl}
-                username={account.platformUsername}
-                platform={platform.id}
-                size="lg"
-              />
-            </div>
-            <p className="text-sm text-gray-600 text-center">
-              Connected as{" "}
-              <span className="font-medium text-gray-900">
-                @{account.platformUsername || "user"}
-              </span>
-            </p>
-            <button
-              disabled
-              className="w-full rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 font-semibold cursor-default"
-            >
-              Connected
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={handleConnect}
-            className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 font-semibold shadow-md transition-colors"
-          >
-            Connect
-          </button>
-        )}
-      </div>
-
+      <button
+        type="button"
+        onClick={handleConnect}
+        aria-label={`Connect ${platform.name}`}
+        className={`shrink-0 rounded-lg border border-gray-300 bg-white font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors ${
+          size === "sm" ? "flex h-8 w-8 items-center justify-center p-0 sm:h-auto sm:w-auto sm:px-2 sm:py-1 text-xs" : "rounded-xl px-4 py-2 text-sm"
+        } ${className ?? ""}`}
+      >
+        <Plus className="h-4 w-4 sm:hidden" />
+        <span className="hidden sm:inline">Connect</span>
+      </button>
       {preConnect && (
         <PreConnectModal
           isOpen={showPreConnectModal}
           onClose={() => setShowPreConnectModal(false)}
-          onContinue={handlePreConnectContinue}
+          onContinue={() => {
+            setShowPreConnectModal(false);
+            window.location.href = `/api/connect/${platform.id}`;
+          }}
           title={preConnect.title}
           checkmark={preConnect.checkmark}
           info={preConnect.info}
@@ -172,8 +136,14 @@ export function PlatformCard({ platform, account }: PlatformCardProps) {
         <InstagramConnectionModal
           isOpen={showInstagramModal}
           onClose={() => setShowInstagramModal(false)}
-          onSelectDirect={handleInstagramDirect}
-          onSelectFacebookPage={handleInstagramFacebookPage}
+          onSelectDirect={() => {
+            setShowInstagramModal(false);
+            window.location.href = "/api/connect/instagram";
+          }}
+          onSelectFacebookPage={() => {
+            setShowInstagramModal(false);
+            window.location.href = "/api/connect/instagram-facebook";
+          }}
         />
       )}
     </>

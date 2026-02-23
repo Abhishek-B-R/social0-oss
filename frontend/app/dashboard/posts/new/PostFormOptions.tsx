@@ -1,6 +1,7 @@
 "use client";
 
 import { ScheduleDateTimePicker } from "@/components/ui/ScheduleDateTimePicker";
+import { AccountAvatar } from "@/components/AccountAvatar";
 import { PLATFORMS } from "@/lib/platforms";
 import type { PublishMode } from "@/app/actions/posts";
 
@@ -86,14 +87,12 @@ export function PostFormOptions({
                   onChange={() => onToggleAccount(acc.id)}
                   className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
                 />
-                {acc.profileImageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={acc.profileImageUrl}
-                    alt=""
-                    className="size-9 rounded-full shrink-0"
-                  />
-                )}
+                <AccountAvatar
+                  profileImageUrl={acc.profileImageUrl}
+                  username={acc.platformUsername}
+                  platform={acc.platform}
+                  size="md"
+                />
                 <span className="min-w-0 flex-1 text-sm font-medium text-gray-900">
                   {platformName(acc.platform)}
                   {acc.platform === "medium" && (

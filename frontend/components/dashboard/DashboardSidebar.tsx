@@ -1,0 +1,171 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  FilePlus,
+  Layers,
+  Calendar,
+  List,
+  Clock,
+  CheckCircle,
+  FileText,
+  Link2,
+  Users,
+  Settings,
+  CreditCard,
+  MessageCircle,
+  ChevronDown,
+  Home,
+} from "lucide-react";
+import { SignOutButton } from "@/components/SignOutButton";
+
+type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
+
+function NavLink({
+  href,
+  label,
+  icon: Icon,
+  isActive,
+}: NavItem & { isActive: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+        isActive
+          ? "bg-emerald-50 text-emerald-700"
+          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+      }`}
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      {label}
+    </Link>
+  );
+}
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+type DashboardSidebarProps = {
+  user: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  };
+};
+
+export function DashboardSidebar({ user }: DashboardSidebarProps) {
+  const pathname = usePathname();
+
+  const isActive = (href: string) => {
+    if (href === "/dashboard") return pathname === "/dashboard";
+    return pathname.startsWith(href);
+  };
+
+  return (
+    <aside className="hidden h-screen w-64 flex-col border-r border-gray-200 bg-white lg:flex">
+      <div className="flex flex-col gap-6 p-4">
+        <Link
+          href="/dashboard"
+          className="font-semibold text-lg text-gray-900 hover:text-gray-700"
+        >
+          Social0
+        </Link>
+
+        <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+          <Home className="h-4 w-4 shrink-0 text-gray-500" />
+          <span className="flex-1 text-sm font-medium text-gray-700">main</span>
+          <ChevronDown className="h-4 w-4 text-gray-400" />
+        </div>
+
+        <Link
+          href="/dashboard/posts/new"
+          className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors"
+        >
+          <FilePlus className="h-4 w-4" />
+          Create post
+        </Link>
+
+        <nav className="flex flex-1 flex-col gap-6">
+          <Section title="Create">
+            <NavLink
+              href="/dashboard/posts/new"
+              label="New post"
+              icon={FilePlus}
+              isActive={pathname === "/dashboard/posts/new" || pathname.startsWith("/dashboard/posts/new/")}
+            />
+            <NavLink href="/dashboard/bulk-tools" label="Bulk tools" icon={Layers} isActive={isActive("/dashboard/bulk-tools")} />
+          </Section>
+
+          <Section title="Posts">
+            <NavLink href="/dashboard/calendar" label="Calendar" icon={Calendar} isActive={isActive("/dashboard/calendar")} />
+            <NavLink href="/dashboard/posts" label="All" icon={List} isActive={pathname === "/dashboard/posts"} />
+            <NavLink href="/dashboard/posts/scheduled" label="Scheduled" icon={Clock} isActive={isActive("/dashboard/posts/scheduled")} />
+            <NavLink href="/dashboard/posts/posted" label="Posted" icon={CheckCircle} isActive={isActive("/dashboard/posts/posted")} />
+            <NavLink href="/dashboard/posts/drafts" label="Drafts" icon={FileText} isActive={isActive("/dashboard/posts/drafts")} />
+          </Section>
+
+          <Section title="Workspace">
+            <NavLink href="/dashboard" label="Connections" icon={Link2} isActive={pathname === "/dashboard"} />
+            <NavLink href="/dashboard/teams" label="Teams" icon={Users} isActive={isActive("/dashboard/teams")} />
+          </Section>
+
+          <Section title="Configuration">
+            <NavLink href="/dashboard/settings" label="Settings" icon={Settings} isActive={isActive("/dashboard/settings")} />
+            <NavLink href="/dashboard/billing" label="Billing" icon={CreditCard} isActive={isActive("/dashboard/billing")} />
+          </Section>
+
+          <Section title="Support">
+            <a
+              href="#"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+            >
+              <MessageCircle className="h-4 w-4 shrink-0" />
+              Share feedback
+            </a>
+          </Section>
+        </nav>
+      </div>
+
+      <div className="border-t border-gray-200 p-4">
+        <div className="flex items-center gap-3 rounded-lg px-3 py-2">
+          {user.image ? (
+            <img
+              src={user.image}
+              alt={user.name || "User"}
+              className="h-9 w-9 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700">
+              {(user.name || user.email || "U").charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-gray-900">
+              {user.name || user.email || "User"}
+            </p>
+            <p className="truncate text-xs text-gray-500">Creator Plan</p>
+          </div>
+          <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />
+        </div>
+        <div className="mt-2">
+          <SignOutButton />
+        </div>
+      </div>
+    </aside>
+  );
+}

@@ -1,76 +1,41 @@
 import { auth } from "@/lib/auth";
-import { db } from "@/db";
-import { posts, postPublications, connectedAccounts } from "@/db/schema";
-import { eq, desc, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { PublishButton } from "./PublishButton";
+import { Suspense } from "react";
+import { getPostsListData } from "./posts-list-data";
+import { AllPostsFilters } from "./AllPostsFilters";
+import { PostListCards } from "./PostListCards";
 
 export default async function PostsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tiktok_published?: string }>;
+  searchParams: Promise<{
+    tiktok_published?: string;
+    sort?: string;
+    platform?: string;
+    time?: string;
+    account?: string;
+  }>;
 }) {
   const params = await searchParams;
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return null;
 
-  const userPosts = await db
-    .select({
-      id: posts.id,
-      originalContent: posts.originalContent,
-      status: posts.status,
-      scheduledAt: posts.scheduledAt,
-      createdAt: posts.createdAt,
-    })
-    .from(posts)
-    .where(eq(posts.userId, session.user.id))
-    .orderBy(desc(posts.createdAt));
+  const {
+    userPosts,
+    publicationsByPostId,
+    firstMediaByPost,
+    platformOptions,
+    accountOptions,
+  } = await getPostsListData({
+    userId: session.user.id,
+    sort: params.sort === "oldest" ? "oldest" : "newest",
+    platform: params.platform || null,
+    time: params.time || null,
+    account: params.account || null,
+  });
 
-  const postIds = userPosts.map((p) => p.id);
-  const publications =
-    postIds.length > 0
-      ? await db
-          .select({
-            postId: postPublications.postId,
-            status: postPublications.status,
-            platformPostUrl: postPublications.platformPostUrl,
-            platform: connectedAccounts.platform,
-            lastError: postPublications.lastError,
-          })
-          .from(postPublications)
-          .innerJoin(
-            connectedAccounts,
-            eq(postPublications.connectedAccountId, connectedAccounts.id),
-          )
-          .where(inArray(postPublications.postId, postIds))
-      : [];
-
-  const publicationsByPostId = publications.reduce(
-    (acc, p) => {
-      if (!acc[p.postId]) acc[p.postId] = [];
-      acc[p.postId].push(p);
-      return acc;
-    },
-    {} as Record<
-      string,
-      {
-        status: string | null;
-        platformPostUrl: string | null;
-        platform: string;
-        lastError: string | null;
-      }[]
-    >,
-  );
-
-  const statusLabel: Record<string, string> = {
-    draft: "Draft",
-    scheduled: "Scheduled",
-    publishing: "Publishing",
-    published: "Published",
-    failed: "Failed",
-  };
-
+  const hasActiveFilters = !!(params.platform || params.time || params.account);
   const showTikTokMessage = params?.tiktok_published === "true";
 
   return (
@@ -82,13 +47,16 @@ export default async function PostsPage({
           </p>
         </div>
       )}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-extrabold text-gray-900">
-            Posts
+          <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-2">
+            All Posts
+            <span className="text-gray-400" title="All your posts with filters">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
+            </span>
           </h2>
           <p className="text-gray-500 mt-1 font-medium">
-            Your drafts and scheduled posts
+            Your drafts, scheduled, and published posts
           </p>
         </div>
         <Link
@@ -99,118 +67,23 @@ export default async function PostsPage({
         </Link>
       </div>
 
-      {userPosts.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-          <p className="text-gray-600 mb-4 font-medium">
-            You haven&apos;t created any posts yet.
-          </p>
-          <Link
-            href="/dashboard/posts/new"
-            className="inline-flex rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 text-sm font-semibold shadow-lg transition-colors"
-          >
-            Create your first post
-          </Link>
-        </div>
-      ) : (
-        <ul className="space-y-4">
-          {userPosts.map((post) => (
-            <li
-              key={post.id}
-              className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <p className="text-gray-900 line-clamp-2 font-medium">
-                    {post.originalContent}
-                  </p>
-                  <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-gray-500">
-                    <span
-                      className={`inline-flex rounded-lg px-2.5 py-1 font-medium ${
-                        post.status === "draft"
-                          ? "bg-gray-100 text-gray-700"
-                          : post.status === "published"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : post.status === "failed"
-                              ? "bg-red-50 text-red-700"
-                              : "bg-emerald-50 text-emerald-700"
-                      }`}
-                    >
-                      {statusLabel[post.status ?? "draft"] ?? post.status ?? "draft"}
-                    </span>
-                    <span>
-                      {post.createdAt
-                        ? new Date(post.createdAt).toLocaleDateString(
-                            undefined,
-                            { dateStyle: "medium" }
-                          )
-                        : "—"}
-                    </span>
-                    {post.scheduledAt && (
-                      <span>
-                        Scheduled:{" "}
-                        {new Date(
-                          post.scheduledAt
-                        ).toLocaleString(undefined, {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        })}
-                      </span>
-                    )}
-                    <span>
-                      {publicationsByPostId[post.id]?.length ?? 0} platform
-                      {(publicationsByPostId[post.id]?.length ?? 0) !== 1
-                        ? "s"
-                        : ""}
-                    </span>
-                    {post.status === "failed" &&
-                      (() => {
-                        const err = (publicationsByPostId[post.id] ?? []).find(
-                          (p) => p.lastError,
-                        )?.lastError;
-                        return err ? (
-                          <p className="mt-2 text-sm text-red-600 font-medium">
-                            Why it failed: {err}
-                          </p>
-                        ) : null;
-                      })()}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  {(post.status === "draft" ||
-                    post.status === "scheduled" ||
-                    post.status === "failed") && (
-                    <PublishButton
-                      postId={post.id}
-                      label={
-                        post.status === "failed" ? "Retry publish" : "Publish now"
-                      }
-                    />
-                  )}
-                  {(publicationsByPostId[post.id] ?? [])
-                    .filter((p) => p.platformPostUrl)
-                    .map((pub, i) => (
-                      <span key={`${post.id}-${i}-${pub.platformPostUrl}`} className="inline-flex items-center gap-1.5">
-                        <a
-                          href={pub.platformPostUrl ?? "#"}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
-                        >
-                          View
-                        </a>
-                        {pub.platform === "medium" && (
-                          <span className="text-xs text-gray-400 font-normal" title="Editing and deleting not supported">
-                            (Publish only)
-                          </span>
-                        )}
-                      </span>
-                    ))}
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="mb-6">
+        <Suspense fallback={<div className="h-10 w-48 rounded-lg bg-gray-100 animate-pulse" />}>
+          <AllPostsFilters
+            platformOptions={platformOptions}
+            accountOptions={accountOptions}
+          />
+        </Suspense>
+      </div>
+
+      <PostListCards
+        userPosts={userPosts}
+        publicationsByPostId={publicationsByPostId}
+        firstMediaByPost={firstMediaByPost}
+        emptyMessage="You haven't created any posts yet."
+        filterMessage="No posts match your filters."
+        hasActiveFilters={hasActiveFilters}
+      />
     </div>
   );
 }

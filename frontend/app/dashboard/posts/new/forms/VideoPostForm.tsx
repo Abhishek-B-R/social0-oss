@@ -3,10 +3,12 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
+import { publishPost } from "@/app/actions/publish";
 import { PostFormOptions } from "../PostFormOptions";
 import { MdOutlineVideoLibrary, MdClose } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettingsModal } from "@/components/TikTokSettingsModal";
+import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
 
 type Account = {
   id: string;
@@ -37,6 +39,8 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  type OverlayPhase = "idle" | "uploading" | "publishing" | "done";
+  const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [tiktokSettings, setTiktokSettings] = useState<
     Record<string, TikTokPostSettings>
   >({});
@@ -124,6 +128,8 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
     }
 
     setLoading(true);
+    setError(null);
+    setOverlayPhase("uploading");
 
     const mediaIds: string[] = [];
     if (videoFile) {
@@ -136,9 +142,11 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
       } catch {
         setError("Failed to upload video.");
         setLoading(false);
+        setOverlayPhase("idle");
         return;
       }
     }
+    setOverlayPhase("publishing");
 
     const text =
       content.trim() || (videoFile ? `[Video: ${videoFile.name}]` : "");
@@ -164,16 +172,21 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
       Object.keys(metadata).length > 0 ? metadata : undefined,
     );
     setLoading(false);
-    if (result.success) {
-      if (hasTikTok) {
-        router.push("/dashboard/posts?tiktok_published=true");
-      } else {
-        router.push("/dashboard/posts");
-      }
-      router.refresh();
-    } else {
+    if (!result.success) {
       setError(result.error);
+      setOverlayPhase("idle");
+      return;
     }
+    if (mode === "now" && result.postId) {
+      const publishResult = await publishPost(result.postId);
+      if (!publishResult?.success) {
+        setError(publishResult?.error ?? "Publish failed");
+        setOverlayPhase("idle");
+        return;
+      }
+    }
+    setOverlayPhase("done");
+    router.refresh();
   };
 
   const submitLabel =
@@ -184,6 +197,16 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
         : "Post now";
 
   return (
+    <>
+      {overlayPhase !== "idle" && (
+        <UploadPublishOverlay
+          phase={overlayPhase === "uploading" ? "uploading" : overlayPhase === "publishing" ? "publishing" : "publishing"}
+          uploadProgress={videoFile ? "1 of 1" : null}
+          mediaType="video"
+          isScheduling={mode === "scheduled"}
+          showLinks={overlayPhase === "done"}
+        />
+      )}
     <form onSubmit={handleSubmit} className="space-y-8">
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
         <label className="block text-sm font-semibold text-gray-900">
@@ -281,5 +304,6 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
         onOpenTikTokSettings={setTiktokModalAccountId}
       />
     </form>
+    </>
   );
 }

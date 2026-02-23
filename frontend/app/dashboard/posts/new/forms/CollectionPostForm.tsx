@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
+import { publishPost } from "@/app/actions/publish";
 import { PostFormOptions } from "../PostFormOptions";
 import {
   MdOutlineAddPhotoAlternate,
@@ -11,6 +12,7 @@ import {
 } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettingsModal } from "@/components/TikTokSettingsModal";
+import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
 
 type Account = {
   id: string;
@@ -37,6 +39,9 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  type OverlayPhase = "idle" | "uploading" | "publishing" | "done";
+  const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [tiktokSettings, setTiktokSettings] = useState<
     Record<string, TikTokPostSettings>
@@ -264,6 +269,8 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
     }
 
     setLoading(true);
+    setError(null);
+    setOverlayPhase("uploading");
 
     const allMedia: Array<{ file: File; order: number }> = [
       ...images.map((img) => ({ file: img.file, order: img.order })),
@@ -271,7 +278,10 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
     ].sort((a, b) => a.order - b.order);
 
     const mediaIds: string[] = [];
-    for (const item of allMedia) {
+    const total = allMedia.length;
+    for (let i = 0; i < allMedia.length; i++) {
+      const item = allMedia[i];
+      setUploadProgress(`${i + 1} of ${total}`);
       try {
         const fd = new FormData();
         fd.set("file", item.file);
@@ -281,9 +291,13 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
       } catch {
         setError("Failed to upload media.");
         setLoading(false);
+        setOverlayPhase("idle");
+        setUploadProgress(null);
         return;
       }
     }
+    setUploadProgress(null);
+    setOverlayPhase("publishing");
 
     const text =
       content.trim() ||
@@ -312,12 +326,21 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
       Object.keys(metadata).length > 0 ? metadata : undefined,
     );
     setLoading(false);
-    if (result.success) {
-      router.push("/dashboard/posts");
-      router.refresh();
-    } else {
+    if (!result.success) {
       setError(result.error);
+      setOverlayPhase("idle");
+      return;
     }
+    if (mode === "now" && result.postId) {
+      const publishResult = await publishPost(result.postId);
+      if (!publishResult?.success) {
+        setError(publishResult?.error ?? "Publish failed");
+        setOverlayPhase("idle");
+        return;
+      }
+    }
+    setOverlayPhase("done");
+    router.refresh();
   };
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
@@ -334,6 +357,16 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
         : "Post now";
 
   return (
+    <>
+      {overlayPhase !== "idle" && (
+        <UploadPublishOverlay
+          phase={overlayPhase === "uploading" ? "uploading" : overlayPhase === "publishing" ? "publishing" : "publishing"}
+          uploadProgress={uploadProgress}
+          mediaType="mixed"
+          isScheduling={mode === "scheduled"}
+          showLinks={overlayPhase === "done"}
+        />
+      )}
     <form onSubmit={handleSubmit} className="space-y-8">
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
         <label className="block text-sm font-semibold text-gray-900">
@@ -513,5 +546,6 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
         onOpenTikTokSettings={setTiktokModalAccountId}
       />
     </form>
+    </>
   );
 }
