@@ -3,10 +3,5 @@
     { "path": "/api/cron/publish-scheduled", "schedule": "0 0 * * *" },
     { "path": "/api/cron/resurface", "schedule": "0 0 * * *" },
     { "path": "/api/cron/autoplug", "schedule": "0 0 * * *" }
-  ],
-  "_cronsProUncomment": [
-    "When on Vercel Pro, use these schedules instead of daily for resurface and autoplug:",
-    "resurface: \"*/15 * * * *\"  (every 15 min)",
-    "autoplug: \"*/5 * * * *\"   (every 5 min)"
   ]
 }

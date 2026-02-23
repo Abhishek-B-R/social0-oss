@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { AutoResurfacePanel } from "@/components/resurface/AutoResurfacePanel";
+import { AutoResurfacePanel } from "@/components/repost/AutoResurfacePanel";
 
 describe("AutoResurfacePanel", () => {
   const xAccount = { id: "x-1", platform: "twitter_x" };

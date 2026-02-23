@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { createAutoPlug } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
-import { AutoFeaturesCard } from "@/components/resurface/AutoFeaturesCard";
-import type { AutoResurfaceConfig } from "@/components/resurface/AutoResurfacePanel";
+import { AutoFeaturesCard } from "@/components/repost/AutoFeaturesCard";
+import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 import {
   MdFormatBold,
@@ -37,13 +37,29 @@ const TOOLBAR_BUTTONS = [
   { icon: MdLooks3, label: "Heading 3", wrap: (s: string) => `### ${s}` },
   { icon: MdFormatBold, label: "Bold", wrap: (s: string) => `**${s}**` },
   { icon: MdFormatItalic, label: "Italic", wrap: (s: string) => `*${s}*` },
-  { icon: MdFormatUnderlined, label: "Underline", wrap: (s: string) => `<u>${s}</u>` },
-  { icon: MdFormatStrikethrough, label: "Strikethrough", wrap: (s: string) => `~~${s}~~` },
+  {
+    icon: MdFormatUnderlined,
+    label: "Underline",
+    wrap: (s: string) => `<u>${s}</u>`,
+  },
+  {
+    icon: MdFormatStrikethrough,
+    label: "Strikethrough",
+    wrap: (s: string) => `~~${s}~~`,
+  },
   { icon: MdCode, label: "Code", wrap: (s: string) => `\`${s}\`` },
   { icon: MdLink, label: "Link", wrap: (s: string) => `[${s}](url)` },
   { icon: MdFormatQuote, label: "Quote", wrap: (s: string) => `> ${s}` },
-  { icon: MdFormatListBulleted, label: "Bullet list", wrap: (s: string) => `- ${s}` },
-  { icon: MdFormatListNumbered, label: "Numbered list", wrap: (s: string) => `1. ${s}` },
+  {
+    icon: MdFormatListBulleted,
+    label: "Bullet list",
+    wrap: (s: string) => `- ${s}`,
+  },
+  {
+    icon: MdFormatListNumbered,
+    label: "Numbered list",
+    wrap: (s: string) => `1. ${s}`,
+  },
 ] as const;
 
 export function BlogPostForm({ accounts }: { accounts: Account[] }) {
@@ -51,8 +67,11 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [content, setContent] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [resurfaceConfig, setResurfaceConfig] = useState<AutoResurfaceConfig | null>(null);
-  const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(null);
+  const [resurfaceConfig, setResurfaceConfig] =
+    useState<AutoResurfaceConfig | null>(null);
+  const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
+    null,
+  );
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
@@ -106,7 +125,9 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
     if (result.success) {
       if (mode === "now" && result.postId && autoPlugConfig) {
         const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
-        const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
+        const xAccount = selectedAccounts.find(
+          (a) => a.platform === "twitter_x",
+        );
         if (xAccount) {
           await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
         }

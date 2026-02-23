@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Loader2, Upload, Send, Image, Video, Layers } from "lucide-react";
-import { ResurfaceSetup } from "@/components/resurface/ResurfaceSetup";
+import { ResurfaceSetup } from "@/components/repost/ResurfaceSetup";
 
 export type OverlayPhase = "uploading" | "publishing";
 
@@ -31,11 +31,17 @@ type UploadPublishOverlayProps = {
 const DONT_KEEP_WAITING = (
   <p className="mt-4 text-sm text-gray-600">
     Don&apos;t keep waiting — if you have another post or idea,{" "}
-    <Link href="/dashboard/posts/new" className="font-medium text-emerald-600 hover:text-emerald-700">
+    <Link
+      href="/dashboard/posts/new"
+      className="font-medium text-emerald-600 hover:text-emerald-700"
+    >
       post
     </Link>{" "}
     or{" "}
-    <Link href="/dashboard/posts" className="font-medium text-emerald-600 hover:text-emerald-700">
+    <Link
+      href="/dashboard/posts"
+      className="font-medium text-emerald-600 hover:text-emerald-700"
+    >
       schedule
     </Link>{" "}
     it as well :)
@@ -83,7 +89,8 @@ export function UploadPublishOverlay({
               Post published
             </h2>
             <p className="mt-2 text-sm text-gray-600">
-              Your post is being sent to all selected platforms. It can take a few minutes to appear everywhere.
+              Your post is being sent to all selected platforms. It can take a
+              few minutes to appear everywhere.
             </p>
             {DONT_KEEP_WAITING}
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -117,12 +124,14 @@ export function UploadPublishOverlay({
               <Upload className="h-7 w-7 animate-pulse text-emerald-600" />
             </div>
             <h2 className="mt-4 text-xl font-semibold text-gray-900">
-              Uploading {mediaTypeLabel(mediaType).toLowerCase()}{uploadProgress ? ` · ${uploadProgress}` : ""}…
+              Uploading {mediaTypeLabel(mediaType).toLowerCase()}
+              {uploadProgress ? ` · ${uploadProgress}` : ""}…
             </h2>
             {(uploadProgress || mediaType) && (
               <p className="mt-1 flex items-center justify-center gap-1.5 text-sm text-gray-600">
                 <MediaTypeIcon type={mediaType} />
-                {mediaTypeLabel(mediaType)}{uploadProgress ? ` ${uploadProgress}` : ""}
+                {mediaTypeLabel(mediaType)}
+                {uploadProgress ? ` ${uploadProgress}` : ""}
               </p>
             )}
             {DONT_KEEP_WAITING}

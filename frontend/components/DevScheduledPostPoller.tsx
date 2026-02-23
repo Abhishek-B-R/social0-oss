@@ -2,39 +2,64 @@
 
 import { useEffect } from "react";
 
+const POLL_INTERVAL_MS = 30000; // 30 seconds
+
 /**
- * Development-only component that polls for scheduled posts
- * In production, Vercel Cron Jobs handle this
+ * Development-only component that polls cron endpoints locally.
+ * In production, Vercel Cron Jobs handle these.
  */
 export function DevScheduledPostPoller() {
   useEffect(() => {
-    // Only run in development
     if (process.env.NODE_ENV !== "development") {
       return;
     }
 
-    const checkScheduledPosts = async () => {
+    const runCrons = async () => {
+      // 1. Publish scheduled posts
       try {
-        // In development, no auth needed
-        const response = await fetch("/api/cron/publish-scheduled");
-
-        if (response.ok) {
-          const data = await response.json();
+        const res = await fetch("/api/cron/publish-scheduled");
+        if (res.ok) {
+          const data = await res.json();
           if (data.processed > 0) {
-            console.log(`[Dev] Published ${data.processed} scheduled post(s)`, data.ids);
-            // Refresh the page to show updated post status
+            console.log("[Dev] Published", data.processed, "scheduled post(s)", data.ids);
             window.location.reload();
           }
         }
-      } catch (error) {
-        console.error("[Dev] Error checking scheduled posts:", error);
+      } catch (e) {
+        console.error("[Dev] Error publish-scheduled:", e);
+      }
+
+      // 2. Auto-Repost (resurface)
+      try {
+        const res = await fetch("/api/cron/resurface");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.processed > 0) {
+            console.log("[Dev] Resurface processed", data.processed);
+            window.location.reload();
+          }
+        }
+      } catch (e) {
+        console.error("[Dev] Error resurface:", e);
+      }
+
+      // 3. Auto-Plug
+      try {
+        const res = await fetch("/api/cron/autoplug");
+        if (res.ok) {
+          const data = await res.json();
+          if ((data.checked ?? 0) > 0 || (data.triggered ?? 0) > 0 || (data.expired ?? 0) > 0) {
+            console.log("[Dev] Autoplug", data);
+            if ((data.triggered ?? 0) > 0 || (data.expired ?? 0) > 0) window.location.reload();
+          }
+        }
+      } catch (e) {
+        console.error("[Dev] Error autoplug:", e);
       }
     };
 
-    // Check immediately, then every 30 seconds
-    checkScheduledPosts();
-    const interval = setInterval(checkScheduledPosts, 30000); // 30 seconds
-
+    runCrons();
+    const interval = setInterval(runCrons, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, []);
 

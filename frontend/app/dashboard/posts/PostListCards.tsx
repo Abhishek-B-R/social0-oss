@@ -2,9 +2,13 @@ import Link from "next/link";
 import { PublishButton } from "./PublishButton";
 import { PostCardDeleteButton } from "./PostCardDeleteButton";
 import { AccountAvatar } from "@/components/AccountAvatar";
-import { ResurfaceStatusBadge } from "@/components/resurface/ResurfaceStatusBadge";
-import { AddResurfaceCardButton } from "@/components/resurface/AddResurfaceCardButton";
-import { RESURFACE_PLATFORMS, isWithinResurfaceWindow, isWithinAutoPlugWindow } from "@/lib/resurface-utils";
+import { ResurfaceStatusBadge } from "@/components/repost/ResurfaceStatusBadge";
+import { AddResurfaceCardButton } from "@/components/repost/AddResurfaceCardButton";
+import {
+  RESURFACE_PLATFORMS,
+  isWithinResurfaceWindow,
+  isWithinAutoPlugWindow,
+} from "@/lib/resurface-utils";
 import { AddAutoPlugCardButton } from "@/components/autoplug/AddAutoPlugCardButton";
 import { Image, Video, FileText } from "lucide-react";
 import type { PublicationRow } from "./posts-list-data";
@@ -19,7 +23,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 function getTimestampLabel(
   post: PostRow,
-  publications: { publishedAt: Date | null }[]
+  publications: { publishedAt: Date | null }[],
 ): { label: string; date: Date | null } {
   const dateOpts: Intl.DateTimeFormatOptions = {
     dateStyle: "short",
@@ -37,9 +41,7 @@ function getTimestampLabel(
       .filter((d): d is Date => d != null);
     const publishedAt =
       publishedAts.length > 0
-        ? new Date(
-            Math.min(...publishedAts.map((d) => new Date(d).getTime())),
-          )
+        ? new Date(Math.min(...publishedAts.map((d) => new Date(d).getTime())))
         : null;
     return {
       label: publishedAt
@@ -132,10 +134,10 @@ export function PostListCards({
                 {mediaType === "text" && <FileText className="h-3.5 w-3.5" />}
                 <span className="capitalize">{mediaType}</span>
                 <span>
-                  {getTimestampLabel(
-                    post,
-                    publicationsByPostId[post.id] ?? [],
-                  ).label}
+                  {
+                    getTimestampLabel(post, publicationsByPostId[post.id] ?? [])
+                      .label
+                  }
                 </span>
               </div>
               <p className="text-gray-900 line-clamp-2 font-medium text-sm">
@@ -189,13 +191,15 @@ export function PostListCards({
                           : "bg-emerald-50 text-emerald-700"
                   }`}
                 >
-                  {STATUS_LABEL[post.status ?? "draft"] ?? post.status ?? "draft"}
+                  {STATUS_LABEL[post.status ?? "draft"] ??
+                    post.status ??
+                    "draft"}
                 </span>
               </div>
               {post.status === "failed" &&
                 (() => {
                   const err = (publicationsByPostId[post.id] ?? []).find(
-                    (p) => p.lastError
+                    (p) => p.lastError,
                   )?.lastError;
                   return err ? (
                     <p className="mt-2 text-xs text-red-600 line-clamp-1">
@@ -244,14 +248,20 @@ export function PostListCards({
                 (() => {
                   const pubs = publicationsByPostId[post.id] ?? [];
                   const supported = pubs.filter((p) =>
-                    RESURFACE_PLATFORMS.includes(p.platform as (typeof RESURFACE_PLATFORMS)[number]),
+                    RESURFACE_PLATFORMS.includes(
+                      p.platform as (typeof RESURFACE_PLATFORMS)[number],
+                    ),
                   );
                   const publishedAts = supported
                     .map((p) => p.publishedAt)
                     .filter((d): d is Date => d != null);
                   const earliest =
                     publishedAts.length > 0
-                      ? new Date(Math.min(...publishedAts.map((d) => new Date(d).getTime())))
+                      ? new Date(
+                          Math.min(
+                            ...publishedAts.map((d) => new Date(d).getTime()),
+                          ),
+                        )
                       : null;
                   return (
                     supported.length > 0 &&
@@ -277,7 +287,11 @@ export function PostListCards({
                     .filter((d): d is Date => d != null);
                   const earliest =
                     publishedAts.length > 0
-                      ? new Date(Math.min(...publishedAts.map((d) => new Date(d).getTime())))
+                      ? new Date(
+                          Math.min(
+                            ...publishedAts.map((d) => new Date(d).getTime()),
+                          ),
+                        )
                       : null;
                   const plug = autoPlugByPostId[post.id];
                   const canAddPlug =

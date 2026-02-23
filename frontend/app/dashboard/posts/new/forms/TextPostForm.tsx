@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { createAutoPlug } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
-import { AutoFeaturesCard } from "@/components/resurface/AutoFeaturesCard";
-import type { AutoResurfaceConfig } from "@/components/resurface/AutoResurfacePanel";
+import { AutoFeaturesCard } from "@/components/repost/AutoFeaturesCard";
+import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 
 const TWITTER_MAX_LENGTH = 280;
@@ -28,14 +28,20 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resurfaceConfig, setResurfaceConfig] = useState<AutoResurfaceConfig | null>(null);
-  const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(null);
+  const [resurfaceConfig, setResurfaceConfig] =
+    useState<AutoResurfaceConfig | null>(null);
+  const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
+    null,
+  );
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
   const hasTwitter = selectedAccounts.some((a) => a.platform === "twitter_x");
   const isThread = content.includes(TWITTER_THREAD_SEP);
   const threadParts = isThread
-    ? content.split(TWITTER_THREAD_SEP).map((p) => p.trim()).filter(Boolean)
+    ? content
+        .split(TWITTER_THREAD_SEP)
+        .map((p) => p.trim())
+        .filter(Boolean)
     : [];
   const twitterPartOverLimit =
     hasTwitter && isThread
@@ -81,7 +87,9 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
     setLoading(false);
     if (result.success) {
       if (mode === "now" && result.postId && autoPlugConfig) {
-        const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
+        const xAccount = selectedAccounts.find(
+          (a) => a.platform === "twitter_x",
+        );
         if (xAccount) {
           await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
         }
@@ -120,7 +128,10 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
         />
         {twitterThreadWarning && (
           <p className="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            Twitter: This will post as a thread (each part between <code className="bg-amber-100 px-1 rounded">---</code> is a separate tweet). Max {TWITTER_MAX_LENGTH} characters per part. Media will only appear on the first tweet.
+            Twitter: This will post as a thread (each part between{" "}
+            <code className="bg-amber-100 px-1 rounded">---</code> is a separate
+            tweet). Max {TWITTER_MAX_LENGTH} characters per part. Media will
+            only appear on the first tweet.
           </p>
         )}
       </div>

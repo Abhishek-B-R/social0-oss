@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { createAutoPlug } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
-import { AutoFeaturesCard } from "@/components/resurface/AutoFeaturesCard";
-import type { AutoResurfaceConfig } from "@/components/resurface/AutoResurfacePanel";
+import { AutoFeaturesCard } from "@/components/repost/AutoFeaturesCard";
+import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 import { IoMdAddCircleOutline } from "react-icons/io";
 import { MdClose } from "react-icons/md";
@@ -49,8 +49,11 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resurfaceConfig, setResurfaceConfig] = useState<AutoResurfaceConfig | null>(null);
-  const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(null);
+  const [resurfaceConfig, setResurfaceConfig] =
+    useState<AutoResurfaceConfig | null>(null);
+  const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
+    null,
+  );
   const [draggedPostId, setDraggedPostId] = useState<number | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const postsRef = useRef<ThreadPost[]>(posts);
@@ -140,7 +143,10 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
       }));
       return prev.map((p) => {
         if (p.id !== postId) return p;
-        const combined = [...p.images, ...imagesWithOrder].slice(0, MAX_IMAGES_PER_POST);
+        const combined = [...p.images, ...imagesWithOrder].slice(
+          0,
+          MAX_IMAGES_PER_POST,
+        );
         return { ...p, images: combined };
       });
     });
@@ -153,15 +159,19 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
         const img = p.images.find((i) => i.preview === preview);
         if (img) URL.revokeObjectURL(img.preview);
         const filtered = p.images.filter((i) => i.preview !== preview);
-        const allItems = [...filtered, ...p.videos].sort((a, b) => a.order - b.order);
+        const allItems = [...filtered, ...p.videos].sort(
+          (a, b) => a.order - b.order,
+        );
         return {
           ...p,
           images: filtered.map((img) => {
-            const newOrder = allItems.findIndex((i) => i.preview === img.preview) + 1;
+            const newOrder =
+              allItems.findIndex((i) => i.preview === img.preview) + 1;
             return { ...img, order: newOrder };
           }),
           videos: p.videos.map((vid) => {
-            const newOrder = allItems.findIndex((i) => i.preview === vid.preview) + 1;
+            const newOrder =
+              allItems.findIndex((i) => i.preview === vid.preview) + 1;
             return { ...vid, order: newOrder };
           }),
         };
@@ -207,15 +217,19 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
         const vid = p.videos.find((v) => v.preview === preview);
         if (vid) URL.revokeObjectURL(vid.preview);
         const filtered = p.videos.filter((v) => v.preview !== preview);
-        const allItems = [...p.images, ...filtered].sort((a, b) => a.order - b.order);
+        const allItems = [...p.images, ...filtered].sort(
+          (a, b) => a.order - b.order,
+        );
         return {
           ...p,
           images: p.images.map((img) => {
-            const newOrder = allItems.findIndex((i) => i.preview === img.preview) + 1;
+            const newOrder =
+              allItems.findIndex((i) => i.preview === img.preview) + 1;
             return { ...img, order: newOrder };
           }),
           videos: filtered.map((vid) => {
-            const newOrder = allItems.findIndex((i) => i.preview === vid.preview) + 1;
+            const newOrder =
+              allItems.findIndex((i) => i.preview === vid.preview) + 1;
             return { ...vid, order: newOrder };
           }),
         };
@@ -292,9 +306,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const trimmed = posts
-      .map((p) => p.text.trim())
-      .filter(Boolean);
+    const trimmed = posts.map((p) => p.text.trim()).filter(Boolean);
     const content = trimmed.join(THREAD_SEPARATOR);
 
     const mediaIds: string[] = [];
@@ -309,8 +321,13 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
             body: fd,
           });
           if (!res.ok) {
-            const errorData = await res.json().catch(() => ({ error: "Upload failed" }));
-            setError(errorData.error || `Failed to upload ${item.type === "video" ? "video" : "image"}`);
+            const errorData = await res
+              .json()
+              .catch(() => ({ error: "Upload failed" }));
+            setError(
+              errorData.error ||
+                `Failed to upload ${item.type === "video" ? "video" : "image"}`,
+            );
             setLoading(false);
             return;
           }
@@ -323,13 +340,17 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
           if (data.id) {
             mediaIds.push(data.id);
           } else {
-            setError(`Failed to get media ID for ${item.type === "video" ? "video" : "image"}`);
+            setError(
+              `Failed to get media ID for ${item.type === "video" ? "video" : "image"}`,
+            );
             setLoading(false);
             return;
           }
         } catch (err) {
           console.error("Upload error:", err);
-          setError(`Failed to upload ${item.type === "video" ? "video" : "image"}: ${err instanceof Error ? err.message : "Unknown error"}`);
+          setError(
+            `Failed to upload ${item.type === "video" ? "video" : "image"}: ${err instanceof Error ? err.message : "Unknown error"}`,
+          );
           setLoading(false);
           return;
         }
@@ -347,7 +368,9 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
     if (result.success) {
       if (mode === "now" && result.postId && autoPlugConfig) {
         const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
-        const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
+        const xAccount = selectedAccounts.find(
+          (a) => a.platform === "twitter_x",
+        );
         if (xAccount) {
           await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
         }
@@ -384,7 +407,10 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
         </p>
 
         {posts.map((post, index) => (
-          <div key={post.id} className="relative rounded-xl border border-gray-100 bg-gray-50/50 p-4 space-y-3">
+          <div
+            key={post.id}
+            className="relative rounded-xl border border-gray-100 bg-gray-50/50 p-4 space-y-3"
+          >
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs font-medium text-gray-500">
                 Post {index + 1}

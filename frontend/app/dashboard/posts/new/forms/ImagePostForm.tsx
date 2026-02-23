@@ -4,10 +4,13 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { publishPost } from "@/app/actions/publish";
-import { createResurfaceSchedule, createAutoPlug } from "@/app/actions/resurface";
+import {
+  createResurfaceSchedule,
+  createAutoPlug,
+} from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
-import { AutoFeaturesCard } from "@/components/resurface/AutoFeaturesCard";
-import type { AutoResurfaceConfig } from "@/components/resurface/AutoResurfacePanel";
+import { AutoFeaturesCard } from "@/components/repost/AutoFeaturesCard";
+import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 import { MdOutlineAddPhotoAlternate, MdClose } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
@@ -46,8 +49,11 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
     string | null
   >(null);
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
-  const [resurfaceConfig, setResurfaceConfig] = useState<AutoResurfaceConfig | null>(null);
-  const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(null);
+  const [resurfaceConfig, setResurfaceConfig] =
+    useState<AutoResurfaceConfig | null>(null);
+  const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
+    null,
+  );
 
   const defaultTiktokSettings: TikTokPostSettings = {
     privacy_level: "PUBLIC_TO_EVERYONE", // Default to Public
@@ -150,7 +156,8 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
 
     if (hasTikTok) {
       for (const tiktokAccount of tiktokAccounts) {
-        const settings = tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
+        const settings =
+          tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
         // Default settings have privacy_level: "PUBLIC_TO_EVERYONE", so this should always pass
         if (!settings.privacy_level) {
           setError(
@@ -257,12 +264,14 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
           resurfaceConfig.plugComment?.trim() || null,
         );
       }
-        if (autoPlugConfig) {
-          const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
-          if (xAccount) {
-            await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
-          }
+      if (autoPlugConfig) {
+        const xAccount = selectedAccounts.find(
+          (a) => a.platform === "twitter_x",
+        );
+        if (xAccount) {
+          await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
         }
+      }
     }
     setOverlayPhase("done");
     router.refresh();
@@ -285,13 +294,21 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
     <>
       {overlayPhase !== "idle" && (
         <UploadPublishOverlay
-          phase={overlayPhase === "uploading" ? "uploading" : overlayPhase === "publishing" ? "publishing" : "publishing"}
+          phase={
+            overlayPhase === "uploading"
+              ? "uploading"
+              : overlayPhase === "publishing"
+                ? "publishing"
+                : "publishing"
+          }
           uploadProgress={uploadProgress}
           mediaType="image"
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
           publishedPostId={overlayPhase === "done" ? publishedPostId : null}
-          publishedToX={selectedAccounts.some((a) => a.platform === "twitter_x")}
+          publishedToX={selectedAccounts.some(
+            (a) => a.platform === "twitter_x",
+          )}
           resurfacePreFill={
             overlayPhase === "done" && resurfaceConfig
               ? {
@@ -303,148 +320,150 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
           }
         />
       )}
-    <form onSubmit={handleSubmit} className="space-y-8">
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-        <label className="block text-sm font-semibold text-gray-900">
-          Images & caption
-        </label>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={onFileChange}
-          className="hidden"
-        />
-        {images.length === 0 ? (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/50 py-10 text-gray-500 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-700 transition-colors"
-          >
-            <MdOutlineAddPhotoAlternate className="mb-2 h-10 w-10" />
-            <span className="text-sm font-medium">Click to add image(s)</span>
-            <span className="text-xs text-gray-400 mt-1">
-              Select multiple to add all at once
-            </span>
-          </button>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-xs text-gray-500">
-              Carousel post: Drag to reorder (mainly for Instagram)
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {[...images]
-                .sort((a, b) => a.order - b.order)
-                .map((img, index) => (
-                  <div
-                    key={img.preview}
-                    draggable
-                    onDragStart={() => handleDragStart(index)}
-                    onDragOver={(e) => handleDragOver(e, index)}
-                    onDragEnd={handleDragEnd}
-                    className="relative h-20 w-20 shrink-0 cursor-move overflow-hidden rounded-lg border border-gray-200 hover:border-emerald-400 transition-colors"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */}
-                    <img
-                      src={img.preview}
-                      alt=""
-                      className="h-full w-full object-cover"
-                      draggable={false}
-                    />
-                    <div className="absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center">
-                      <span className="text-xs font-bold text-white">
-                        {img.order}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeImage(img.preview)}
-                      className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
-                      onMouseDown={(e) => e.stopPropagation()}
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+          <label className="block text-sm font-semibold text-gray-900">
+            Images & caption
+          </label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={onFileChange}
+            className="hidden"
+          />
+          {images.length === 0 ? (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/50 py-10 text-gray-500 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-700 transition-colors"
+            >
+              <MdOutlineAddPhotoAlternate className="mb-2 h-10 w-10" />
+              <span className="text-sm font-medium">Click to add image(s)</span>
+              <span className="text-xs text-gray-400 mt-1">
+                Select multiple to add all at once
+              </span>
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-gray-500">
+                Carousel post: Drag to reorder (mainly for Instagram)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[...images]
+                  .sort((a, b) => a.order - b.order)
+                  .map((img, index) => (
+                    <div
+                      key={img.preview}
+                      draggable
+                      onDragStart={() => handleDragStart(index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragEnd={handleDragEnd}
+                      className="relative h-20 w-20 shrink-0 cursor-move overflow-hidden rounded-lg border border-gray-200 hover:border-emerald-400 transition-colors"
                     >
-                      <MdClose className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/50 text-gray-500 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-600"
-              >
-                <MdOutlineAddPhotoAlternate className="h-6 w-6" />
-                <span className="text-xs mt-0.5">Add more</span>
-              </button>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */}
+                      <img
+                        src={img.preview}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        draggable={false}
+                      />
+                      <div className="absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center">
+                        <span className="text-xs font-bold text-white">
+                          {img.order}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeImage(img.preview)}
+                        className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
+                        onMouseDown={(e) => e.stopPropagation()}
+                      >
+                        <MdClose className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/50 text-gray-500 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-600"
+                >
+                  <MdOutlineAddPhotoAlternate className="h-6 w-6" />
+                  <span className="text-xs mt-0.5">Add more</span>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Add a caption..."
+            rows={3}
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          />
+        </div>
+
+        <AutoFeaturesCard
+          selectedAccountIds={Array.from(selectedIds)}
+          allAccounts={accounts}
+          onResurfaceChange={setResurfaceConfig}
+          onAutoPlugChange={setAutoPlugConfig}
+        />
+
+        {tiktokModalAccountId && (
+          <TikTokSettingsModal
+            isOpen={true}
+            accountId={tiktokModalAccountId}
+            accountUsername={
+              accounts.find((a) => a.id === tiktokModalAccountId)
+                ?.platformUsername
+            }
+            value={
+              tiktokSettings[tiktokModalAccountId] ?? defaultTiktokSettings
+            }
+            onChange={(settings) => {
+              setTiktokSettings((prev) => ({
+                ...prev,
+                [tiktokModalAccountId]: settings,
+              }));
+            }}
+            onSave={() => setTiktokModalAccountId(null)}
+            onClose={() => setTiktokModalAccountId(null)}
+            mediaType="photo"
+          />
         )}
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Add a caption..."
-          rows={3}
-          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-        />
-      </div>
 
-      <AutoFeaturesCard
-        selectedAccountIds={Array.from(selectedIds)}
-        allAccounts={accounts}
-        onResurfaceChange={setResurfaceConfig}
-        onAutoPlugChange={setAutoPlugConfig}
-      />
-
-      {tiktokModalAccountId && (
-        <TikTokSettingsModal
-          isOpen={true}
-          accountId={tiktokModalAccountId}
-          accountUsername={
-            accounts.find((a) => a.id === tiktokModalAccountId)
-              ?.platformUsername
+        <PostFormOptions
+          accounts={accounts}
+          selectedIds={selectedIds}
+          onToggleAccount={toggleAccount}
+          selectAll={selectAll}
+          mode={mode}
+          setMode={setMode}
+          scheduledAt={scheduledAt}
+          setScheduledAt={setScheduledAt}
+          error={error}
+          loading={loading}
+          onCancel={() => router.push("/dashboard/posts")}
+          submitLabel={submitLabel}
+          submitDisabled={
+            accounts.length === 0 ||
+            (mode === "scheduled" && !scheduledAt) ||
+            (!content.trim() && images.length === 0)
           }
-          value={tiktokSettings[tiktokModalAccountId] ?? defaultTiktokSettings}
-          onChange={(settings) => {
-            setTiktokSettings((prev) => ({
-              ...prev,
-              [tiktokModalAccountId]: settings,
-            }));
-          }}
-          onSave={() => setTiktokModalAccountId(null)}
-          onClose={() => setTiktokModalAccountId(null)}
-          mediaType="photo"
+          tiktokConfiguredIds={
+            hasTikTok
+              ? new Set(
+                  tiktokAccounts
+                    .filter((a) => tiktokSettings[a.id]?.privacy_level)
+                    .map((a) => a.id),
+                )
+              : undefined
+          }
+          onOpenTikTokSettings={setTiktokModalAccountId}
         />
-      )}
-
-      <PostFormOptions
-        accounts={accounts}
-        selectedIds={selectedIds}
-        onToggleAccount={toggleAccount}
-        selectAll={selectAll}
-        mode={mode}
-        setMode={setMode}
-        scheduledAt={scheduledAt}
-        setScheduledAt={setScheduledAt}
-        error={error}
-        loading={loading}
-        onCancel={() => router.push("/dashboard/posts")}
-        submitLabel={submitLabel}
-        submitDisabled={
-          accounts.length === 0 ||
-          (mode === "scheduled" && !scheduledAt) ||
-          (!content.trim() && images.length === 0)
-        }
-        tiktokConfiguredIds={
-          hasTikTok
-            ? new Set(
-                tiktokAccounts
-                  .filter((a) => tiktokSettings[a.id]?.privacy_level)
-                  .map((a) => a.id),
-              )
-            : undefined
-        }
-        onOpenTikTokSettings={setTiktokModalAccountId}
-      />
-    </form>
+      </form>
     </>
   );
 }
