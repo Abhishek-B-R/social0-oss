@@ -148,6 +148,26 @@ export async function executePublish(
   }
 
   const results: PublishResult["results"] = [];
+
+  // For thread posts: non-Twitter platforms get clean text (no "---") so FB/Threads/Bluesky show readable content
+  const contentForNonTwitter = (() => {
+    const md = post.metadata;
+    if (!md || typeof md !== "object") return null;
+    const tw = (md as Record<string, unknown>)["twitterThread"];
+    if (!tw || typeof tw !== "object") return null;
+    const partsVal = (tw as Record<string, unknown>)["parts"];
+    if (!Array.isArray(partsVal) || partsVal.length === 0) return null;
+    const joined = partsVal
+      .map((p) =>
+        p && typeof p === "object" && typeof (p as Record<string, unknown>).text === "string"
+          ? ((p as Record<string, unknown>).text as string).trim()
+          : "",
+      )
+      .filter(Boolean)
+      .join("\n\n");
+    return joined || null;
+  })();
+
   let accessToken: string;
 
   for (const pub of publicationsWithAccounts) {
@@ -518,6 +538,281 @@ export async function executePublish(
         accessToken,
         accessSecret,
       });
+
+      const twitterThreadMeta = (() => {
+        const md = post.metadata;
+        if (!md || typeof md !== "object") return null;
+        const twitterThread = (md as Record<string, unknown>)["twitterThread"];
+        if (!twitterThread || typeof twitterThread !== "object") return null;
+        const partsVal = (twitterThread as Record<string, unknown>)["parts"];
+        if (!Array.isArray(partsVal) || partsVal.length === 0) return null;
+
+        const parts = partsVal
+          .map((p) => {
+            if (!p || typeof p !== "object") return null;
+            const text = (p as Record<string, unknown>)["text"];
+            const mediaIds = (p as Record<string, unknown>)["mediaIds"];
+            return {
+              text: typeof text === "string" ? text : "",
+              mediaIds: Array.isArray(mediaIds)
+                ? mediaIds.filter((id): id is string => typeof id === "string")
+                : [],
+            };
+          })
+          .filter(
+            (p): p is { text: string; mediaIds: string[] } => p !== null,
+          );
+
+        return parts.length > 0 ? { parts } : null;
+      })();
+
+      if (twitterThreadMeta) {
+        const TWITTER_MAX_LENGTH = 280;
+        const parts = twitterThreadMeta.parts;
+
+        const emptyPart = parts.findIndex(
+          (p) => p.text.trim().length === 0 && p.mediaIds.length === 0,
+        );
+        if (emptyPart !== -1) {
+          const msg = `Twitter: Part ${emptyPart + 1} is empty. Add text or media to publish.`;
+          await db
+            .update(postPublications)
+            .set({
+              status: "failed",
+              lastError: msg,
+              updatedAt: new Date(),
+            })
+            .where(eq(postPublications.id, pub.publicationId));
+          results.push({
+            platform: pub.platform,
+            connectedAccountId: pub.connectedAccountId,
+            status: "failed",
+            error: msg,
+          });
+          continue;
+        }
+
+        const overLimit = parts.findIndex((p) => p.text.length > TWITTER_MAX_LENGTH);
+        if (overLimit !== -1) {
+          const partNum = overLimit + 1;
+          const len = parts[overLimit].text.length;
+          const msg = `Twitter: Part ${partNum} is ${len} characters (max ${TWITTER_MAX_LENGTH}). Shorten it to publish.`;
+          await db
+            .update(postPublications)
+            .set({
+              status: "failed",
+              lastError: msg,
+              updatedAt: new Date(),
+            })
+            .where(eq(postPublications.id, pub.publicationId));
+          results.push({
+            platform: pub.platform,
+            connectedAccountId: pub.connectedAccountId,
+            status: "failed",
+            error: msg,
+          });
+          continue;
+        }
+
+        const uniqueDbMediaIds = [
+          ...new Set(parts.flatMap((p) => p.mediaIds)),
+        ];
+        const mediaByDbId = new Map<
+          string,
+          { url: string | null; mimeType: string | null }
+        >();
+        if (uniqueDbMediaIds.length > 0) {
+          const media = await db
+            .select({
+              id: mediaUploads.id,
+              url: mediaUploads.url,
+              mimeType: mediaUploads.mimeType,
+            })
+            .from(mediaUploads)
+            .where(inArray(mediaUploads.id, uniqueDbMediaIds));
+          for (const m of media) {
+            mediaByDbId.set(m.id, { url: m.url ?? null, mimeType: m.mimeType ?? null });
+          }
+        }
+
+        const missingMediaId = uniqueDbMediaIds.find((id) => !mediaByDbId.has(id));
+        if (missingMediaId) {
+          const msg = "One or more media files are missing. Re-upload and try again.";
+          await db
+            .update(postPublications)
+            .set({
+              status: "failed",
+              lastError: msg,
+              updatedAt: new Date(),
+            })
+            .where(eq(postPublications.id, pub.publicationId));
+          results.push({
+            platform: pub.platform,
+            connectedAccountId: pub.connectedAccountId,
+            status: "failed",
+            error: msg,
+          });
+          continue;
+        }
+
+        const missingUrlId = uniqueDbMediaIds.find((id) => {
+          const m = mediaByDbId.get(id);
+          return m && !m.url;
+        });
+        if (missingUrlId) {
+          const msg = "Media has no URL. Re-upload the media and try again.";
+          await db
+            .update(postPublications)
+            .set({
+              status: "failed",
+              lastError: msg,
+              updatedAt: new Date(),
+            })
+            .where(eq(postPublications.id, pub.publicationId));
+          results.push({
+            platform: pub.platform,
+            connectedAccountId: pub.connectedAccountId,
+            status: "failed",
+            error: msg,
+          });
+          continue;
+        }
+
+        type MediaIdsTuple =
+          | [string]
+          | [string, string]
+          | [string, string, string]
+          | [string, string, string, string];
+
+        const toMediaTuple = (ids: string[]): MediaIdsTuple | undefined => {
+          if (ids.length === 1) return [ids[0]];
+          if (ids.length === 2) return [ids[0], ids[1]];
+          if (ids.length === 3) return [ids[0], ids[1], ids[2]];
+          if (ids.length >= 4) return [ids[0], ids[1], ids[2], ids[3]];
+          return undefined;
+        };
+
+        const twitterMediaIdByDbId = new Map<string, string>();
+        const ensureTwitterMediaId = async (dbId: string) => {
+          const cached = twitterMediaIdByDbId.get(dbId);
+          if (cached) return cached;
+          const media = mediaByDbId.get(dbId);
+          if (!media?.url) throw new Error("Media has no URL. Re-upload and try again.");
+
+          const twitterMediaId =
+            media.mimeType?.startsWith("video/")
+              ? await uploadTwitterVideo(media.url, accessToken, accessSecret)
+              : await uploadTwitterImage(media.url, accessToken, accessSecret);
+
+          twitterMediaIdByDbId.set(dbId, twitterMediaId);
+          return twitterMediaId;
+        };
+
+        try {
+          let firstTweetId: string | undefined;
+          let previousTweetId: string | undefined;
+
+          for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const isFirst = i === 0;
+
+            const orderedMedia = part.mediaIds
+              .map((id) => {
+                const m = mediaByDbId.get(id);
+                return m ? { id, ...m } : null;
+              })
+              .filter(
+                (m): m is { id: string; url: string | null; mimeType: string | null } =>
+                  m !== null,
+              );
+
+            const videos = orderedMedia.filter((m) =>
+              m.mimeType?.startsWith("video/"),
+            );
+            const images = orderedMedia.filter((m) =>
+              m.mimeType?.startsWith("image/"),
+            );
+
+            const partTwitterMediaIds: string[] = [];
+            if (videos.length > 0) {
+              // Twitter supports one video per tweet. If both video+images exist, we prefer video.
+              partTwitterMediaIds.push(await ensureTwitterMediaId(videos[0].id));
+            } else if (images.length > 0) {
+              for (const img of images.slice(0, 4)) {
+                partTwitterMediaIds.push(await ensureTwitterMediaId(img.id));
+              }
+            }
+
+            const mediaTuple = toMediaTuple(partTwitterMediaIds);
+            const payload: {
+              text: string;
+              media?: { media_ids: MediaIdsTuple };
+              reply?: { in_reply_to_tweet_id: string };
+            } = { text: part.text };
+
+            if (mediaTuple) payload.media = { media_ids: mediaTuple };
+            if (!isFirst && previousTweetId) {
+              payload.reply = { in_reply_to_tweet_id: previousTweetId };
+            }
+
+            const tweetData = await client.v2.tweet(
+              payload as Parameters<typeof client.v2.tweet>[0],
+            );
+            const id = tweetData.data?.id;
+            if (!id) throw new Error("Twitter did not return tweet ID");
+            if (isFirst) firstTweetId = id;
+            previousTweetId = id;
+          }
+
+          const platformPostUrl =
+            firstTweetId != null
+              ? `https://twitter.com/${pub.platformUsername || pub.platformUserId}/status/${firstTweetId}`
+              : null;
+
+          await db
+            .update(postPublications)
+            .set({
+              status: "published",
+              publishedAt: new Date(),
+              platformPostId: firstTweetId ?? null,
+              platformPostUrl,
+              lastError: null,
+              updatedAt: new Date(),
+            })
+            .where(eq(postPublications.id, pub.publicationId));
+
+          results.push({
+            platform: pub.platform,
+            connectedAccountId: pub.connectedAccountId,
+            status: "published",
+            platformPostUrl,
+          });
+        } catch (e) {
+          console.error("[executePublish] Twitter post failed:", e);
+          const err = e instanceof Error ? e.message : "Failed to post tweet";
+          let errorMessage = err;
+          if (e && typeof e === "object" && "data" in e) {
+            const errorData = e.data as Record<string, unknown>;
+            errorMessage = parseTwitterError(errorData, 500);
+          }
+          await db
+            .update(postPublications)
+            .set({
+              status: "failed",
+              lastError: errorMessage,
+              updatedAt: new Date(),
+            })
+            .where(eq(postPublications.id, pub.publicationId));
+          results.push({
+            platform: pub.platform,
+            connectedAccountId: pub.connectedAccountId,
+            status: "failed",
+            error: errorMessage,
+          });
+        }
+
+        continue;
+      }
       const mediaIds: string[] = [];
 
       // Fetch media if post has mediaIds
@@ -852,7 +1147,7 @@ export async function executePublish(
           },
           {
             id: post.id,
-            finalContent: post.finalContent,
+            finalContent: contentForNonTwitter ?? post.finalContent ?? "",
             mediaIds: post.mediaIds,
             metadata: post.metadata,
           },
@@ -860,6 +1155,16 @@ export async function executePublish(
           platformAccessSecret,
         );
         const isPublished = platformPostResult.status === "published";
+        if (platformPostResult.status === "failed") {
+          const errMsg =
+            platformPostResult.lastError ??
+            platformPostResult.error ??
+            "Unknown error";
+          console.error(
+            `[executePublish] ${pub.platform} post failed:`,
+            errMsg,
+          );
+        }
         await db
           .update(postPublications)
           .set({
@@ -878,7 +1183,7 @@ export async function executePublish(
           connectedAccountId: pub.connectedAccountId,
           status: platformPostResult.status,
           platformPostUrl: platformPostResult.platformPostUrl ?? undefined,
-          error: platformPostResult.error,
+          error: platformPostResult.lastError ?? platformPostResult.error,
         });
       } catch (e) {
         console.error("[executePublish] publishToPlatform threw:", e);
@@ -902,6 +1207,7 @@ export async function executePublish(
     }
   }
 
+  // Always update post status so we never leave it stuck on "publishing"
   const allPublished = results.every((r) => r.status === "published");
   const anyFailed = results.some((r) => r.status === "failed");
   const newPostStatus = anyFailed
@@ -915,12 +1221,23 @@ export async function executePublish(
       .set({ status: newPostStatus, updatedAt: new Date() })
       .where(eq(posts.id, postId));
   }
-
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/posts");
 
+  const failedList = results.filter((r) => r.status === "failed");
+  const errorSummary =
+    failedList.length > 0
+      ? failedList
+          .map(
+            (r) =>
+              `${r.platform}: ${r.error ?? "Unknown error"}`.trim(),
+          )
+          .join(" — ")
+      : undefined;
+
   return {
     success: !anyFailed,
+    error: errorSummary,
     results,
   };
 }

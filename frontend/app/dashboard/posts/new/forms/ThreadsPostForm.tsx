@@ -3,11 +3,16 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
-import { createAutoPlug } from "@/app/actions/resurface";
+import { publishPost } from "@/app/actions/publish";
+import {
+  createResurfaceSchedule,
+  createAutoPlug,
+} from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
 import { AutoFeaturesCard } from "@/components/repost/AutoFeaturesCard";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
 import { IoMdAddCircleOutline } from "react-icons/io";
 import { MdClose } from "react-icons/md";
 import { MdOutlinePhotoLibrary, MdOutlineVideocam } from "react-icons/md";
@@ -56,6 +61,10 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
   );
   const [draggedPostId, setDraggedPostId] = useState<number | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  type OverlayPhase = "idle" | "uploading" | "publishing" | "done";
+  const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const postsRef = useRef<ThreadPost[]>(posts);
 
   useEffect(() => {
@@ -302,17 +311,38 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
     setDraggedIndex(null);
   };
 
+  const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const trimmed = posts.map((p) => p.text.trim()).filter(Boolean);
-    const content = trimmed.join(THREAD_SEPARATOR);
+    setOverlayPhase("uploading");
+
+    const threadPosts = posts.filter(
+      (p) => p.text.trim().length > 0 || p.images.length > 0 || p.videos.length > 0,
+    );
+    const contentParts = threadPosts.map((p) => p.text.trim()).filter(Boolean);
+    const content = contentParts.join(THREAD_SEPARATOR);
+    if (!content.trim()) {
+      setError("Add some text to your thread before posting.");
+      setLoading(false);
+      setOverlayPhase("idle");
+      return;
+    }
 
     const mediaIds: string[] = [];
-    for (const post of posts) {
+    const perThreadPostMediaIds: string[][] = [];
+    const totalMedia = threadPosts.reduce(
+      (sum, p) => sum + getAllMediaForPost(p).length,
+      0,
+    );
+    let uploaded = 0;
+    for (const post of threadPosts) {
       const allMedia = getAllMediaForPost(post);
+      const thisPostMediaIds: string[] = [];
       for (const item of allMedia) {
+        setUploadProgress(`${uploaded + 1} of ${totalMedia}`);
         try {
           const fd = new FormData();
           fd.set("file", item.file);
@@ -329,33 +359,46 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
                 `Failed to upload ${item.type === "video" ? "video" : "image"}`,
             );
             setLoading(false);
+            setOverlayPhase("idle");
+            setUploadProgress(null);
             return;
           }
           const data = await res.json();
           if (data.error) {
             setError(data.error);
             setLoading(false);
+            setOverlayPhase("idle");
+            setUploadProgress(null);
             return;
           }
           if (data.id) {
             mediaIds.push(data.id);
+            thisPostMediaIds.push(data.id);
           } else {
             setError(
               `Failed to get media ID for ${item.type === "video" ? "video" : "image"}`,
             );
             setLoading(false);
+            setOverlayPhase("idle");
+            setUploadProgress(null);
             return;
           }
+          uploaded += 1;
         } catch (err) {
           console.error("Upload error:", err);
           setError(
             `Failed to upload ${item.type === "video" ? "video" : "image"}: ${err instanceof Error ? err.message : "Unknown error"}`,
           );
           setLoading(false);
+          setOverlayPhase("idle");
+          setUploadProgress(null);
           return;
         }
       }
+      perThreadPostMediaIds.push(thisPostMediaIds);
     }
+    setUploadProgress(null);
+    setOverlayPhase("publishing");
 
     const result = await createPost(
       content,
@@ -363,11 +406,45 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
       mode,
       scheduledAt,
       mediaIds,
+      {
+        twitterThread: {
+          version: 1,
+          separator: THREAD_SEPARATOR,
+          parts: threadPosts.map((p, idx) => ({
+            text: p.text.trim(),
+            mediaIds: perThreadPostMediaIds[idx] ?? [],
+          })),
+        },
+      },
     );
     setLoading(false);
-    if (result.success) {
-      if (mode === "now" && result.postId && autoPlugConfig) {
-        const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+    if (!result.success) {
+      setError(result.error);
+      setOverlayPhase("idle");
+      return;
+    }
+    if (mode === "now" && result.postId) {
+      const publishResult = await publishPost(result.postId);
+      if (!publishResult?.success) {
+        const msg =
+          publishResult?.error && publishResult.error.trim()
+            ? publishResult.error
+            : "Publish failed";
+        setError(msg);
+        setOverlayPhase("idle");
+        return;
+      }
+      setPublishedPostId(result.postId);
+      if (resurfaceConfig && selectedAccounts.some((a) => a.platform === "twitter_x")) {
+        await createResurfaceSchedule(
+          result.postId,
+          "x",
+          resurfaceConfig.intervalHours,
+          resurfaceConfig.maxResurfaces,
+          resurfaceConfig.plugComment?.trim() || null,
+        );
+      }
+      if (autoPlugConfig) {
         const xAccount = selectedAccounts.find(
           (a) => a.platform === "twitter_x",
         );
@@ -375,11 +452,9 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
           await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
         }
       }
-      router.push("/dashboard/posts");
-      router.refresh();
-    } else {
-      setError(result.error);
     }
+    setOverlayPhase("done");
+    router.refresh();
   };
 
   const anyOverLimit = posts.some((p) => p.text.length > MAX_CHARS);
@@ -395,8 +470,42 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
         ? "Schedule post"
         : "Post";
 
+  const hasImages = posts.some((p) => p.images.length > 0);
+  const hasVideos = posts.some((p) => p.videos.length > 0);
+  const overlayMediaType: "image" | "video" | "mixed" =
+    hasImages && hasVideos ? "mixed" : hasVideos ? "video" : "image";
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <>
+      {overlayPhase !== "idle" && (
+        <UploadPublishOverlay
+          phase={
+            overlayPhase === "uploading"
+              ? "uploading"
+              : overlayPhase === "publishing"
+                ? "publishing"
+                : "publishing"
+          }
+          uploadProgress={uploadProgress}
+          mediaType={overlayMediaType}
+          isScheduling={mode === "scheduled"}
+          showLinks={overlayPhase === "done"}
+          publishedPostId={overlayPhase === "done" ? publishedPostId : null}
+          publishedToX={selectedAccounts.some(
+            (a) => a.platform === "twitter_x",
+          )}
+          resurfacePreFill={
+            overlayPhase === "done" && resurfaceConfig
+              ? {
+                  intervalHours: resurfaceConfig.intervalHours,
+                  maxResurfaces: resurfaceConfig.maxResurfaces,
+                  plugComment: resurfaceConfig.plugComment ?? "",
+                }
+              : null
+          }
+        />
+      )}
+      <form onSubmit={handleSubmit} className="space-y-8">
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
         <p className="text-sm font-semibold text-gray-900">
           Thread posts (stacked in order when published)
@@ -599,5 +708,6 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
         }
       />
     </form>
+    </>
   );
 }

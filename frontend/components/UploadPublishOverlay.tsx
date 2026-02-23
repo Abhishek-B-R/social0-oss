@@ -30,19 +30,12 @@ type UploadPublishOverlayProps = {
 
 const DONT_KEEP_WAITING = (
   <p className="mt-4 text-sm text-gray-600">
-    Don&apos;t keep waiting — if you have another post or idea,{" "}
+    Don&apos;t keep waiting — if you have another post idea,{" "}
     <Link
       href="/dashboard/posts/new"
       className="font-medium text-emerald-600 hover:text-emerald-700"
     >
-      post
-    </Link>{" "}
-    or{" "}
-    <Link
-      href="/dashboard/posts"
-      className="font-medium text-emerald-600 hover:text-emerald-700"
-    >
-      schedule
+      post/schedule
     </Link>{" "}
     it as well :)
   </p>

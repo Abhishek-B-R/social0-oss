@@ -59,7 +59,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     // Threads API scopes (Meta Graph API)
     // threads_basic: required for all Threads endpoints
     // threads_content_publish: required for publishing posts
-    scope: "threads_basic threads_content_publish",
+    scope: "threads_basic,threads_content_publish,threads_manage_replies",
   },
   bluesky: null, // Bluesky uses BYOK (Bring Your Own Keys) - handle + app password
   pinterest: {

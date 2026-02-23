@@ -45,6 +45,30 @@ type Post = {
   metadata?: Record<string, unknown> | null;
 };
 
+export type ThreadPart = { text: string; mediaIds: string[] };
+
+export function getThreadParts(post: Post): ThreadPart[] | null {
+  const md = post.metadata;
+  if (!md || typeof md !== "object") return null;
+  const tw = (md as Record<string, unknown>)["twitterThread"];
+  if (!tw || typeof tw !== "object") return null;
+  const partsVal = (tw as Record<string, unknown>)["parts"];
+  if (!Array.isArray(partsVal) || partsVal.length === 0) return null;
+  const parts: ThreadPart[] = [];
+  for (const p of partsVal) {
+    if (!p || typeof p !== "object") return null;
+    const text = (p as Record<string, unknown>)["text"];
+    const mediaIds = (p as Record<string, unknown>)["mediaIds"];
+    parts.push({
+      text: typeof text === "string" ? text : "",
+      mediaIds: Array.isArray(mediaIds)
+        ? mediaIds.filter((id): id is string => typeof id === "string")
+        : [],
+    });
+  }
+  return parts;
+}
+
 export async function publishToPlatform(
   pub: Pub,
   post: Post,
@@ -132,6 +156,204 @@ async function resolveDidToPds(
   } catch {
     return null;
   }
+}
+
+/** Publish a Bluesky thread (reply chain). Returns null to fall back to single-post. */
+async function publishBlueskyThread(
+  pub: Pub,
+  parts: ThreadPart[],
+  handle: string,
+  jwt: string,
+  did: string,
+): Promise<PublishPlatformResult | null> {
+  const BLUESKY_MAX_TEXT = 3000;
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i].text.length > BLUESKY_MAX_TEXT) {
+      return {
+        status: "failed",
+        lastError: `Bluesky thread part ${i + 1} is over ${BLUESKY_MAX_TEXT} characters.`,
+        error: "Content too long",
+      };
+    }
+  }
+
+  let rootRef: { uri: string; cid: string } | null = null;
+  let parentRef: { uri: string; cid: string } | null = null;
+
+  for (let partIndex = 0; partIndex < parts.length; partIndex++) {
+    const part = parts[partIndex];
+    const media =
+      part.mediaIds.length > 0
+        ? await getMediaWithUrls(part.mediaIds)
+        : [];
+    const images = media
+      .filter((m) => m.mimeType.startsWith("image/"))
+      .slice(0, 4);
+    const videos = media.filter((m) => m.mimeType.startsWith("video/"));
+
+    const imageBlobs: Array<{ alt: string; image: unknown }> = [];
+    for (const img of images) {
+      try {
+        const imageRes = await fetch(img.url);
+        if (!imageRes.ok) continue;
+        const imageBuffer = await imageRes.arrayBuffer();
+        const uploadRes = await fetch(
+          "https://bsky.social/xrpc/com.atproto.repo.uploadBlob",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": img.mimeType,
+              Authorization: `Bearer ${jwt}`,
+            },
+            body: imageBuffer,
+          },
+        );
+        if (uploadRes.ok) {
+          const uploadData = (await uploadRes.json()) as { blob?: unknown };
+          if (uploadData.blob)
+            imageBlobs.push({ alt: "", image: uploadData.blob });
+        }
+      } catch {
+        // skip failed image
+      }
+    }
+
+    let videoBlob: unknown | null = null;
+    if (videos.length > 0) {
+      const video = videos[0];
+      try {
+        const videoRes = await fetch(video.url);
+        if (!videoRes.ok) break;
+        const videoBuffer = await videoRes.arrayBuffer();
+        const pds = await resolveDidToPds(did);
+        if (!pds) break;
+        const serviceAuthUrl = new URL(
+          `${pds.pdsUrl}/xrpc/com.atproto.server.getServiceAuth`,
+        );
+        serviceAuthUrl.searchParams.set("aud", pds.pdsDid);
+        serviceAuthUrl.searchParams.set("lxm", "com.atproto.repo.uploadBlob");
+        const serviceAuthRes = await fetch(serviceAuthUrl.toString(), {
+          method: "GET",
+          headers: { Authorization: `Bearer ${jwt}` },
+        });
+        if (!serviceAuthRes.ok) break;
+        const serviceAuth = (await serviceAuthRes.json()) as { token?: string };
+        if (!serviceAuth.token) break;
+        const uploadRes = await fetch(
+          `https://video.bsky.app/xrpc/app.bsky.video.uploadVideo?did=${encodeURIComponent(did)}&name=thread-video.mp4`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "video/mp4",
+              "Content-Length": String(videoBuffer.byteLength),
+              Authorization: `Bearer ${serviceAuth.token}`,
+            },
+            body: videoBuffer,
+          },
+        );
+        const uploadData = (await uploadRes.json().catch(() => ({}))) as {
+          blob?: unknown;
+          jobId?: string;
+        };
+        if (uploadData.blob) videoBlob = uploadData.blob;
+        else if (uploadData.jobId) {
+          for (let r = 0; r < 45; r++) {
+            await new Promise((x) => setTimeout(x, 2000));
+            const statusRes = await fetch(
+              `https://video.bsky.app/xrpc/app.bsky.video.getJobStatus?did=${encodeURIComponent(did)}&jobId=${encodeURIComponent(uploadData.jobId!)}`,
+              { headers: { Authorization: `Bearer ${serviceAuth.token}` } },
+            );
+            if (!statusRes.ok) break;
+            const statusData = (await statusRes.json()) as {
+              blob?: unknown;
+              jobStatus?: { state?: string; blob?: unknown };
+            };
+            const state = statusData.jobStatus?.state;
+            if (state === "JOB_STATE_COMPLETED" && (statusData.blob ?? statusData.jobStatus?.blob)) {
+              videoBlob = statusData.blob ?? statusData.jobStatus?.blob;
+              break;
+            }
+            if (state === "JOB_STATE_FAILED") break;
+          }
+        }
+      } catch {
+        // skip video for this part
+      }
+    }
+
+    const record: Record<string, unknown> = {
+      $type: "app.bsky.feed.post",
+      text: part.text || "",
+      createdAt: new Date().toISOString(),
+    };
+    if (videoBlob) {
+      record.embed = {
+        $type: "app.bsky.embed.video",
+        video: videoBlob,
+        alt: part.text || "",
+      };
+    } else if (imageBlobs.length > 0) {
+      record.embed = {
+        $type: "app.bsky.embed.images",
+        images: imageBlobs,
+      };
+    }
+    if (rootRef && parentRef) {
+      record.reply = { root: rootRef, parent: parentRef };
+    }
+
+    const createRes = await fetch(
+      "https://bsky.social/xrpc/com.atproto.repo.createRecord",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          repo: did,
+          collection: "app.bsky.feed.post",
+          record,
+        }),
+      },
+    );
+    const createData = (await createRes.json().catch(() => ({}))) as {
+      uri?: string;
+      cid?: string;
+      message?: string;
+      error?: string;
+    };
+    if (!createRes.ok || !createData.uri) {
+      const err = createData.message ?? createData.error ?? "Bluesky thread post failed";
+      return { status: "failed", lastError: err, error: err };
+    }
+    const cid = createData.cid ?? "";
+    const ref = { uri: createData.uri, cid };
+    if (partIndex === 0) {
+      rootRef = ref;
+      parentRef = ref;
+    } else {
+      parentRef = ref;
+    }
+  }
+
+  if (!rootRef) {
+    return {
+      status: "failed",
+      lastError: "Bluesky thread could not be created.",
+      error: "Thread failed",
+    };
+  }
+  const rkey = rootRef.uri.split("/").pop();
+  const platformPostUrl = rkey
+    ? `https://bsky.app/profile/${handle}/post/${rkey}`
+    : rootRef.uri;
+  return {
+    status: "published",
+    platformPostId: rootRef.uri,
+    platformPostUrl,
+    publishedAt: new Date(),
+  };
 }
 
 /** Fetch media by IDs; only return URLs that are on our allowlist (SSRF protection). */
@@ -407,6 +629,18 @@ async function publishToBluesky(
     };
     const jwt = session.accessJwt;
     const did = session.did;
+
+    const threadParts = getThreadParts(post);
+    if (threadParts && threadParts.length > 0) {
+      const threadResult = await publishBlueskyThread(
+        pub,
+        threadParts,
+        handle,
+        jwt,
+        did,
+      );
+      if (threadResult) return threadResult;
+    }
 
     const text = post.finalContent?.trim() ?? "";
     if (text.length > 3000) {
@@ -1904,11 +2138,186 @@ async function publishToTikTok(
   };
 }
 
+/**
+ * Publish a Threads (Meta) reply-chain thread.
+ * Strict sequential flow: create first post → publish → get id →
+ * for each next part: create container with reply_to_id = previous published id →
+ * publish → get id → wait for publish to complete → repeat.
+ * Do NOT create all containers upfront; each step waits for the previous publish.
+ */
+async function publishThreadsThread(
+  pub: Pub,
+  parts: ThreadPart[],
+  accessToken: string,
+): Promise<PublishPlatformResult> {
+  const threadsUserId = pub.platformUserId;
+  const threadParams = new URLSearchParams({ access_token: accessToken });
+  let previousPublishedId: string | null = null;
+  let firstPublishedId: string | null = null;
+
+  for (let i = 0; i < parts.length; i++) {
+    // Wait for previous publish to complete before creating the next container
+    // (Threads needs the published post id to be valid as reply_to_id)
+    if (previousPublishedId && i > 0) {
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+
+    const part = parts[i];
+    const safeText = truncate(part.text, 500);
+    const media =
+      part.mediaIds.length > 0
+        ? await getMediaWithUrls(part.mediaIds)
+        : [];
+    const images = media.filter((m) => m.mimeType.startsWith("image/"));
+    const videos = media.filter((m) => m.mimeType.startsWith("video/"));
+    const imageUrl = images[0]?.url;
+    const videoUrl = videos[0]?.url;
+
+    // Build container payload: for replies, set reply_to_id to previous post's published id
+    const body: Record<string, string | boolean> = {};
+    if (previousPublishedId) {
+      body.reply_to_id = previousPublishedId;
+    }
+    if (i === 1) {
+      console.log("[Threads] Part 2 reply_to_id:", body.reply_to_id);
+    }
+
+    if (images.length > 1) {
+      // Carousel: create item containers for this part only (not replies; they're children)
+      const containerIds: string[] = [];
+      for (const img of images.slice(0, 20)) {
+        const res = await fetch(
+          `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              media_type: "IMAGE",
+              image_url: img.url,
+              is_carousel_item: true,
+            }),
+          },
+        );
+        const data = (await res.json().catch(() => ({}))) as {
+          id?: string;
+          error?: { message?: string };
+        };
+        if (!res.ok || !data.id) {
+          return {
+            status: "failed",
+            lastError: data.error?.message ?? `Threads thread part ${i + 1} failed`,
+            error: "Upload failed",
+          };
+        }
+        containerIds.push(data.id);
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+      body.media_type = "CAROUSEL";
+      body.children = containerIds.join(",");
+      body.text = safeText;
+    } else if (videoUrl) {
+      body.media_type = "VIDEO";
+      body.video_url = videoUrl;
+      body.text = safeText;
+    } else if (imageUrl) {
+      body.media_type = "IMAGE";
+      body.image_url = imageUrl;
+      body.text = safeText;
+    } else {
+      body.media_type = "TEXT";
+      body.text = safeText;
+    }
+
+    // Step 1: Create container for this part only (with reply_to_id if not first)
+    const createRes = await fetch(
+      `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    const createData = (await createRes.json().catch(() => ({}))) as {
+      id?: string;
+      error?: { message?: string };
+    };
+    if (!createRes.ok || !createData.id) {
+      const errMsg =
+        (createData as { error?: { message?: string } }).error?.message ??
+        `Threads thread part ${i + 1} failed`;
+      console.error("[Threads] Create container failed:", {
+        part: i + 1,
+        status: createRes.status,
+        body: createData,
+      });
+      return {
+        status: "failed",
+        lastError: errMsg,
+        error: "Create failed",
+      };
+    }
+
+    // Step 2: Wait for container to be processable, then publish (required by Threads API)
+    await new Promise((r) => setTimeout(r, 3000));
+    const publishRes = await fetch(
+      `https://graph.threads.net/v1.0/${threadsUserId}/threads_publish?${threadParams}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creation_id: createData.id }),
+      },
+    );
+    const publishData = (await publishRes.json().catch(() => ({}))) as {
+      id?: string;
+      error?: { message?: string };
+    };
+    if (!publishRes.ok || !publishData.id) {
+      const errMsg =
+        (publishData as { error?: { message?: string } }).error?.message ??
+        "Threads publish failed";
+      console.error("[Threads] Publish failed:", {
+        part: i + 1,
+        status: publishRes.status,
+        body: publishData,
+      });
+      return {
+        status: "failed",
+        lastError: errMsg,
+        error: "Publish failed",
+      };
+    }
+    if (i === 0) {
+      console.log("[Threads] Part 1 publish response:", publishData);
+    }
+
+    // Step 3: Use this published id as reply_to_id for the next part (next iteration)
+    previousPublishedId = publishData.id;
+    if (!firstPublishedId) firstPublishedId = publishData.id;
+  }
+
+  const rootId = firstPublishedId ?? previousPublishedId;
+  const platformPostUrl =
+    rootId && pub.platformUsername
+      ? `https://www.threads.net/@${pub.platformUsername}/post/${rootId}`
+      : null;
+  return {
+    status: "published",
+    platformPostId: rootId ?? null,
+    platformPostUrl,
+    publishedAt: new Date(),
+  };
+}
+
 async function publishToThreads(
   pub: Pub,
   post: Post,
   accessToken: string,
 ): Promise<PublishPlatformResult> {
+  const threadParts = getThreadParts(post);
+  if (threadParts && threadParts.length > 0) {
+    return await publishThreadsThread(pub, threadParts, accessToken);
+  }
+
   const threadsUserId = pub.platformUserId;
   const text = post.finalContent?.trim() ?? "";
   const media = post.mediaIds?.length

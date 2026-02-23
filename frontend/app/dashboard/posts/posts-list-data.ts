@@ -89,6 +89,24 @@ export async function getPostsListData({
     {} as Record<string, PublicationRow[]>
   );
 
+  // Fix posts stuck in "publishing" when all publications are actually "published"
+  const toFixPublishingIds = userPosts
+    .filter(
+      (p) =>
+        p.status === "publishing" &&
+        (publicationsByPostId[p.id] ?? []).length > 0 &&
+        (publicationsByPostId[p.id] ?? []).every(
+          (pub) => pub.status === "published"
+        )
+    )
+    .map((p) => p.id);
+  if (toFixPublishingIds.length > 0) {
+    await db
+      .update(posts)
+      .set({ status: "published", updatedAt: new Date() })
+      .where(inArray(posts.id, toFixPublishingIds));
+  }
+
   const platforms = [...new Set(publications.map((p) => p.platform))];
   const accountIds = [...new Set(publications.map((p) => p.connectedAccountId))];
 
@@ -112,7 +130,7 @@ export async function getPostsListData({
       const d = p.createdAt ? new Date(p.createdAt) : null;
       return d && d >= weekStart;
     });
-  } else if (timeFilter === "month") {
+  } else   if (timeFilter === "month") {
     const monthStart = startOfMonth(new Date());
     userPosts = userPosts.filter((p) => {
       const d = p.createdAt ? new Date(p.createdAt) : null;
@@ -120,7 +138,19 @@ export async function getPostsListData({
     });
   }
 
-  const firstIds = userPosts
+  // Use derived status so "publishing" shows as "published" when all publications succeeded
+  const userPostsWithStatus = userPosts.map((p) => {
+    const pubs = publicationsByPostId[p.id] ?? [];
+    const effectiveStatus =
+      p.status === "publishing" &&
+      pubs.length > 0 &&
+      pubs.every((pub) => pub.status === "published")
+        ? "published"
+        : p.status;
+    return { ...p, status: effectiveStatus };
+  });
+
+  const firstIds = userPostsWithStatus
     .map((p) => (p.mediaIds ?? [])[0])
     .filter((id): id is string => !!id);
   const firstMediaByPost = new Map<string, string>();
@@ -129,7 +159,7 @@ export async function getPostsListData({
       .select({ id: mediaUploads.id, mimeType: mediaUploads.mimeType })
       .from(mediaUploads)
       .where(inArray(mediaUploads.id, firstIds));
-    for (const p of userPosts) {
+    for (const p of userPostsWithStatus) {
       const firstId = (p.mediaIds ?? [])[0];
       if (firstId) {
         const media = medias.find((m) => m.id === firstId);
@@ -164,7 +194,7 @@ export async function getPostsListData({
     label: `@${a.platformUsername || a.platform} (${a.platform})`,
   }));
 
-  const postIdsWithXPublished = userPosts.filter((p) =>
+  const postIdsWithXPublished = userPostsWithStatus.filter((p) =>
     (publicationsByPostId[p.id] ?? []).some(
       (pub) => pub.platform === "twitter_x" && pub.status === "published",
     ),
@@ -235,7 +265,7 @@ export async function getPostsListData({
           .catch(() => ({} as AutoPlugMap));
 
   return {
-    userPosts,
+    userPosts: userPostsWithStatus,
     publicationsByPostId,
     firstMediaByPost,
     platformOptions,
