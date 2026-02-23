@@ -4,7 +4,10 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { publishPost } from "@/app/actions/publish";
+import { createResurfaceSchedule, createAutoPlug } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
+import { AutoResurfacePanel, type AutoResurfaceConfig } from "@/components/resurface/AutoResurfacePanel";
+import { AutoPlugPanel, type AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 import {
   MdOutlineAddPhotoAlternate,
   MdOutlineVideocam,
@@ -47,6 +50,9 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
     Record<string, TikTokPostSettings>
   >({});
   const [tiktokModalAccountId, setTiktokModalAccountId] = useState<string | null>(null);
+  const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
+  const [resurfaceConfig, setResurfaceConfig] = useState<AutoResurfaceConfig | null>(null);
+  const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(null);
 
   const defaultTiktokSettings: TikTokPostSettings = {
     privacy_level: "PUBLIC_TO_EVERYONE", // Default to Public
@@ -338,6 +344,26 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
         setOverlayPhase("idle");
         return;
       }
+      setPublishedPostId(result.postId);
+      if (
+        resurfaceConfig &&
+        selectedAccounts.some((a) => a.platform === "twitter_x")
+      ) {
+        await createResurfaceSchedule(
+          result.postId,
+          "x",
+          resurfaceConfig.intervalHours,
+          resurfaceConfig.maxResurfaces,
+          resurfaceConfig.plugComment?.trim() || null,
+        );
+      }
+        if (autoPlugConfig) {
+          const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
+          if (xAccount) {
+            await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
+          }
+        }
+      }
     }
     setOverlayPhase("done");
     router.refresh();
@@ -365,6 +391,17 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
           mediaType="mixed"
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
+          publishedPostId={overlayPhase === "done" ? publishedPostId : null}
+          publishedToX={selectedAccounts.some((a) => a.platform === "twitter_x")}
+          resurfacePreFill={
+            overlayPhase === "done" && resurfaceConfig
+              ? {
+                  intervalHours: resurfaceConfig.intervalHours,
+                  maxResurfaces: resurfaceConfig.maxResurfaces,
+                  plugComment: resurfaceConfig.plugComment ?? "",
+                }
+              : null
+          }
         />
       )}
     <form onSubmit={handleSubmit} className="space-y-8">
@@ -497,6 +534,18 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
           </div>
         )}
       </div>
+
+      <AutoResurfacePanel
+        selectedAccountIds={Array.from(selectedIds)}
+        allAccounts={accounts}
+        onChange={setResurfaceConfig}
+      />
+
+      <AutoPlugPanel
+        selectedAccountIds={Array.from(selectedIds)}
+        allAccounts={accounts}
+        onChange={setAutoPlugConfig}
+      />
 
       {tiktokModalAccountId && (
         <TikTokSettingsModal

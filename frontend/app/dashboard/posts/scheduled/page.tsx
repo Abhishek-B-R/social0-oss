@@ -21,6 +21,8 @@ export default async function ScheduledPostsPage({
     firstMediaByPost,
     platformOptions,
     accountOptions,
+    resurfaceByPostId,
+    autoPlugByPostId,
   } = await getPostsListData({
     userId: session.user.id,
     statusFilter: "scheduled",
@@ -63,6 +65,8 @@ export default async function ScheduledPostsPage({
         userPosts={userPosts}
         publicationsByPostId={publicationsByPostId}
         firstMediaByPost={firstMediaByPost}
+        resurfaceByPostId={resurfaceByPostId}
+        autoPlugByPostId={autoPlugByPostId}
         emptyMessage="You have no scheduled posts."
         filterMessage="No scheduled posts match your filters."
         hasActiveFilters={hasActiveFilters}

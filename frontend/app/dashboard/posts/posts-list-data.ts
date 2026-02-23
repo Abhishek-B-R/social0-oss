@@ -4,6 +4,8 @@ import {
   postPublications,
   connectedAccounts,
   mediaUploads,
+  resurfaceSchedules,
+  autoPlugs,
 } from "@/db/schema";
 import { eq, desc, asc, inArray, and } from "drizzle-orm";
 import { startOfWeek, startOfMonth } from "date-fns";
@@ -162,12 +164,84 @@ export async function getPostsListData({
     label: `@${a.platformUsername || a.platform} (${a.platform})`,
   }));
 
+  const postIdsWithXPublished = userPosts.filter((p) =>
+    (publicationsByPostId[p.id] ?? []).some(
+      (pub) => pub.platform === "twitter_x" && pub.status === "published",
+    ),
+  ).map((p) => p.id);
+
+  type ResurfaceMap = Record<
+    string,
+    {
+      id: string;
+      isActive: boolean;
+      resurfacesDone: number;
+      maxResurfaces: number;
+      intervalHours: number;
+      plugComment: string | null;
+    }
+  >;
+
+  const resurfaceByPostId: ResurfaceMap =
+    postIdsWithXPublished.length === 0
+      ? {}
+      : await db
+          .select({
+            id: resurfaceSchedules.id,
+            postId: resurfaceSchedules.postId,
+            isActive: resurfaceSchedules.isActive,
+            resurfacesDone: resurfaceSchedules.resurfacesDone,
+            maxResurfaces: resurfaceSchedules.maxResurfaces,
+            intervalHours: resurfaceSchedules.intervalHours,
+            plugComment: resurfaceSchedules.plugComment,
+          })
+          .from(resurfaceSchedules)
+          .where(inArray(resurfaceSchedules.postId, postIdsWithXPublished))
+          .then((schedules) => {
+            const out: ResurfaceMap = {};
+            for (const s of schedules) {
+              out[s.postId] = {
+                id: s.id,
+                isActive: s.isActive ?? true,
+                resurfacesDone: s.resurfacesDone ?? 0,
+                maxResurfaces: s.maxResurfaces ?? 1,
+                intervalHours: s.intervalHours ?? 1,
+                plugComment: s.plugComment,
+              };
+            }
+            return out;
+          })
+          .catch(() => ({} as ResurfaceMap));
+
+  type AutoPlugMap = Record<string, { status: string }>;
+  const autoPlugByPostId: AutoPlugMap =
+    postIdsWithXPublished.length === 0
+      ? {}
+      : await db
+          .select({
+            postId: autoPlugs.postId,
+            status: autoPlugs.status,
+          })
+          .from(autoPlugs)
+          .where(inArray(autoPlugs.postId, postIdsWithXPublished))
+          .orderBy(desc(autoPlugs.createdAt))
+          .then((rows) => {
+            const out: AutoPlugMap = {};
+            for (const r of rows) {
+              if (out[r.postId] == null) out[r.postId] = { status: r.status };
+            }
+            return out;
+          })
+          .catch(() => ({} as AutoPlugMap));
+
   return {
     userPosts,
     publicationsByPostId,
     firstMediaByPost,
     platformOptions,
     accountOptions,
+    resurfaceByPostId,
+    autoPlugByPostId,
   };
 }
 

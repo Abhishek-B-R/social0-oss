@@ -2,8 +2,15 @@
 
 import Link from "next/link";
 import { Loader2, Upload, Send, Image, Video, Layers } from "lucide-react";
+import { ResurfaceSetup } from "@/components/resurface/ResurfaceSetup";
 
 export type OverlayPhase = "uploading" | "publishing";
+
+export type ResurfacePreFill = {
+  intervalHours?: number;
+  maxResurfaces?: number;
+  plugComment?: string;
+};
 
 type UploadPublishOverlayProps = {
   phase: OverlayPhase;
@@ -15,6 +22,10 @@ type UploadPublishOverlayProps = {
   isScheduling?: boolean;
   /** After publishing: show success state with links */
   showLinks?: boolean;
+  /** When showLinks and post was published to X, show Auto-Resurface section */
+  publishedPostId?: string | null;
+  publishedToX?: boolean;
+  resurfacePreFill?: ResurfacePreFill | null;
 };
 
 const DONT_KEEP_WAITING = (
@@ -49,6 +60,9 @@ export function UploadPublishOverlay({
   mediaType = "image",
   isScheduling = false,
   showLinks = false,
+  publishedPostId = null,
+  publishedToX = false,
+  resurfacePreFill = null,
 }: UploadPublishOverlayProps) {
   const isUploading = phase === "uploading";
   const isPublishing = phase === "publishing" && !showLinks;
@@ -86,6 +100,16 @@ export function UploadPublishOverlay({
                 View posts
               </Link>
             </div>
+            {publishedToX && publishedPostId && (
+              <div className="mt-6 w-full text-left">
+                <ResurfaceSetup
+                  postId={publishedPostId}
+                  initialIntervalHours={resurfacePreFill?.intervalHours ?? 4}
+                  initialMaxResurfaces={resurfacePreFill?.maxResurfaces ?? 3}
+                  initialPlugComment={resurfacePreFill?.plugComment ?? ""}
+                />
+              </div>
+            )}
           </>
         ) : isUploading ? (
           <>

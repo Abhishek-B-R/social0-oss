@@ -3,7 +3,10 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
+import { createAutoPlug } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
+import { AutoResurfacePanel, type AutoResurfaceConfig } from "@/components/resurface/AutoResurfacePanel";
+import { AutoPlugPanel, type AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 import { IoMdAddCircleOutline } from "react-icons/io";
 import { MdClose } from "react-icons/md";
 import { MdOutlinePhotoLibrary, MdOutlineVideocam } from "react-icons/md";
@@ -45,6 +48,8 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resurfaceConfig, setResurfaceConfig] = useState<AutoResurfaceConfig | null>(null);
+  const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(null);
   const [draggedPostId, setDraggedPostId] = useState<number | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const postsRef = useRef<ThreadPost[]>(posts);
@@ -339,6 +344,13 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
     );
     setLoading(false);
     if (result.success) {
+      if (mode === "now" && result.postId && autoPlugConfig) {
+        const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+        const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
+        if (xAccount) {
+          await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
+        }
+      }
       router.push("/dashboard/posts");
       router.refresh();
     } else {
@@ -531,6 +543,18 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
           Add another post
         </button>
       </div>
+
+      <AutoResurfacePanel
+        selectedAccountIds={Array.from(selectedIds)}
+        allAccounts={accounts}
+        onChange={setResurfaceConfig}
+      />
+
+      <AutoPlugPanel
+        selectedAccountIds={Array.from(selectedIds)}
+        allAccounts={accounts}
+        onChange={setAutoPlugConfig}
+      />
 
       <PostFormOptions
         accounts={accounts}

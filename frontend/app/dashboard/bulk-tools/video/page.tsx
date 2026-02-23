@@ -8,8 +8,8 @@ import { BulkToolsVideoClient } from "@/components/bulk-tools/BulkToolsVideoClie
 import { CONTENT_TYPES } from "@/lib/content-types";
 import { PLATFORMS } from "@/lib/platforms";
 
-const platformOrder = PLATFORMS.map((p) => p.id);
-const VIDEO_PLATFORMS = new Set(
+const platformOrder: string[] = PLATFORMS.map((p) => p.id);
+const VIDEO_PLATFORMS = new Set<string>(
   CONTENT_TYPES.find((c) => c.id === "video")?.platforms ?? [],
 );
 

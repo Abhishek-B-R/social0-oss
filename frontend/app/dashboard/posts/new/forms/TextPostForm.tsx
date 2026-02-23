@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
+import { createAutoPlug } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
+import { AutoResurfacePanel, type AutoResurfaceConfig } from "@/components/resurface/AutoResurfacePanel";
+import { AutoPlugPanel, type AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 
 const TWITTER_MAX_LENGTH = 280;
 const TWITTER_THREAD_SEP = "---";
@@ -24,6 +27,8 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resurfaceConfig, setResurfaceConfig] = useState<AutoResurfaceConfig | null>(null);
+  const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(null);
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
   const hasTwitter = selectedAccounts.some((a) => a.platform === "twitter_x");
@@ -74,6 +79,12 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
     );
     setLoading(false);
     if (result.success) {
+      if (mode === "now" && result.postId && autoPlugConfig) {
+        const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
+        if (xAccount) {
+          await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
+        }
+      }
       router.push("/dashboard/posts");
       router.refresh();
     } else {
@@ -112,6 +123,18 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
           </p>
         )}
       </div>
+
+      <AutoResurfacePanel
+        selectedAccountIds={Array.from(selectedIds)}
+        allAccounts={accounts}
+        onChange={setResurfaceConfig}
+      />
+
+      <AutoPlugPanel
+        selectedAccountIds={Array.from(selectedIds)}
+        allAccounts={accounts}
+        onChange={setAutoPlugConfig}
+      />
 
       <PostFormOptions
         accounts={accounts}

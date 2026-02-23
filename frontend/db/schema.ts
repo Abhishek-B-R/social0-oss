@@ -5,6 +5,7 @@ import {
   timestamp,
   boolean,
   integer,
+  real,
   jsonb,
   pgEnum,
   unique,
@@ -245,6 +246,56 @@ export const platformRateLimits = pgTable("platform_rate_limits", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ===== RESURFACE (X / Twitter) =====
+export const resurfaceSchedules = pgTable("resurface_schedules", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  postId: uuid("post_id")
+    .references(() => posts.id, { onDelete: "cascade" })
+    .notNull(),
+  platform: text("platform").notNull(), // "x" for now
+  intervalHours: real("interval_hours").notNull(),
+  maxResurfaces: integer("max_resurfaces").notNull(),
+  plugComment: text("plug_comment"),
+  isActive: boolean("is_active").default(true).notNull(),
+  resurfacesDone: integer("resurfaces_done").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const resurfaceEvents = pgTable("resurface_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  scheduleId: uuid("schedule_id")
+    .references(() => resurfaceSchedules.id, { onDelete: "cascade" })
+    .notNull(),
+  platformReshareId: text("platform_reshare_id"),
+  plugCommentId: text("plug_comment_id"),
+  executedAt: timestamp("executed_at"),
+  nextExecuteAt: timestamp("next_execute_at"),
+  status: text("status").notNull(), // "pending" | "done" | "failed"
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ===== AUTO-PLUG (X milestone-based reply) =====
+export const autoPlugs = pgTable("auto_plugs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  postId: uuid("post_id")
+    .references(() => posts.id, { onDelete: "cascade" })
+    .notNull(),
+  connectedAccountId: uuid("connected_account_id")
+    .references(() => connectedAccounts.id, { onDelete: "cascade" })
+    .notNull(),
+  platform: text("platform").default("x").notNull(),
+  metricType: text("metric_type").notNull(), // "likes" | "retweets"
+  metricThreshold: integer("metric_threshold").notNull(),
+  plugComment: text("plug_comment").notNull(),
+  status: text("status").notNull(), // "watching" | "triggered" | "expired" | "failed"
+  platformPostId: text("platform_post_id").notNull(),
+  plugTweetId: text("plug_tweet_id"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // ===== RELATIONS =====
 
 export const userRelations = relations(user, ({ one, many }) => ({
@@ -266,8 +317,41 @@ export const connectedAccountsRelations = relations(
     }),
     publications: many(postPublications),
     rateLimits: many(platformRateLimits),
+    autoPlugs: many(autoPlugs),
   }),
 );
+
+export const resurfaceSchedulesRelations = relations(
+  resurfaceSchedules,
+  ({ one, many }) => ({
+    post: one(posts, {
+      fields: [resurfaceSchedules.postId],
+      references: [posts.id],
+    }),
+    events: many(resurfaceEvents),
+  }),
+);
+
+export const resurfaceEventsRelations = relations(
+  resurfaceEvents,
+  ({ one }) => ({
+    schedule: one(resurfaceSchedules, {
+      fields: [resurfaceEvents.scheduleId],
+      references: [resurfaceSchedules.id],
+    }),
+  }),
+);
+
+export const autoPlugsRelations = relations(autoPlugs, ({ one }) => ({
+  post: one(posts, {
+    fields: [autoPlugs.postId],
+    references: [posts.id],
+  }),
+  connectedAccount: one(connectedAccounts, {
+    fields: [autoPlugs.connectedAccountId],
+    references: [connectedAccounts.id],
+  }),
+}));
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
   user: one(user, {
@@ -275,6 +359,8 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
     references: [user.id],
   }),
   publications: many(postPublications),
+  resurfaceSchedules: many(resurfaceSchedules),
+  autoPlugs: many(autoPlugs),
 }));
 
 export const postPublicationsRelations = relations(

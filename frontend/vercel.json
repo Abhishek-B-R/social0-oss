@@ -1,8 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron/publish-scheduled",
-      "schedule": "0 0 * * *"
-    }
-  ]
-}
+{"crons":[{"path":"/api/cron/publish-scheduled","schedule":"0 0 * * *"},{"path":"/api/cron/resurface","schedule":"*/15 * * * *"},{"path":"/api/cron/autoplug","schedule":"*/5 * * * *"}]}

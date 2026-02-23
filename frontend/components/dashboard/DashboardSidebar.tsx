@@ -17,7 +17,6 @@ import {
   CreditCard,
   MessageCircle,
   ChevronDown,
-  Home,
 } from "lucide-react";
 import { SignOutButton } from "@/components/SignOutButton";
 
@@ -77,7 +76,8 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
   const pathname = usePathname();
 
   const isActive = (href: string) => {
-    if (href === "/dashboard/connections") return pathname === "/dashboard/connections";
+    if (href === "/dashboard/connections")
+      return pathname === "/dashboard/connections";
     return pathname.startsWith(href);
   };
 
@@ -133,22 +133,10 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
 
           <Section title="Posts">
             <NavLink
-              href="/dashboard/calendar"
-              label="Calendar"
-              icon={Calendar}
-              isActive={isActive("/dashboard/calendar")}
-            />
-            <NavLink
               href="/dashboard/posts"
               label="All"
               icon={List}
               isActive={pathname === "/dashboard/posts"}
-            />
-            <NavLink
-              href="/dashboard/posts/scheduled"
-              label="Scheduled"
-              icon={Clock}
-              isActive={isActive("/dashboard/posts/scheduled")}
             />
             <NavLink
               href="/dashboard/posts/posted"
@@ -157,10 +145,22 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
               isActive={isActive("/dashboard/posts/posted")}
             />
             <NavLink
+              href="/dashboard/posts/scheduled"
+              label="Scheduled"
+              icon={Clock}
+              isActive={isActive("/dashboard/posts/scheduled")}
+            />
+            <NavLink
               href="/dashboard/posts/drafts"
               label="Drafts"
               icon={FileText}
               isActive={isActive("/dashboard/posts/drafts")}
+            />
+            <NavLink
+              href="/dashboard/calendar"
+              label="Calendar"
+              icon={Calendar}
+              isActive={isActive("/dashboard/calendar")}
             />
           </Section>
 
@@ -209,6 +209,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       <div className="border-t border-gray-200 p-4">
         <div className="flex items-center gap-3 rounded-lg px-3 py-2">
           {user.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={user.image}
               alt={user.name || "User"}

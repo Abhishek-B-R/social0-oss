@@ -2,6 +2,10 @@ import Link from "next/link";
 import { PublishButton } from "./PublishButton";
 import { PostCardDeleteButton } from "./PostCardDeleteButton";
 import { AccountAvatar } from "@/components/AccountAvatar";
+import { ResurfaceStatusBadge } from "@/components/resurface/ResurfaceStatusBadge";
+import { AddResurfaceCardButton } from "@/components/resurface/AddResurfaceCardButton";
+import { RESURFACE_PLATFORMS, isWithinResurfaceWindow, isWithinAutoPlugWindow } from "@/lib/resurface-utils";
+import { AddAutoPlugCardButton } from "@/components/autoplug/AddAutoPlugCardButton";
 import { Image, Video, FileText } from "lucide-react";
 import type { PublicationRow } from "./posts-list-data";
 
@@ -61,10 +65,23 @@ type PostRow = {
   mediaIds: string[] | null;
 };
 
+export type ResurfaceForPost = {
+  id: string;
+  isActive: boolean;
+  resurfacesDone: number;
+  maxResurfaces: number;
+  intervalHours: number;
+  plugComment: string | null;
+};
+
+export type AutoPlugForPost = { status: string };
+
 export function PostListCards({
   userPosts,
   publicationsByPostId,
   firstMediaByPost,
+  resurfaceByPostId = {},
+  autoPlugByPostId = {},
   emptyMessage = "You haven't created any posts yet.",
   filterMessage = "No posts match your filters.",
   hasActiveFilters,
@@ -72,6 +89,8 @@ export function PostListCards({
   userPosts: PostRow[];
   publicationsByPostId: Record<string, PublicationRow[]>;
   firstMediaByPost: Map<string, string>;
+  resurfaceByPostId?: Record<string, ResurfaceForPost>;
+  autoPlugByPostId?: Record<string, AutoPlugForPost>;
   emptyMessage?: string;
   filterMessage?: string;
   hasActiveFilters?: boolean;
@@ -132,6 +151,33 @@ export function PostListCards({
                     size="sm"
                   />
                 ))}
+                {post.status === "published" &&
+                  (publicationsByPostId[post.id] ?? []).some(
+                    (p) => p.platform === "twitter_x",
+                  ) &&
+                  resurfaceByPostId[post.id] && (
+                    <ResurfaceStatusBadge
+                      schedule={resurfaceByPostId[post.id]}
+                    />
+                  )}
+                {post.status === "published" &&
+                  (publicationsByPostId[post.id] ?? []).some(
+                    (p) => p.platform === "twitter_x",
+                  ) &&
+                  autoPlugByPostId[post.id]?.status === "watching" && (
+                    <span className="rounded-lg bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                      🔌 Watching
+                    </span>
+                  )}
+                {post.status === "published" &&
+                  (publicationsByPostId[post.id] ?? []).some(
+                    (p) => p.platform === "twitter_x",
+                  ) &&
+                  autoPlugByPostId[post.id]?.status === "triggered" && (
+                    <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                      🔌 Plugged
+                    </span>
+                  )}
                 <span
                   className={`ml-auto rounded-lg px-2 py-0.5 text-xs font-medium ${
                     post.status === "draft"
@@ -193,6 +239,68 @@ export function PostListCards({
                     View
                   </a>
                 ))}
+              {post.status === "published" &&
+                !resurfaceByPostId[post.id] &&
+                (() => {
+                  const pubs = publicationsByPostId[post.id] ?? [];
+                  const supported = pubs.filter((p) =>
+                    RESURFACE_PLATFORMS.includes(p.platform as (typeof RESURFACE_PLATFORMS)[number]),
+                  );
+                  const publishedAts = supported
+                    .map((p) => p.publishedAt)
+                    .filter((d): d is Date => d != null);
+                  const earliest =
+                    publishedAts.length > 0
+                      ? new Date(Math.min(...publishedAts.map((d) => new Date(d).getTime())))
+                      : null;
+                  return (
+                    supported.length > 0 &&
+                    earliest &&
+                    isWithinResurfaceWindow(earliest) && (
+                      <AddResurfaceCardButton
+                        postId={post.id}
+                        publishedAt={earliest}
+                        publications={pubs.map((p) => ({
+                          connectedAccountId: p.connectedAccountId,
+                          platform: p.platform,
+                        }))}
+                      />
+                    )
+                  );
+                })()}
+              {post.status === "published" &&
+                (() => {
+                  const pubs = publicationsByPostId[post.id] ?? [];
+                  const xPubs = pubs.filter((p) => p.platform === "twitter_x");
+                  const publishedAts = xPubs
+                    .map((p) => p.publishedAt)
+                    .filter((d): d is Date => d != null);
+                  const earliest =
+                    publishedAts.length > 0
+                      ? new Date(Math.min(...publishedAts.map((d) => new Date(d).getTime())))
+                      : null;
+                  const plug = autoPlugByPostId[post.id];
+                  const canAddPlug =
+                    xPubs.length > 0 &&
+                    earliest &&
+                    isWithinAutoPlugWindow(earliest) &&
+                    plug?.status !== "watching" &&
+                    plug?.status !== "triggered";
+                  return (
+                    canAddPlug && (
+                      <AddAutoPlugCardButton
+                        postId={post.id}
+                        publishedAt={earliest!}
+                        publications={pubs.map((p) => ({
+                          connectedAccountId: p.connectedAccountId,
+                          platform: p.platform,
+                          profileImageUrl: p.profileImageUrl,
+                          platformUsername: p.platformUsername,
+                        }))}
+                      />
+                    )
+                  );
+                })()}
             </div>
           </li>
         );

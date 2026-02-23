@@ -27,6 +27,8 @@ export default async function PostsPage({
     firstMediaByPost,
     platformOptions,
     accountOptions,
+    resurfaceByPostId,
+    autoPlugByPostId,
   } = await getPostsListData({
     userId: session.user.id,
     sort: params.sort === "oldest" ? "oldest" : "newest",
@@ -80,6 +82,8 @@ export default async function PostsPage({
         userPosts={userPosts}
         publicationsByPostId={publicationsByPostId}
         firstMediaByPost={firstMediaByPost}
+        resurfaceByPostId={resurfaceByPostId}
+        autoPlugByPostId={autoPlugByPostId}
         emptyMessage="You haven't created any posts yet."
         filterMessage="No posts match your filters."
         hasActiveFilters={hasActiveFilters}

@@ -3,7 +3,10 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
+import { createAutoPlug } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
+import { AutoResurfacePanel, type AutoResurfaceConfig } from "@/components/resurface/AutoResurfacePanel";
+import { AutoPlugPanel, type AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 import {
   MdFormatBold,
   MdFormatItalic,
@@ -47,6 +50,8 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [content, setContent] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [resurfaceConfig, setResurfaceConfig] = useState<AutoResurfaceConfig | null>(null);
+  const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(null);
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
@@ -98,6 +103,13 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
     );
     setLoading(false);
     if (result.success) {
+      if (mode === "now" && result.postId && autoPlugConfig) {
+        const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+        const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
+        if (xAccount) {
+          await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
+        }
+      }
       router.push("/dashboard/posts");
       router.refresh();
     } else {
@@ -143,6 +155,18 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
           required
         />
       </div>
+
+      <AutoResurfacePanel
+        selectedAccountIds={Array.from(selectedIds)}
+        allAccounts={accounts}
+        onChange={setResurfaceConfig}
+      />
+
+      <AutoPlugPanel
+        selectedAccountIds={Array.from(selectedIds)}
+        allAccounts={accounts}
+        onChange={setAutoPlugConfig}
+      />
 
       <PostFormOptions
         accounts={accounts}

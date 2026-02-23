@@ -8,8 +8,8 @@ import { BulkToolsImageClient } from "@/components/bulk-tools/BulkToolsImageClie
 import { CONTENT_TYPES } from "@/lib/content-types";
 import { PLATFORMS } from "@/lib/platforms";
 
-const platformOrder = PLATFORMS.map((p) => p.id);
-const IMAGE_PLATFORMS = new Set(
+const platformOrder: string[] = PLATFORMS.map((p) => p.id);
+const IMAGE_PLATFORMS = new Set<string>(
   CONTENT_TYPES.find((c) => c.id === "image")?.platforms ?? [],
 );
 

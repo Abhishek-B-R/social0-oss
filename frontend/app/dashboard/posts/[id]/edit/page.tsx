@@ -9,7 +9,7 @@ import { getPostForEdit, getPostMedia } from "../../posts-list-data";
 import { EditPostForm } from "../../EditPostForm";
 import { PLATFORMS } from "@/lib/platforms";
 
-const platformOrder = PLATFORMS.map((p) => p.id);
+const platformOrder: string[] = PLATFORMS.map((p) => p.id);
 
 function sortAccountsByPlatform<T extends { platform: string }>(accounts: T[]): T[] {
   return [...accounts].sort(

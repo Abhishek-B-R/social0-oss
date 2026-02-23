@@ -75,9 +75,9 @@ export default function BulkToolsPage() {
       <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
         <Link
           href="/dashboard/bulk-tools/video"
-          className="group flex flex-col rounded-2xl border-2 border-emerald-500 bg-emerald-50/50 p-6 shadow-sm transition-colors hover:bg-emerald-50 hover:border-emerald-600"
+          className="group flex flex-col rounded-2xl border-2 border-dashed border-gray-300 bg-white p-6 shadow-sm transition-colors hover:bg-emerald-50 hover:border-emerald-500"
         >
-          <div className="flex items-center justify-center gap-2 text-emerald-600 mb-3">
+          <div className="flex items-center justify-center gap-2 text-gray-400 group-hover:text-emerald-600 mb-3">
             <Layers className="h-8 w-8" />
             <Video className="h-8 w-8" />
           </div>
@@ -97,9 +97,9 @@ export default function BulkToolsPage() {
 
         <Link
           href="/dashboard/bulk-tools/image"
-          className="group flex flex-col rounded-2xl border-2 border-dashed border-gray-300 bg-white p-6 shadow-sm transition-colors hover:bg-gray-50 hover:border-gray-400"
+          className="group flex flex-col rounded-2xl border-2 border-dashed border-gray-300 bg-white p-6 shadow-sm transition-colors hover:bg-emerald-50 hover:border-emerald-500"
         >
-          <div className="flex items-center justify-center gap-2 text-gray-400 group-hover:text-gray-500 mb-3">
+          <div className="flex items-center justify-center gap-2 text-gray-400 group-hover:text-emerald-600 mb-3">
             <Layers className="h-8 w-8" />
             <ImageIcon className="h-8 w-8" />
           </div>

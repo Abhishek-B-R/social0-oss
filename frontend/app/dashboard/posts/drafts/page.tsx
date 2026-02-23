@@ -21,6 +21,8 @@ export default async function DraftsPostsPage({
     firstMediaByPost,
     platformOptions,
     accountOptions,
+    resurfaceByPostId,
+    autoPlugByPostId,
   } = await getPostsListData({
     userId: session.user.id,
     statusFilter: "draft",
@@ -63,6 +65,8 @@ export default async function DraftsPostsPage({
         userPosts={userPosts}
         publicationsByPostId={publicationsByPostId}
         firstMediaByPost={firstMediaByPost}
+        resurfaceByPostId={resurfaceByPostId}
+        autoPlugByPostId={autoPlugByPostId}
         emptyMessage="You have no drafts."
         filterMessage="No drafts match your filters."
         hasActiveFilters={hasActiveFilters}

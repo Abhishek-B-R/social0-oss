@@ -1,0 +1,159 @@
+import { NextResponse } from "next/server";
+import { db } from "@/db";
+import { autoPlugs, connectedAccounts } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { TwitterApi } from "twitter-api-v2";
+import { decryptToken } from "@/lib/encryption";
+import { constantTimeEquals } from "@/lib/validation";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
+export async function GET(request: Request) {
+  const authHeader = request.headers.get("authorization");
+  const expected = process.env.CRON_SECRET;
+  const isDevelopment = process.env.NODE_ENV === "development";
+
+  if (!isDevelopment) {
+    if (!expected) {
+      return NextResponse.json(
+        { error: "Cron not configured" },
+        { status: 503 },
+      );
+    }
+    if (
+      !authHeader ||
+      !authHeader.startsWith("Bearer ") ||
+      !constantTimeEquals(authHeader.slice(7), expected)
+    ) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
+  const now = new Date();
+
+  const watching = await db
+    .select()
+    .from(autoPlugs)
+    .where(eq(autoPlugs.status, "watching"));
+
+  let checked = 0;
+  let triggered = 0;
+  let expired = 0;
+
+  const appKey = process.env.TWITTER_CONSUMER_KEY;
+  const appSecret = process.env.TWITTER_CONSUMER_SECRET;
+
+  for (const plug of watching) {
+    if (plug.expiresAt <= now) {
+      await db
+        .update(autoPlugs)
+        .set({ status: "expired", updatedAt: now })
+        .where(eq(autoPlugs.id, plug.id));
+      expired++;
+      continue;
+    }
+
+    checked++;
+
+    const [account] = await db
+      .select({
+        encryptedAccessToken: connectedAccounts.encryptedAccessToken,
+        encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
+        platformUserId: connectedAccounts.platformUserId,
+      })
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.id, plug.connectedAccountId))
+      .limit(1);
+
+    if (
+      !account?.encryptedAccessToken ||
+      !appKey ||
+      !appSecret
+    ) {
+      await db
+        .update(autoPlugs)
+        .set({ status: "failed", updatedAt: now })
+        .where(eq(autoPlugs.id, plug.id));
+      continue;
+    }
+
+    let accessToken: string;
+    let accessSecret: string | null = null;
+    try {
+      accessToken = decryptToken(
+        account.encryptedAccessToken,
+        plug.connectedAccountId,
+      );
+      if (account.encryptedRefreshToken) {
+        accessSecret = decryptToken(
+          account.encryptedRefreshToken,
+          plug.connectedAccountId,
+        );
+      }
+    } catch (e) {
+      console.error("[cron/autoplug] Decrypt token failed:", e);
+      await db
+        .update(autoPlugs)
+        .set({ status: "failed", updatedAt: now })
+        .where(eq(autoPlugs.id, plug.id));
+      continue;
+    }
+
+    if (!accessSecret) {
+      await db
+        .update(autoPlugs)
+        .set({ status: "failed", updatedAt: now })
+        .where(eq(autoPlugs.id, plug.id));
+      continue;
+    }
+
+    const client = new TwitterApi({
+      appKey,
+      appSecret,
+      accessToken,
+      accessSecret,
+    });
+
+    try {
+      const tweet = await client.v2.singleTweet(plug.platformPostId, {
+        "tweet.fields": ["public_metrics"],
+      });
+
+      const metrics = tweet.data?.public_metrics;
+      const likeCount = metrics?.like_count ?? 0;
+      const retweetCount = metrics?.retweet_count ?? 0;
+      const count =
+        plug.metricType === "retweets" ? retweetCount : likeCount;
+
+      if (count < plug.metricThreshold) {
+        continue;
+      }
+
+      const replyRes = await client.v2.reply(
+        plug.plugComment,
+        plug.platformPostId,
+      );
+      const plugTweetId = replyRes.data?.id ?? null;
+
+      await db
+        .update(autoPlugs)
+        .set({
+          status: "triggered",
+          plugTweetId,
+          updatedAt: now,
+        })
+        .where(eq(autoPlugs.id, plug.id));
+
+      triggered++;
+    } catch (e) {
+      console.error("[cron/autoplug] Twitter API error:", e);
+      await db
+        .update(autoPlugs)
+        .set({ status: "failed", updatedAt: now })
+        .where(eq(autoPlugs.id, plug.id));
+    }
+  }
+
+  return NextResponse.json({ checked, triggered, expired });
+}

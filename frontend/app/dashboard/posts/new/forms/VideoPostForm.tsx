@@ -4,7 +4,10 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { publishPost } from "@/app/actions/publish";
+import { createResurfaceSchedule, createAutoPlug } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
+import { AutoResurfacePanel, type AutoResurfaceConfig } from "@/components/resurface/AutoResurfacePanel";
+import { AutoPlugPanel, type AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 import { MdOutlineVideoLibrary, MdClose } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettingsModal } from "@/components/TikTokSettingsModal";
@@ -45,6 +48,9 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
     Record<string, TikTokPostSettings>
   >({});
   const [tiktokModalAccountId, setTiktokModalAccountId] = useState<string | null>(null);
+  const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
+  const [resurfaceConfig, setResurfaceConfig] = useState<AutoResurfaceConfig | null>(null);
+  const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(null);
 
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
@@ -184,6 +190,26 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
         setOverlayPhase("idle");
         return;
       }
+      setPublishedPostId(result.postId);
+      if (
+        resurfaceConfig &&
+        selectedAccounts.some((a) => a.platform === "twitter_x")
+      ) {
+        await createResurfaceSchedule(
+          result.postId,
+          "x",
+          resurfaceConfig.intervalHours,
+          resurfaceConfig.maxResurfaces,
+          resurfaceConfig.plugComment?.trim() || null,
+        );
+      }
+        if (autoPlugConfig) {
+          const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
+          if (xAccount) {
+            await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
+          }
+        }
+      }
     }
     setOverlayPhase("done");
     router.refresh();
@@ -205,6 +231,17 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
           mediaType="video"
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
+          publishedPostId={overlayPhase === "done" ? publishedPostId : null}
+          publishedToX={selectedAccounts.some((a) => a.platform === "twitter_x")}
+          resurfacePreFill={
+            overlayPhase === "done" && resurfaceConfig
+              ? {
+                  intervalHours: resurfaceConfig.intervalHours,
+                  maxResurfaces: resurfaceConfig.maxResurfaces,
+                  plugComment: resurfaceConfig.plugComment ?? "",
+                }
+              : null
+          }
         />
       )}
     <form onSubmit={handleSubmit} className="space-y-8">
@@ -255,6 +292,18 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
           className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
         />
       </div>
+
+      <AutoResurfacePanel
+        selectedAccountIds={Array.from(selectedIds)}
+        allAccounts={accounts}
+        onChange={setResurfaceConfig}
+      />
+
+      <AutoPlugPanel
+        selectedAccountIds={Array.from(selectedIds)}
+        allAccounts={accounts}
+        onChange={setAutoPlugConfig}
+      />
 
       {tiktokModalAccountId && (
         <TikTokSettingsModal
