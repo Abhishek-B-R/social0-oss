@@ -27,6 +27,7 @@ export type PublicationRow = {
   lastError: string | null;
   profileImageUrl: string | null;
   platformUsername: string | null;
+  publishedAt: Date | null;
 };
 
 export async function getPostsListData({
@@ -67,6 +68,7 @@ export async function getPostsListData({
             lastError: postPublications.lastError,
             profileImageUrl: connectedAccounts.profileImageUrl,
             platformUsername: connectedAccounts.platformUsername,
+            publishedAt: postPublications.publishedAt,
           })
           .from(postPublications)
           .innerJoin(
@@ -167,4 +169,84 @@ export async function getPostsListData({
     platformOptions,
     accountOptions,
   };
+}
+
+export type PostForEdit = {
+  id: string;
+  originalContent: string | null;
+  status: string | null;
+  scheduledAt: Date | null;
+  mediaIds: string[] | null;
+  connectedAccountIds: string[];
+};
+
+export async function getPostForEdit(
+  postId: string,
+  userId: string,
+): Promise<PostForEdit | null> {
+  const [post] = await db
+    .select({
+      id: posts.id,
+      originalContent: posts.originalContent,
+      status: posts.status,
+      scheduledAt: posts.scheduledAt,
+      mediaIds: posts.mediaIds,
+    })
+    .from(posts)
+    .where(
+      and(eq(posts.id, postId), eq(posts.userId, userId)),
+    );
+
+  if (!post) return null;
+
+  const pubs = await db
+    .select({ connectedAccountId: postPublications.connectedAccountId })
+    .from(postPublications)
+    .where(eq(postPublications.postId, postId));
+
+  return {
+    id: post.id,
+    originalContent: post.originalContent,
+    status: post.status,
+    scheduledAt: post.scheduledAt,
+    mediaIds: post.mediaIds ?? [],
+    connectedAccountIds: pubs.map((p) => p.connectedAccountId),
+  };
+}
+
+export type PostMediaRow = {
+  id: string;
+  originalFilename: string;
+  mimeType: string;
+  url: string | null;
+  thumbnailUrl: string | null;
+};
+
+export async function getPostMedia(
+  userId: string,
+  mediaIds: string[],
+): Promise<PostMediaRow[]> {
+  if (mediaIds.length === 0) return [];
+  const rows = await db
+    .select({
+      id: mediaUploads.id,
+      originalFilename: mediaUploads.originalFilename,
+      mimeType: mediaUploads.mimeType,
+      url: mediaUploads.url,
+      thumbnailUrl: mediaUploads.thumbnailUrl,
+    })
+    .from(mediaUploads)
+    .where(
+      and(
+        eq(mediaUploads.userId, userId),
+        inArray(mediaUploads.id, mediaIds),
+      ),
+    );
+  return rows.map((r) => ({
+    id: r.id,
+    originalFilename: r.originalFilename,
+    mimeType: r.mimeType,
+    url: r.url,
+    thumbnailUrl: r.thumbnailUrl,
+  }));
 }

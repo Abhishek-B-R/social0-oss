@@ -1,0 +1,82 @@
+import { auth } from "@/lib/auth";
+import { db } from "@/db";
+import { connectedAccounts } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { redirect, notFound } from "next/navigation";
+import Link from "next/link";
+import { getPostForEdit, getPostMedia } from "../../posts-list-data";
+import { EditPostForm } from "../../EditPostForm";
+import { PLATFORMS } from "@/lib/platforms";
+
+const platformOrder = PLATFORMS.map((p) => p.id);
+
+function sortAccountsByPlatform<T extends { platform: string }>(accounts: T[]): T[] {
+  return [...accounts].sort(
+    (a, b) =>
+      platformOrder.indexOf(a.platform) - platformOrder.indexOf(b.platform),
+  );
+}
+
+export default async function EditPostPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) redirect("/");
+
+  const { id } = await params;
+  const post = await getPostForEdit(id, session.user.id);
+  if (!post) notFound();
+
+  if (post.status !== "draft" && post.status !== "scheduled") {
+    notFound();
+  }
+
+  const accounts = await db.query.connectedAccounts.findMany({
+    where: eq(connectedAccounts.userId, session.user.id),
+    columns: {
+      id: true,
+      platform: true,
+      platformUsername: true,
+      profileImageUrl: true,
+      isActive: true,
+    },
+  });
+
+  const activeAccounts = sortAccountsByPlatform(
+    accounts.filter((a) => a.isActive !== false),
+  );
+
+  const existingMedia =
+    post.mediaIds && post.mediaIds.length > 0
+      ? await getPostMedia(session.user.id, post.mediaIds)
+      : [];
+
+  return (
+    <div>
+      <div className="mb-6 flex items-center gap-2">
+        <Link
+          href="/dashboard/posts"
+          className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+        >
+          ← Back to Posts
+        </Link>
+        <span className="text-gray-400">/</span>
+        <span className="text-sm font-medium text-gray-900">Edit post</span>
+      </div>
+      <h2 className="text-2xl font-extrabold text-gray-900 mb-2">
+        Edit post
+      </h2>
+      <p className="text-gray-500 mb-8 font-medium">
+        Update content, accounts, or scheduled time.
+      </p>
+      <EditPostForm
+        post={post}
+        accounts={activeAccounts}
+        existingMedia={existingMedia}
+      />
+    </div>
+  );
+}

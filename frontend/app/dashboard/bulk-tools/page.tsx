@@ -1,15 +1,122 @@
+import Link from "next/link";
+import { Video, ImageIcon, Layers } from "lucide-react";
+import {
+  SiLinkedin,
+  SiInstagram,
+  SiYoutube,
+  SiPinterest,
+  SiTiktok,
+  SiX,
+  SiThreads,
+  SiBluesky,
+  SiFacebook,
+  SiDevdotto,
+  SiHashnode,
+  SiMedium,
+} from "react-icons/si";
+import { CONTENT_TYPES } from "@/lib/content-types";
+
+const VIDEO_PLATFORMS =
+  CONTENT_TYPES.find((c) => c.id === "video")?.platforms ?? [];
+const IMAGE_PLATFORMS =
+  CONTENT_TYPES.find((c) => c.id === "image")?.platforms ?? [];
+
+const PLATFORM_DISPLAY: Record<
+  string,
+  { name: string; icon: typeof SiLinkedin; color: string }
+> = {
+  linkedin: { name: "LinkedIn", icon: SiLinkedin, color: "bg-[#0A66C2]" },
+  facebook: { name: "Facebook", icon: SiFacebook, color: "bg-[#1877F2]" },
+  bluesky: { name: "Bluesky", icon: SiBluesky, color: "bg-[#0085FF]" },
+  hashnode: { name: "Hashnode", icon: SiHashnode, color: "bg-[#2962FF]" },
+  youtube: { name: "YouTube", icon: SiYoutube, color: "bg-[#FF0000]" },
+  pinterest: { name: "Pinterest", icon: SiPinterest, color: "bg-[#E60023]" },
+  instagram: {
+    name: "Instagram",
+    icon: SiInstagram,
+    color: "bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF]",
+  },
+  tiktok: { name: "TikTok", icon: SiTiktok, color: "bg-[#000000]" },
+  twitter_x: { name: "X", icon: SiX, color: "bg-[#000000]" },
+  threads: { name: "Threads", icon: SiThreads, color: "bg-[#000000]" },
+  devto: { name: "Dev.to", icon: SiDevdotto, color: "bg-[#0A0A0A]" },
+  medium: { name: "Medium", icon: SiMedium, color: "bg-[#000000]" },
+};
+
+function PlatformIcons({ platformIds }: { platformIds: readonly string[] }) {
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-3">
+      {platformIds.map((platformId) => {
+        const p = PLATFORM_DISPLAY[platformId];
+        if (!p) return null;
+        const Icon = p.icon;
+        return (
+          <span
+            key={platformId}
+            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${p.color} text-white shadow-sm`}
+            title={p.name}
+          >
+            <Icon className="h-4 w-4" />
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function BulkToolsPage() {
   return (
     <div>
       <h1 className="text-2xl font-extrabold text-gray-900">Bulk tools</h1>
       <p className="mt-2 text-gray-500">
-        Coming soon. Here you’ll be able to bulk schedule, bulk edit captions, and more.
+        Upload and schedule multiple videos or images at once.
       </p>
-      <ul className="mt-6 list-inside list-disc space-y-2 text-sm text-gray-600">
-        <li>Bulk schedule posts</li>
-        <li>Bulk edit captions</li>
-        <li>Bulk duplicate or reschedule</li>
-      </ul>
+
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+        <Link
+          href="/dashboard/bulk-tools/video"
+          className="group flex flex-col rounded-2xl border-2 border-emerald-500 bg-emerald-50/50 p-6 shadow-sm transition-colors hover:bg-emerald-50 hover:border-emerald-600"
+        >
+          <div className="flex items-center justify-center gap-2 text-emerald-600 mb-3">
+            <Layers className="h-8 w-8" />
+            <Video className="h-8 w-8" />
+          </div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold text-gray-900">
+              Bulk Video Upload
+            </h2>
+            <span className="rounded-md bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700">
+              NEW
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-gray-600">
+            Upload and schedule multiple videos at once.
+          </p>
+          <PlatformIcons platformIds={VIDEO_PLATFORMS} />
+        </Link>
+
+        <Link
+          href="/dashboard/bulk-tools/image"
+          className="group flex flex-col rounded-2xl border-2 border-dashed border-gray-300 bg-white p-6 shadow-sm transition-colors hover:bg-gray-50 hover:border-gray-400"
+        >
+          <div className="flex items-center justify-center gap-2 text-gray-400 group-hover:text-gray-500 mb-3">
+            <Layers className="h-8 w-8" />
+            <ImageIcon className="h-8 w-8" />
+          </div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold text-gray-900">
+              Bulk Image Upload
+            </h2>
+            <span className="rounded-md bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700">
+              NEW
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-gray-600">
+            Upload and schedule multiple images at once.
+          </p>
+          <PlatformIcons platformIds={IMAGE_PLATFORMS} />
+        </Link>
+      </div>
     </div>
   );
 }

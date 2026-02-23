@@ -5,8 +5,8 @@ import { headers } from "next/headers";
 import { isR2Configured, uploadToR2 } from "@/lib/r2";
 import { sanitizeFilename, validateFileContent } from "@/lib/validation";
 
-const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
-const MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024; // 100MB
+const MAX_IMAGE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB (bulk image upload)
+const MAX_VIDEO_SIZE_BYTES = 500 * 1024 * 1024; // 500MB (bulk video upload)
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
   if (file.size > maxSize) {
     return Response.json(
       {
-        error: `File too large. Max size: ${isImage ? "10MB" : "100MB"}`,
+        error: `File too large. Max size: ${isImage ? "50MB" : "500MB"}`,
       },
       { status: 400 },
     );

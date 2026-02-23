@@ -195,6 +195,7 @@ export async function executePublish(
         pub.connectedAccountId,
       );
     } catch (e) {
+      console.error("[executePublish] Decrypt token failed:", e);
       const err = e instanceof Error ? e.message : "Failed to decrypt token";
       await db
         .update(postPublications)
@@ -241,6 +242,7 @@ export async function executePublish(
           pub.connectedAccountId,
         );
       } catch (e) {
+        console.error("[executePublish] Decrypt Twitter secret failed:", e);
         const err =
           e instanceof Error ? e.message : "Failed to decrypt Twitter secret";
         await db
@@ -269,6 +271,7 @@ export async function executePublish(
         const { getValidToken } = await import("@/lib/token-refresh");
         linkedInToken = await getValidToken(pub.connectedAccountId, "linkedin");
       } catch (err) {
+        console.error("[executePublish] LinkedIn getValidToken failed:", err);
         const errorMsg =
           err instanceof Error ? err.message : "Failed to get valid token";
         await db
@@ -320,6 +323,7 @@ export async function executePublish(
               );
               mediaAssets.push(videoUrn);
             } catch (e) {
+              console.error("[executePublish] LinkedIn video upload failed:", e);
               const err =
                 e instanceof Error ? e.message : "Failed to upload video";
               await db
@@ -353,6 +357,7 @@ export async function executePublish(
                   mediaAssets.push(imageUrn);
                 }
               } catch (e) {
+                console.error("[executePublish] LinkedIn image upload failed:", e);
                 const err =
                   e instanceof Error ? e.message : "Failed to upload images";
                 await db
@@ -541,6 +546,7 @@ export async function executePublish(
               );
               mediaIds.push(videoMediaId);
             } catch (e) {
+              console.error("[executePublish] Twitter video upload failed:", e);
               const err =
                 e instanceof Error ? e.message : "Failed to upload video";
               await db
@@ -573,6 +579,7 @@ export async function executePublish(
                   mediaIds.push(imageMediaId);
                 }
               } catch (e) {
+                console.error("[executePublish] Twitter image upload failed:", e);
                 const err =
                   e instanceof Error ? e.message : "Failed to upload images";
                 await db
@@ -751,6 +758,7 @@ export async function executePublish(
           platformPostUrl,
         });
       } catch (e) {
+        console.error("[executePublish] Twitter post failed:", e);
         const err = e instanceof Error ? e.message : "Failed to post tweet";
         let errorMessage = err;
         if (e && typeof e === "object" && "data" in e) {
@@ -810,6 +818,7 @@ export async function executePublish(
             pub.connectedAccountId,
           );
         } catch (e) {
+          console.error("[executePublish] Bluesky decrypt app password failed:", e);
           const err =
             e instanceof Error
               ? e.message
@@ -831,42 +840,65 @@ export async function executePublish(
           continue;
         }
       }
-      const platformPostResult = await publishToPlatform(
-        {
-          publicationId: pub.publicationId,
-          connectedAccountId: pub.connectedAccountId,
+      try {
+        const platformPostResult = await publishToPlatform(
+          {
+            publicationId: pub.publicationId,
+            connectedAccountId: pub.connectedAccountId,
+            platform: pub.platform,
+            platformUserId: pub.platformUserId,
+            platformUsername: pub.platformUsername,
+            platformMetadata: pub.platformMetadata ?? null,
+          },
+          {
+            id: post.id,
+            finalContent: post.finalContent,
+            mediaIds: post.mediaIds,
+            metadata: post.metadata,
+          },
+          accessToken,
+          platformAccessSecret,
+        );
+        const isPublished = platformPostResult.status === "published";
+        await db
+          .update(postPublications)
+          .set({
+            status: platformPostResult.status,
+            publishedAt: isPublished
+              ? (platformPostResult.publishedAt ?? new Date())
+              : undefined,
+            platformPostId: platformPostResult.platformPostId ?? undefined,
+            platformPostUrl: platformPostResult.platformPostUrl ?? undefined,
+            lastError: platformPostResult.lastError ?? null,
+            updatedAt: new Date(),
+          })
+          .where(eq(postPublications.id, pub.publicationId));
+        results.push({
           platform: pub.platform,
-          platformUserId: pub.platformUserId,
-          platformUsername: pub.platformUsername,
-          platformMetadata: pub.platformMetadata ?? null,
-        },
-        {
-          id: post.id,
-          finalContent: post.finalContent,
-          mediaIds: post.mediaIds,
-          metadata: post.metadata,
-        },
-        accessToken,
-        platformAccessSecret,
-      );
-      await db
-        .update(postPublications)
-        .set({
+          connectedAccountId: pub.connectedAccountId,
           status: platformPostResult.status,
-          publishedAt: platformPostResult.publishedAt ?? undefined,
-          platformPostId: platformPostResult.platformPostId ?? undefined,
           platformPostUrl: platformPostResult.platformPostUrl ?? undefined,
-          lastError: platformPostResult.lastError ?? null,
-          updatedAt: new Date(),
-        })
-        .where(eq(postPublications.id, pub.publicationId));
-      results.push({
-        platform: pub.platform,
-        connectedAccountId: pub.connectedAccountId,
-        status: platformPostResult.status,
-        platformPostUrl: platformPostResult.platformPostUrl ?? undefined,
-        error: platformPostResult.error,
-      });
+          error: platformPostResult.error,
+        });
+      } catch (e) {
+        console.error("[executePublish] publishToPlatform threw:", e);
+        const err =
+          e instanceof Error ? e.message : "Publish to platform failed";
+        await db
+          .update(postPublications)
+          .set({
+            status: "failed",
+            lastError: err,
+            updatedAt: new Date(),
+          })
+          .where(eq(postPublications.id, pub.publicationId));
+        results.push({
+          platform: pub.platform,
+          connectedAccountId: pub.connectedAccountId,
+          status: "failed",
+          error: err,
+        });
+      }
     }
   }
 

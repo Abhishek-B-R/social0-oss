@@ -21,7 +21,11 @@ import {
 } from "lucide-react";
 import { SignOutButton } from "@/components/SignOutButton";
 
-type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
 
 function NavLink({
   href,
@@ -73,7 +77,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
   const pathname = usePathname();
 
   const isActive = (href: string) => {
-    if (href === "/dashboard") return pathname === "/dashboard";
+    if (href === "/dashboard/connections") return pathname === "/dashboard/connections";
     return pathname.startsWith(href);
   };
 
@@ -81,7 +85,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
     <aside className="hidden h-screen w-64 flex-col border-r border-gray-200 bg-white lg:flex">
       <div className="flex flex-col gap-6 p-4">
         <Link
-          href="/dashboard"
+          href="/dashboard/posts/new"
           className="flex items-center gap-3 font-semibold text-lg text-gray-900 hover:text-gray-700"
         >
           <Image
@@ -94,11 +98,11 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           <span>Social0</span>
         </Link>
 
-        <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+        {/* <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
           <Home className="h-4 w-4 shrink-0 text-gray-500" />
           <span className="flex-1 text-sm font-medium text-gray-700">main</span>
           <ChevronDown className="h-4 w-4 text-gray-400" />
-        </div>
+        </div> */}
 
         <Link
           href="/dashboard/posts/new"
@@ -114,27 +118,80 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
               href="/dashboard/posts/new"
               label="New post"
               icon={FilePlus}
-              isActive={pathname === "/dashboard/posts/new" || pathname.startsWith("/dashboard/posts/new/")}
+              isActive={
+                pathname === "/dashboard/posts/new" ||
+                pathname.startsWith("/dashboard/posts/new/")
+              }
             />
-            <NavLink href="/dashboard/bulk-tools" label="Bulk tools" icon={Layers} isActive={isActive("/dashboard/bulk-tools")} />
+            <NavLink
+              href="/dashboard/bulk-tools"
+              label="Bulk tools"
+              icon={Layers}
+              isActive={isActive("/dashboard/bulk-tools")}
+            />
           </Section>
 
           <Section title="Posts">
-            <NavLink href="/dashboard/calendar" label="Calendar" icon={Calendar} isActive={isActive("/dashboard/calendar")} />
-            <NavLink href="/dashboard/posts" label="All" icon={List} isActive={pathname === "/dashboard/posts"} />
-            <NavLink href="/dashboard/posts/scheduled" label="Scheduled" icon={Clock} isActive={isActive("/dashboard/posts/scheduled")} />
-            <NavLink href="/dashboard/posts/posted" label="Posted" icon={CheckCircle} isActive={isActive("/dashboard/posts/posted")} />
-            <NavLink href="/dashboard/posts/drafts" label="Drafts" icon={FileText} isActive={isActive("/dashboard/posts/drafts")} />
+            <NavLink
+              href="/dashboard/calendar"
+              label="Calendar"
+              icon={Calendar}
+              isActive={isActive("/dashboard/calendar")}
+            />
+            <NavLink
+              href="/dashboard/posts"
+              label="All"
+              icon={List}
+              isActive={pathname === "/dashboard/posts"}
+            />
+            <NavLink
+              href="/dashboard/posts/scheduled"
+              label="Scheduled"
+              icon={Clock}
+              isActive={isActive("/dashboard/posts/scheduled")}
+            />
+            <NavLink
+              href="/dashboard/posts/posted"
+              label="Posted"
+              icon={CheckCircle}
+              isActive={isActive("/dashboard/posts/posted")}
+            />
+            <NavLink
+              href="/dashboard/posts/drafts"
+              label="Drafts"
+              icon={FileText}
+              isActive={isActive("/dashboard/posts/drafts")}
+            />
           </Section>
 
           <Section title="Workspace">
-            <NavLink href="/dashboard" label="Connections" icon={Link2} isActive={pathname === "/dashboard"} />
-            <NavLink href="/dashboard/teams" label="Teams" icon={Users} isActive={isActive("/dashboard/teams")} />
+            <NavLink
+              href="/dashboard/connections"
+              label="Connections"
+              icon={Link2}
+              isActive={pathname === "/dashboard/connections"}
+            />
+            <NavLink
+              href="/dashboard/teams"
+              label="Teams"
+              icon={Users}
+              isActive={isActive("/dashboard/teams")}
+            />
           </Section>
 
           <Section title="Configuration">
-            <NavLink href="/dashboard/settings" label="Settings" icon={Settings} isActive={isActive("/dashboard/settings")} />
-            <NavLink href="/dashboard/billing" label="Billing" icon={CreditCard} isActive={isActive("/dashboard/billing")} />
+            <NavLink
+              href="/dashboard/settings"
+              label="Settings"
+              icon={Settings}
+              isActive={isActive("/dashboard/settings")}
+            />
+            <NavLink
+              href="/dashboard/billing"
+              label="Billing"
+              icon={CreditCard}
+              isActive={isActive("/dashboard/billing")}
+            />
           </Section>
 
           <Section title="Support">

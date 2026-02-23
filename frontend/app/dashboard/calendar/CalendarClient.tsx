@@ -52,9 +52,10 @@ function DayCell({
 }) {
   const dateKey = format(date, "yyyy-MM-dd");
   const isExpanded = expandedDay === dateKey;
-  const visible = isExpanded ? posts : posts.slice(0, MAX_VISIBLE_PER_DAY);
+  const limit = fillHeight ? posts.length : MAX_VISIBLE_PER_DAY;
+  const visible = isExpanded ? posts : posts.slice(0, limit);
   const moreCount = posts.length - MAX_VISIBLE_PER_DAY;
-  const hasMore = !isExpanded && moreCount > 0;
+  const hasMore = !fillHeight && !isExpanded && moreCount > 0;
 
   return (
     <div
@@ -189,7 +190,7 @@ export function CalendarClient({
 
   const handleSwitchToWeek = () => {
     setView("week");
-    setWeekStart(startOfWeek(currentMonth, { weekStartsOn: WEEK_STARTS_ON }));
+    setWeekStart(startOfWeek(today, { weekStartsOn: WEEK_STARTS_ON }));
   };
   const handleSwitchToDay = () => {
     setView("day");

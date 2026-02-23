@@ -150,3 +150,184 @@ export async function createPost(
     };
   }
 }
+
+export type DeletePostResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export async function deletePost(postId: string): Promise<DeletePostResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(postId)) {
+    return { success: false, error: "Invalid post ID" };
+  }
+
+  try {
+    const [post] = await db
+      .select({ id: posts.id })
+      .from(posts)
+      .where(
+        and(eq(posts.id, postId), eq(posts.userId, session.user.id)),
+      );
+    if (!post) {
+      return { success: false, error: "Post not found" };
+    }
+
+    await db.delete(postPublications).where(eq(postPublications.postId, postId));
+    await db.delete(posts).where(eq(posts.id, postId));
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/posts");
+    revalidatePath("/dashboard/posts/scheduled");
+    revalidatePath("/dashboard/posts/drafts");
+    return { success: true };
+  } catch (e) {
+    console.error("deletePost error:", e);
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Failed to delete post",
+    };
+  }
+}
+
+export type UpdatePostResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export async function updatePost(
+  postId: string,
+  content: string,
+  selectedAccountIds: string[],
+  scheduledAt: Date | null,
+  mediaIds?: string[],
+): Promise<UpdatePostResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const trimmed = content.trim();
+  if (!trimmed) {
+    return { success: false, error: "Post content is required" };
+  }
+
+  if (selectedAccountIds.length === 0) {
+    return {
+      success: false,
+      error: "Select at least one account",
+    };
+  }
+
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(postId) || !selectedAccountIds.every((id) => uuidRegex.test(id))) {
+    return { success: false, error: "Invalid ID format" };
+  }
+
+  const finalMediaIds = mediaIds ?? [];
+  if (finalMediaIds.length > 0 && !finalMediaIds.every((id) => uuidRegex.test(id))) {
+    return { success: false, error: "Invalid media ID format" };
+  }
+
+  const ownedAccounts = await db
+    .select({ id: connectedAccounts.id })
+    .from(connectedAccounts)
+    .where(
+      and(
+        eq(connectedAccounts.userId, session.user.id),
+        inArray(connectedAccounts.id, selectedAccountIds),
+      ),
+    );
+  const ownedIds = new Set(ownedAccounts.map((a) => a.id));
+  const validIds = [...new Set(selectedAccountIds)];
+  if (validIds.length !== ownedIds.size || !validIds.every((id) => ownedIds.has(id))) {
+    return {
+      success: false,
+      error: "One or more selected accounts are invalid",
+    };
+  }
+
+  try {
+    const [existing] = await db
+      .select({ id: posts.id, status: posts.status, mediaIds: posts.mediaIds })
+      .from(posts)
+      .where(
+        and(eq(posts.id, postId), eq(posts.userId, session.user.id)),
+      );
+    if (!existing) {
+      return { success: false, error: "Post not found" };
+    }
+    if (existing.status !== "draft" && existing.status !== "scheduled") {
+      return { success: false, error: "Only drafts and scheduled posts can be edited" };
+    }
+
+    if (finalMediaIds.length > 0) {
+      const ownedMedia = await db
+        .select({ id: mediaUploads.id })
+        .from(mediaUploads)
+        .where(
+          and(
+            eq(mediaUploads.userId, session.user.id),
+            inArray(mediaUploads.id, finalMediaIds),
+          ),
+        );
+      const ownedMediaIds = new Set(ownedMedia.map((m) => m.id));
+      if (!finalMediaIds.every((id) => ownedMediaIds.has(id))) {
+        return { success: false, error: "One or more media files are invalid" };
+      }
+    }
+
+    const oldMediaIds = (existing.mediaIds ?? []) as string[];
+    const status = scheduledAt ? "scheduled" : "draft";
+    await db
+      .update(posts)
+      .set({
+        originalContent: trimmed,
+        finalContent: trimmed,
+        status,
+        scheduledAt,
+        mediaIds: finalMediaIds,
+        updatedAt: new Date(),
+      })
+      .where(eq(posts.id, postId));
+
+    const removedMediaIds = oldMediaIds.filter((id) => !finalMediaIds.includes(id));
+    if (removedMediaIds.length > 0) {
+      await db
+        .delete(mediaUploads)
+        .where(
+          and(
+            eq(mediaUploads.userId, session.user.id),
+            inArray(mediaUploads.id, removedMediaIds),
+          ),
+        );
+    }
+
+    await db.delete(postPublications).where(eq(postPublications.postId, postId));
+    await db.insert(postPublications).values(
+      validIds.map((connectedAccountId) => ({
+        postId,
+        connectedAccountId,
+        status: "pending" as const,
+      })),
+    );
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/posts");
+    revalidatePath("/dashboard/posts/scheduled");
+    revalidatePath("/dashboard/posts/drafts");
+    revalidatePath(`/dashboard/posts/${postId}/edit`);
+    return { success: true };
+  } catch (e) {
+    console.error("updatePost error:", e);
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Failed to update post",
+    };
+  }
+}

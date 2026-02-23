@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PublishButton } from "./PublishButton";
+import { PostCardDeleteButton } from "./PostCardDeleteButton";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { Image, Video, FileText } from "lucide-react";
 import type { PublicationRow } from "./posts-list-data";
@@ -11,6 +12,45 @@ const STATUS_LABEL: Record<string, string> = {
   published: "Posted",
   failed: "Failed",
 };
+
+function getTimestampLabel(
+  post: PostRow,
+  publications: { publishedAt: Date | null }[]
+): { label: string; date: Date | null } {
+  const dateOpts: Intl.DateTimeFormatOptions = {
+    dateStyle: "short",
+    timeStyle: "short",
+  };
+  if (post.status === "scheduled" && post.scheduledAt) {
+    return {
+      label: `Scheduled for ${new Date(post.scheduledAt).toLocaleString(undefined, dateOpts)}`,
+      date: new Date(post.scheduledAt),
+    };
+  }
+  if (post.status === "published") {
+    const publishedAts = publications
+      .map((p) => p.publishedAt)
+      .filter((d): d is Date => d != null);
+    const publishedAt =
+      publishedAts.length > 0
+        ? new Date(
+            Math.min(...publishedAts.map((d) => new Date(d).getTime())),
+          )
+        : null;
+    return {
+      label: publishedAt
+        ? `Posted at ${publishedAt.toLocaleString(undefined, dateOpts)}`
+        : "Posted",
+      date: publishedAt,
+    };
+  }
+  return {
+    label: post.createdAt
+      ? `Created ${new Date(post.createdAt).toLocaleString(undefined, dateOpts)}`
+      : "—",
+    date: post.createdAt ? new Date(post.createdAt) : null,
+  };
+}
 
 type PostRow = {
   id: string;
@@ -73,12 +113,10 @@ export function PostListCards({
                 {mediaType === "text" && <FileText className="h-3.5 w-3.5" />}
                 <span className="capitalize">{mediaType}</span>
                 <span>
-                  {post.createdAt
-                    ? new Date(post.createdAt).toLocaleString(undefined, {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })
-                    : "—"}
+                  {getTimestampLabel(
+                    post,
+                    publicationsByPostId[post.id] ?? [],
+                  ).label}
                 </span>
               </div>
               <p className="text-gray-900 line-clamp-2 font-medium text-sm">
@@ -121,6 +159,17 @@ export function PostListCards({
                 })()}
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 px-4 py-3 bg-gray-50/50">
+              {post.status === "draft" && (
+                <Link
+                  href={`/dashboard/posts/${post.id}/edit`}
+                  className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                >
+                  Edit
+                </Link>
+              )}
+              {(post.status === "draft" || post.status === "scheduled") && (
+                <PostCardDeleteButton postId={post.id} status={post.status} />
+              )}
               {(post.status === "draft" ||
                 post.status === "scheduled" ||
                 post.status === "failed") && (

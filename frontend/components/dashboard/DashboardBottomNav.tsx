@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { FilePlus, List, Link2, MoreHorizontal } from "lucide-react";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Connections", icon: Link2 },
+  { href: "/dashboard/connections", label: "Connections", icon: Link2 },
   { href: "/dashboard/posts", label: "Posts", icon: List },
   { href: "/dashboard/posts/new", label: "Create", icon: FilePlus },
   { href: "/dashboard/more", label: "More", icon: MoreHorizontal },
@@ -15,7 +15,7 @@ export function DashboardBottomNav() {
   const pathname = usePathname();
 
   const isActive = (href: string) => {
-    if (href === "/dashboard") return pathname === "/dashboard";
+    if (href === "/dashboard/connections") return pathname === "/dashboard/connections";
     if (href === "/dashboard/posts/new")
       return (
         pathname === "/dashboard/posts/new" ||
