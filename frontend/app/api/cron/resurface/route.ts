@@ -187,25 +187,28 @@ export async function GET(request: Request) {
           try {
             await client.v2.deleteTweet(previousPlugId);
           } catch (delErr) {
-            console.error("[cron/resurface] Delete previous plug reply:", delErr);
+            console.error("[cron/resurface] Delete previous plug tweet:", delErr);
           }
         }
 
-        try {
-          await client.v2.unretweet(userId, platformPostId);
-        } catch (unrtErr) {
-          // May already be unretweeted
-        }
-
-        await client.v2.retweet(userId, platformPostId);
-
         let plugCommentId: string | null = null;
-        if (schedule.plugComment?.trim()) {
-          const replyRes = await client.v2.reply(
-            schedule.plugComment.trim(),
+        const hasComment = schedule.plugComment?.trim();
+
+        if (hasComment) {
+          // Quote tweet: post with comment as the quote text
+          const quoteRes = await client.v2.quote(
+            hasComment,
             platformPostId,
           );
-          plugCommentId = replyRes.data?.id ?? null;
+          plugCommentId = quoteRes.data?.id ?? null;
+        } else {
+          // Plain retweet
+          try {
+            await client.v2.unretweet(userId, platformPostId);
+          } catch (unrtErr) {
+            // May already be unretweeted
+          }
+          await client.v2.retweet(userId, platformPostId);
         }
 
         await db

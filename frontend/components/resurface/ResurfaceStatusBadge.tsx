@@ -73,7 +73,7 @@ export function ResurfaceStatusBadge({ schedule }: ResurfaceStatusBadgeProps) {
               id="resurface-modal-title"
               className="text-lg font-semibold text-gray-900"
             >
-              Auto-Resurface (X)
+              Auto-Repost (X)
             </h2>
             <dl className="mt-4 space-y-2 text-sm">
               <div>
@@ -96,7 +96,7 @@ export function ResurfaceStatusBadge({ schedule }: ResurfaceStatusBadgeProps) {
               </div>
               {schedule.plugComment && (
                 <div>
-                  <dt className="text-gray-500">Plug comment</dt>
+                  <dt className="text-gray-500">Quote tweet</dt>
                   <dd className="font-medium text-gray-900 line-clamp-2">
                     {schedule.plugComment}
                   </dd>

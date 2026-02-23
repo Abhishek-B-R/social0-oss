@@ -6,8 +6,9 @@ import { createPost, type PublishMode } from "@/app/actions/posts";
 import { publishPost } from "@/app/actions/publish";
 import { createResurfaceSchedule, createAutoPlug } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
-import { AutoResurfacePanel, type AutoResurfaceConfig } from "@/components/resurface/AutoResurfacePanel";
-import { AutoPlugPanel, type AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import { AutoFeaturesCard } from "@/components/resurface/AutoFeaturesCard";
+import type { AutoResurfaceConfig } from "@/components/resurface/AutoResurfacePanel";
+import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 import { MdOutlineVideoLibrary, MdClose } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettingsModal } from "@/components/TikTokSettingsModal";
@@ -292,16 +293,11 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
         />
       </div>
 
-      <AutoResurfacePanel
+      <AutoFeaturesCard
         selectedAccountIds={Array.from(selectedIds)}
         allAccounts={accounts}
-        onChange={setResurfaceConfig}
-      />
-
-      <AutoPlugPanel
-        selectedAccountIds={Array.from(selectedIds)}
-        allAccounts={accounts}
-        onChange={setAutoPlugConfig}
+        onResurfaceChange={setResurfaceConfig}
+        onAutoPlugChange={setAutoPlugConfig}
       />
 
       {tiktokModalAccountId && (

@@ -71,7 +71,7 @@ export function AddResurfaceModal({
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
           <h2 id="add-resurface-title" className="text-lg font-semibold text-gray-900">
-            ♻️ Add Auto-Resurface
+            ♻️ Add Auto-Repost
           </h2>
           <button
             type="button"

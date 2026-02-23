@@ -29,6 +29,8 @@ type AutoPlugPanelProps = {
   publishedAt?: Date;
   onChange: (config: AutoPlugConfig | null) => void;
   initialConfig?: Partial<AutoPlugConfig> | null;
+  /** When true, render without card wrapper (for use inside combined AutoFeaturesCard) */
+  embedded?: boolean;
 };
 
 export function AutoPlugPanel({
@@ -37,6 +39,7 @@ export function AutoPlugPanel({
   publishedAt,
   onChange,
   initialConfig,
+  embedded = false,
 }: AutoPlugPanelProps) {
   const supportedPlatforms = getResurfacePlatforms(
     selectedAccountIds,
@@ -61,6 +64,7 @@ export function AutoPlugPanel({
       xAccount={xAccount ?? null}
       initialConfig={initialConfig}
       onChange={onChange}
+      embedded={embedded}
     />
   );
 }
@@ -69,10 +73,12 @@ function AutoPlugPanelInner({
   xAccount,
   initialConfig,
   onChange,
+  embedded = false,
 }: {
   xAccount: ConnectedAccount | null;
   initialConfig?: Partial<AutoPlugConfig> | null;
   onChange: (config: AutoPlugConfig | null) => void;
+  embedded?: boolean;
 }) {
   const [enabled, setEnabled] = useState(false);
   const [threshold, setThreshold] = useState(
@@ -100,8 +106,8 @@ function AutoPlugPanelInner({
   const commentSlice = plugComment.slice(0, MAX_PLUG_COMMENT_LENGTH);
   const charCount = commentSlice.length;
 
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+  const content = (
+    <>
       <div className="flex items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">
@@ -213,6 +219,13 @@ function AutoPlugPanelInner({
           </div>
         </div>
       )}
+    </>
+  );
+  return embedded ? (
+    <div className="min-w-0">{content}</div>
+  ) : (
+    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      {content}
     </div>
   );
 }

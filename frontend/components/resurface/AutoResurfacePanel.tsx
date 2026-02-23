@@ -41,6 +41,8 @@ type AutoResurfacePanelProps = {
   onChange: (config: AutoResurfaceConfig | null) => void;
   /** Optional initial config (e.g. from form prefill) */
   initialConfig?: Partial<AutoResurfaceConfig> | null;
+  /** When true, render without card wrapper (for use inside combined AutoFeaturesCard) */
+  embedded?: boolean;
 };
 
 function formatFirstReshare(intervalHours: number): string {
@@ -61,6 +63,7 @@ export function AutoResurfacePanel({
   publishedAt,
   onChange,
   initialConfig,
+  embedded = false,
 }: AutoResurfacePanelProps) {
   const supportedPlatforms = getResurfacePlatforms(
     selectedAccountIds,
@@ -84,6 +87,7 @@ export function AutoResurfacePanel({
       subtitle={subtitle}
       initialConfig={initialConfig}
       onChange={onChange}
+      embedded={embedded}
     />
   );
 }
@@ -92,17 +96,19 @@ function AutoResurfacePanelInner({
   subtitle,
   initialConfig,
   onChange,
+  embedded = false,
 }: {
   subtitle: string;
   initialConfig?: Partial<AutoResurfaceConfig> | null;
   onChange: (config: AutoResurfaceConfig | null) => void;
+  embedded?: boolean;
 }) {
   const [enabled, setEnabled] = useState(false);
   const [intervalHours, setIntervalHours] = useState(
     initialConfig?.intervalHours ?? 4,
   );
   const [maxResurfaces, setMaxResurfaces] = useState(
-    initialConfig?.maxResurfaces ?? 3,
+    initialConfig?.maxResurfaces ?? 1,
   );
   const [plugComment, setPlugComment] = useState(
     initialConfig?.plugComment ?? "",
@@ -138,12 +144,12 @@ function AutoResurfacePanelInner({
     });
   };
 
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+  const content = (
+    <>
       <div className="flex items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">
-            ♻️ Auto-Resurface{" "}
+            ♻️ Auto-Repost{" "}
             {subtitle && (
               <span className="text-gray-500 font-normal">{subtitle}</span>
             )}
@@ -213,13 +219,13 @@ function AutoResurfacePanelInner({
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Auto-plug comment (optional)
+              Quote tweet text (optional)
             </label>
             <input
               type="text"
               value={plugComment}
               onChange={(e) => setPlugComment(e.target.value)}
-              placeholder="Add a comment to post with each reshare (optional)"
+              placeholder="Add text to post as a quote tweet with each reshare"
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400"
             />
           </div>
@@ -266,6 +272,13 @@ function AutoResurfacePanelInner({
           ))}
         </div>
       )}
+    </>
+  );
+  return embedded ? (
+    <div className="min-w-0">{content}</div>
+  ) : (
+    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      {content}
     </div>
   );
 }

@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { createAutoPlug } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
-import { AutoResurfacePanel, type AutoResurfaceConfig } from "@/components/resurface/AutoResurfacePanel";
-import { AutoPlugPanel, type AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import { AutoFeaturesCard } from "@/components/resurface/AutoFeaturesCard";
+import type { AutoResurfaceConfig } from "@/components/resurface/AutoResurfacePanel";
+import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 
 const TWITTER_MAX_LENGTH = 280;
 const TWITTER_THREAD_SEP = "---";
@@ -124,16 +125,11 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
         )}
       </div>
 
-      <AutoResurfacePanel
+      <AutoFeaturesCard
         selectedAccountIds={Array.from(selectedIds)}
         allAccounts={accounts}
-        onChange={setResurfaceConfig}
-      />
-
-      <AutoPlugPanel
-        selectedAccountIds={Array.from(selectedIds)}
-        allAccounts={accounts}
-        onChange={setAutoPlugConfig}
+        onResurfaceChange={setResurfaceConfig}
+        onAutoPlugChange={setAutoPlugConfig}
       />
 
       <PostFormOptions

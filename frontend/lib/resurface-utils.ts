@@ -1,5 +1,5 @@
 /**
- * Auto-Resurface is only supported on X (Twitter) for now.
+ * Auto-Repost is only supported on X (Twitter) for now.
  * Restrict UI to X only; add more when backend/cron support them.
  */
 export const RESURFACE_PLATFORMS = ["twitter_x"] as const;
@@ -17,8 +17,8 @@ const PLATFORM_DISPLAY_NAMES: Record<string, string> = {
 export type ConnectedAccountLike = { id: string; platform: string };
 
 /**
- * Returns the list of platform IDs that support resurface among the selected accounts.
- * Only render AutoResurfacePanel when this list is non-empty.
+ * Returns the list of platform IDs that support auto-repost among the selected accounts.
+ * Only render Auto-Repost panel when this list is non-empty.
  */
 export function getResurfacePlatforms(
   selectedAccountIds: string[],
@@ -35,7 +35,7 @@ export function getResurfacePlatforms(
 }
 
 /**
- * Human-readable list of platform names for the selected resurface platforms.
+ * Human-readable list of platform names for the selected repost platforms.
  */
 export function getResurfacePlatformLabels(
   selectedAccountIds: string[],
@@ -47,7 +47,7 @@ export function getResurfacePlatformLabels(
 }
 
 /**
- * Auto-resurface can only be added within 1 day of the post going live.
+ * Auto-repost can only be added within 1 day of the post going live.
  */
 const RESURFACE_WINDOW_MS = 24 * 60 * 60 * 1000;
 

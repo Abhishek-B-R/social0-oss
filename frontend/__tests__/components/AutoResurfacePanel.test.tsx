@@ -27,7 +27,7 @@ describe("AutoResurfacePanel", () => {
         onChange={() => {}}
       />,
     );
-    expect(screen.getByText(/Auto-Resurface/)).toBeInTheDocument();
+    expect(screen.getByText(/Auto-Repost/)).toBeInTheDocument();
   });
 
   it("toggle off by default — onChange not called with config on mount", () => {

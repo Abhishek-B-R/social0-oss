@@ -29,7 +29,7 @@ export function ResurfaceSetup({
   postId,
   onSuccess,
   initialIntervalHours = 4,
-  initialMaxResurfaces = 3,
+  initialMaxResurfaces = 1,
   initialPlugComment = "",
 }: ResurfaceSetupProps) {
   const [enabled, setEnabled] = useState(false);
@@ -62,7 +62,7 @@ export function ResurfaceSetup({
   if (done) {
     return (
       <p className="mt-4 text-sm text-emerald-600 font-medium">
-        ♻️ Auto-Resurface enabled. Your post will be retweeted at the chosen intervals.
+        ♻️ Auto-Repost enabled. Your post will be retweeted at the chosen intervals.
       </p>
     );
   }
@@ -86,7 +86,7 @@ export function ResurfaceSetup({
           />
         </button>
         <span className="text-sm font-semibold text-gray-900">
-          ♻️ Auto-Resurface this post
+          ♻️ Auto-Repost this post
         </span>
       </div>
       {enabled && (
@@ -125,13 +125,13 @@ export function ResurfaceSetup({
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Auto-plug comment (optional)
+              Quote tweet text (optional)
             </label>
             <input
               type="text"
               value={plugComment}
               onChange={(e) => setPlugComment(e.target.value)}
-              placeholder="Add a comment to post with each reshare (optional)"
+              placeholder="Add text to post as a quote tweet with each reshare"
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400"
             />
           </div>
@@ -144,7 +144,7 @@ export function ResurfaceSetup({
             disabled={loading}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
           >
-            {loading ? "Enabling…" : "Enable Auto-Resurface"}
+            {loading ? "Enabling…" : "Enable Auto-Repost"}
           </button>
         </div>
       )}

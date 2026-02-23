@@ -22,7 +22,7 @@ type UploadPublishOverlayProps = {
   isScheduling?: boolean;
   /** After publishing: show success state with links */
   showLinks?: boolean;
-  /** When showLinks and post was published to X, show Auto-Resurface section */
+  /** When showLinks and post was published to X, show Auto-Repost section */
   publishedPostId?: string | null;
   publishedToX?: boolean;
   resurfacePreFill?: ResurfacePreFill | null;
@@ -105,7 +105,7 @@ export function UploadPublishOverlay({
                 <ResurfaceSetup
                   postId={publishedPostId}
                   initialIntervalHours={resurfacePreFill?.intervalHours ?? 4}
-                  initialMaxResurfaces={resurfacePreFill?.maxResurfaces ?? 3}
+                  initialMaxResurfaces={resurfacePreFill?.maxResurfaces ?? 1}
                   initialPlugComment={resurfacePreFill?.plugComment ?? ""}
                 />
               </div>

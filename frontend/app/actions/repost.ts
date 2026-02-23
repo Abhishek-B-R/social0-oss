@@ -128,17 +128,17 @@ export async function createAutoPlug(
   }
 }
 
-export type CreateResurfaceResult =
+export type CreateRepostResult =
   | { success: true; scheduleId: string }
   | { success: false; error: string };
 
-export async function createResurfaceSchedule(
+export async function createRepostSchedule(
   postId: string,
   platform: string,
   intervalHours: number,
   maxResurfaces: number,
   plugComment: string | null,
-): Promise<CreateResurfaceResult> {
+): Promise<CreateRepostResult> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return { success: false, error: "Unauthorized" };
@@ -238,7 +238,7 @@ export async function createResurfaceSchedule(
     revalidatePath("/dashboard");
     return { success: true, scheduleId: schedule.id };
   } catch (e) {
-    console.error("[createResurfaceSchedule]", e);
+    console.error("[createRepostSchedule]", e);
     const msg = e instanceof Error ? e.message : String(e);
     const hint =
       msg.includes("relation") || msg.includes("does not exist")
@@ -251,13 +251,13 @@ export async function createResurfaceSchedule(
   }
 }
 
-export type DisableResurfaceResult =
+export type DisableRepostResult =
   | { success: true }
   | { success: false; error: string };
 
-export async function disableResurfaceSchedule(
+export async function disableRepostSchedule(
   scheduleId: string,
-): Promise<DisableResurfaceResult> {
+): Promise<DisableRepostResult> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return { success: false, error: "Unauthorized" };
@@ -286,7 +286,7 @@ export async function disableResurfaceSchedule(
     revalidatePath("/dashboard");
     return { success: true };
   } catch (e) {
-    console.error("[disableResurfaceSchedule]", e);
+    console.error("[disableRepostSchedule]", e);
     return {
       success: false,
       error: e instanceof Error ? e.message : "Failed to disable",
