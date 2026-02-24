@@ -71,10 +71,16 @@ export async function POST(req: NextRequest) {
         profile_image?: string;
       };
       if (userRes.ok && (userData.id || userData.username)) {
+        const raw = userData.profile_image;
+        const profileImageUrl =
+          typeof raw === "string" &&
+          (raw.startsWith("http://") || raw.startsWith("https://"))
+            ? raw
+            : null;
         userInfo = {
           id: userData.id || userData.username || `pinterest-${Date.now()}`,
           username: userData.username || "Pinterest User",
-          profileImageUrl: userData.profile_image || null,
+          profileImageUrl,
         };
       } else {
         userInfo = {

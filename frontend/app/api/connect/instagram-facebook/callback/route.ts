@@ -191,6 +191,12 @@ export async function GET(
         }
 
         const instagramData = await instagramRes.json();
+        const rawUrl = instagramData.profile_picture_url;
+        const instagramProfilePictureUrl =
+          typeof rawUrl === "string" &&
+          (rawUrl.startsWith("http://") || rawUrl.startsWith("https://"))
+            ? rawUrl
+            : null;
 
         pagesWithInstagram.push({
           pageId: page.id,
@@ -198,7 +204,7 @@ export async function GET(
           pageAccessToken: page.access_token,
           instagramAccountId: instagramData.id,
           instagramUsername: instagramData.username || null,
-          instagramProfilePictureUrl: instagramData.profile_picture_url || null,
+          instagramProfilePictureUrl,
         });
       } catch (err) {
         console.error(`Error checking Instagram for Page ${page.id}:`, err);

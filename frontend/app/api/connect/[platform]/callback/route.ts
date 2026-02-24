@@ -11,6 +11,13 @@ import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { TwitterApi } from "twitter-api-v2";
 
+/** Validate URL is http/https before storing as profile image. */
+function isValidProfileImageUrl(url: unknown): url is string {
+  if (typeof url !== "string" || !url.trim()) return false;
+  const u = url.trim();
+  return u.startsWith("http://") || u.startsWith("https://");
+}
+
 /** Ensure we only ever redirect to a string URL. Passing an object (e.g. from state/callbackUrl) would 404. */
 function safeRedirect(url: unknown, fallback: string): never {
   const s =
@@ -123,10 +130,17 @@ export async function GET(
         accessSecret,
       });
       const me = await userClient.v2.me();
+      let profileImageUrl: string | null = me.data?.profile_image_url ?? null;
+      if (profileImageUrl && typeof profileImageUrl === "string") {
+        profileImageUrl = profileImageUrl.replace(/_normal(\.[a-z]+)?$/i, "_400x400$1") as string;
+        if (!isValidProfileImageUrl(profileImageUrl)) profileImageUrl = null;
+      } else {
+        profileImageUrl = null;
+      }
       const userInfo = {
         id: me.data?.id ?? `twitter_x-${Date.now()}`,
         username: me.data?.username ?? me.data?.name ?? null,
-        profileImageUrl: me.data?.profile_image_url ?? null,
+        profileImageUrl,
       };
 
       if (!userId) {
@@ -579,6 +593,20 @@ export async function GET(
       }
       if (pages.length === 1) {
         const page = pages[0];
+        let pageProfileImageUrl: string | null = null;
+        try {
+          const pageRes = await fetch(
+            `https://graph.facebook.com/v21.0/${page.id}?fields=id,name,picture`,
+            { headers: { Authorization: `Bearer ${page.access_token}` } },
+          );
+          if (pageRes.ok) {
+            const pageData = await pageRes.json();
+            const url = pageData.picture?.data?.url;
+            if (isValidProfileImageUrl(url)) pageProfileImageUrl = url;
+          }
+        } catch (err) {
+          console.error("Facebook page picture fetch failed:", err);
+        }
         const accountId = crypto.randomUUID();
         await db.insert(connectedAccounts).values({
           id: accountId,
@@ -586,7 +614,7 @@ export async function GET(
           platform: "facebook",
           platformUserId: page.id,
           platformUsername: page.name,
-          profileImageUrl: null,
+          profileImageUrl: pageProfileImageUrl,
           encryptedAccessToken: encryptToken(page.access_token, accountId),
           encryptedRefreshToken: null,
           tokenExpiresAt: null,
@@ -764,50 +792,68 @@ async function fetchPlatformUserInfo(
 }> {
   switch (platform) {
     case "linkedin": {
-      // LinkedIn OpenID Connect userinfo
       try {
         const response = await fetch("https://api.linkedin.com/v2/userinfo", {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         const data = await response.json().catch(() => ({}));
-        if (response.ok && data.sub) {
-          return {
-            id: data.sub,
-            username: data.name || data.given_name || "LinkedIn User",
-            profileImageUrl: data.picture || null,
-          };
+        if (!response.ok || !data.sub) {
+          console.error("LinkedIn userinfo error:", response.status, data);
+          break;
         }
-        console.error("LinkedIn userinfo error:", response.status, data);
+        let profileImageUrl: string | null = null;
+        try {
+          const profileRes = await fetch(
+            "https://api.linkedin.com/v2/me?projection=(id,localizedFirstName,localizedLastName,profilePicture(displayImage~:playableStreams))",
+            { headers: { Authorization: `Bearer ${accessToken}` } },
+          );
+          if (profileRes.ok) {
+            const profileData = await profileRes.json().catch(() => ({}));
+            const elements = profileData.profilePicture?.["displayImage~"]?.elements;
+            if (Array.isArray(elements) && elements.length > 0) {
+              const last = elements[elements.length - 1];
+              const url = last.identifiers?.[0]?.identifier;
+              if (isValidProfileImageUrl(url)) profileImageUrl = url;
+            }
+          }
+        } catch (err) {
+          console.error("LinkedIn profile picture fetch failed:", err);
+        }
+        return {
+          id: data.sub,
+          username: data.name || data.given_name || "LinkedIn User",
+          profileImageUrl,
+        };
       } catch (err) {
         console.error("LinkedIn user info fetch failed:", err);
       }
       break;
     }
 
-    case "instagram":
-      // Instagram Graph API - get user info
+    case "instagram": {
       try {
         const response = await fetch(
-          `https://graph.instagram.com/me?fields=id,username,account_type&access_token=${accessToken}`,
+          `https://graph.instagram.com/me?fields=id,username,account_type,profile_picture_url&access_token=${accessToken}`,
         );
         if (response.ok) {
           const data = await response.json();
+          const raw = data.profile_picture_url;
+          const profileImageUrl = isValidProfileImageUrl(raw) ? raw : null;
           return {
             id: data.id || `instagram-${Date.now()}`,
             username: data.username || null,
-            profileImageUrl: null, // Instagram Graph API doesn't provide profile image in basic query
+            profileImageUrl,
           };
-        } else {
-          const errorText = await response.text();
-          console.error("Instagram Graph API userinfo error:", errorText);
         }
+        const errorText = await response.text();
+        console.error("Instagram Graph API userinfo error:", errorText);
       } catch (err) {
         console.error("Instagram user info fetch failed:", err);
       }
       break;
+    }
 
     case "youtube": {
-      // YouTube: try channel first (channel name/avatar), then Google userinfo
       const headers = { Authorization: `Bearer ${accessToken}` };
       try {
         const channelResponse = await fetch(
@@ -818,27 +864,30 @@ async function fetchPlatformUserInfo(
           const channelData = await channelResponse.json();
           const channel = channelData.items?.[0];
           if (channel) {
+            const thumb = channel.snippet?.thumbnails?.default?.url;
+            const profileImageUrl = isValidProfileImageUrl(thumb) ? thumb : null;
             return {
               id: channel.id,
               username:
                 channel.snippet?.title ||
                 channel.snippet?.customUrl ||
                 "YouTube User",
-              profileImageUrl:
-                channel.snippet?.thumbnails?.default?.url || null,
+              profileImageUrl,
             };
           }
         }
         const userResponse = await fetch(
-          "https://www.googleapis.com/oauth2/v2/userinfo",
+          "https://www.googleapis.com/oauth2/v3/userinfo",
           { headers },
         );
         if (userResponse.ok) {
           const userData = await userResponse.json();
+          const picture = userData.picture;
+          const profileImageUrl = isValidProfileImageUrl(picture) ? picture : null;
           return {
             id: userData.id || `youtube-${Date.now()}`,
             username: userData.name || "YouTube User",
-            profileImageUrl: userData.picture || null,
+            profileImageUrl,
           };
         }
         console.error(
@@ -853,8 +902,7 @@ async function fetchPlatformUserInfo(
       break;
     }
 
-    case "twitter_x":
-      // X (Twitter) API v2 - get user info
+    case "twitter_x": {
       try {
         const response = await fetch(
           "https://api.twitter.com/2/users/me?user.fields=username,name,profile_image_url",
@@ -867,10 +915,15 @@ async function fetchPlatformUserInfo(
         if (response.ok) {
           const data = await response.json();
           if (data.data) {
+            let profileImageUrl: string | null = data.data.profile_image_url || null;
+            if (profileImageUrl && typeof profileImageUrl === "string") {
+              profileImageUrl = profileImageUrl.replace(/_normal(\.[a-z]+)?$/i, "_400x400$1") as string;
+              if (!isValidProfileImageUrl(profileImageUrl)) profileImageUrl = null;
+            }
             return {
               id: data.data.id || `twitter_x-${Date.now()}`,
               username: data.data.username || data.data.name || null,
-              profileImageUrl: data.data.profile_image_url || null,
+              profileImageUrl,
             };
           }
         } else {
@@ -881,32 +934,32 @@ async function fetchPlatformUserInfo(
         console.error("X/Twitter user info fetch failed:", err);
       }
       break;
+    }
 
-    case "threads":
-      // Threads Graph API - get user info
+    case "threads": {
       try {
         const response = await fetch(
-          `https://graph.threads.net/v1.0/me?fields=id,username&access_token=${accessToken}`,
+          `https://graph.threads.net/v1.0/me?fields=id,username,profile_picture_url&access_token=${accessToken}`,
         );
         if (response.ok) {
           const data = await response.json();
+          const raw = data.profile_picture_url;
+          const profileImageUrl = isValidProfileImageUrl(raw) ? raw : null;
           return {
             id: data.id || `threads-${Date.now()}`,
             username: data.username || null,
-            profileImageUrl: null, // Threads API doesn't provide profile image in basic query
+            profileImageUrl,
           };
-        } else {
-          const errorText = await response.text();
-          console.error("Threads Graph API userinfo error:", errorText);
         }
+        const errorText = await response.text();
+        console.error("Threads Graph API userinfo error:", errorText);
       } catch (err) {
         console.error("Threads user info fetch failed:", err);
       }
       break;
+    }
 
     case "pinterest": {
-      // Pinterest API v5 - user_account (requires user_accounts:read scope)
-      // Using sandbox API for trial access
       try {
         const response = await fetch(
           "https://api-sandbox.pinterest.com/v5/user_account",
@@ -916,10 +969,12 @@ async function fetchPlatformUserInfo(
         );
         const data = await response.json().catch(() => ({}));
         if (response.ok && (data.username || data.id)) {
+          const raw = data.profile_image;
+          const profileImageUrl = isValidProfileImageUrl(raw) ? raw : null;
           return {
             id: data.id || data.username,
             username: data.username || "Pinterest User",
-            profileImageUrl: data.profile_image || null,
+            profileImageUrl,
           };
         }
         console.error("Pinterest user_account error:", response.status, data);
@@ -929,8 +984,7 @@ async function fetchPlatformUserInfo(
       break;
     }
 
-    case "tiktok":
-      // TikTok API v2 - get user info
+    case "tiktok": {
       try {
         const response = await fetch(
           "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name",
@@ -942,11 +996,13 @@ async function fetchPlatformUserInfo(
         );
         if (response.ok) {
           const data = await response.json();
-          if (data.data && data.data.user) {
+          if (data.data?.user) {
+            const raw = data.data.user.avatar_url;
+            const profileImageUrl = isValidProfileImageUrl(raw) ? raw : null;
             return {
               id: data.data.user.open_id || `tiktok-${Date.now()}`,
               username: data.data.user.display_name || null,
-              profileImageUrl: data.data.user.avatar_url || null,
+              profileImageUrl,
             };
           }
         } else {
@@ -957,6 +1013,7 @@ async function fetchPlatformUserInfo(
         console.error("TikTok user info fetch failed:", err);
       }
       break;
+    }
 
     // Add other platforms as needed
   }

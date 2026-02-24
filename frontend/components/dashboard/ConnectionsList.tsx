@@ -1,46 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import {
-  SiLinkedin,
-  SiInstagram,
-  SiYoutube,
-  SiPinterest,
-  SiTiktok,
-  SiX,
-  SiThreads,
-  SiBluesky,
-  SiFacebook,
-  SiDevdotto,
-  SiHashnode,
-  SiMedium,
-} from "react-icons/si";
+import { getPlatformIcon } from "@/lib/platform-icons";
 import { PLATFORMS } from "@/lib/platforms";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { ConnectPlatformButton } from "./ConnectPlatformButton";
 import { DisconnectAccountModal } from "./DisconnectAccountModal";
 import { X } from "lucide-react";
 
-const PLATFORM_UI: Record<
-  string,
-  { name: string; icon: typeof SiLinkedin; color: string }
-> = {
-  linkedin: { name: "LinkedIn", icon: SiLinkedin, color: "bg-[#0A66C2]" },
-  facebook: { name: "Facebook", icon: SiFacebook, color: "bg-[#1877F2]" },
-  bluesky: { name: "Bluesky", icon: SiBluesky, color: "bg-[#0085FF]" },
-  youtube: { name: "YouTube", icon: SiYoutube, color: "bg-[#FF0000]" },
-  pinterest: { name: "Pinterest", icon: SiPinterest, color: "bg-[#E60023]" },
+const PLATFORM_UI: Record<string, { name: string; color: string }> = {
+  linkedin: { name: "LinkedIn", color: "bg-[#0A66C2]" },
+  facebook: { name: "Facebook", color: "bg-[#1877F2]" },
+  bluesky: { name: "Bluesky", color: "bg-[#0085FF]" },
+  youtube: { name: "YouTube", color: "bg-[#FF0000]" },
+  pinterest: { name: "Pinterest", color: "bg-[#E60023]" },
   instagram: {
     name: "Instagram",
-    icon: SiInstagram,
     color: "bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF]",
   },
-  tiktok: { name: "TikTok", icon: SiTiktok, color: "bg-[#000000]" },
-  twitter_x: { name: "X (Twitter)", icon: SiX, color: "bg-[#000000]" },
-  threads: { name: "Threads", icon: SiThreads, color: "bg-[#000000]" },
-  devto: { name: "Dev.to", icon: SiDevdotto, color: "bg-[#0A0A0A]" },
-  hashnode: { name: "Hashnode", icon: SiHashnode, color: "bg-[#2962FF]" },
-  medium: { name: "Medium", icon: SiMedium, color: "bg-[#000000]" },
+  tiktok: { name: "TikTok", color: "bg-[#000000]" },
+  twitter_x: { name: "X (Twitter)", color: "bg-[#000000]" },
+  threads: { name: "Threads", color: "bg-[#000000]" },
+  devto: { name: "Dev.to", color: "bg-[#0A0A0A]" },
+  hashnode: { name: "Hashnode", color: "bg-[#2962FF]" },
+  medium: { name: "Medium", color: "bg-[#000000]" },
 };
 
 type Account = {
@@ -87,10 +70,9 @@ export function ConnectionsList({ accounts }: { accounts: Account[] }) {
             {byPlatform.map(({ platform, accounts: platformAccounts }) => {
               const ui = PLATFORM_UI[platform.id] ?? {
                 name: platform.name,
-                icon: null,
                 color: "bg-gray-500",
               };
-              const Icon = ui.icon;
+              const Icon = getPlatformIcon(platform.id);
               return (
                 <div
                   key={platform.id}

@@ -24,20 +24,35 @@ export function AccountAvatar({
 }: AccountAvatarProps) {
   const sizeClass = sizeClasses[size];
 
-  if (profileImageUrl?.trim()) {
-    return (
-      <img
-        src={profileImageUrl}
-        alt={username || platform || "Account"}
-        className={cn("rounded-full object-cover shrink-0", sizeClass, className)}
-      />
-    );
-  }
-
   const initial =
     username?.charAt(0)?.toUpperCase() ||
     platform?.charAt(0)?.toUpperCase() ||
     "?";
+
+  if (profileImageUrl?.trim()) {
+    return (
+      <span className={cn("relative inline-block", sizeClass, className)}>
+        <img
+          src={profileImageUrl}
+          alt={username || platform || "Account"}
+          className={cn("rounded-full object-cover shrink-0 h-full w-full", sizeClass)}
+          onError={(e) => {
+            const el = e.currentTarget;
+            el.style.display = "none";
+            const fallback = el.nextElementSibling;
+            if (fallback instanceof HTMLElement) fallback.style.display = "flex";
+          }}
+        />
+        <span
+          className="absolute inset-0 flex items-center justify-center rounded-full bg-gray-200 text-gray-600 font-semibold"
+          style={{ display: "none" }}
+          aria-hidden
+        >
+          {initial}
+        </span>
+      </span>
+    );
+  }
 
   return (
     <div

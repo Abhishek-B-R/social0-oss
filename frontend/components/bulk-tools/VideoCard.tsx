@@ -143,7 +143,7 @@ export function VideoCard({
           value={item.caption}
           onChange={(e) => onCaptionChange(item.id, e.target.value.slice(0, MAX_CAPTION))}
           placeholder="Video caption..."
-          rows={1}
+          rows={4}
           className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
         />
         <div className="flex flex-wrap items-center gap-2 text-xs">

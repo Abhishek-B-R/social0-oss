@@ -404,36 +404,6 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
           />
         </div>
 
-        <AutoFeaturesCard
-          selectedAccountIds={Array.from(selectedIds)}
-          allAccounts={accounts}
-          onResurfaceChange={setResurfaceConfig}
-          onAutoPlugChange={setAutoPlugConfig}
-        />
-
-        {tiktokModalAccountId && (
-          <TikTokSettingsModal
-            isOpen={true}
-            accountId={tiktokModalAccountId}
-            accountUsername={
-              accounts.find((a) => a.id === tiktokModalAccountId)
-                ?.platformUsername
-            }
-            value={
-              tiktokSettings[tiktokModalAccountId] ?? defaultTiktokSettings
-            }
-            onChange={(settings) => {
-              setTiktokSettings((prev) => ({
-                ...prev,
-                [tiktokModalAccountId]: settings,
-              }));
-            }}
-            onSave={() => setTiktokModalAccountId(null)}
-            onClose={() => setTiktokModalAccountId(null)}
-            mediaType="photo"
-          />
-        )}
-
         <PostFormOptions
           accounts={accounts}
           selectedIds={selectedIds}
@@ -462,7 +432,38 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
               : undefined
           }
           onOpenTikTokSettings={setTiktokModalAccountId}
+          betweenScheduleAndActions={
+            <AutoFeaturesCard
+              selectedAccountIds={Array.from(selectedIds)}
+              allAccounts={accounts}
+              onResurfaceChange={setResurfaceConfig}
+              onAutoPlugChange={setAutoPlugConfig}
+            />
+          }
         />
+
+        {tiktokModalAccountId && (
+          <TikTokSettingsModal
+            isOpen={true}
+            accountId={tiktokModalAccountId}
+            accountUsername={
+              accounts.find((a) => a.id === tiktokModalAccountId)
+                ?.platformUsername
+            }
+            value={
+              tiktokSettings[tiktokModalAccountId] ?? defaultTiktokSettings
+            }
+            onChange={(settings) => {
+              setTiktokSettings((prev) => ({
+                ...prev,
+                [tiktokModalAccountId]: settings,
+              }));
+            }}
+            onSave={() => setTiktokModalAccountId(null)}
+            onClose={() => setTiktokModalAccountId(null)}
+            mediaType="photo"
+          />
+        )}
       </form>
     </>
   );

@@ -1,19 +1,6 @@
 import Link from "next/link";
 import { Video, ImageIcon, Layers } from "lucide-react";
-import {
-  SiLinkedin,
-  SiInstagram,
-  SiYoutube,
-  SiPinterest,
-  SiTiktok,
-  SiX,
-  SiThreads,
-  SiBluesky,
-  SiFacebook,
-  SiDevdotto,
-  SiHashnode,
-  SiMedium,
-} from "react-icons/si";
+import { getPlatformIcon } from "@/lib/platform-icons";
 import { CONTENT_TYPES } from "@/lib/content-types";
 
 const VIDEO_PLATFORMS =
@@ -21,26 +8,22 @@ const VIDEO_PLATFORMS =
 const IMAGE_PLATFORMS =
   CONTENT_TYPES.find((c) => c.id === "image")?.platforms ?? [];
 
-const PLATFORM_DISPLAY: Record<
-  string,
-  { name: string; icon: typeof SiLinkedin; color: string }
-> = {
-  linkedin: { name: "LinkedIn", icon: SiLinkedin, color: "bg-[#0A66C2]" },
-  facebook: { name: "Facebook", icon: SiFacebook, color: "bg-[#1877F2]" },
-  bluesky: { name: "Bluesky", icon: SiBluesky, color: "bg-[#0085FF]" },
-  hashnode: { name: "Hashnode", icon: SiHashnode, color: "bg-[#2962FF]" },
-  youtube: { name: "YouTube", icon: SiYoutube, color: "bg-[#FF0000]" },
-  pinterest: { name: "Pinterest", icon: SiPinterest, color: "bg-[#E60023]" },
+const PLATFORM_DISPLAY: Record<string, { name: string; color: string }> = {
+  linkedin: { name: "LinkedIn", color: "bg-[#0A66C2]" },
+  facebook: { name: "Facebook", color: "bg-[#1877F2]" },
+  bluesky: { name: "Bluesky", color: "bg-[#0085FF]" },
+  hashnode: { name: "Hashnode", color: "bg-[#2962FF]" },
+  youtube: { name: "YouTube", color: "bg-[#FF0000]" },
+  pinterest: { name: "Pinterest", color: "bg-[#E60023]" },
   instagram: {
     name: "Instagram",
-    icon: SiInstagram,
     color: "bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF]",
   },
-  tiktok: { name: "TikTok", icon: SiTiktok, color: "bg-[#000000]" },
-  twitter_x: { name: "X", icon: SiX, color: "bg-[#000000]" },
-  threads: { name: "Threads", icon: SiThreads, color: "bg-[#000000]" },
-  devto: { name: "Dev.to", icon: SiDevdotto, color: "bg-[#0A0A0A]" },
-  medium: { name: "Medium", icon: SiMedium, color: "bg-[#000000]" },
+  tiktok: { name: "TikTok", color: "bg-[#000000]" },
+  twitter_x: { name: "X", color: "bg-[#000000]" },
+  threads: { name: "Threads", color: "bg-[#000000]" },
+  devto: { name: "Dev.to", color: "bg-[#0A0A0A]" },
+  medium: { name: "Medium", color: "bg-[#000000]" },
 };
 
 function PlatformIcons({ platformIds }: { platformIds: readonly string[] }) {
@@ -48,8 +31,8 @@ function PlatformIcons({ platformIds }: { platformIds: readonly string[] }) {
     <div className="flex flex-wrap gap-1.5 mt-3">
       {platformIds.map((platformId) => {
         const p = PLATFORM_DISPLAY[platformId];
-        if (!p) return null;
-        const Icon = p.icon;
+        const Icon = getPlatformIcon(platformId);
+        if (!p || !Icon) return null;
         return (
           <span
             key={platformId}

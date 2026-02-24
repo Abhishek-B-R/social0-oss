@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import Link from "next/link";
-import { AccountAvatar } from "@/components/AccountAvatar";
+import { AccountBubbleSelector } from "@/components/AccountBubbleSelector";
 import { PLATFORMS } from "@/lib/platforms";
 import { BulkUploadZone } from "./BulkUploadZone";
 import { ImageCard, type ImageItem } from "./ImageCard";
@@ -202,57 +202,17 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <label className="block text-sm font-semibold text-gray-900 mb-3">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <label className="mb-3 block text-sm font-semibold text-gray-900">
                 Post to
               </label>
-              {accounts.length === 0 ? (
-                <p className="text-sm text-amber-700 bg-amber-50 rounded-xl p-4 border border-amber-100">
-                  Connect at least one account from the dashboard to post.
-                </p>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={selectAll}
-                    className="text-sm font-medium text-emerald-600 hover:text-emerald-700 mb-3"
-                  >
-                    {selectedIds.size === accounts.length
-                      ? "Deselect all"
-                      : "Select all"}
-                  </button>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {accounts.map((acc) => (
-                      <label
-                        key={acc.id}
-                        className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 has-checked:border-emerald-500 has-checked:bg-emerald-50/50"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(acc.id)}
-                          onChange={() => toggleAccount(acc.id)}
-                          className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
-                        />
-                        <AccountAvatar
-                          profileImageUrl={acc.profileImageUrl}
-                          username={acc.platformUsername}
-                          platform={acc.platform}
-                          size="md"
-                        />
-                        <span className="min-w-0 flex-1 text-sm font-medium text-gray-900">
-                          {platformName(acc.platform)}
-                          {acc.platformUsername && (
-                            <span className="text-gray-500 font-normal">
-                              {" "}
-                              @{acc.platformUsername}
-                            </span>
-                          )}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </>
-              )}
+              <AccountBubbleSelector
+                accounts={accounts}
+                selectedIds={selectedIds}
+                onToggleAccount={toggleAccount}
+                selectAll={selectAll}
+                platformName={platformName}
+              />
             </div>
 
             <BulkUploadZone

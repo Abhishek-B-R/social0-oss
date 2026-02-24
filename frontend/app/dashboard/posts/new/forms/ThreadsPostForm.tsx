@@ -680,13 +680,6 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
         </button>
       </div>
 
-      <AutoFeaturesCard
-        selectedAccountIds={Array.from(selectedIds)}
-        allAccounts={accounts}
-        onResurfaceChange={setResurfaceConfig}
-        onAutoPlugChange={setAutoPlugConfig}
-      />
-
       <PostFormOptions
         accounts={accounts}
         selectedIds={selectedIds}
@@ -705,6 +698,14 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
           (mode === "scheduled" && !scheduledAt) ||
           anyOverLimit ||
           !hasContent
+        }
+        betweenScheduleAndActions={
+          <AutoFeaturesCard
+            selectedAccountIds={Array.from(selectedIds)}
+            allAccounts={accounts}
+            onResurfaceChange={setResurfaceConfig}
+            onAutoPlugChange={setAutoPlugConfig}
+          />
         }
       />
     </form>

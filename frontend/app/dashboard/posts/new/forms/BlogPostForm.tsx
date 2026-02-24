@@ -178,13 +178,6 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
         />
       </div>
 
-      <AutoFeaturesCard
-        selectedAccountIds={Array.from(selectedIds)}
-        allAccounts={accounts}
-        onResurfaceChange={setResurfaceConfig}
-        onAutoPlugChange={setAutoPlugConfig}
-      />
-
       <PostFormOptions
         accounts={accounts}
         selectedIds={selectedIds}
@@ -200,6 +193,14 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
         submitLabel={submitLabel}
         submitDisabled={
           accounts.length === 0 || (mode === "scheduled" && !scheduledAt)
+        }
+        betweenScheduleAndActions={
+          <AutoFeaturesCard
+            selectedAccountIds={Array.from(selectedIds)}
+            allAccounts={accounts}
+            onResurfaceChange={setResurfaceConfig}
+            onAutoPlugChange={setAutoPlugConfig}
+          />
         }
       />
     </form>

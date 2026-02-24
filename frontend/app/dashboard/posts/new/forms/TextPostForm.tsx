@@ -136,13 +136,6 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
         )}
       </div>
 
-      <AutoFeaturesCard
-        selectedAccountIds={Array.from(selectedIds)}
-        allAccounts={accounts}
-        onResurfaceChange={setResurfaceConfig}
-        onAutoPlugChange={setAutoPlugConfig}
-      />
-
       <PostFormOptions
         accounts={accounts}
         selectedIds={selectedIds}
@@ -161,6 +154,14 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
           !content.trim() ||
           (mode === "scheduled" && !scheduledAt) ||
           !!twitterValidationError
+        }
+        betweenScheduleAndActions={
+          <AutoFeaturesCard
+            selectedAccountIds={Array.from(selectedIds)}
+            allAccounts={accounts}
+            onResurfaceChange={setResurfaceConfig}
+            onAutoPlugChange={setAutoPlugConfig}
+          />
         }
       />
     </form>

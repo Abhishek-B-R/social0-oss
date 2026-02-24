@@ -76,25 +76,42 @@ export async function POST(req: NextRequest) {
 
       const sessionData = await sessionResponse.json();
 
-      // Get profile info
-      const profileResponse = await fetch(
-        `https://bsky.social/xrpc/com.atproto.repo.getRecord?repo=${sessionData.did}&collection=app.bsky.actor.profile&rkey=self`,
-        {
-          headers: {
-            Authorization: `Bearer ${sessionData.accessJwt}`,
+      let profileImageUrl: string | null = null;
+      try {
+        const publicProfileRes = await fetch(
+          `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(handle)}`,
+        );
+        if (publicProfileRes.ok) {
+          const publicProfile = await publicProfileRes.json();
+          const avatarUrl = publicProfile.avatar;
+          if (
+            typeof avatarUrl === "string" &&
+            (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://"))
+          ) {
+            profileImageUrl = avatarUrl;
+          }
+        }
+      } catch (err) {
+        console.error("Bluesky public profile avatar fetch failed:", err);
+      }
+      if (!profileImageUrl) {
+        const profileResponse = await fetch(
+          `https://bsky.social/xrpc/com.atproto.repo.getRecord?repo=${sessionData.did}&collection=app.bsky.actor.profile&rkey=self`,
+          {
+            headers: {
+              Authorization: `Bearer ${sessionData.accessJwt}`,
+            },
           },
-        },
-      );
-
-      let profileImageUrl = null;
-      if (profileResponse.ok) {
-        const profileData = await profileResponse.json();
-        const avatarCid =
-          profileData.value?.avatar?.ref?.$link ||
-          profileData.value?.avatar?.ref;
-        profileImageUrl = avatarCid
-          ? `https://cdn.bsky.app/img/avatar/plain/${sessionData.did}/${avatarCid}@jpeg`
-          : null;
+        );
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          const avatarCid =
+            profileData.value?.avatar?.ref?.$link ||
+            profileData.value?.avatar?.ref;
+          profileImageUrl = avatarCid
+            ? `https://cdn.bsky.app/img/avatar/plain/${sessionData.did}/${avatarCid}@jpeg`
+            : null;
+        }
       }
 
       userInfo = {

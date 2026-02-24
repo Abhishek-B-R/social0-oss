@@ -46,6 +46,22 @@ export async function POST(req: NextRequest) {
     if (!page) {
       return Response.json({ error: "Page not found" }, { status: 400 });
     }
+    let profileImageUrl: string | null = null;
+    try {
+      const pageRes = await fetch(
+        `https://graph.facebook.com/v21.0/${page.id}?fields=id,name,picture`,
+        { headers: { Authorization: `Bearer ${page.access_token}` } },
+      );
+      if (pageRes.ok) {
+        const pageData = await pageRes.json();
+        const url = pageData.picture?.data?.url;
+        if (typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://"))) {
+          profileImageUrl = url;
+        }
+      }
+    } catch (err) {
+      console.error("Facebook page picture fetch failed:", err);
+    }
     const accountId = crypto.randomUUID();
     await db.insert(connectedAccounts).values({
       id: accountId,
@@ -53,7 +69,7 @@ export async function POST(req: NextRequest) {
       platform: "facebook",
       platformUserId: page.id,
       platformUsername: page.name,
-      profileImageUrl: null,
+      profileImageUrl,
       encryptedAccessToken: encryptToken(page.access_token, accountId),
       encryptedRefreshToken: null,
       tokenExpiresAt: null,

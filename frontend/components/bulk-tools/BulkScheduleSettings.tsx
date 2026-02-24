@@ -94,14 +94,14 @@ export function BulkScheduleSettings({
           rows={4}
           className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
         />
-        <div className="mt-1 flex items-center justify-between">
+        <div className="mt-1 gap-2 flex items-center justify-between">
           <span className="text-xs text-gray-500">
             {captionCount} / {CAPTION_MAX}
           </span>
           <button
             type="button"
             onClick={onApplyCaption}
-            className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
           >
             Apply Caption to All {variant === "video" ? "Videos" : "Images"}
           </button>
@@ -152,29 +152,31 @@ export function BulkScheduleSettings({
               ))}
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Time between posts (hours)
-            </label>
-            <select
-              value={gapHours}
-              onChange={(e) => onGapHoursChange(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
-            >
-              {GAP_HOURS_OPTIONS.map((h) => (
-                <option key={h} value={h}>
-                  {h === 24 ? "24 hours" : `${h} hour${h === 1 ? "" : "s"}`}
-                </option>
-              ))}
-            </select>
-            {gapHours < 24 && (
-              <p className="mt-1 text-xs text-gray-500">Within same day</p>
-            )}
-          </div>
+          {videosPerDay > 1 && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Time between posts (hours)
+              </label>
+              <select
+                value={gapHours}
+                onChange={(e) => onGapHoursChange(Number(e.target.value))}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+              >
+                {GAP_HOURS_OPTIONS.map((h) => (
+                  <option key={h} value={h}>
+                    {h === 24 ? "24 hours" : `${h} hour${h === 1 ? "" : "s"}`}
+                  </option>
+                ))}
+              </select>
+              {gapHours < 24 && (
+                <p className="mt-1 text-xs text-gray-500">Within same day</p>
+              )}
+            </div>
+          )}
           <button
             type="button"
             onClick={onApplyBulkSchedule}
-            className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
           >
             Apply Bulk Schedule
           </button>
@@ -202,9 +204,7 @@ export function BulkScheduleSettings({
             </label>
             <select
               value={coverFrame}
-              onChange={(e) =>
-                onCoverFrameChange(e.target.value as CoverFrame)
-              }
+              onChange={(e) => onCoverFrameChange(e.target.value as CoverFrame)}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
             >
               {COVER_FRAME_OPTIONS.map((opt) => (
@@ -218,11 +218,13 @@ export function BulkScheduleSettings({
         <button
           type="button"
           onClick={onScheduleAll}
-          disabled={selectedAccountCount === 0 || totalItems === 0 || scheduling}
-          className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          disabled={
+            selectedAccountCount === 0 || totalItems === 0 || scheduling
+          }
+          className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {scheduling
-            ? progressLabel ?? `Scheduling...`
+            ? (progressLabel ?? `Scheduling...`)
             : `Schedule All ${totalItems} ${variant === "video" ? "Videos" : "Images"}`}
         </button>
         {selectedAccountCount === 0 && totalItems > 0 && (

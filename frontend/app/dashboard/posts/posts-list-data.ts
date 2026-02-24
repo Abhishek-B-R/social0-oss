@@ -52,6 +52,7 @@ export async function getPostsListData({
       scheduledAt: posts.scheduledAt,
       createdAt: posts.createdAt,
       mediaIds: posts.mediaIds,
+      metadata: posts.metadata,
     })
     .from(posts)
     .where(whereClause)
@@ -353,4 +354,66 @@ export async function getPostMedia(
     url: r.url,
     thumbnailUrl: r.thumbnailUrl,
   }));
+}
+
+export type PostDetailRow = {
+  id: string;
+  originalContent: string | null;
+  status: string | null;
+  scheduledAt: Date | null;
+  createdAt: Date | null;
+  mediaIds: string[] | null;
+  metadata: Record<string, unknown> | null;
+};
+
+/** Fetch a single post by id; verifies userId. Returns null if not found or not owner. */
+export async function getPostDetail(
+  postId: string,
+  userId: string,
+): Promise<{ post: PostDetailRow; publications: PublicationRow[] } | null> {
+  const [post] = await db
+    .select({
+      id: posts.id,
+      originalContent: posts.originalContent,
+      status: posts.status,
+      scheduledAt: posts.scheduledAt,
+      createdAt: posts.createdAt,
+      mediaIds: posts.mediaIds,
+      metadata: posts.metadata,
+    })
+    .from(posts)
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+
+  if (!post) return null;
+
+  const pubs = await db
+    .select({
+      connectedAccountId: postPublications.connectedAccountId,
+      status: postPublications.status,
+      platformPostUrl: postPublications.platformPostUrl,
+      platform: connectedAccounts.platform,
+      lastError: postPublications.lastError,
+      profileImageUrl: connectedAccounts.profileImageUrl,
+      platformUsername: connectedAccounts.platformUsername,
+      publishedAt: postPublications.publishedAt,
+    })
+    .from(postPublications)
+    .innerJoin(
+      connectedAccounts,
+      eq(postPublications.connectedAccountId, connectedAccounts.id),
+    )
+    .where(eq(postPublications.postId, postId));
+
+  return {
+    post: {
+      id: post.id,
+      originalContent: post.originalContent,
+      status: post.status,
+      scheduledAt: post.scheduledAt,
+      createdAt: post.createdAt,
+      mediaIds: post.mediaIds,
+      metadata: post.metadata ?? null,
+    },
+    publications: pubs,
+  };
 }

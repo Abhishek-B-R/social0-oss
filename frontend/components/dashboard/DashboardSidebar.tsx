@@ -82,7 +82,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
   };
 
   return (
-    <aside className="hidden h-screen w-64 flex-col border-r border-gray-200 bg-white lg:flex">
+    <aside className="hidden h-full w-64 shrink-0 flex-col overflow-y-auto border-r border-gray-200 bg-white lg:flex">
       <div className="flex flex-col gap-6 p-4">
         <Link
           href="/dashboard/posts/new"

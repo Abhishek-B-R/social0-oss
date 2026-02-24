@@ -61,6 +61,13 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "Instagram account not found" }, { status: 400 });
     }
 
+    const profileImageUrl =
+      typeof selectedPage.instagramProfilePictureUrl === "string" &&
+      (selectedPage.instagramProfilePictureUrl.startsWith("http://") ||
+        selectedPage.instagramProfilePictureUrl.startsWith("https://"))
+        ? selectedPage.instagramProfilePictureUrl
+        : null;
+
     // Check if account already connected
     const existing = await db.query.connectedAccounts.findFirst({
       where: and(
@@ -81,7 +88,7 @@ export async function POST(req: NextRequest) {
           encryptedRefreshToken: null,
           tokenExpiresAt: null,
           platformUsername: selectedPage.instagramUsername,
-          profileImageUrl: selectedPage.instagramProfilePictureUrl,
+          profileImageUrl,
           platformMetadata: {
             facebookPageId: selectedPage.pageId,
             instagramBusinessAccountId: selectedPage.instagramAccountId,
@@ -98,7 +105,7 @@ export async function POST(req: NextRequest) {
         platform: "instagram",
         platformUserId: selectedPage.instagramAccountId,
         platformUsername: selectedPage.instagramUsername,
-        profileImageUrl: selectedPage.instagramProfilePictureUrl,
+        profileImageUrl,
         encryptedAccessToken: encryptToken(selectedPage.pageAccessToken, accountId),
         encryptedRefreshToken: null,
         tokenExpiresAt: null,

@@ -1,7 +1,7 @@
 "use client";
 
 import { ScheduleDateTimePicker } from "@/components/ui/ScheduleDateTimePicker";
-import { AccountAvatar } from "@/components/AccountAvatar";
+import { AccountBubbleSelector } from "@/components/AccountBubbleSelector";
 import { PLATFORMS } from "@/lib/platforms";
 import type { PublishMode } from "@/app/actions/posts";
 
@@ -31,6 +31,8 @@ type PostFormOptionsProps = {
   tiktokConfiguredIds?: Set<string>;
   /** Called when user clicks the TikTok Settings badge to open the modal */
   onOpenTikTokSettings?: (accountId: string) => void;
+  /** Rendered just above "When do you want to publish?" (e.g. Auto-Repost & Auto-Plug) */
+  betweenScheduleAndActions?: React.ReactNode;
 };
 
 export function PostFormOptions({
@@ -49,94 +51,29 @@ export function PostFormOptions({
   submitDisabled = false,
   tiktokConfiguredIds,
   onOpenTikTokSettings,
+  betweenScheduleAndActions,
 }: PostFormOptionsProps) {
   const platformName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
 
   return (
     <>
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <label className="block text-sm font-semibold text-gray-900">
-            Post to
-          </label>
-          <button
-            type="button"
-            onClick={selectAll}
-            className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
-          >
-            {selectedIds.size === accounts.length
-              ? "Deselect all"
-              : "Select all"}
-          </button>
-        </div>
-        {accounts.length === 0 ? (
-          <p className="text-sm text-amber-700 bg-amber-50 rounded-xl p-4 border border-amber-100">
-            Connect at least one account from the dashboard to post.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {accounts.map((acc) => (
-              <label
-                key={acc.id}
-                className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 hover:border-gray-300 has-checked:border-emerald-500 has-checked:bg-emerald-50/50"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(acc.id)}
-                  onChange={() => onToggleAccount(acc.id)}
-                  className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
-                />
-                <AccountAvatar
-                  profileImageUrl={acc.profileImageUrl}
-                  username={acc.platformUsername}
-                  platform={acc.platform}
-                  size="md"
-                />
-                <span className="min-w-0 flex-1 text-sm font-medium text-gray-900">
-                  {platformName(acc.platform)}
-                  {acc.platform === "medium" && (
-                    <span
-                      className="ml-1.5 inline-flex items-center rounded bg-amber-100 text-amber-800 px-1.5 py-0.5 text-xs font-medium"
-                      title="Editing and deleting not supported"
-                    >
-                      Publish only
-                    </span>
-                  )}
-                  {acc.platformUsername && (
-                    <span className="text-gray-500 font-normal">
-                      {" "}
-                      @{acc.platformUsername}
-                    </span>
-                  )}
-                </span>
-                {acc.platform === "tiktok" && onOpenTikTokSettings && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onOpenTikTokSettings(acc.id);
-                    }}
-                    className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors cursor-pointer"
-                    title={
-                      tiktokConfiguredIds?.has(acc.id)
-                        ? "TikTok settings (configured)"
-                        : "TikTok settings (not configured)"
-                    }
-                  >
-                    <span
-                      className="size-2 rounded-full bg-red-500 shrink-0"
-                      aria-hidden
-                    />
-                    <span>⚙ Settings</span>
-                  </button>
-                )}
-              </label>
-            ))}
-          </div>
-        )}
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        <label className="mb-3 block text-sm font-semibold text-gray-900">
+          Post to
+        </label>
+        <AccountBubbleSelector
+          accounts={accounts}
+          selectedIds={selectedIds}
+          onToggleAccount={onToggleAccount}
+          selectAll={selectAll}
+          platformName={platformName}
+          onOpenTikTokSettings={onOpenTikTokSettings}
+          tiktokConfiguredIds={tiktokConfiguredIds}
+        />
       </div>
+
+      {betweenScheduleAndActions}
 
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <p className="block text-sm font-semibold text-gray-900 mb-4">
