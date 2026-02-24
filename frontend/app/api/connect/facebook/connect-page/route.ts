@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { connectedAccounts, verification } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { decryptToken, encryptToken } from "@/lib/encryption";
 import crypto from "crypto";
@@ -62,18 +62,43 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.error("Facebook page picture fetch failed:", err);
     }
-    const accountId = crypto.randomUUID();
-    await db.insert(connectedAccounts).values({
-      id: accountId,
-      userId: session.user.id,
-      platform: "facebook",
-      platformUserId: page.id,
-      platformUsername: page.name,
-      profileImageUrl,
-      encryptedAccessToken: encryptToken(page.access_token, accountId),
-      encryptedRefreshToken: null,
-      tokenExpiresAt: null,
+
+    const existing = await db.query.connectedAccounts.findFirst({
+      where: and(
+        eq(connectedAccounts.userId, session.user.id),
+        eq(connectedAccounts.platform, "facebook"),
+        eq(connectedAccounts.platformUserId, page.id),
+      ),
     });
+
+    const accountId = existing?.id ?? crypto.randomUUID();
+    const encryptedAccessToken = encryptToken(page.access_token, accountId);
+
+    if (existing) {
+      await db
+        .update(connectedAccounts)
+        .set({
+          platformUsername: page.name,
+          profileImageUrl,
+          encryptedAccessToken,
+          encryptedRefreshToken: null,
+          tokenExpiresAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(connectedAccounts.id, existing.id));
+    } else {
+      await db.insert(connectedAccounts).values({
+        id: accountId,
+        userId: session.user.id,
+        platform: "facebook",
+        platformUserId: page.id,
+        platformUsername: page.name,
+        profileImageUrl,
+        encryptedAccessToken,
+        encryptedRefreshToken: null,
+        tokenExpiresAt: null,
+      });
+    }
     await db.delete(verification).where(eq(verification.id, tokenId));
     return Response.json({
       success: true,

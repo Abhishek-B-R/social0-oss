@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 type AccountAvatarProps = {
@@ -22,6 +25,7 @@ export function AccountAvatar({
   size = "md",
   className,
 }: AccountAvatarProps) {
+  const [imageFailed, setImageFailed] = useState(false);
   const sizeClass = sizeClasses[size];
 
   const initial =
@@ -29,27 +33,17 @@ export function AccountAvatar({
     platform?.charAt(0)?.toUpperCase() ||
     "?";
 
-  if (profileImageUrl?.trim()) {
+  const showImage = profileImageUrl?.trim() && !imageFailed;
+
+  if (showImage) {
     return (
       <span className={cn("relative inline-block", sizeClass, className)}>
         <img
-          src={profileImageUrl}
+          src={profileImageUrl!}
           alt={username || platform || "Account"}
           className={cn("rounded-full object-cover shrink-0 h-full w-full", sizeClass)}
-          onError={(e) => {
-            const el = e.currentTarget;
-            el.style.display = "none";
-            const fallback = el.nextElementSibling;
-            if (fallback instanceof HTMLElement) fallback.style.display = "flex";
-          }}
+          onError={() => setImageFailed(true)}
         />
-        <span
-          className="absolute inset-0 flex items-center justify-center rounded-full bg-gray-200 text-gray-600 font-semibold"
-          style={{ display: "none" }}
-          aria-hidden
-        >
-          {initial}
-        </span>
       </span>
     );
   }

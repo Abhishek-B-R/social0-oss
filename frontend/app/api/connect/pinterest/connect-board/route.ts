@@ -106,6 +106,7 @@ export async function POST(req: NextRequest) {
       where: and(
         eq(connectedAccounts.userId, session.user.id),
         eq(connectedAccounts.platform, "pinterest"),
+        eq(connectedAccounts.platformUserId, userInfo.id),
       ),
     });
 

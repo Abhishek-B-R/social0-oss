@@ -153,6 +153,7 @@ export async function GET(
         where: and(
           eq(connectedAccounts.userId, userId),
           eq(connectedAccounts.platform, "twitter_x"),
+          eq(connectedAccounts.platformUserId, userInfo.id),
         ),
       });
 
@@ -186,7 +187,7 @@ export async function GET(
           tokenExpiresAt: null,
         });
       }
-      return safeRedirect("/dashboard?connected=twitter_x", "/dashboard");
+      return safeRedirect("/dashboard/connections?connected=twitter_x", "/dashboard/connections");
     } catch (err) {
       console.error("Twitter OAuth 1.0a callback error:", err);
       return safeRedirect(
@@ -339,9 +340,11 @@ export async function GET(
           error: errorJson,
           tokenUrl,
         });
-        throw new Error(
-          `Token exchange failed: ${errorJson.error?.message || errorJson.error_description || errorJson.error || errorText}`,
-        );
+        const errMsg =
+          errorJson.error?.message ??
+          errorJson.error_description ??
+          String(errorJson.error ?? errorText);
+        throw new Error(`Token exchange failed: ${errMsg}`);
       }
 
       tokens = await tokenResponse.json();
@@ -372,11 +375,6 @@ export async function GET(
 
       // Instagram: exchange short-lived token for long-lived (60 days)
       if (platform === "instagram" && tokens.access_token) {
-        console.log(
-          "Instagram token BEFORE exchange:",
-          tokens.access_token.substring(0, 30) + "...",
-        );
-
         const exchangeUrl = new URL("https://graph.instagram.com/access_token");
         exchangeUrl.searchParams.set("grant_type", "ig_exchange_token");
         exchangeUrl.searchParams.set("client_secret", clientSecret);
@@ -386,19 +384,11 @@ export async function GET(
         if (exchangeRes.ok) {
           const longLived = await exchangeRes.json();
           if (longLived.access_token) {
-            console.log(
-              "Instagram token AFTER exchange:",
-              longLived.access_token.substring(0, 30) + "...",
-            );
-            console.log("Instagram token expires_in:", longLived.expires_in);
             tokens.access_token = longLived.access_token;
             tokens.expires_in = longLived.expires_in ?? 60 * 24 * 60 * 60;
           }
         } else {
-          console.error(
-            "Instagram token exchange failed:",
-            await exchangeRes.text(),
-          );
+          console.error("Instagram long-lived token exchange failed:", await exchangeRes.text());
         }
       }
     } else if (platform === "tiktok") {
@@ -619,7 +609,7 @@ export async function GET(
           encryptedRefreshToken: null,
           tokenExpiresAt: null,
         });
-        return safeRedirect("/dashboard?connected=facebook", "/dashboard");
+        return safeRedirect("/dashboard/connections?connected=facebook", "/dashboard/connections");
       }
       // Multiple pages: store in verification and redirect to select
       const stateId = crypto.randomBytes(16).toString("hex");
@@ -644,14 +634,6 @@ export async function GET(
           : `/dashboard/connect/facebook/select?token=${stateId}`;
       return safeRedirect(facebookSelectUrl, "/dashboard");
     }
-
-    // Check if account already connected
-    const existing = await db.query.connectedAccounts.findFirst({
-      where: and(
-        eq(connectedAccounts.userId, userId),
-        eq(connectedAccounts.platform, platform),
-      ),
-    });
 
     // Fetch platform user info (platform-specific)
     let userInfo: {
@@ -694,13 +676,21 @@ export async function GET(
       }
     }
 
+    // Check if this exact account (userId + platform + platformUserId) already connected
+    const existing = await db.query.connectedAccounts.findFirst({
+      where: and(
+        eq(connectedAccounts.userId, userId),
+        eq(connectedAccounts.platform, platform),
+        eq(connectedAccounts.platformUserId, userInfo.id),
+      ),
+    });
+
     if (existing) {
-      // Update existing
+      // Update existing (token refresh / profile refresh only)
       const updateData: {
         encryptedAccessToken: string;
         encryptedRefreshToken: string | null;
         tokenExpiresAt: Date | null;
-        platformUserId: string;
         platformUsername: string | null;
         profileImageUrl: string | null;
         platformMetadata?: Record<string, unknown>;
@@ -713,7 +703,6 @@ export async function GET(
         tokenExpiresAt: tokens.expires_in
           ? new Date(Date.now() + tokens.expires_in * 1000)
           : null,
-        platformUserId: userInfo.id,
         platformUsername: userInfo.username,
         profileImageUrl: userInfo.profileImageUrl,
         updatedAt: new Date(),
@@ -733,8 +722,8 @@ export async function GET(
         .where(eq(connectedAccounts.id, existing.id));
 
       return safeRedirect(
-        `/dashboard?connected=${platform}&updated=true`,
-        "/dashboard",
+        `/dashboard/connections?connected=${platform}&updated=true`,
+        "/dashboard/connections",
       );
     }
 
@@ -763,7 +752,7 @@ export async function GET(
       platformMetadata,
     });
 
-    return safeRedirect(`/dashboard?connected=${platform}`, "/dashboard");
+    return safeRedirect(`/dashboard/connections?connected=${platform}`, "/dashboard/connections");
   } catch (err) {
     // NEXT_REDIRECT is how Next.js implements redirect() - don't catch it
     if (err && typeof err === "object" && "digest" in err) {
@@ -939,12 +928,17 @@ async function fetchPlatformUserInfo(
     case "threads": {
       try {
         const response = await fetch(
-          `https://graph.threads.net/v1.0/me?fields=id,username,profile_picture_url&access_token=${accessToken}`,
+          `https://graph.threads.net/me?fields=id,username,profile_picture_url&access_token=${accessToken}`,
         );
         if (response.ok) {
           const data = await response.json();
-          const raw = data.profile_picture_url;
-          const profileImageUrl = isValidProfileImageUrl(raw) ? raw : null;
+          let profileImageUrl: string | null = null;
+          try {
+            const raw = data.profile_picture_url;
+            if (isValidProfileImageUrl(raw)) profileImageUrl = raw;
+          } catch (err) {
+            console.error("Threads profile_picture_url parse failed:", err);
+          }
           return {
             id: data.id || `threads-${Date.now()}`,
             username: data.username || null,

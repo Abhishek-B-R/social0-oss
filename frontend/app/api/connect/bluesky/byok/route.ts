@@ -134,11 +134,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if account already connected
+    // Check if this exact account (userId + platform + platformUserId) already connected
     const existing = await db.query.connectedAccounts.findFirst({
       where: and(
         eq(connectedAccounts.userId, session.user.id),
         eq(connectedAccounts.platform, "bluesky"),
+        eq(connectedAccounts.platformUserId, userInfo.id),
       ),
     });
 

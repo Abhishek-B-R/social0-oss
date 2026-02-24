@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
       where: and(
         eq(connectedAccounts.userId, session.user.id),
         eq(connectedAccounts.platform, "devto"),
+        eq(connectedAccounts.platformUserId, String(userData.id)),
       ),
     });
 

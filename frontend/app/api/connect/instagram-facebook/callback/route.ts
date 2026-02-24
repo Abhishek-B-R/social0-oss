@@ -253,8 +253,8 @@ export async function GET(
           .where(eq(connectedAccounts.id, existing.id));
 
         return safeRedirect(
-          `/dashboard?connected=instagram&updated=true`,
-          "/dashboard",
+          `/dashboard/connections?connected=instagram&updated=true`,
+          "/dashboard/connections",
         );
       }
 
@@ -277,8 +277,8 @@ export async function GET(
       });
 
       return safeRedirect(
-        `/dashboard?connected=instagram`,
-        "/dashboard",
+        `/dashboard/connections?connected=instagram`,
+        "/dashboard/connections",
       );
     }
 

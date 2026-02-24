@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       where: and(
         eq(connectedAccounts.userId, session.user.id),
         eq(connectedAccounts.platform, "medium"),
+        eq(connectedAccounts.platformUserId, userData.id),
       ),
     });
 
