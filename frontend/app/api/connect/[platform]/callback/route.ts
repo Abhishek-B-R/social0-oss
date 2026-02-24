@@ -527,7 +527,7 @@ export async function GET(
           typeof baseUrl === "string" && baseUrl
             ? `${baseUrl}/dashboard/connect/pinterest/create-board?token=${stateId}`
             : `/dashboard/connect/pinterest/create-board?token=${stateId}`;
-        return safeRedirect(createBoardUrl, "/dashboard");
+        return safeRedirect(createBoardUrl, "/dashboard/connections");
       }
       // Store boards and tokens in verification table for selection page
       const stateId = crypto.randomBytes(16).toString("hex");
@@ -552,7 +552,7 @@ export async function GET(
         typeof baseUrl === "string" && baseUrl
           ? `${baseUrl}/dashboard/connect/pinterest/select?token=${stateId}`
           : `/dashboard/connect/pinterest/select?token=${stateId}`;
-      return safeRedirect(pinterestSelectUrl, "/dashboard");
+      return safeRedirect(pinterestSelectUrl, "/dashboard/connections");
     }
 
     // Facebook: fetch Pages and either save one or redirect to page selection
@@ -632,7 +632,7 @@ export async function GET(
         typeof baseUrl === "string" && baseUrl
           ? `${baseUrl}/dashboard/connect/facebook/select?token=${stateId}`
           : `/dashboard/connect/facebook/select?token=${stateId}`;
-      return safeRedirect(facebookSelectUrl, "/dashboard");
+      return safeRedirect(facebookSelectUrl, "/dashboard/connections");
     }
 
     // Fetch platform user info (platform-specific)

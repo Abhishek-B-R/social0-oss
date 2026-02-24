@@ -305,7 +305,7 @@ export async function GET(
 
     return safeRedirect(
       `/dashboard/connect/instagram-facebook/select?token=${stateId}`,
-      "/dashboard",
+      "/dashboard/connections",
     );
   } catch (err) {
     // NEXT_REDIRECT is how Next.js implements redirect() - don't catch it
