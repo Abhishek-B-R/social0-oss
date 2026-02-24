@@ -177,13 +177,10 @@ export function PostListCards({
         const showIcons = publicationsList.slice(0, MAX_PLATFORM_ICONS);
         const extraCount = publicationsList.length > MAX_PLATFORM_ICONS ? publicationsList.length - MAX_PLATFORM_ICONS : 0;
 
-        const isFailed = post.status === "failed";
         const isPublishing = post.status === "publishing";
-        const cardBorderClass = isFailed
-          ? "border-l-4 border-l-red-500 border border-[#e5e7eb]"
-          : isPublishing
-            ? "border-l-4 border-l-amber-400 border border-[#e5e7eb]"
-            : "border border-[#e5e7eb]";
+        const cardBorderClass = isPublishing
+          ? "border-l-4 border-l-amber-400 border border-[#e5e7eb]"
+          : "border border-[#e5e7eb]";
 
         return (
           <li

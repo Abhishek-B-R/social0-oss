@@ -734,6 +734,13 @@ export async function GET(
     const platformMetadata: Record<string, unknown> | undefined =
       platform === "instagram" ? { connectionMethod: "direct" } : undefined;
 
+    if (platform === "threads") {
+      console.log("Saving Threads account:", {
+        platformUserId: userInfo.id,
+        username: userInfo.username,
+      });
+    }
+
     // Insert new account with encrypted tokens
     await db.insert(connectedAccounts).values({
       id: accountId,
@@ -752,6 +759,9 @@ export async function GET(
       platformMetadata,
     });
 
+    if (platform === "threads") {
+      return safeRedirect("/dashboard/connections?connected=threads", "/dashboard/connections");
+    }
     return safeRedirect(`/dashboard/connections?connected=${platform}`, "/dashboard/connections");
   } catch (err) {
     // NEXT_REDIRECT is how Next.js implements redirect() - don't catch it
@@ -926,31 +936,27 @@ async function fetchPlatformUserInfo(
     }
 
     case "threads": {
-      try {
-        const response = await fetch(
-          `https://graph.threads.net/me?fields=id,username,profile_picture_url&access_token=${accessToken}`,
-        );
-        if (response.ok) {
-          const data = await response.json();
-          let profileImageUrl: string | null = null;
-          try {
-            const raw = data.profile_picture_url;
-            if (isValidProfileImageUrl(raw)) profileImageUrl = raw;
-          } catch (err) {
-            console.error("Threads profile_picture_url parse failed:", err);
-          }
-          return {
-            id: data.id || `threads-${Date.now()}`,
-            username: data.username || null,
-            profileImageUrl,
-          };
-        }
+      const response = await fetch(
+        `https://graph.threads.net/me?fields=id,username,threads_profile_picture_url&access_token=${accessToken}`,
+      );
+      if (!response.ok) {
         const errorText = await response.text();
         console.error("Threads Graph API userinfo error:", errorText);
-      } catch (err) {
-        console.error("Threads user info fetch failed:", err);
+        break;
       }
-      break;
+      const data = await response.json();
+      let profileImageUrl: string | null = null;
+      try {
+        const raw = data.threads_profile_picture_url;
+        if (isValidProfileImageUrl(raw)) profileImageUrl = raw;
+      } catch (err) {
+        console.error("Threads threads_profile_picture_url parse failed:", err);
+      }
+      return {
+        id: data.id || `threads-${Date.now()}`,
+        username: data.username || null,
+        profileImageUrl,
+      };
     }
 
     case "pinterest": {
