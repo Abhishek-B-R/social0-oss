@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { publishPost } from "@/app/actions/publish";
@@ -9,6 +9,7 @@ import {
   createAutoPlug,
 } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
+import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import { AutoFeaturesCard } from "@/components/repost/AutoFeaturesCard";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
@@ -46,6 +47,9 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
     nextIdRef.current += 1;
     return nextIdRef.current;
   };
+  const formRef = useRef<HTMLFormElement>(null);
+  const intendedModeRef = useRef<PublishMode | null>(null);
+  const [accountSearch, setAccountSearch] = useState("");
   const [posts, setPosts] = useState<ThreadPost[]>(() => [
     { id: 1, text: "", images: [], videos: [] },
   ]);
@@ -400,10 +404,12 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
     setUploadProgress(null);
     setOverlayPhase("publishing");
 
+    const effectiveMode = intendedModeRef.current ?? mode;
+    intendedModeRef.current = null;
     const result = await createPost(
       content,
       Array.from(selectedIds),
-      mode,
+      effectiveMode,
       scheduledAt,
       mediaIds,
       {
@@ -423,7 +429,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
       setOverlayPhase("idle");
       return;
     }
-    if (mode === "now" && result.postId) {
+    if (effectiveMode === "now" && result.postId) {
       const publishResult = await publishPost(result.postId);
       if (!publishResult?.success) {
         const msg =
@@ -475,6 +481,16 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
   const overlayMediaType: "image" | "video" | "mixed" =
     hasImages && hasVideos ? "mixed" : hasVideos ? "video" : "image";
 
+  const filteredAccounts = useMemo(() => {
+    if (!accountSearch.trim()) return accounts;
+    const q = accountSearch.toLowerCase().trim();
+    return accounts.filter(
+      (a) =>
+        a.platformUsername?.toLowerCase().includes(q) ||
+        a.platform?.toLowerCase().includes(q),
+    );
+  }, [accounts, accountSearch]);
+
   return (
     <>
       {overlayPhase !== "idle" && (
@@ -505,7 +521,39 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
           }
         />
       )}
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="min-w-0 flex-1 space-y-6 lg:max-w-[65%]">
+          <PostFormOptions
+              accounts={filteredAccounts}
+              selectedIds={selectedIds}
+              onToggleAccount={toggleAccount}
+              selectAll={selectAll}
+              mode={mode}
+              setMode={setMode}
+              scheduledAt={scheduledAt}
+              setScheduledAt={setScheduledAt}
+              error={error}
+              loading={loading}
+              onCancel={() => router.push("/dashboard/posts")}
+              submitLabel={submitLabel}
+              submitDisabled={
+                accounts.length === 0 ||
+                (mode === "scheduled" && !scheduledAt) ||
+                anyOverLimit ||
+                !hasContent
+              }
+              hideScheduleAndActions
+              searchSlot={
+                <input
+                  type="search"
+                  placeholder="Search accounts..."
+                  value={accountSearch}
+                  onChange={(e) => setAccountSearch(e.target.value)}
+                  className="h-8 w-full text-xs rounded border border-gray-200 px-2 py-1 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
+                />
+              }
+            />
+
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
         <p className="text-sm font-semibold text-gray-900">
           Thread posts (stacked in order when published)
@@ -680,34 +728,32 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
         </button>
       </div>
 
-      <PostFormOptions
-        accounts={accounts}
-        selectedIds={selectedIds}
-        onToggleAccount={toggleAccount}
-        selectAll={selectAll}
-        mode={mode}
-        setMode={setMode}
-        scheduledAt={scheduledAt}
-        setScheduledAt={setScheduledAt}
-        error={error}
-        loading={loading}
-        onCancel={() => router.push("/dashboard/posts")}
-        submitLabel={submitLabel}
-        submitDisabled={
-          accounts.length === 0 ||
-          (mode === "scheduled" && !scheduledAt) ||
-          anyOverLimit ||
-          !hasContent
-        }
-        betweenScheduleAndActions={
           <AutoFeaturesCard
             selectedAccountIds={Array.from(selectedIds)}
             allAccounts={accounts}
             onResurfaceChange={setResurfaceConfig}
             onAutoPlugChange={setAutoPlugConfig}
           />
-        }
-      />
+        </div>
+
+        <SchedulePostSidebar
+          mode={mode}
+          setMode={setMode}
+          scheduledAt={scheduledAt}
+          setScheduledAt={setScheduledAt}
+          loading={loading}
+          submitDisabled={
+            accounts.length === 0 ||
+            (mode === "scheduled" && !scheduledAt) ||
+            anyOverLimit ||
+            !hasContent
+          }
+          hasAccountSelected={selectedIds.size > 0}
+          error={error}
+          onCancel={() => router.push("/dashboard/posts")}
+          intendedModeRef={intendedModeRef}
+          formRef={formRef}
+        />
     </form>
     </>
   );

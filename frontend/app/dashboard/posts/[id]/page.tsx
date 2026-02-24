@@ -1,5 +1,7 @@
+import type { ComponentType } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import NextImage from "next/image";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { ArrowLeft } from "lucide-react";
@@ -10,7 +12,22 @@ import {
   type PostDetailRow,
   type PostMediaRow,
 } from "../posts-list-data";
-import { Image, Video, FileText, Layers, BookOpen, LayoutGrid } from "lucide-react";
+import {
+  Image as ImageIcon,
+  Video,
+  FileText,
+  Layers,
+  BookOpen,
+  LayoutGrid,
+} from "lucide-react";
+
+const TYPE_ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
+  Thread: Layers,
+  Image: ImageIcon,
+  Video,
+  Blog: BookOpen,
+  Collection: LayoutGrid,
+};
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -21,7 +38,9 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 function getThreadParts(post: PostDetailRow): string[] {
-  const meta = post.metadata as { twitterThread?: { parts?: { text: string }[] } } | undefined;
+  const meta = post.metadata as
+    | { twitterThread?: { parts?: { text: string }[] } }
+    | undefined;
   const partsArr = meta?.twitterThread?.parts;
   if (Array.isArray(partsArr) && partsArr.length > 0) {
     return partsArr.map((p) => {
@@ -56,23 +75,6 @@ function getDisplayType(
   return "Text";
 }
 
-function getTypeIcon(type: string) {
-  switch (type) {
-    case "Thread":
-      return Layers;
-    case "Image":
-      return Image;
-    case "Video":
-      return Video;
-    case "Blog":
-      return BookOpen;
-    case "Collection":
-      return LayoutGrid;
-    default:
-      return FileText;
-  }
-}
-
 const dateOpts: Intl.DateTimeFormatOptions = {
   dateStyle: "medium",
   timeStyle: "short",
@@ -99,7 +101,7 @@ export default async function PostDetailPage({
   const parts = getThreadParts(post);
   const isThread = parts.length > 1;
   const displayType = getDisplayType(post, parts.length, media);
-  const TypeIcon = getTypeIcon(displayType);
+  const TypeIcon = TYPE_ICON_MAP[displayType] ?? FileText;
 
   const publishedAts = publications
     .map((p) => p.publishedAt)
@@ -175,7 +177,7 @@ export default async function PostDetailPage({
                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       Part {idx + 1}
                     </span>
-                    <p className="mt-2 text-gray-900 whitespace-pre-wrap break-words">
+                    <p className="mt-2 text-gray-900 whitespace-pre-wrap wrap-break-word">
                       {text || "(No caption)"}
                     </p>
                   </div>
@@ -184,7 +186,7 @@ export default async function PostDetailPage({
             </div>
           ) : (
             <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4">
-              <p className="text-gray-900 whitespace-pre-wrap break-words">
+              <p className="text-gray-900 whitespace-pre-wrap wrap-break-word">
                 {parts[0] ?? "(No caption)"}
               </p>
             </div>
@@ -199,7 +201,7 @@ export default async function PostDetailPage({
                 {media.map((m) => (
                   <div
                     key={m.id}
-                    className="aspect-square rounded-lg overflow-hidden bg-gray-100"
+                    className="relative aspect-square rounded-lg overflow-hidden bg-gray-100"
                   >
                     {m.mimeType.startsWith("video/") ? (
                       <video
@@ -210,10 +212,13 @@ export default async function PostDetailPage({
                         playsInline
                       />
                     ) : (
-                      <img
+                      <NextImage
                         src={m.thumbnailUrl ?? m.url ?? ""}
                         alt={m.originalFilename}
-                        className="w-full h-full object-cover"
+                        fill
+                        sizes="(max-width: 768px) 33vw, 200px"
+                        className="object-cover"
+                        unoptimized
                       />
                     )}
                   </div>

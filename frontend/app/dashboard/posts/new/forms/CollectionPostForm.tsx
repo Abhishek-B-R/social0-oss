@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { publishPost } from "@/app/actions/publish";
@@ -9,7 +9,9 @@ import {
   createAutoPlug,
 } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
+import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import { AutoFeaturesCard } from "@/components/repost/AutoFeaturesCard";
+import { TikTokSettingsCard } from "@/components/TikTokSettingsCard";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 import {
@@ -36,9 +38,13 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
   const router = useRouter();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const intendedModeRef = useRef<PublishMode | null>(null);
   const [content, setContent] = useState("");
   const [images, setImages] = useState<ImageFile[]>([]);
   const [videos, setVideos] = useState<VideoFile[]>([]);
+  const [carouselPreviewIndex, setCarouselPreviewIndex] = useState(0);
+  const [accountSearch, setAccountSearch] = useState("");
   const imagesRef = useRef<ImageFile[]>([]);
   const videosRef = useRef<VideoFile[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -352,10 +358,12 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
       }, {});
     }
 
+    const effectiveMode = intendedModeRef.current ?? mode;
+    intendedModeRef.current = null;
     const result = await createPost(
       text,
       Array.from(selectedIds),
-      mode,
+      effectiveMode,
       scheduledAt,
       mediaIds,
       Object.keys(metadata).length > 0 ? metadata : undefined,
@@ -366,7 +374,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
       setOverlayPhase("idle");
       return;
     }
-    if (mode === "now" && result.postId) {
+    if (effectiveMode === "now" && result.postId) {
       const publishResult = await publishPost(result.postId);
       if (!publishResult?.success) {
         setError(publishResult?.error ?? "Publish failed");
@@ -414,6 +422,20 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
         ? "Schedule post"
         : "Post now";
 
+  const filteredAccounts = useMemo(() => {
+    if (!accountSearch.trim()) return accounts;
+    const q = accountSearch.toLowerCase().trim();
+    return accounts.filter(
+      (a) =>
+        a.platformUsername?.toLowerCase().includes(q) ||
+        a.platform?.toLowerCase().includes(q),
+    );
+  }, [accounts, accountSearch]);
+
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  const allItemsSorted = useMemo(() => getAllItems(), [images, videos]);
+  const previewItem = allItemsSorted[carouselPreviewIndex] ?? null;
+
   return (
     <>
       {overlayPhase !== "idle" && (
@@ -444,178 +466,314 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
           }
         />
       )}
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-          <label className="block text-sm font-semibold text-gray-900">
-            Collection of images and videos (one post)
-          </label>
-          <p className="text-sm text-gray-500 -mt-2">
-            Add a caption plus multiple images and/or video in a single post.
-            Supported on Facebook, LinkedIn, X, Threads, Bluesky, Instagram,
-            Pinterest.
-          </p>
-
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Write your caption..."
-            rows={3}
-            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-6 lg:flex-row lg:items-start"
+      >
+        <div className="min-w-0 flex-1 space-y-6 lg:max-w-[65%]">
+          <PostFormOptions
+            accounts={filteredAccounts}
+            selectedIds={selectedIds}
+            onToggleAccount={toggleAccount}
+            selectAll={selectAll}
+            mode={mode}
+            setMode={setMode}
+            scheduledAt={scheduledAt}
+            setScheduledAt={setScheduledAt}
+            error={error}
+            loading={loading}
+            onCancel={() => router.push("/dashboard/posts")}
+            submitLabel={submitLabel}
+            submitDisabled={
+              accounts.length === 0 ||
+              (mode === "scheduled" && !scheduledAt) ||
+              !hasContent
+            }
+            hideScheduleAndActions
+            searchSlot={
+              <input
+                type="search"
+                placeholder="Search accounts..."
+                value={accountSearch}
+                onChange={(e) => setAccountSearch(e.target.value)}
+                className="h-8 w-full text-xs rounded border border-gray-200 px-2 py-1 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
+              />
+            }
           />
 
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={onImagesChange}
-            className="hidden"
-          />
-          <input
-            ref={videoInputRef}
-            type="file"
-            accept="video/*"
-            onChange={onVideoChange}
-            className="hidden"
-          />
-
-          <div className="flex flex-wrap items-center gap-2">
-            <label
-              htmlFor="collection-images"
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 cursor-pointer"
-            >
-              <MdOutlineAddPhotoAlternate className="w-5 h-5" />
-              Images
-              {images.length > 0 && (
-                <span className="text-gray-500">({images.length})</span>
-              )}
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+            <label className="block text-sm font-semibold text-gray-900">
+              Collection of images and videos (one post)
             </label>
+            <p className="text-sm text-gray-500 -mt-2">
+              Add a caption plus multiple images and/or video in a single post.
+            </p>
+
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Write your caption..."
+              rows={3}
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+
             <input
-              id="collection-images"
+              ref={imageInputRef}
               type="file"
               accept="image/*"
               multiple
               onChange={onImagesChange}
               className="hidden"
             />
-            <label
-              htmlFor="collection-video"
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 cursor-pointer"
-            >
-              <MdOutlineVideocam className="w-5 h-5" />
-              Videos
-              {videos.length > 0 && (
-                <span className="text-gray-500">({videos.length})</span>
-              )}
-            </label>
             <input
-              id="collection-video"
+              ref={videoInputRef}
               type="file"
               accept="video/*"
-              multiple
               onChange={onVideoChange}
               className="hidden"
             />
+
+            <div className="flex flex-wrap items-center gap-2">
+              <label
+                htmlFor="collection-images"
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 cursor-pointer"
+              >
+                <MdOutlineAddPhotoAlternate className="w-5 h-5" />
+                Images
+                {images.length > 0 && (
+                  <span className="text-gray-500">({images.length})</span>
+                )}
+              </label>
+              <input
+                id="collection-images"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={onImagesChange}
+                className="hidden"
+              />
+              <label
+                htmlFor="collection-video"
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 cursor-pointer"
+              >
+                <MdOutlineVideocam className="w-5 h-5" />
+                Videos
+                {videos.length > 0 && (
+                  <span className="text-gray-500">({videos.length})</span>
+                )}
+              </label>
+              <input
+                id="collection-video"
+                type="file"
+                accept="video/*"
+                multiple
+                onChange={onVideoChange}
+                className="hidden"
+              />
+            </div>
+
+            {(images.length > 0 || videos.length > 0) && (
+              <div className="space-y-3 pt-2 border-t border-gray-100">
+                <p className="text-xs text-gray-500">
+                  Carousel post: Drag to reorder (mainly for Instagram)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {getAllItems().map((item, index) => {
+                    const isVideo = item.type === "video";
+                    return (
+                      <div
+                        key={item.preview}
+                        draggable
+                        onDragStart={() => handleDragStart(index)}
+                        onDragOver={(e) => handleDragOver(e, index)}
+                        onDragEnd={handleDragEnd}
+                        className="relative shrink-0 cursor-move overflow-hidden rounded-lg border border-gray-200 hover:border-emerald-400 transition-colors h-20 w-20"
+                      >
+                        {isVideo ? (
+                          <video
+                            src={item.preview}
+                            className="h-full w-full object-cover"
+                            muted
+                            playsInline
+                            draggable={false}
+                          />
+                        ) : (
+                          /* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */
+                          <img
+                            src={item.preview}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            draggable={false}
+                          />
+                        )}
+                        {isVideo && (
+                          <div className="absolute bottom-1 left-1 flex items-center gap-0.5 rounded-full bg-black/70 px-1.5 py-0.5">
+                            <MdOutlineVideocam className="h-3 w-3 text-white" />
+                          </div>
+                        )}
+                        <div className="absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center">
+                          <span className="text-xs font-bold text-white">
+                            {item.order}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            isVideo
+                              ? removeVideo(item.preview)
+                              : removeImage(item.preview)
+                          }
+                          className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
+                          onMouseDown={(e) => e.stopPropagation()}
+                        >
+                          <MdClose className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
-          {(images.length > 0 || videos.length > 0) && (
-            <div className="space-y-3 pt-2 border-t border-gray-100">
-              <p className="text-xs text-gray-500">
-                Carousel post: Drag to reorder (mainly for Instagram)
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {getAllItems().map((item, index) => {
-                  const isVideo = item.type === "video";
-                  return (
-                    <div
-                      key={item.preview}
-                      draggable
-                      onDragStart={() => handleDragStart(index)}
-                      onDragOver={(e) => handleDragOver(e, index)}
-                      onDragEnd={handleDragEnd}
-                      className={`relative shrink-0 cursor-move overflow-hidden rounded-lg border border-gray-200 hover:border-emerald-400 transition-colors ${
-                        isVideo ? "h-12 w-16" : "h-20 w-20"
-                      }`}
-                    >
-                      {isVideo ? (
-                        <video
-                          src={item.preview}
-                          className="h-full w-full object-cover"
-                          muted
-                          playsInline
-                          draggable={false}
-                        />
-                      ) : (
-                        /* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */
-                        <img
-                          src={item.preview}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          draggable={false}
-                        />
-                      )}
-                      <div className="absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center">
-                        <span className="text-xs font-bold text-white">
-                          {item.order}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          isVideo
-                            ? removeVideo(item.preview)
-                            : removeImage(item.preview)
-                        }
-                        className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
-                        onMouseDown={(e) => e.stopPropagation()}
-                      >
-                        <MdClose className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <AutoFeaturesCard
+            selectedAccountIds={Array.from(selectedIds)}
+            allAccounts={accounts}
+            onResurfaceChange={setResurfaceConfig}
+            onAutoPlugChange={setAutoPlugConfig}
+          />
+
+          <TikTokSettingsCard
+            selectedAccountIds={Array.from(selectedIds)}
+            allAccounts={accounts}
+            configuredIds={
+              hasTikTok
+                ? new Set(
+                    tiktokAccounts
+                      .filter((a) => tiktokSettings[a.id]?.privacy_level)
+                      .map((a) => a.id),
+                  )
+                : undefined
+            }
+            onOpenSettings={setTiktokModalAccountId}
+          />
         </div>
 
-        <PostFormOptions
-          accounts={accounts}
-          selectedIds={selectedIds}
-          onToggleAccount={toggleAccount}
-          selectAll={selectAll}
+        <SchedulePostSidebar
           mode={mode}
           setMode={setMode}
           scheduledAt={scheduledAt}
           setScheduledAt={setScheduledAt}
-          error={error}
           loading={loading}
-          onCancel={() => router.push("/dashboard/posts")}
-          submitLabel={submitLabel}
           submitDisabled={
             accounts.length === 0 ||
             (mode === "scheduled" && !scheduledAt) ||
             !hasContent
           }
-          tiktokConfiguredIds={
-            hasTikTok
-              ? new Set(
-                  tiktokAccounts
-                    .filter((a) => tiktokSettings[a.id]?.privacy_level)
-                    .map((a) => a.id),
-                )
-              : undefined
-          }
-          onOpenTikTokSettings={setTiktokModalAccountId}
-          betweenScheduleAndActions={
-            <AutoFeaturesCard
-              selectedAccountIds={Array.from(selectedIds)}
-              allAccounts={accounts}
-              onResurfaceChange={setResurfaceConfig}
-              onAutoPlugChange={setAutoPlugConfig}
-            />
-          }
-        />
+          hasAccountSelected={selectedIds.size > 0}
+          error={error}
+          onCancel={() => router.push("/dashboard/posts")}
+          intendedModeRef={intendedModeRef}
+          formRef={formRef}
+        >
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-gray-900">
+              Carousel preview
+            </h3>
+            {allItemsSorted.length === 0 ? (
+              <div className="flex aspect-square w-full flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-gray-400">
+                <MdOutlineAddPhotoAlternate className="mb-2 h-12 w-12" />
+                <span className="text-xs">Upload media to see preview</span>
+              </div>
+            ) : (
+              <>
+                <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-gray-100">
+                  {previewItem?.type === "video" ? (
+                    <video
+                      src={previewItem.preview}
+                      className="h-full w-full object-contain"
+                      controls
+                      muted
+                      playsInline
+                    />
+                  ) : (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={previewItem?.preview}
+                      alt=""
+                      className="h-full w-full object-contain"
+                    />
+                  )}
+                </div>
+                <div className="mt-2 flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCarouselPreviewIndex((i) =>
+                        i <= 0 ? allItemsSorted.length - 1 : i - 1,
+                      )
+                    }
+                    className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                    aria-label="Previous"
+                  >
+                    ←
+                  </button>
+                  <span className="text-xs text-gray-500">
+                    {carouselPreviewIndex + 1} / {allItemsSorted.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCarouselPreviewIndex((i) =>
+                        i >= allItemsSorted.length - 1 ? 0 : i + 1,
+                      )
+                    }
+                    className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                    aria-label="Next"
+                  >
+                    →
+                  </button>
+                </div>
+                <div className="mt-2 flex gap-1 overflow-x-auto pb-1">
+                  {allItemsSorted.map((item, idx) => (
+                    <button
+                      key={item.preview}
+                      type="button"
+                      onClick={() => setCarouselPreviewIndex(idx)}
+                      className={`relative h-12 w-12 shrink-0 overflow-hidden rounded border ${
+                        idx === carouselPreviewIndex
+                          ? "border-emerald-500 ring-1 ring-emerald-500"
+                          : "border-gray-200"
+                      }`}
+                    >
+                      {item.type === "video" ? (
+                        <video
+                          src={item.preview}
+                          className="h-full w-full object-cover"
+                          muted
+                          playsInline
+                        />
+                      ) : (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={item.preview}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      )}
+                      {item.type === "video" && (
+                        <div className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded-full bg-black/70 px-1 py-0.5">
+                          <MdOutlineVideocam className="h-2.5 w-2.5 text-white" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </SchedulePostSidebar>
 
         {tiktokModalAccountId && (
           <TikTokSettingsModal

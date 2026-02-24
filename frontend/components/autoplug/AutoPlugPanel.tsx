@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { AccountAvatar } from "@/components/AccountAvatar";
 import {
   getResurfacePlatforms,
   isWithinAutoPlugWindow,
@@ -189,16 +190,13 @@ function AutoPlugPanelInner({
               <p className="text-xs text-gray-500 mb-2">Preview</p>
               <div className="flex gap-3">
                 <div className="shrink-0">
-                  {xAccount?.profileImageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={xAccount.profileImageUrl}
-                      alt=""
-                      className="h-10 w-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-10 w-10 rounded-full bg-gray-300" />
-                  )}
+                  <AccountAvatar
+                    profileImageUrl={xAccount?.profileImageUrl}
+                    username={xAccount?.platformUsername}
+                    platform="twitter_x"
+                    size="md"
+                    className="h-10 w-10"
+                  />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-gray-900">

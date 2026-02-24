@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type AccountAvatarProps = {
@@ -25,7 +25,7 @@ export function AccountAvatar({
   size = "md",
   className,
 }: AccountAvatarProps) {
-  const [imageFailed, setImageFailed] = useState(false);
+  const [failed, setFailed] = useState(false);
   const sizeClass = sizeClasses[size];
 
   const initial =
@@ -33,18 +33,23 @@ export function AccountAvatar({
     platform?.charAt(0)?.toUpperCase() ||
     "?";
 
-  const showImage = profileImageUrl?.trim() && !imageFailed;
+  // Reset failed state when URL changes
+  useEffect(() => setFailed(false), [profileImageUrl]);
 
-  if (showImage) {
+  if (profileImageUrl?.trim() && !failed) {
     return (
-      <span className={cn("relative inline-block", sizeClass, className)}>
-        <img
-          src={profileImageUrl!}
-          alt={username || platform || "Account"}
-          className={cn("rounded-full object-cover shrink-0 h-full w-full", sizeClass)}
-          onError={() => setImageFailed(true)}
-        />
-      </span>
+      <img
+        src={profileImageUrl}
+        alt={username || platform || "Account"}
+        referrerPolicy="no-referrer"
+        draggable={false}
+        className={cn(
+          "rounded-full object-cover shrink-0",
+          sizeClass,
+          className,
+        )}
+        onError={() => setFailed(true)}
+      />
     );
   }
 
@@ -53,7 +58,7 @@ export function AccountAvatar({
       className={cn(
         "flex items-center justify-center rounded-full bg-gray-200 text-gray-600 font-semibold shrink-0",
         sizeClass,
-        className
+        className,
       )}
       title={username || platform || "Account"}
     >

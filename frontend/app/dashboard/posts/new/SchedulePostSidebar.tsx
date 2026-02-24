@@ -1,0 +1,277 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import type { PublishMode } from "@/app/actions/posts";
+
+type SchedulePostSidebarProps = {
+  /** Preview card(s) rendered above the schedule card */
+  children?: React.ReactNode;
+  mode: PublishMode;
+  setMode: (m: PublishMode) => void;
+  scheduledAt: Date | null;
+  setScheduledAt: (d: Date | null) => void;
+  loading: boolean;
+  submitDisabled: boolean;
+  hasAccountSelected: boolean;
+  error: string | null;
+  onCancel: () => void;
+  /** Set this ref before calling requestSubmit so handleSubmit uses the correct mode */
+  intendedModeRef: React.MutableRefObject<PublishMode | null>;
+  formRef: React.RefObject<HTMLFormElement | null>;
+};
+
+export function SchedulePostSidebar({
+  children,
+  mode,
+  setMode,
+  scheduledAt,
+  setScheduledAt,
+  loading,
+  submitDisabled,
+  hasAccountSelected,
+  error,
+  onCancel,
+  intendedModeRef,
+  formRef,
+}: SchedulePostSidebarProps) {
+  const isScheduled = mode === "scheduled";
+
+  const defaultScheduledAt = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(9, 0, 0, 0);
+    return d;
+  }, []);
+
+  const [dateValue, setDateValue] = useState<string>(() => {
+    const base = scheduledAt ?? defaultScheduledAt;
+    const yyyy = base.getFullYear();
+    const mm = String(base.getMonth() + 1).padStart(2, "0");
+    const dd = String(base.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  });
+  const [timeValue, setTimeValue] = useState<string>(() => {
+    const base = scheduledAt ?? defaultScheduledAt;
+    const hh = String(base.getHours()).padStart(2, "0");
+    const mi = String(base.getMinutes()).padStart(2, "0");
+    return `${hh}:${mi}`;
+  });
+
+  const combinedDateTime = useMemo(() => {
+    if (!dateValue || !timeValue) return null;
+    const [yyyy, mm, dd] = dateValue.split("-").map(Number);
+    const [hh, mi] = timeValue.split(":").map(Number);
+    if (
+      !yyyy ||
+      !mm ||
+      !dd ||
+      Number.isNaN(yyyy) ||
+      Number.isNaN(mm) ||
+      Number.isNaN(dd) ||
+      Number.isNaN(hh) ||
+      Number.isNaN(mi)
+    ) {
+      return null;
+    }
+    return new Date(yyyy, mm - 1, dd, hh, mi, 0, 0);
+  }, [dateValue, timeValue]);
+
+  const scheduledReadable = useMemo(() => {
+    if (!combinedDateTime) return null;
+    const datePart = new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(combinedDateTime);
+    const timePart = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(combinedDateTime);
+    return `Scheduled for ${datePart} at ${timePart}`;
+  }, [combinedDateTime]);
+
+  // Keep the parent `scheduledAt` in sync with our inputs while scheduled mode is on.
+  useEffect(() => {
+    if (!isScheduled) return;
+    if (!combinedDateTime) return;
+    if (scheduledAt?.getTime() === combinedDateTime.getTime()) return;
+    setScheduledAt(combinedDateTime);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScheduled, combinedDateTime]);
+
+  // If scheduled mode is enabled and no datetime exists yet, initialize to tomorrow 09:00.
+  useEffect(() => {
+    if (!isScheduled) return;
+    if (scheduledAt) return;
+    setScheduledAt(defaultScheduledAt);
+    const yyyy = defaultScheduledAt.getFullYear();
+    const mm = String(defaultScheduledAt.getMonth() + 1).padStart(2, "0");
+    const dd = String(defaultScheduledAt.getDate()).padStart(2, "0");
+    setDateValue(`${yyyy}-${mm}-${dd}`);
+    setTimeValue("09:00");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScheduled]);
+
+  const handlePostNow = () => {
+    intendedModeRef.current = "now";
+    setMode("now");
+    formRef.current?.requestSubmit();
+  };
+
+  const handleSaveDraft = () => {
+    intendedModeRef.current = "draft";
+    setMode("draft");
+    formRef.current?.requestSubmit();
+  };
+
+  const handleSchedule = () => {
+    intendedModeRef.current = "scheduled";
+    setMode("scheduled");
+    formRef.current?.requestSubmit();
+  };
+
+  const toggleScheduled = () => {
+    if (isScheduled) {
+      setMode("now");
+      return;
+    }
+    // Turn on scheduling and ensure we have a sane default.
+    setMode("scheduled");
+    if (!scheduledAt) {
+      setScheduledAt(defaultScheduledAt);
+      const yyyy = defaultScheduledAt.getFullYear();
+      const mm = String(defaultScheduledAt.getMonth() + 1).padStart(2, "0");
+      const dd = String(defaultScheduledAt.getDate()).padStart(2, "0");
+      setDateValue(`${yyyy}-${mm}-${dd}`);
+      setTimeValue("09:00");
+    }
+  };
+
+  return (
+    <aside
+      className="sticky top-[80px] flex max-h-[calc(100vh-100px)] w-full flex-col gap-6 overflow-y-auto lg:w-[35%]"
+      style={{ minWidth: 0 }}
+    >
+      {children}
+
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <span className="text-sm font-semibold text-gray-900">
+            Schedule post
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isScheduled}
+            onClick={toggleScheduled}
+            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
+              isScheduled
+                ? "border-emerald-500 bg-emerald-600"
+                : "border-gray-200 bg-gray-200"
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform ${
+                isScheduled ? "translate-x-5" : "translate-x-0.5"
+              }`}
+              style={{ marginTop: 2 }}
+            />
+          </button>
+        </div>
+
+        {!isScheduled ? (
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={handlePostNow}
+              disabled={loading || !hasAccountSelected || submitDisabled}
+              className="w-full rounded-xl bg-emerald-600 py-3 font-semibold text-white shadow transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-emerald-600"
+            >
+              {loading ? "Saving..." : "Post now"}
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={loading || submitDisabled}
+              className="w-full rounded-xl border border-gray-200 bg-white py-3 font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Save to Drafts
+            </button>
+            {!hasAccountSelected && (
+              <p className="text-xs text-gray-500">
+                Select an account to post to
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex gap-3">
+              <div className="min-w-0 flex-1">
+                <label
+                  htmlFor="schedule-date"
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
+                  Date
+                </label>
+                <input
+                  id="schedule-date"
+                  type="date"
+                  value={dateValue}
+                  onChange={(e) => setDateValue(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-medium text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <label
+                  htmlFor="schedule-time"
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
+                  Time
+                </label>
+                <input
+                  id="schedule-time"
+                  type="time"
+                  value={timeValue}
+                  onChange={(e) => setTimeValue(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-medium text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-500">
+              {scheduledReadable ?? "Pick a date and time to schedule"}
+            </p>
+
+            <button
+              type="button"
+              onClick={handleSchedule}
+              disabled={
+                loading ||
+                !hasAccountSelected ||
+                !combinedDateTime ||
+                submitDisabled
+              }
+              className="w-full rounded-xl bg-emerald-600 py-3 font-semibold text-white shadow transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-emerald-600"
+            >
+              {loading ? "Saving..." : "Schedule"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          {error}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={onCancel}
+        className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-50"
+      >
+        Cancel
+      </button>
+    </aside>
+  );
+}

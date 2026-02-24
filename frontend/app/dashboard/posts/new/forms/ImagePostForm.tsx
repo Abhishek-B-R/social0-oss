@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
+import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import { publishPost } from "@/app/actions/publish";
 import {
   createResurfaceSchedule,
@@ -10,6 +11,7 @@ import {
 } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
 import { AutoFeaturesCard } from "@/components/repost/AutoFeaturesCard";
+import { TikTokSettingsCard } from "@/components/TikTokSettingsCard";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 import { MdOutlineAddPhotoAlternate, MdClose } from "react-icons/md";
@@ -30,10 +32,14 @@ type ImageFile = { file: File; preview: string; order: number };
 export function ImagePostForm({ accounts }: { accounts: Account[] }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const intendedModeRef = useRef<PublishMode | null>(null);
   const [content, setContent] = useState("");
   const [images, setImages] = useState<ImageFile[]>([]);
   const imagesRef = useRef<ImageFile[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [accountSearch, setAccountSearch] = useState("");
+  const [previewIndex, setPreviewIndex] = useState(0);
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
@@ -230,10 +236,12 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
       }, {});
     }
 
+    const effectiveMode = intendedModeRef.current ?? mode;
+    intendedModeRef.current = null;
     const result = await createPost(
       text,
       Array.from(selectedIds),
-      mode,
+      effectiveMode,
       scheduledAt,
       mediaIds,
       Object.keys(metadata).length > 0 ? metadata : undefined,
@@ -244,7 +252,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
       setOverlayPhase("idle");
       return;
     }
-    if (mode === "now" && result.postId) {
+    if (effectiveMode === "now" && result.postId) {
       const publishResult = await publishPost(result.postId);
       if (!publishResult?.success) {
         setError(publishResult?.error ?? "Publish failed");
@@ -283,6 +291,22 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
     (a) => a.platform === "tiktok",
   );
 
+  const filteredAccounts = useMemo(() => {
+    if (!accountSearch.trim()) return accounts;
+    const q = accountSearch.toLowerCase().trim();
+    return accounts.filter(
+      (a) =>
+        a.platformUsername?.toLowerCase().includes(q) ||
+        a.platform?.toLowerCase().includes(q),
+    );
+  }, [accounts, accountSearch]);
+
+  const sortedImages = useMemo(
+    () => [...images].sort((a, b) => a.order - b.order),
+    [images],
+  );
+  const previewImage = sortedImages[previewIndex] ?? null;
+
   const submitLabel =
     mode === "draft"
       ? "Save draft"
@@ -320,46 +344,77 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
           }
         />
       )}
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-          <label className="block text-sm font-semibold text-gray-900">
-            Images & caption
-          </label>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={onFileChange}
-            className="hidden"
-          />
-          {images.length === 0 ? (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/50 py-10 text-gray-500 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-700 transition-colors"
-            >
-              <MdOutlineAddPhotoAlternate className="mb-2 h-10 w-10" />
-              <span className="text-sm font-medium">Click to add image(s)</span>
-              <span className="text-xs text-gray-400 mt-1">
-                Select multiple to add all at once
-              </span>
-            </button>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-xs text-gray-500">
-                Carousel post: Drag to reorder (mainly for Instagram)
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {[...images]
-                  .sort((a, b) => a.order - b.order)
-                  .map((img, index) => (
+      <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="min-w-0 flex-1 space-y-6 lg:max-w-[65%]">
+          <PostFormOptions
+              accounts={filteredAccounts}
+              selectedIds={selectedIds}
+              onToggleAccount={toggleAccount}
+              selectAll={selectAll}
+              mode={mode}
+              setMode={setMode}
+              scheduledAt={scheduledAt}
+              setScheduledAt={setScheduledAt}
+              error={error}
+              loading={loading}
+              onCancel={() => router.push("/dashboard/posts")}
+              submitLabel={submitLabel}
+              submitDisabled={
+                accounts.length === 0 ||
+                (mode === "scheduled" && !scheduledAt) ||
+                (!content.trim() && images.length === 0)
+              }
+              hideScheduleAndActions
+              searchSlot={
+                <input
+                  type="search"
+                  placeholder="Search accounts..."
+                  value={accountSearch}
+                  onChange={(e) => setAccountSearch(e.target.value)}
+                  className="h-8 w-full text-xs rounded border border-gray-200 px-2 py-1 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
+                />
+              }
+            />
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+            <label className="block text-sm font-semibold text-gray-900">
+              Images & caption
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={onFileChange}
+              className="hidden"
+            />
+            {images.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/50 py-10 text-gray-500 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-700 transition-colors"
+              >
+                <MdOutlineAddPhotoAlternate className="mb-2 h-10 w-10" />
+                <span className="text-sm font-medium">Click to add image(s)</span>
+                <span className="text-xs text-gray-400 mt-1">
+                  Select multiple to add all at once
+                </span>
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">
+                  Carousel post: Drag to reorder (mainly for Instagram)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {sortedImages.map((img, index) => (
                     <div
                       key={img.preview}
                       draggable
                       onDragStart={() => handleDragStart(index)}
                       onDragOver={(e) => handleDragOver(e, index)}
                       onDragEnd={handleDragEnd}
+                      onMouseEnter={() => setPreviewIndex(index)}
+                      onClick={() => setPreviewIndex(index)}
                       className="relative h-20 w-20 shrink-0 cursor-move overflow-hidden rounded-lg border border-gray-200 hover:border-emerald-400 transition-colors"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */}
@@ -384,63 +439,123 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                       </button>
                     </div>
                   ))}
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/50 text-gray-500 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-600"
-                >
-                  <MdOutlineAddPhotoAlternate className="h-6 w-6" />
-                  <span className="text-xs mt-0.5">Add more</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/50 text-gray-500 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-600"
+                  >
+                    <MdOutlineAddPhotoAlternate className="h-6 w-6" />
+                    <span className="text-xs mt-0.5">Add more</span>
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Add a caption..."
-            rows={3}
-            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            )}
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Add a caption..."
+              rows={3}
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+          </div>
+
+          <AutoFeaturesCard
+            selectedAccountIds={Array.from(selectedIds)}
+            allAccounts={accounts}
+            onResurfaceChange={setResurfaceConfig}
+            onAutoPlugChange={setAutoPlugConfig}
+          />
+
+          <TikTokSettingsCard
+            selectedAccountIds={Array.from(selectedIds)}
+            allAccounts={accounts}
+            configuredIds={
+              hasTikTok
+                ? new Set(
+                    tiktokAccounts
+                      .filter((a) => tiktokSettings[a.id]?.privacy_level)
+                      .map((a) => a.id),
+                  )
+                : undefined
+            }
+            onOpenSettings={setTiktokModalAccountId}
           />
         </div>
 
-        <PostFormOptions
-          accounts={accounts}
-          selectedIds={selectedIds}
-          onToggleAccount={toggleAccount}
-          selectAll={selectAll}
+        <SchedulePostSidebar
           mode={mode}
           setMode={setMode}
           scheduledAt={scheduledAt}
           setScheduledAt={setScheduledAt}
-          error={error}
           loading={loading}
-          onCancel={() => router.push("/dashboard/posts")}
-          submitLabel={submitLabel}
           submitDisabled={
             accounts.length === 0 ||
             (mode === "scheduled" && !scheduledAt) ||
             (!content.trim() && images.length === 0)
           }
-          tiktokConfiguredIds={
-            hasTikTok
-              ? new Set(
-                  tiktokAccounts
-                    .filter((a) => tiktokSettings[a.id]?.privacy_level)
-                    .map((a) => a.id),
-                )
-              : undefined
-          }
-          onOpenTikTokSettings={setTiktokModalAccountId}
-          betweenScheduleAndActions={
-            <AutoFeaturesCard
-              selectedAccountIds={Array.from(selectedIds)}
-              allAccounts={accounts}
-              onResurfaceChange={setResurfaceConfig}
-              onAutoPlugChange={setAutoPlugConfig}
-            />
-          }
-        />
+          hasAccountSelected={selectedIds.size > 0}
+          error={error}
+          onCancel={() => router.push("/dashboard/posts")}
+          intendedModeRef={intendedModeRef}
+          formRef={formRef}
+        >
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-gray-900">
+              Media preview
+            </h3>
+            {!previewImage ? (
+              <div className="flex aspect-square w-full flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-gray-400">
+                <MdOutlineAddPhotoAlternate className="mb-2 h-12 w-12" />
+                <span className="text-xs">Upload media to see preview</span>
+              </div>
+            ) : (
+              <>
+                <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-gray-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- blob URL */}
+                  <img
+                    src={previewImage.preview}
+                    alt=""
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <p className="mt-2 truncate text-center text-xs text-gray-500">
+                  {previewImage.file.name}
+                </p>
+                {sortedImages.length > 1 && (
+                  <div className="mt-2 flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPreviewIndex((i) =>
+                          i <= 0 ? sortedImages.length - 1 : i - 1,
+                        )
+                      }
+                      className="rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                      aria-label="Previous"
+                    >
+                      ←
+                    </button>
+                    <span className="text-xs text-gray-500">
+                      {previewIndex + 1} / {sortedImages.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPreviewIndex((i) =>
+                          i >= sortedImages.length - 1 ? 0 : i + 1,
+                        )
+                      }
+                      className="rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                      aria-label="Next"
+                    >
+                      →
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </SchedulePostSidebar>
 
         {tiktokModalAccountId && (
           <TikTokSettingsModal

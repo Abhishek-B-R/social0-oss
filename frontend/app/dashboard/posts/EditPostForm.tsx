@@ -6,6 +6,7 @@ import Link from "next/link";
 import { X, Upload } from "lucide-react";
 import { updatePost } from "@/app/actions/posts";
 import { PLATFORMS } from "@/lib/platforms";
+import { AccountAvatar } from "@/components/AccountAvatar";
 import { ScheduleDateTimePicker } from "@/components/ui/ScheduleDateTimePicker";
 import type { PostForEdit, PostMediaRow } from "./posts-list-data";
 
@@ -341,13 +342,12 @@ export function EditPostForm({
                   onChange={() => toggleAccount(acc.id)}
                   className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
                 />
-                {acc.profileImageUrl && (
-                  <img
-                    src={acc.profileImageUrl}
-                    alt=""
-                    className="size-9 rounded-full"
-                  />
-                )}
+                <AccountAvatar
+                  profileImageUrl={acc.profileImageUrl}
+                  username={acc.platformUsername}
+                  platform={acc.platform}
+                  size="sm"
+                />
                 <span className="text-sm font-medium text-gray-900">
                   {platformName(acc.platform)}
                   {acc.platformUsername && (
