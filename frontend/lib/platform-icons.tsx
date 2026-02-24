@@ -37,5 +37,6 @@ const PLATFORM_ICON_MAP: Record<string, IconComponent> = {
  */
 export function getPlatformIcon(platform: string): IconComponent | null {
   const normalized = platform?.toLowerCase().trim();
-  return (normalized && PLATFORM_ICON_MAP[normalized]) ?? null;
+  const icon = normalized ? PLATFORM_ICON_MAP[normalized] : undefined;
+  return icon ?? null;
 }
