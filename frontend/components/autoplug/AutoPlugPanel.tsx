@@ -110,9 +110,7 @@ function AutoPlugPanelInner({
     <>
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">
-            🔌 Auto-Plug
-          </h3>
+          <h3 className="text-sm font-semibold text-gray-900">🔌 Auto-Plug</h3>
           <p className="mt-0.5 text-xs text-gray-500">
             Reply automatically when this post hits a milestone.
           </p>
@@ -192,6 +190,7 @@ function AutoPlugPanelInner({
               <div className="flex gap-3">
                 <div className="shrink-0">
                   {xAccount?.profileImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={xAccount.profileImageUrl}
                       alt=""
@@ -207,7 +206,7 @@ function AutoPlugPanelInner({
                       ? `@${xAccount.platformUsername}`
                       : "X account"}
                   </p>
-                  <p className="mt-0.5 text-sm text-gray-700 whitespace-pre-wrap break-words">
+                  <p className="mt-0.5 text-sm text-gray-700 whitespace-pre-wrap wrap-break-word">
                     {commentSlice || "Your reply will appear here."}
                   </p>
                 </div>
