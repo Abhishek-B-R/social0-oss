@@ -603,7 +603,6 @@ export async function GET(
           "/dashboard",
         );
       }
-      console.log("Facebook pages found:", pages.map((p) => ({ id: p.id, name: p.name })));
       for (const page of pages) {
         let profileImageUrl: string | null = null;
         const fromList = page.picture?.data?.url;
