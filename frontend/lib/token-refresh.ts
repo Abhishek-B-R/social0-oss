@@ -186,6 +186,7 @@ export async function getValidToken(
           encryptedAccessToken: encryptToken(newAccessToken, account.id),
           encryptedRefreshToken: encryptToken(newRefreshToken, account.id),
           tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
+          isActive: true,
           updatedAt: new Date(),
         })
         .where(eq(connectedAccounts.id, account.id));
@@ -195,6 +196,7 @@ export async function getValidToken(
         .set({
           encryptedAccessToken: encryptToken(newAccessToken, account.id),
           tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
+          isActive: true,
           updatedAt: new Date(),
         })
         .where(eq(connectedAccounts.id, account.id));
@@ -248,6 +250,7 @@ export async function getValidToken(
     .set({
       encryptedAccessToken: encryptToken(newAccessToken, account.id),
       tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
+      isActive: true,
       updatedAt: new Date(),
     })
     .where(eq(connectedAccounts.id, account.id));
