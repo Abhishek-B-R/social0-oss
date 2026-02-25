@@ -199,6 +199,7 @@ export async function GET(
             platformUserId: userInfo.id,
             platformUsername: userInfo.username,
             profileImageUrl: userInfo.profileImageUrl,
+            isActive: true,
             updatedAt: new Date(),
           })
           .where(eq(connectedAccounts.id, existing.id));
@@ -213,6 +214,7 @@ export async function GET(
           encryptedAccessToken: encryptedAccess,
           encryptedRefreshToken: encryptedSecret,
           tokenExpiresAt: null,
+          isActive: true,
         });
       }
       return safeRedirect("/dashboard/connections?connected=twitter_x", "/dashboard/connections");
@@ -501,6 +503,13 @@ export async function GET(
       }
 
       tokens = await tokenResponse.json();
+      if (tokens.data?.access_token) {
+        tokens = {
+          access_token: tokens.data.access_token,
+          refresh_token: tokens.data.refresh_token ?? null,
+          expires_in: tokens.data.expires_in ?? 24 * 3600,
+        };
+      }
     } else if (platform === "pinterest") {
       // Pinterest: Basic Auth + form body only (no client_id/client_secret in body)
       // Using sandbox API for trial access
@@ -683,6 +692,7 @@ export async function GET(
               encryptedAccessToken: encryptedAccess,
               encryptedRefreshToken: null,
               tokenExpiresAt: null,
+              isActive: true,
               updatedAt: new Date(),
             })
             .where(eq(connectedAccounts.id, existing.id));
@@ -697,6 +707,7 @@ export async function GET(
             encryptedAccessToken: encryptedAccess,
             encryptedRefreshToken: null,
             tokenExpiresAt: null,
+            isActive: true,
           });
         }
       }
@@ -767,12 +778,23 @@ export async function GET(
 
     if (existing) {
       // Update existing (token refresh / profile refresh only)
+      let tokenExpiresAt: Date | null = tokens.expires_in
+        ? new Date(Date.now() + tokens.expires_in * 1000)
+        : null;
+      if (platform === "youtube") {
+        tokenExpiresAt = new Date(Date.now() + 3600 * 1000);
+      }
+      if (platform === "tiktok" && tokens.expires_in) {
+        tokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+      }
       const updateData: {
         encryptedAccessToken: string;
         encryptedRefreshToken: string | null;
         tokenExpiresAt: Date | null;
+        tokenStatus: string;
         platformUsername: string | null;
         profileImageUrl: string | null;
+        isActive: boolean;
         platformMetadata?: Record<string, unknown>;
         updatedAt: Date;
       } = {
@@ -780,11 +802,11 @@ export async function GET(
         encryptedRefreshToken: tokens.refresh_token
           ? encryptToken(tokens.refresh_token, existing.id)
           : null,
-        tokenExpiresAt: tokens.expires_in
-          ? new Date(Date.now() + tokens.expires_in * 1000)
-          : null,
+        tokenExpiresAt,
+        tokenStatus: "active",
         platformUsername: userInfo.username,
         profileImageUrl: userInfo.profileImageUrl,
+        isActive: true,
         updatedAt: new Date(),
       };
 
@@ -821,7 +843,16 @@ export async function GET(
       });
     }
 
-    // Insert new account with encrypted tokens
+    let insertTokenExpiresAt: Date | null = tokens.expires_in
+      ? new Date(Date.now() + tokens.expires_in * 1000)
+      : null;
+    if (platform === "youtube") {
+      insertTokenExpiresAt = new Date(Date.now() + 3600 * 1000);
+    }
+    if (platform === "tiktok" && tokens.expires_in) {
+      insertTokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+    }
+
     await db.insert(connectedAccounts).values({
       id: accountId,
       userId,
@@ -833,9 +864,9 @@ export async function GET(
       encryptedRefreshToken: tokens.refresh_token
         ? encryptToken(tokens.refresh_token, accountId)
         : null,
-      tokenExpiresAt: tokens.expires_in
-        ? new Date(Date.now() + tokens.expires_in * 1000)
-        : null,
+      tokenExpiresAt: insertTokenExpiresAt,
+      tokenStatus: "active",
+      isActive: true,
       platformMetadata,
     });
 
@@ -886,12 +917,16 @@ async function fetchPlatformUserInfo(
           );
           if (profileRes.ok) {
             const profileData = await profileRes.json().catch(() => ({}));
+            console.log("LinkedIn raw data:", JSON.stringify(profileData.profilePicture, null, 2));
             const elements = profileData.profilePicture?.["displayImage~"]?.elements;
-            if (Array.isArray(elements) && elements.length > 0) {
-              const last = elements[elements.length - 1];
-              const url = last.identifiers?.[0]?.identifier;
-              if (isValidProfileImageUrl(url)) profileImageUrl = url;
+            const urlFromProjection = elements?.[elements.length - 1]?.identifiers?.[0]?.identifier ?? null;
+            if (isValidProfileImageUrl(urlFromProjection)) {
+              profileImageUrl = urlFromProjection;
             }
+          }
+          if (!profileImageUrl) {
+            const fallbackUrl = data.picture ?? null;
+            if (isValidProfileImageUrl(fallbackUrl)) profileImageUrl = fallbackUrl;
           }
         } catch (err) {
           if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
@@ -901,6 +936,8 @@ async function fetchPlatformUserInfo(
             throw err;
           }
           console.error("LinkedIn profile picture fetch failed:", err);
+          const fallbackUrl = data.picture ?? null;
+          if (isValidProfileImageUrl(fallbackUrl)) profileImageUrl = fallbackUrl;
         }
         return {
           id: data.sub,

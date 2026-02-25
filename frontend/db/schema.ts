@@ -27,7 +27,6 @@ export const platformEnum = pgEnum("platform", [
   "facebook",
   "devto",
   "hashnode",
-  "medium",
 ]);
 
 export const postStatusEnum = pgEnum("post_status", [
@@ -122,6 +121,7 @@ export const connectedAccounts = pgTable(
     scopes: text("scopes"), // OAuth scopes granted
     isActive: boolean("is_active").default(true),
     lastSyncedAt: timestamp("last_synced_at"),
+    tokenStatus: text("token_status").default("active"), // active | expired | unknown
     encryptedAccessToken: text("encrypted_access_token").notNull(),
     encryptedRefreshToken: text("encrypted_refresh_token"),
     tokenExpiresAt: timestamp("token_expires_at"),

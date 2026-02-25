@@ -12,7 +12,6 @@ import {
   SiFacebook,
   SiDevdotto,
   SiHashnode,
-  SiMedium,
 } from "react-icons/si";
 
 // Same order as lib/platforms.ts: blues → reds → gradient → blacks
@@ -33,7 +32,6 @@ const PLATFORMS = [
   { name: "X", icon: SiX, color: "bg-[#000000]", textColor: "text-white" },
   { name: "Threads", icon: SiThreads, color: "bg-[#000000]", textColor: "text-white" },
   { name: "Dev.to", icon: SiDevdotto, color: "bg-[#0A0A0A]", textColor: "text-white" },
-  { name: "Medium", icon: SiMedium, color: "bg-[#000000]", textColor: "text-white" },
 ];
 
 function PlatformPill({

@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
           platformUserId: String(userData.id),
           platformUsername: username,
           profileImageUrl,
+          isActive: true,
           updatedAt: new Date(),
         })
         .where(eq(connectedAccounts.id, existing.id));
@@ -87,6 +88,7 @@ export async function POST(req: NextRequest) {
       encryptedAccessToken,
       encryptedRefreshToken: null,
       tokenExpiresAt: null,
+      isActive: true,
     });
 
     return Response.json({

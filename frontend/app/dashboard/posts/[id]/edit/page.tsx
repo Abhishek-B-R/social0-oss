@@ -8,6 +8,7 @@ import Link from "next/link";
 import { getPostForEdit, getPostMedia } from "../../posts-list-data";
 import { EditPostForm } from "../../EditPostForm";
 import { PLATFORMS } from "@/lib/platforms";
+import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 
 const platformOrder: string[] = PLATFORMS.map((p) => p.id);
 
@@ -42,11 +43,28 @@ export default async function EditPostPage({
       platformUsername: true,
       profileImageUrl: true,
       isActive: true,
+      tokenExpiresAt: true,
+      tokenStatus: true,
     },
   });
 
+  const now = Date.now();
+  const skipExpiryDisplay = new Set(["youtube", "tiktok"]);
   const activeAccounts = sortAccountsByPlatform(
-    accounts.filter((a) => a.isActive !== false),
+    accounts
+      .filter((a) => a.isActive !== false)
+      .map((a) => ({
+        id: a.id,
+        platform: a.platform,
+        platformUsername: a.platformUsername,
+        profileImageUrl: a.profileImageUrl,
+        isActive: a.isActive,
+        tokenExpired: NEVER_EXPIRES_PLATFORMS.has(a.platform)
+          ? false
+          : !skipExpiryDisplay.has(a.platform) &&
+            (a.tokenStatus === "expired" ||
+              (!!a.tokenExpiresAt && new Date(a.tokenExpiresAt).getTime() < now)),
+      })),
   );
 
   const existingMedia =

@@ -13,7 +13,6 @@ import {
   SiFacebook,
   SiDevdotto,
   SiHashnode,
-  SiMedium,
 } from "react-icons/si";
 
 // Same order as lib/platforms.ts: blues → reds → gradient → blacks
@@ -35,7 +34,6 @@ const PLATFORMS = [
   { name: "X", icon: SiX, color: "bg-[#000000]", textColor: "text-white", capabilities: "Text, Images, Video" },
   { name: "Threads", icon: SiThreads, color: "bg-[#000000]", textColor: "text-white", capabilities: "Text, Images" },
   { name: "Dev.to", icon: SiDevdotto, color: "bg-[#0A0A0A]", textColor: "text-white", capabilities: "Articles" },
-  { name: "Medium", icon: SiMedium, color: "bg-[#000000]", textColor: "text-white", capabilities: "Stories, Articles" },
 ];
 
 export function SupportedPlatforms() {

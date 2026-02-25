@@ -11,7 +11,6 @@ import {
   SiX,
   SiThreads,
   SiDevdotto,
-  SiMedium,
 } from "react-icons/si";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: string | number }>;
@@ -28,7 +27,6 @@ const PLATFORM_ICON_MAP: Record<string, IconComponent> = {
   twitter_x: SiX,
   threads: SiThreads,
   devto: SiDevdotto,
-  medium: SiMedium,
 };
 
 /**

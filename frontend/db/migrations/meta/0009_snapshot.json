@@ -1,5 +1,5 @@
 {
-  "id": "13292630-f763-45bb-8c9f-426071fe8073",
+  "id": "12b8710c-00b6-419c-afc5-3b299a9e62c3",
   "prevId": "57d2aeea-267f-4c90-b78e-3999c0bea3c0",
   "version": "7",
   "dialect": "postgresql",
@@ -300,6 +300,13 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false
+        },
+        "token_status": {
+          "name": "token_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'active'"
         },
         "encrypted_access_token": {
           "name": "encrypted_access_token",
@@ -1295,8 +1302,7 @@
         "bluesky",
         "facebook",
         "devto",
-        "hashnode",
-        "medium"
+        "hashnode"
       ]
     },
     "public.post_status": {

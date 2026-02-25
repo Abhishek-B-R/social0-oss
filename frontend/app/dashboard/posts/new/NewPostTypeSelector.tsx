@@ -13,7 +13,6 @@ import {
   SiFacebook,
   SiDevdotto,
   SiHashnode,
-  SiMedium,
 } from "react-icons/si";
 import { HiOutlineDocumentText } from "react-icons/hi";
 import { MdOutlineImage, MdOutlineVideoLibrary, MdOutlineCollections } from "react-icons/md";
@@ -39,7 +38,6 @@ const PLATFORM_DISPLAY: Record<
   twitter_x: { name: "X", icon: SiX, color: "bg-[#000000]" },
   threads: { name: "Threads", icon: SiThreads, color: "bg-[#000000]" },
   devto: { name: "Dev.to", icon: SiDevdotto, color: "bg-[#0A0A0A]" },
-  medium: { name: "Medium", icon: SiMedium, color: "bg-[#000000]" },
 };
 
 const CONTENT_TYPE_ICONS: Record<

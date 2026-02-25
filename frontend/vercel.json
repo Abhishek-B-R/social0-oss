@@ -2,6 +2,7 @@
   "crons": [
     { "path": "/api/cron/publish-scheduled", "schedule": "0 0 * * *" },
     { "path": "/api/cron/resurface", "schedule": "0 0 * * *" },
-    { "path": "/api/cron/autoplug", "schedule": "0 0 * * *" }
+    { "path": "/api/cron/autoplug", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/token-health", "schedule": "0 6 * * *" }
   ]
 }

@@ -6,7 +6,6 @@ import { AccountAvatar } from "./AccountAvatar";
 import { BlueskyByokModal } from "./BlueskyByokModal";
 import { DevToByokModal } from "./DevToByokModal";
 import { HashnodeByokModal } from "./HashnodeByokModal";
-import { MediumByokModal } from "./MediumByokModal";
 import { PreConnectModal } from "./PreConnectModal";
 import { InstagramConnectionModal } from "./InstagramConnectionModal";
 
@@ -42,7 +41,6 @@ export function PlatformCard({ platform, account }: PlatformCardProps) {
   const [showBlueskyModal, setShowBlueskyModal] = useState(false);
   const [showDevToModal, setShowDevToModal] = useState(false);
   const [showHashnodeModal, setShowHashnodeModal] = useState(false);
-  const [showMediumModal, setShowMediumModal] = useState(false);
   const [showPreConnectModal, setShowPreConnectModal] = useState(false);
   const [showInstagramModal, setShowInstagramModal] = useState(false);
 
@@ -59,10 +57,6 @@ export function PlatformCard({ platform, account }: PlatformCardProps) {
     }
     if (platform.id === "hashnode") {
       setShowHashnodeModal(true);
-      return;
-    }
-    if (platform.id === "medium") {
-      setShowMediumModal(true);
       return;
     }
     if (platform.id === "instagram") {
@@ -159,13 +153,6 @@ export function PlatformCard({ platform, account }: PlatformCardProps) {
           isOpen={showHashnodeModal}
           onClose={() => setShowHashnodeModal(false)}
           onSuccess={() => setShowHashnodeModal(false)}
-        />
-      )}
-      {platform.id === "medium" && (
-        <MediumByokModal
-          isOpen={showMediumModal}
-          onClose={() => setShowMediumModal(false)}
-          onSuccess={() => setShowMediumModal(false)}
         />
       )}
       {platform.id === "instagram" && (

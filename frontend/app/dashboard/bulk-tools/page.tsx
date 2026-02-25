@@ -23,7 +23,6 @@ const PLATFORM_DISPLAY: Record<string, { name: string; color: string }> = {
   twitter_x: { name: "X", color: "bg-[#000000]" },
   threads: { name: "Threads", color: "bg-[#000000]" },
   devto: { name: "Dev.to", color: "bg-[#0A0A0A]" },
-  medium: { name: "Medium", color: "bg-[#000000]" },
 };
 
 function PlatformIcons({ platformIds }: { platformIds: readonly string[] }) {

@@ -94,6 +94,7 @@ export async function POST(req: NextRequest) {
             instagramBusinessAccountId: selectedPage.instagramAccountId,
             connectionMethod: "facebook-page",
           },
+          isActive: true,
           updatedAt: new Date(),
         })
         .where(eq(connectedAccounts.id, existing.id));
@@ -109,6 +110,7 @@ export async function POST(req: NextRequest) {
         encryptedAccessToken: encryptToken(selectedPage.pageAccessToken, accountId),
         encryptedRefreshToken: null,
         tokenExpiresAt: null,
+        isActive: true,
         platformMetadata: {
           facebookPageId: selectedPage.pageId,
           instagramBusinessAccountId: selectedPage.instagramAccountId,

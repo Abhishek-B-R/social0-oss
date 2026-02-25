@@ -11,7 +11,6 @@ export const PLATFORMS = [
   { id: "threads", name: "Threads", icon: null },
   { id: "devto", name: "Dev.to", icon: null },
   { id: "hashnode", name: "Hashnode", icon: null },
-  { id: "medium", name: "Medium", icon: null },
 ] as const;
 
 export type Platform = (typeof PLATFORMS)[number]["id"];
@@ -90,5 +89,4 @@ export const PLATFORM_OAUTH_CONFIG: Record<
   },
   devto: null, // BYOK - API key
   hashnode: null, // BYOK - API key + Publication ID
-  medium: null, // BYOK - Integration token (medium.com/me/settings)
 };
