@@ -194,9 +194,7 @@ async function publishBlueskyThread(
     const imageBlobs: Array<{ alt: string; image: unknown }> = [];
     for (const img of images) {
       try {
-        const imageRes = await fetch(img.url);
-        if (!imageRes.ok) continue;
-        const imageBuffer = await imageRes.arrayBuffer();
+        const imageBuffer = await fetchMediaBytes(img.url);
         const uploadRes = await fetch(
           "https://bsky.social/xrpc/com.atproto.repo.uploadBlob",
           {
@@ -222,9 +220,7 @@ async function publishBlueskyThread(
     if (videos.length > 0) {
       const video = videos[0];
       try {
-        const videoRes = await fetch(video.url);
-        if (!videoRes.ok) break;
-        const videoBuffer = await videoRes.arrayBuffer();
+        const videoBuffer = await fetchMediaBytes(video.url);
         const pds = await resolveDidToPds(did);
         if (!pds) break;
         const serviceAuthUrl = new URL(
@@ -370,6 +366,39 @@ async function getMediaWithUrls(
     if (!m.url || !m.mimeType) return false;
     return isAllowedMediaUrl(m.url, allowed);
   });
+}
+
+const MEDIA_FETCH_TIMEOUT_MS = 60_000;
+const MEDIA_FETCH_RETRIES = 2;
+
+/** Fetch media URL with long timeout and retries so scheduled publish can reach our media server. */
+async function fetchMediaBytes(
+  url: string,
+  options: { timeoutMs?: number; retries?: number } = {},
+): Promise<ArrayBuffer> {
+  const timeoutMs = options.timeoutMs ?? MEDIA_FETCH_TIMEOUT_MS;
+  const retries = options.retries ?? MEDIA_FETCH_RETRIES;
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(id);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      return await res.arrayBuffer();
+    } catch (e) {
+      lastError = e;
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+      }
+    } finally {
+      clearTimeout(id);
+    }
+  }
+  throw lastError;
 }
 
 async function publishToFacebook(
@@ -660,17 +689,11 @@ async function publishToBluesky(
       .slice(0, 4); // Bluesky max 4 images
     const videos = media.filter((m) => m.mimeType.startsWith("video/"));
 
-    // Upload images and get blob refs
+    // Upload images and get blob refs (fetch with long timeout + retries so media server is reachable)
     const imageBlobs: Array<{ alt: string; image: unknown }> = [];
     for (const img of images) {
       try {
-        // Fetch image from URL
-        const imageRes = await fetch(img.url);
-        if (!imageRes.ok) {
-          console.warn(`Failed to fetch image ${img.url}: ${imageRes.status}`);
-          continue;
-        }
-        const imageBuffer = await imageRes.arrayBuffer();
+        const imageBuffer = await fetchMediaBytes(img.url);
 
         // Upload to Bluesky
         const uploadRes = await fetch(
@@ -713,33 +736,8 @@ async function publishToBluesky(
     if (videos.length > 0) {
       const video = videos[0]; // Bluesky supports one video per post
       try {
-        // Fetch video from URL
-        const videoRes = await fetch(video.url);
-        if (!videoRes.ok) {
-          return {
-            status: "failed",
-            lastError: `Failed to fetch video: HTTP ${videoRes.status}`,
-            error: "Video fetch failed",
-          };
-        }
-
-        // Check video size (Bluesky limit: 100MB)
-        const contentLength = videoRes.headers.get("content-length");
+        const videoBuffer = await fetchMediaBytes(video.url);
         const maxVideoSize = 100 * 1024 * 1024; // 100MB
-        if (contentLength) {
-          const size = parseInt(contentLength, 10);
-          if (size > maxVideoSize) {
-            return {
-              status: "failed",
-              lastError: `Video is too large for Bluesky (max ${maxVideoSize / 1024 / 1024}MB). Video is ${(size / 1024 / 1024).toFixed(1)}MB.`,
-              error: "Video too large",
-            };
-          }
-        }
-
-        const videoBuffer = await videoRes.arrayBuffer();
-
-        // Double-check size after fetching
         if (videoBuffer.byteLength > maxVideoSize) {
           return {
             status: "failed",

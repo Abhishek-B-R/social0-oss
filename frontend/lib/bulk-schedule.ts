@@ -38,14 +38,16 @@ export function formatSchedulePreview(
 
   const [h, m] = startTimeStr.split(":").map(Number);
   const times: string[] = [];
-  let hour = h ?? 0;
-  let minute = m ?? 0;
+  // Work in total minutes from midnight so 0.5h = +30 mins, not +0.5 to the hour
+  const gapMinutes = Math.round(gapHours * 60);
+  let totalMinutes = (h ?? 0) * 60 + (m ?? 0);
   for (let i = 0; i < Math.min(videosPerDay, count); i++) {
+    const hour = Math.floor(totalMinutes / 60) % 24;
+    const minute = totalMinutes % 60;
     times.push(
       `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
     );
-    hour += gapHours;
-    if (hour >= 24) hour -= 24;
+    totalMinutes += gapMinutes;
   }
 
   const totalDays = Math.ceil(count / videosPerDay);

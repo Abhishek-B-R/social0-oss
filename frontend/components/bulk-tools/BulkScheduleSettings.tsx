@@ -82,9 +82,14 @@ export function BulkScheduleSettings({
 
       {/* Section 1: Bulk Caption */}
       <div>
-        <h4 className="text-sm font-semibold text-gray-900 mb-2">
-          Bulk Caption
-        </h4>
+        <div className="flex justify-between">
+          <h4 className="text-sm font-semibold text-gray-900 mb-2">
+            Bulk Caption
+          </h4>
+          <span className="text-xs text-gray-500 ml-2">
+            {captionCount} / {CAPTION_MAX}
+          </span>
+        </div>
         <textarea
           value={bulkCaption}
           onChange={(e) =>
@@ -94,18 +99,14 @@ export function BulkScheduleSettings({
           rows={4}
           className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
         />
-        <div className="mt-1 gap-2 flex items-center justify-between">
-          <span className="text-xs text-gray-500">
-            {captionCount} / {CAPTION_MAX}
-          </span>
-          <button
-            type="button"
-            onClick={onApplyCaption}
-            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
-          >
-            Apply Caption to All {variant === "video" ? "Videos" : "Images"}
-          </button>
-        </div>
+
+        <button
+          type="button"
+          onClick={onApplyCaption}
+          className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors w-full"
+        >
+          Apply Caption to All {variant === "video" ? "Videos" : "Images"}
+        </button>
       </div>
 
       {/* Section 2: Schedule Settings */}
@@ -176,7 +177,7 @@ export function BulkScheduleSettings({
           <button
             type="button"
             onClick={onApplyBulkSchedule}
-            className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
+            className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
           >
             Apply Bulk Schedule
           </button>

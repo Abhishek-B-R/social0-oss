@@ -100,16 +100,6 @@ export function UploadPublishOverlay({
                 View posts
               </Link>
             </div>
-            {publishedToX && publishedPostId && (
-              <div className="mt-6 w-full text-left">
-                <ResurfaceSetup
-                  postId={publishedPostId}
-                  initialIntervalHours={resurfacePreFill?.intervalHours ?? 4}
-                  initialMaxResurfaces={resurfacePreFill?.maxResurfaces ?? 1}
-                  initialPlugComment={resurfacePreFill?.plugComment ?? ""}
-                />
-              </div>
-            )}
           </>
         ) : isUploading ? (
           <>

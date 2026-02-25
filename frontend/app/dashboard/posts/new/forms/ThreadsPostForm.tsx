@@ -17,9 +17,124 @@ import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
 import { IoMdAddCircleOutline } from "react-icons/io";
 import { MdClose } from "react-icons/md";
 import { MdOutlinePhotoLibrary, MdOutlineVideocam } from "react-icons/md";
+import { SiX } from "react-icons/si";
 
 const MAX_CHARS = 280;
-const MAX_IMAGES_PER_POST = 4;
+const PREVIEW_MEDIA_MAX_H = 200;
+const MAX_ATTACHMENTS_PER_POST = 4;
+
+function getVideoThumbnail(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.muted = true;
+    video.src = URL.createObjectURL(file);
+    video.onloadeddata = () => {
+      video.currentTime = 0.1;
+    };
+    video.onseeked = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      if (ctx) ctx.drawImage(video, 0, 0);
+      resolve(canvas.toDataURL());
+      URL.revokeObjectURL(video.src);
+    };
+    video.onerror = () => {
+      resolve("");
+      if (video.src) URL.revokeObjectURL(video.src);
+    };
+  });
+}
+
+type PreviewMediaItem =
+  | { type: "image"; file: File; preview: string; order: number }
+  | { type: "video"; file: File; preview: string; order: number; thumbnailUrl?: string };
+
+/** Twitter-style media grid for Thread Preview: 1–4 slots (images + videos), max height 200px. */
+function ThreadPreviewMediaGrid({ items }: { items: PreviewMediaItem[] }) {
+  const slice = items.slice(0, MAX_ATTACHMENTS_PER_POST);
+  const n = slice.length;
+  const containerClass = "w-full max-h-[200px] flex gap-1 overflow-hidden rounded-lg";
+  const imgClass = "w-full h-full object-cover rounded-lg";
+  const playOverlay = (
+    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50">
+        <svg className="h-5 w-5 ml-0.5 text-white fill-current" viewBox="0 0 24 24" aria-hidden>
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </div>
+    </div>
+  );
+
+  const renderSlot = (item: PreviewMediaItem, key: string) => {
+    if (item.type === "image") {
+      return (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img key={key} src={item.preview} alt="" className={imgClass} />
+      );
+    }
+    return (
+      <div key={key} className="relative w-full h-full min-h-0 bg-gray-200 rounded-lg overflow-hidden">
+        {item.thumbnailUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img src={item.thumbnailUrl} alt="" className={imgClass} />
+        ) : (
+          <div className="absolute inset-0 bg-gray-200" />
+        )}
+        {playOverlay}
+      </div>
+    );
+  };
+
+  if (n === 0) return null;
+  if (n === 1) {
+    return (
+      <div className={`${containerClass} aspect-video`} style={{ maxHeight: PREVIEW_MEDIA_MAX_H }}>
+        <div className="relative w-full h-full min-h-0 overflow-hidden rounded-lg">
+          {renderSlot(slice[0], slice[0].preview)}
+        </div>
+      </div>
+    );
+  }
+  if (n === 2) {
+    return (
+      <div className={`${containerClass} flex h-[200px]`}>
+        <div className="flex-1 min-w-0 overflow-hidden rounded-l-lg relative">
+          {renderSlot(slice[0], slice[0].preview)}
+        </div>
+        <div className="flex-1 min-w-0 overflow-hidden rounded-r-lg relative">
+          {renderSlot(slice[1], slice[1].preview)}
+        </div>
+      </div>
+    );
+  }
+  if (n === 3) {
+    return (
+      <div className={`${containerClass} grid grid-cols-2 gap-1 max-h-[200px]`} style={{ maxHeight: PREVIEW_MEDIA_MAX_H }}>
+        <div className="row-span-2 min-h-0 overflow-hidden rounded-l-lg relative">
+          {renderSlot(slice[0], slice[0].preview)}
+        </div>
+        <div className="min-h-0 overflow-hidden rounded-tr-lg relative">
+          {renderSlot(slice[1], slice[1].preview)}
+        </div>
+        <div className="min-h-0 overflow-hidden rounded-br-lg relative">
+          {renderSlot(slice[2], slice[2].preview)}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className={`${containerClass} grid grid-cols-2 grid-rows-2 gap-1 max-h-[200px]`} style={{ maxHeight: PREVIEW_MEDIA_MAX_H }}>
+      {slice.map((item) => (
+        <div key={item.preview} className="min-w-0 min-h-0 overflow-hidden rounded-lg relative">
+          {renderSlot(item, item.preview)}
+        </div>
+      ))}
+    </div>
+  );
+}
 const THREAD_SEPARATOR = "\n\n---\n\n";
 
 type Account = {
@@ -31,7 +146,7 @@ type Account = {
 };
 
 type MediaImage = { file: File; preview: string; order: number };
-type MediaVideo = { file: File; preview: string; order: number };
+type MediaVideo = { file: File; preview: string; order: number; thumbnailUrl?: string };
 
 type ThreadPost = {
   id: number;
@@ -134,6 +249,13 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
   const addImagesToPost = (postId: number, files: FileList | File[] | null) => {
     if (!files || files.length === 0) return;
     setError(null);
+    const post = posts.find((p) => p.id === postId);
+    if (!post) return;
+    const totalAttachments = post.images.length + post.videos.length;
+    if (totalAttachments >= MAX_ATTACHMENTS_PER_POST) {
+      setError("Max 4 attachments per post");
+      return;
+    }
     const newImages: MediaImage[] = [];
     const fileArray = Array.from(files);
     for (const file of fileArray) {
@@ -146,20 +268,22 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
       });
     }
     if (newImages.length === 0) return;
+    const toAdd = newImages.slice(0, MAX_ATTACHMENTS_PER_POST - totalAttachments);
+    if (toAdd.length === 0) {
+      setError("Max 4 attachments per post");
+      return;
+    }
     setPosts((prev) => {
-      const post = prev.find((p) => p.id === postId);
-      if (!post) return prev;
-      const maxOrder = getMaxOrderForPost(post);
-      const imagesWithOrder = newImages.map((img, idx) => ({
+      const current = prev.find((p) => p.id === postId);
+      if (!current) return prev;
+      const maxOrder = getMaxOrderForPost(current);
+      const imagesWithOrder = toAdd.map((img, idx) => ({
         ...img,
         order: maxOrder + idx + 1,
       }));
       return prev.map((p) => {
         if (p.id !== postId) return p;
-        const combined = [...p.images, ...imagesWithOrder].slice(
-          0,
-          MAX_IMAGES_PER_POST,
-        );
+        const combined = [...p.images, ...imagesWithOrder].slice(0, MAX_ATTACHMENTS_PER_POST);
         return { ...p, images: combined };
       });
     });
@@ -196,6 +320,13 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
   const addVideoToPost = (postId: number, files: FileList | File[] | null) => {
     if (!files || files.length === 0) return;
     setError(null);
+    const post = posts.find((p) => p.id === postId);
+    if (!post) return;
+    const totalAttachments = post.images.length + post.videos.length;
+    if (totalAttachments >= MAX_ATTACHMENTS_PER_POST) {
+      setError("Max 4 attachments per post");
+      return;
+    }
     const newVideos: MediaVideo[] = [];
     const fileArray = Array.from(files);
     for (const file of fileArray) {
@@ -205,20 +336,42 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
         file,
         preview,
         order: 0, // Will be set below
+        thumbnailUrl: undefined,
       });
     }
     if (newVideos.length === 0) return;
+    const toAdd = newVideos.slice(0, MAX_ATTACHMENTS_PER_POST - totalAttachments);
+    if (toAdd.length === 0) {
+      setError("Max 4 attachments per post");
+      return;
+    }
     setPosts((prev) => {
-      const post = prev.find((p) => p.id === postId);
-      if (!post) return prev;
-      const maxOrder = getMaxOrderForPost(post);
-      const videosWithOrder = newVideos.map((vid, idx) => ({
+      const current = prev.find((p) => p.id === postId);
+      if (!current) return prev;
+      const maxOrder = getMaxOrderForPost(current);
+      const videosWithOrder = toAdd.map((vid, idx) => ({
         ...vid,
         order: maxOrder + idx + 1,
       }));
       return prev.map((p) => {
         if (p.id !== postId) return p;
-        return { ...p, videos: [...p.videos, ...videosWithOrder] };
+        const combined = [...p.videos, ...videosWithOrder].slice(0, MAX_ATTACHMENTS_PER_POST - p.images.length);
+        return { ...p, videos: combined };
+      });
+    });
+    toAdd.forEach((vid) => {
+      getVideoThumbnail(vid.file).then((thumbnailUrl) => {
+        setPosts((prev) =>
+          prev.map((p) => {
+            if (p.id !== postId) return p;
+            return {
+              ...p,
+              videos: p.videos.map((v) =>
+                v.preview === vid.preview ? { ...v, thumbnailUrl } : v,
+              ),
+            };
+          }),
+        );
       });
     });
   };
@@ -301,6 +454,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
           file: i.file,
           preview: i.preview,
           order: i.order,
+          thumbnailUrl: "thumbnailUrl" in i ? i.thumbnailUrl : undefined,
         }));
       return prev.map((p) => {
         if (p.id !== postId) return p;
@@ -324,7 +478,8 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
     setOverlayPhase("uploading");
 
     const threadPosts = posts.filter(
-      (p) => p.text.trim().length > 0 || p.images.length > 0 || p.videos.length > 0,
+      (p) =>
+        p.text.trim().length > 0 || p.images.length > 0 || p.videos.length > 0,
     );
     const contentParts = threadPosts.map((p) => p.text.trim()).filter(Boolean);
     const content = contentParts.join(THREAD_SEPARATOR);
@@ -441,7 +596,10 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
         return;
       }
       setPublishedPostId(result.postId);
-      if (resurfaceConfig && selectedAccounts.some((a) => a.platform === "twitter_x")) {
+      if (
+        resurfaceConfig &&
+        selectedAccounts.some((a) => a.platform === "twitter_x")
+      ) {
         await createResurfaceSchedule(
           result.postId,
           "x",
@@ -521,212 +679,212 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
           }
         />
       )}
-      <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-6 lg:flex-row lg:items-start">
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-6 lg:flex-row lg:items-start"
+      >
         <div className="min-w-0 flex-1 space-y-6 lg:max-w-[65%]">
           <PostFormOptions
-              accounts={filteredAccounts}
-              selectedIds={selectedIds}
-              onToggleAccount={toggleAccount}
-              selectAll={selectAll}
-              mode={mode}
-              setMode={setMode}
-              scheduledAt={scheduledAt}
-              setScheduledAt={setScheduledAt}
-              error={error}
-              loading={loading}
-              onCancel={() => router.push("/dashboard/posts")}
-              submitLabel={submitLabel}
-              submitDisabled={
-                accounts.length === 0 ||
-                (mode === "scheduled" && !scheduledAt) ||
-                anyOverLimit ||
-                !hasContent
-              }
-              hideScheduleAndActions
-              searchSlot={
-                <input
-                  type="search"
-                  placeholder="Search accounts..."
-                  value={accountSearch}
-                  onChange={(e) => setAccountSearch(e.target.value)}
-                  className="h-8 w-full text-xs rounded border border-gray-200 px-2 py-1 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
-                />
-              }
-            />
+            accounts={filteredAccounts}
+            selectedIds={selectedIds}
+            onToggleAccount={toggleAccount}
+            selectAll={selectAll}
+            mode={mode}
+            setMode={setMode}
+            scheduledAt={scheduledAt}
+            setScheduledAt={setScheduledAt}
+            error={error}
+            loading={loading}
+            onCancel={() => router.push("/dashboard/posts")}
+            submitLabel={submitLabel}
+            submitDisabled={
+              accounts.length === 0 ||
+              (mode === "scheduled" && !scheduledAt) ||
+              anyOverLimit ||
+              !hasContent
+            }
+            hideScheduleAndActions
+            searchSlot={
+              <input
+                type="search"
+                placeholder="Search accounts..."
+                value={accountSearch}
+                onChange={(e) => setAccountSearch(e.target.value)}
+                className="h-8 w-full text-xs rounded border border-gray-200 px-2 py-1 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
+              />
+            }
+          />
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-        <p className="text-sm font-semibold text-gray-900">
-          Thread posts (stacked in order when published)
-        </p>
-        <p className="text-sm text-gray-500 -mt-2">
-          Short posts work best — e.g. {MAX_CHARS} chars per post. You can add
-          images or a video to each post.
-        </p>
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+            <p className="text-sm font-semibold text-gray-900">
+              Thread posts (stacked in order when published)
+            </p>
+            <p className="text-sm text-gray-500 -mt-2">
+              Short posts work best — e.g. {MAX_CHARS} chars per post. You can
+              add images or a video to each post.
+            </p>
 
-        {posts.map((post, index) => (
-          <div
-            key={post.id}
-            className="relative rounded-xl border border-gray-100 bg-gray-50/50 p-4 space-y-3"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-medium text-gray-500">
-                Post {index + 1}
-              </span>
-              {posts.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removePost(post.id)}
-                  className="text-gray-400 hover:text-red-600 p-1 rounded"
-                  title="Remove this post"
-                >
-                  <MdClose className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            <textarea
-              value={post.text}
-              onChange={(e) => updatePost(post.id, e.target.value)}
-              placeholder="What's happening?"
-              rows={3}
-              maxLength={MAX_CHARS}
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none"
-            />
-            <div className="flex justify-end text-sm">
-              <span
-                className={
-                  post.text.length > MAX_CHARS
-                    ? "text-red-600 font-medium"
-                    : "text-gray-500"
-                }
+            {posts.map((post, index) => (
+              <div
+                key={post.id}
+                className="relative rounded-xl border border-gray-100 bg-gray-50/50 p-4 space-y-3"
               >
-                {post.text.length} / {MAX_CHARS}
-              </span>
-            </div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-medium text-gray-500">
+                    Post {index + 1}
+                  </span>
+                  {posts.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removePost(post.id)}
+                      className="text-gray-400 hover:text-red-600 p-1 rounded"
+                      title="Remove this post"
+                    >
+                      <MdClose className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  value={post.text}
+                  onChange={(e) => updatePost(post.id, e.target.value)}
+                  placeholder="What's happening?"
+                  rows={3}
+                  maxLength={MAX_CHARS}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none"
+                />
+                <div className="flex justify-end text-sm">
+                  <span
+                    className={
+                      post.text.length > MAX_CHARS
+                        ? "text-red-600 font-medium"
+                        : "text-gray-500"
+                    }
+                  >
+                    {post.text.length} / {MAX_CHARS}
+                  </span>
+                </div>
 
-            {/* Media previews - draggable with serial numbers */}
-            {(post.images.length > 0 || post.videos.length > 0) && (
-              <div className="space-y-2">
-                <p className="text-xs text-gray-500">
-                  Drag to reorder media (carousel order)
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  {getAllMediaForPost(post).map((item, index) => {
-                    const isVideo = item.type === "video";
-                    return (
-                      <div
-                        key={item.preview}
-                        draggable
-                        onDragStart={() => handleDragStart(post.id, index)}
-                        onDragOver={(e) => handleDragOver(e, post.id, index)}
-                        onDragEnd={handleDragEnd}
-                        className={`relative shrink-0 cursor-move overflow-hidden rounded border border-gray-200 hover:border-emerald-400 transition-colors ${
-                          isVideo ? "h-12 w-16" : "h-12 w-12"
-                        }`}
-                      >
-                        {isVideo ? (
-                          <video
-                            src={item.preview}
-                            className="h-full w-full object-cover"
-                            muted
-                            playsInline
-                            draggable={false}
-                          />
-                        ) : (
-                          /* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */
-                          <img
-                            src={item.preview}
-                            alt=""
-                            className="h-full w-full object-cover"
-                            draggable={false}
-                          />
-                        )}
-                        <div className="absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center">
-                          <span className="text-xs font-bold text-white">
-                            {item.order}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            isVideo
-                              ? removeVideoFromPost(post.id, item.preview)
-                              : removeImageFromPost(post.id, item.preview)
-                          }
-                          className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
-                          onMouseDown={(e) => e.stopPropagation()}
-                        >
-                          <MdClose className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
+                {/* Media previews - draggable with serial numbers */}
+                {(post.images.length > 0 || post.videos.length > 0) && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-gray-500">
+                      Drag to reorder media (carousel order)
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {getAllMediaForPost(post).map((item, index) => {
+                        const isVideo = item.type === "video";
+                        return (
+                          <div
+                            key={item.preview}
+                            draggable
+                            onDragStart={() => handleDragStart(post.id, index)}
+                            onDragOver={(e) =>
+                              handleDragOver(e, post.id, index)
+                            }
+                            onDragEnd={handleDragEnd}
+                            className={`relative shrink-0 cursor-move overflow-hidden rounded border border-gray-200 hover:border-emerald-400 transition-colors ${
+                              isVideo ? "h-12 w-16" : "h-12 w-12"
+                            }`}
+                          >
+                            {isVideo ? (
+                              <video
+                                src={item.preview}
+                                className="h-full w-full object-cover"
+                                muted
+                                playsInline
+                                draggable={false}
+                              />
+                            ) : (
+                              /* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */
+                              <img
+                                src={item.preview}
+                                alt=""
+                                className="h-full w-full object-cover"
+                                draggable={false}
+                              />
+                            )}
+                            <div className="absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center">
+                              <span className="text-xs font-bold text-white">
+                                {item.order}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                isVideo
+                                  ? removeVideoFromPost(post.id, item.preview)
+                                  : removeImageFromPost(post.id, item.preview)
+                              }
+                              className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
+                              onMouseDown={(e) => e.stopPropagation()}
+                            >
+                              <MdClose className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Add media buttons */}
+                <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    id={`thread-images-${post.id}`}
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files && files.length > 0) {
+                        addImagesToPost(post.id, files);
+                      }
+                      e.target.value = "";
+                    }}
+                  />
+                  <input
+                    type="file"
+                    accept="video/*"
+                    multiple
+                    className="hidden"
+                    id={`thread-video-${post.id}`}
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files && files.length > 0) {
+                        addVideoToPost(post.id, files);
+                      }
+                      e.target.value = "";
+                    }}
+                  />
+                  <label
+                    htmlFor={`thread-images-${post.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+                  >
+                    <MdOutlinePhotoLibrary className="w-4 h-4 text-gray-500" />
+                    Images ({post.images.length}/{MAX_ATTACHMENTS_PER_POST})
+                  </label>
+                  <label
+                    htmlFor={`thread-video-${post.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+                  >
+                    <MdOutlineVideocam className="w-4 h-4 text-gray-500" />
+                    Videos ({post.videos.length}/{MAX_ATTACHMENTS_PER_POST})
+                  </label>
                 </div>
               </div>
-            )}
+            ))}
 
-            {/* Add media buttons */}
-            <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                id={`thread-images-${post.id}`}
-                onChange={(e) => {
-                  const files = e.target.files;
-                  if (files && files.length > 0) {
-                    addImagesToPost(post.id, files);
-                  }
-                  e.target.value = "";
-                }}
-              />
-              <input
-                type="file"
-                accept="video/*"
-                multiple
-                className="hidden"
-                id={`thread-video-${post.id}`}
-                onChange={(e) => {
-                  const files = e.target.files;
-                  if (files && files.length > 0) {
-                    addVideoToPost(post.id, files);
-                  }
-                  e.target.value = "";
-                }}
-              />
-              <label
-                htmlFor={`thread-images-${post.id}`}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
-              >
-                <MdOutlinePhotoLibrary className="w-4 h-4 text-gray-500" />
-                Images
-                {post.images.length > 0 && (
-                  <span className="text-gray-500">({post.images.length})</span>
-                )}
-              </label>
-              <label
-                htmlFor={`thread-video-${post.id}`}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
-              >
-                <MdOutlineVideocam className="w-4 h-4 text-gray-500" />
-                Videos
-                {post.videos.length > 0 && (
-                  <span className="text-gray-500">({post.videos.length})</span>
-                )}
-              </label>
-            </div>
+            <button
+              type="button"
+              onClick={addPost}
+              className="flex items-center gap-2 w-full justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/50 py-4 text-gray-600 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-700 transition-colors font-medium text-sm"
+            >
+              <IoMdAddCircleOutline className="w-5 h-5" />
+              Add another post
+            </button>
           </div>
-        ))}
-
-        <button
-          type="button"
-          onClick={addPost}
-          className="flex items-center gap-2 w-full justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/50 py-4 text-gray-600 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-700 transition-colors font-medium text-sm"
-        >
-          <IoMdAddCircleOutline className="w-5 h-5" />
-          Add another post
-        </button>
-      </div>
 
           <AutoFeaturesCard
             selectedAccountIds={Array.from(selectedIds)}
@@ -753,8 +911,94 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
           onCancel={() => router.push("/dashboard/posts")}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
-        />
-    </form>
+        >
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
+              Thread Preview
+            </h3>
+            {posts.length === 0 ||
+            !posts.some(
+              (p) =>
+                p.text.trim() || p.images.length > 0 || p.videos.length > 0,
+            ) ? (
+              <p className="text-sm italic text-gray-500">
+                Add your first post to see preview
+              </p>
+            ) : (
+              <div className="max-h-[400px] overflow-y-auto space-y-0">
+                {posts.map((post, index) => {
+                  const displayName =
+                    selectedAccounts[0]?.platformUsername != null
+                      ? `@${selectedAccounts[0].platformUsername}`
+                      : "@username";
+                  const initial = (selectedAccounts[0]?.platformUsername ?? "A")
+                    .charAt(0)
+                    .toUpperCase();
+                  const hasContent =
+                    post.text.trim() ||
+                    post.images.length > 0 ||
+                    post.videos.length > 0;
+                  const isLast = index === posts.length - 1;
+                  const previewItems = getAllMediaForPost(post).slice(0, MAX_ATTACHMENTS_PER_POST) as PreviewMediaItem[];
+                  return (
+                    <div key={post.id} className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-sm font-semibold text-gray-600">
+                          {selectedAccounts[0]?.profileImageUrl?.trim() ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={selectedAccounts[0].profileImageUrl}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            initial
+                          )}
+                        </div>
+                        {!isLast && (
+                          <div className="w-0.5 flex-1 min-h-[8px] bg-gray-200" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1 pb-4">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {displayName}
+                        </p>
+                        {hasContent ? (
+                          <>
+                            <p
+                              className={`mt-0.5 text-sm ${
+                                post.text.length > MAX_CHARS
+                                  ? "text-red-600"
+                                  : "text-gray-700"
+                              }`}
+                            >
+                              {post.text.trim() || (
+                                <span className="italic text-gray-500">
+                                  Post {index + 1}
+                                </span>
+                              )}
+                            </p>
+                            {previewItems.length > 0 && (
+                              <div className="mt-2">
+                                <ThreadPreviewMediaGrid items={previewItems} />
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <p className="mt-0.5 text-sm italic text-gray-500">
+                            Post {index + 1}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </SchedulePostSidebar>
+      </form>
     </>
   );
 }

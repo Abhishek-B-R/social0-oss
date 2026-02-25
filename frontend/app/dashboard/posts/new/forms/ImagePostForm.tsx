@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
+
+const PREVIEW_MEDIA_MAX_H = 200;
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
@@ -60,6 +62,9 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
     null,
   );
+  type PreviewCardMode = "post" | "media";
+  const [previewCardMode, setPreviewCardMode] = useState<PreviewCardMode>("post");
+  const userToggledPreviewRef = useRef(false);
 
   const defaultTiktokSettings: TikTokPostSettings = {
     privacy_level: "PUBLIC_TO_EVERYONE", // Default to Public
@@ -79,6 +84,15 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
       imagesRef.current.forEach((i) => URL.revokeObjectURL(i.preview));
     };
   }, []);
+
+  useEffect(() => {
+    if (userToggledPreviewRef.current) return;
+    const sel = accounts.filter((a) => selectedIds.has(a.id));
+    const hasIgOrTikTok = sel.some(
+      (a) => a.platform === "instagram" || a.platform === "tiktok",
+    );
+    setPreviewCardMode(hasIgOrTikTok ? "media" : "post");
+  }, [selectedIds, accounts]);
 
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
@@ -500,57 +514,215 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
           formRef={formRef}
         >
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-gray-900">
-              Media preview
-            </h3>
-            {!previewImage ? (
-              <div className="flex aspect-square w-full flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-gray-400">
-                <MdOutlineAddPhotoAlternate className="mb-2 h-12 w-12" />
-                <span className="text-xs">Upload media to see preview</span>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="flex rounded-full border border-gray-200 bg-gray-100 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    userToggledPreviewRef.current = true;
+                    setPreviewCardMode("post");
+                  }}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    previewCardMode === "post"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-transparent text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  Post Preview
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    userToggledPreviewRef.current = true;
+                    setPreviewCardMode("media");
+                  }}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    previewCardMode === "media"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-transparent text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  Media Preview
+                </button>
               </div>
+            </div>
+            {previewCardMode === "post" ? (
+              <>
+                <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                  <div className="flex gap-3">
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+                      {selectedAccounts[0]?.profileImageUrl?.trim() ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={selectedAccounts[0].profileImageUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        (selectedAccounts[0]?.platformUsername ?? "?").charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {selectedAccounts[0]?.platformUsername
+                          ? `@${selectedAccounts[0].platformUsername}`
+                          : "@username"}{" "}
+                        <span className="font-normal text-gray-500">· now</span>
+                      </p>
+                      <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap wrap-break-word">
+                        {content.trim() || (
+                          <span className="italic text-gray-400">Caption...</span>
+                        )}
+                      </p>
+                      {sortedImages.length > 0 && (
+                        <div
+                          className="mt-2 w-full max-h-[200px] flex gap-0.5 overflow-hidden rounded-lg"
+                          style={{ maxHeight: PREVIEW_MEDIA_MAX_H }}
+                        >
+                          {sortedImages.length === 1 && (
+                            <div className="aspect-video w-full min-h-0 max-h-[200px] overflow-hidden rounded-lg bg-gray-100">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={sortedImages[0].preview}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          )}
+                          {sortedImages.length === 2 && (
+                            <div className="flex h-[200px] w-full gap-0.5">
+                              <div className="flex-1 min-w-0 overflow-hidden rounded-l-lg">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={sortedImages[0].preview}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0 overflow-hidden rounded-r-lg">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={sortedImages[1].preview}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            </div>
+                          )}
+                          {sortedImages.length === 3 && (
+                            <div className="grid grid-cols-2 gap-0.5 w-full max-h-[200px]">
+                              <div className="row-span-2 min-h-0 overflow-hidden rounded-l-lg">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={sortedImages[0].preview}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                              <div className="min-h-0 overflow-hidden rounded-tr-lg">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={sortedImages[1].preview}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                              <div className="min-h-0 overflow-hidden rounded-br-lg">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={sortedImages[2].preview}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            </div>
+                          )}
+                          {sortedImages.length >= 4 && (
+                            <div className="grid grid-cols-2 grid-rows-2 gap-0.5 w-full h-[200px]">
+                              {sortedImages.slice(0, 4).map((img) => (
+                                <div
+                                  key={img.preview}
+                                  className="min-w-0 min-h-0 overflow-hidden rounded-lg"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={img.preview}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
+                        <span>♡ 0</span>
+                        <span>↺ 0</span>
+                        <span>💬 0</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {selectedAccounts.length > 1 && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    Posting to {selectedAccounts.length} platforms
+                  </p>
+                )}
+              </>
             ) : (
               <>
-                <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-gray-100">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- blob URL */}
-                  <img
-                    src={previewImage.preview}
-                    alt=""
-                    className="h-full w-full object-contain"
-                  />
-                </div>
-                <p className="mt-2 truncate text-center text-xs text-gray-500">
-                  {previewImage.file.name}
-                </p>
-                {sortedImages.length > 1 && (
-                  <div className="mt-2 flex items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPreviewIndex((i) =>
-                          i <= 0 ? sortedImages.length - 1 : i - 1,
-                        )
-                      }
-                      className="rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                      aria-label="Previous"
-                    >
-                      ←
-                    </button>
-                    <span className="text-xs text-gray-500">
-                      {previewIndex + 1} / {sortedImages.length}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPreviewIndex((i) =>
-                          i >= sortedImages.length - 1 ? 0 : i + 1,
-                        )
-                      }
-                      className="rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                      aria-label="Next"
-                    >
-                      →
-                    </button>
+                {!previewImage ? (
+                  <div className="flex aspect-square w-full flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-gray-400">
+                    <MdOutlineAddPhotoAlternate className="mb-2 h-12 w-12" />
+                    <span className="text-xs">Upload media to see preview</span>
                   </div>
+                ) : (
+                  <>
+                    <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-gray-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- blob URL */}
+                      <img
+                        src={previewImage.preview}
+                        alt=""
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                    <p className="mt-2 truncate text-center text-xs text-gray-500">
+                      {previewImage.file.name}
+                    </p>
+                    {sortedImages.length > 1 && (
+                      <div className="mt-2 flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewIndex((i) =>
+                              i <= 0 ? sortedImages.length - 1 : i - 1,
+                            )
+                          }
+                          className="rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                          aria-label="Previous"
+                        >
+                          ←
+                        </button>
+                        <span className="text-xs text-gray-500">
+                          {previewIndex + 1} / {sortedImages.length}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewIndex((i) =>
+                              i >= sortedImages.length - 1 ? 0 : i + 1,
+                            )
+                          }
+                          className="rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                          aria-label="Next"
+                        >
+                          →
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}

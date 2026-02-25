@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { publishPost } from "@/app/actions/publish";
@@ -75,6 +75,22 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
     null,
   );
+  type PreviewCardMode = "post" | "media";
+  const [previewCardMode, setPreviewCardMode] = useState<PreviewCardMode>("post");
+  const userToggledPreviewRef = useRef(false);
+
+  const selectedAccounts = useMemo(
+    () => accounts.filter((a) => selectedIds.has(a.id)),
+    [accounts, selectedIds],
+  );
+
+  useEffect(() => {
+    if (userToggledPreviewRef.current) return;
+    const hasIgOrTikTok = selectedAccounts.some(
+      (a) => a.platform === "instagram" || a.platform === "tiktok",
+    );
+    setPreviewCardMode(hasIgOrTikTok ? "media" : "post");
+  }, [selectedAccounts]);
 
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
@@ -143,7 +159,6 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
     setCustomThumbnailPreview(null);
   };
 
-  const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
   const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
   const tiktokAccounts = selectedAccounts.filter(
     (a) => a.platform === "tiktok",
@@ -445,74 +460,168 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
           formRef={formRef}
         >
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-gray-900">
-              Media preview
-            </h3>
-            {!videoPreview ? (
-              <div className="flex aspect-video w-full flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-gray-400">
-                <MdOutlineVideoLibrary className="mb-2 h-12 w-12" />
-                <span className="text-xs">Upload media to see preview</span>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="flex rounded-full border border-gray-200 bg-gray-100 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    userToggledPreviewRef.current = true;
+                    setPreviewCardMode("post");
+                  }}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    previewCardMode === "post"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-transparent text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  Post Preview
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    userToggledPreviewRef.current = true;
+                    setPreviewCardMode("media");
+                  }}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    previewCardMode === "media"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-transparent text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  Media Preview
+                </button>
               </div>
-            ) : (
+            </div>
+            {previewCardMode === "post" ? (
               <>
-                <div className="w-full overflow-hidden rounded-lg bg-gray-100">
-                  <video
-                    src={videoPreview}
-                    controls
-                    playsInline
-                    className="w-full max-h-[300px] object-contain"
-                    style={{ maxHeight: 300 }}
-                    onLoadedMetadata={(e) =>
-                      setVideoDuration(e.currentTarget.duration)
-                    }
-                  />
+                <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                  <div className="flex gap-3">
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+                      {selectedAccounts[0]?.profileImageUrl?.trim() ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={selectedAccounts[0].profileImageUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        (selectedAccounts[0]?.platformUsername ?? "?").charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {selectedAccounts[0]?.platformUsername
+                          ? `@${selectedAccounts[0].platformUsername}`
+                          : "@username"}{" "}
+                        <span className="font-normal text-gray-500">· now</span>
+                      </p>
+                      <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap wrap-break-word">
+                        {content.trim() || (
+                          <span className="italic text-gray-400">Caption...</span>
+                        )}
+                      </p>
+                      {videoPreview && (
+                        <div className="mt-2 relative w-full aspect-video max-h-[200px] overflow-hidden rounded-lg bg-gray-100">
+                          <video
+                            src={videoPreview}
+                            className="h-full w-full object-cover"
+                            muted
+                            playsInline
+                            preload="metadata"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50">
+                              <svg className="h-5 w-5 ml-0.5 text-white fill-current" viewBox="0 0 24 24" aria-hidden>
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
+                        <span>♡ 0</span>
+                        <span>↺ 0</span>
+                        <span>💬 0</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <p className="mt-2 truncate text-center text-xs text-gray-500">
-                  {videoFile?.name}
-                </p>
-                {videoDuration > 0 && (
-                  <p className="text-center text-xs text-gray-500">
-                    Duration: {formatDuration(videoDuration)}
+                {selectedAccounts.length > 1 && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    Posting to {selectedAccounts.length} platforms
                   </p>
                 )}
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <input
-                    ref={coverInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={onCoverImageChange}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => coverInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    <MdImage className="h-4 w-4" />
-                    Set Cover Image
-                  </button>
-                  {customThumbnailPreview && (
-                    <button
-                      type="button"
-                      onClick={clearCoverImage}
-                      className="text-xs font-medium text-gray-500 hover:text-gray-700"
-                    >
-                      Remove cover
-                    </button>
-                  )}
-                </div>
-                {customThumbnailPreview && (
-                  <div className="mt-2 flex items-center gap-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={customThumbnailPreview}
-                      alt="Cover"
-                      className="h-12 w-12 rounded border border-gray-200 object-cover"
-                    />
-                    <span className="text-xs font-medium text-emerald-600">
-                      Cover image set ✓
-                    </span>
+              </>
+            ) : (
+              <>
+                {!videoPreview ? (
+                  <div className="flex aspect-video w-full flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-gray-400">
+                    <MdOutlineVideoLibrary className="mb-2 h-12 w-12" />
+                    <span className="text-xs">Upload media to see preview</span>
                   </div>
+                ) : (
+                  <>
+                    <div className="w-full overflow-hidden rounded-lg bg-gray-100">
+                      <video
+                        src={videoPreview}
+                        controls
+                        playsInline
+                        className="w-full max-h-[300px] object-contain"
+                        style={{ maxHeight: 300 }}
+                        onLoadedMetadata={(e) =>
+                          setVideoDuration(e.currentTarget.duration)
+                        }
+                      />
+                    </div>
+                    <p className="mt-2 truncate text-center text-xs text-gray-500">
+                      {videoFile?.name}
+                    </p>
+                    {videoDuration > 0 && (
+                      <p className="text-center text-xs text-gray-500">
+                        Duration: {formatDuration(videoDuration)}
+                      </p>
+                    )}
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <input
+                        ref={coverInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={onCoverImageChange}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => coverInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        <MdImage className="h-4 w-4" />
+                        Set Cover Image
+                      </button>
+                      {customThumbnailPreview && (
+                        <button
+                          type="button"
+                          onClick={clearCoverImage}
+                          className="text-xs font-medium text-gray-500 hover:text-gray-700"
+                        >
+                          Remove cover
+                        </button>
+                      )}
+                    </div>
+                    {customThumbnailPreview && (
+                      <div className="mt-2 flex items-center gap-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={customThumbnailPreview}
+                          alt="Cover"
+                          className="h-12 w-12 rounded border border-gray-200 object-cover"
+                        />
+                        <span className="text-xs font-medium text-emerald-600">
+                          Cover image set ✓
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
