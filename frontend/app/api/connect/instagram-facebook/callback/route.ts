@@ -175,28 +175,39 @@ export async function GET(
           continue;
         }
 
-        // Fetch Instagram account details
-        const instagramRes = await fetch(
-          `https://graph.facebook.com/v18.0/${instagramBusinessAccountId}?fields=id,username,profile_picture_url`,
-          {
-            headers: {
-              Authorization: `Bearer ${page.access_token}`,
+        // Fetch Instagram account details (id, username, profile_picture_url via Facebook Graph)
+        let instagramData: { id?: string; username?: string; profile_picture_url?: string };
+        let instagramProfilePictureUrl: string | null = null;
+        try {
+          const instagramRes = await fetch(
+            `https://graph.facebook.com/v18.0/${instagramBusinessAccountId}?fields=id,username,profile_picture_url`,
+            {
+              headers: {
+                Authorization: `Bearer ${page.access_token}`,
+              },
             },
-          },
-        );
+          );
 
-        if (!instagramRes.ok) {
-          console.warn(`Failed to fetch Instagram details for ${instagramBusinessAccountId}:`, await instagramRes.text());
+          if (!instagramRes.ok) {
+            console.warn(`Failed to fetch Instagram details for ${instagramBusinessAccountId}:`, await instagramRes.text());
+            continue;
+          }
+
+          instagramData = await instagramRes.json();
+          console.log("Instagram FB user data:", JSON.stringify(instagramData, null, 2));
+          try {
+            const rawUrl = instagramData.profile_picture_url;
+            // Store whatever URL is returned (may expire); AccountAvatar onError handles display. If URL is from cdninstagram.com or fbcdn.net, use referrerPolicy="no-referrer" on the img.
+            if (typeof rawUrl === "string" && (rawUrl.startsWith("http://") || rawUrl.startsWith("https://"))) {
+              instagramProfilePictureUrl = rawUrl;
+            }
+          } catch (pfpErr) {
+            console.error("Instagram FB profile_picture_url parse failed:", pfpErr);
+          }
+        } catch (err) {
+          console.error(`Error fetching Instagram details for ${instagramBusinessAccountId}:`, err);
           continue;
         }
-
-        const instagramData = await instagramRes.json();
-        const rawUrl = instagramData.profile_picture_url;
-        const instagramProfilePictureUrl =
-          typeof rawUrl === "string" &&
-          (rawUrl.startsWith("http://") || rawUrl.startsWith("https://"))
-            ? rawUrl
-            : null;
 
         pagesWithInstagram.push({
           pageId: page.id,

@@ -9,6 +9,7 @@ import crypto from "crypto";
 import { normalizeAppUrl } from "@/lib/url-utils";
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
+import OAuth from "oauth-1.0a";
 import { TwitterApi } from "twitter-api-v2";
 
 /** Validate URL is http/https before storing as profile image. */
@@ -123,25 +124,46 @@ export async function GET(
       });
       const { accessToken, accessSecret } = await client.login(oauthVerifier);
 
-      const userClient = new TwitterApi({
-        appKey: consumerKey,
-        appSecret: consumerSecret,
-        accessToken,
-        accessSecret,
-      });
-      const me = await userClient.v2.me();
-      let profileImageUrl: string | null = me.data?.profile_image_url ?? null;
-      if (profileImageUrl && typeof profileImageUrl === "string") {
-        profileImageUrl = profileImageUrl.replace(/_normal(\.[a-z]+)?$/i, "_400x400$1") as string;
-        if (!isValidProfileImageUrl(profileImageUrl)) profileImageUrl = null;
-      } else {
-        profileImageUrl = null;
+      let userInfo: { id: string; username: string | null; profileImageUrl: string | null };
+      try {
+        const oauth = OAuth({
+          consumer: { key: consumerKey, secret: consumerSecret },
+          signature_method: "HMAC-SHA1",
+          hash_function(base_string: string, key: string) {
+            return crypto.createHmac("sha1", key).update(base_string).digest("base64");
+          },
+        });
+        const verifyUrl =
+          "https://api.twitter.com/1.1/account/verify_credentials.json?include_entities=false&skip_status=true&include_email=false";
+        const authHeader = oauth.toHeader(
+          oauth.authorize(
+            { url: verifyUrl, method: "GET" },
+            { key: accessToken, secret: accessSecret },
+          ),
+        );
+        const response = await fetch(verifyUrl, { headers: authHeader as Record<string, string> });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          console.error("Twitter verify_credentials error:", response.status, data);
+          userInfo = { id: `twitter_x-${Date.now()}`, username: null, profileImageUrl: null };
+        } else {
+          let profileImageUrl: string | null =
+            typeof data.profile_image_url_https === "string" ? data.profile_image_url_https : null;
+          if (profileImageUrl) {
+            profileImageUrl = profileImageUrl.replace(/_normal(\.[a-z]+)?$/i, "_400x400$1") as string;
+            if (!isValidProfileImageUrl(profileImageUrl)) profileImageUrl = null;
+          }
+          userInfo = {
+            id: data.id_str ?? `twitter_x-${Date.now()}`,
+            username: data.screen_name ?? data.name ?? null,
+            profileImageUrl,
+          };
+          console.log("Twitter pfp:", userInfo.profileImageUrl);
+        }
+      } catch (err) {
+        console.error("Twitter OAuth 1.0a verify_credentials fetch failed:", err);
+        userInfo = { id: `twitter_x-${Date.now()}`, username: null, profileImageUrl: null };
       }
-      const userInfo = {
-        id: me.data?.id ?? `twitter_x-${Date.now()}`,
-        username: me.data?.username ?? me.data?.name ?? null,
-        profileImageUrl,
-      };
 
       if (!userId) {
         return safeRedirect(
@@ -832,20 +854,43 @@ async function fetchPlatformUserInfo(
     case "instagram": {
       try {
         const response = await fetch(
-          `https://graph.instagram.com/me?fields=id,username,account_type,profile_picture_url&access_token=${accessToken}`,
+          `https://graph.instagram.com/me?fields=id,username,profile_picture_url&access_token=${accessToken}`,
         );
-        if (response.ok) {
-          const data = await response.json();
-          const raw = data.profile_picture_url;
-          const profileImageUrl = isValidProfileImageUrl(raw) ? raw : null;
-          return {
-            id: data.id || `instagram-${Date.now()}`,
-            username: data.username || null,
-            profileImageUrl,
-          };
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Instagram Graph API userinfo error:", errorText);
+          // Fallback: personal/non-business accounts may not have profile_picture_url permission
+          const fallbackRes = await fetch(
+            `https://graph.instagram.com/me?fields=id,username,account_type&access_token=${accessToken}`,
+          );
+          if (fallbackRes.ok) {
+            const fallbackData = await fallbackRes.json();
+            console.log("Instagram direct user data (fallback):", JSON.stringify(fallbackData, null, 2));
+            return {
+              id: fallbackData.id || `instagram-${Date.now()}`,
+              username: fallbackData.username || null,
+              profileImageUrl: null,
+            };
+          }
+          break;
         }
-        const errorText = await response.text();
-        console.error("Instagram Graph API userinfo error:", errorText);
+        const data = await response.json();
+        console.log("Instagram direct user data:", JSON.stringify(data, null, 2));
+        let profileImageUrl: string | null = null;
+        try {
+          const raw = data.profile_picture_url;
+          // Store whatever URL is returned (may expire); AccountAvatar onError handles display. If URL is from cdninstagram.com or fbcdn.net, use referrerPolicy="no-referrer" on the img.
+          if (typeof raw === "string" && (raw.startsWith("http://") || raw.startsWith("https://"))) {
+            profileImageUrl = raw;
+          }
+        } catch (pfpErr) {
+          console.error("Instagram profile_picture_url parse failed:", pfpErr);
+        }
+        return {
+          id: data.id || `instagram-${Date.now()}`,
+          username: data.username || null,
+          profileImageUrl,
+        };
       } catch (err) {
         console.error("Instagram user info fetch failed:", err);
       }
