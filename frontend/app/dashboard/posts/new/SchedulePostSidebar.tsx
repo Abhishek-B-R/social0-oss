@@ -198,9 +198,7 @@ export function SchedulePostSidebar({
               Save to Drafts
             </button>
             {!hasAccountSelected && (
-              <p className="text-xs text-gray-500">
-                Select an account to post to
-              </p>
+              <p className="text-xs text-gray-500">Select an account to post</p>
             )}
           </div>
         ) : (

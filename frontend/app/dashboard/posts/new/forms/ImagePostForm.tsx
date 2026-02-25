@@ -85,14 +85,21 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
     };
   }, []);
 
+  const selectedAccountIds = useMemo(() => Array.from(selectedIds), [selectedIds]);
+
   useEffect(() => {
     if (userToggledPreviewRef.current) return;
-    const sel = accounts.filter((a) => selectedIds.has(a.id));
-    const hasIgOrTikTok = sel.some(
-      (a) => a.platform === "instagram" || a.platform === "tiktok",
+    const selectedAccounts = accounts.filter((a) => selectedAccountIds.includes(a.id));
+    console.log("selected accounts platforms:", selectedAccounts.map((a) => a.platform));
+    const hasInstagramOrTikTok = selectedAccounts.some(
+      (acc) => acc.platform === "instagram" || acc.platform === "tiktok",
     );
-    setPreviewCardMode(hasIgOrTikTok ? "media" : "post");
-  }, [selectedIds, accounts]);
+    if (hasInstagramOrTikTok) {
+      setPreviewCardMode("media");
+    } else {
+      setPreviewCardMode("post");
+    }
+  }, [selectedAccountIds, accounts]);
 
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {

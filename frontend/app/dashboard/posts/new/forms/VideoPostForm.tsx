@@ -53,6 +53,7 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(0);
+  const [isVertical, setIsVertical] = useState(false);
   const [customThumbnail, setCustomThumbnail] = useState<File | null>(null);
   const [customThumbnailPreview, setCustomThumbnailPreview] = useState<string | null>(null);
   const [accountSearch, setAccountSearch] = useState("");
@@ -84,13 +85,28 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
     [accounts, selectedIds],
   );
 
+  const selectedAccountIds = useMemo(() => Array.from(selectedIds), [selectedIds]);
+
+  useEffect(() => {
+    if (!videoPreview) setIsVertical(false);
+  }, [videoPreview]);
+
   useEffect(() => {
     if (userToggledPreviewRef.current) return;
-    const hasIgOrTikTok = selectedAccounts.some(
-      (a) => a.platform === "instagram" || a.platform === "tiktok",
+    const selected = accounts.filter((a) => selectedAccountIds.includes(a.id));
+    const hasMediaPreviewPlatform = selected.some(
+      (acc) =>
+        acc.platform === "instagram" ||
+        acc.platform === "tiktok" ||
+        acc.platform === "youtube" ||
+        acc.platform === "pinterest",
     );
-    setPreviewCardMode(hasIgOrTikTok ? "media" : "post");
-  }, [selectedAccounts]);
+    if (hasMediaPreviewPlatform) {
+      setPreviewCardMode("media");
+    } else {
+      setPreviewCardMode("post");
+    }
+  }, [selectedAccountIds, accounts]);
 
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
@@ -562,17 +578,26 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
                   </div>
                 ) : (
                   <>
-                    <div className="w-full overflow-hidden rounded-lg bg-gray-100">
-                      <video
-                        src={videoPreview}
-                        controls
-                        playsInline
-                        className="w-full max-h-[300px] object-contain"
-                        style={{ maxHeight: 300 }}
-                        onLoadedMetadata={(e) =>
-                          setVideoDuration(e.currentTarget.duration)
-                        }
-                      />
+                    <div
+                      className={`mx-auto flex flex-col rounded-3xl overflow-hidden bg-black border-2 border-[#333] aspect-9/16 ${
+                        isVertical ? "w-[240px]" : "w-[280px]"
+                      }`}
+                    >
+                      <div className="h-[6px] w-[60px] shrink-0 rounded-full bg-gray-600 mt-2 mx-auto" aria-hidden />
+                      <div className="flex-1 min-h-0 flex items-center justify-center bg-black">
+                        <video
+                          src={videoPreview}
+                          controls
+                          playsInline
+                          className={`h-full w-full ${isVertical ? "object-cover" : "object-contain"}`}
+                          onLoadedMetadata={(e) => {
+                            const v = e.currentTarget;
+                            setVideoDuration(v.duration);
+                            setIsVertical(v.videoHeight > v.videoWidth);
+                          }}
+                        />
+                      </div>
+                      <div className="h-[4px] w-[40px] shrink-0 rounded-full bg-gray-600 mb-2 mx-auto" aria-hidden />
                     </div>
                     <p className="mt-2 truncate text-center text-xs text-gray-500">
                       {videoFile?.name}
