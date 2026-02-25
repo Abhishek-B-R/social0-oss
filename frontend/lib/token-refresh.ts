@@ -48,8 +48,10 @@ export async function getValidToken(
   }
 
   // Platform-specific refresh logic
-  let newAccessToken: string;
-  let expiresIn: number;
+  // Initialize to satisfy TS definite assignment; guarded by didRefresh below.
+  let newAccessToken: string = accessToken;
+  let expiresIn: number = 0;
+  let didRefresh = false;
 
   // Meta long-lived: refresh with current token only (no secret)
   if (platform === "instagram") {
@@ -68,6 +70,7 @@ export async function getValidToken(
     const data = await response.json();
     newAccessToken = data.access_token;
     expiresIn = data.expires_in ?? 60 * 24 * 60 * 60;
+    didRefresh = true;
   } else if (platform === "threads") {
     const url = `https://graph.threads.net/refresh_access_token?grant_type=th_refresh_token&access_token=${encodeURIComponent(accessToken)}`;
     const response = await fetch(url, { method: "GET" });
@@ -84,6 +87,7 @@ export async function getValidToken(
     const data = await response.json();
     newAccessToken = data.access_token;
     expiresIn = data.expires_in ?? 60 * 24 * 60 * 60;
+    didRefresh = true;
   } else if (platform === "facebook") {
     const url = `https://graph.facebook.com/refresh_access_token?grant_type=fb_refresh_token&access_token=${encodeURIComponent(accessToken)}`;
     const response = await fetch(url, { method: "GET" });
@@ -100,6 +104,7 @@ export async function getValidToken(
     const data = await response.json();
     newAccessToken = data.access_token;
     expiresIn = data.expires_in ?? 60 * 24 * 60 * 60;
+    didRefresh = true;
   } else if (
     platform === "youtube" ||
     platform === "tiktok" ||
@@ -145,6 +150,7 @@ export async function getValidToken(
     const data = await response.json();
     newAccessToken = data.access_token;
     expiresIn = data.expires_in || 3600;
+    didRefresh = true;
   } else if (platform === "tiktok") {
     if (!env.TIKTOK_CLIENT_ID || !env.TIKTOK_CLIENT_SECRET) {
       throw new Error("TikTok OAuth credentials not configured");
@@ -237,10 +243,15 @@ export async function getValidToken(
     const data = await response.json();
     newAccessToken = data.access_token;
     expiresIn = data.expires_in || 3600;
+    didRefresh = true;
   }
   } else {
     // Other platforms don't support refresh or use long-lived tokens
     // Return existing token (it might still work even if expired)
+    return accessToken;
+  }
+
+  if (!didRefresh || !newAccessToken || expiresIn <= 0) {
     return accessToken;
   }
 
