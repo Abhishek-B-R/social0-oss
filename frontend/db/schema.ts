@@ -230,6 +230,10 @@ export const userSettings = pgTable("user_settings", {
   timezone: text("timezone").default("UTC"),
   defaultPlatforms: platformEnum("default_platforms").array(),
   emailNotifications: boolean("email_notifications").default(true),
+  automationEmails: boolean("automation_emails").default(true),
+  useFilenameAsCaption: boolean("use_filename_as_caption").default(false),
+  use24HourTimeFormat: boolean("use_24_hour_time_format").default(false),
+  weeklyPostingGoal: integer("weekly_posting_goal").default(3),
   subscriptionTier: text("subscription_tier").default("free"), // free, pro
   subscriptionExpiresAt: timestamp("subscription_expires_at"),
 });
