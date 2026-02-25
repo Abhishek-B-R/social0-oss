@@ -1173,6 +1173,34 @@
           "notNull": false,
           "default": true
         },
+        "automation_emails": {
+          "name": "automation_emails",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "use_filename_as_caption": {
+          "name": "use_filename_as_caption",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "use_24_hour_time_format": {
+          "name": "use_24_hour_time_format",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "weekly_posting_goal": {
+          "name": "weekly_posting_goal",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 3
+        },
         "subscription_tier": {
           "name": "subscription_tier",
           "type": "text",
