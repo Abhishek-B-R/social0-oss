@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { BulkToolsVideoClient } from "@/components/bulk-tools/BulkToolsVideoClient";
 import { CONTENT_TYPES } from "@/lib/content-types";
 import { PLATFORMS } from "@/lib/platforms";
+import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 
 const platformOrder: string[] = PLATFORMS.map((p) => p.id);
 const VIDEO_PLATFORMS = new Set<string>(
@@ -31,13 +32,30 @@ export default async function BulkToolsVideoPage() {
       platformUsername: true,
       profileImageUrl: true,
       isActive: true,
+      tokenExpiresAt: true,
+      tokenStatus: true,
     },
   });
 
+  const now = Date.now();
+  const skipExpiryDisplay = new Set(["youtube", "tiktok"]);
   const accounts = sortAccounts(
-    all.filter(
-      (a) => a.isActive !== false && VIDEO_PLATFORMS.has(a.platform),
-    ),
+    all
+      .filter(
+        (a) => a.isActive !== false && VIDEO_PLATFORMS.has(a.platform),
+      )
+      .map((a) => ({
+        id: a.id,
+        platform: a.platform,
+        platformUsername: a.platformUsername,
+        profileImageUrl: a.profileImageUrl,
+        isActive: a.isActive,
+        tokenExpired: NEVER_EXPIRES_PLATFORMS.has(a.platform)
+          ? false
+          : !skipExpiryDisplay.has(a.platform) &&
+            (a.tokenStatus === "expired" ||
+              (!!a.tokenExpiresAt && new Date(a.tokenExpiresAt).getTime() < now)),
+      })),
   );
 
   return <BulkToolsVideoClient accounts={accounts} />;

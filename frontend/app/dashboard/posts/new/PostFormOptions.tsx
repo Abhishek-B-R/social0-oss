@@ -11,6 +11,7 @@ type Account = {
   platformUsername: string | null;
   profileImageUrl: string | null;
   isActive: boolean | null;
+  tokenExpired?: boolean;
 };
 
 type PostFormOptionsProps = {
@@ -56,8 +57,10 @@ export function PostFormOptions({
   const platformName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
 
+  const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
   const allSelected =
-    accounts.length > 0 && selectedIds.size === accounts.length;
+    selectableAccounts.length > 0 &&
+    selectableAccounts.every((a) => selectedIds.has(a.id));
 
   return (
     <>

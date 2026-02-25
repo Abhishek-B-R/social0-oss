@@ -20,6 +20,7 @@ type Account = {
   platformUsername: string | null;
   profileImageUrl: string | null;
   isActive: boolean | null;
+  tokenExpired?: boolean;
 };
 
 function getTodayStr(): string {
@@ -56,9 +57,11 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
       return next;
     });
   };
+  const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
   const selectAll = () => {
-    if (selectedIds.size === accounts.length) setSelectedIds(new Set());
-    else setSelectedIds(new Set(accounts.map((a) => a.id)));
+    if (selectableAccounts.every((a) => selectedIds.has(a.id)))
+      setSelectedIds(new Set());
+    else setSelectedIds(new Set(selectableAccounts.map((a) => a.id)));
   };
 
   const addFiles = useCallback((files: File[]) => {

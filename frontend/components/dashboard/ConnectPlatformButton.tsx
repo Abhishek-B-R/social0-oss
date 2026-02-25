@@ -6,7 +6,6 @@ import { PLATFORMS } from "@/lib/platforms";
 import { BlueskyByokModal } from "@/components/BlueskyByokModal";
 import { DevToByokModal } from "@/components/DevToByokModal";
 import { HashnodeByokModal } from "@/components/HashnodeByokModal";
-import { MediumByokModal } from "@/components/MediumByokModal";
 import { PreConnectModal } from "@/components/PreConnectModal";
 import { InstagramConnectionModal } from "@/components/InstagramConnectionModal";
 
@@ -45,7 +44,6 @@ export function ConnectPlatformButton({
   const [showBlueskyModal, setShowBlueskyModal] = useState(false);
   const [showDevToModal, setShowDevToModal] = useState(false);
   const [showHashnodeModal, setShowHashnodeModal] = useState(false);
-  const [showMediumModal, setShowMediumModal] = useState(false);
   const [showPreConnectModal, setShowPreConnectModal] = useState(false);
   const [showInstagramModal, setShowInstagramModal] = useState(false);
   const preConnect = PRE_CONNECT[platform.id];
@@ -61,10 +59,6 @@ export function ConnectPlatformButton({
     }
     if (platform.id === "hashnode") {
       setShowHashnodeModal(true);
-      return;
-    }
-    if (platform.id === "medium") {
-      setShowMediumModal(true);
       return;
     }
     if (platform.id === "instagram") {
@@ -123,13 +117,6 @@ export function ConnectPlatformButton({
           isOpen={showHashnodeModal}
           onClose={() => setShowHashnodeModal(false)}
           onSuccess={() => setShowHashnodeModal(false)}
-        />
-      )}
-      {platform.id === "medium" && (
-        <MediumByokModal
-          isOpen={showMediumModal}
-          onClose={() => setShowMediumModal(false)}
-          onSuccess={() => setShowMediumModal(false)}
         />
       )}
       {platform.id === "instagram" && (

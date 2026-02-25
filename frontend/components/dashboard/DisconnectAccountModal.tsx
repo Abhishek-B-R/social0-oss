@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 
@@ -20,30 +20,8 @@ export function DisconnectAccountModal({
   onDisconnected,
 }: DisconnectAccountModalProps) {
   const router = useRouter();
-  const [publicationCount, setPublicationCount] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isOpen || !accountId) {
-      setPublicationCount(null);
-      setError(null);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    fetch(`/api/accounts/${accountId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load");
-        return res.json();
-      })
-      .then((data) => {
-        setPublicationCount(data.publicationCount ?? 0);
-      })
-      .catch(() => setError("Could not load post count"))
-      .finally(() => setLoading(false));
-  }, [isOpen, accountId]);
 
   const handleDisconnect = async () => {
     if (!accountId) return;
@@ -93,21 +71,8 @@ export function DisconnectAccountModal({
             </h2>
             <p className="mt-2 text-sm text-gray-600">
               Disconnecting will remove <strong>{accountLabel}</strong> from
-              Social0. All post history linked to this account will be removed
-              from our records.
+              Social0. Your post history will be preserved.
             </p>
-            {loading ? (
-              <p className="mt-3 text-sm text-gray-500">Loading…</p>
-            ) : publicationCount !== null && publicationCount > 0 ? (
-              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
-                {publicationCount} post{publicationCount !== 1 ? "s" : ""} will be
-                affected.
-              </p>
-            ) : publicationCount === 0 ? (
-              <p className="mt-3 text-sm text-gray-500">
-                No posts are linked to this account.
-              </p>
-            ) : null}
             {error && (
               <p className="mt-3 text-sm font-medium text-red-600">{error}</p>
             )}

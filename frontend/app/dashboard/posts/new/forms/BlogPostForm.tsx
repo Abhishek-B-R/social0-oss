@@ -30,6 +30,7 @@ type Account = {
   platformUsername: string | null;
   profileImageUrl: string | null;
   isActive: boolean | null;
+  tokenExpired?: boolean;
 };
 
 const TOOLBAR_BUTTONS = [
@@ -90,11 +91,12 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
     });
   };
 
+  const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
   const selectAll = () => {
-    if (selectedIds.size === accounts.length) {
+    if (selectableAccounts.every((a) => selectedIds.has(a.id))) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(accounts.map((a) => a.id)));
+      setSelectedIds(new Set(selectableAccounts.map((a) => a.id)));
     }
   };
 
@@ -126,6 +128,8 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
       Array.from(selectedIds),
       effectiveMode,
       scheduledAt,
+      [],
+      { contentType: "blog" },
     );
     setLoading(false);
     if (result.success) {

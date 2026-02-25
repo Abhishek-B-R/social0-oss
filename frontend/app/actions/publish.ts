@@ -12,9 +12,15 @@ import { and, eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { decryptToken } from "@/lib/encryption";
 import { revalidatePath } from "next/cache";
+import {
+  getLinkedInArticleSourceUrl,
+  publishLinkedInArticle,
+  uploadLinkedInArticleImage,
+} from "@/lib/linkedin-articles";
 import { uploadLinkedInImage, uploadLinkedInVideo } from "@/lib/linkedin-media";
 import { publishToPlatform } from "@/lib/publish-platform";
 import { isValidPostId } from "@/lib/publish-validation";
+import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import { uploadTwitterImage, uploadTwitterVideo } from "@/lib/twitter-media";
 import { TwitterApi } from "twitter-api-v2";
 
@@ -123,6 +129,7 @@ export async function executePublish(
       encryptedAccessToken: connectedAccounts.encryptedAccessToken,
       encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
       tokenExpiresAt: connectedAccounts.tokenExpiresAt,
+      tokenStatus: connectedAccounts.tokenStatus,
       platformMetadata: connectedAccounts.platformMetadata,
     })
     .from(postPublications)
@@ -171,24 +178,6 @@ export async function executePublish(
   let accessToken: string;
 
   for (const pub of publicationsWithAccounts) {
-    if (pub.platform === "medium") {
-      await db
-        .update(postPublications)
-        .set({
-          status: "failed",
-          lastError: "Publishing to Medium is not supported yet",
-          updatedAt: new Date(),
-        })
-        .where(eq(postPublications.id, pub.publicationId));
-      results.push({
-        platform: pub.platform,
-        connectedAccountId: pub.connectedAccountId,
-        status: "failed",
-        error: "Publishing to Medium is not supported yet",
-      });
-      continue;
-    }
-
     if (pub.publicationStatus === "published") {
       results.push({
         platform: pub.platform,
@@ -205,6 +194,53 @@ export async function executePublish(
         connectedAccountId: pub.connectedAccountId,
         status: "failed",
         error: "Publish already in progress",
+      });
+      continue;
+    }
+
+    if (
+      pub.tokenStatus === "expired" &&
+      !NEVER_EXPIRES_PLATFORMS.has(pub.platform)
+    ) {
+      const tokenExpiredMsg =
+        "Token expired — user must reconnect this account";
+      await db
+        .update(postPublications)
+        .set({
+          status: "failed",
+          lastError: tokenExpiredMsg,
+          updatedAt: new Date(),
+        })
+        .where(eq(postPublications.id, pub.publicationId));
+      results.push({
+        platform: pub.platform,
+        connectedAccountId: pub.connectedAccountId,
+        status: "failed",
+        error: tokenExpiredMsg,
+      });
+      continue;
+    }
+
+    // Do not attempt to publish with an expired token (by time)
+    if (
+      pub.tokenExpiresAt &&
+      new Date(pub.tokenExpiresAt) < new Date()
+    ) {
+      const tokenExpiredMsg =
+        "Token expired — user must reconnect this account";
+      await db
+        .update(postPublications)
+        .set({
+          status: "failed",
+          lastError: tokenExpiredMsg,
+          updatedAt: new Date(),
+        })
+        .where(eq(postPublications.id, pub.publicationId));
+      results.push({
+        platform: pub.platform,
+        connectedAccountId: pub.connectedAccountId,
+        status: "failed",
+        error: tokenExpiredMsg,
       });
       continue;
     }
@@ -313,7 +349,102 @@ export async function executePublish(
 
       const authorUrn = `urn:li:person:${pub.platformUserId}`;
 
-      // Fetch media if post has mediaIds
+      const isLinkedInBlog =
+        (post.metadata as Record<string, unknown>)?.contentType === "blog";
+
+      if (isLinkedInBlog) {
+        // LinkedIn Articles (REST /rest/posts with content.article): title + description + source URL + optional cover
+        const raw = (post.finalContent || "").trim();
+        const firstLine = raw.split("\n")[0]?.trim().slice(0, 400) ?? "Article";
+        const title = firstLine;
+        const bodyAfterTitle = raw.includes("\n")
+          ? raw.slice(raw.indexOf("\n") + 1).trim()
+          : "";
+        const description =
+          bodyAfterTitle.slice(0, 4086) || firstLine.slice(0, 300);
+        const sourceUrl = getLinkedInArticleSourceUrl(post.id);
+
+        let thumbnailImageUrn: string | null = null;
+        if (post.mediaIds && post.mediaIds.length > 0) {
+          const media = await db
+            .select({
+              id: mediaUploads.id,
+              url: mediaUploads.url,
+              mimeType: mediaUploads.mimeType,
+            })
+            .from(mediaUploads)
+            .where(inArray(mediaUploads.id, post.mediaIds));
+          const firstImage = media.find((m) =>
+            m.mimeType?.startsWith("image/"),
+          );
+          if (firstImage?.url) {
+            try {
+              thumbnailImageUrn = await uploadLinkedInArticleImage(
+                firstImage.url,
+                linkedInToken,
+                authorUrn,
+              );
+            } catch (e) {
+              console.error(
+                "[executePublish] LinkedIn article cover image upload failed:",
+                e,
+              );
+            }
+          }
+        }
+
+        try {
+          const { postId: articlePostId, platformPostUrl: articleUrl } =
+            await publishLinkedInArticle({
+              accessToken: linkedInToken,
+              authorUrn,
+              title,
+              description,
+              sourceUrl,
+              thumbnailImageUrn: thumbnailImageUrn ?? undefined,
+              commentary: "",
+            });
+
+          await db
+            .update(postPublications)
+            .set({
+              status: "published",
+              publishedAt: new Date(),
+              platformPostId: articlePostId ?? null,
+              platformPostUrl: articleUrl ?? null,
+              lastError: null,
+              updatedAt: new Date(),
+            })
+            .where(eq(postPublications.id, pub.publicationId));
+
+          results.push({
+            platform: pub.platform,
+            connectedAccountId: pub.connectedAccountId,
+            status: "published",
+            platformPostUrl: articleUrl ?? undefined,
+          });
+        } catch (err) {
+          const errMessage =
+            err instanceof Error ? err.message : "LinkedIn Articles publish failed";
+          await db
+            .update(postPublications)
+            .set({
+              status: "failed",
+              lastError: errMessage,
+              updatedAt: new Date(),
+            })
+            .where(eq(postPublications.id, pub.publicationId));
+          results.push({
+            platform: pub.platform,
+            connectedAccountId: pub.connectedAccountId,
+            status: "failed",
+            error: errMessage,
+          });
+        }
+        continue;
+      }
+
+      // Fetch media if post has mediaIds (regular LinkedIn UGC post)
       const mediaAssets: string[] = [];
       let shareMediaCategory: "NONE" | "IMAGE" | "VIDEO" = "NONE";
 
@@ -1135,6 +1266,34 @@ export async function executePublish(
           continue;
         }
       }
+
+      let tokenForPublish = accessToken;
+      if (pub.platform === "tiktok") {
+        try {
+          const { getValidToken } = await import("@/lib/token-refresh");
+          tokenForPublish = await getValidToken(pub.connectedAccountId, "tiktok");
+        } catch (err) {
+          console.error("[executePublish] TikTok getValidToken failed:", err);
+          const errorMsg =
+            err instanceof Error ? err.message : "Failed to get valid token";
+          await db
+            .update(postPublications)
+            .set({
+              status: "failed",
+              lastError: errorMsg,
+              updatedAt: new Date(),
+            })
+            .where(eq(postPublications.id, pub.publicationId));
+          results.push({
+            platform: pub.platform,
+            connectedAccountId: pub.connectedAccountId,
+            status: "failed",
+            error: errorMsg,
+          });
+          continue;
+        }
+      }
+
       try {
         const platformPostResult = await publishToPlatform(
           {
@@ -1151,7 +1310,7 @@ export async function executePublish(
             mediaIds: post.mediaIds,
             metadata: post.metadata,
           },
-          accessToken,
+          tokenForPublish,
           platformAccessSecret,
         );
         const isPublished = platformPostResult.status === "published";

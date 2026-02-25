@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
     );
 
     if (existing) {
-      // Update existing account
+      // Update existing account (reconnect: set isActive so it shows in UI)
       await db
         .update(connectedAccounts)
         .set({
@@ -164,6 +164,7 @@ export async function POST(req: NextRequest) {
           platformUserId: userInfo.id,
           platformUsername: userInfo.username,
           profileImageUrl: userInfo.profileImageUrl,
+          isActive: true,
           updatedAt: new Date(),
         })
         .where(eq(connectedAccounts.id, existing.id));
@@ -185,6 +186,7 @@ export async function POST(req: NextRequest) {
         encryptedAccessToken,
         encryptedRefreshToken,
         tokenExpiresAt: null, // App passwords don't expire
+        isActive: true,
       });
 
       return Response.json({

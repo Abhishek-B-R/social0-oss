@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
           encryptedAccessToken,
           encryptedRefreshToken: null,
           tokenExpiresAt: null,
+          isActive: true,
           updatedAt: new Date(),
         })
         .where(eq(connectedAccounts.id, existing.id));
@@ -109,6 +110,7 @@ export async function POST(req: NextRequest) {
         encryptedAccessToken,
         encryptedRefreshToken: null,
         tokenExpiresAt: null,
+        isActive: true,
       });
     }
     await db.delete(verification).where(eq(verification.id, tokenId));

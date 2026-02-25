@@ -128,6 +128,7 @@ export async function POST(req: NextRequest) {
             ...((existing.platformMetadata as Record<string, unknown>) ?? {}),
             boardId,
           },
+          isActive: true,
           updatedAt: new Date(),
         })
         .where(eq(connectedAccounts.id, existing.id));
@@ -146,6 +147,7 @@ export async function POST(req: NextRequest) {
         tokenExpiresAt: expiresIn
           ? new Date(Date.now() + expiresIn * 1000)
           : null,
+        isActive: true,
         platformMetadata: {
           boardId,
         },

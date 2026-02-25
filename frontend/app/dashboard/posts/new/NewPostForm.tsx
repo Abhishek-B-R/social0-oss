@@ -16,6 +16,7 @@ type Account = {
   platformUsername: string | null;
   profileImageUrl: string | null;
   isActive: boolean | null;
+  tokenExpired?: boolean;
 };
 
 export function NewPostForm({ accounts }: { accounts: Account[] }) {
@@ -58,11 +59,12 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
     });
   };
 
+  const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
   const selectAll = () => {
-    if (selectedIds.size === accounts.length) {
+    if (selectableAccounts.every((a) => selectedIds.has(a.id))) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(accounts.map((a) => a.id)));
+      setSelectedIds(new Set(selectableAccounts.map((a) => a.id)));
     }
   };
 
@@ -127,7 +129,8 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
             onClick={selectAll}
             className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
           >
-            {selectedIds.size === accounts.length
+            {selectableAccounts.length > 0 &&
+            selectableAccounts.every((a) => selectedIds.has(a.id))
               ? "Deselect all"
               : "Select all"}
           </button>
@@ -138,42 +141,51 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {accounts.map((acc) => (
-              <label
-                key={acc.id}
-                className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 hover:border-gray-300 has-checked:border-emerald-500 has-checked:bg-emerald-50/50"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(acc.id)}
-                  onChange={() => toggleAccount(acc.id)}
-                  className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
-                />
-                <AccountAvatar
-                  profileImageUrl={acc.profileImageUrl}
-                  username={acc.platformUsername}
-                  platform={acc.platform}
-                  size="sm"
-                />
-                <span className="text-sm font-medium text-gray-900">
-                  {platformName(acc.platform)}
-                  {acc.platform === "medium" && (
-                    <span
-                      className="ml-1.5 inline-flex items-center rounded bg-amber-100 text-amber-800 px-1.5 py-0.5 text-xs font-medium"
-                      title="Editing and deleting not supported"
-                    >
-                      Publish only
-                    </span>
-                  )}
-                  {acc.platformUsername && (
-                    <span className="text-gray-500 font-normal">
-                      {" "}
-                      @{acc.platformUsername}
-                    </span>
-                  )}
-                </span>
-              </label>
-            ))}
+            {accounts.map((acc) => {
+              const expired = !!acc.tokenExpired;
+              return (
+                <label
+                  key={acc.id}
+                  className={`flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 hover:border-gray-300 has-checked:border-emerald-500 has-checked:bg-emerald-50/50 ${
+                    expired
+                      ? "cursor-not-allowed opacity-60"
+                      : "cursor-pointer hover:bg-gray-50"
+                  }`}
+                  title={expired ? "Token expired — reconnect in Connections page" : undefined}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(acc.id)}
+                    onChange={() => !expired && toggleAccount(acc.id)}
+                    disabled={expired}
+                    className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4 disabled:opacity-50"
+                  />
+                  <AccountAvatar
+                    profileImageUrl={acc.profileImageUrl}
+                    username={acc.platformUsername}
+                    platform={acc.platform}
+                    size="sm"
+                  />
+                  <span className="text-sm font-medium text-gray-900">
+                    {platformName(acc.platform)}
+                    {expired && (
+                      <span
+                        className="ml-1.5 inline-flex items-center rounded bg-red-100 text-red-700 px-1.5 py-0.5 text-xs font-medium"
+                        title="Token expired — reconnect in Connections page"
+                      >
+                        Token expired
+                      </span>
+                    )}
+                    {acc.platformUsername && (
+                      <span className="text-gray-500 font-normal">
+                        {" "}
+                        @{acc.platformUsername}
+                      </span>
+                    )}
+                  </span>
+                </label>
+              );
+            })}
           </div>
         )}
       </div>

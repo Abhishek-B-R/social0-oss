@@ -1,12 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import {
-  connectedAccounts,
-  postPublications,
-  posts,
-  platformRateLimits,
-} from "@/db/schema";
-import { eq, and, inArray, count } from "drizzle-orm";
+import { connectedAccounts, postPublications } from "@/db/schema";
+import { eq, and, count } from "drizzle-orm";
 import { headers } from "next/headers";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -75,37 +70,10 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     return Response.json({ error: "Account not found" }, { status: 404 });
   }
 
-  // Cascade: 1) Delete all post_publications for this account
+  // Soft delete: set isActive = false. Post history is preserved.
   await db
-    .delete(postPublications)
-    .where(eq(postPublications.connectedAccountId, accountId));
-
-  // 2) Delete posts that now have zero publications
-  const postIdsWithPublications = await db
-    .selectDistinct({ postId: postPublications.postId })
-    .from(postPublications);
-  const remainingPostIds = new Set(
-    postIdsWithPublications.map((r) => r.postId)
-  );
-  const allPostIds = await db
-    .select({ id: posts.id })
-    .from(posts)
-    .where(eq(posts.userId, session.user.id));
-  const orphanedPostIds = allPostIds
-    .filter((p) => !remainingPostIds.has(p.id))
-    .map((p) => p.id);
-  if (orphanedPostIds.length > 0) {
-    await db.delete(posts).where(inArray(posts.id, orphanedPostIds));
-  }
-
-  // 3) Delete platform_rate_limits for this account (if any)
-  await db
-    .delete(platformRateLimits)
-    .where(eq(platformRateLimits.connectedAccountId, accountId));
-
-  // 4) Delete the connected account
-  await db
-    .delete(connectedAccounts)
+    .update(connectedAccounts)
+    .set({ isActive: false, updatedAt: new Date() })
     .where(eq(connectedAccounts.id, accountId));
 
   return Response.json({ success: true });

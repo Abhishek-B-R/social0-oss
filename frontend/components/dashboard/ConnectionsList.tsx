@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { getPlatformIcon } from "@/lib/platform-icons";
 import { PLATFORMS } from "@/lib/platforms";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { ConnectPlatformButton } from "./ConnectPlatformButton";
 import { DisconnectAccountModal } from "./DisconnectAccountModal";
-import { X } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
 
 const PLATFORM_UI: Record<string, { name: string; color: string }> = {
   linkedin: { name: "LinkedIn", color: "bg-[#0A66C2]" },
@@ -23,7 +24,6 @@ const PLATFORM_UI: Record<string, { name: string; color: string }> = {
   threads: { name: "Threads", color: "bg-[#000000]" },
   devto: { name: "Dev.to", color: "bg-[#0A0A0A]" },
   hashnode: { name: "Hashnode", color: "bg-[#2962FF]" },
-  medium: { name: "Medium", color: "bg-[#000000]" },
 };
 
 type Account = {
@@ -32,6 +32,8 @@ type Account = {
   platformUsername: string | null;
   profileImageUrl: string | null;
   isActive: boolean | null;
+  tokenStatus: "ok" | "expiring_soon" | "expired";
+  expiresInDays: number | null;
 };
 
 export function ConnectionsList({ accounts }: { accounts: Account[] }) {
@@ -103,30 +105,57 @@ export function ConnectionsList({ accounts }: { accounts: Account[] }) {
                     />
                   </div>
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1.5">
-                    {platformAccounts.map((account) => (
-                      <div
-                        key={account.id}
-                        className="flex min-w-0 shrink-0 items-center gap-1 rounded-md border border-gray-200 bg-white px-1.5 py-0.5"
-                      >
-                        <AccountAvatar
-                          profileImageUrl={account.profileImageUrl}
-                          username={account.platformUsername}
-                          platform={account.platform}
-                          size="sm"
-                        />
-                        <span className="max-w-[100px] truncate text-xs font-medium text-gray-900">
-                          @{account.platformUsername || "user"}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenDisconnect(account)}
-                          className="shrink-0 rounded p-0.5 text-red-600 hover:bg-red-50 transition-colors"
-                          aria-label={`Disconnect ${account.platformUsername || account.platform}`}
+                    {platformAccounts.map((account) => {
+                      const isExpired = account.tokenStatus === "expired";
+                      const isExpiringSoon = account.tokenStatus === "expiring_soon";
+                      return (
+                        <div
+                          key={account.id}
+                          className={`flex min-w-0 shrink-0 flex-wrap items-center gap-1 rounded-md border px-1.5 py-0.5 ${
+                            isExpired
+                              ? "border-red-300 bg-red-50/50"
+                              : "border-gray-200 bg-white"
+                          }`}
                         >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                          <AccountAvatar
+                            profileImageUrl={account.profileImageUrl}
+                            username={account.platformUsername}
+                            platform={account.platform}
+                            size="sm"
+                          />
+                          <span className="max-w-[100px] truncate text-xs font-medium text-gray-900">
+                            @{account.platformUsername || "user"}
+                          </span>
+                          {isExpired && (
+                            <Link
+                              href={`/api/connect/${account.platform}`}
+                              className="shrink-0 inline-flex items-center gap-1 rounded border border-red-300 bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 hover:bg-red-100"
+                            >
+                              <AlertTriangle className="h-3 w-3" />
+                              Token expired — Reconnect
+                            </Link>
+                          )}
+                          {isExpiringSoon && account.expiresInDays != null && (
+                            <span
+                              className="shrink-0 inline-flex items-center gap-0.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800"
+                              title="Token expires soon — reconnect to refresh"
+                            >
+                              <AlertTriangle className="h-3 w-3" />
+                              Expires in {account.expiresInDays} day
+                              {account.expiresInDays !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDisconnect(account)}
+                            className="shrink-0 rounded p-0.5 text-red-600 hover:bg-red-50 transition-colors"
+                            aria-label={`Disconnect ${account.platformUsername || account.platform}`}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );

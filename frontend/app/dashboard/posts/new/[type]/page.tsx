@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import { PLATFORMS } from "@/lib/platforms";
 import { getContentTypeBySlug } from "@/lib/content-types";
+import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import Link from "next/link";
 import { TextPostForm } from "../forms/TextPostForm";
 import { ImagePostForm } from "../forms/ImagePostForm";
@@ -53,15 +54,31 @@ export default async function NewPostByTypePage({
       platformUsername: true,
       profileImageUrl: true,
       isActive: true,
+      tokenExpiresAt: true,
+      tokenStatus: true,
     },
   });
 
-  // Only pass accounts whose platform is in this content type's allowed list (see lib/content-types.ts)
+  const now = Date.now();
+  const skipExpiryDisplay = new Set(["youtube", "tiktok"]);
   const allowedPlatforms = new Set(contentType.platforms);
   const filtered = sortAccountsByPlatformOrder(
-    accounts.filter(
-      (a) => a.isActive !== false && allowedPlatforms.has(a.platform),
-    ),
+    accounts
+      .filter(
+        (a) => a.isActive !== false && allowedPlatforms.has(a.platform),
+      )
+      .map((a) => ({
+        id: a.id,
+        platform: a.platform,
+        platformUsername: a.platformUsername,
+        profileImageUrl: a.profileImageUrl,
+        isActive: a.isActive,
+        tokenExpired: NEVER_EXPIRES_PLATFORMS.has(a.platform)
+          ? false
+          : !skipExpiryDisplay.has(a.platform) &&
+            (a.tokenStatus === "expired" ||
+              (!!a.tokenExpiresAt && new Date(a.tokenExpiresAt).getTime() < now)),
+      })),
   );
 
   const FormComponent = FORM_MAP[contentType.slug];

@@ -269,7 +269,7 @@ export async function GET(
       });
 
       if (existing) {
-        // Update existing
+        // Update existing (reconnect: set isActive so it shows in UI)
         await db
           .update(connectedAccounts)
           .set({
@@ -283,6 +283,7 @@ export async function GET(
               instagramBusinessAccountId: pageData.instagramAccountId,
               connectionMethod: "facebook-page",
             },
+            isActive: true,
             updatedAt: new Date(),
           })
           .where(eq(connectedAccounts.id, existing.id));
@@ -304,6 +305,7 @@ export async function GET(
         encryptedAccessToken: encryptToken(pageData.pageAccessToken, accountId),
         encryptedRefreshToken: null,
         tokenExpiresAt: null,
+        isActive: true,
         platformMetadata: {
           facebookPageId: pageData.pageId,
           instagramBusinessAccountId: pageData.instagramAccountId,
