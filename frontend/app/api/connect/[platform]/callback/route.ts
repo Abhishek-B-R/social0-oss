@@ -161,6 +161,12 @@ export async function GET(
           console.log("Twitter pfp:", userInfo.profileImageUrl);
         }
       } catch (err) {
+        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          throw err;
+        }
+        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+          throw err;
+        }
         console.error("Twitter OAuth 1.0a verify_credentials fetch failed:", err);
         userInfo = { id: `twitter_x-${Date.now()}`, username: null, profileImageUrl: null };
       }
@@ -211,6 +217,12 @@ export async function GET(
       }
       return safeRedirect("/dashboard/connections?connected=twitter_x", "/dashboard/connections");
     } catch (err) {
+      if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+        throw err;
+      }
+      if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+        throw err;
+      }
       console.error("Twitter OAuth 1.0a callback error:", err);
       return safeRedirect(
         `/dashboard?error=oauth_failed&platform=${platform}`,
@@ -269,7 +281,13 @@ export async function GET(
         .delete(verification)
         .where(eq(verification.id, decrypted.stateId));
     }
-  } catch {
+  } catch (err) {
+    if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+      throw err;
+    }
+    if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+      throw err;
+    }
     console.error("OAuth state decryption failed");
     return safeRedirect(
       `/dashboard?error=invalid_state&platform=${platform}`,
@@ -334,6 +352,12 @@ export async function GET(
           body: tokenParams,
         });
       } catch (fetchError) {
+        if ((fetchError as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          throw fetchError;
+        }
+        if (fetchError instanceof Error && fetchError.message === "NEXT_REDIRECT") {
+          throw fetchError;
+        }
         const err = fetchError as Error & { code?: string; cause?: Error };
         console.error(`${platform} token exchange fetch error:`, {
           error: err.message,
@@ -353,7 +377,13 @@ export async function GET(
         let errorJson;
         try {
           errorJson = JSON.parse(errorText);
-        } catch {
+        } catch (parseErr) {
+          if ((parseErr as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+            throw parseErr;
+          }
+          if (parseErr instanceof Error && parseErr.message === "NEXT_REDIRECT") {
+            throw parseErr;
+          }
           errorJson = { raw: errorText };
         }
         console.error(`${platform} token exchange failed:`, {
@@ -448,7 +478,13 @@ export async function GET(
         let errorJson;
         try {
           errorJson = JSON.parse(errorText);
-        } catch {
+        } catch (parseErr) {
+          if ((parseErr as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+            throw parseErr;
+          }
+          if (parseErr instanceof Error && parseErr.message === "NEXT_REDIRECT") {
+            throw parseErr;
+          }
           errorJson = { raw: errorText };
         }
 
@@ -620,6 +656,12 @@ export async function GET(
               if (isValidProfileImageUrl(url)) profileImageUrl = url;
             }
           } catch (err) {
+            if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+              throw err;
+            }
+            if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+              throw err;
+            }
             console.error("Facebook page picture fetch failed:", err);
           }
         }
@@ -680,6 +722,12 @@ export async function GET(
           userInfo.id = tokens.user_id;
         }
       } catch (err) {
+        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          throw err;
+        }
+        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+          throw err;
+        }
         console.error(`Failed to fetch ${platform} user info:`, err);
         // Use user_id from token response
         userInfo = {
@@ -692,6 +740,12 @@ export async function GET(
       try {
         userInfo = await fetchPlatformUserInfo(platform, tokens.access_token);
       } catch (err) {
+        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          throw err;
+        }
+        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+          throw err;
+        }
         console.error("Failed to fetch platform user info:", err);
         // Use placeholder values if fetch fails
         userInfo = {
@@ -790,14 +844,12 @@ export async function GET(
     }
     return safeRedirect(`/dashboard/connections?connected=${platform}`, "/dashboard/connections");
   } catch (err) {
-    // NEXT_REDIRECT is how Next.js implements redirect() - don't catch it
-    if (err && typeof err === "object" && "digest" in err) {
-      const digest = (err as { digest?: string }).digest;
-      if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
-        throw err; // Re-throw so Next.js can handle the redirect
-      }
+    if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+      throw err;
     }
-
+    if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+      throw err;
+    }
     console.error("OAuth callback error:", err);
     return safeRedirect(
       `/dashboard?error=oauth_failed&platform=${platform}`,
@@ -842,6 +894,12 @@ async function fetchPlatformUserInfo(
             }
           }
         } catch (err) {
+          if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+            throw err;
+          }
+          if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+            throw err;
+          }
           console.error("LinkedIn profile picture fetch failed:", err);
         }
         return {
@@ -850,6 +908,12 @@ async function fetchPlatformUserInfo(
           profileImageUrl,
         };
       } catch (err) {
+        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          throw err;
+        }
+        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+          throw err;
+        }
         console.error("LinkedIn user info fetch failed:", err);
       }
       break;
@@ -888,6 +952,12 @@ async function fetchPlatformUserInfo(
             profileImageUrl = raw;
           }
         } catch (pfpErr) {
+          if ((pfpErr as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+            throw pfpErr;
+          }
+          if (pfpErr instanceof Error && pfpErr.message === "NEXT_REDIRECT") {
+            throw pfpErr;
+          }
           console.error("Instagram profile_picture_url parse failed:", pfpErr);
         }
         return {
@@ -896,6 +966,12 @@ async function fetchPlatformUserInfo(
           profileImageUrl,
         };
       } catch (err) {
+        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          throw err;
+        }
+        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+          throw err;
+        }
         console.error("Instagram user info fetch failed:", err);
       }
       break;
@@ -945,6 +1021,12 @@ async function fetchPlatformUserInfo(
           userResponse.status,
         );
       } catch (err) {
+        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          throw err;
+        }
+        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+          throw err;
+        }
         console.error("YouTube user info fetch failed:", err);
       }
       break;
@@ -979,6 +1061,12 @@ async function fetchPlatformUserInfo(
           console.error("X/Twitter userinfo error:", errorText);
         }
       } catch (err) {
+        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          throw err;
+        }
+        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+          throw err;
+        }
         console.error("X/Twitter user info fetch failed:", err);
       }
       break;
@@ -999,6 +1087,12 @@ async function fetchPlatformUserInfo(
         const raw = data.threads_profile_picture_url;
         if (isValidProfileImageUrl(raw)) profileImageUrl = raw;
       } catch (err) {
+        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          throw err;
+        }
+        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+          throw err;
+        }
         console.error("Threads threads_profile_picture_url parse failed:", err);
       }
       return {
@@ -1028,6 +1122,12 @@ async function fetchPlatformUserInfo(
         }
         console.error("Pinterest user_account error:", response.status, data);
       } catch (err) {
+        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          throw err;
+        }
+        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+          throw err;
+        }
         console.error("Pinterest user info fetch failed:", err);
       }
       break;
@@ -1059,6 +1159,12 @@ async function fetchPlatformUserInfo(
           console.error("TikTok userinfo error:", errorText);
         }
       } catch (err) {
+        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          throw err;
+        }
+        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+          throw err;
+        }
         console.error("TikTok user info fetch failed:", err);
       }
       break;

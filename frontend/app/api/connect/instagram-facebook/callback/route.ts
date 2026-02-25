@@ -54,6 +54,12 @@ export async function GET(
       );
     }
   } catch (err) {
+    if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+      throw err;
+    }
+    if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+      throw err;
+    }
     console.error("Failed to decrypt state:", err);
     return safeRedirect(
       `/dashboard?error=invalid_state&platform=instagram`,
@@ -202,9 +208,21 @@ export async function GET(
               instagramProfilePictureUrl = rawUrl;
             }
           } catch (pfpErr) {
+            if ((pfpErr as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+              throw pfpErr;
+            }
+            if (pfpErr instanceof Error && pfpErr.message === "NEXT_REDIRECT") {
+              throw pfpErr;
+            }
             console.error("Instagram FB profile_picture_url parse failed:", pfpErr);
           }
         } catch (err) {
+          if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+            throw err;
+          }
+          if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+            throw err;
+          }
           console.error(`Error fetching Instagram details for ${instagramBusinessAccountId}:`, err);
           continue;
         }
@@ -218,6 +236,12 @@ export async function GET(
           instagramProfilePictureUrl,
         });
       } catch (err) {
+        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          throw err;
+        }
+        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+          throw err;
+        }
         console.error(`Error checking Instagram for Page ${page.id}:`, err);
         continue;
       }
@@ -319,14 +343,12 @@ export async function GET(
       "/dashboard/connections",
     );
   } catch (err) {
-    // NEXT_REDIRECT is how Next.js implements redirect() - don't catch it
-    if (err && typeof err === "object" && "digest" in err) {
-      const digest = (err as { digest?: string }).digest;
-      if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
-        throw err; // Re-throw so Next.js can handle the redirect
-      }
+    if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+      throw err;
     }
-
+    if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+      throw err;
+    }
     console.error("Instagram-Facebook OAuth callback error:", err);
     return safeRedirect(
       `/dashboard?error=oauth_failed&platform=instagram`,

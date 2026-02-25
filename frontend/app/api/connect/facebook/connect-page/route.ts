@@ -15,7 +15,13 @@ export async function POST(req: NextRequest) {
   let body: { tokenId?: string; pageId?: string };
   try {
     body = await req.json();
-  } catch {
+  } catch (err) {
+    if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+      throw err;
+    }
+    if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+      throw err;
+    }
     return Response.json({ error: "Invalid body" }, { status: 400 });
   }
   const { tokenId, pageId } = body;
@@ -60,6 +66,12 @@ export async function POST(req: NextRequest) {
         }
       }
     } catch (err) {
+      if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+        throw err;
+      }
+      if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+        throw err;
+      }
       console.error("Facebook page picture fetch failed:", err);
     }
 
@@ -105,7 +117,13 @@ export async function POST(req: NextRequest) {
       pageName: page.name,
       message: "Facebook Page connected successfully",
     });
-  } catch {
+  } catch (err) {
+    if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+      throw err;
+    }
+    if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+      throw err;
+    }
     return Response.json({ error: "Invalid token data" }, { status: 400 });
   }
 }
