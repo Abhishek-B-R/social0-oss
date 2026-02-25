@@ -213,7 +213,7 @@ export async function GET(
           pageId: page.id,
           pageName: page.name,
           pageAccessToken: page.access_token,
-          instagramAccountId: instagramData.id,
+          instagramAccountId: instagramData.id ?? instagramBusinessAccountId,
           instagramUsername: instagramData.username || null,
           instagramProfilePictureUrl,
         });

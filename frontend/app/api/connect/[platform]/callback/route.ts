@@ -126,7 +126,7 @@ export async function GET(
 
       let userInfo: { id: string; username: string | null; profileImageUrl: string | null };
       try {
-        const oauth = OAuth({
+        const oauth = new OAuth({
           consumer: { key: consumerKey, secret: consumerSecret },
           signature_method: "HMAC-SHA1",
           hash_function(base_string: string, key: string) {
@@ -141,7 +141,7 @@ export async function GET(
             { key: accessToken, secret: accessSecret },
           ),
         );
-        const response = await fetch(verifyUrl, { headers: authHeader as Record<string, string> });
+        const response = await fetch(verifyUrl, { headers: authHeader as unknown as Record<string, string> });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
           console.error("Twitter verify_credentials error:", response.status, data);
@@ -577,10 +577,10 @@ export async function GET(
       return safeRedirect(pinterestSelectUrl, "/dashboard/connections");
     }
 
-    // Facebook: fetch Pages and either save one or redirect to page selection
+    // Facebook: fetch all Pages and insert/update each one (no redirect to select)
     if (platform === "facebook") {
       const pagesRes = await fetch(
-        "https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token",
+        "https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,picture",
         {
           headers: {
             Authorization: `Bearer ${tokens.access_token}`,
@@ -595,7 +595,7 @@ export async function GET(
         );
       }
       const pagesData = await pagesRes.json();
-      const pages: { id: string; name: string; access_token: string }[] =
+      const pages: { id: string; name: string; access_token: string; picture?: { data?: { url?: string } } }[] =
         pagesData.data || [];
       if (pages.length === 0) {
         return safeRedirect(
@@ -603,58 +603,63 @@ export async function GET(
           "/dashboard",
         );
       }
-      if (pages.length === 1) {
-        const page = pages[0];
-        let pageProfileImageUrl: string | null = null;
-        try {
-          const pageRes = await fetch(
-            `https://graph.facebook.com/v21.0/${page.id}?fields=id,name,picture`,
-            { headers: { Authorization: `Bearer ${page.access_token}` } },
-          );
-          if (pageRes.ok) {
-            const pageData = await pageRes.json();
-            const url = pageData.picture?.data?.url;
-            if (isValidProfileImageUrl(url)) pageProfileImageUrl = url;
+      console.log("Facebook pages found:", pages.map((p) => ({ id: p.id, name: p.name })));
+      for (const page of pages) {
+        let profileImageUrl: string | null = null;
+        const fromList = page.picture?.data?.url;
+        if (isValidProfileImageUrl(fromList)) {
+          profileImageUrl = fromList;
+        } else {
+          try {
+            const pageRes = await fetch(
+              `https://graph.facebook.com/v21.0/${page.id}?fields=id,name,picture`,
+              { headers: { Authorization: `Bearer ${page.access_token}` } },
+            );
+            if (pageRes.ok) {
+              const pageData = await pageRes.json();
+              const url = pageData.picture?.data?.url;
+              if (isValidProfileImageUrl(url)) profileImageUrl = url;
+            }
+          } catch (err) {
+            console.error("Facebook page picture fetch failed:", err);
           }
-        } catch (err) {
-          console.error("Facebook page picture fetch failed:", err);
         }
-        const accountId = crypto.randomUUID();
-        await db.insert(connectedAccounts).values({
-          id: accountId,
-          userId,
-          platform: "facebook",
-          platformUserId: page.id,
-          platformUsername: page.name,
-          profileImageUrl: pageProfileImageUrl,
-          encryptedAccessToken: encryptToken(page.access_token, accountId),
-          encryptedRefreshToken: null,
-          tokenExpiresAt: null,
+        const existing = await db.query.connectedAccounts.findFirst({
+          where: and(
+            eq(connectedAccounts.userId, userId),
+            eq(connectedAccounts.platform, "facebook"),
+            eq(connectedAccounts.platformUserId, page.id),
+          ),
         });
-        return safeRedirect("/dashboard/connections?connected=facebook", "/dashboard/connections");
+        const accountId = existing?.id ?? crypto.randomUUID();
+        const encryptedAccess = encryptToken(page.access_token, accountId);
+        if (existing) {
+          await db
+            .update(connectedAccounts)
+            .set({
+              platformUsername: page.name,
+              profileImageUrl,
+              encryptedAccessToken: encryptedAccess,
+              encryptedRefreshToken: null,
+              tokenExpiresAt: null,
+              updatedAt: new Date(),
+            })
+            .where(eq(connectedAccounts.id, existing.id));
+        } else {
+          await db.insert(connectedAccounts).values({
+            id: accountId,
+            userId,
+            platform: "facebook",
+            platformUserId: page.id,
+            platformUsername: page.name,
+            profileImageUrl,
+            encryptedAccessToken: encryptedAccess,
+            encryptedRefreshToken: null,
+            tokenExpiresAt: null,
+          });
+        }
       }
-      // Multiple pages: store in verification and redirect to select
-      const stateId = crypto.randomBytes(16).toString("hex");
-      const payload = JSON.stringify({
-        userId,
-        pages: pages.map((p) => ({
-          id: p.id,
-          name: p.name,
-          access_token: p.access_token,
-        })),
-      });
-      await db.insert(verification).values({
-        id: stateId,
-        identifier: "facebook_pages",
-        value: encryptToken(payload, stateId),
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-      });
-      const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
-      const facebookSelectUrl =
-        typeof baseUrl === "string" && baseUrl
-          ? `${baseUrl}/dashboard/connect/facebook/select?token=${stateId}`
-          : `/dashboard/connect/facebook/select?token=${stateId}`;
-      return safeRedirect(facebookSelectUrl, "/dashboard/connections");
+      return safeRedirect("/dashboard/connections?connected=facebook", "/dashboard/connections");
     }
 
     // Fetch platform user info (platform-specific)
