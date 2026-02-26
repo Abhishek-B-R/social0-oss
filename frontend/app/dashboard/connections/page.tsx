@@ -23,9 +23,9 @@ function getTokenStatus(
   expiresAt: Date | null,
   platform: string,
 ): "ok" | "expiring_soon" | "expired" {
+  if (dbTokenStatus === "expired") return "expired";
   if (NEVER_EXPIRES_PLATFORMS.has(platform)) return "ok";
   if (SKIP_EXPIRY_DISPLAY.has(platform)) return "ok";
-  if (dbTokenStatus === "expired") return "expired";
   if (!expiresAt) return "ok";
   const now = Date.now();
   const exp = new Date(expiresAt).getTime();

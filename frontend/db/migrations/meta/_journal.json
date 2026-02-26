@@ -92,6 +92,27 @@
       "when": 1772036257652,
       "tag": "0012_boring_marvel_boy",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1772036257653,
+      "tag": "0013_remove_devto_hashnode",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1772036257654,
+      "tag": "0014_user_email_and_timestamps",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1772036257655,
+      "tag": "0015_add_post_status_partial",
+      "breakpoints": true
     }
   ]
 }

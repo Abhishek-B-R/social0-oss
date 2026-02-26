@@ -24,6 +24,12 @@ import { MdOutlineVideoLibrary, MdClose, MdImage } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettingsModal } from "@/components/TikTokSettingsModal";
 import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
+import { PLATFORMS } from "@/lib/platforms";
+
+type PlatformCaptionState = {
+  overridden: boolean;
+  value: string;
+};
 
 type Account = {
   id: string;
@@ -113,6 +119,11 @@ export function VideoPostForm({
     useState<PreviewCardMode>("post");
   const userToggledPreviewRef = useRef(false);
   const [showCaptionError, setShowCaptionError] = useState(false);
+  const [platformCaptionsExpanded, setPlatformCaptionsExpanded] =
+    useState(false);
+  const [platformCaptions, setPlatformCaptions] = useState<
+    Record<string, PlatformCaptionState>
+  >({});
 
   const selectedAccounts = useMemo(
     () => accounts.filter((a) => selectedIds.has(a.id)),
@@ -123,6 +134,13 @@ export function VideoPostForm({
     () => Array.from(selectedIds),
     [selectedIds],
   );
+  const uniquePlatformsFromSelection = useMemo(
+    () => [...new Set(selectedAccounts.map((a) => a.platform))],
+    [selectedAccounts],
+  );
+  const showPlatformCaptionsSection = selectedIds.size >= 2;
+  const platformDisplayName = (platformId: string) =>
+    PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
 
   const hasXForResurface =
     getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
@@ -388,6 +406,20 @@ export function VideoPostForm({
           tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
         return acc;
       }, {});
+    }
+    const accountCaptions: Record<string, string> = {};
+    for (const account of selectedAccounts) {
+      const platformState =
+        platformCaptions[account.platform] ?? {
+          overridden: false,
+          value: "",
+        };
+      if (platformState.overridden) {
+        accountCaptions[account.id] = platformState.value.trim();
+      }
+    }
+    if (Object.keys(accountCaptions).length > 0) {
+      metadata.accountCaptions = accountCaptions;
     }
     const meta = Object.keys(metadata).length > 0 ? metadata : undefined;
 
@@ -688,6 +720,119 @@ export function VideoPostForm({
               <p className="mt-2 text-xs text-destructive">Caption is required</p>
             )}
           </div>
+
+          {showPlatformCaptionsSection && (
+            <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
+              <button
+                type="button"
+                onClick={() =>
+                  setPlatformCaptionsExpanded((prev) => !prev)
+                }
+                className="flex w-full items-center justify-between text-left"
+              >
+                <span className="text-sm font-semibold text-text">
+                  Platform Captions
+                </span>
+                <span className="text-text-muted">
+                  {platformCaptionsExpanded ? "▼" : "▶"}
+                </span>
+              </button>
+              {platformCaptionsExpanded && (
+                <div className="mt-4 space-y-4">
+                  {uniquePlatformsFromSelection.map((platformId) => {
+                    const state =
+                      platformCaptions[platformId] ?? ({
+                        overridden: false,
+                        value: "",
+                      } as PlatformCaptionState);
+                    const displayName = platformDisplayName(platformId);
+                    return (
+                      <div
+                        key={platformId}
+                        className="rounded-xl border border-border bg-bg p-4"
+                      >
+                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-sm font-medium text-text">
+                            {displayName}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {state.overridden ? (
+                              <>
+                                <span className="rounded bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
+                                  Edited caption
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPlatformCaptions((prev) => ({
+                                      ...prev,
+                                      [platformId]: {
+                                        overridden: false,
+                                        value: "",
+                                      },
+                                    }))
+                                  }
+                                  className="text-xs font-medium text-accent hover:text-accent-hover"
+                                >
+                                  Clear
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-xs text-text-muted">
+                                  Using main caption
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPlatformCaptions((prev) => ({
+                                      ...prev,
+                                      [platformId]: {
+                                        overridden: true,
+                                        value: content.trim(),
+                                      },
+                                    }))
+                                  }
+                                  className="text-xs font-medium text-accent hover:text-accent-hover"
+                                >
+                                  Edit
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <textarea
+                          rows={3}
+                          placeholder={
+                            state.overridden
+                              ? undefined
+                              : content || "Main caption..."
+                          }
+                          value={state.overridden ? state.value : ""}
+                          readOnly={!state.overridden}
+                          onChange={(e) =>
+                            state.overridden &&
+                            setPlatformCaptions((prev) => ({
+                              ...prev,
+                              [platformId]: {
+                                ...(prev[platformId] ?? {
+                                  overridden: false,
+                                  value: "",
+                                }),
+                                overridden: true,
+                                value: e.target.value,
+                              },
+                            }))
+                          }
+                          className="w-full rounded-lg border border-input bg-bg px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 disabled:opacity-70"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <SchedulePostSidebar

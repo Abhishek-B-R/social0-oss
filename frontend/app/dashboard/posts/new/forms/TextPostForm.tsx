@@ -23,9 +23,16 @@ import type {
 } from "@/components/autoplug/AutoPlugPanel";
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
+import { PLATFORMS } from "@/lib/platforms";
+import { PlatformIcon } from "@/components/PlatformIcon";
 
 const TWITTER_MAX_LENGTH = 280;
 const TWITTER_THREAD_SEP = "---";
+
+type AccountCaptionState = {
+  overridden: boolean;
+  value: string;
+};
 
 type Account = {
   id: string;
@@ -74,6 +81,10 @@ export function TextPostForm({
   const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
   const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   const [showContentError, setShowContentError] = useState(false);
+  const [customCaptionsExpanded, setCustomCaptionsExpanded] = useState(false);
+  const [accountCaptionsState, setAccountCaptionsState] = useState<
+    Record<string, AccountCaptionState>
+  >({});
 
   useEffect(() => {
     if (!initialDraftId) return;
@@ -114,6 +125,9 @@ export function TextPostForm({
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
   const selectedAccountIds = Array.from(selectedIds);
+  const showCustomCaptionsSection = selectedIds.size >= 2;
+  const platformDisplayName = (platformId: string) =>
+    PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
   const hasXForResurface =
     getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
   const resurfaceVisible = hasXForResurface;
@@ -170,6 +184,18 @@ export function TextPostForm({
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
     const accountIds = Array.from(selectedIds);
+    const accountCaptions: Record<string, string> = {};
+    for (const account of selectedAccounts) {
+      const captionState = accountCaptionsState[account.id] ?? {
+        overridden: false,
+        value: "",
+      };
+      if (captionState.overridden) {
+        accountCaptions[account.id] = captionState.value.trim();
+      }
+    }
+    const metadata =
+      Object.keys(accountCaptions).length > 0 ? { accountCaptions } : undefined;
 
     if (initialDraftId) {
       if (effectiveMode === "draft") {
@@ -177,6 +203,8 @@ export function TextPostForm({
           initialDraftId,
           content.trim(),
           accountIds,
+          [],
+          metadata,
         );
         setLoading(false);
         if (result.success) {
@@ -192,6 +220,8 @@ export function TextPostForm({
           initialDraftId,
           content.trim(),
           accountIds,
+          [],
+          metadata,
         );
         setLoading(false);
         if (result.success) {
@@ -200,11 +230,9 @@ export function TextPostForm({
               (a) => a.platform === "twitter_x",
             );
             if (xAccount) {
-              createAutoPlug(
-                result.postId,
-                xAccount.id,
-                autoPlugConfig,
-              ).catch(() => {});
+              createAutoPlug(result.postId, xAccount.id, autoPlugConfig).catch(
+                () => {},
+              );
             }
           }
           router.push("/dashboard/posts");
@@ -220,6 +248,8 @@ export function TextPostForm({
           content.trim(),
           accountIds,
           scheduledAt,
+          undefined,
+          metadata,
         );
         setLoading(false);
         if (result.success) {
@@ -237,6 +267,8 @@ export function TextPostForm({
       accountIds,
       effectiveMode,
       scheduledAt,
+      [],
+      metadata,
     );
     setLoading(false);
     if (result.success) {
@@ -360,6 +392,147 @@ export function TextPostForm({
             </p>
           )}
         </div>
+
+        {showCustomCaptionsSection && (
+          <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setCustomCaptionsExpanded((prev) => !prev)}
+              className="flex w-full items-center justify-between text-left"
+            >
+              <span className="text-sm font-semibold text-text">
+                Custom Captions
+              </span>
+              <span className="text-text-muted">
+                {customCaptionsExpanded ? "▼" : "▶"}
+              </span>
+            </button>
+            {customCaptionsExpanded && (
+              <div className="mt-4 space-y-4">
+                {selectedAccounts.map((account) => {
+                  const state =
+                    accountCaptionsState[account.id] ??
+                    ({
+                      overridden: false,
+                      value: "",
+                    } as AccountCaptionState);
+                  const username = account.platformUsername?.trim()
+                    ? `@${account.platformUsername}`
+                    : account.platform;
+                  const platformName = platformDisplayName(account.platform);
+                  return (
+                    <div
+                      key={account.id}
+                      className="rounded-xl border border-border bg-bg p-4"
+                    >
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-muted text-sm font-semibold text-text-muted">
+                            {account.profileImageUrl?.trim() ? (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img
+                                src={account.profileImageUrl}
+                                alt=""
+                                className="h-full w-full object-cover"
+                                referrerPolicy="no-referrer"
+                              />
+                            ) : (
+                              (account.platformUsername ?? account.platform)
+                                .charAt(0)
+                                .toUpperCase()
+                            )}
+                          </div>
+                          <span className="min-w-0 truncate text-sm font-medium text-text">
+                            {username}
+                            <span className="text-text-muted">
+                              {" · "}
+                              {platformName}
+                            </span>
+                          </span>
+                          <PlatformIcon
+                            platform={account.platform}
+                            size={14}
+                            className="shrink-0 text-text-muted"
+                          />
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          {state.overridden ? (
+                            <>
+                              <span className="rounded bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
+                                Edited caption
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setAccountCaptionsState((prev) => ({
+                                    ...prev,
+                                    [account.id]: {
+                                      overridden: false,
+                                      value: "",
+                                    },
+                                  }))
+                                }
+                                className="text-xs font-medium text-accent hover:text-accent-hover"
+                              >
+                                Clear
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-xs text-text-muted">
+                                Using main caption
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setAccountCaptionsState((prev) => ({
+                                    ...prev,
+                                    [account.id]: {
+                                      overridden: true,
+                                      value: content.trim(),
+                                    },
+                                  }))
+                                }
+                                className="text-xs font-medium text-accent hover:text-accent-hover"
+                              >
+                                Edit
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <textarea
+                        rows={3}
+                        placeholder={
+                          state.overridden
+                            ? undefined
+                            : content || "Main caption..."
+                        }
+                        value={state.overridden ? state.value : ""}
+                        readOnly={!state.overridden}
+                        onChange={(e) =>
+                          state.overridden &&
+                          setAccountCaptionsState((prev) => ({
+                            ...prev,
+                            [account.id]: {
+                              ...(prev[account.id] ?? {
+                                overridden: false,
+                                value: "",
+                              }),
+                              overridden: true,
+                              value: e.target.value,
+                            },
+                          }))
+                        }
+                        className="w-full rounded-lg border border-input bg-bg px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 disabled:opacity-70"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <SchedulePostSidebar
@@ -421,7 +594,7 @@ export function TextPostForm({
             : null
         }
       >
-        <div className="hidden lg:block rounded-xl border border-border bg-bg p-4 shadow-sm -mt-3">
+        <div className="hidden lg:block rounded-xl border border-border bg-bg p-4 shadow-sm mt-16">
           <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-text">
             Post Preview
           </h3>

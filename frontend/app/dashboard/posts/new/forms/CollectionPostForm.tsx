@@ -297,10 +297,8 @@ export function CollectionPostForm({
         orderOffset++;
       }
     }
-    if (newImages.length > 0)
-      setImages((prev) => [...prev, ...newImages]);
-    if (newVideos.length > 0)
-      setVideos((prev) => [...prev, ...newVideos]);
+    if (newImages.length > 0) setImages((prev) => [...prev, ...newImages]);
+    if (newVideos.length > 0) setVideos((prev) => [...prev, ...newVideos]);
     if (unifiedInputRef.current) unifiedInputRef.current.value = "";
   };
 
@@ -544,11 +542,8 @@ export function CollectionPostForm({
     intendedModeRef.current = null;
 
     if (initialDraftId) {
-      const {
-        updateDraft,
-        updateAndPublish,
-        updatePost,
-      } = await import("@/app/actions/posts");
+      const { updateDraft, updateAndPublish, updatePost } =
+        await import("@/app/actions/posts");
       if (effectiveMode === "draft") {
         const result = await updateDraft(
           initialDraftId,
@@ -601,11 +596,9 @@ export function CollectionPostForm({
             (a) => a.platform === "twitter_x",
           );
           if (xAccount) {
-            createAutoPlug(
-              result.postId,
-              xAccount.id,
-              autoPlugConfig,
-            ).catch(() => {});
+            createAutoPlug(result.postId, xAccount.id, autoPlugConfig).catch(
+              () => {},
+            );
           }
         }
         return;
@@ -672,11 +665,9 @@ export function CollectionPostForm({
           (a) => a.platform === "twitter_x",
         );
         if (xAccount) {
-          createAutoPlug(
-            result.postId,
-            xAccount.id,
-            autoPlugConfig,
-          ).catch(() => {});
+          createAutoPlug(result.postId, xAccount.id, autoPlugConfig).catch(
+            () => {},
+          );
         }
       }
     }
@@ -799,8 +790,8 @@ export function CollectionPostForm({
             if (!showMax4Warning) return null;
             return (
               <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                ⚠ X (Twitter) supports max 4 attachments — only the first 4
-                will be published.
+                ⚠ X (Twitter) supports max 4 attachments — only the first 4 will
+                be published.
               </div>
             );
           })()}
@@ -821,7 +812,9 @@ export function CollectionPostForm({
               className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
             {showCaptionError && !content.trim() && (
-              <p className="mt-2 text-xs text-destructive">Caption is required</p>
+              <p className="mt-2 text-xs text-destructive">
+                Caption is required
+              </p>
             )}
 
             <input
@@ -843,8 +836,10 @@ export function CollectionPostForm({
                   : "border-border bg-bg-subtle"
               }`}
             >
-              <MdOutlineAddPhotoAlternate className="mb-2 h-8 w-8 text-text-muted" />
-              <MdOutlineVideocam className="mb-2 h-8 w-8 text-text-muted" />
+              <div className="flex items-center gap-2">
+                <MdOutlineAddPhotoAlternate className="mb-2 h-8 w-8 text-text-muted" />
+                <MdOutlineVideocam className="mb-2 h-8 w-8 text-text-muted" />
+              </div>
               <span className="text-sm font-medium">
                 Click to add images or videos
               </span>
