@@ -8,6 +8,7 @@ import {
   createResurfaceSchedule,
   createAutoPlug,
 } from "@/app/actions/resurface";
+import { useRememberedAccounts } from "@/lib/remembered-accounts";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
@@ -209,11 +210,19 @@ export function ThreadsPostForm({
   };
   const formRef = useRef<HTMLFormElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
+  const validIds = useMemo(
+    () => new Set(accounts.filter((a) => !a.tokenExpired).map((a) => a.id)),
+    [accounts],
+  );
+  const { remember, setRemember, getInitialSelectedIds, persistSelection } =
+    useRememberedAccounts("post-form");
   const [accountSearch, setAccountSearch] = useState("");
   const [posts, setPosts] = useState<ThreadPost[]>(() => [
     { id: 1, text: "", images: [], videos: [] },
   ]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
+    initialDraftId ? new Set() : getInitialSelectedIds(validIds),
+  );
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
@@ -284,6 +293,10 @@ export function ThreadsPostForm({
       cancelled = true;
     };
   }, [initialDraftId]);
+
+  useEffect(() => {
+    if (remember) persistSelection(selectedIds);
+  }, [remember, selectedIds, persistSelection]);
 
   const handleDeleteDraft = async () => {
     if (!initialDraftId) return;
@@ -929,6 +942,8 @@ export function ThreadsPostForm({
                 className="h-8 w-full text-xs rounded border border-border px-2 py-1 text-text placeholder-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
               />
             }
+            remember={remember}
+            onRememberChange={setRemember}
           />
 
           <div className="rounded-2xl border border-border bg-bg p-6 shadow-sm space-y-4">

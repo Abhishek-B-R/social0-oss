@@ -12,6 +12,7 @@ import {
   type PublishMode,
 } from "@/app/actions/posts";
 import { createAutoPlug } from "@/app/actions/resurface";
+import { useRememberedAccounts } from "@/lib/remembered-accounts";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
@@ -48,8 +49,16 @@ export function TextPostForm({
   const formRef = useRef<HTMLFormElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
   const [content, setContent] = useState("");
+  const { remember, setRemember, getInitialSelectedIds, persistSelection } =
+    useRememberedAccounts("post-form");
   const [accountSearch, setAccountSearch] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
+    if (initialDraftId) return new Set();
+    const validIds = new Set(
+      accounts.filter((a) => !a.tokenExpired).map((a) => a.id)
+    );
+    return getInitialSelectedIds(validIds);
+  });
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
@@ -87,6 +96,10 @@ export function TextPostForm({
       cancelled = true;
     };
   }, [initialDraftId]);
+
+  useEffect(() => {
+    if (remember) persistSelection(selectedIds);
+  }, [remember, selectedIds, persistSelection]);
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
   const selectedAccountIds = Array.from(selectedIds);
@@ -304,6 +317,8 @@ export function TextPostForm({
               className="h-8 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
             />
           }
+          remember={remember}
+          onRememberChange={setRemember}
         />
 
         <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">

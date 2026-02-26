@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { AccountBubbleSelector } from "@/components/AccountBubbleSelector";
 import { PLATFORMS } from "@/lib/platforms";
+import { useRememberedAccounts } from "@/lib/remembered-accounts";
 import { BulkUploadZone } from "./BulkUploadZone";
 import { ImageCard, type ImageItem } from "./ImageCard";
 import { BulkScheduleSettings } from "./BulkScheduleSettings";
@@ -45,9 +46,26 @@ function getNowTimeStr(): string {
   );
 }
 
+const REMEMBER_KEY_IMAGE = "bulk-image";
+
 export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
+  const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
+  const validIds = useMemo(
+    () => new Set(selectableAccounts.map((a) => a.id)),
+    [selectableAccounts]
+  );
+  const {
+    remember,
+    setRemember,
+    getInitialSelectedIds,
+    persistSelection,
+  } = useRememberedAccounts(REMEMBER_KEY_IMAGE);
+
   const [items, setItems] = useState<ImageItem[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
+    getInitialSelectedIds(validIds)
+  );
+  const [accountSearch, setAccountSearch] = useState("");
   const [bulkCaption, setBulkCaption] = useState("");
   const [startDate, setStartDate] = useState(getTodayStr);
   const [startTime, setStartTime] = useState(getNowTimeStr);
@@ -62,6 +80,24 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
   const platformName = (id: string) =>
     PLATFORMS.find((p) => p.id === id)?.name ?? id;
 
+  useEffect(() => {
+    if (remember) persistSelection(selectedIds);
+  }, [remember, selectedIds, persistSelection]);
+
+  const filteredAccounts = useMemo(() => {
+    if (!accountSearch.trim()) return accounts;
+    const q = accountSearch.toLowerCase().trim();
+    return accounts.filter((a) => {
+      const platformDisplay =
+        PLATFORMS.find((p) => p.id === a.platform)?.name ?? a.platform;
+      return (
+        a.platformUsername?.toLowerCase().includes(q) ||
+        a.platform?.toLowerCase().includes(q) ||
+        platformDisplay.toLowerCase().includes(q)
+      );
+    });
+  }, [accounts, accountSearch]);
+
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -70,7 +106,6 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
       return next;
     });
   };
-  const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
   const selectAll = () => {
     if (selectableAccounts.every((a) => selectedIds.has(a.id)))
       setSelectedIds(new Set());
@@ -202,11 +237,31 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-              <label className="mb-3 block text-sm font-semibold text-foreground">
-                Post to
-              </label>
+              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <label className="text-sm font-semibold text-foreground">
+                  Post to
+                </label>
+                <div className="flex items-center gap-3 min-w-0">
+                  <input
+                    type="search"
+                    placeholder="Search accounts..."
+                    value={accountSearch}
+                    onChange={(e) => setAccountSearch(e.target.value)}
+                    className="h-9 flex-1 min-w-0 max-w-[220px] rounded border border-border bg-bg px-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
+                  />
+                  <label className="flex shrink-0 items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)}
+                      className="rounded border-input bg-bg text-accent focus:ring-accent"
+                    />
+                    <span className="text-sm text-muted-foreground">Remember</span>
+                  </label>
+                </div>
+              </div>
               <AccountBubbleSelector
-                accounts={accounts}
+                accounts={filteredAccounts}
                 selectedIds={selectedIds}
                 onToggleAccount={toggleAccount}
                 selectAll={selectAll}

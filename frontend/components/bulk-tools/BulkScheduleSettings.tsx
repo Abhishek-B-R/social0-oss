@@ -5,13 +5,12 @@ import { HelpCircle } from "lucide-react";
 const CAPTION_MAX = 2200;
 const VIDEOS_PER_DAY_OPTIONS = Array.from({ length: 24 }, (_, i) => i + 1);
 const GAP_HOURS_OPTIONS = [0.5, 1, 2, 3, 4, 6, 8, 12, 24] as const;
-const COVER_FRAME_OPTIONS = [
-  { value: "first", label: "First Frame" },
-  { value: "middle", label: "Middle Frame" },
-  { value: "last", label: "Last Frame" },
-] as const;
+// const COVER_FRAME_OPTIONS = [
+//   { value: "first", label: "First Frame" },
+//   { value: "middle", label: "Middle Frame" },
+// ] as const;
 
-export type CoverFrame = (typeof COVER_FRAME_OPTIONS)[number]["value"];
+// export type CoverFrame = (typeof COVER_FRAME_OPTIONS)[number]["value"];
 
 type BulkScheduleSettingsProps = {
   variant: "video" | "image";
@@ -31,8 +30,8 @@ type BulkScheduleSettingsProps = {
   onApplyBulkSchedule: () => void;
   schedulePreview: string | null;
   /** Section 3 */
-  coverFrame?: CoverFrame;
-  onCoverFrameChange?: (v: CoverFrame) => void;
+  // coverFrame?: CoverFrame;
+  // onCoverFrameChange?: (v: CoverFrame) => void;
   totalItems: number;
   selectedAccountCount: number;
   onScheduleAll: () => void;
@@ -55,8 +54,8 @@ export function BulkScheduleSettings({
   onGapHoursChange,
   onApplyBulkSchedule,
   schedulePreview,
-  coverFrame = "middle",
-  onCoverFrameChange,
+  // coverFrame = "middle",
+  // onCoverFrameChange,
   totalItems,
   selectedAccountCount,
   onScheduleAll,
@@ -170,7 +169,9 @@ export function BulkScheduleSettings({
                 ))}
               </select>
               {gapHours < 24 && (
-                <p className="mt-1 text-xs text-muted-foreground">Within same day</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Within same day
+                </p>
               )}
             </div>
           )}
@@ -198,7 +199,7 @@ export function BulkScheduleSettings({
           Review individual {variant === "video" ? "videos" : "images"}, then
           click below to schedule all.
         </p>
-        {variant === "video" && onCoverFrameChange && (
+        {/* {variant === "video" && onCoverFrameChange && (
           <div className="mb-3">
             <label className="block text-xs font-medium text-muted-foreground mb-1">
               Video Cover Frame
@@ -215,7 +216,7 @@ export function BulkScheduleSettings({
               ))}
             </select>
           </div>
-        )}
+        )} */}
         <button
           type="button"
           onClick={onScheduleAll}

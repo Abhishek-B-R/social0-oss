@@ -11,6 +11,7 @@ import {
   createResurfaceSchedule,
   createAutoPlug,
 } from "@/app/actions/resurface";
+import { useRememberedAccounts } from "@/lib/remembered-accounts";
 import { PostFormOptions } from "../PostFormOptions";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
@@ -58,7 +59,15 @@ export function ImagePostForm({
   const [content, setContent] = useState("");
   const [images, setImages] = useState<ImageFile[]>([]);
   const imagesRef = useRef<ImageFile[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const validIds = useMemo(
+    () => new Set(accounts.filter((a) => !a.tokenExpired).map((a) => a.id)),
+    [accounts],
+  );
+  const { remember, setRemember, getInitialSelectedIds, persistSelection } =
+    useRememberedAccounts("post-form");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
+    initialDraftId ? new Set() : getInitialSelectedIds(validIds),
+  );
   const [accountSearch, setAccountSearch] = useState("");
   const [previewIndex, setPreviewIndex] = useState(0);
   const [mode, setMode] = useState<PublishMode>("now");
@@ -146,6 +155,10 @@ export function ImagePostForm({
       cancelled = true;
     };
   }, [initialDraftId]);
+
+  useEffect(() => {
+    if (remember) persistSelection(selectedIds);
+  }, [remember, selectedIds, persistSelection]);
 
   const addImageFromClipboard = (file: File) => {
     if (!file.type.startsWith("image/")) return;
@@ -634,6 +647,8 @@ export function ImagePostForm({
                 className="h-8 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
               />
             }
+            remember={remember}
+            onRememberChange={setRemember}
           />
 
           <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm space-y-4">
