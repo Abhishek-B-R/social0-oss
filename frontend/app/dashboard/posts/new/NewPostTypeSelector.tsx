@@ -15,7 +15,11 @@ import {
   SiHashnode,
 } from "react-icons/si";
 import { HiOutlineDocumentText } from "react-icons/hi";
-import { MdOutlineImage, MdOutlineVideoLibrary, MdOutlineCollections } from "react-icons/md";
+import {
+  MdOutlineImage,
+  MdOutlineVideoLibrary,
+  MdOutlineCollections,
+} from "react-icons/md";
 import { TbListDetails } from "react-icons/tb";
 import { CONTENT_TYPES } from "@/lib/content-types";
 

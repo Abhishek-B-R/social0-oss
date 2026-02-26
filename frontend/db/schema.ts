@@ -34,6 +34,7 @@ export const postStatusEnum = pgEnum("post_status", [
   "scheduled",
   "publishing",
   "published",
+  "partial",
   "failed",
 ]);
 

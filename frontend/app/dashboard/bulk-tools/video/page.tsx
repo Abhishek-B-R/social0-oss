@@ -16,7 +16,8 @@ const VIDEO_PLATFORMS = new Set<string>(
 
 function sortAccounts<T extends { platform: string }>(accounts: T[]): T[] {
   return [...accounts].sort(
-    (a, b) => platformOrder.indexOf(a.platform) - platformOrder.indexOf(b.platform),
+    (a, b) =>
+      platformOrder.indexOf(a.platform) - platformOrder.indexOf(b.platform),
   );
 }
 
@@ -37,13 +38,12 @@ export default async function BulkToolsVideoPage() {
     },
   });
 
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   const skipExpiryDisplay = new Set(["youtube", "tiktok"]);
   const accounts = sortAccounts(
     all
-      .filter(
-        (a) => a.isActive !== false && VIDEO_PLATFORMS.has(a.platform),
-      )
+      .filter((a) => a.isActive !== false && VIDEO_PLATFORMS.has(a.platform))
       .map((a) => ({
         id: a.id,
         platform: a.platform,
@@ -54,7 +54,8 @@ export default async function BulkToolsVideoPage() {
           ? false
           : !skipExpiryDisplay.has(a.platform) &&
             (a.tokenStatus === "expired" ||
-              (!!a.tokenExpiresAt && new Date(a.tokenExpiresAt).getTime() < now)),
+              (!!a.tokenExpiresAt &&
+                new Date(a.tokenExpiresAt).getTime() < now)),
       })),
   );
 

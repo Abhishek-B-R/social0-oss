@@ -87,6 +87,15 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showContentError, setShowContentError] = useState(false);
+
+  const trimmed = content.trim();
+  const [firstLine, ...restLines] = trimmed.split(/\r?\n/);
+  const titleLine = firstLine.trim();
+  const bodyText = restLines.join("\n").trim();
+  const hasTitle = titleLine.length > 0;
+  const hasBody = bodyText.length > 0;
+  const isBlogValid = hasTitle && hasBody;
 
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
@@ -126,6 +135,11 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!isBlogValid) {
+      setShowContentError(true);
+      return;
+    }
+    setShowContentError(false);
     setLoading(true);
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
@@ -135,7 +149,6 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
       effectiveMode,
       scheduledAt,
       [],
-      { contentType: "blog" },
     );
     setLoading(false);
     if (result.success) {
@@ -195,7 +208,9 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
             onCancel={() => router.push("/dashboard/posts")}
             submitLabel={submitLabel}
             submitDisabled={
-              accounts.length === 0 || (mode === "scheduled" && !scheduledAt)
+              accounts.length === 0 ||
+              !isBlogValid ||
+              (mode === "scheduled" && !scheduledAt)
             }
             hideScheduleAndActions
             searchSlot={
@@ -237,6 +252,11 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
           className="w-full resize-y min-h-[400px] px-6 py-4 text-text placeholder-text-subtle border-0 focus:ring-0 focus:outline-none font-mono text-sm leading-relaxed"
           required
         />
+        {showContentError && !isBlogValid && (
+          <p className="px-6 pb-4 text-xs text-destructive">
+            Title and content are required
+          </p>
+        )}
       </div>
 
       </div>
@@ -248,7 +268,9 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
         setScheduledAt={setScheduledAt}
         loading={loading}
         submitDisabled={
-          accounts.length === 0 || (mode === "scheduled" && !scheduledAt)
+          accounts.length === 0 ||
+          !isBlogValid ||
+          (mode === "scheduled" && !scheduledAt)
         }
         hasAccountSelected={selectedIds.size > 0}
         error={error}

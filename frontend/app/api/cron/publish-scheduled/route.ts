@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { posts } from "@/db/schema";
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, lt, lte } from "drizzle-orm";
 import { executePublish } from "@/app/actions/publish";
 import { constantTimeEquals } from "@/lib/validation";
 
@@ -28,6 +28,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   }
+
+  // Mark stuck "publishing" posts as failed so they don't stay in limbo forever
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  await db
+    .update(posts)
+    .set({ status: "failed", updatedAt: new Date() })
+    .where(
+      and(eq(posts.status, "publishing"), lt(posts.updatedAt, oneHourAgo)),
+    );
 
   const now = new Date();
   const due = await db

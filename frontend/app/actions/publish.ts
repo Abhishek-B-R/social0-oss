@@ -19,7 +19,10 @@ import {
 } from "@/lib/linkedin-articles";
 import { uploadLinkedInImage, uploadLinkedInVideo } from "@/lib/linkedin-media";
 import { publishToPlatform } from "@/lib/publish-platform";
-import { isValidPostId } from "@/lib/publish-validation";
+import {
+  isValidPostId,
+  validateCollectionMedia,
+} from "@/lib/publish-validation";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import { uploadTwitterImage, uploadTwitterVideo } from "@/lib/twitter-media";
 import { TwitterApi } from "twitter-api-v2";
@@ -196,6 +199,20 @@ export async function executePublish(
         error: "Publish already in progress",
       });
       continue;
+    }
+
+    // Collection/mixed media: log per-platform warnings (do not fail publish)
+    if (post.mediaIds?.length) {
+      const collectionCheck = validateCollectionMedia(
+        post.mediaIds,
+        pub.platform,
+      );
+      if (collectionCheck.warning) {
+        console.warn(
+          `[executePublish] ${pub.platform} collection media:`,
+          collectionCheck.warning,
+        );
+      }
     }
 
     if (
@@ -946,7 +963,7 @@ export async function executePublish(
       }
       const mediaIds: string[] = [];
 
-      // Fetch media if post has mediaIds
+      // Fetch media in post order; Twitter supports up to 4 attachments (any mix of images and videos)
       if (post.mediaIds && post.mediaIds.length > 0) {
         const media = await db
           .select({
@@ -957,94 +974,56 @@ export async function executePublish(
           .from(mediaUploads)
           .where(inArray(mediaUploads.id, post.mediaIds));
 
-        if (media.length > 0) {
-          const images = media.filter((m) => m.mimeType?.startsWith("image/"));
-          const videos = media.filter((m) => m.mimeType?.startsWith("video/"));
+        const order = new Map(post.mediaIds.map((id, i) => [id, i]));
+        const ordered = media
+          .filter((m) => m.url && m.mimeType)
+          .sort(
+            (a, b) =>
+              (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0),
+          )
+          .slice(0, 4) as { id: string; url: string; mimeType: string }[];
 
-          const videoWithUrl = videos.find((v) => v.url);
-          if (videoWithUrl) {
-            // Twitter supports one video per tweet
-            try {
-              const videoMediaId = await uploadTwitterVideo(
-                videoWithUrl.url!,
-                accessToken,
-                accessSecret,
-              );
-              mediaIds.push(videoMediaId);
-            } catch (e) {
-              console.error("[executePublish] Twitter video upload failed:", e);
-              const err =
-                e instanceof Error ? e.message : "Failed to upload video";
-              await db
-                .update(postPublications)
-                .set({
-                  status: "failed",
-                  lastError: `Video upload failed: ${err}`,
-                  updatedAt: new Date(),
-                })
-                .where(eq(postPublications.id, pub.publicationId));
-              results.push({
-                platform: pub.platform,
-                connectedAccountId: pub.connectedAccountId,
+        let twitterUploadFailed = false;
+        for (const m of ordered) {
+          try {
+            const twitterMediaId = m.mimeType.startsWith("video/")
+              ? await uploadTwitterVideo(
+                  m.url,
+                  accessToken,
+                  accessSecret,
+                )
+              : await uploadTwitterImage(
+                  m.url,
+                  accessToken,
+                  accessSecret,
+                );
+            mediaIds.push(twitterMediaId);
+          } catch (e) {
+            console.error(
+              "[executePublish] Twitter media upload failed:",
+              e,
+            );
+            const err =
+              e instanceof Error ? e.message : "Failed to upload media";
+            await db
+              .update(postPublications)
+              .set({
                 status: "failed",
-                error: `Video upload failed: ${err}`,
-              });
-              continue;
-            }
-          } else {
-            const imagesWithUrl = images.filter((i) => i.url);
-            if (imagesWithUrl.length > 0) {
-              // Twitter supports up to 4 images per tweet
-              try {
-                for (const img of imagesWithUrl.slice(0, 4)) {
-                  const imageMediaId = await uploadTwitterImage(
-                    img.url!,
-                    accessToken,
-                    accessSecret,
-                  );
-                  mediaIds.push(imageMediaId);
-                }
-              } catch (e) {
-                console.error("[executePublish] Twitter image upload failed:", e);
-                const err =
-                  e instanceof Error ? e.message : "Failed to upload images";
-                await db
-                  .update(postPublications)
-                  .set({
-                    status: "failed",
-                    lastError: `Image upload failed: ${err}`,
-                    updatedAt: new Date(),
-                  })
-                  .where(eq(postPublications.id, pub.publicationId));
-                results.push({
-                  platform: pub.platform,
-                  connectedAccountId: pub.connectedAccountId,
-                  status: "failed",
-                  error: `Image upload failed: ${err}`,
-                });
-                continue;
-              }
-            } else if (images.length > 0) {
-              // Post has image media but no URL
-              await db
-                .update(postPublications)
-                .set({
-                  status: "failed",
-                  lastError:
-                    "Image has no URL. Re-upload the image and try again.",
-                  updatedAt: new Date(),
-                })
-                .where(eq(postPublications.id, pub.publicationId));
-              results.push({
-                platform: pub.platform,
-                connectedAccountId: pub.connectedAccountId,
-                status: "failed",
-                error: "Image has no URL. Re-upload and retry.",
-              });
-              continue;
-            }
+                lastError: err,
+                updatedAt: new Date(),
+              })
+              .where(eq(postPublications.id, pub.publicationId));
+            results.push({
+              platform: pub.platform,
+              connectedAccountId: pub.connectedAccountId,
+              status: "failed",
+              error: err,
+            });
+            twitterUploadFailed = true;
+            break;
           }
         }
+        if (twitterUploadFailed) continue;
       }
 
       // Twitter thread: split by "---" for native thread (reply chain)
@@ -1367,13 +1346,35 @@ export async function executePublish(
   }
 
   // Always update post status so we never leave it stuck on "publishing"
-  const allPublished = results.every((r) => r.status === "published");
-  const anyFailed = results.some((r) => r.status === "failed");
-  const newPostStatus = anyFailed
-    ? "failed"
-    : allPublished
-      ? "published"
-      : post.status;
+  console.log("Publication results:", results);
+  console.log(
+    "Succeeded:",
+    results.filter((r) => r.status === "published").length,
+  );
+  console.log(
+    "Failed:",
+    results.filter((r) => r.status === "failed").length,
+  );
+  const total = results.length;
+  const succeeded = results.filter((r) => r.status === "published").length;
+  const failed = results.filter((r) => r.status === "failed").length;
+  const anyFailed = failed > 0;
+
+  // Status rules:
+  // - No results -> keep existing status
+  // - All failed -> failed
+  // - All succeeded -> published
+  // - Mixed success/failure -> partial
+  let newPostStatus = post.status;
+  if (total > 0) {
+    if (failed === total) {
+      newPostStatus = "failed";
+    } else if (succeeded === total) {
+      newPostStatus = "published";
+    } else if (succeeded > 0 && failed > 0) {
+      newPostStatus = "partial";
+    }
+  }
   if (newPostStatus !== post.status) {
     await db
       .update(posts)

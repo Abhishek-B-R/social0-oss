@@ -1,25 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { PublishButton } from "./PublishButton";
-import { PostCardDeleteButton } from "./PostCardDeleteButton";
 import { PlatformIcon } from "./PlatformIcon";
-import { AddResurfaceCardButton } from "@/components/repost/AddResurfaceCardButton";
-import { AddAutoPlugCardButton } from "@/components/autoplug/AddAutoPlugCardButton";
-import {
-  RESURFACE_PLATFORMS,
-  isWithinResurfaceWindow,
-  isWithinAutoPlugWindow,
-} from "@/lib/resurface-utils";
 import type { PublicationRow } from "./posts-list-data";
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: "Draft",
-  scheduled: "Scheduled",
-  publishing: "Publishing",
-  published: "Posted",
-  failed: "Failed",
-};
 
 type PostRow = {
   id: string;
@@ -66,15 +49,28 @@ function getDisplayType(
   return "Text";
 }
 
+function getUiStatus(post: PostRow): string {
+  if (post.status === "publishing" && post.createdAt) {
+    const createdMs = new Date(post.createdAt).getTime();
+    const ageMs = Date.now() - createdMs;
+    const TEN_MIN_MS = 10 * 60 * 1000;
+    if (ageMs > TEN_MIN_MS) {
+      return "failed";
+    }
+  }
+  return post.status ?? "draft";
+}
+
 function getTimestampLabel(
   post: PostRow,
   publications: { publishedAt: Date | null }[],
 ): string {
+  const effectiveStatus = getUiStatus(post);
   const dateOpts: Intl.DateTimeFormatOptions = { dateStyle: "short", timeStyle: "short" };
-  if (post.status === "scheduled" && post.scheduledAt) {
+  if (effectiveStatus === "scheduled" && post.scheduledAt) {
     return `Scheduled for ${new Date(post.scheduledAt).toLocaleString(undefined, dateOpts)}`;
   }
-  if (post.status === "published") {
+  if (effectiveStatus === "published") {
     const publishedAts = publications
       .map((p) => p.publishedAt)
       .filter((d): d is Date => d != null);
@@ -96,6 +92,8 @@ function getStatusBadge(status: string | null): { label: string; className: stri
   switch (status) {
     case "published":
       return { label: "Posted", prefix: "●", className: "bg-emerald-600 text-white" };
+    case "partial":
+      return { label: "Partial", prefix: "◐", className: "bg-violet-600 text-white" };
     case "publishing":
       return { label: "Publishing", prefix: "◌", className: "bg-amber-400 text-amber-950" };
     case "scheduled":
@@ -132,7 +130,7 @@ export function PostListCards({
 }: {
   userPosts: PostRow[];
   publicationsByPostId: Record<string, PublicationRow[]>;
-  firstMediaByPost: Map<string, string>;
+  firstMediaByPost: Map<string, { mimeType: string; originalFilename: string | null }>;
   resurfaceByPostId?: Record<string, ResurfaceForPost>;
   autoPlugByPostId?: Record<string, AutoPlugForPost>;
   emptyMessage?: string;
@@ -158,26 +156,30 @@ export function PostListCards({
   return (
     <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {userPosts.map((post) => {
-        const mime = firstMediaByPost.get(post.id) ?? "";
+        const mediaMeta = firstMediaByPost.get(post.id);
+        const mime = mediaMeta?.mimeType ?? "";
         const { parts } = getThreadPreview(post);
         const partCount = parts.length;
         const mediaIds = post.mediaIds ?? [];
         const displayType = getDisplayType(post, partCount, mime, mediaIds);
+        const uiStatus = getUiStatus(post);
         const timestampLabel = getTimestampLabel(post, publicationsByPostId[post.id] ?? []);
 
         const PREVIEW_LEN = 120;
-        const firstPart = parts[0] ?? "";
-        const preview =
-          firstPart.length > PREVIEW_LEN
+        const firstPart = (parts[0] ?? "").trim();
+        const hasCaption = firstPart.length > 0;
+        const preview = hasCaption
+          ? firstPart.length > PREVIEW_LEN
             ? `${firstPart.slice(0, PREVIEW_LEN)}…`
-            : firstPart || "(No caption)";
+            : firstPart
+          : "No caption";
 
         const publicationsList = publicationsByPostId[post.id] ?? [];
-        const statusBadge = getStatusBadge(post.status);
+        const statusBadge = getStatusBadge(uiStatus);
         const showIcons = publicationsList.slice(0, MAX_PLATFORM_ICONS);
         const extraCount = publicationsList.length > MAX_PLATFORM_ICONS ? publicationsList.length - MAX_PLATFORM_ICONS : 0;
 
-        const isPublishing = post.status === "publishing";
+        const isPublishing = uiStatus === "publishing";
         const cardBorderClass = isPublishing
           ? "border-l-4 border-l-amber-400 border border-border"
           : "border border-border";
@@ -203,7 +205,13 @@ export function PostListCards({
                 </span>
               </div>
               {/* MIDDLE: caption/title — larger, bolder, 2 lines */}
-              <p className="mb-2 line-clamp-2 text-[15px] font-semibold leading-snug text-foreground">
+              <p
+                className={`mb-2 line-clamp-2 text-[15px] leading-snug ${
+                  hasCaption
+                    ? "font-semibold text-foreground"
+                    : "font-medium text-muted-foreground italic"
+                }`}
+              >
                 {preview}
               </p>
               {/* BOTTOM ROW: [Platform icons left] [Date right muted] */}
@@ -228,109 +236,6 @@ export function PostListCards({
                 </span>
               </div>
             </Link>
-            {/* Footer: actions — same logic, improved styling */}
-            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-2.5 bg-muted/30">
-              {post.status === "draft" && (
-                <Link
-                  href={`/dashboard/posts/${post.id}/edit`}
-                  className="inline-flex items-center rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-                >
-                  Edit
-                </Link>
-              )}
-              {(post.status === "draft" || post.status === "scheduled") && (
-                <PostCardDeleteButton postId={post.id} status={post.status} />
-              )}
-              {(post.status === "draft" ||
-                post.status === "scheduled" ||
-                post.status === "failed") && (
-                <PublishButton
-                  postId={post.id}
-                  label={post.status === "failed" ? "Retry publish" : "Publish now"}
-                />
-              )}
-              {(publicationsByPostId[post.id] ?? [])
-                .filter((p) => p.platformPostUrl)
-                .map((pub, i) => (
-                  <a
-                    key={`${post.id}-${i}-${pub.platformPostUrl}`}
-                    href={pub.platformPostUrl ?? "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-medium text-accent hover:text-accent-hover"
-                  >
-                    View
-                  </a>
-                ))}
-              {post.status === "published" &&
-                !resurfaceByPostId[post.id] &&
-                (() => {
-                  const pubs = publicationsByPostId[post.id] ?? [];
-                  const supported = pubs.filter((p) =>
-                    RESURFACE_PLATFORMS.includes(
-                      p.platform as (typeof RESURFACE_PLATFORMS)[number],
-                    ),
-                  );
-                  const publishedAts = supported
-                    .map((p) => p.publishedAt)
-                    .filter((d): d is Date => d != null);
-                  const earliest =
-                    publishedAts.length > 0
-                      ? new Date(
-                          Math.min(...publishedAts.map((d) => new Date(d).getTime())),
-                        )
-                      : null;
-                  return (
-                    supported.length > 0 &&
-                    earliest &&
-                    isWithinResurfaceWindow(earliest) && (
-                      <AddResurfaceCardButton
-                        postId={post.id}
-                        publishedAt={earliest}
-                        publications={pubs.map((p) => ({
-                          connectedAccountId: p.connectedAccountId,
-                          platform: p.platform,
-                        }))}
-                      />
-                    )
-                  );
-                })()}
-              {post.status === "published" &&
-                (() => {
-                  const pubs = publicationsByPostId[post.id] ?? [];
-                  const xPubs = pubs.filter((p) => p.platform === "twitter_x");
-                  const publishedAts = xPubs
-                    .map((p) => p.publishedAt)
-                    .filter((d): d is Date => d != null);
-                  const earliest =
-                    publishedAts.length > 0
-                      ? new Date(
-                          Math.min(...publishedAts.map((d) => new Date(d).getTime())),
-                        )
-                      : null;
-                  const plug = autoPlugByPostId[post.id];
-                  const canAddPlug =
-                    xPubs.length > 0 &&
-                    earliest &&
-                    isWithinAutoPlugWindow(earliest) &&
-                    plug?.status !== "watching" &&
-                    plug?.status !== "triggered";
-                  return (
-                    canAddPlug && (
-                      <AddAutoPlugCardButton
-                        postId={post.id}
-                        publishedAt={earliest!}
-                        publications={pubs.map((p) => ({
-                          connectedAccountId: p.connectedAccountId,
-                          platform: p.platform,
-                          profileImageUrl: p.profileImageUrl,
-                          platformUsername: p.platformUsername,
-                        }))}
-                      />
-                    )
-                  );
-                })()}
-            </div>
           </li>
         );
       })}

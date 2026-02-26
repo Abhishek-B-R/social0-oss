@@ -88,19 +88,19 @@ export default async function NewPostByTypePage({
       <div className="mb-3 flex items-center gap-2">
         <Link
           href="/dashboard/posts/new"
-          className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+          className="text-sm font-medium text-text-muted hover:text-text transition-colors"
         >
           ← Back to post types
         </Link>
-        <span className="text-gray-400">/</span>
-        <span className="text-sm font-medium text-gray-900">
+        <span className="text-text-muted">/</span>
+        <span className="text-sm font-medium text-text">
           {contentType.name}
         </span>
       </div>
-      <h2 className="text-2xl font-extrabold text-gray-900 mb-2">
+      <h2 className="text-2xl font-extrabold text-text mb-2">
         {contentType.name}
       </h2>
-      <p className="text-gray-500 mb-8 font-medium">
+      <p className="text-text-muted mb-8 font-medium">
         {contentType.description}
       </p>
       <FormComponent accounts={filtered} />

@@ -45,7 +45,10 @@ describe("AutoPlugPanel", () => {
     );
     await userEvent.click(screen.getByRole("switch", { name: "" }));
     const likesButton = screen.getByRole("button", { name: /Likes/i });
-    expect(likesButton).toHaveAttribute("class", expect.stringContaining("bg-white"));
+    expect(likesButton).toHaveAttribute(
+      "class",
+      expect.stringContaining("bg-background"),
+    );
   });
 
   it("clicking Retweets pill switches metricType", async () => {

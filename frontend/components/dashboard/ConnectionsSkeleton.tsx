@@ -14,12 +14,14 @@ export function ConnectionsSkeleton() {
                 </div>
                 <div className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-bg-muted sm:h-7 sm:w-14 sm:rounded-lg" />
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1.5">
-                  <div className="h-6 min-w-[4rem] animate-pulse rounded-md bg-bg-muted" />
-                  <div className="h-6 min-w-[5rem] animate-pulse rounded-md bg-bg-muted" />
-                  <div className="h-6 min-w-[3.5rem] animate-pulse rounded-md bg-bg-muted" />
+                  <div className="h-6 min-w-16 animate-pulse rounded-md bg-bg-muted" />
+                  <div className="h-6 min-w-20 animate-pulse rounded-md bg-bg-muted" />
+                  <div className="h-6 min-w-14 animate-pulse rounded-md bg-bg-muted" />
                 </div>
               </div>
-              {i < 8 && <div className="my-1.5 border-t border-border-subtle" />}
+              {i < 8 && (
+                <div className="my-1.5 border-t border-border-subtle" />
+              )}
             </div>
           ))}
         </div>

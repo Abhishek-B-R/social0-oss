@@ -22,7 +22,9 @@ export default function FacebookSelectPage() {
       return;
     }
     try {
-      const res = await fetch(`/api/connect/facebook/select?token=${encodeURIComponent(token)}`);
+      const res = await fetch(
+        `/api/connect/facebook/select?token=${encodeURIComponent(token)}`,
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load pages");
       setPages(data.pages || []);
@@ -62,7 +64,9 @@ export default function FacebookSelectPage() {
   if (loading) {
     return (
       <div className="rounded-2xl border border-border bg-bg-elevated p-8 shadow-sm">
-        <p className="text-text-muted font-medium">Loading your Facebook Pages...</p>
+        <p className="text-text-muted font-medium">
+          Loading your Facebook Pages...
+        </p>
       </div>
     );
   }
@@ -94,7 +98,7 @@ export default function FacebookSelectPage() {
           {pages.map((page) => (
             <label
               key={page.id}
-              className="flex items-center gap-3 p-4 rounded-xl border border-border bg-bg-elevated cursor-pointer hover:bg-bg-subtle has-[:checked]:border-accent has-[:checked]:bg-accent/10"
+              className="flex items-center gap-3 p-4 rounded-xl border border-border bg-bg-elevated cursor-pointer hover:bg-bg-subtle has-checked:border-accent has-checked:bg-accent/10"
             >
               <input
                 type="radio"

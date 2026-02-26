@@ -226,6 +226,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const postsRef = useRef<ThreadPost[]>(posts);
+  const [showFirstTextError, setShowFirstTextError] = useState(false);
 
   useEffect(() => {
     postsRef.current = posts;
@@ -533,6 +534,11 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!firstPostText) {
+      setShowFirstTextError(true);
+      return;
+    }
+    setShowFirstTextError(false);
     setLoading(true);
     setOverlayPhase("uploading");
 
@@ -681,10 +687,8 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
   };
 
   const anyOverLimit = posts.some((p) => p.text.length > MAX_CHARS);
-  const hasContent = posts.some(
-    (p) =>
-      p.text.trim().length > 0 || p.images.length > 0 || p.videos.length > 0,
-  );
+  const firstPostText = posts[0]?.text.trim() ?? "";
+  const hasContent = firstPostText.length > 0;
 
   const submitLabel =
     mode === "draft"
@@ -812,6 +816,11 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
                   maxLength={MAX_CHARS}
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
                 />
+                {index === 0 && showFirstTextError && !firstPostText && (
+                  <p className="mt-1 text-xs text-destructive">
+                    Caption is required
+                  </p>
+                )}
                 <div className="flex justify-end text-sm">
                   <span
                     className={

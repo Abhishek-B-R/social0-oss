@@ -154,17 +154,29 @@ export async function getPostsListData({
   const firstIds = userPostsWithStatus
     .map((p) => (p.mediaIds ?? [])[0])
     .filter((id): id is string => !!id);
-  const firstMediaByPost = new Map<string, string>();
+  const firstMediaByPost = new Map<
+    string,
+    { mimeType: string; originalFilename: string | null }
+  >();
   if (firstIds.length > 0) {
     const medias = await db
-      .select({ id: mediaUploads.id, mimeType: mediaUploads.mimeType })
+      .select({
+        id: mediaUploads.id,
+        mimeType: mediaUploads.mimeType,
+        originalFilename: mediaUploads.originalFilename,
+      })
       .from(mediaUploads)
       .where(inArray(mediaUploads.id, firstIds));
     for (const p of userPostsWithStatus) {
       const firstId = (p.mediaIds ?? [])[0];
       if (firstId) {
         const media = medias.find((m) => m.id === firstId);
-        if (media) firstMediaByPost.set(p.id, media.mimeType);
+        if (media) {
+          firstMediaByPost.set(p.id, {
+            mimeType: media.mimeType,
+            originalFilename: media.originalFilename ?? null,
+          });
+        }
       }
     }
   }

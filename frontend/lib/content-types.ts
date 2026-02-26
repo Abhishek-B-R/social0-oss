@@ -48,7 +48,7 @@ export const CONTENT_TYPES = [
     name: "Blog / Article",
     description: "Long-form articles and blog posts",
     slug: "blog",
-    platforms: ["hashnode", "devto", "linkedin"],
+    platforms: ["hashnode", "devto"],
   },
   {
     id: "threads",
@@ -62,14 +62,7 @@ export const CONTENT_TYPES = [
     name: "Collection (images & videos)",
     description: "Collection of images and videos with text in one single post",
     slug: "collection",
-    platforms: [
-      "facebook",
-      "twitter_x",
-      "threads",
-      "bluesky",
-      "instagram",
-      "pinterest",
-    ],
+    platforms: ["twitter_x", "threads", "instagram"],
   },
 ] as const;
 

@@ -53,6 +53,44 @@ export function validateMediaCount(mediaIds: string[] | null | undefined): strin
   return null;
 }
 
+export type CollectionMediaValidation = {
+  valid: boolean;
+  warning: string | null;
+};
+
+/** Validate collection/mixed media count per platform. Returns warning only; does not fail publish. */
+export function validateCollectionMedia(
+  mediaIds: string[] | null | undefined,
+  platform: string,
+): CollectionMediaValidation {
+  const count = mediaIds?.length ?? 0;
+  if (count === 0) return { valid: true, warning: null };
+
+  switch (platform) {
+    case "twitter_x":
+    case "bluesky":
+      if (count > 4) {
+        return {
+          valid: true,
+          warning:
+            "X (Twitter) and Bluesky support max 4 attachments — only the first 4 will be published.",
+        };
+      }
+      return { valid: true, warning: null };
+    case "instagram":
+    case "threads":
+      if (count > 10) {
+        return {
+          valid: true,
+          warning: `${platform === "instagram" ? "Instagram" : "Threads"} supports max 10 carousel items — only the first 10 will be published.`,
+        };
+      }
+      return { valid: true, warning: null };
+    default:
+      return { valid: true, warning: null };
+  }
+}
+
 /** UUID v4 format (no secrets, just shape). */
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

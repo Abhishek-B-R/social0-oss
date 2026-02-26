@@ -64,9 +64,7 @@ export default function BulkToolsPage() {
             <Video className="h-8 w-8" />
           </div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-text">
-              Bulk Video Upload
-            </h2>
+            <h2 className="text-lg font-bold text-text">Bulk Video Upload</h2>
             <span className="rounded-md bg-bg-muted px-2 py-0.5 text-xs font-medium text-text">
               NEW
             </span>
@@ -86,9 +84,7 @@ export default function BulkToolsPage() {
             <ImageIcon className="h-8 w-8" />
           </div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-text">
-              Bulk Image Upload
-            </h2>
+            <h2 className="text-lg font-bold text-text">Bulk Image Upload</h2>
             <span className="rounded-md bg-bg-muted px-2 py-0.5 text-xs font-medium text-text">
               NEW
             </span>

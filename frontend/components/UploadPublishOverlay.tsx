@@ -29,11 +29,11 @@ type UploadPublishOverlayProps = {
 };
 
 const DONT_KEEP_WAITING = (
-  <p className="mt-4 text-sm text-gray-600">
+  <p className="mt-4 text-sm text-text-muted">
     Don&apos;t keep waiting — if you have another post idea,{" "}
     <Link
       href="/dashboard/posts/new"
-      className="font-medium text-emerald-600 hover:text-emerald-700"
+      className="font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
     >
       post/schedule
     </Link>{" "}
@@ -68,20 +68,20 @@ export function UploadPublishOverlay({
 
   return (
     <div
-      className="fixed inset-0 left-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-[2px] lg:left-64"
+      className="fixed inset-0 left-0 z-50 flex items-center justify-center bg-bg/70 backdrop-blur-[2px] dark:bg-black/70 lg:left-64"
       aria-live="polite"
       aria-busy={!showLinks}
     >
       <div className="mx-4 flex max-w-md flex-col items-center text-center">
         {showLinks ? (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
-              <Send className="h-7 w-7 text-emerald-600" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
+              <Send className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <h2 className="mt-4 text-xl font-semibold text-gray-900">
+            <h2 className="mt-4 text-xl font-semibold text-text">
               Post published
             </h2>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-text-muted">
               Your post is being sent to all selected platforms. It can take a
               few minutes to appear everywhere.
             </p>
@@ -95,7 +95,7 @@ export function UploadPublishOverlay({
               </Link>
               <Link
                 href="/dashboard/posts"
-                className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                className="rounded-xl border border-border bg-bg px-5 py-2.5 text-sm font-semibold text-text hover:bg-bg-muted transition-colors"
               >
                 View posts
               </Link>
@@ -103,15 +103,15 @@ export function UploadPublishOverlay({
           </>
         ) : isUploading ? (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
-              <Upload className="h-7 w-7 animate-pulse text-emerald-600" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
+              <Upload className="h-7 w-7 animate-pulse text-emerald-600 dark:text-emerald-400" />
             </div>
-            <h2 className="mt-4 text-xl font-semibold text-gray-900">
+            <h2 className="mt-4 text-xl font-semibold text-text">
               Uploading {mediaTypeLabel(mediaType).toLowerCase()}
               {uploadProgress ? ` · ${uploadProgress}` : ""}…
             </h2>
             {(uploadProgress || mediaType) && (
-              <p className="mt-1 flex items-center justify-center gap-1.5 text-sm text-gray-600">
+              <p className="mt-1 flex items-center justify-center gap-1.5 text-sm text-text-muted">
                 <MediaTypeIcon type={mediaType} />
                 {mediaTypeLabel(mediaType)}
                 {uploadProgress ? ` ${uploadProgress}` : ""}
@@ -121,18 +121,18 @@ export function UploadPublishOverlay({
           </>
         ) : (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
-              <Loader2 className="h-7 w-7 animate-spin text-emerald-600" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
+              <Loader2 className="h-7 w-7 animate-spin text-emerald-600 dark:text-emerald-400" />
             </div>
-            <h2 className="mt-4 text-xl font-semibold text-gray-900">
+            <h2 className="mt-4 text-xl font-semibold text-text">
               {isScheduling ? "Scheduling post…" : "Publishing post…"}
             </h2>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-text-muted">
               {isScheduling
                 ? "Your post is being scheduled to all selected platforms."
                 : "Publishing your post to all the places."}
             </p>
-            <p className="mt-3 rounded-lg bg-gray-100/90 px-4 py-2 text-xs text-gray-600">
+            <p className="mt-3 rounded-lg bg-bg-muted/90 px-4 py-2 text-xs text-text-muted">
               {isScheduling
                 ? "Scheduled posts will go out at the times you set."
                 : "Posts can take up to a few minutes to show on all platforms."}

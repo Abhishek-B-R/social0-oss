@@ -153,38 +153,40 @@ function AutoResurfacePanelInner({
   const content = (
     <>
       {!modalMode && (
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">
-            ♻️ Auto-Repost{" "}
-            {subtitle && (
-              <span className="text-muted-foreground font-normal">{subtitle}</span>
-            )}
-          </h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Reshare this post at intervals so it reaches more of your followers.
-            Only supported on X for now.
-          </p>
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">
+              ♻️ Auto-Repost{" "}
+              {subtitle && (
+                <span className="text-muted-foreground font-normal">
+                  {subtitle}
+                </span>
+              )}
+            </h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Reshare this post at intervals so it reaches more of your
+              followers. Only supported on X for now.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={enabled}
+            onClick={() => setEnabled((e) => !e)}
+            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
+              enabled ? "bg-emerald-600" : "bg-muted"
+            }`}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-background shadow transition-transform ${
+                enabled ? "translate-x-5" : "translate-x-0.5"
+              } mt-0.5`}
+            />
+          </button>
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={enabled}
-          onClick={() => setEnabled((e) => !e)}
-          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
-            enabled ? "bg-emerald-600" : "bg-muted"
-          }`}
-        >
-          <span
-            className={`inline-block h-5 w-5 transform rounded-full bg-background shadow transition-transform ${
-              enabled ? "translate-x-5" : "translate-x-0.5"
-            } mt-0.5`}
-          />
-        </button>
-      </div>
       )}
       {(enabled || modalMode) && (
-        <div className="mt-4 space-y-4 border-t border-border pt-4">
+        <div className="space-y-4 border-t border-border pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">
@@ -252,7 +254,9 @@ function AutoResurfacePanelInner({
 
           {extraIntervalHours.map((hours, index) => (
             <div key={index} className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground shrink-0">Then after</span>
+              <span className="text-xs text-muted-foreground shrink-0">
+                Then after
+              </span>
               <select
                 value={hours}
                 onChange={(e) =>

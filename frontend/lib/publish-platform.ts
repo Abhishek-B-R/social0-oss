@@ -47,6 +47,8 @@ type Post = {
 
 export type ThreadPart = { text: string; mediaIds: string[] };
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export function getThreadParts(post: Post): ThreadPart[] | null {
   const md = post.metadata;
   if (!md || typeof md !== "object") return null;
@@ -368,6 +370,28 @@ async function getMediaWithUrls(
   });
 }
 
+/** Fetch media by IDs in the same order as mediaIds; only allowlisted URLs. Used for collection/carousel. */
+async function getOrderedMediaWithUrls(
+  mediaIds: string[],
+): Promise<{ id: string; url: string; mimeType: string }[]> {
+  const allowed = getAllowedMediaOrigins();
+  if (!allowed.appUrl || !mediaIds.length) return [];
+  const media = await db
+    .select({
+      id: mediaUploads.id,
+      url: mediaUploads.url,
+      mimeType: mediaUploads.mimeType,
+    })
+    .from(mediaUploads)
+    .where(inArray(mediaUploads.id, mediaIds));
+  const filtered = media.filter((m): m is { id: string; url: string; mimeType: string } => {
+    if (!m.url || !m.mimeType) return false;
+    return isAllowedMediaUrl(m.url, allowed);
+  });
+  const order = new Map(mediaIds.map((id, i) => [id, i]));
+  return filtered.slice().sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+}
+
 const MEDIA_FETCH_TIMEOUT_MS = 60_000;
 const MEDIA_FETCH_RETRIES = 2;
 
@@ -627,6 +651,16 @@ async function publishToBluesky(
   appPassword: string | null,
 ): Promise<PublishPlatformResult> {
   try {
+    const contentType =
+      (post.metadata as Record<string, unknown> | null | undefined)?.[
+        "contentType"
+      ];
+    if (contentType === "collection") {
+      const err =
+        "Collection posts not supported on Bluesky — use Image Post or Video Post instead.";
+      return { status: "failed", lastError: err, error: err };
+    }
+
     if (!appPassword) {
       return {
         status: "failed",
@@ -680,18 +714,27 @@ async function publishToBluesky(
       };
     }
 
-    // Get media if present
-    const media = post.mediaIds?.length
-      ? await getMediaWithUrls(post.mediaIds)
+    // Get media if present (collection: up to 4 total, any mix of images and videos in order)
+    const orderedMedia = post.mediaIds?.length
+      ? await getOrderedMediaWithUrls(post.mediaIds)
       : [];
-    const images = media
-      .filter((m) => m.mimeType.startsWith("image/"))
-      .slice(0, 4); // Bluesky max 4 images
-    const videos = media.filter((m) => m.mimeType.startsWith("video/"));
+    const images = orderedMedia.filter((m) =>
+      m.mimeType.startsWith("image/"),
+    );
+    const videos = orderedMedia.filter((m) =>
+      m.mimeType.startsWith("video/"),
+    );
+    const selectedImages = images.slice(0, 4);
+
+    if (selectedImages.length > 0) {
+      console.log(
+        `Bluesky collection: posting ${selectedImages.length} images, ignoring ${videos.length} videos`,
+      );
+    }
 
     // Upload images and get blob refs (fetch with long timeout + retries so media server is reachable)
     const imageBlobs: Array<{ alt: string; image: unknown }> = [];
-    for (const img of images) {
+    for (const img of selectedImages) {
       try {
         const imageBuffer = await fetchMediaBytes(img.url);
 
@@ -731,9 +774,10 @@ async function publishToBluesky(
       }
     }
 
-    // Upload video and get blob ref (Bluesky supports one video per post, max 100MB)
+    // Upload video and get blob ref (Bluesky supports one video per post, max 100MB).
+    // Only use video mode when there are no images in the post.
     let videoBlob: unknown | null = null;
-    if (videos.length > 0) {
+    if (videos.length > 0 && selectedImages.length === 0) {
       const video = videos[0]; // Bluesky supports one video per post
       try {
         const videoBuffer = await fetchMediaBytes(video.url);
@@ -1001,8 +1045,8 @@ async function publishToBluesky(
       createdAt: new Date().toISOString(),
     };
 
-    // Add video embed if present (takes priority over images)
-    if (videoBlob) {
+    // Add video embed if present (takes priority over images) — but only when there are no images.
+    if (videoBlob && imageBlobs.length === 0) {
       record.embed = {
         $type: "app.bsky.embed.video",
         video: videoBlob,
@@ -1127,14 +1171,20 @@ async function publishToHashnode(
     },
   ] as const;
 
-  for (const { query, resultPath } of mutations) {
+  console.log("Hashnode publication ID:", publicationId);
+  for (const { name, query, resultPath } of mutations) {
+    const mutation = { query, variables: { input } };
+    console.log(
+      "Hashnode mutation:",
+      JSON.stringify({ operation: name, ...mutation }, null, 2),
+    );
     const res = await fetch("https://gql.hashnode.com/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: apiKey,
       },
-      body: JSON.stringify({ query, variables: { input } }),
+      body: JSON.stringify(mutation),
     });
     const data = (await res.json().catch(() => ({}))) as {
       data?: Record<
@@ -1143,6 +1193,7 @@ async function publishToHashnode(
       >;
       errors?: Array<{ message?: string }>;
     };
+    console.log("Hashnode response:", JSON.stringify(data, null, 2));
     if (data.errors?.length) {
       const errMsg = data.errors[0]?.message ?? "";
       if (errMsg.includes("Unknown") || errMsg.includes("doesn't exist"))
@@ -1412,18 +1463,23 @@ async function publishToInstagram(
     tokenPrefix: accessToken.substring(0, 30),
   });
   const caption = truncate(post.finalContent?.trim() ?? "", 2200);
-  const media = post.mediaIds?.length
-    ? await getMediaWithUrls(post.mediaIds)
+  // Collection/carousel: up to 10 items in order, mixed images and videos
+  const orderedMedia = post.mediaIds?.length
+    ? (await getOrderedMediaWithUrls(post.mediaIds)).slice(0, 10)
     : [];
-
-  const images = media.filter((m) => m.mimeType.startsWith("image/"));
-  const videos = media.filter((m) => m.mimeType.startsWith("video/"));
+  const images = orderedMedia.filter((m) =>
+    m.mimeType.startsWith("image/"),
+  );
+  const videos = orderedMedia.filter((m) =>
+    m.mimeType.startsWith("video/"),
+  );
   const imageUrl = images[0]?.url;
   const videoUrl = videos[0]?.url;
+  const isCarousel = orderedMedia.length > 1;
 
-  if (images.length === 0 && videos.length === 0) {
+  if (orderedMedia.length === 0) {
     const hint =
-      post.mediaIds?.length && media.length === 0
+      post.mediaIds?.length
         ? "Upload media through this app; external URLs are not allowed."
         : "Instagram requires at least one image or video.";
     return { status: "failed", lastError: hint, error: "No media" };
@@ -1434,16 +1490,31 @@ async function publishToInstagram(
     error?: { message?: string; type?: string; code?: number };
   };
 
-  // Handle carousel (multiple images)
-  if (images.length > 1) {
+  // Handle carousel (multiple items: images and/or videos, up to 10)
+  if (orderedMedia.length > 1) {
     console.log(
-      `📸 Creating Instagram carousel with ${images.length} images...`,
+      `📸 Creating Instagram carousel with ${orderedMedia.length} items (images + videos)...`,
     );
 
-    // Create container for each image
-    const containerIds: string[] = [];
+    const createdItems: { id: string; isVideo: boolean }[] = [];
 
-    for (const img of images.slice(0, 10)) {
+    for (let i = 0; i < orderedMedia.length; i++) {
+      const item = orderedMedia[i];
+      const isVideo = item.mimeType.startsWith("video/");
+      console.log(
+        "Instagram carousel item",
+        i,
+        "mimeType:",
+        item.mimeType,
+        "isVideo:",
+        isVideo,
+      );
+      const body: Record<string, string | boolean> = {
+        is_carousel_item: true,
+        media_type: isVideo ? "VIDEO" : "IMAGE",
+        ...(isVideo ? { video_url: item.url } : { image_url: item.url }),
+      };
+
       const itemRes = await fetch(
         `https://graph.instagram.com/v21.0/${igUserId}/media`,
         {
@@ -1452,10 +1523,7 @@ async function publishToInstagram(
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({
-            image_url: img.url,
-            is_carousel_item: true,
-          }),
+          body: JSON.stringify(body),
         },
       );
 
@@ -1465,25 +1533,75 @@ async function publishToInstagram(
       };
 
       if (itemRes.ok && itemData.id) {
-        containerIds.push(itemData.id);
+        createdItems.push({ id: itemData.id, isVideo });
         console.log(
-          `✅ Carousel item ${containerIds.length} created: ${itemData.id}`,
+          `✅ Carousel item ${createdItems.length} created: ${itemData.id}`,
         );
       } else {
         console.error(`❌ Failed to create carousel item:`, itemData.error);
       }
     }
 
-    if (containerIds.length === 0) {
+    if (createdItems.length === 0) {
       return {
         status: "failed",
-        lastError: "Failed to upload carousel images",
+        lastError: "Failed to upload carousel items",
         error: "Upload failed",
       };
     }
 
-    // Wait a bit for items to process
-    await new Promise((r) => setTimeout(r, 3000));
+    // Second pass: wait for ALL video items to finish processing before creating container
+    const videoItemIds = createdItems.filter((x) => x.isVideo).map((x) => x.id);
+    if (videoItemIds.length > 0) {
+      console.log(
+        `⏳ Polling ${videoItemIds.length} Instagram video item(s) until FINISHED before container...`,
+      );
+      const maxAttempts = 60;
+      const delayMs = 3000;
+
+      for (const itemId of videoItemIds) {
+        let attempts = 0;
+        while (attempts < maxAttempts) {
+          const statusRes = await fetch(
+            `https://graph.instagram.com/v21.0/${itemId}?fields=status_code`,
+            { headers: { Authorization: `Bearer ${accessToken}` } },
+          );
+          if (statusRes.ok) {
+            const statusData = (await statusRes.json()) as {
+              status_code?: string;
+              error?: { message?: string };
+            };
+            const statusCode = statusData.status_code;
+            console.log(
+              `Instagram video item ${itemId} status: ${statusCode ?? "unknown"} (attempt ${attempts + 1}/${maxAttempts})`,
+            );
+            if (statusCode === "FINISHED") break;
+            if (statusCode === "ERROR") {
+              const errMsg =
+                statusData.error?.message ?? "Video item processing failed";
+              return {
+                status: "failed",
+                lastError: errMsg,
+                error: "Instagram video processing error",
+              };
+            }
+          }
+          await sleep(delayMs);
+          attempts++;
+        }
+        if (attempts >= maxAttempts) {
+          const err = `Instagram video item ${itemId} did not finish processing within ${maxAttempts * (delayMs / 1000)}s.`;
+          console.error("❌", err);
+          return { status: "failed", lastError: err, error: "Timeout" };
+        }
+      }
+      console.log("✅ All Instagram video carousel items finished processing.");
+    }
+
+    // Wait for items to settle before creating container
+    await sleep(8000);
+
+    const containerIds = createdItems.map((x) => x.id);
 
     // Create carousel container
     const carouselRes = await fetch(
@@ -1522,7 +1640,7 @@ async function publishToInstagram(
     });
 
     containerData = carouselData;
-  } else if (images.length === 1) {
+  } else if (orderedMedia.length === 1 && imageUrl) {
     // Single image
     const containerBody: {
       caption?: string;
@@ -1564,7 +1682,7 @@ async function publishToInstagram(
       containerId: containerData.id,
       mediaType: "image",
     });
-  } else if (videoUrl) {
+  } else if (orderedMedia.length === 1 && videoUrl) {
     // Single video
     const containerBody: {
       caption?: string;
@@ -1617,7 +1735,8 @@ async function publishToInstagram(
   }
 
   // Step 2: Wait for media processing
-  // Only poll status for single videos (not carousels)
+  // For single videos: poll container until FINISHED.
+  // For carousels: poll the carousel container itself until FINISHED.
   if (videoUrl && images.length === 0) {
     // Poll container status for videos
     let retries = 0;
@@ -1707,8 +1826,75 @@ async function publishToInstagram(
         error: "Timeout",
       };
     }
+  } else if (isCarousel && containerData.id) {
+    // Poll carousel container status before publishing
+    const maxAttempts = 30;
+    const delayMs = 3000;
+    let attempts = 0;
+
+    console.log(
+      `⏳ Polling Instagram carousel container ${containerData.id} until FINISHED...`,
+    );
+
+    while (attempts < maxAttempts) {
+      const statusRes = await fetch(
+        `https://graph.instagram.com/v21.0/${containerData.id}?fields=status_code`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
+
+      if (statusRes.ok) {
+        const statusData = (await statusRes.json().catch(() => ({}))) as {
+          status_code?: string;
+          error?: { message?: string };
+        };
+        const statusCode = statusData.status_code;
+
+        console.log(
+          `Instagram carousel container status: ${statusCode ?? "unknown"} (attempt ${
+            attempts + 1
+          }/${maxAttempts})`,
+        );
+
+        if (statusCode === "FINISHED") {
+          console.log("✅ Instagram carousel container finished processing");
+          break;
+        }
+
+        if (statusCode === "ERROR") {
+          const errorMsg =
+            statusData.error?.message ??
+            "Instagram carousel container processing failed";
+          console.error("❌ Instagram carousel container error:", errorMsg);
+          return {
+            status: "failed",
+            lastError: errorMsg,
+            error: "Processing error",
+          };
+        }
+      } else {
+        const errorText = await statusRes.text().catch(() => "Unknown error");
+        console.warn(
+          `⚠️ Instagram carousel status check failed (attempt ${
+            attempts + 1
+          }/${maxAttempts}): HTTP ${statusRes.status}`,
+          errorText,
+        );
+      }
+
+      attempts += 1;
+      await sleep(delayMs);
+    }
+
+    if (attempts >= maxAttempts) {
+      const err =
+        "Instagram carousel container did not finish processing in time";
+      console.error("❌", err);
+      return { status: "failed", lastError: err, error: err };
+    }
   } else {
-    // Images process quickly
+    // Images-only, non-carousel posts process quickly
     console.log("⏳ Waiting 3s for image processing...");
     await new Promise((r) => setTimeout(r, 3000));
   }
@@ -2318,16 +2504,21 @@ async function publishToThreads(
 
   const threadsUserId = pub.platformUserId;
   const text = post.finalContent?.trim() ?? "";
-  const media = post.mediaIds?.length
-    ? await getMediaWithUrls(post.mediaIds)
+  // Collection/carousel: up to 10 items in order, mixed images and videos
+  const orderedMedia = post.mediaIds?.length
+    ? (await getOrderedMediaWithUrls(post.mediaIds)).slice(0, 10)
     : [];
-  const images = media.filter((m) => m.mimeType.startsWith("image/"));
-  const videos = media.filter((m) => m.mimeType.startsWith("video/"));
+  const images = orderedMedia.filter((m) =>
+    m.mimeType.startsWith("image/"),
+  );
+  const videos = orderedMedia.filter((m) =>
+    m.mimeType.startsWith("video/"),
+  );
   const imageUrl = images[0]?.url;
   const videoUrl = videos[0]?.url;
 
   const safeText = truncate(text, 500);
-  if (!imageUrl && !videoUrl && !safeText) {
+  if (orderedMedia.length === 0 && !safeText) {
     return {
       status: "failed",
       lastError: "Threads post must have text, an image, or a video.",
@@ -2337,31 +2528,36 @@ async function publishToThreads(
 
   const threadParams = new URLSearchParams({ access_token: accessToken });
   let creationId: string;
+  let isCarousel = false;
 
-  // Handle carousel (multiple images)
-  if (images.length > 1) {
-    console.log(`📸 Creating Threads carousel with ${images.length} images...`);
+  // Handle carousel (multiple items: images and/or videos, up to 10)
+  if (orderedMedia.length > 1) {
+    console.log(
+      `📸 Creating Threads carousel with ${orderedMedia.length} items (images + videos)...`,
+    );
 
-    // Create container for each image
     const containerIds: string[] = [];
 
-    for (const img of images.slice(0, 20)) {
+    for (const item of orderedMedia) {
+      const isVideo = item.mimeType.startsWith("video/");
+      const body: Record<string, string | boolean> = {
+        media_type: isVideo ? "VIDEO" : "IMAGE",
+        is_carousel_item: true,
+        ...(isVideo ? { video_url: item.url } : { image_url: item.url }),
+      };
+
       const itemRes = await fetch(
         `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            media_type: "IMAGE",
-            image_url: img.url,
-            is_carousel_item: true,
-          }),
+          body: JSON.stringify(body),
         },
       );
 
       const itemData = (await itemRes.json().catch(() => ({}))) as {
         id?: string;
-        error?: { message?: string };
+        error?: { message?: string; code?: number; error_subcode?: number };
       };
 
       if (itemRes.ok && itemData.id) {
@@ -2369,24 +2565,78 @@ async function publishToThreads(
         console.log(
           `✅ Threads carousel item ${containerIds.length} created: ${itemData.id}`,
         );
+
+        // If this item is a video, poll until FINISHED before creating next item
+        if (isVideo) {
+          const maxAttempts = 60;
+          const delayMs = 3000;
+          let attempts = 0;
+          console.log(
+            `⏳ Polling Threads video item ${itemData.id} until FINISHED...`,
+          );
+          while (attempts < maxAttempts) {
+            const statusRes = await fetch(
+              `https://graph.threads.net/v1.0/${itemData.id}?fields=status&${threadParams.toString()}`,
+            );
+            if (statusRes.ok) {
+              const statusData = (await statusRes.json().catch(() => ({}))) as {
+                status?: string;
+                error?: { message?: string };
+              };
+              const status = statusData.status;
+              console.log(
+                `Threads video item status: ${status ?? "unknown"} (attempt ${attempts + 1}/${maxAttempts})`,
+              );
+              if (status === "FINISHED") break;
+              if (status === "ERROR") {
+                const errMsg =
+                  statusData.error?.message ??
+                  "Threads video item processing failed";
+                return {
+                  status: "failed",
+                  lastError: errMsg,
+                  error: "Threads video processing error",
+                };
+              }
+            }
+            await sleep(delayMs);
+            attempts++;
+          }
+          if (attempts >= maxAttempts) {
+            const err = `Threads video item did not finish processing within ${maxAttempts * (delayMs / 1000)}s.`;
+            console.error("❌", err);
+            return { status: "failed", lastError: err, error: "Timeout" };
+          }
+          console.log("✅ Threads video item finished processing.");
+        }
       } else {
         console.error(
-          `❌ Failed to create Threads carousel item:`,
+          "❌ Failed to create Threads carousel item:",
           itemData.error,
         );
+        return {
+          status: "failed",
+          lastError:
+            itemData.error?.message ??
+            "Failed to create Threads carousel item. Please try again.",
+          error: "Threads carousel item failed",
+        };
       }
+
+      // space out carousel item creation so item IDs stay valid
+      await sleep(1000);
     }
 
     if (containerIds.length === 0) {
       return {
         status: "failed",
-        lastError: "Failed to upload carousel images",
+        lastError: "Failed to upload carousel items",
         error: "Upload failed",
       };
     }
 
-    // Wait a bit for items to process
-    await new Promise((r) => setTimeout(r, 3000));
+    // Wait before creating carousel container so items don't expire
+    await sleep(8000);
 
     // Create carousel container
     const carouselRes = await fetch(
@@ -2422,7 +2672,8 @@ async function publishToThreads(
     });
 
     creationId = carouselData.id;
-  } else if (videoUrl) {
+    isCarousel = true;
+  } else if (orderedMedia.length === 1 && videoUrl) {
     // Single video
     const createRes = await fetch(
       `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`,
@@ -2447,7 +2698,7 @@ async function publishToThreads(
     creationId = createData.id;
     // Threads recommends waiting for video processing before publishing (at least 30s)
     await new Promise((r) => setTimeout(r, 30000));
-  } else if (imageUrl) {
+  } else if (orderedMedia.length === 1 && imageUrl) {
     // Single image
     const createRes = await fetch(
       `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`,
@@ -2491,7 +2742,72 @@ async function publishToThreads(
     creationId = createData.id;
   }
 
-  await new Promise((r) => setTimeout(r, 2000));
+  // For carousel containers, poll status until ready before publishing.
+  if (isCarousel) {
+    let attempts = 0;
+    const maxAttempts = 30;
+    const delayMs = 3000;
+
+    console.log(
+      `⏳ Polling Threads carousel status for container ${creationId}...`,
+    );
+
+    while (attempts < maxAttempts) {
+      const statusRes = await fetch(
+        `https://graph.threads.net/v1.0/${creationId}?fields=status&${threadParams.toString()}`,
+      );
+
+      if (!statusRes.ok) {
+        const errorText = await statusRes.text().catch(() => "Unknown error");
+        console.warn(
+          `⚠️ Threads carousel status check failed (attempt ${attempts + 1}/${maxAttempts}): HTTP ${statusRes.status}`,
+          errorText,
+        );
+      } else {
+        const statusData = (await statusRes.json().catch(() => ({}))) as {
+          status?: string;
+          error?: { message?: string };
+        };
+        const status = statusData.status;
+
+        console.log(
+          `Threads carousel status: ${status ?? "unknown"} (attempt ${
+            attempts + 1
+          }/${maxAttempts})`,
+        );
+
+        if (status === "FINISHED" || status === "PUBLISHED") {
+          console.log("✅ Threads carousel is ready to publish");
+          break;
+        }
+
+        if (status === "ERROR") {
+          const errMessage =
+            statusData.error?.message ??
+            "Threads carousel container failed to process.";
+          console.error("❌ Threads carousel processing error:", errMessage);
+          return {
+            status: "failed",
+            lastError: errMessage,
+            error: "Threads carousel not ready",
+          };
+        }
+      }
+
+      attempts += 1;
+      await sleep(delayMs);
+    }
+
+    if (attempts >= maxAttempts) {
+      const err =
+        "Threads carousel container was never ready to publish (timed out after 90s).";
+      console.error("❌", err);
+      return { status: "failed", lastError: err, error: err };
+    }
+  } else {
+    // Non-carousel posts: small grace delay before publish.
+    await sleep(2000);
+  }
   const publishRes = await fetch(
     `https://graph.threads.net/v1.0/${threadsUserId}/threads_publish?${threadParams}`,
     {

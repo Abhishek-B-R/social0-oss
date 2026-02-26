@@ -13,7 +13,10 @@ export default {
       testMatch: ["**/__tests__/components/**/*.test.tsx"],
       transform: { "^.+\\.tsx?$": "ts-jest" },
       setupFilesAfterEnv: ["@testing-library/jest-dom"],
-      moduleNameMapper: { "^@/(.*)$": "<rootDir>/$1" },
+      moduleNameMapper: {
+        "^@/(.*)$": "<rootDir>/$1",
+        "\\.css$": "<rootDir>/__mocks__/styleMock.js",
+      },
     },
     {
       displayName: "api",

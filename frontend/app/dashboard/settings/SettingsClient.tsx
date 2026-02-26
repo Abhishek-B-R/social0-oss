@@ -125,23 +125,16 @@ export function SettingsClient({
       </section>
 
       <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-text">Email Address</h2>
-        <p className="mt-2 text-sm text-text-muted">Current email: {email}</p>
+        <h2 className="text-lg font-semibold text-text">Account</h2>
+        <p className="mt-2 text-sm text-text-muted">
+          Account managed via Google. Sign-in and security are handled by your
+          Google account.
+        </p>
         <div className="mt-4">
-          <SecondaryButton label="Change Email Address" />
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-text">Password</h2>
-        <div className="mt-4 flex flex-wrap items-center gap-4">
-          <SecondaryButton label="Change Password" />
-          <Link
-            href="#"
-            className="text-sm font-medium text-accent hover:text-accent-hover"
-          >
-            Forgot Password? Send Reset Link
-          </Link>
+          <p className="text-sm font-medium text-text">Email</p>
+          <p className="mt-1 rounded-xl border border-border bg-bg-muted px-4 py-2.5 text-sm text-text-muted">
+            {email}
+          </p>
         </div>
       </section>
 

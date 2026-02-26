@@ -79,6 +79,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
   const [tiktokListModalOpen, setTiktokListModalOpen] = useState(false);
   const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
   const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
+  const [showCaptionError, setShowCaptionError] = useState(false);
 
   const defaultTiktokSettings: TikTokPostSettings = {
     privacy_level: "PUBLIC_TO_EVERYONE", // Default to Public
@@ -148,8 +149,10 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
         order: maxOrder + i + 1,
       });
     }
-    setError(null);
-    setImages((prev) => [...prev, ...newImages]);
+    if (newImages.length > 0) {
+      setError(null);
+      setImages((prev) => [...prev, ...newImages]);
+    }
     if (imageInputRef.current) imageInputRef.current.value = "";
   };
 
@@ -170,8 +173,10 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
         order: maxOrder + i + 1,
       });
     }
-    setError(null);
-    setVideos((prev) => [...prev, ...newVideos]);
+    if (newVideos.length > 0) {
+      setError(null);
+      setVideos((prev) => [...prev, ...newVideos]);
+    }
     if (videoInputRef.current) videoInputRef.current.value = "";
   };
 
@@ -281,6 +286,12 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
     e.preventDefault();
     setError(null);
 
+    if (!content.trim()) {
+      setShowCaptionError(true);
+      return;
+    }
+    setShowCaptionError(false);
+
     const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
     const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
     const tiktokAccounts = selectedAccounts.filter(
@@ -353,11 +364,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
     setUploadProgress(null);
     setOverlayPhase("publishing");
 
-    const text =
-      content.trim() ||
-      (images.length || videos.length
-        ? `[${images.length} image(s)${videos.length ? ` + ${videos.length} video(s)` : ""}]`
-        : "");
+    const text = content.trim();
 
     const metadata: Record<string, unknown> = {};
     if (hasTikTok) {
@@ -427,8 +434,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
   const autoPlugVisible = hasXForResurface;
   const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
 
-  const hasContent =
-    content.trim().length > 0 || images.length > 0 || videos.length > 0;
+  const hasContent = content.trim().length > 0;
   const submitLabel =
     mode === "draft"
       ? "Save draft"
@@ -515,6 +521,21 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
             }
           />
 
+          {(() => {
+            const totalAttachments = images.length + videos.length;
+            const hasTwitterX = selectedAccounts.some(
+              (a) => a.platform === "twitter_x",
+            );
+            const showMax4Warning = hasTwitterX && totalAttachments > 4;
+            if (!showMax4Warning) return null;
+            return (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                ⚠ X (Twitter) supports max 4 attachments — only the first 4
+                will be published.
+              </div>
+            );
+          })()}
+
           <div className="rounded-2xl border border-border bg-bg p-6 shadow-sm space-y-4 -mt-4">
             <label className="block text-sm font-semibold text-text">
               Collection of images and videos (one post)
@@ -530,6 +551,9 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
               rows={3}
               className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
+            {showCaptionError && !content.trim() && (
+              <p className="mt-2 text-xs text-destructive">Caption is required</p>
+            )}
 
             <input
               ref={imageInputRef}

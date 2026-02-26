@@ -93,6 +93,7 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
   const [previewCardMode, setPreviewCardMode] =
     useState<PreviewCardMode>("post");
   const userToggledPreviewRef = useRef(false);
+  const [showCaptionError, setShowCaptionError] = useState(false);
 
   const selectedAccounts = useMemo(
     () => accounts.filter((a) => selectedIds.has(a.id)),
@@ -212,6 +213,12 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
     e.preventDefault();
     setError(null);
 
+    if (!content.trim()) {
+      setShowCaptionError(true);
+      return;
+    }
+    setShowCaptionError(false);
+
     if (hasTikTok) {
       for (const tiktokAccount of tiktokAccounts) {
         const settings =
@@ -270,8 +277,7 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
     }
     setOverlayPhase("publishing");
 
-    const text =
-      content.trim() || (videoFile ? `[Video: ${videoFile.name}]` : "");
+    const text = content.trim();
 
     const metadata: Record<string, unknown> = {};
     if (hasTikTok) {
@@ -401,8 +407,9 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
             submitLabel={submitLabel}
             submitDisabled={
               accounts.length === 0 ||
-              (mode === "scheduled" && !scheduledAt) ||
-              (!content.trim() && !videoFile)
+              !content.trim() ||
+              !videoFile ||
+              (mode === "scheduled" && !scheduledAt)
             }
             hideScheduleAndActions
             searchSlot={
@@ -465,6 +472,9 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
               rows={3}
               className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
+            {showCaptionError && !content.trim() && (
+              <p className="mt-2 text-xs text-destructive">Caption is required</p>
+            )}
           </div>
         </div>
 
@@ -476,8 +486,9 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
           loading={loading}
           submitDisabled={
             accounts.length === 0 ||
-            (mode === "scheduled" && !scheduledAt) ||
-            (!content.trim() && !videoFile)
+          !content.trim() ||
+          !videoFile ||
+          (mode === "scheduled" && !scheduledAt)
           }
           hasAccountSelected={selectedIds.size > 0}
           error={error}
