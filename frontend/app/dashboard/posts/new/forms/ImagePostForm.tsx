@@ -582,7 +582,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
               : null
           }
         >
-          <div>
+          <div className="hidden lg:block">
             <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div className="flex rounded-full border border-border bg-bg-muted p-0.5">

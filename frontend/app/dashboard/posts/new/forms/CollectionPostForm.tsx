@@ -714,7 +714,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
               : null
           }
         >
-          <div className="rounded-xl border border-border bg-bg p-4 shadow-sm -mt-3">
+          <div className="hidden lg:block rounded-xl border border-border bg-bg p-4 shadow-sm -mt-3">
             <h3 className="mb-3 text-sm font-semibold text-text">
               Carousel preview
             </h3>
