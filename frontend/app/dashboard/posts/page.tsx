@@ -8,6 +8,8 @@ import { AllPostsFilters } from "./AllPostsFilters";
 import { PostListCards } from "./PostListCards";
 import { Pagination } from "@/components/ui/Pagination";
 
+export const dynamic = "force-dynamic";
+
 export default async function PostsPage({
   searchParams,
 }: {
@@ -34,7 +36,7 @@ export default async function PostsPage({
     accountOptions,
     resurfaceByPostId,
     autoPlugByPostId,
-    totalCount,
+    totalCount = 0,
   } = await getPostsListData({
     userId: session.user.id,
     sort: params.sort === "oldest" ? "oldest" : "newest",
@@ -102,7 +104,7 @@ export default async function PostsPage({
 
       <Pagination
         currentPage={page}
-        totalPages={Math.ceil(totalCount / POSTS_PAGE_SIZE) || 1}
+        totalPages={Math.max(1, Math.ceil((totalCount ?? 0) / POSTS_PAGE_SIZE))}
         basePath="/dashboard/posts"
         searchParams={{
           sort: params.sort,

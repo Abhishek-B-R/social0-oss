@@ -104,6 +104,42 @@ export function ImagePostForm({
     };
   }, []);
 
+  const addImageFromClipboard = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setError(null);
+    setImages((prev) => {
+      const maxOrder =
+        prev.length > 0 ? Math.max(...prev.map((i) => i.order)) : 0;
+      return [
+        ...prev,
+        {
+          file,
+          preview: URL.createObjectURL(file),
+          order: maxOrder + 1,
+        },
+      ];
+    });
+  };
+
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            addImageFromClipboard(file);
+            return;
+          }
+        }
+      }
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, []);
+
   const selectedAccountIds = useMemo(
     () => Array.from(selectedIds),
     [selectedIds],
@@ -468,7 +504,7 @@ export function ImagePostForm({
                   Click to add image(s)
                 </span>
                 <span className="text-xs text-text-muted mt-1">
-                  Select multiple to add all at once
+                  Select multiple to add all at once · Or paste from clipboard (Ctrl+V)
                 </span>
               </button>
             ) : (
@@ -514,6 +550,7 @@ export function ImagePostForm({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-bg-muted/30 text-text-muted transition-colors hover:border-accent hover:bg-accent/10 hover:text-accent"
+                    title="Add more or paste image (Ctrl+V)"
                   >
                     <MdOutlineAddPhotoAlternate className="h-6 w-6" />
                     <span className="text-xs mt-0.5">Add more</span>

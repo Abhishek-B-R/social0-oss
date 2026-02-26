@@ -8,6 +8,8 @@ import { AllPostsFilters } from "../AllPostsFilters";
 import { PostListCards } from "../PostListCards";
 import { Pagination } from "@/components/ui/Pagination";
 
+export const dynamic = "force-dynamic";
+
 export default async function PostedPostsPage({
   searchParams,
 }: {
