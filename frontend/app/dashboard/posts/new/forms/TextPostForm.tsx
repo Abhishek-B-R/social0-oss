@@ -8,7 +8,10 @@ import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
-import type { AutoPlugConfig, ConnectedAccount } from "@/components/autoplug/AutoPlugPanel";
+import type {
+  AutoPlugConfig,
+  ConnectedAccount,
+} from "@/components/autoplug/AutoPlugPanel";
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
 
@@ -150,39 +153,43 @@ export function TextPostForm({
         : "Post now";
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-6 lg:flex-row lg:items-start">
+    <form
+      ref={formRef}
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-6 lg:flex-row lg:items-start"
+    >
       <div className="min-w-0 flex-1 space-y-6 lg:max-w-[65%]">
         <PostFormOptions
-            accounts={filteredAccounts}
-            selectedIds={selectedIds}
-            onToggleAccount={toggleAccount}
-            selectAll={selectAll}
-            mode={mode}
-            setMode={setMode}
-            scheduledAt={scheduledAt}
-            setScheduledAt={setScheduledAt}
-            error={error}
-            loading={loading}
-            onCancel={() => router.push("/dashboard/posts")}
-            submitLabel={submitLabel}
-            submitDisabled={
-              accounts.length === 0 ||
-              !content.trim() ||
-              (mode === "scheduled" && !scheduledAt) ||
-              !!twitterValidationError
-            }
-            use24HourTimeFormat={use24HourTimeFormat}
-            hideScheduleAndActions
-            searchSlot={
-              <input
-                type="search"
-                placeholder="Search accounts..."
-                value={accountSearch}
-                onChange={(e) => setAccountSearch(e.target.value)}
-                className="h-8 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
-              />
-            }
-          />
+          accounts={filteredAccounts}
+          selectedIds={selectedIds}
+          onToggleAccount={toggleAccount}
+          selectAll={selectAll}
+          mode={mode}
+          setMode={setMode}
+          scheduledAt={scheduledAt}
+          setScheduledAt={setScheduledAt}
+          error={error}
+          loading={loading}
+          onCancel={() => router.push("/dashboard/posts")}
+          submitLabel={submitLabel}
+          submitDisabled={
+            accounts.length === 0 ||
+            !content.trim() ||
+            (mode === "scheduled" && !scheduledAt) ||
+            !!twitterValidationError
+          }
+          use24HourTimeFormat={use24HourTimeFormat}
+          hideScheduleAndActions
+          searchSlot={
+            <input
+              type="search"
+              placeholder="Search accounts..."
+              value={accountSearch}
+              onChange={(e) => setAccountSearch(e.target.value)}
+              className="h-8 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
+            />
+          }
+        />
 
         <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
           <label
@@ -206,13 +213,12 @@ export function TextPostForm({
           {twitterThreadWarning && (
             <p className="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
               Twitter: This will post as a thread (each part between{" "}
-              <code className="bg-amber-100 px-1 rounded">---</code> is a separate
-              tweet). Max {TWITTER_MAX_LENGTH} characters per part. Media will
-              only appear on the first tweet.
+              <code className="bg-amber-100 px-1 rounded">---</code> is a
+              separate tweet). Max {TWITTER_MAX_LENGTH} characters per part.
+              Media will only appear on the first tweet.
             </p>
           )}
         </div>
-
       </div>
 
       <SchedulePostSidebar
@@ -293,9 +299,11 @@ export function TextPostForm({
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    (selectedAccounts[0]?.platformUsername ??
+                    (
+                      selectedAccounts[0]?.platformUsername ??
                       selectedAccounts[0]?.platform ??
-                      "A")
+                      "A"
+                    )
                       .charAt(0)
                       .toUpperCase()
                   )}
@@ -305,7 +313,7 @@ export function TextPostForm({
                 <p className="text-sm font-semibold text-text">
                   {selectedAccounts[0]?.platformUsername
                     ? `@${selectedAccounts[0].platformUsername}`
-                    : selectedAccounts[0]?.platform ?? "Account"}
+                    : (selectedAccounts[0]?.platform ?? "Account")}
                 </p>
                 {content.trim() ? (
                   <p className="mt-0.5 text-sm text-text whitespace-pre-wrap wrap-break-word">

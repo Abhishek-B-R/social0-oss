@@ -202,10 +202,10 @@ export function SchedulePostSidebar({
             }`}
           >
             <span
-              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-bg border border-gray-400 dark:border-gray-600 shadow ring-0 transition-transform ${
+              className={`pointer-events-none bg-gray-600 dark:bg-gray-300 inline-block h-5 w-5 rounded-full border border-gray-400 dark:border-gray-600 shadow ring-0 transition-transform ${
                 isScheduled ? "translate-x-5" : "translate-x-0.5"
               }`}
-              style={{ marginTop: 1 }}
+              style={{ marginTop: "0.5px" }}
             />
           </button>
         </div>

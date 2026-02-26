@@ -78,6 +78,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -236,9 +237,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             <p className="truncate text-sm font-medium text-sidebar-text">
               {user.name || user.email || "User"}
             </p>
-            <p className="truncate text-xs text-sidebar-text">
-              Creator Plan
-            </p>
+            <p className="truncate text-xs text-sidebar-text">Creator Plan</p>
           </div>
           <ChevronDown className="h-4 w-4 shrink-0 text-sidebar-text" />
         </div>
