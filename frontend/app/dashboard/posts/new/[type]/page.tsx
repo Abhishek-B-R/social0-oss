@@ -83,10 +83,10 @@ export default async function NewPostByTypePage({
         isActive: a.isActive,
         tokenExpired: NEVER_EXPIRES_PLATFORMS.has(a.platform)
           ? false
-          : !skipExpiryDisplay.has(a.platform) &&
-            (a.tokenStatus === "expired" ||
-              (!!a.tokenExpiresAt &&
-                new Date(a.tokenExpiresAt).getTime() < now)),
+          : a.tokenStatus === "expired" ||
+            (!skipExpiryDisplay.has(a.platform) &&
+              !!a.tokenExpiresAt &&
+              new Date(a.tokenExpiresAt).getTime() < now),
       })),
   );
 

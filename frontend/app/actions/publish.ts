@@ -331,6 +331,20 @@ export async function executePublish(
       }
     }
 
+    const baseContent =
+      contentForNonTwitter ?? post.finalContent ?? "";
+    const accountCaptions =
+      post.metadata && typeof post.metadata === "object"
+        ? (post.metadata as Record<string, unknown>).accountCaptions
+        : undefined;
+    const resolvedContent =
+      accountCaptions &&
+      typeof accountCaptions === "object" &&
+      !Array.isArray(accountCaptions) &&
+      typeof (accountCaptions as Record<string, string>)[pub.connectedAccountId] === "string"
+        ? (accountCaptions as Record<string, string>)[pub.connectedAccountId]
+        : baseContent;
+
     // Handle LinkedIn publishing
     if (pub.platform === "linkedin") {
       // Get fresh token (auto-refreshes if needed)
@@ -486,7 +500,7 @@ export async function executePublish(
         specificContent: {
           "com.linkedin.ugc.ShareContent": {
             shareCommentary: {
-              text: post.finalContent || "",
+              text: resolvedContent || "",
             },
             shareMediaCategory,
             ...(mediaAssets.length > 0 && {
@@ -928,7 +942,7 @@ export async function executePublish(
 
       // Twitter thread: split by "---" for native thread (reply chain)
       const TWITTER_MAX_LENGTH = 280;
-      const rawContent = post.finalContent || "";
+      const rawContent = resolvedContent || "";
       const parts = rawContent
         .split("---")
         .map((p) => p.trim())
@@ -1183,7 +1197,7 @@ export async function executePublish(
           },
           {
             id: post.id,
-            finalContent: contentForNonTwitter ?? post.finalContent ?? "",
+            finalContent: resolvedContent,
             mediaIds: post.mediaIds,
             metadata: post.metadata,
           },

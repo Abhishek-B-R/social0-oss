@@ -10,7 +10,13 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  let session: Awaited<ReturnType<typeof auth.api.getSession>>;
+  try {
+    session = await auth.api.getSession({ headers: await headers() });
+  } catch (e) {
+    console.error("[DashboardLayout] Session lookup failed:", e);
+    redirect("/");
+  }
 
   if (!session) {
     redirect("/");
