@@ -78,7 +78,7 @@ export function LandingFooter() {
         </div>
         <div className="mt-10 pt-8 border-t border-border text-center text-muted-foreground text-sm">
           © {currentYear} Social0. All rights reserved. Social0 is operated by B
-          R Abhishek, Hosapete, Karnataka, India.
+          R Abhishek.
         </div>
       </div>
     </footer>

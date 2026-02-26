@@ -133,8 +133,9 @@ async function verifyToken(
       return r.status;
     }
     case "pinterest": {
+      // Use same base as rest of app (sandbox); sandbox tokens are invalid on production API
       const r = await fetch(
-        "https://api.pinterest.com/v5/user_account",
+        "https://api-sandbox.pinterest.com/v5/user_account",
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
       return r.status;

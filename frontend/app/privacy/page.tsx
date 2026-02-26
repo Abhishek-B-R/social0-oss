@@ -177,10 +177,10 @@ export default function PrivacyPage() {
               For privacy-related questions or to exercise your rights, please
               contact us at{" "}
               <a
-                href="mailto:abhishek@social0.app"
+                href="mailto:privacy@social0.app"
                 className="text-emerald-600 hover:text-emerald-700 underline dark:text-emerald-400 dark:hover:text-emerald-300"
               >
-                abhishek@social0.app
+                privacy@social0.app
               </a>
               .
             </p>

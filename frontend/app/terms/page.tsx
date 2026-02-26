@@ -137,10 +137,10 @@ export default function TermsPage() {
               For questions about these Terms and Conditions, please contact us
               at{" "}
               <a
-                href="mailto:abhishek@social0.app"
+                href="mailto:legal@social0.app"
                 className="text-emerald-600 hover:text-emerald-700 underline dark:text-emerald-400 dark:hover:text-emerald-300"
               >
-                abhishek@social0.app
+                legal@social0.app
               </a>
               .
             </p>

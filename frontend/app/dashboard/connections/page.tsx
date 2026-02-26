@@ -86,6 +86,15 @@ async function ConnectionsContent() {
           };
         })}
       />
+      <p className="mt-4 text-sm text-text-muted">
+        Having trouble connecting your accounts?{" "}
+        <a
+          href="mailto:support@social0.app"
+          className="font-medium text-primary underline underline-offset-2 hover:no-underline"
+        >
+          Email support@social0.app
+        </a>
+      </p>
     </>
   );
 }
