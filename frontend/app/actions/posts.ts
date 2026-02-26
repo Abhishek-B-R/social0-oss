@@ -370,9 +370,10 @@ export async function getDraft(postId: string): Promise<GetDraftResult> {
   if (post.status !== "draft") {
     return { success: false, error: "Post is not a draft" };
   }
+  const mediaIds = post.mediaIds ?? [];
   const media =
-    post.mediaIds.length > 0
-      ? await getPostMedia(session.user.id, post.mediaIds)
+    mediaIds.length > 0
+      ? await getPostMedia(session.user.id, mediaIds)
       : [];
   const [row] = await db
     .select({ metadata: posts.metadata })
