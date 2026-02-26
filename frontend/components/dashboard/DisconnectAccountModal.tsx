@@ -56,7 +56,7 @@ export function DisconnectAccountModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="disconnect-modal-title"
-        className="relative z-10 w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl"
+        className="relative z-10 w-full max-w-md rounded-xl border border-border bg-bg p-6 shadow-xl"
       >
         <div className="flex gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100">
@@ -65,16 +65,16 @@ export function DisconnectAccountModal({
           <div className="min-w-0 flex-1">
             <h2
               id="disconnect-modal-title"
-              className="text-lg font-semibold text-gray-900"
+              className="text-lg font-semibold text-text"
             >
               Disconnect account?
             </h2>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-text-muted">
               Disconnecting will remove <strong>{accountLabel}</strong> from
               Social0. Your post history will be preserved.
             </p>
             {error && (
-              <p className="mt-3 text-sm font-medium text-red-600">{error}</p>
+              <p className="mt-3 text-sm font-medium text-destructive">{error}</p>
             )}
           </div>
         </div>
@@ -83,7 +83,7 @@ export function DisconnectAccountModal({
             type="button"
             onClick={onClose}
             disabled={disconnecting}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-lg border border-border bg-bg px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle disabled:opacity-50"
           >
             Cancel
           </button>
@@ -91,7 +91,7 @@ export function DisconnectAccountModal({
             type="button"
             onClick={handleDisconnect}
             disabled={disconnecting}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
             {disconnecting ? "Disconnecting…" : "Disconnect"}
           </button>

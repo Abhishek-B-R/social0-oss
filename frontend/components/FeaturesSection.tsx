@@ -35,13 +35,13 @@ const features = [
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="py-16 sm:py-20 bg-gray-50">
+    <section id="features" className="py-16 sm:py-20 bg-muted/30">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <RevealSection>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 text-center mb-4">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground text-center mb-4">
             Everything you need
           </h2>
-          <p className="text-base text-gray-500 text-center max-w-xl mx-auto mb-12 font-medium">
+          <p className="text-base text-muted-foreground text-center max-w-xl mx-auto mb-12 font-medium">
             One dashboard to create, schedule, and publish across your social
             accounts.
           </p>
@@ -54,10 +54,10 @@ export function FeaturesSection() {
             >
               <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
                 <div className={i % 2 === 1 ? "md:order-2" : ""}>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">
+                  <h3 className="text-xl font-bold text-foreground mb-3">
                     {feature.title}
                   </h3>
-                  <p className="text-base text-gray-500 leading-relaxed">
+                  <p className="text-base text-muted-foreground leading-relaxed">
                     {feature.description}
                   </p>
                 </div>

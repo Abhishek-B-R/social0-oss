@@ -49,29 +49,29 @@ function PlatformIcons({ platformIds }: { platformIds: readonly string[] }) {
 export default function BulkToolsPage() {
   return (
     <div>
-      <h1 className="text-2xl font-extrabold text-gray-900">Bulk tools</h1>
-      <p className="mt-2 text-gray-500">
+      <h1 className="text-2xl font-extrabold text-text">Bulk tools</h1>
+      <p className="mt-2 text-text-muted">
         Upload and schedule multiple videos or images at once.
       </p>
 
       <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
         <Link
           href="/dashboard/bulk-tools/video"
-          className="group flex flex-col rounded-2xl border-2 border-dashed border-gray-300 bg-white p-6 shadow-sm transition-colors hover:bg-emerald-50 hover:border-emerald-500"
+          className="group flex flex-col rounded-2xl border-2 border-dashed border-border bg-bg-elevated p-6 shadow-sm transition-colors hover:bg-accent/10 hover:border-accent"
         >
-          <div className="flex items-center justify-center gap-2 text-gray-400 group-hover:text-emerald-600 mb-3">
+          <div className="flex items-center justify-center gap-2 text-text-muted group-hover:text-accent mb-3">
             <Layers className="h-8 w-8" />
             <Video className="h-8 w-8" />
           </div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-gray-900">
+            <h2 className="text-lg font-bold text-text">
               Bulk Video Upload
             </h2>
-            <span className="rounded-md bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700">
+            <span className="rounded-md bg-bg-muted px-2 py-0.5 text-xs font-medium text-text">
               NEW
             </span>
           </div>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-text-muted">
             Upload and schedule multiple videos at once.
           </p>
           <PlatformIcons platformIds={VIDEO_PLATFORMS} />
@@ -79,21 +79,21 @@ export default function BulkToolsPage() {
 
         <Link
           href="/dashboard/bulk-tools/image"
-          className="group flex flex-col rounded-2xl border-2 border-dashed border-gray-300 bg-white p-6 shadow-sm transition-colors hover:bg-emerald-50 hover:border-emerald-500"
+          className="group flex flex-col rounded-2xl border-2 border-dashed border-border bg-bg-elevated p-6 shadow-sm transition-colors hover:bg-accent/10 hover:border-accent"
         >
-          <div className="flex items-center justify-center gap-2 text-gray-400 group-hover:text-emerald-600 mb-3">
+          <div className="flex items-center justify-center gap-2 text-text-muted group-hover:text-accent mb-3">
             <Layers className="h-8 w-8" />
             <ImageIcon className="h-8 w-8" />
           </div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-gray-900">
+            <h2 className="text-lg font-bold text-text">
               Bulk Image Upload
             </h2>
-            <span className="rounded-md bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700">
+            <span className="rounded-md bg-bg-muted px-2 py-0.5 text-xs font-medium text-text">
               NEW
             </span>
           </div>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-text-muted">
             Upload and schedule multiple images at once.
           </p>
           <PlatformIcons platformIds={IMAGE_PLATFORMS} />

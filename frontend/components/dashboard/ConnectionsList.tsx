@@ -60,14 +60,14 @@ export function ConnectionsList({ accounts }: { accounts: Account[] }) {
   return (
     <>
       <div className="space-y-3">
-        <h2 className="text-2xl font-extrabold text-gray-900">
+        <h2 className="text-2xl font-extrabold text-text">
           Connected Accounts
         </h2>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-text-muted">
           Link your social accounts to publish from one place. You can connect
           multiple accounts per platform.
         </p>
-        <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+        <div className="rounded-2xl border border-border bg-bg-elevated p-3 shadow-sm">
           <div className="flex flex-col gap-1.5">
             {byPlatform.map(({ platform, accounts: platformAccounts }) => {
               const ui = PLATFORM_UI[platform.id] ?? {
@@ -78,7 +78,7 @@ export function ConnectionsList({ accounts }: { accounts: Account[] }) {
               return (
                 <div
                   key={platform.id}
-                  className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-lg border border-gray-100 bg-gray-50/50 px-2.5 py-1.5 transition-colors hover:border-gray-200 hover:bg-gray-50"
+                  className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-lg border border-border bg-bg-muted px-2.5 py-1.5 transition-colors hover:bg-bg-muted"
                 >
                   <div className="flex w-9 shrink-0 items-center sm:w-28 sm:gap-1.5">
                     <div
@@ -93,7 +93,10 @@ export function ConnectionsList({ accounts }: { accounts: Account[] }) {
                         </span>
                       )}
                     </div>
-                    <span className="hidden truncate text-sm font-semibold text-gray-900 sm:inline" title={ui.name}>
+                    <span
+                      className="hidden truncate text-sm font-semibold text-text sm:inline"
+                      title={ui.name}
+                    >
                       {ui.name}
                     </span>
                   </div>
@@ -113,8 +116,8 @@ export function ConnectionsList({ accounts }: { accounts: Account[] }) {
                           key={account.id}
                           className={`flex min-w-0 shrink-0 flex-wrap items-center gap-1 rounded-md border px-1.5 py-0.5 ${
                             isExpired
-                              ? "border-red-300 bg-red-50/50"
-                              : "border-gray-200 bg-white"
+                              ? "border-destructive/50 bg-destructive/10"
+                              : "border-border bg-bg-elevated"
                           }`}
                         >
                           <AccountAvatar
@@ -123,13 +126,13 @@ export function ConnectionsList({ accounts }: { accounts: Account[] }) {
                             platform={account.platform}
                             size="sm"
                           />
-                          <span className="max-w-[100px] truncate text-xs font-medium text-gray-900">
+                          <span className="max-w-[100px] truncate text-xs font-medium text-text">
                             @{account.platformUsername || "user"}
                           </span>
                           {isExpired && (
                             <Link
                               href={`/api/connect/${account.platform}`}
-                              className="shrink-0 inline-flex items-center gap-1 rounded border border-red-300 bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 hover:bg-red-100"
+                              className="shrink-0 inline-flex items-center gap-1 rounded border border-destructive/50 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive transition-colors hover:bg-destructive/20"
                             >
                               <AlertTriangle className="h-3 w-3" />
                               Token expired — Reconnect
@@ -148,7 +151,7 @@ export function ConnectionsList({ accounts }: { accounts: Account[] }) {
                           <button
                             type="button"
                             onClick={() => handleOpenDisconnect(account)}
-                            className="shrink-0 rounded p-0.5 text-red-600 hover:bg-red-50 transition-colors"
+                            className="shrink-0 rounded p-0.5 text-destructive transition-colors hover:bg-destructive/10"
                             aria-label={`Disconnect ${account.platformUsername || account.platform}`}
                           >
                             <X className="h-3.5 w-3.5" />

@@ -77,17 +77,17 @@ export function TikTokSettingsModal({
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
-        className="rounded-2xl border border-gray-200 bg-white shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col"
+        className="rounded-2xl border border-border bg-bg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between shrink-0 p-4 border-b border-gray-100">
+        <div className="flex items-center justify-between shrink-0 p-4 border-b border-border">
           <h2
             id="tiktok-settings-title"
-            className="text-lg font-semibold text-gray-900"
+            className="text-lg font-semibold text-text"
           >
             TikTok settings
             {accountUsername && (
-              <span className="text-gray-500 font-normal ml-1">
+              <span className="text-text-muted font-normal ml-1">
                 @{accountUsername}
               </span>
             )}
@@ -95,7 +95,7 @@ export function TikTokSettingsModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 rounded-lg p-1.5 transition-colors"
+            className="text-text-muted hover:text-text rounded-lg p-1.5 transition-colors"
             aria-label="Close"
           >
             <svg
@@ -126,9 +126,9 @@ export function TikTokSettingsModal({
           />
         </div>
 
-        <div className="shrink-0 p-4 border-t border-gray-100 space-y-3">
+        <div className="shrink-0 p-4 border-t border-border space-y-3">
           {displayError && (
-            <p className="text-sm text-red-600 font-medium" role="alert">
+            <p className="text-sm text-destructive font-medium" role="alert">
               {displayError}
             </p>
           )}
@@ -136,14 +136,14 @@ export function TikTokSettingsModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+              className="flex-1 rounded-xl border border-border bg-bg px-4 py-2.5 text-sm font-medium text-text shadow-sm hover:bg-bg-subtle transition-colors"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleSave}
-              className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-sm font-semibold shadow-md transition-colors"
+              className="flex-1 rounded-xl bg-accent hover:bg-accent-hover text-white px-4 py-2.5 text-sm font-semibold shadow-md transition-colors"
             >
               Save settings
             </button>

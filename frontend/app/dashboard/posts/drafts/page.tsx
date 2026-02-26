@@ -38,21 +38,21 @@ export default async function DraftsPostsPage({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-extrabold text-gray-900">Drafts</h2>
-          <p className="text-gray-500 mt-1 font-medium">
+          <h2 className="text-2xl font-extrabold text-text">Drafts</h2>
+          <p className="text-text-muted mt-1 font-medium">
             Saved drafts
           </p>
         </div>
         <Link
           href="/dashboard/posts"
-          className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
+          className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
         >
           View all posts →
         </Link>
       </div>
 
       <div className="mb-6">
-        <Suspense fallback={<div className="h-10 w-48 rounded-lg bg-gray-100 animate-pulse" />}>
+        <Suspense fallback={<div className="h-10 w-48 rounded-lg bg-bg-muted animate-pulse" />}>
           <AllPostsFilters
             platformOptions={platformOptions}
             accountOptions={accountOptions}

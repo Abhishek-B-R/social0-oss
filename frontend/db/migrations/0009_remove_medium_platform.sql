@@ -1,5 +1,6 @@
 -- Remove Medium platform: delete any connected_accounts with platform='medium' before altering enum
-DELETE FROM connected_accounts WHERE platform = 'medium';
+-- Use ::text so we don't require 'medium' to still be in the enum (handles re-runs / partial state)
+DELETE FROM connected_accounts WHERE platform::text = 'medium';
 --> statement-breakpoint
 ALTER TABLE "connected_accounts" ALTER COLUMN "platform" SET DATA TYPE text USING platform::text;
 --> statement-breakpoint
@@ -11,4 +12,4 @@ CREATE TYPE "platform" AS ENUM('linkedin', 'instagram', 'youtube', 'pinterest', 
 --> statement-breakpoint
 ALTER TABLE "connected_accounts" ALTER COLUMN "platform" SET DATA TYPE "platform" USING platform::"platform";
 --> statement-breakpoint
-ALTER TABLE "user_settings" ALTER COLUMN "default_platforms" SET DATA TYPE "platform"[] USING (SELECT COALESCE(array_agg(x::"platform"), ARRAY[]::"platform"[]) FROM unnest(default_platforms) AS x WHERE x <> 'medium');
+ALTER TABLE "user_settings" ALTER COLUMN "default_platforms" SET DATA TYPE "platform"[] USING default_platforms::text[]::"platform"[];

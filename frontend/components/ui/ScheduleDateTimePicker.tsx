@@ -157,7 +157,7 @@ export function ScheduleDateTimePicker({
     <div className="flex flex-col sm:flex-row gap-4 w-full">
       {/* Date Picker */}
       <div className="flex-1">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-text mb-2">
           Date
         </label>
         <div className="relative" ref={datePickerRef}>
@@ -170,19 +170,19 @@ export function ScheduleDateTimePicker({
             classNames={{
               root: "rdp-root",
               month: "rdp-month",
-              month_caption: "flex justify-between items-center h-9 mb-4 text-sm font-semibold text-gray-900",
+              month_caption: "flex justify-between items-center h-9 mb-4 text-sm font-semibold text-text",
               nav: "flex gap-1",
-              button_previous: "rounded-lg border border-gray-200 bg-white p-2 text-gray-600 hover:bg-gray-50 transition-colors",
-              button_next: "rounded-lg border border-gray-200 bg-white p-2 text-gray-600 hover:bg-gray-50 transition-colors",
+              button_previous: "rounded-lg border border-border bg-bg-elevated p-2 text-text-muted hover:bg-bg-muted transition-colors",
+              button_next: "rounded-lg border border-border bg-bg-elevated p-2 text-text-muted hover:bg-bg-muted transition-colors",
               weekdays: "flex",
-              weekday: "w-9 text-center text-xs font-medium text-gray-500",
+              weekday: "w-9 text-center text-xs font-medium text-text-muted",
               week: "flex",
               day: "w-9 h-9 text-center text-sm",
-              day_button: "rounded-lg hover:bg-emerald-50 focus:bg-emerald-50 transition-colors",
-              selected: "!bg-emerald-600 !text-white hover:!bg-emerald-700",
-              today: "font-semibold text-emerald-600",
-              outside: "text-gray-300",
-              disabled: "text-gray-300 cursor-not-allowed",
+              day_button: "rounded-lg hover:bg-accent/10 focus:bg-accent/10 transition-colors text-text",
+              selected: "!bg-accent !text-white hover:!bg-accent-hover",
+              today: "font-semibold text-accent",
+              outside: "text-text-muted/50",
+              disabled: "text-text-muted/50 cursor-not-allowed",
               hidden: "invisible",
             }}
           />
@@ -191,7 +191,7 @@ export function ScheduleDateTimePicker({
 
       {/* Time Picker */}
       <div className="flex-1 sm:max-w-[200px]">
-        <label htmlFor="time-picker" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="time-picker" className="block text-sm font-medium text-text mb-2">
           Time
         </label>
         <input
@@ -200,10 +200,10 @@ export function ScheduleDateTimePicker({
           id="time-picker"
           value={timeValue}
           onChange={handleTimeChange}
-          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 transition-colors [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
+          className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-sm font-medium text-text shadow-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 transition-colors [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
         />
         {selectedDate && timeValue && (
-          <p className="mt-2 text-xs text-gray-500">
+          <p className="mt-2 text-xs text-text-muted">
             {format(
               setMinutes(setHours(selectedDate, parseInt(timeValue.split(":")[0]) || 0), parseInt(timeValue.split(":")[1]) || 0),
               "MMM d, yyyy 'at' h:mm a"

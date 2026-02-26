@@ -77,10 +77,10 @@ export function BulkUploadZone({
       <label
         className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed py-12 px-6 text-center transition-colors ${
           disabled
-            ? "cursor-not-allowed border-gray-200 bg-gray-50"
+            ? "cursor-not-allowed border-border bg-muted"
             : dragActive
-              ? "border-emerald-400 bg-emerald-50/50"
-              : "cursor-pointer border-gray-300 bg-gray-50/50 hover:border-emerald-300 hover:bg-emerald-50/30"
+              ? "border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30"
+              : "cursor-pointer border-border bg-muted/50 hover:border-emerald-300 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 dark:hover:border-emerald-600"
         }`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -94,16 +94,16 @@ export function BulkUploadZone({
           disabled={disabled}
           className="hidden"
         />
-        <Upload className="h-12 w-12 text-gray-400 mb-2" />
-        <p className="text-sm font-medium text-gray-700">
+        <Upload className="h-12 w-12 text-muted-foreground mb-2" />
+        <p className="text-sm font-medium text-foreground">
           Click to upload or drag and drop
         </p>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-muted-foreground">
           {maxSizeLabel}. Max {maxFiles} files.
         </p>
       </label>
       {error && (
-        <p className="text-sm text-red-600 font-medium" role="alert">
+        <p className="text-sm text-red-600 font-medium dark:text-red-400" role="alert">
           {error}
         </p>
       )}

@@ -23,29 +23,29 @@ export default function Home() {
 
   return (
     <div
-      className="min-h-screen flex flex-col bg-white font-sans"
+      className="min-h-screen flex flex-col bg-background font-sans text-foreground"
       suppressHydrationWarning
     >
       <LandingHeader />
-      <main className="bg-white">
+      <main className="bg-background">
         {/* Hero */}
         <section
           className="relative py-16 sm:py-20 px-4 sm:px-6 lg:px-8 overflow-hidden"
           style={{ animation: "bannerSlideUp 0.6s ease-out" }}
         >
           {/* Subtle emerald radial gradient background */}
-          <div className="absolute inset-0 bg-gradient-radial from-emerald-100/60 via-emerald-50/40 to-transparent pointer-events-none" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(5,150,105,0.15),transparent_50%)] pointer-events-none" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(5,150,105,0.12),transparent_50%)] pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-radial from-emerald-100/60 via-emerald-50/40 to-transparent pointer-events-none dark:from-emerald-950/40 dark:via-emerald-950/20" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(5,150,105,0.15),transparent_50%)] pointer-events-none dark:bg-[radial-gradient(circle_at_50%_0%,rgba(5,150,105,0.18),transparent_55%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(5,150,105,0.12),transparent_50%)] pointer-events-none dark:bg-[radial-gradient(circle_at_80%_20%,rgba(5,150,105,0.16),transparent_55%)]" />
           <div className="relative z-10">
           <div className="max-w-4xl mx-auto text-center">
             <div className="mb-8">
               <PlatformMarquee />
             </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight mb-6">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground tracking-tight mb-6">
               One post. All your social accounts. Zero hassle.
             </h1>
-            <p className="text-lg sm:text-xl text-gray-500 mb-10 max-w-2xl mx-auto font-medium">
+            <p className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto font-medium">
               Plan, schedule and publish your content with ease. Write once and
               hit every network from one dashboard.
             </p>
@@ -68,15 +68,15 @@ export default function Home() {
         <FAQ />
 
         {/* Final CTA */}
-        <section className="py-16 sm:py-20 bg-emerald-50 relative overflow-hidden">
+        <section className="py-16 sm:py-20 bg-emerald-50 dark:bg-emerald-950/30 relative overflow-hidden">
           <div className="relative">
             <RevealSection>
               <div className="max-w-2xl mx-auto px-4 text-center">
-                <div className="rounded-2xl border border-gray-200 bg-white shadow-xl p-8 sm:p-10">
-                  <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4">
+                <div className="rounded-2xl border border-border bg-card shadow-xl p-8 sm:p-10">
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground mb-4">
                     Ready to grow your presence?
                   </h2>
-                  <p className="text-base text-gray-500 mb-8 font-medium">
+                  <p className="text-base text-muted-foreground mb-8 font-medium">
                     Join Social0 and publish everywhere from one place.
                   </p>
                   <button

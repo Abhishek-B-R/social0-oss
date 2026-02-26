@@ -42,7 +42,7 @@ export function DashboardBottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
+      className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-border bg-bg-elevated pb-[env(safe-area-inset-bottom)] lg:hidden"
       aria-label="Main navigation"
     >
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
@@ -52,7 +52,9 @@ export function DashboardBottomNav() {
             key={href}
             href={href}
             className={`flex flex-1 flex-col items-center gap-0.5 py-3 pt-2 text-xs transition-colors ${
-              active ? "text-emerald-600" : "text-gray-500 hover:text-gray-900"
+              active
+                ? "text-accent"
+                : "text-text-muted hover:text-text"
             }`}
           >
             <Icon className="h-5 w-5 shrink-0" />

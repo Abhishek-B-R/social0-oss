@@ -111,8 +111,8 @@ function AutoPlugPanelInner({
     <>
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">🔌 Auto-Plug</h3>
-          <p className="mt-0.5 text-xs text-gray-500">
+          <h3 className="text-sm font-semibold text-foreground">🔌 Auto-Plug</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
             Reply automatically when this post hits a milestone.
           </p>
         </div>
@@ -122,11 +122,11 @@ function AutoPlugPanelInner({
           aria-checked={enabled}
           onClick={() => setEnabled((e) => !e)}
           className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
-            enabled ? "bg-emerald-600" : "bg-gray-200"
+            enabled ? "bg-emerald-600" : "bg-muted"
           }`}
         >
           <span
-            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+            className={`inline-block h-5 w-5 transform rounded-full bg-background shadow transition-transform ${
               enabled ? "translate-x-5" : "translate-x-0.5"
             } mt-0.5`}
           />
@@ -134,9 +134,9 @@ function AutoPlugPanelInner({
       </div>
 
       {enabled && (
-        <div className="mt-4 space-y-4 border-t border-gray-100 pt-4">
+        <div className="mt-4 space-y-4 border-t border-border pt-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-gray-600">
+            <span className="text-xs font-medium text-muted-foreground">
               If this post hits:
             </span>
             <input
@@ -146,16 +146,16 @@ function AutoPlugPanelInner({
               onChange={(e) =>
                 setThreshold(Math.max(1, parseInt(e.target.value, 10) || 1))
               }
-              className="w-20 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+              className="w-20 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
             />
-            <div className="flex rounded-full border border-gray-200 bg-gray-50 p-0.5">
+            <div className="flex rounded-full border border-border bg-muted p-0.5">
               <button
                 type="button"
                 onClick={() => setMetricType("likes")}
                 className={`rounded-full px-3 py-1.5 text-sm ${
                   metricType === "likes"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground"
                 }`}
               >
                 ♡ Likes
@@ -165,8 +165,8 @@ function AutoPlugPanelInner({
                 onClick={() => setMetricType("retweets")}
                 className={`rounded-full px-3 py-1.5 text-sm ${
                   metricType === "retweets"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground"
                 }`}
               >
                 ↺ Retweets
@@ -175,7 +175,7 @@ function AutoPlugPanelInner({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
               Reply automatically with:
             </label>
             <textarea
@@ -184,10 +184,10 @@ function AutoPlugPanelInner({
               placeholder="Your reply tweet..."
               maxLength={MAX_PLUG_COMMENT_LENGTH + 1}
               rows={3}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
-            <div className="mt-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
-              <p className="text-xs text-gray-500 mb-2">Preview</p>
+            <div className="mt-2 rounded-lg border border-border bg-muted p-3">
+              <p className="text-xs text-muted-foreground mb-2">Preview</p>
               <div className="flex gap-3">
                 <div className="shrink-0">
                   <AccountAvatar
@@ -199,17 +199,17 @@ function AutoPlugPanelInner({
                   />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-sm font-semibold text-foreground">
                     {xAccount?.platformUsername
                       ? `@${xAccount.platformUsername}`
                       : "X account"}
                   </p>
-                  <p className="mt-0.5 text-sm text-gray-700 whitespace-pre-wrap wrap-break-word">
+                  <p className="mt-0.5 text-sm text-foreground/80 whitespace-pre-wrap wrap-break-word">
                     {commentSlice || "Your reply will appear here."}
                   </p>
                 </div>
               </div>
-              <p className="mt-2 text-right text-xs text-gray-400">
+              <p className="mt-2 text-right text-xs text-muted-foreground">
                 {charCount}/{MAX_PLUG_COMMENT_LENGTH}
               </p>
             </div>
@@ -221,7 +221,7 @@ function AutoPlugPanelInner({
   return embedded ? (
     <div className="min-w-0">{content}</div>
   ) : (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       {content}
     </div>
   );

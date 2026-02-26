@@ -499,16 +499,16 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
                 placeholder="Search accounts..."
                 value={accountSearch}
                 onChange={(e) => setAccountSearch(e.target.value)}
-                className="h-8 w-full text-xs rounded border border-gray-200 px-2 py-1 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
+                className="h-8 w-full text-xs rounded border border-border px-2 py-1 text-text placeholder-text-subtle focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
               />
             }
           />
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-            <label className="block text-sm font-semibold text-gray-900">
+          <div className="rounded-2xl border border-border bg-bg p-6 shadow-sm space-y-4">
+            <label className="block text-sm font-semibold text-text">
               Collection of images and videos (one post)
             </label>
-            <p className="text-sm text-gray-500 -mt-2">
+            <p className="text-sm text-text-muted -mt-2">
               Add a caption plus multiple images and/or video in a single post.
             </p>
 
@@ -517,7 +517,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
               onChange={(e) => setContent(e.target.value)}
               placeholder="Write your caption..."
               rows={3}
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
 
             <input
@@ -539,12 +539,12 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
             <div className="flex flex-wrap items-center gap-2">
               <label
                 htmlFor="collection-images"
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-subtle px-3 py-2 text-sm font-medium text-text-muted hover:bg-bg-muted cursor-pointer"
               >
                 <MdOutlineAddPhotoAlternate className="w-5 h-5" />
                 Images
                 {images.length > 0 && (
-                  <span className="text-gray-500">({images.length})</span>
+                  <span className="text-text-muted">({images.length})</span>
                 )}
               </label>
               <input
@@ -557,12 +557,12 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
               />
               <label
                 htmlFor="collection-video"
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-subtle px-3 py-2 text-sm font-medium text-text-muted hover:bg-bg-muted cursor-pointer"
               >
                 <MdOutlineVideocam className="w-5 h-5" />
                 Videos
                 {videos.length > 0 && (
-                  <span className="text-gray-500">({videos.length})</span>
+                  <span className="text-text-muted">({videos.length})</span>
                 )}
               </label>
               <input
@@ -576,8 +576,8 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
             </div>
 
             {(images.length > 0 || videos.length > 0) && (
-              <div className="space-y-3 pt-2 border-t border-gray-100">
-                <p className="text-xs text-gray-500">
+              <div className="space-y-3 pt-2 border-t border-border-subtle">
+                <p className="text-xs text-text-muted">
                   Carousel post: Drag to reorder (mainly for Instagram)
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -590,7 +590,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
                         onDragStart={() => handleDragStart(index)}
                         onDragOver={(e) => handleDragOver(e, index)}
                         onDragEnd={handleDragEnd}
-                        className="relative shrink-0 cursor-move overflow-hidden rounded-lg border border-gray-200 hover:border-emerald-400 transition-colors h-20 w-20"
+                        className="relative shrink-0 cursor-move overflow-hidden rounded-lg border border-border hover:border-accent transition-colors h-20 w-20"
                       >
                         {isVideo ? (
                           <video
@@ -679,18 +679,18 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
           intendedModeRef={intendedModeRef}
           formRef={formRef}
         >
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-gray-900">
+          <div className="rounded-xl border border-border bg-bg p-4 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-text">
               Carousel preview
             </h3>
             {allItemsSorted.length === 0 ? (
-              <div className="flex aspect-square w-full flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-gray-400">
+              <div className="flex aspect-square w-full flex-col items-center justify-center rounded-lg border border-dashed border-border bg-bg-subtle text-text-subtle">
                 <MdOutlineAddPhotoAlternate className="mb-2 h-12 w-12" />
                 <span className="text-xs">Upload media to see preview</span>
               </div>
             ) : (
               <>
-                <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-gray-100">
+                <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-bg-muted">
                   {previewItem?.type === "video" ? (
                     <video
                       src={previewItem.preview}
@@ -716,12 +716,12 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
                         i <= 0 ? allItemsSorted.length - 1 : i - 1,
                       )
                     }
-                    className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                    className="rounded-full p-1 text-text-muted hover:bg-bg-muted"
                     aria-label="Previous"
                   >
                     ←
                   </button>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-text-muted">
                     {carouselPreviewIndex + 1} / {allItemsSorted.length}
                   </span>
                   <button
@@ -731,7 +731,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
                         i >= allItemsSorted.length - 1 ? 0 : i + 1,
                       )
                     }
-                    className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                    className="rounded-full p-1 text-text-muted hover:bg-bg-muted"
                     aria-label="Next"
                   >
                     →
@@ -745,8 +745,8 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
                       onClick={() => setCarouselPreviewIndex(idx)}
                       className={`relative h-12 w-12 shrink-0 overflow-hidden rounded border ${
                         idx === carouselPreviewIndex
-                          ? "border-emerald-500 ring-1 ring-emerald-500"
-                          : "border-gray-200"
+                          ? "border-accent ring-1 ring-accent"
+                          : "border-border"
                       }`}
                     >
                       {item.type === "video" ? (

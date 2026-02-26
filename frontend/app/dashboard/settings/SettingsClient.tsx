@@ -10,6 +10,7 @@ import {
   updateWeeklyPostingGoal,
   type SettingsSnapshot,
 } from "@/app/actions/settings";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 function SaveButton({ label = "Save" }: { label?: string }) {
   const { pending } = useFormStatus();
@@ -18,7 +19,7 @@ function SaveButton({ label = "Save" }: { label?: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+      className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? "Saving..." : label}
     </button>
@@ -29,7 +30,7 @@ function SecondaryButton({ label }: { label: string }) {
   return (
     <button
       type="button"
-      className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+      className="rounded-xl border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text shadow-sm transition-colors hover:bg-bg-bg-muted"
     >
       {label}
     </button>
@@ -52,15 +53,17 @@ function Toggle({
   return (
     <label htmlFor={id} className="flex items-start justify-between gap-4">
       <div>
-        <p className="text-sm font-semibold text-gray-900">{label}</p>
-        {description ? <p className="mt-1 text-sm text-gray-500">{description}</p> : null}
+        <p className="text-sm font-semibold text-text">{label}</p>
+        {description ? (
+          <p className="mt-1 text-sm text-text-muted">{description}</p>
+        ) : null}
       </div>
       <input
         id={id}
         name={name}
         type="checkbox"
         defaultChecked={defaultChecked}
-        className="mt-1 h-5 w-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+        className="mt-1 h-5 w-5 rounded border-input bg-bg text-accent focus:ring-accent"
       />
     </label>
   );
@@ -78,27 +81,42 @@ export function SettingsClient({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-gray-900">Settings</h1>
-        <p className="mt-2 text-gray-500">Manage your account, security, and posting preferences.</p>
+        <h1 className="text-2xl font-extrabold text-text">Settings</h1>
+        <p className="mt-2 text-text-muted">
+          Manage your account, security, and posting preferences.
+        </p>
       </div>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">Profile</h2>
+      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-text">Appearance</h2>
+        <p className="mt-2 text-sm text-text-muted">
+          Choose light, dark, or follow your system setting.
+        </p>
+        <div className="mt-4">
+          <ThemeToggle />
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-text">Profile</h2>
         <form action={updateDisplayName} className="mt-4 space-y-4">
           <div>
-            <label htmlFor="displayName" className="text-sm font-medium text-gray-700">
+            <label
+              htmlFor="displayName"
+              className="text-sm font-medium text-text"
+            >
               Display Name
             </label>
             <input
               id="displayName"
               name="displayName"
               defaultValue={displayName}
-              className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="mt-1 w-full rounded-xl border border-input bg-bg px-4 py-2.5 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-700">Email Address</p>
-            <p className="mt-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-600">
+            <p className="text-sm font-medium text-text">Email Address</p>
+            <p className="mt-1 rounded-xl border border-border bg-bg-muted px-4 py-2.5 text-sm text-text-muted">
               {email}
             </p>
           </div>
@@ -106,39 +124,44 @@ export function SettingsClient({
         </form>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">Email Address</h2>
-        <p className="mt-2 text-sm text-gray-500">Current email: {email}</p>
+      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-text">Email Address</h2>
+        <p className="mt-2 text-sm text-text-muted">Current email: {email}</p>
         <div className="mt-4">
           <SecondaryButton label="Change Email Address" />
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">Password</h2>
+      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-text">Password</h2>
         <div className="mt-4 flex flex-wrap items-center gap-4">
           <SecondaryButton label="Change Password" />
-          <Link href="#" className="text-sm font-medium text-emerald-700 hover:text-emerald-800">
+          <Link
+            href="#"
+            className="text-sm font-medium text-accent hover:text-accent-hover"
+          >
             Forgot Password? Send Reset Link
           </Link>
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">Security</h2>
-        <p className="mt-2 text-sm text-gray-500">Sign out from all active sessions across devices.</p>
+      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-text">Security</h2>
+        <p className="mt-2 text-sm text-text-muted">
+          Sign out from all active sessions across devices.
+        </p>
         <form action={signOutAllDevices} className="mt-4">
           <button
             type="submit"
-            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-accent-hover"
           >
             Sign Out All Devices
           </button>
         </form>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">Email Preferences</h2>
+      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-text">Email Preferences</h2>
         <form action={updateAutomationEmails} className="mt-4 space-y-4">
           <Toggle
             id="automationEmails"
@@ -151,8 +174,8 @@ export function SettingsClient({
         </form>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">Platform Preferences</h2>
+      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-text">Platform Preferences</h2>
         <form action={updatePlatformPreferences} className="mt-4 space-y-4">
           <Toggle
             id="useFilenameAsCaption"
@@ -170,11 +193,14 @@ export function SettingsClient({
         </form>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">Weekly Posting Goal</h2>
+      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-text">Weekly Posting Goal</h2>
         <form action={updateWeeklyPostingGoal} className="mt-4 flex flex-wrap items-end gap-3">
           <div>
-            <label htmlFor="weeklyPostingGoal" className="text-sm font-medium text-gray-700">
+            <label
+              htmlFor="weeklyPostingGoal"
+              className="text-sm font-medium text-text"
+            >
               Posts per week
             </label>
             <input
@@ -184,7 +210,7 @@ export function SettingsClient({
               min={0}
               max={100}
               defaultValue={settings.weeklyPostingGoal}
-              className="mt-1 w-40 rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="mt-1 w-40 rounded-xl border border-input bg-bg px-4 py-2.5 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
           </div>
           <SaveButton />

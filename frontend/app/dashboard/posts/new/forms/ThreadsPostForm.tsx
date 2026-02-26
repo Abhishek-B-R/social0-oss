@@ -76,12 +76,12 @@ function ThreadPreviewMediaGrid({ items }: { items: PreviewMediaItem[] }) {
       );
     }
     return (
-      <div key={key} className="relative w-full h-full min-h-0 bg-gray-200 rounded-lg overflow-hidden">
+      <div key={key} className="relative w-full h-full min-h-0 bg-bg-muted rounded-lg overflow-hidden">
         {item.thumbnailUrl ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img src={item.thumbnailUrl} alt="" className={imgClass} />
         ) : (
-          <div className="absolute inset-0 bg-gray-200" />
+          <div className="absolute inset-0 bg-bg-muted" />
         )}
         {playOverlay}
       </div>
@@ -713,16 +713,16 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
                 placeholder="Search accounts..."
                 value={accountSearch}
                 onChange={(e) => setAccountSearch(e.target.value)}
-                className="h-8 w-full text-xs rounded border border-gray-200 px-2 py-1 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
+                className="h-8 w-full text-xs rounded border border-border px-2 py-1 text-text placeholder-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
               />
             }
           />
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-            <p className="text-sm font-semibold text-gray-900">
+          <div className="rounded-2xl border border-border bg-bg p-6 shadow-sm space-y-4">
+            <p className="text-sm font-semibold text-text">
               Thread posts (stacked in order when published)
             </p>
-            <p className="text-sm text-gray-500 -mt-2">
+            <p className="text-sm text-text-muted -mt-2">
               Short posts work best — e.g. {MAX_CHARS} chars per post. You can
               add images or a video to each post.
             </p>
@@ -730,17 +730,17 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
             {posts.map((post, index) => (
               <div
                 key={post.id}
-                className="relative rounded-xl border border-gray-100 bg-gray-50/50 p-4 space-y-3"
+                className="relative rounded-xl border border-border-subtle bg-bg-subtle/50 p-4 space-y-3"
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-medium text-gray-500">
+                  <span className="text-xs font-medium text-text-muted">
                     Post {index + 1}
                   </span>
                   {posts.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removePost(post.id)}
-                      className="text-gray-400 hover:text-red-600 p-1 rounded"
+                      className="text-text-muted hover:text-destructive p-1 rounded"
                       title="Remove this post"
                     >
                       <MdClose className="w-4 h-4" />
@@ -753,14 +753,14 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
                   placeholder="What's happening?"
                   rows={3}
                   maxLength={MAX_CHARS}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none"
+                  className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
                 />
                 <div className="flex justify-end text-sm">
                   <span
                     className={
                       post.text.length > MAX_CHARS
-                        ? "text-red-600 font-medium"
-                        : "text-gray-500"
+                        ? "text-destructive font-medium"
+                        : "text-text-muted"
                     }
                   >
                     {post.text.length} / {MAX_CHARS}
@@ -770,7 +770,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
                 {/* Media previews - draggable with serial numbers */}
                 {(post.images.length > 0 || post.videos.length > 0) && (
                   <div className="space-y-2">
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-text-muted">
                       Drag to reorder media (carousel order)
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
@@ -785,7 +785,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
                               handleDragOver(e, post.id, index)
                             }
                             onDragEnd={handleDragEnd}
-                            className={`relative shrink-0 cursor-move overflow-hidden rounded border border-gray-200 hover:border-emerald-400 transition-colors ${
+                            className={`relative shrink-0 cursor-move overflow-hidden rounded border border-border hover:border-accent transition-colors ${
                               isVideo ? "h-12 w-16" : "h-12 w-12"
                             }`}
                           >
@@ -831,7 +831,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
                 )}
 
                 {/* Add media buttons */}
-                <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
+                <div className="flex items-center gap-2 pt-1 border-t border-border-subtle">
                   <input
                     type="file"
                     accept="image/*"
@@ -862,16 +862,16 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
                   />
                   <label
                     htmlFor={`thread-images-${post.id}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-sm font-medium text-text hover:bg-bg-muted cursor-pointer"
                   >
-                    <MdOutlinePhotoLibrary className="w-4 h-4 text-gray-500" />
+                    <MdOutlinePhotoLibrary className="w-4 h-4 text-text-muted" />
                     Images ({post.images.length}/{MAX_ATTACHMENTS_PER_POST})
                   </label>
                   <label
                     htmlFor={`thread-video-${post.id}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-sm font-medium text-text hover:bg-bg-muted cursor-pointer"
                   >
-                    <MdOutlineVideocam className="w-4 h-4 text-gray-500" />
+                    <MdOutlineVideocam className="w-4 h-4 text-text-muted" />
                     Videos ({post.videos.length}/{MAX_ATTACHMENTS_PER_POST})
                   </label>
                 </div>
@@ -881,7 +881,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
             <button
               type="button"
               onClick={addPost}
-              className="flex items-center gap-2 w-full justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/50 py-4 text-gray-600 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-700 transition-colors font-medium text-sm"
+              className="flex items-center gap-2 w-full justify-center rounded-xl border-2 border-dashed border-border bg-bg-subtle/50 py-4 text-text-muted hover:border-accent hover:bg-accent/10 hover:text-accent transition-colors font-medium text-sm"
             >
               <IoMdAddCircleOutline className="w-5 h-5" />
               Add another post
@@ -914,8 +914,8 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
           intendedModeRef={intendedModeRef}
           formRef={formRef}
         >
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
+          <div className="rounded-xl border border-border bg-bg p-4 shadow-sm">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-text">
               Thread Preview
             </h3>
             {posts.length === 0 ||
@@ -923,7 +923,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
               (p) =>
                 p.text.trim() || p.images.length > 0 || p.videos.length > 0,
             ) ? (
-              <p className="text-sm italic text-gray-500">
+              <p className="text-sm italic text-text-muted">
                 Add your first post to see preview
               </p>
             ) : (
@@ -945,7 +945,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
                   return (
                     <div key={post.id} className="flex gap-3">
                       <div className="flex flex-col items-center">
-                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-sm font-semibold text-gray-600">
+                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-muted text-sm font-semibold text-text-muted">
                           {selectedAccounts[0]?.profileImageUrl?.trim() ? (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img
@@ -959,11 +959,11 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
                           )}
                         </div>
                         {!isLast && (
-                          <div className="w-0.5 flex-1 min-h-[8px] bg-gray-200" />
+                          <div className="w-0.5 flex-1 min-h-[8px] bg-bg-muted" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1 pb-4">
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-text">
                           {displayName}
                         </p>
                         {hasContent ? (
@@ -971,12 +971,12 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
                             <p
                               className={`mt-0.5 text-sm ${
                                 post.text.length > MAX_CHARS
-                                  ? "text-red-600"
-                                  : "text-gray-700"
+                                  ? "text-destructive"
+                                  : "text-text"
                               }`}
                             >
                               {post.text.trim() || (
-                                <span className="italic text-gray-500">
+                                <span className="italic text-text-muted">
                                   Post {index + 1}
                                 </span>
                               )}
@@ -988,7 +988,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
                             )}
                           </>
                         ) : (
-                          <p className="mt-0.5 text-sm italic text-gray-500">
+                          <p className="mt-0.5 text-sm italic text-text-muted">
                             Post {index + 1}
                           </p>
                         )}

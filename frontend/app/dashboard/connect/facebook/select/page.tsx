@@ -61,19 +61,19 @@ export default function FacebookSelectPage() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-        <p className="text-gray-600 font-medium">Loading your Facebook Pages...</p>
+      <div className="rounded-2xl border border-border bg-bg-elevated p-8 shadow-sm">
+        <p className="text-text-muted font-medium">Loading your Facebook Pages...</p>
       </div>
     );
   }
 
   if (error && pages.length === 0) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-        <p className="font-medium text-red-800">{error}</p>
+      <div className="rounded-2xl border border-destructive/50 bg-destructive/10 p-6">
+        <p className="font-medium text-destructive">{error}</p>
         <Link
           href="/dashboard"
-          className="mt-4 inline-block text-sm font-medium text-emerald-600 hover:text-emerald-700"
+          className="mt-4 inline-block text-sm font-medium text-accent hover:text-accent-hover"
         >
           ← Back to Dashboard
         </Link>
@@ -83,10 +83,10 @@ export default function FacebookSelectPage() {
 
   return (
     <div className="max-w-md">
-      <h2 className="text-2xl font-extrabold text-gray-900 mb-2">
+      <h2 className="text-2xl font-extrabold text-text mb-2">
         Choose a Facebook Page
       </h2>
-      <p className="text-gray-500 mb-6 font-medium">
+      <p className="text-text-muted mb-6 font-medium">
         Select the Page you want to connect to Social0.
       </p>
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -94,7 +94,7 @@ export default function FacebookSelectPage() {
           {pages.map((page) => (
             <label
               key={page.id}
-              className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white cursor-pointer hover:bg-gray-50 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/50"
+              className="flex items-center gap-3 p-4 rounded-xl border border-border bg-bg-elevated cursor-pointer hover:bg-bg-subtle has-[:checked]:border-accent has-[:checked]:bg-accent/10"
             >
               <input
                 type="radio"
@@ -102,26 +102,26 @@ export default function FacebookSelectPage() {
                 value={page.id}
                 checked={selectedId === page.id}
                 onChange={() => setSelectedId(page.id)}
-                className="size-4 text-emerald-600 focus:ring-emerald-500"
+                className="size-4 text-accent focus:ring-accent"
               />
-              <span className="font-medium text-gray-900">{page.name}</span>
+              <span className="font-medium text-text">{page.name}</span>
             </label>
           ))}
         </div>
         {error && (
-          <p className="text-sm font-medium text-red-600">{error}</p>
+          <p className="text-sm font-medium text-destructive">{error}</p>
         )}
         <div className="flex gap-3">
           <Link
             href="/dashboard"
-            className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+            className="rounded-xl border border-border bg-bg-elevated px-5 py-2.5 font-medium text-text shadow-sm hover:bg-bg-subtle"
           >
             Cancel
           </Link>
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 font-semibold shadow-lg disabled:opacity-50"
+            className="rounded-xl bg-accent hover:bg-accent-hover text-white px-5 py-2.5 font-semibold shadow-lg disabled:opacity-50"
           >
             {submitting ? "Connecting..." : "Connect Page"}
           </button>

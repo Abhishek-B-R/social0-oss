@@ -13,40 +13,49 @@ export function LandingHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/80 shadow-sm backdrop-blur">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 shrink-0">
-          <Image
-            src="/logo.png"
-            alt="Social0"
-            width={36}
-            height={36}
-            className="rounded-lg"
-          />
-          <span className="font-semibold text-lg text-gray-900">Social0</span>
+          <span className="relative h-9 w-9 block">
+            <Image
+              src="/logo.png"
+              alt="Social0"
+              width={36}
+              height={36}
+              className="rounded-lg dark:hidden"
+            />
+            <Image
+              src="/logo-dark.png"
+              alt="Social0"
+              width={36}
+              height={36}
+              className="rounded-lg hidden dark:block absolute inset-0"
+            />
+          </span>
+          <span className="font-semibold text-lg text-foreground">Social0</span>
         </Link>
         <nav className="hidden sm:flex items-center gap-8">
           <Link
             href="#features"
-            className="text-gray-700 hover:text-gray-900 text-sm font-medium transition-colors"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Features
           </Link>
           <Link
             href="#pricing"
-            className="text-gray-700 hover:text-gray-900 text-sm font-medium transition-colors"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Pricing
           </Link>
           <Link
             href="/terms"
-            className="text-gray-700 hover:text-gray-900 text-sm font-medium transition-colors"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Terms
           </Link>
           <Link
             href="/privacy"
-            className="text-gray-700 hover:text-gray-900 text-sm font-medium transition-colors"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Privacy
           </Link>

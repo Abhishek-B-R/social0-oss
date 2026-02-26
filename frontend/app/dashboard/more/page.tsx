@@ -27,18 +27,18 @@ const MORE_LINKS = [
 export default function MorePage() {
   return (
     <div>
-      <h1 className="text-2xl font-extrabold text-gray-900">More</h1>
-      <p className="mt-2 text-gray-500">
+      <h1 className="text-2xl font-extrabold text-text">More</h1>
+      <p className="mt-2 text-text-muted">
         Settings and the rest of the dashboard.
       </p>
-      <ul className="mt-6 space-y-1 rounded-xl border border-gray-200 bg-white shadow-sm">
+      <ul className="mt-6 space-y-1 rounded-xl border border-border bg-bg-elevated shadow-sm">
         {MORE_LINKS.map(({ href, label, icon: Icon }) => (
           <li key={href}>
             <Link
               href={href}
-              className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
             >
-              <Icon className="h-4 w-4 shrink-0 text-gray-500" />
+              <Icon className="h-4 w-4 shrink-0 text-text-muted" />
               {label}
             </Link>
           </li>
@@ -46,9 +46,9 @@ export default function MorePage() {
         <li>
           <a
             href="#"
-            className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
           >
-            <MessageCircle className="h-4 w-4 shrink-0 text-gray-500" />
+            <MessageCircle className="h-4 w-4 shrink-0 text-text-muted" />
             Share feedback
           </a>
         </li>

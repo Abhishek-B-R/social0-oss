@@ -64,22 +64,22 @@ export function PostFormOptions({
 
   return (
     <>
-      <section className="border-b border-gray-200 pb-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <label className="shrink-0 text-sm font-semibold text-gray-900">
+      <section className="border-b border-border pt-5 pb-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <label className="shrink-0 text-base font-semibold text-text">
             Post to
           </label>
           {searchSlot && (
-            <div className="min-w-0 w-full sm:ml-auto sm:max-w-[340px]">
+            <div className="min-w-0 w-full sm:ml-auto sm:max-w-[340px] [&_input]:h-9">
               {searchSlot}
             </div>
           )}
         </div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={selectAll}
-            className="shrink-0 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+            className="shrink-0 rounded-full border border-border bg-bg-elevated px-2 py-0.5 text-xs font-medium text-text-muted transition-colors hover:bg-bg-muted"
           >
             {allSelected ? "Deselect all" : "Select all"}
           </button>
@@ -98,41 +98,41 @@ export function PostFormOptions({
       {betweenScheduleAndActions}
 
       {!hideScheduleAndActions && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="block text-sm font-semibold text-gray-900 mb-4">
+        <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
+          <p className="block text-sm font-semibold text-text mb-4">
             When do you want to publish?
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 has-checked:border-emerald-500 has-checked:bg-emerald-50/50 transition-colors">
+            <label className="flex items-start gap-3 p-4 rounded-xl border border-border bg-bg-muted/30 cursor-pointer hover:bg-bg-muted/50 has-checked:border-accent has-checked:bg-accent/10 transition-colors">
               <input
                 type="radio"
                 name="publishMode"
                 checked={mode === "now"}
                 onChange={() => setMode("now")}
-                className="mt-0.5 size-4 border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                className="mt-0.5 size-4 border-input bg-bg text-accent focus:ring-accent"
               />
               <div>
-                <span className="block font-medium text-gray-900">
+                <span className="block font-medium text-text">
                   Post now
                 </span>
-                <span className="block text-sm text-gray-500 mt-0.5">
+                <span className="block text-sm text-text-muted mt-0.5">
                   Publish right away
                 </span>
               </div>
             </label>
-            <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 has-checked:border-emerald-500 has-checked:bg-emerald-50/50 transition-colors">
+            <label className="flex items-start gap-3 p-4 rounded-xl border border-border bg-bg-muted/30 cursor-pointer hover:bg-bg-muted/50 has-checked:border-accent has-checked:bg-accent/10 transition-colors">
               <input
                 type="radio"
                 name="publishMode"
                 checked={mode === "scheduled"}
                 onChange={() => setMode("scheduled")}
-                className="mt-0.5 size-4 border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                className="mt-0.5 size-4 border-input bg-bg text-accent focus:ring-accent"
               />
               <div>
-                <span className="block font-medium text-gray-900">
+                <span className="block font-medium text-text">
                   Schedule for later
                 </span>
-                <span className="block text-sm text-gray-500 mt-0.5">
+                <span className="block text-sm text-text-muted mt-0.5">
                   Pick date & time
                 </span>
               </div>
@@ -147,9 +147,9 @@ export function PostFormOptions({
               />
             </div>
           )}
-          <p className="mt-4 text-sm text-gray-500">
+          <p className="mt-4 text-sm text-text-muted">
             {mode === "draft" ? (
-              <span className="text-emerald-700 font-medium">
+              <span className="text-accent font-medium">
                 Saving as draft — you can publish later from Posts.
               </span>
             ) : (
@@ -158,7 +158,7 @@ export function PostFormOptions({
                 <button
                   type="button"
                   onClick={() => setMode("draft")}
-                  className="font-medium text-emerald-600 hover:text-emerald-700"
+                  className="font-medium text-accent hover:text-accent-hover"
                 >
                   save as draft
                 </button>{" "}
@@ -170,7 +170,7 @@ export function PostFormOptions({
       )}
 
       {!hideScheduleAndActions && error && (
-        <div className="rounded-xl bg-red-50 text-red-700 px-4 py-3 text-sm font-medium border border-red-100">
+        <div className="rounded-xl bg-destructive/10 text-destructive px-4 py-3 text-sm font-medium border border-destructive/30">
           {error}
         </div>
       )}
@@ -180,14 +180,14 @@ export function PostFormOptions({
           <button
             type="submit"
             disabled={loading || submitDisabled}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 shadow-lg transition-colors"
+            className="rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 shadow-lg transition-colors"
           >
             {loading ? "Saving..." : submitLabel}
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl border border-gray-200 bg-white px-6 py-3 font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+            className="rounded-xl border border-border bg-bg-elevated px-6 py-3 font-medium text-text shadow-sm hover:bg-bg-muted transition-colors"
           >
             Cancel
           </button>

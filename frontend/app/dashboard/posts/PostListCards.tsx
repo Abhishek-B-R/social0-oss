@@ -103,7 +103,7 @@ function getStatusBadge(status: string | null): { label: string; className: stri
     case "failed":
       return { label: "Failed", prefix: "✕", className: "bg-red-600 text-white" };
     default:
-      return { label: "Draft", prefix: "○", className: "bg-gray-200 text-gray-700" };
+      return { label: "Draft", prefix: "○", className: "bg-muted text-foreground" };
   }
 }
 
@@ -141,8 +141,8 @@ export function PostListCards({
 }) {
   if (userPosts.length === 0) {
     return (
-      <div className="rounded-xl border border-[#e5e7eb] bg-white p-10 text-center">
-        <p className="mb-4 font-medium text-gray-600">
+      <div className="rounded-xl border border-border bg-card p-10 text-center">
+        <p className="mb-4 font-medium text-muted-foreground">
           {hasActiveFilters ? filterMessage : emptyMessage}
         </p>
         <Link
@@ -179,13 +179,13 @@ export function PostListCards({
 
         const isPublishing = post.status === "publishing";
         const cardBorderClass = isPublishing
-          ? "border-l-4 border-l-amber-400 border border-[#e5e7eb]"
-          : "border border-[#e5e7eb]";
+          ? "border-l-4 border-l-amber-400 border border-border"
+          : "border border-border";
 
         return (
           <li
             key={post.id}
-            className={`rounded-[12px] bg-white transition-shadow hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)] ${cardBorderClass}`}
+            className={`rounded-[12px] bg-card transition-shadow hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)] ${cardBorderClass}`}
           >
             <Link
               href={`/dashboard/posts/${post.id}`}
@@ -193,7 +193,7 @@ export function PostListCards({
             >
               {/* TOP ROW: [Post type badge] left, [Status badge] right */}
               <div className="mb-1.5 flex items-center justify-between gap-2">
-                <span className="rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                   {displayType}
                 </span>
                 <span
@@ -203,7 +203,7 @@ export function PostListCards({
                 </span>
               </div>
               {/* MIDDLE: caption/title — larger, bolder, 2 lines */}
-              <p className="mb-2 line-clamp-2 text-[15px] font-semibold leading-snug text-gray-900">
+              <p className="mb-2 line-clamp-2 text-[15px] font-semibold leading-snug text-foreground">
                 {preview}
               </p>
               {/* BOTTOM ROW: [Platform icons left] [Date right muted] */}
@@ -214,24 +214,26 @@ export function PostListCards({
                       key={`${post.id}-${i}-${pub.platform}`}
                       platform={pub.platform}
                       size={20}
-                      className="text-gray-500"
+                      className="text-muted-foreground"
                     />
                   ))}
                   {extraCount > 0 && (
-                    <span className="text-xs text-gray-400">+{extraCount} more</span>
+                    <span className="text-xs text-muted-foreground">
+                      +{extraCount} more
+                    </span>
                   )}
                 </div>
-                <span className="shrink-0 text-[11px] text-gray-400">
+                <span className="shrink-0 text-[11px] text-muted-foreground">
                   {timestampLabel}
                 </span>
               </div>
             </Link>
             {/* Footer: actions — same logic, improved styling */}
-            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 px-4 py-2.5 bg-gray-50/50">
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-2.5 bg-muted/30">
               {post.status === "draft" && (
                 <Link
                   href={`/dashboard/posts/${post.id}/edit`}
-                  className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  className="inline-flex items-center rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
                 >
                   Edit
                 </Link>
@@ -255,7 +257,7 @@ export function PostListCards({
                     href={pub.platformPostUrl ?? "#"}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                    className="text-xs font-medium text-accent hover:text-accent-hover"
                   >
                     View
                   </a>

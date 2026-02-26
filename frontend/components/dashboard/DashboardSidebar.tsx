@@ -1,8 +1,10 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
   FilePlus,
   Layers,
@@ -35,13 +37,11 @@ function NavLink({
   return (
     <Link
       href={href}
-      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-        isActive
-          ? "bg-emerald-50 text-emerald-700"
-          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-sidebar-text hover:bg-sidebar-active ${
+        isActive ? "bg-sidebar-active" : ""
       }`}
     >
-      <Icon className="h-4 w-4 shrink-0" />
+      <Icon className="h-4 w-4 shrink-0 text-sidebar-text" />
       {label}
     </Link>
   );
@@ -56,7 +56,7 @@ function Section({
 }) {
   return (
     <div className="space-y-1">
-      <p className="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+      <p className="px-3 text-xs font-medium uppercase tracking-wider text-sidebar-muted">
         {title}
       </p>
       {children}
@@ -74,6 +74,15 @@ type DashboardSidebarProps = {
 
 export function DashboardSidebar({ user }: DashboardSidebarProps) {
   const pathname = usePathname();
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = mounted && resolvedTheme === "dark";
+  const logoSrc = isDark ? "/logo-dark.png" : "/logo-circular.png";
 
   const isActive = (href: string) => {
     if (href === "/dashboard/connections")
@@ -82,14 +91,17 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
   };
 
   return (
-    <aside className="hidden h-full w-64 shrink-0 flex-col overflow-y-auto border-r border-gray-200 bg-white lg:flex">
+    <aside
+      className="dashboard-sidebar hidden h-full w-64 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar-bg lg:flex"
+      data-sidebar="dashboard"
+    >
       <div className="flex flex-col gap-6 p-4">
         <Link
           href="/dashboard/posts/new"
-          className="flex items-center gap-3 font-semibold text-lg text-gray-900 hover:text-gray-700"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 font-semibold text-lg text-sidebar-text hover:bg-sidebar-active transition-colors"
         >
           <Image
-            src="/logo-circular.png"
+            src={logoSrc}
             alt="Social0"
             width={40}
             height={40}
@@ -106,7 +118,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
 
         <Link
           href="/dashboard/posts/new"
-          className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors"
+          className="flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-accent-hover transition-colors"
         >
           <FilePlus className="h-4 w-4" />
           Create post
@@ -197,17 +209,17 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           <Section title="Support">
             <a
               href="#"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-sidebar-text hover:bg-sidebar-active"
             >
-              <MessageCircle className="h-4 w-4 shrink-0" />
+              <MessageCircle className="h-4 w-4 shrink-0 text-sidebar-text" />
               Share feedback
             </a>
           </Section>
         </nav>
       </div>
 
-      <div className="border-t border-gray-200 p-4">
-        <div className="flex items-center gap-3 rounded-lg px-3 py-2">
+      <div className="border-t border-sidebar-border p-4">
+        <div className="sidebar-user-block flex items-center gap-3 rounded-lg px-3 py-2">
           {user.image ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -216,17 +228,19 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
               className="h-9 w-9 rounded-full object-cover"
             />
           ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent">
               {(user.name || user.email || "U").charAt(0).toUpperCase()}
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-gray-900">
+            <p className="truncate text-sm font-medium text-sidebar-text">
               {user.name || user.email || "User"}
             </p>
-            <p className="truncate text-xs text-gray-500">Creator Plan</p>
+            <p className="truncate text-xs text-sidebar-text">
+              Creator Plan
+            </p>
           </div>
-          <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />
+          <ChevronDown className="h-4 w-4 shrink-0 text-sidebar-text" />
         </div>
         <div className="mt-2">
           <SignOutButton />

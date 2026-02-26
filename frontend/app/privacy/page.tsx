@@ -9,19 +9,19 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
       <LandingHeader />
-      <main className="flex-1 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 bg-white">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8">
+      <main className="flex-1 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-8">
           Privacy Policy
         </h1>
-        <p className="text-sm text-gray-500 mb-10">
+        <p className="text-sm text-muted-foreground mb-10">
           Last updated: February 2026
         </p>
 
-        <div className="prose prose-gray max-w-none space-y-8 text-gray-700 text-base leading-relaxed">
+        <div className="prose prose-zinc dark:prose-invert max-w-none space-y-8 text-base leading-relaxed">
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               1. Introduction
             </h2>
             <p>
@@ -33,7 +33,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               2. Information we collect
             </h2>
             <p className="mb-3">
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               3. How we use your information
             </h2>
             <p>
@@ -80,7 +80,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               4. Data storage and security
             </h2>
             <p>
@@ -95,7 +95,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               5. Cookies and similar technologies
             </h2>
             <p>
@@ -109,7 +109,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               6. Third-party services
             </h2>
             <p>
@@ -126,7 +126,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               7. Data retention and deletion
             </h2>
             <p>
@@ -143,7 +143,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               8. Your rights
             </h2>
             <p>
@@ -157,7 +157,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               9. Updates to this policy
             </h2>
             <p>
@@ -170,7 +170,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               10. Contact
             </h2>
             <p>
@@ -178,7 +178,7 @@ export default function PrivacyPage() {
               contact us at{" "}
               <a
                 href="mailto:privacy@social0.app"
-                className="text-emerald-600 hover:text-emerald-700 underline"
+                className="text-emerald-600 hover:text-emerald-700 underline dark:text-emerald-400 dark:hover:text-emerald-300"
               >
                 privacy@social0.app
               </a>

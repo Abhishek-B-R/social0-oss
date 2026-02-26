@@ -18,33 +18,33 @@ const PLATFORM_ICONS = [
 
 export function PostComposerMockup() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-xl p-5 max-w-md mx-auto">
+    <div className="rounded-xl border border-border bg-bg shadow-xl p-5 max-w-md mx-auto">
       <div className="flex gap-2 mb-4">
-        <span className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 text-xs font-semibold">
+        <span className="px-3 py-1.5 rounded-md bg-bg-muted text-text-muted text-xs font-semibold">
           Text
         </span>
-        <span className="px-3 py-1.5 rounded-md bg-emerald-50 text-emerald-600 text-xs font-semibold border border-emerald-200">
+        <span className="px-3 py-1.5 rounded-md bg-accent/15 text-accent text-xs font-semibold border border-accent/30">
           Image
         </span>
-        <span className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 text-xs font-semibold">
+        <span className="px-3 py-1.5 rounded-md bg-bg-muted text-text-muted text-xs font-semibold">
           Video
         </span>
-        <span className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 text-xs font-semibold">
+        <span className="px-3 py-1.5 rounded-md bg-bg-muted text-text-muted text-xs font-semibold">
           Thread
         </span>
-        <span className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 text-xs font-semibold">
+        <span className="px-3 py-1.5 rounded-md bg-bg-muted text-text-muted text-xs font-semibold">
           Blog
         </span>
       </div>
-      <div className="h-24 rounded-lg border-2 border-dashed border-gray-200 bg-gray-50/50 flex items-center justify-center mb-4 relative overflow-hidden">
+      <div className="h-24 rounded-lg border-2 border-dashed border-border bg-bg-subtle/50 flex items-center justify-center mb-4 relative overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-gray-400 text-sm mb-1">📷</div>
-            <div className="text-gray-400 text-xs">Drop image here or click to upload</div>
+            <div className="text-text-muted text-sm mb-1">📷</div>
+            <div className="text-text-muted text-xs">Drop image here or click to upload</div>
           </div>
         </div>
       </div>
-      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+      <div className="flex items-center justify-between pt-3 border-t border-border">
         <div className="flex gap-1.5">
           {PLATFORM_ICONS.map((p) => (
             <div
@@ -56,7 +56,7 @@ export function PostComposerMockup() {
             </div>
           ))}
         </div>
-        <button className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition-colors shadow-md">
+        <button className="px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover text-white text-sm font-semibold transition-colors shadow-md">
           Post to all
         </button>
       </div>

@@ -47,11 +47,11 @@ export function AutoFeaturesCard({
   if (!resurfaceVisible && !autoPlugVisible) return null;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {resurfaceVisible && (
           <div
-            className={`min-w-0 ${autoPlugVisible ? "md:border-r md:border-gray-100 md:pr-6" : ""}`}
+            className={`min-w-0 ${autoPlugVisible ? "md:border-r md:border-border md:pr-6" : ""}`}
           >
             <AutoResurfacePanel
               selectedAccountIds={selectedAccountIds}

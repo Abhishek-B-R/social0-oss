@@ -91,31 +91,31 @@ export function TikTokSettings({
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-6">
+    <div className="rounded-xl border border-border bg-bg-elevated p-6 space-y-6">
       <div>
-        <h3 className="text-sm font-semibold text-gray-900 mb-1">
+        <h3 className="text-sm font-semibold text-text mb-1">
           TikTok Post Settings
         </h3>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-text-muted mt-1">
           Required settings for TikTok posts
         </p>
       </div>
 
       {/* Privacy Level - Public is default */}
       <div>
-        <label className="block text-sm font-medium text-gray-900 mb-2">
-          Privacy Level <span className="text-red-500">*</span>
+        <label className="block text-sm font-medium text-text mb-2">
+          Privacy Level <span className="text-destructive">*</span>
         </label>
         <select
           value={settings.privacy_level}
           onChange={(e) => updateSetting("privacy_level", e.target.value)}
-          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
         >
           <option value="PUBLIC_TO_EVERYONE">Public (default)</option>
           <option value="MUTUAL_FOLLOW_FRIENDS">Friends</option>
           <option value="SELF_ONLY">Only me</option>
         </select>
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-2 text-xs text-text-muted">
           Videos post as private until TikTok approves our app. Change to public
           on TikTok after posting.
         </p>
@@ -123,7 +123,7 @@ export function TikTokSettings({
 
       {/* Interaction toggles. For photo posts only Allow Comments applies (Duet/Stitch are video-only). */}
       <div className="space-y-3">
-        <p className="text-sm font-medium text-gray-900">Allow Interactions</p>
+        <p className="text-sm font-medium text-text">Allow Interactions</p>
         <div className="space-y-2">
           <label className="flex items-center gap-3">
             <input
@@ -132,9 +132,9 @@ export function TikTokSettings({
               onChange={(e) =>
                 updateSetting("disable_comment", !e.target.checked)
               }
-              className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
+              className="rounded border-border text-accent focus:ring-accent size-4"
             />
-            <span className="text-sm text-gray-700">Allow Comments</span>
+            <span className="text-sm text-text">Allow Comments</span>
           </label>
           {!isPhotoOnly && (
             <>
@@ -145,9 +145,9 @@ export function TikTokSettings({
                   onChange={(e) =>
                     updateSetting("disable_duet", !e.target.checked)
                   }
-                  className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
+                  className="rounded border-border text-accent focus:ring-accent size-4"
                 />
-                <span className="text-sm text-gray-700">Allow Duet</span>
+                <span className="text-sm text-text">Allow Duet</span>
               </label>
               <label className="flex items-center gap-3">
                 <input
@@ -156,9 +156,9 @@ export function TikTokSettings({
                   onChange={(e) =>
                     updateSetting("disable_stitch", !e.target.checked)
                   }
-                  className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
+                  className="rounded border-border text-accent focus:ring-accent size-4"
                 />
-                <span className="text-sm text-gray-700">Allow Stitch</span>
+                <span className="text-sm text-text">Allow Stitch</span>
               </label>
             </>
           )}
@@ -166,7 +166,7 @@ export function TikTokSettings({
       </div>
 
       {/* Brand disclosure - off by default */}
-      <div className="space-y-3 border-t border-gray-100 pt-4">
+      <div className="space-y-3 border-t border-border pt-4">
         <label className="flex items-center gap-3">
           <input
             type="checkbox"
@@ -179,15 +179,15 @@ export function TikTokSettings({
                 updateSetting("brand_content", false);
               }
             }}
-            className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
+            className="rounded border-border text-accent focus:ring-accent size-4"
           />
-          <span className="text-sm font-medium text-gray-900">
+          <span className="text-sm font-medium text-text">
             Does this promote a brand, product or service?
           </span>
         </label>
         {settings.brand_content_toggle && (
           <div className="ml-7 space-y-3">
-            <p className="text-xs text-gray-500 mb-2">Select one:</p>
+            <p className="text-xs text-text-muted mb-2">Select one:</p>
             <label className="flex items-start gap-3">
               <input
                 type="radio"
@@ -202,12 +202,12 @@ export function TikTokSettings({
                   setSettings(next);
                   onChange(next);
                 }}
-                className="mt-0.5 border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
+                className="mt-0.5 border-border text-accent focus:ring-accent size-4"
               />
               <div className="flex-1">
-                <span className="text-sm text-gray-700">Your brand</span>
+                <span className="text-sm text-text">Your brand</span>
                 {settings.brand_organic && !settings.brand_content && (
-                  <p className="text-xs text-amber-700 mt-1 italic">
+                  <p className="text-xs text-amber-600 mt-1 italic">
                     Your video will be labeled as &quot;Promotional
                     content&quot;
                   </p>
@@ -228,19 +228,19 @@ export function TikTokSettings({
                   setSettings(next);
                   onChange(next);
                 }}
-                className="mt-0.5 border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
+                className="mt-0.5 border-border text-accent focus:ring-accent size-4"
               />
               <div className="flex-1">
-                <span className="text-sm text-gray-700">Branded content</span>
+                <span className="text-sm text-text">Branded content</span>
                 {!settings.brand_organic && settings.brand_content && (
-                  <p className="text-xs text-amber-700 mt-1 italic">
+                  <p className="text-xs text-amber-600 mt-1 italic">
                     Your video will be labeled as &quot;Paid partnership&quot;
                   </p>
                 )}
               </div>
             </label>
             {!settings.brand_organic && !settings.brand_content && (
-              <p className="text-xs text-red-600 ml-7">
+              <p className="text-xs text-destructive ml-7">
                 Please select whether your content promotes your brand or
                 branded content.
               </p>
@@ -249,8 +249,8 @@ export function TikTokSettings({
         )}
       </div>
 
-      <div className="border-t border-gray-100 pt-4">
-        <p className="text-xs text-gray-600 italic">{getDeclarationText()}</p>
+      <div className="border-t border-border pt-4">
+        <p className="text-xs text-text-muted italic">{getDeclarationText()}</p>
       </div>
     </div>
   );

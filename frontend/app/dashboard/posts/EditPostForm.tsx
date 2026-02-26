@@ -170,10 +170,10 @@ export function EditPostForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
         <label
           htmlFor="content"
-          className="block text-sm font-semibold text-gray-900 mb-2"
+          className="block text-sm font-semibold text-text mb-2"
         >
           Content
         </label>
@@ -183,17 +183,17 @@ export function EditPostForm({
           onChange={(e) => setContent(e.target.value)}
           placeholder="Write your post..."
           rows={6}
-          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          className="w-full rounded-xl border border-border bg-bg-elevated px-4 py-3 text-text placeholder-gray-500 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
           required
         />
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+      <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm space-y-4">
         <div>
-          <label className="block text-sm font-semibold text-gray-900">
+          <label className="block text-sm font-semibold text-text">
             Attachments
           </label>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-text-muted mt-0.5">
             Remove or add images/videos.
           </p>
         </div>
@@ -206,7 +206,7 @@ export function EditPostForm({
           className="hidden"
         />
         {existingMedia.length === 0 && newFiles.length === 0 ? (
-          <p className="text-sm text-gray-500 mb-2">
+          <p className="text-sm text-text-muted mb-2">
             No attachments yet — add files below.
           </p>
         ) : (
@@ -217,9 +217,9 @@ export function EditPostForm({
               .map((m) => (
                 <div
                   key={m.id}
-                  className="relative flex flex-col rounded-lg border border-gray-200 overflow-hidden bg-gray-50 w-24 shrink-0"
+                  className="relative flex flex-col rounded-lg border border-border overflow-hidden bg-gray-50 w-24 shrink-0"
                 >
-                  <div className="h-20 w-24 bg-gray-200 flex items-center justify-center overflow-hidden">
+                  <div className="h-20 w-24 bg-bg-muted flex items-center justify-center overflow-hidden">
                     {isVideo(m.mimeType) ? (
                       m.thumbnailUrl ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
@@ -246,7 +246,7 @@ export function EditPostForm({
                       />
                     )}
                   </div>
-                  <p className="text-xs text-gray-600 truncate px-1 py-1" title={m.originalFilename}>
+                  <p className="text-xs text-text-muted truncate px-1 py-1" title={m.originalFilename}>
                     {m.originalFilename}
                   </p>
                   <button
@@ -262,9 +262,9 @@ export function EditPostForm({
             {newFiles.map((item) => (
               <div
                 key={item.previewUrl}
-                className="relative flex flex-col rounded-lg border border-gray-200 overflow-hidden bg-gray-50 w-24 shrink-0"
+                className="relative flex flex-col rounded-lg border border-border overflow-hidden bg-gray-50 w-24 shrink-0"
               >
-                <div className="h-20 w-24 bg-gray-200 flex items-center justify-center overflow-hidden">
+                <div className="h-20 w-24 bg-bg-muted flex items-center justify-center overflow-hidden">
                   {item.file.type.startsWith("video/") ? (
                     <video
                       src={item.previewUrl}
@@ -282,7 +282,7 @@ export function EditPostForm({
                     />
                   )}
                 </div>
-                <p className="text-xs text-gray-600 truncate px-1 py-1" title={item.file.name}>
+                <p className="text-xs text-text-muted truncate px-1 py-1" title={item.file.name}>
                   {item.file.name}
                 </p>
                 <button
@@ -302,25 +302,25 @@ export function EditPostForm({
           onClick={() => fileInputRef.current?.click()}
           onDrop={onDrop}
           onDragOver={onDragOver}
-          className="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/50 py-8 text-gray-500 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-700 transition-colors"
+          className="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-bg-subtle/50 py-8 text-text-muted hover:border-accent hover:bg-accent/10 hover:text-accent transition-colors"
         >
           <Upload className="mb-2 h-8 w-8" />
           <span className="text-sm font-medium">Add more files</span>
-          <span className="text-xs text-gray-400 mt-1">
+          <span className="text-xs text-text-subtle mt-1">
             Images up to 50MB, videos up to 500MB
           </span>
         </button>
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
         <div className="flex items-center justify-between mb-3">
-          <label className="block text-sm font-semibold text-gray-900">
+          <label className="block text-sm font-semibold text-text">
             Post to
           </label>
           <button
             type="button"
             onClick={selectAll}
-            className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
+            className="text-sm font-medium text-accent hover:text-accent-hover"
           >
             {selectedIds.size === accounts.length
               ? "Deselect all"
@@ -336,13 +336,13 @@ export function EditPostForm({
             {accounts.map((acc) => (
               <label
                 key={acc.id}
-                className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 hover:border-gray-300 has-checked:border-emerald-500 has-checked:bg-emerald-50/50"
+                className="flex items-center gap-3 p-4 rounded-xl border border-border bg-bg-subtle/50 cursor-pointer hover:bg-bg-subtle hover:border-border has-checked:border-accent has-checked:bg-accent/10"
               >
                 <input
                   type="checkbox"
                   checked={selectedIds.has(acc.id)}
                   onChange={() => toggleAccount(acc.id)}
-                  className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4"
+                  className="rounded border-border text-accent focus:ring-accent size-4"
                 />
                 <AccountAvatar
                   profileImageUrl={acc.profileImageUrl}
@@ -350,10 +350,10 @@ export function EditPostForm({
                   platform={acc.platform}
                   size="sm"
                 />
-                <span className="text-sm font-medium text-gray-900">
+                <span className="text-sm font-medium text-text">
                   {platformName(acc.platform)}
                   {acc.platformUsername && (
-                    <span className="text-gray-500 font-normal">
+                    <span className="text-text-muted font-normal">
                       {" "}
                       @{acc.platformUsername}
                     </span>
@@ -365,16 +365,16 @@ export function EditPostForm({
         )}
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <p className="block text-sm font-semibold text-gray-900 mb-4">
+      <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
+        <p className="block text-sm font-semibold text-text mb-4">
           When to publish
         </p>
-        <p className="text-sm text-gray-600 mb-4">
+        <p className="text-sm text-text-muted mb-4">
           Leave empty to keep as draft. Set a date and time to schedule.
         </p>
         {scheduledAt === null ? (
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm text-gray-500">Not scheduled (draft)</span>
+            <span className="text-sm text-text-muted">Not scheduled (draft)</span>
             <button
               type="button"
               onClick={() =>
@@ -384,7 +384,7 @@ export function EditPostForm({
                   return d;
                 })
               }
-              className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
+              className="text-sm font-medium text-accent hover:text-accent-hover"
             >
               Schedule for later
             </button>
@@ -399,7 +399,7 @@ export function EditPostForm({
             <button
               type="button"
               onClick={() => setScheduledAt(null)}
-              className="text-sm font-medium text-red-600 hover:text-red-700"
+              className="text-sm font-medium text-destructive hover:text-destructive"
             >
               Clear date (save as draft)
             </button>
@@ -419,13 +419,13 @@ export function EditPostForm({
           disabled={
             loading || accounts.length === 0 || !content.trim() || selectedIds.size === 0
           }
-          className="rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 shadow-lg transition-colors"
+          className="rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 shadow-lg transition-colors"
         >
           {loading ? "Saving..." : "Save changes"}
         </button>
         <Link
           href="/dashboard/posts"
-          className="rounded-xl border border-gray-200 bg-white px-6 py-3 font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors inline-flex items-center justify-center"
+          className="rounded-xl border border-border bg-bg-elevated px-6 py-3 font-medium text-text-muted shadow-sm hover:bg-bg-subtle transition-colors inline-flex items-center justify-center"
         >
           Cancel
         </Link>

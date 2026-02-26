@@ -148,13 +148,13 @@ function AutoResurfacePanelInner({
     <>
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">
+          <h3 className="text-sm font-semibold text-foreground">
             ♻️ Auto-Repost{" "}
             {subtitle && (
-              <span className="text-gray-500 font-normal">{subtitle}</span>
+              <span className="text-muted-foreground font-normal">{subtitle}</span>
             )}
           </h3>
-          <p className="mt-0.5 text-xs text-gray-500">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             Reshare this post at intervals so it reaches more of your followers.
             Only supported on X for now.
           </p>
@@ -165,11 +165,11 @@ function AutoResurfacePanelInner({
           aria-checked={enabled}
           onClick={() => setEnabled((e) => !e)}
           className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
-            enabled ? "bg-emerald-600" : "bg-gray-200"
+            enabled ? "bg-emerald-600" : "bg-muted"
           }`}
         >
           <span
-            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+            className={`inline-block h-5 w-5 transform rounded-full bg-background shadow transition-transform ${
               enabled ? "translate-x-5" : "translate-x-0.5"
             } mt-0.5`}
           />
@@ -177,16 +177,16 @@ function AutoResurfacePanelInner({
       </div>
 
       {enabled && (
-        <div className="mt-4 space-y-4 border-t border-gray-100 pt-4">
+        <div className="mt-4 space-y-4 border-t border-border pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
                 Reshare every
               </label>
               <select
                 value={intervalHours}
                 onChange={(e) => setIntervalHours(Number(e.target.value))}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
               >
                 {INTERVAL_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -196,13 +196,13 @@ function AutoResurfacePanelInner({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
                 Number of reshares
               </label>
               <select
                 value={maxResurfaces}
                 onChange={(e) => setMaxResurfaces(Number(e.target.value))}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
               >
                 {MAX_OPTIONS.map((n) => (
                   <option key={n} value={n}>
@@ -213,12 +213,12 @@ function AutoResurfacePanelInner({
             </div>
           </div>
 
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             First reshare: {formatFirstReshare(intervalHours)}, if published now
           </p>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
               Quote tweet text (optional)
             </label>
             <input
@@ -226,7 +226,7 @@ function AutoResurfacePanelInner({
               value={plugComment}
               onChange={(e) => setPlugComment(e.target.value)}
               placeholder="Add text to post as a quote tweet with each reshare"
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
             />
           </div>
 
@@ -234,7 +234,7 @@ function AutoResurfacePanelInner({
             <button
               type="button"
               onClick={addExtraInterval}
-              className="flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700"
+              className="flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
             >
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-current">
                 +
@@ -245,13 +245,13 @@ function AutoResurfacePanelInner({
 
           {extraIntervalHours.map((hours, index) => (
             <div key={index} className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 shrink-0">Then after</span>
+              <span className="text-xs text-muted-foreground shrink-0">Then after</span>
               <select
                 value={hours}
                 onChange={(e) =>
                   setExtraInterval(index, Number(e.target.value))
                 }
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
               >
                 {INTERVAL_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -259,11 +259,11 @@ function AutoResurfacePanelInner({
                   </option>
                 ))}
               </select>
-              <span className="text-xs text-gray-500">hours</span>
+              <span className="text-xs text-muted-foreground">hours</span>
               <button
                 type="button"
                 onClick={() => removeExtraInterval(index)}
-                className="text-gray-400 hover:text-red-600 text-sm"
+                className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400 text-sm"
                 aria-label="Remove interval"
               >
                 Remove
@@ -277,7 +277,7 @@ function AutoResurfacePanelInner({
   return embedded ? (
     <div className="min-w-0">{content}</div>
   ) : (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       {content}
     </div>
   );
