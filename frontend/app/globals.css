@@ -220,6 +220,14 @@ html {
   color: var(--sidebar-text) !important;
   stroke: var(--sidebar-text);
 }
+/* Create post CTA: accent-foreground on accent bg in both themes */
+.dashboard-sidebar[data-sidebar="dashboard"] a.sidebar-create-post-cta {
+  color: var(--accent-foreground) !important;
+}
+.dashboard-sidebar[data-sidebar="dashboard"] a.sidebar-create-post-cta svg {
+  color: var(--accent-foreground) !important;
+  stroke: var(--accent-foreground);
+}
 .dashboard-sidebar[data-sidebar="dashboard"] .sidebar-user-block p,
 .dashboard-sidebar[data-sidebar="dashboard"]
   .sidebar-user-block

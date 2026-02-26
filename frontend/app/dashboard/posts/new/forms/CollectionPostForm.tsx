@@ -10,10 +10,15 @@ import {
 } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
-import { AutoFeaturesCard } from "@/components/repost/AutoFeaturesCard";
-import { TikTokSettingsCard } from "@/components/TikTokSettingsCard";
+import { getResurfacePlatforms } from "@/lib/resurface-utils";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
-import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import type {
+  AutoPlugConfig,
+  ConnectedAccount,
+} from "@/components/autoplug/AutoPlugPanel";
+import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
+import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
+import { TikTokSettingsListModal } from "@/components/TikTokSettingsListModal";
 import {
   MdOutlineAddPhotoAlternate,
   MdOutlineVideocam,
@@ -69,6 +74,11 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
     null,
   );
+  const [resurfaceModalOpen, setResurfaceModalOpen] = useState(false);
+  const [autoplugModalOpen, setAutoplugModalOpen] = useState(false);
+  const [tiktokListModalOpen, setTiktokListModalOpen] = useState(false);
+  const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
+  const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
 
   const defaultTiktokSettings: TikTokPostSettings = {
     privacy_level: "PUBLIC_TO_EVERYONE", // Default to Public
@@ -410,6 +420,11 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
   };
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+  const selectedAccountIds = Array.from(selectedIds);
+  const hasXForResurface =
+    getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
+  const resurfaceVisible = hasXForResurface;
+  const autoPlugVisible = hasXForResurface;
   const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
   const tiktokAccounts = selectedAccounts.filter(
     (a) => a.platform === "tiktok",
@@ -638,28 +653,6 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
               </div>
             )}
           </div>
-
-          <AutoFeaturesCard
-            selectedAccountIds={Array.from(selectedIds)}
-            allAccounts={accounts}
-            onResurfaceChange={setResurfaceConfig}
-            onAutoPlugChange={setAutoPlugConfig}
-          />
-
-          <TikTokSettingsCard
-            selectedAccountIds={Array.from(selectedIds)}
-            allAccounts={accounts}
-            configuredIds={
-              hasTikTok
-                ? new Set(
-                    tiktokAccounts
-                      .filter((a) => tiktokSettings[a.id]?.privacy_level)
-                      .map((a) => a.id),
-                  )
-                : undefined
-            }
-            onOpenSettings={setTiktokModalAccountId}
-          />
         </div>
 
         <SchedulePostSidebar
@@ -678,6 +671,52 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
           onCancel={() => router.push("/dashboard/posts")}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
+          autoRepost={
+            resurfaceVisible
+              ? {
+                  visible: true,
+                  enabled: !!resurfaceConfig,
+                  onToggle: () => {
+                    if (resurfaceConfig) setResurfaceConfig(null);
+                    else {
+                      configBeforeResurfaceRef.current = resurfaceConfig;
+                      setResurfaceModalOpen(true);
+                    }
+                  },
+                  onOpenSettings: () => {
+                    configBeforeResurfaceRef.current = resurfaceConfig;
+                    setResurfaceModalOpen(true);
+                  },
+                }
+              : null
+          }
+          autoPlug={
+            autoPlugVisible
+              ? {
+                  visible: true,
+                  enabled: !!autoPlugConfig,
+                  onToggle: () => {
+                    if (autoPlugConfig) setAutoPlugConfig(null);
+                    else {
+                      configBeforeAutoPlugRef.current = autoPlugConfig;
+                      setAutoplugModalOpen(true);
+                    }
+                  },
+                  onOpenSettings: () => {
+                    configBeforeAutoPlugRef.current = autoPlugConfig;
+                    setAutoplugModalOpen(true);
+                  },
+                }
+              : null
+          }
+          tiktokSettings={
+            hasTikTok
+              ? {
+                  visible: true,
+                  onOpenSettings: () => setTiktokListModalOpen(true),
+                }
+              : null
+          }
         >
           <div className="rounded-xl border border-border bg-bg p-4 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-text">
@@ -690,7 +729,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
               </div>
             ) : (
               <>
-                <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-bg-muted">
+                <div className="relative aspect-square w-full max-h-60 overflow-hidden rounded-lg bg-bg-muted">
                   {previewItem?.type === "video" ? (
                     <video
                       src={previewItem.preview}
@@ -777,6 +816,60 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
           </div>
         </SchedulePostSidebar>
 
+        {resurfaceModalOpen && (
+          <AutoResurfaceSettingsModal
+            isOpen={true}
+            selectedAccountIds={selectedAccountIds}
+            allAccounts={accounts}
+            initialConfig={resurfaceConfig}
+            onChange={setResurfaceConfig}
+            onDone={() => setResurfaceModalOpen(false)}
+            onCancel={() => {
+              setResurfaceConfig(configBeforeResurfaceRef.current ?? null);
+              setResurfaceModalOpen(false);
+            }}
+          />
+        )}
+        {autoplugModalOpen && (
+          <AutoPlugSettingsModal
+            isOpen={true}
+            selectedAccountIds={selectedAccountIds}
+            allAccounts={accounts as ConnectedAccount[]}
+            initialConfig={autoPlugConfig}
+            onChange={setAutoPlugConfig}
+            onDone={() => setAutoplugModalOpen(false)}
+            onCancel={() => {
+              setAutoPlugConfig(configBeforeAutoPlugRef.current ?? null);
+              setAutoplugModalOpen(false);
+            }}
+          />
+        )}
+        {tiktokListModalOpen && (
+          <TikTokSettingsListModal
+            isOpen={true}
+            selectedAccountIds={selectedAccountIds}
+            allAccounts={accounts}
+            configuredIds={
+              selectedAccountIds.length > 0
+                ? new Set(
+                    accounts
+                      .filter(
+                        (a) =>
+                          selectedIds.has(a.id) &&
+                          a.platform === "tiktok" &&
+                          tiktokSettings[a.id]?.privacy_level,
+                      )
+                      .map((a) => a.id),
+                  )
+                : undefined
+            }
+            onOpenSettings={(id) => {
+              setTiktokModalAccountId(id);
+              setTiktokListModalOpen(false);
+            }}
+            onClose={() => setTiktokListModalOpen(false)}
+          />
+        )}
         {tiktokModalAccountId && (
           <TikTokSettingsModal
             isOpen={true}

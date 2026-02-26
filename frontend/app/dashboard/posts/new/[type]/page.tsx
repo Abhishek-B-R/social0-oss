@@ -59,14 +59,13 @@ export default async function NewPostByTypePage({
     },
   });
 
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   const skipExpiryDisplay = new Set(["youtube", "tiktok"]);
   const allowedPlatforms = new Set(contentType.platforms);
   const filtered = sortAccountsByPlatformOrder(
     accounts
-      .filter(
-        (a) => a.isActive !== false && allowedPlatforms.has(a.platform),
-      )
+      .filter((a) => a.isActive !== false && allowedPlatforms.has(a.platform))
       .map((a) => ({
         id: a.id,
         platform: a.platform,
@@ -77,7 +76,8 @@ export default async function NewPostByTypePage({
           ? false
           : !skipExpiryDisplay.has(a.platform) &&
             (a.tokenStatus === "expired" ||
-              (!!a.tokenExpiresAt && new Date(a.tokenExpiresAt).getTime() < now)),
+              (!!a.tokenExpiresAt &&
+                new Date(a.tokenExpiresAt).getTime() < now)),
       })),
   );
 
@@ -85,7 +85,7 @@ export default async function NewPostByTypePage({
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-2">
+      <div className="mb-3 flex items-center gap-2">
         <Link
           href="/dashboard/posts/new"
           className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"

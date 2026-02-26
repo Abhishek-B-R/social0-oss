@@ -6,9 +6,11 @@ import { createPost, type PublishMode } from "@/app/actions/posts";
 import { createAutoPlug } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
-import { AutoFeaturesCard } from "@/components/repost/AutoFeaturesCard";
+import { getResurfacePlatforms } from "@/lib/resurface-utils";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
-import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import type { AutoPlugConfig, ConnectedAccount } from "@/components/autoplug/AutoPlugPanel";
+import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
+import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
 
 const TWITTER_MAX_LENGTH = 280;
 const TWITTER_THREAD_SEP = "---";
@@ -33,12 +35,22 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [, setResurfaceConfig] = useState<AutoResurfaceConfig | null>(null);
+  const [resurfaceConfig, setResurfaceConfig] =
+    useState<AutoResurfaceConfig | null>(null);
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
     null,
   );
+  const [resurfaceModalOpen, setResurfaceModalOpen] = useState(false);
+  const [autoplugModalOpen, setAutoplugModalOpen] = useState(false);
+  const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
+  const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+  const selectedAccountIds = Array.from(selectedIds);
+  const hasXForResurface =
+    getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
+  const resurfaceVisible = hasXForResurface;
+  const autoPlugVisible = hasXForResurface;
   const hasTwitter = selectedAccounts.some((a) => a.platform === "twitter_x");
   const isThread = content.includes(TWITTER_THREAD_SEP);
   const threadParts = isThread
@@ -185,12 +197,6 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
           )}
         </div>
 
-        <AutoFeaturesCard
-          selectedAccountIds={Array.from(selectedIds)}
-          allAccounts={accounts}
-          onResurfaceChange={setResurfaceConfig}
-          onAutoPlugChange={setAutoPlugConfig}
-        />
       </div>
 
       <SchedulePostSidebar
@@ -210,7 +216,74 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
         onCancel={() => router.push("/dashboard/posts")}
         intendedModeRef={intendedModeRef}
         formRef={formRef}
+        autoRepost={
+          resurfaceVisible
+            ? {
+                visible: true,
+                enabled: !!resurfaceConfig,
+                onToggle: () => {
+                  if (resurfaceConfig) setResurfaceConfig(null);
+                  else {
+                    configBeforeResurfaceRef.current = resurfaceConfig;
+                    setResurfaceModalOpen(true);
+                  }
+                },
+                onOpenSettings: () => {
+                  configBeforeResurfaceRef.current = resurfaceConfig;
+                  setResurfaceModalOpen(true);
+                },
+              }
+            : null
+        }
+        autoPlug={
+          autoPlugVisible
+            ? {
+                visible: true,
+                enabled: !!autoPlugConfig,
+                onToggle: () => {
+                  if (autoPlugConfig) setAutoPlugConfig(null);
+                  else {
+                    configBeforeAutoPlugRef.current = autoPlugConfig;
+                    setAutoplugModalOpen(true);
+                  }
+                },
+                onOpenSettings: () => {
+                  configBeforeAutoPlugRef.current = autoPlugConfig;
+                  setAutoplugModalOpen(true);
+                },
+              }
+            : null
+        }
       />
+
+      {resurfaceModalOpen && (
+        <AutoResurfaceSettingsModal
+          isOpen={true}
+          selectedAccountIds={selectedAccountIds}
+          allAccounts={accounts}
+          initialConfig={resurfaceConfig}
+          onChange={setResurfaceConfig}
+          onDone={() => setResurfaceModalOpen(false)}
+          onCancel={() => {
+            setResurfaceConfig(configBeforeResurfaceRef.current ?? null);
+            setResurfaceModalOpen(false);
+          }}
+        />
+      )}
+      {autoplugModalOpen && (
+        <AutoPlugSettingsModal
+          isOpen={true}
+          selectedAccountIds={selectedAccountIds}
+          allAccounts={accounts as ConnectedAccount[]}
+          initialConfig={autoPlugConfig}
+          onChange={setAutoPlugConfig}
+          onDone={() => setAutoplugModalOpen(false)}
+          onCancel={() => {
+            setAutoPlugConfig(configBeforeAutoPlugRef.current ?? null);
+            setAutoplugModalOpen(false);
+          }}
+        />
+      )}
     </form>
   );
 }

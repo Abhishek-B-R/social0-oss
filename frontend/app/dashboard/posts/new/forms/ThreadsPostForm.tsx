@@ -10,9 +10,14 @@ import {
 } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
-import { AutoFeaturesCard } from "@/components/repost/AutoFeaturesCard";
+import { getResurfacePlatforms } from "@/lib/resurface-utils";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
-import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import type {
+  AutoPlugConfig,
+  ConnectedAccount,
+} from "@/components/autoplug/AutoPlugPanel";
+import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
+import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
 import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
 import { IoMdAddCircleOutline } from "react-icons/io";
 import { MdClose } from "react-icons/md";
@@ -50,18 +55,29 @@ function getVideoThumbnail(file: File): Promise<string> {
 
 type PreviewMediaItem =
   | { type: "image"; file: File; preview: string; order: number }
-  | { type: "video"; file: File; preview: string; order: number; thumbnailUrl?: string };
+  | {
+      type: "video";
+      file: File;
+      preview: string;
+      order: number;
+      thumbnailUrl?: string;
+    };
 
 /** Twitter-style media grid for Thread Preview: 1–4 slots (images + videos), max height 200px. */
 function ThreadPreviewMediaGrid({ items }: { items: PreviewMediaItem[] }) {
   const slice = items.slice(0, MAX_ATTACHMENTS_PER_POST);
   const n = slice.length;
-  const containerClass = "w-full max-h-[200px] flex gap-1 overflow-hidden rounded-lg";
+  const containerClass =
+    "w-full max-h-[200px] flex gap-1 overflow-hidden rounded-lg";
   const imgClass = "w-full h-full object-cover rounded-lg";
   const playOverlay = (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50">
-        <svg className="h-5 w-5 ml-0.5 text-white fill-current" viewBox="0 0 24 24" aria-hidden>
+        <svg
+          className="h-5 w-5 ml-0.5 text-white fill-current"
+          viewBox="0 0 24 24"
+          aria-hidden
+        >
           <path d="M8 5v14l11-7z" />
         </svg>
       </div>
@@ -76,7 +92,10 @@ function ThreadPreviewMediaGrid({ items }: { items: PreviewMediaItem[] }) {
       );
     }
     return (
-      <div key={key} className="relative w-full h-full min-h-0 bg-bg-muted rounded-lg overflow-hidden">
+      <div
+        key={key}
+        className="relative w-full h-full min-h-0 bg-bg-muted rounded-lg overflow-hidden"
+      >
         {item.thumbnailUrl ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img src={item.thumbnailUrl} alt="" className={imgClass} />
@@ -91,7 +110,10 @@ function ThreadPreviewMediaGrid({ items }: { items: PreviewMediaItem[] }) {
   if (n === 0) return null;
   if (n === 1) {
     return (
-      <div className={`${containerClass} aspect-video`} style={{ maxHeight: PREVIEW_MEDIA_MAX_H }}>
+      <div
+        className={`${containerClass} aspect-video`}
+        style={{ maxHeight: PREVIEW_MEDIA_MAX_H }}
+      >
         <div className="relative w-full h-full min-h-0 overflow-hidden rounded-lg">
           {renderSlot(slice[0], slice[0].preview)}
         </div>
@@ -112,7 +134,10 @@ function ThreadPreviewMediaGrid({ items }: { items: PreviewMediaItem[] }) {
   }
   if (n === 3) {
     return (
-      <div className={`${containerClass} grid grid-cols-2 gap-1 max-h-[200px]`} style={{ maxHeight: PREVIEW_MEDIA_MAX_H }}>
+      <div
+        className={`${containerClass} grid grid-cols-2 gap-1 max-h-[200px]`}
+        style={{ maxHeight: PREVIEW_MEDIA_MAX_H }}
+      >
         <div className="row-span-2 min-h-0 overflow-hidden rounded-l-lg relative">
           {renderSlot(slice[0], slice[0].preview)}
         </div>
@@ -126,9 +151,15 @@ function ThreadPreviewMediaGrid({ items }: { items: PreviewMediaItem[] }) {
     );
   }
   return (
-    <div className={`${containerClass} grid grid-cols-2 grid-rows-2 gap-1 max-h-[200px]`} style={{ maxHeight: PREVIEW_MEDIA_MAX_H }}>
+    <div
+      className={`${containerClass} grid grid-cols-2 grid-rows-2 gap-1 max-h-[200px]`}
+      style={{ maxHeight: PREVIEW_MEDIA_MAX_H }}
+    >
       {slice.map((item) => (
-        <div key={item.preview} className="min-w-0 min-h-0 overflow-hidden rounded-lg relative">
+        <div
+          key={item.preview}
+          className="min-w-0 min-h-0 overflow-hidden rounded-lg relative"
+        >
           {renderSlot(item, item.preview)}
         </div>
       ))}
@@ -147,7 +178,12 @@ type Account = {
 };
 
 type MediaImage = { file: File; preview: string; order: number };
-type MediaVideo = { file: File; preview: string; order: number; thumbnailUrl?: string };
+type MediaVideo = {
+  file: File;
+  preview: string;
+  order: number;
+  thumbnailUrl?: string;
+};
 
 type ThreadPost = {
   id: number;
@@ -179,6 +215,10 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
     null,
   );
+  const [resurfaceModalOpen, setResurfaceModalOpen] = useState(false);
+  const [autoplugModalOpen, setAutoplugModalOpen] = useState(false);
+  const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
+  const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   const [draggedPostId, setDraggedPostId] = useState<number | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   type OverlayPhase = "idle" | "uploading" | "publishing" | "done";
@@ -270,7 +310,10 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
       });
     }
     if (newImages.length === 0) return;
-    const toAdd = newImages.slice(0, MAX_ATTACHMENTS_PER_POST - totalAttachments);
+    const toAdd = newImages.slice(
+      0,
+      MAX_ATTACHMENTS_PER_POST - totalAttachments,
+    );
     if (toAdd.length === 0) {
       setError("Max 4 attachments per post");
       return;
@@ -285,7 +328,10 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
       }));
       return prev.map((p) => {
         if (p.id !== postId) return p;
-        const combined = [...p.images, ...imagesWithOrder].slice(0, MAX_ATTACHMENTS_PER_POST);
+        const combined = [...p.images, ...imagesWithOrder].slice(
+          0,
+          MAX_ATTACHMENTS_PER_POST,
+        );
         return { ...p, images: combined };
       });
     });
@@ -342,7 +388,10 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
       });
     }
     if (newVideos.length === 0) return;
-    const toAdd = newVideos.slice(0, MAX_ATTACHMENTS_PER_POST - totalAttachments);
+    const toAdd = newVideos.slice(
+      0,
+      MAX_ATTACHMENTS_PER_POST - totalAttachments,
+    );
     if (toAdd.length === 0) {
       setError("Max 4 attachments per post");
       return;
@@ -357,7 +406,10 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
       }));
       return prev.map((p) => {
         if (p.id !== postId) return p;
-        const combined = [...p.videos, ...videosWithOrder].slice(0, MAX_ATTACHMENTS_PER_POST - p.images.length);
+        const combined = [...p.videos, ...videosWithOrder].slice(
+          0,
+          MAX_ATTACHMENTS_PER_POST - p.images.length,
+        );
         return { ...p, videos: combined };
       });
     });
@@ -472,6 +524,11 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
   };
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+  const selectedAccountIds = Array.from(selectedIds);
+  const hasXForResurface =
+    getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
+  const resurfaceVisible = hasXForResurface;
+  const autoPlugVisible = hasXForResurface;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -887,13 +944,6 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
               Add another post
             </button>
           </div>
-
-          <AutoFeaturesCard
-            selectedAccountIds={Array.from(selectedIds)}
-            allAccounts={accounts}
-            onResurfaceChange={setResurfaceConfig}
-            onAutoPlugChange={setAutoPlugConfig}
-          />
         </div>
 
         <SchedulePostSidebar
@@ -913,6 +963,44 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
           onCancel={() => router.push("/dashboard/posts")}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
+          autoRepost={
+            resurfaceVisible
+              ? {
+                  visible: true,
+                  enabled: !!resurfaceConfig,
+                  onToggle: () => {
+                    if (resurfaceConfig) setResurfaceConfig(null);
+                    else {
+                      configBeforeResurfaceRef.current = resurfaceConfig;
+                      setResurfaceModalOpen(true);
+                    }
+                  },
+                  onOpenSettings: () => {
+                    configBeforeResurfaceRef.current = resurfaceConfig;
+                    setResurfaceModalOpen(true);
+                  },
+                }
+              : null
+          }
+          autoPlug={
+            autoPlugVisible
+              ? {
+                  visible: true,
+                  enabled: !!autoPlugConfig,
+                  onToggle: () => {
+                    if (autoPlugConfig) setAutoPlugConfig(null);
+                    else {
+                      configBeforeAutoPlugRef.current = autoPlugConfig;
+                      setAutoplugModalOpen(true);
+                    }
+                  },
+                  onOpenSettings: () => {
+                    configBeforeAutoPlugRef.current = autoPlugConfig;
+                    setAutoplugModalOpen(true);
+                  },
+                }
+              : null
+          }
         >
           <div className="rounded-xl border border-border bg-bg p-4 shadow-sm">
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-text">
@@ -927,7 +1015,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
                 Add your first post to see preview
               </p>
             ) : (
-              <div className="max-h-[400px] overflow-y-auto space-y-0">
+              <div className="max-h-[350px] overflow-y-auto space-y-0">
                 {posts.map((post, index) => {
                   const displayName =
                     selectedAccounts[0]?.platformUsername != null
@@ -941,7 +1029,10 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
                     post.images.length > 0 ||
                     post.videos.length > 0;
                   const isLast = index === posts.length - 1;
-                  const previewItems = getAllMediaForPost(post).slice(0, MAX_ATTACHMENTS_PER_POST) as PreviewMediaItem[];
+                  const previewItems = getAllMediaForPost(post).slice(
+                    0,
+                    MAX_ATTACHMENTS_PER_POST,
+                  ) as PreviewMediaItem[];
                   return (
                     <div key={post.id} className="flex gap-3">
                       <div className="flex flex-col items-center">
@@ -1000,6 +1091,35 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
             )}
           </div>
         </SchedulePostSidebar>
+
+        {resurfaceModalOpen && (
+          <AutoResurfaceSettingsModal
+            isOpen={true}
+            selectedAccountIds={selectedAccountIds}
+            allAccounts={accounts}
+            initialConfig={resurfaceConfig}
+            onChange={setResurfaceConfig}
+            onDone={() => setResurfaceModalOpen(false)}
+            onCancel={() => {
+              setResurfaceConfig(configBeforeResurfaceRef.current ?? null);
+              setResurfaceModalOpen(false);
+            }}
+          />
+        )}
+        {autoplugModalOpen && (
+          <AutoPlugSettingsModal
+            isOpen={true}
+            selectedAccountIds={selectedAccountIds}
+            allAccounts={accounts as ConnectedAccount[]}
+            initialConfig={autoPlugConfig}
+            onChange={setAutoPlugConfig}
+            onDone={() => setAutoplugModalOpen(false)}
+            onCancel={() => {
+              setAutoPlugConfig(configBeforeAutoPlugRef.current ?? null);
+              setAutoplugModalOpen(false);
+            }}
+          />
+        )}
       </form>
     </>
   );

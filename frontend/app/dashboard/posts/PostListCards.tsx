@@ -147,7 +147,7 @@ export function PostListCards({
         </p>
         <Link
           href="/dashboard/posts/new"
-          className="inline-flex rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-emerald-700"
+          className="inline-flex rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-lg transition-colors hover:bg-accent-hover"
         >
           Create your first post
         </Link>

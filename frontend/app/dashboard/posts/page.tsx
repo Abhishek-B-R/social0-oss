@@ -63,7 +63,7 @@ export default async function PostsPage({
         </div>
         <Link
           href="/dashboard/posts/new"
-          className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 text-sm font-semibold shadow-lg transition-colors"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-lg hover:bg-accent-hover transition-colors"
         >
           New post
         </Link>

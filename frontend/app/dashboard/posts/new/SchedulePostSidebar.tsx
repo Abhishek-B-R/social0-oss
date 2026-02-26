@@ -2,6 +2,26 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { PublishMode } from "@/app/actions/posts";
+import { Settings } from "lucide-react";
+
+export type SidebarAutoRepost = {
+  visible: boolean;
+  enabled: boolean;
+  onToggle: () => void;
+  onOpenSettings: () => void;
+};
+
+export type SidebarAutoPlug = {
+  visible: boolean;
+  enabled: boolean;
+  onToggle: () => void;
+  onOpenSettings: () => void;
+};
+
+export type SidebarTikTokSettings = {
+  visible: boolean;
+  onOpenSettings: () => void;
+};
 
 type SchedulePostSidebarProps = {
   /** Preview card(s) rendered above the schedule card */
@@ -18,6 +38,12 @@ type SchedulePostSidebarProps = {
   /** Set this ref before calling requestSubmit so handleSubmit uses the correct mode */
   intendedModeRef: React.MutableRefObject<PublishMode | null>;
   formRef: React.RefObject<HTMLFormElement | null>;
+  /** Auto-Repost: compact row with toggle + settings icon when enabled */
+  autoRepost?: SidebarAutoRepost | null;
+  /** Auto-Plug: compact row with toggle + settings icon when enabled */
+  autoPlug?: SidebarAutoPlug | null;
+  /** TikTok Settings: compact row with settings icon (opens list modal) */
+  tiktokSettings?: SidebarTikTokSettings | null;
 };
 
 export function SchedulePostSidebar({
@@ -33,6 +59,9 @@ export function SchedulePostSidebar({
   onCancel,
   intendedModeRef,
   formRef,
+  autoRepost,
+  autoPlug,
+  tiktokSettings,
 }: SchedulePostSidebarProps) {
   const isScheduled = mode === "scheduled";
 
@@ -154,11 +183,9 @@ export function SchedulePostSidebar({
     >
       {children}
 
-      <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
-        <div className="flex items-center justify-between gap-2 mb-4">
-          <span className="text-sm font-semibold text-text">
-            Schedule post
-          </span>
+      <div className="rounded-xl border border-border bg-bg-elevated -mt-3 p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <span className="text-sm font-semibold text-text">Schedule post</span>
           <button
             type="button"
             role="switch"
@@ -268,10 +295,92 @@ export function SchedulePostSidebar({
       <button
         type="button"
         onClick={onCancel}
-        className="rounded-xl border border-border bg-bg-elevated px-4 py-2.5 font-medium text-text transition-colors hover:bg-bg-muted"
+        className="rounded-xl border border-border bg-bg-elevated px-4 py-2.5 font-medium text-text transition-colors hover:bg-bg-muted -mt-4"
       >
         Cancel
       </button>
+
+      <div className="space-y-2">
+        {autoRepost?.visible && (
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated px-3 py-2">
+            <span className="text-sm font-medium text-text">Auto-Repost</span>
+            <div className="flex items-center gap-2">
+              {autoRepost.enabled && (
+                <button
+                  type="button"
+                  onClick={autoRepost.onOpenSettings}
+                  className="rounded-lg p-1.5 text-text-muted hover:bg-bg-muted hover:text-text transition-colors"
+                  aria-label="Auto-Repost settings"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoRepost.enabled}
+                onClick={autoRepost.onToggle}
+                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
+                  autoRepost.enabled ? "bg-emerald-600" : "bg-bg-muted"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-bg shadow transition-transform ${
+                    autoRepost.enabled ? "translate-x-4" : "translate-x-0.5"
+                  } mt-0.5`}
+                />
+              </button>
+            </div>
+          </div>
+        )}
+        {autoPlug?.visible && (
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated px-3 py-2">
+            <span className="text-sm font-medium text-text">Auto-Plug</span>
+            <div className="flex items-center gap-2">
+              {autoPlug.enabled && (
+                <button
+                  type="button"
+                  onClick={autoPlug.onOpenSettings}
+                  className="rounded-lg p-1.5 text-text-muted hover:bg-bg-muted hover:text-text transition-colors"
+                  aria-label="Auto-Plug settings"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoPlug.enabled}
+                onClick={autoPlug.onToggle}
+                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
+                  autoPlug.enabled ? "bg-emerald-600" : "bg-bg-muted"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-bg shadow transition-transform ${
+                    autoPlug.enabled ? "translate-x-4" : "translate-x-0.5"
+                  } mt-0.5`}
+                />
+              </button>
+            </div>
+          </div>
+        )}
+        {tiktokSettings?.visible && (
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated px-3 py-2">
+            <span className="text-sm font-medium text-text">
+              TikTok Settings
+            </span>
+            <button
+              type="button"
+              onClick={tiktokSettings.onOpenSettings}
+              className="rounded-lg p-1.5 text-text-muted hover:bg-bg-muted hover:text-text transition-colors"
+              aria-label="TikTok settings"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
     </aside>
   );
 }
