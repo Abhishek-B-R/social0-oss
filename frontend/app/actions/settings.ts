@@ -10,16 +10,12 @@ import { redirect } from "next/navigation";
 
 export type SettingsSnapshot = {
   automationEmails: boolean;
-  useFilenameAsCaption: boolean;
   use24HourTimeFormat: boolean;
-  weeklyPostingGoal: number;
 };
 
 const DEFAULT_SETTINGS: SettingsSnapshot = {
   automationEmails: true,
-  useFilenameAsCaption: false,
   use24HourTimeFormat: false,
-  weeklyPostingGoal: 3,
 };
 
 async function getCurrentUserId() {
@@ -37,9 +33,7 @@ export async function getUserSettingsSnapshot(): Promise<SettingsSnapshot> {
     where: eq(userSettings.userId, userId),
     columns: {
       automationEmails: true,
-      useFilenameAsCaption: true,
       use24HourTimeFormat: true,
-      weeklyPostingGoal: true,
     },
   });
 
@@ -49,11 +43,8 @@ export async function getUserSettingsSnapshot(): Promise<SettingsSnapshot> {
 
   return {
     automationEmails: row.automationEmails ?? DEFAULT_SETTINGS.automationEmails,
-    useFilenameAsCaption:
-      row.useFilenameAsCaption ?? DEFAULT_SETTINGS.useFilenameAsCaption,
     use24HourTimeFormat:
       row.use24HourTimeFormat ?? DEFAULT_SETTINGS.use24HourTimeFormat,
-    weeklyPostingGoal: row.weeklyPostingGoal ?? DEFAULT_SETTINGS.weeklyPostingGoal,
   };
 }
 
@@ -107,19 +98,8 @@ export async function updateAutomationEmails(formData: FormData): Promise<void> 
 
 export async function updatePlatformPreferences(formData: FormData): Promise<void> {
   await upsertSettings({
-    useFilenameAsCaption: formData.get("useFilenameAsCaption") === "on",
     use24HourTimeFormat: formData.get("use24HourTimeFormat") === "on",
   });
-}
-
-export async function updateWeeklyPostingGoal(formData: FormData): Promise<void> {
-  const rawValue = Number.parseInt(String(formData.get("weeklyPostingGoal") ?? ""), 10);
-
-  if (!Number.isFinite(rawValue) || rawValue < 0 || rawValue > 100) {
-    return;
-  }
-
-  await upsertSettings({ weeklyPostingGoal: rawValue });
 }
 
 export async function signOutAllDevices(): Promise<void> {

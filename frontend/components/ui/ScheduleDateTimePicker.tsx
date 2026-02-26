@@ -10,6 +10,8 @@ type ScheduleDateTimePickerProps = {
   onChange: (date: Date | null) => void;
   placeholder?: string;
   minDate?: Date;
+  /** When true, show times in 24h (e.g. 09:00); when false, 12h with AM/PM */
+  use24HourTimeFormat?: boolean;
 };
 
 // Helper to get current time in HH:mm format
@@ -34,6 +36,7 @@ export function ScheduleDateTimePicker({
   onChange,
   placeholder = "Pick date & time",
   minDate = new Date(),
+  use24HourTimeFormat = false,
 }: ScheduleDateTimePickerProps) {
   // Compute initial date and time
   const initialDate = useMemo(() => {
@@ -206,7 +209,7 @@ export function ScheduleDateTimePicker({
           <p className="mt-2 text-xs text-text-muted">
             {format(
               setMinutes(setHours(selectedDate, parseInt(timeValue.split(":")[0]) || 0), parseInt(timeValue.split(":")[1]) || 0),
-              "MMM d, yyyy 'at' h:mm a"
+              use24HourTimeFormat ? "MMM d, yyyy 'at' HH:mm" : "MMM d, yyyy 'at' h:mm a"
             )}
           </p>
         )}

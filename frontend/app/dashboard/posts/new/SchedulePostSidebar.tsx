@@ -35,6 +35,8 @@ type SchedulePostSidebarProps = {
   hasAccountSelected: boolean;
   error: string | null;
   onCancel: () => void;
+  /** When true, show times in 24h format */
+  use24HourTimeFormat?: boolean;
   /** Set this ref before calling requestSubmit so handleSubmit uses the correct mode */
   intendedModeRef: React.MutableRefObject<PublishMode | null>;
   formRef: React.RefObject<HTMLFormElement | null>;
@@ -57,6 +59,7 @@ export function SchedulePostSidebar({
   hasAccountSelected,
   error,
   onCancel,
+  use24HourTimeFormat = false,
   intendedModeRef,
   formRef,
   autoRepost,
@@ -115,9 +118,10 @@ export function SchedulePostSidebar({
     const timePart = new Intl.DateTimeFormat("en-US", {
       hour: "numeric",
       minute: "2-digit",
+      hour12: !use24HourTimeFormat,
     }).format(combinedDateTime);
     return `Scheduled for ${datePart} at ${timePart}`;
-  }, [combinedDateTime]);
+  }, [combinedDateTime, use24HourTimeFormat]);
 
   // Keep the parent `scheduledAt` in sync with our inputs while scheduled mode is on.
   useEffect(() => {
@@ -191,17 +195,17 @@ export function SchedulePostSidebar({
             role="switch"
             aria-checked={isScheduled}
             onClick={toggleScheduled}
-            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-accent/20 ${
+            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/20 ${
               isScheduled
                 ? "border-accent bg-accent"
-                : "border-border bg-bg-muted"
+                : "border-gray-400 bg-bg-muted dark:border-gray-600"
             }`}
           >
             <span
-              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-bg shadow ring-0 transition-transform ${
+              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-bg border border-gray-400 dark:border-gray-600 shadow ring-0 transition-transform ${
                 isScheduled ? "translate-x-5" : "translate-x-0.5"
               }`}
-              style={{ marginTop: 2 }}
+              style={{ marginTop: 1 }}
             />
           </button>
         </div>
@@ -321,7 +325,11 @@ export function SchedulePostSidebar({
                 type="button"
                 role="switch"
                 aria-checked={autoRepost.enabled}
-                aria-label={autoRepost.enabled ? "Disable Auto-Repost" : "Enable Auto-Repost"}
+                aria-label={
+                  autoRepost.enabled
+                    ? "Disable Auto-Repost"
+                    : "Enable Auto-Repost"
+                }
                 onClick={autoRepost.onToggle}
                 className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
                   autoRepost.enabled ? "bg-emerald-600" : "bg-gray-300"
@@ -356,7 +364,9 @@ export function SchedulePostSidebar({
                 type="button"
                 role="switch"
                 aria-checked={autoPlug.enabled}
-                aria-label={autoPlug.enabled ? "Disable Auto-Plug" : "Enable Auto-Plug"}
+                aria-label={
+                  autoPlug.enabled ? "Disable Auto-Plug" : "Enable Auto-Plug"
+                }
                 onClick={autoPlug.onToggle}
                 className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
                   autoPlug.enabled ? "bg-emerald-600" : "bg-gray-300"

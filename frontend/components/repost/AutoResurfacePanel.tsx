@@ -45,9 +45,11 @@ type AutoResurfacePanelProps = {
   embedded?: boolean;
   /** When true, show only the form (no toggle); for use inside settings modal */
   modalMode?: boolean;
+  /** When true, show times in 24h format */
+  use24HourTimeFormat?: boolean;
 };
 
-function formatFirstReshare(intervalHours: number): string {
+function formatFirstReshare(intervalHours: number, use24HourTimeFormat = false): string {
   const t = new Date();
   t.setTime(t.getTime() + intervalHours * 60 * 60 * 1000);
   return t.toLocaleString(undefined, {
@@ -55,6 +57,7 @@ function formatFirstReshare(intervalHours: number): string {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    hour12: !use24HourTimeFormat,
   });
 }
 
@@ -67,6 +70,7 @@ export function AutoResurfacePanel({
   initialConfig,
   embedded = false,
   modalMode = false,
+  use24HourTimeFormat = false,
 }: AutoResurfacePanelProps) {
   const supportedPlatforms = getResurfacePlatforms(
     selectedAccountIds,
@@ -92,6 +96,7 @@ export function AutoResurfacePanel({
       onChange={onChange}
       embedded={embedded}
       modalMode={modalMode}
+      use24HourTimeFormat={use24HourTimeFormat}
     />
   );
 }
@@ -102,12 +107,14 @@ function AutoResurfacePanelInner({
   onChange,
   embedded = false,
   modalMode = false,
+  use24HourTimeFormat = false,
 }: {
   subtitle: string;
   initialConfig?: Partial<AutoResurfaceConfig> | null;
   onChange: (config: AutoResurfaceConfig | null) => void;
   embedded?: boolean;
   modalMode?: boolean;
+  use24HourTimeFormat?: boolean;
 }) {
   const [enabled, setEnabled] = useState(modalMode || !!initialConfig);
   const [intervalHours, setIntervalHours] = useState(
@@ -223,7 +230,7 @@ function AutoResurfacePanelInner({
           </div>
 
           <p className="text-xs text-muted-foreground">
-            First reshare: {formatFirstReshare(intervalHours)}, if published now
+            First reshare: {formatFirstReshare(intervalHours, use24HourTimeFormat)}, if published now
           </p>
 
           <div>

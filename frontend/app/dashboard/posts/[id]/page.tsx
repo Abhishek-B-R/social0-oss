@@ -21,6 +21,7 @@ import {
   BookOpen,
   LayoutGrid,
 } from "lucide-react";
+import { getUserSettingsSnapshot } from "@/app/actions/settings";
 
 const TYPE_ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
   Thread: Layers,
@@ -109,11 +110,6 @@ function getDisplayType(
   return "Text";
 }
 
-const dateOpts: Intl.DateTimeFormatOptions = {
-  dateStyle: "medium",
-  timeStyle: "short",
-};
-
 export default async function PostDetailPage({
   params,
 }: {
@@ -121,6 +117,13 @@ export default async function PostDetailPage({
 }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/dashboard/posts");
+
+  const { use24HourTimeFormat } = await getUserSettingsSnapshot();
+  const dateOpts: Intl.DateTimeFormatOptions = {
+    dateStyle: "medium",
+    timeStyle: "short",
+    hour12: !use24HourTimeFormat,
+  };
 
   const { id } = await params;
   const data = await getPostDetail(id, session.user.id);

@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { posts, postPublications, connectedAccounts } from "@/db/schema";
 import { eq, inArray, and, or } from "drizzle-orm";
 import { headers } from "next/headers";
+import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { CalendarClient, type PostForCalendar } from "./CalendarClient";
 import { format, subMonths, addMonths } from "date-fns";
 
@@ -10,6 +11,7 @@ export default async function CalendarPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return null;
 
+  const { use24HourTimeFormat } = await getUserSettingsSnapshot();
   const now = new Date();
   const rangeStart = subMonths(now, 1);
   const rangeEnd = addMonths(now, 2);
@@ -42,7 +44,7 @@ export default async function CalendarPage() {
           View your scheduled and published posts by month, week, or day.
         </p>
         <div className="mt-6 flex min-h-0 flex-1 flex-col">
-          <CalendarClient posts={[]} initialMonth={format(now, "yyyy-MM")} />
+          <CalendarClient posts={[]} initialMonth={format(now, "yyyy-MM")} use24HourTimeFormat={use24HourTimeFormat} />
         </div>
       </div>
     );
@@ -121,6 +123,7 @@ export default async function CalendarPage() {
         <CalendarClient
           posts={calendarPosts}
           initialMonth={format(now, "yyyy-MM")}
+          use24HourTimeFormat={use24HourTimeFormat}
         />
       </div>
     </div>

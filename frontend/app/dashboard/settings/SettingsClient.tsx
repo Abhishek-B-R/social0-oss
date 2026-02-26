@@ -7,7 +7,6 @@ import {
   updateAutomationEmails,
   updateDisplayName,
   updatePlatformPreferences,
-  updateWeeklyPostingGoal,
   type SettingsSnapshot,
 } from "@/app/actions/settings";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -171,12 +170,6 @@ export function SettingsClient({
         <h2 className="text-lg font-semibold text-text">Platform Preferences</h2>
         <form action={updatePlatformPreferences} className="mt-4 space-y-4">
           <Toggle
-            id="useFilenameAsCaption"
-            name="useFilenameAsCaption"
-            defaultChecked={settings.useFilenameAsCaption}
-            label="Use file name as caption"
-          />
-          <Toggle
             id="use24HourTimeFormat"
             name="use24HourTimeFormat"
             defaultChecked={settings.use24HourTimeFormat}
@@ -186,29 +179,6 @@ export function SettingsClient({
         </form>
       </section>
 
-      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-text">Weekly Posting Goal</h2>
-        <form action={updateWeeklyPostingGoal} className="mt-4 flex flex-wrap items-end gap-3">
-          <div>
-            <label
-              htmlFor="weeklyPostingGoal"
-              className="text-sm font-medium text-text"
-            >
-              Posts per week
-            </label>
-            <input
-              id="weeklyPostingGoal"
-              name="weeklyPostingGoal"
-              type="number"
-              min={0}
-              max={100}
-              defaultValue={settings.weeklyPostingGoal}
-              className="mt-1 w-40 rounded-xl border border-input bg-bg px-4 py-2.5 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-            />
-          </div>
-          <SaveButton />
-        </form>
-      </section>
     </div>
   );
 }

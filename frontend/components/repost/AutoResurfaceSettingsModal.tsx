@@ -17,6 +17,7 @@ type AutoResurfaceSettingsModalProps = {
   onChange: (config: AutoResurfaceConfig | null) => void;
   onDone: () => void;
   onCancel: () => void;
+  use24HourTimeFormat?: boolean;
 };
 
 export function AutoResurfaceSettingsModal({
@@ -27,6 +28,7 @@ export function AutoResurfaceSettingsModal({
   onChange,
   onDone,
   onCancel,
+  use24HourTimeFormat = false,
 }: AutoResurfaceSettingsModalProps) {
   return (
     <Dialog
@@ -53,6 +55,7 @@ export function AutoResurfaceSettingsModal({
             onChange={onChange}
             embedded
             modalMode
+            use24HourTimeFormat={use24HourTimeFormat}
           />
         </div>
 

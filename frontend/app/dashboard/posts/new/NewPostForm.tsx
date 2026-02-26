@@ -19,7 +19,13 @@ type Account = {
   tokenExpired?: boolean;
 };
 
-export function NewPostForm({ accounts }: { accounts: Account[] }) {
+export function NewPostForm({
+  accounts,
+  use24HourTimeFormat = false,
+}: {
+  accounts: Account[];
+  use24HourTimeFormat?: boolean;
+}) {
   const router = useRouter();
   const [content, setContent] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -147,11 +153,13 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
                 <label
                   key={acc.id}
                   className={`flex items-center gap-3 p-4 rounded-xl border border-border bg-bg-muted/30 hover:bg-bg-muted/50 has-checked:border-accent has-checked:bg-accent/10 ${
-                    expired
-                      ? "cursor-not-allowed opacity-60"
-                      : "cursor-pointer"
+                    expired ? "cursor-not-allowed opacity-60" : "cursor-pointer"
                   }`}
-                  title={expired ? "Token expired — reconnect in Connections page" : undefined}
+                  title={
+                    expired
+                      ? "Token expired — reconnect in Connections page"
+                      : undefined
+                  }
                 >
                   <input
                     type="checkbox"
@@ -234,6 +242,7 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
               value={scheduledAt}
               onChange={setScheduledAt}
               placeholder="Pick date & time"
+              use24HourTimeFormat={use24HourTimeFormat}
             />
           </div>
         )}

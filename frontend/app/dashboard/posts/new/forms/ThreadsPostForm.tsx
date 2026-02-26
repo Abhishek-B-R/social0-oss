@@ -192,7 +192,13 @@ type ThreadPost = {
   videos: MediaVideo[];
 };
 
-export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
+export function ThreadsPostForm({
+  accounts,
+  use24HourTimeFormat = false,
+}: {
+  accounts: Account[];
+  use24HourTimeFormat?: boolean;
+}) {
   const router = useRouter();
   const nextIdRef = useRef(1);
   const nextId = () => {
@@ -767,6 +773,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
               anyOverLimit ||
               !hasContent
             }
+            use24HourTimeFormat={use24HourTimeFormat}
             hideScheduleAndActions
             searchSlot={
               <input
@@ -969,6 +976,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
           }
           hasAccountSelected={selectedIds.size > 0}
           error={error}
+          use24HourTimeFormat={use24HourTimeFormat}
           onCancel={() => router.push("/dashboard/posts")}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
@@ -1113,6 +1121,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
               setResurfaceConfig(configBeforeResurfaceRef.current ?? null);
               setResurfaceModalOpen(false);
             }}
+            use24HourTimeFormat={use24HourTimeFormat}
           />
         )}
         {autoplugModalOpen && (

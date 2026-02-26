@@ -40,7 +40,13 @@ type Account = {
 type ImageFile = { file: File; preview: string; order: number };
 type VideoFile = { file: File; preview: string; order: number };
 
-export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
+export function CollectionPostForm({
+  accounts,
+  use24HourTimeFormat = false,
+}: {
+  accounts: Account[];
+  use24HourTimeFormat?: boolean;
+}) {
   const router = useRouter();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -509,6 +515,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
               (mode === "scheduled" && !scheduledAt) ||
               !hasContent
             }
+            use24HourTimeFormat={use24HourTimeFormat}
             hideScheduleAndActions
             searchSlot={
               <input
@@ -688,6 +695,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
           }
           hasAccountSelected={selectedIds.size > 0}
           error={error}
+          use24HourTimeFormat={use24HourTimeFormat}
           onCancel={() => router.push("/dashboard/posts")}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
@@ -848,6 +856,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
               setResurfaceConfig(configBeforeResurfaceRef.current ?? null);
               setResurfaceModalOpen(false);
             }}
+            use24HourTimeFormat={use24HourTimeFormat}
           />
         )}
         {autoplugModalOpen && (

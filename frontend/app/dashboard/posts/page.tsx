@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
 import { getPostsListData } from "./posts-list-data";
+import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { AllPostsFilters } from "./AllPostsFilters";
 import { PostListCards } from "./PostListCards";
 
@@ -36,6 +37,8 @@ export default async function PostsPage({
     time: params.time || null,
     account: params.account || null,
   });
+
+  const { use24HourTimeFormat } = await getUserSettingsSnapshot();
 
   const hasActiveFilters = !!(params.platform || params.time || params.account);
   const showTikTokMessage = params?.tiktok_published === "true";
@@ -87,6 +90,7 @@ export default async function PostsPage({
         emptyMessage="You haven't created any posts yet."
         filterMessage="No posts match your filters."
         hasActiveFilters={hasActiveFilters}
+        use24HourTimeFormat={use24HourTimeFormat}
       />
     </div>
   );

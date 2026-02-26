@@ -41,6 +41,7 @@ function DayCell({
   onToggleExpand,
   onDayClick,
   fillHeight,
+  use24HourTimeFormat = false,
 }: {
   date: Date;
   posts: PostForCalendar[];
@@ -49,6 +50,7 @@ function DayCell({
   onToggleExpand: (key: string) => void;
   onDayClick?: (date: Date) => void;
   fillHeight?: boolean;
+  use24HourTimeFormat?: boolean;
 }) {
   const dateKey = format(date, "yyyy-MM-dd");
   const isExpanded = expandedDay === dateKey;
@@ -94,7 +96,7 @@ function DayCell({
                   {post.snippet || "(No caption)"}
                 </p>
                 <p className="text-[10px] text-text-muted">
-                  {format(parseISO(post.displayDate), "h:mm a")}
+                  {format(parseISO(post.displayDate), use24HourTimeFormat ? "HH:mm" : "h:mm a")}
                 </p>
               </div>
               <AccountAvatar
@@ -134,9 +136,11 @@ const WEEK_STARTS_ON = 1; // Monday
 export function CalendarClient({
   posts,
   initialMonth,
+  use24HourTimeFormat = false,
 }: {
   posts: PostForCalendar[];
   initialMonth: string;
+  use24HourTimeFormat?: boolean;
 }) {
   const today = startOfDay(new Date());
   const [currentMonth, setCurrentMonth] = useState(() =>
@@ -332,6 +336,7 @@ export function CalendarClient({
                   setExpandedDay((prev) => (prev === key ? null : key))
                 }
                 onDayClick={selectDay}
+                use24HourTimeFormat={use24HourTimeFormat}
               />
             ))}
           </div>
@@ -363,6 +368,7 @@ export function CalendarClient({
                   }
                   onDayClick={selectDay}
                   fillHeight
+                  use24HourTimeFormat={use24HourTimeFormat}
                 />
               </div>
             ))}
@@ -396,7 +402,7 @@ export function CalendarClient({
                         className="flex items-center gap-4 rounded-xl border border-border bg-bg p-4 shadow-sm hover:bg-bg-muted"
                       >
                         <span className="shrink-0 text-sm font-medium text-text-muted tabular-nums">
-                          {format(parseISO(post.displayDate), "h:mm a")}
+                          {format(parseISO(post.displayDate), use24HourTimeFormat ? "HH:mm" : "h:mm a")}
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-text line-clamp-2">

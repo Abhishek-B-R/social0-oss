@@ -28,6 +28,8 @@ type PostFormOptionsProps = {
   onCancel: () => void;
   submitLabel: string;
   submitDisabled?: boolean;
+  /** When true, show times in 24h format across schedule/time displays */
+  use24HourTimeFormat?: boolean;
   /** Rendered just above "When do you want to publish?" (e.g. Auto-Repost & Auto-Plug) */
   betweenScheduleAndActions?: React.ReactNode;
   /** When true, only render "Post to" + account selector and betweenScheduleAndActions (schedule/actions move to sidebar) */
@@ -50,6 +52,7 @@ export function PostFormOptions({
   onCancel,
   submitLabel,
   submitDisabled = false,
+  use24HourTimeFormat = false,
   betweenScheduleAndActions,
   hideScheduleAndActions = false,
   searchSlot,
@@ -142,6 +145,7 @@ export function PostFormOptions({
                 value={scheduledAt}
                 onChange={setScheduledAt}
                 placeholder="Pick date & time"
+                use24HourTimeFormat={use24HourTimeFormat}
               />
             </div>
           )}

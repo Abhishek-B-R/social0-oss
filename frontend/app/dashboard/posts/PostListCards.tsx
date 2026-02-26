@@ -64,9 +64,14 @@ function getUiStatus(post: PostRow): string {
 function getTimestampLabel(
   post: PostRow,
   publications: { publishedAt: Date | null }[],
+  use24HourTimeFormat: boolean,
 ): string {
   const effectiveStatus = getUiStatus(post);
-  const dateOpts: Intl.DateTimeFormatOptions = { dateStyle: "short", timeStyle: "short" };
+  const dateOpts: Intl.DateTimeFormatOptions = {
+    dateStyle: "short",
+    timeStyle: "short",
+    hour12: !use24HourTimeFormat,
+  };
   if (effectiveStatus === "scheduled" && post.scheduledAt) {
     return `Scheduled for ${new Date(post.scheduledAt).toLocaleString(undefined, dateOpts)}`;
   }
@@ -127,6 +132,7 @@ export function PostListCards({
   emptyMessage = "You haven't created any posts yet.",
   filterMessage = "No posts match your filters.",
   hasActiveFilters,
+  use24HourTimeFormat = false,
 }: {
   userPosts: PostRow[];
   publicationsByPostId: Record<string, PublicationRow[]>;
@@ -136,6 +142,7 @@ export function PostListCards({
   emptyMessage?: string;
   filterMessage?: string;
   hasActiveFilters?: boolean;
+   use24HourTimeFormat?: boolean;
 }) {
   if (userPosts.length === 0) {
     return (
@@ -163,7 +170,11 @@ export function PostListCards({
         const mediaIds = post.mediaIds ?? [];
         const displayType = getDisplayType(post, partCount, mime, mediaIds);
         const uiStatus = getUiStatus(post);
-        const timestampLabel = getTimestampLabel(post, publicationsByPostId[post.id] ?? []);
+        const timestampLabel = getTimestampLabel(
+          post,
+          publicationsByPostId[post.id] ?? [],
+          use24HourTimeFormat,
+        );
 
         const PREVIEW_LEN = 120;
         const firstPart = (parts[0] ?? "").trim();

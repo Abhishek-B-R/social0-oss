@@ -9,6 +9,7 @@ import { getPostForEdit, getPostMedia } from "../../posts-list-data";
 import { EditPostForm } from "../../EditPostForm";
 import { PLATFORMS } from "@/lib/platforms";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
+import { getUserSettingsSnapshot } from "@/app/actions/settings";
 
 const platformOrder: string[] = PLATFORMS.map((p) => p.id);
 
@@ -72,6 +73,8 @@ export default async function EditPostPage({
       ? await getPostMedia(session.user.id, post.mediaIds)
       : [];
 
+  const { use24HourTimeFormat } = await getUserSettingsSnapshot();
+
   return (
     <div>
       <div className="mb-6 flex items-center gap-2">
@@ -94,6 +97,7 @@ export default async function EditPostPage({
         post={post}
         accounts={activeAccounts}
         existingMedia={existingMedia}
+        use24HourTimeFormat={use24HourTimeFormat}
       />
     </div>
   );

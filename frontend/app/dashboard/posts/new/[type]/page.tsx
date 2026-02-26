@@ -7,6 +7,7 @@ import { redirect, notFound } from "next/navigation";
 import { PLATFORMS } from "@/lib/platforms";
 import { getContentTypeBySlug } from "@/lib/content-types";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
+import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import Link from "next/link";
 import { TextPostForm } from "../forms/TextPostForm";
 import { ImagePostForm } from "../forms/ImagePostForm";
@@ -82,6 +83,7 @@ export default async function NewPostByTypePage({
   );
 
   const FormComponent = FORM_MAP[contentType.slug];
+  const { use24HourTimeFormat } = await getUserSettingsSnapshot();
 
   return (
     <div>
@@ -103,7 +105,7 @@ export default async function NewPostByTypePage({
       <p className="text-text-muted mb-8 font-medium">
         {contentType.description}
       </p>
-      <FormComponent accounts={filtered} />
+      <FormComponent accounts={filtered} use24HourTimeFormat={use24HourTimeFormat} />
     </div>
   );
 }

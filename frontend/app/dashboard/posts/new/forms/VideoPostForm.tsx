@@ -49,7 +49,13 @@ function formatDuration(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export function VideoPostForm({ accounts }: { accounts: Account[] }) {
+export function VideoPostForm({
+  accounts,
+  use24HourTimeFormat = false,
+}: {
+  accounts: Account[];
+  use24HourTimeFormat?: boolean;
+}) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -411,6 +417,7 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
               !videoFile ||
               (mode === "scheduled" && !scheduledAt)
             }
+            use24HourTimeFormat={use24HourTimeFormat}
             hideScheduleAndActions
             searchSlot={
               <input
@@ -492,6 +499,7 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
           }
           hasAccountSelected={selectedIds.size > 0}
           error={error}
+          use24HourTimeFormat={use24HourTimeFormat}
           onCancel={() => router.push("/dashboard/posts")}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
@@ -748,6 +756,7 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
               setResurfaceConfig(configBeforeResurfaceRef.current ?? null);
               setResurfaceModalOpen(false);
             }}
+            use24HourTimeFormat={use24HourTimeFormat}
           />
         )}
         {autoplugModalOpen && (

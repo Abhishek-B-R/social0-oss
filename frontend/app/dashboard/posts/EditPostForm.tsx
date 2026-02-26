@@ -30,10 +30,12 @@ export function EditPostForm({
   post,
   accounts,
   existingMedia = [],
+  use24HourTimeFormat = false,
 }: {
   post: PostForEdit;
   accounts: Account[];
   existingMedia?: PostMediaRow[];
+  use24HourTimeFormat?: boolean;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -395,6 +397,7 @@ export function EditPostForm({
               value={scheduledAt}
               onChange={setScheduledAt}
               placeholder="Pick date & time"
+              use24HourTimeFormat={use24HourTimeFormat}
             />
             <button
               type="button"

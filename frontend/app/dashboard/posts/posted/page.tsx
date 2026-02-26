@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -33,6 +34,7 @@ export default async function PostedPostsPage({
   });
 
   const hasActiveFilters = !!(params.platform || params.time || params.account);
+  const { use24HourTimeFormat } = await getUserSettingsSnapshot();
 
   return (
     <div>
@@ -70,6 +72,7 @@ export default async function PostedPostsPage({
         emptyMessage="You haven't published any posts yet."
         filterMessage="No posted content matches your filters."
         hasActiveFilters={hasActiveFilters}
+        use24HourTimeFormat={use24HourTimeFormat}
       />
     </div>
   );
