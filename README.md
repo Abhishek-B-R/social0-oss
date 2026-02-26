@@ -5,7 +5,7 @@ Unified social media management platform to create, schedule, and publish conten
 ## Features
 
 - **Multi-platform publishing**: LinkedIn, Instagram, YouTube, Pinterest, TikTok, X (Twitter), Threads, Bluesky, Facebook
-- **Content types**: Text, Images, Videos, Threads, Blog posts
+- **Content types**: Text, Images, Videos, Threads, Collections
 - **Smart scheduling**: Schedule posts for optimal engagement
 - **Secure token management**: Enterprise-grade encryption for OAuth tokens
 - **Media storage**: Cloudflare R2 integration for images and videos

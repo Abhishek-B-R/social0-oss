@@ -12,6 +12,11 @@ import { eq, inArray, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { executePublish } from "@/app/actions/publish";
+import {
+  getPostForEdit,
+  getPostMedia,
+  type PostMediaRow,
+} from "@/app/dashboard/posts/posts-list-data";
 
 export type CreatePostResult =
   | { success: true; postId: string }
@@ -205,6 +210,7 @@ export async function updatePost(
   selectedAccountIds: string[],
   scheduledAt: Date | null,
   mediaIds?: string[],
+  metadata?: Record<string, unknown>,
 ): Promise<UpdatePostResult> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
@@ -292,6 +298,7 @@ export async function updatePost(
         status,
         scheduledAt,
         mediaIds: finalMediaIds,
+        ...(metadata != null && { metadata }),
         updatedAt: new Date(),
       })
       .where(eq(posts.id, postId));
@@ -330,4 +337,149 @@ export async function updatePost(
       error: e instanceof Error ? e.message : "Failed to update post",
     };
   }
+}
+
+export type GetDraftResult =
+  | {
+      success: true;
+      draft: {
+        id: string;
+        originalContent: string | null;
+        scheduledAt: Date | null;
+        connectedAccountIds: string[];
+        media: PostMediaRow[];
+        metadata: Record<string, unknown> | null;
+      };
+    }
+  | { success: false; error: string };
+
+export async function getDraft(postId: string): Promise<GetDraftResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return { success: false, error: "Unauthorized" };
+  }
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(postId)) {
+    return { success: false, error: "Invalid post ID" };
+  }
+  const post = await getPostForEdit(postId, session.user.id);
+  if (!post) {
+    return { success: false, error: "Draft not found" };
+  }
+  if (post.status !== "draft") {
+    return { success: false, error: "Post is not a draft" };
+  }
+  const media =
+    post.mediaIds.length > 0
+      ? await getPostMedia(session.user.id, post.mediaIds)
+      : [];
+  const [row] = await db
+    .select({ metadata: posts.metadata })
+    .from(posts)
+    .where(
+      and(eq(posts.id, postId), eq(posts.userId, session.user.id)),
+    );
+  return {
+    success: true,
+    draft: {
+      id: post.id,
+      originalContent: post.originalContent,
+      scheduledAt: post.scheduledAt,
+      connectedAccountIds: post.connectedAccountIds,
+      media,
+      metadata: (row?.metadata as Record<string, unknown>) ?? null,
+    },
+  };
+}
+
+export type DeleteDraftResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export async function deleteDraft(postId: string): Promise<DeleteDraftResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return { success: false, error: "Unauthorized" };
+  }
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(postId)) {
+    return { success: false, error: "Invalid post ID" };
+  }
+  try {
+    const [post] = await db
+      .select({ id: posts.id, status: posts.status })
+      .from(posts)
+      .where(
+        and(eq(posts.id, postId), eq(posts.userId, session.user.id)),
+      );
+    if (!post) {
+      return { success: false, error: "Post not found" };
+    }
+    if (post.status !== "draft") {
+      return { success: false, error: "Only drafts can be deleted" };
+    }
+    await db.delete(postPublications).where(eq(postPublications.postId, postId));
+    await db.delete(posts).where(eq(posts.id, postId));
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/posts");
+    revalidatePath("/dashboard/posts/drafts");
+    return { success: true };
+  } catch (e) {
+    console.error("deleteDraft error:", e);
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Failed to delete draft",
+    };
+  }
+}
+
+/** Save draft changes (content, accounts, media). Keeps status as draft. */
+export async function updateDraft(
+  draftId: string,
+  content: string,
+  selectedAccountIds: string[],
+  mediaIds: string[] = [],
+  metadata?: Record<string, unknown>,
+): Promise<UpdatePostResult> {
+  return updatePost(
+    draftId,
+    content,
+    selectedAccountIds,
+    null,
+    mediaIds.length > 0 ? mediaIds : undefined,
+    metadata,
+  );
+}
+
+export type UpdateAndPublishResult =
+  | { success: true; postId: string }
+  | { success: false; error: string };
+
+/** Update draft content/accounts/media then publish now. */
+export async function updateAndPublish(
+  draftId: string,
+  content: string,
+  selectedAccountIds: string[],
+  mediaIds: string[] = [],
+  metadata?: Record<string, unknown>,
+): Promise<UpdateAndPublishResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return { success: false, error: "Unauthorized" };
+  }
+  const result = await updatePost(
+    draftId,
+    content,
+    selectedAccountIds,
+    new Date(),
+    mediaIds.length > 0 ? mediaIds : undefined,
+    metadata,
+  );
+  if (!result.success) {
+    return result;
+  }
+  await executePublish(draftId, session.user.id);
+  return { success: true, postId: draftId };
 }

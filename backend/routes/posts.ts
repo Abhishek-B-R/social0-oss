@@ -11,7 +11,7 @@ import { parseOffsetLimit, buildMeta } from "../lib/pagination.ts";
 const posts = new Hono();
 
 // GET /v1/posts – paginated list (query: offset, limit, platform[], status[])
-// platform: Social0 platforms (linkedin, facebook, instagram, youtube, pinterest, tiktok, twitter, threads, bluesky, medium, hashnode, devto)
+// platform: Social0 platforms (linkedin, facebook, instagram, youtube, pinterest, tiktok, twitter, threads, bluesky)
 // status: draft | scheduled | publishing | published | failed
 posts.get("/", (c) => {
   const { offset, limit } = parseOffsetLimit(c);

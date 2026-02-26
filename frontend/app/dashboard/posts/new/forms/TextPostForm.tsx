@@ -1,8 +1,16 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createPost, type PublishMode } from "@/app/actions/posts";
+import {
+  createPost,
+  getDraft,
+  deleteDraft,
+  updateDraft,
+  updateAndPublish,
+  updatePost,
+  type PublishMode,
+} from "@/app/actions/posts";
 import { createAutoPlug } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
@@ -30,9 +38,11 @@ type Account = {
 export function TextPostForm({
   accounts,
   use24HourTimeFormat = false,
+  draftId: initialDraftId,
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
+  draftId?: string;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -43,6 +53,7 @@ export function TextPostForm({
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
   const [error, setError] = useState<string | null>(null);
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
@@ -54,6 +65,28 @@ export function TextPostForm({
   const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
   const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   const [showContentError, setShowContentError] = useState(false);
+
+  useEffect(() => {
+    if (!initialDraftId) return;
+    let cancelled = false;
+    (async () => {
+      const result = await getDraft(initialDraftId);
+      if (cancelled) return;
+      setDraftLoading(false);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      const { draft } = result;
+      setContent(draft.originalContent ?? "");
+      setSelectedIds(new Set(draft.connectedAccountIds));
+      setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
+      if (draft.scheduledAt) setMode("scheduled");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialDraftId]);
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
   const selectedAccountIds = Array.from(selectedIds);
@@ -112,9 +145,72 @@ export function TextPostForm({
     setLoading(true);
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
+    const accountIds = Array.from(selectedIds);
+
+    if (initialDraftId) {
+      if (effectiveMode === "draft") {
+        const result = await updateDraft(
+          initialDraftId,
+          content.trim(),
+          accountIds,
+        );
+        setLoading(false);
+        if (result.success) {
+          router.push("/dashboard/posts/drafts");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+      if (effectiveMode === "now") {
+        const result = await updateAndPublish(
+          initialDraftId,
+          content.trim(),
+          accountIds,
+        );
+        setLoading(false);
+        if (result.success) {
+          if (autoPlugConfig) {
+            const xAccount = selectedAccounts.find(
+              (a) => a.platform === "twitter_x",
+            );
+            if (xAccount) {
+              await createAutoPlug(
+                result.postId,
+                xAccount.id,
+                autoPlugConfig,
+              );
+            }
+          }
+          router.push("/dashboard/posts");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+      if (effectiveMode === "scheduled") {
+        const result = await updatePost(
+          initialDraftId,
+          content.trim(),
+          accountIds,
+          scheduledAt,
+        );
+        setLoading(false);
+        if (result.success) {
+          router.push("/dashboard/posts/scheduled");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+    }
+
     const result = await createPost(
       content.trim(),
-      Array.from(selectedIds),
+      accountIds,
       effectiveMode,
       scheduledAt,
     );
@@ -129,6 +225,17 @@ export function TextPostForm({
         }
       }
       router.push("/dashboard/posts");
+      router.refresh();
+    } else {
+      setError(result.error);
+    }
+  };
+
+  const handleDeleteDraft = async () => {
+    if (!initialDraftId) return;
+    const result = await deleteDraft(initialDraftId);
+    if (result.success) {
+      router.push("/dashboard/posts/drafts");
       router.refresh();
     } else {
       setError(result.error);
@@ -151,6 +258,14 @@ export function TextPostForm({
       : mode === "scheduled"
         ? "Schedule post"
         : "Post now";
+
+  if (draftLoading) {
+    return (
+      <div className="flex items-center justify-center py-12 text-text-muted">
+        Loading draft...
+      </div>
+    );
+  }
 
   return (
     <form
@@ -239,6 +354,8 @@ export function TextPostForm({
         onCancel={() => router.push("/dashboard/posts")}
         intendedModeRef={intendedModeRef}
         formRef={formRef}
+        draftId={initialDraftId ?? null}
+        onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}
         autoRepost={
           resurfaceVisible
             ? {

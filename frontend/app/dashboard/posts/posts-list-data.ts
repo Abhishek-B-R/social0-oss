@@ -10,7 +10,7 @@ import {
 import { eq, desc, asc, inArray, and } from "drizzle-orm";
 import { startOfWeek, startOfMonth } from "date-fns";
 
-export const POSTS_PAGE_SIZE = 20;
+export const POSTS_PAGE_SIZE = 18;
 
 export type StatusFilter = "draft" | "scheduled" | "published" | null;
 

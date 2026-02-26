@@ -106,6 +106,15 @@ function getDisplayType(
   return "Text";
 }
 
+/** Map display type to new-post form slug (text, image, video, threads, collection) */
+const DISPLAY_TYPE_TO_SLUG: Record<string, string> = {
+  Text: "text",
+  Image: "image",
+  Video: "video",
+  Thread: "threads",
+  Collection: "collection",
+};
+
 export default async function PostDetailPage({
   params,
 }: {
@@ -126,6 +135,18 @@ export default async function PostDetailPage({
   if (!data) redirect("/dashboard/posts");
 
   const { post, publications } = data;
+
+  if (post.status === "draft") {
+    const media =
+      post.mediaIds && post.mediaIds.length > 0
+        ? await getPostMedia(session.user.id, post.mediaIds)
+        : [];
+    const parts = getThreadParts(post);
+    const displayType = getDisplayType(post, parts.length, media);
+    const slug = DISPLAY_TYPE_TO_SLUG[displayType] ?? "text";
+    redirect(`/dashboard/posts/new/${slug}?draft=${id}`);
+  }
+
   const media =
     post.mediaIds && post.mediaIds.length > 0
       ? await getPostMedia(session.user.id, post.mediaIds)

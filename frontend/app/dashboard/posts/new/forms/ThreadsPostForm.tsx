@@ -195,9 +195,11 @@ type ThreadPost = {
 export function ThreadsPostForm({
   accounts,
   use24HourTimeFormat = false,
+  draftId: initialDraftId,
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
+  draftId?: string;
 }) {
   const router = useRouter();
   const nextIdRef = useRef(1);
@@ -215,6 +217,7 @@ export function ThreadsPostForm({
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
   const [error, setError] = useState<string | null>(null);
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
@@ -246,6 +249,53 @@ export function ThreadsPostForm({
       });
     };
   }, []);
+
+  useEffect(() => {
+    if (!initialDraftId) return;
+    let cancelled = false;
+    (async () => {
+      const { getDraft } = await import("@/app/actions/posts");
+      const result = await getDraft(initialDraftId);
+      if (cancelled) return;
+      setDraftLoading(false);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      const { draft } = result;
+      const raw = draft.originalContent ?? "";
+      const parts = raw.split(THREAD_SEPARATOR).map((s) => s.trim());
+      if (parts.length > 0) {
+        setPosts(
+          parts.map((text, i) => ({
+            id: i + 1,
+            text,
+            images: [],
+            videos: [],
+          })),
+        );
+        nextIdRef.current = parts.length + 1;
+      }
+      setSelectedIds(new Set(draft.connectedAccountIds));
+      setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
+      if (draft.scheduledAt) setMode("scheduled");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialDraftId]);
+
+  const handleDeleteDraft = async () => {
+    if (!initialDraftId) return;
+    const { deleteDraft } = await import("@/app/actions/posts");
+    const result = await deleteDraft(initialDraftId);
+    if (result.success) {
+      router.push("/dashboard/posts/drafts");
+      router.refresh();
+    } else {
+      setError(result.error);
+    }
+  };
 
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
@@ -632,22 +682,109 @@ export function ThreadsPostForm({
 
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
+    const accountIds = Array.from(selectedIds);
+    const metadata = {
+      twitterThread: {
+        version: 1,
+        separator: THREAD_SEPARATOR,
+        parts: threadPosts.map((p, idx) => ({
+          text: p.text.trim(),
+          mediaIds: perThreadPostMediaIds[idx] ?? [],
+        })),
+      },
+    };
+
+    if (initialDraftId) {
+      const {
+        updateDraft,
+        updateAndPublish,
+        updatePost,
+      } = await import("@/app/actions/posts");
+      if (effectiveMode === "draft") {
+        const result = await updateDraft(
+          initialDraftId,
+          content,
+          accountIds,
+          mediaIds,
+          metadata,
+        );
+        setLoading(false);
+        setOverlayPhase("idle");
+        if (result.success) {
+          router.push("/dashboard/posts/drafts");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+      if (effectiveMode === "now") {
+        const result = await updateAndPublish(
+          initialDraftId,
+          content,
+          accountIds,
+          mediaIds,
+          metadata,
+        );
+        setLoading(false);
+        if (!result.success) {
+          setError(result.error);
+          setOverlayPhase("idle");
+          return;
+        }
+        setPublishedPostId(result.postId);
+        if (
+          resurfaceConfig &&
+          selectedAccounts.some((a) => a.platform === "twitter_x")
+        ) {
+          await createResurfaceSchedule(
+            result.postId,
+            "x",
+            resurfaceConfig.intervalHours,
+            resurfaceConfig.maxResurfaces,
+            resurfaceConfig.plugComment?.trim() || null,
+          );
+        }
+        if (autoPlugConfig) {
+          const xAccount = selectedAccounts.find(
+            (a) => a.platform === "twitter_x",
+          );
+          if (xAccount) {
+            await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
+          }
+        }
+        setOverlayPhase("done");
+        router.refresh();
+        return;
+      }
+      if (effectiveMode === "scheduled") {
+        const result = await updatePost(
+          initialDraftId,
+          content,
+          accountIds,
+          scheduledAt,
+          mediaIds,
+          metadata,
+        );
+        setLoading(false);
+        setOverlayPhase("idle");
+        if (result.success) {
+          router.push("/dashboard/posts/scheduled");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+    }
+
     const result = await createPost(
       content,
-      Array.from(selectedIds),
+      accountIds,
       effectiveMode,
       scheduledAt,
       mediaIds,
-      {
-        twitterThread: {
-          version: 1,
-          separator: THREAD_SEPARATOR,
-          parts: threadPosts.map((p, idx) => ({
-            text: p.text.trim(),
-            mediaIds: perThreadPostMediaIds[idx] ?? [],
-          })),
-        },
-      },
+      metadata,
     );
     setLoading(false);
     if (!result.success) {
@@ -717,6 +854,14 @@ export function ThreadsPostForm({
         a.platform?.toLowerCase().includes(q),
     );
   }, [accounts, accountSearch]);
+
+  if (draftLoading) {
+    return (
+      <div className="flex items-center justify-center py-12 text-text-muted">
+        Loading draft...
+      </div>
+    );
+  }
 
   return (
     <>
@@ -980,6 +1125,8 @@ export function ThreadsPostForm({
           onCancel={() => router.push("/dashboard/posts")}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
+          draftId={initialDraftId ?? null}
+          onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}
           autoRepost={
             resurfaceVisible
               ? {

@@ -35,13 +35,16 @@ const FORM_MAP = {
 
 export default async function NewPostByTypePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ type: string }>;
+  searchParams: Promise<{ draft?: string }>;
 }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/");
 
   const { type: typeSlug } = await params;
+  const { draft: draftId } = await searchParams;
   const contentType = getContentTypeBySlug(typeSlug);
   if (!contentType) notFound();
 
@@ -103,7 +106,11 @@ export default async function NewPostByTypePage({
       <p className="text-text-muted mb-8 font-medium">
         {contentType.description}
       </p>
-      <FormComponent accounts={filtered} use24HourTimeFormat={use24HourTimeFormat} />
+      <FormComponent
+        accounts={filtered}
+        use24HourTimeFormat={use24HourTimeFormat}
+        draftId={draftId ?? undefined}
+      />
     </div>
   );
 }

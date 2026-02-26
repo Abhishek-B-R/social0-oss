@@ -43,9 +43,11 @@ type VideoFile = { file: File; preview: string; order: number };
 export function CollectionPostForm({
   accounts,
   use24HourTimeFormat = false,
+  draftId: initialDraftId,
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
+  draftId?: string;
 }) {
   const router = useRouter();
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +65,7 @@ export function CollectionPostForm({
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
   const [error, setError] = useState<string | null>(null);
   type OverlayPhase = "idle" | "uploading" | "publishing" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
@@ -107,6 +110,41 @@ export function CollectionPostForm({
       videosRef.current.forEach((v) => URL.revokeObjectURL(v.preview));
     };
   }, []);
+
+  useEffect(() => {
+    if (!initialDraftId) return;
+    let cancelled = false;
+    (async () => {
+      const { getDraft } = await import("@/app/actions/posts");
+      const result = await getDraft(initialDraftId);
+      if (cancelled) return;
+      setDraftLoading(false);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      const { draft } = result;
+      setContent(draft.originalContent ?? "");
+      setSelectedIds(new Set(draft.connectedAccountIds));
+      setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
+      if (draft.scheduledAt) setMode("scheduled");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialDraftId]);
+
+  const handleDeleteDraft = async () => {
+    if (!initialDraftId) return;
+    const { deleteDraft } = await import("@/app/actions/posts");
+    const result = await deleteDraft(initialDraftId);
+    if (result.success) {
+      router.push("/dashboard/posts/drafts");
+      router.refresh();
+    } else {
+      setError(result.error);
+    }
+  };
 
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
@@ -371,6 +409,7 @@ export function CollectionPostForm({
     setOverlayPhase("publishing");
 
     const text = content.trim();
+    const accountIds = Array.from(selectedIds);
 
     const metadata: Record<string, unknown> = {};
     if (hasTikTok) {
@@ -382,16 +421,102 @@ export function CollectionPostForm({
         return acc;
       }, {});
     }
+    const meta = Object.keys(metadata).length > 0 ? metadata : undefined;
 
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
+
+    if (initialDraftId) {
+      const {
+        updateDraft,
+        updateAndPublish,
+        updatePost,
+      } = await import("@/app/actions/posts");
+      if (effectiveMode === "draft") {
+        const result = await updateDraft(
+          initialDraftId,
+          text,
+          accountIds,
+          mediaIds,
+          meta,
+        );
+        setLoading(false);
+        setOverlayPhase("idle");
+        if (result.success) {
+          router.push("/dashboard/posts/drafts");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+      if (effectiveMode === "now") {
+        const result = await updateAndPublish(
+          initialDraftId,
+          text,
+          accountIds,
+          mediaIds,
+          meta,
+        );
+        setLoading(false);
+        if (!result.success) {
+          setError(result.error);
+          setOverlayPhase("idle");
+          return;
+        }
+        setPublishedPostId(result.postId);
+        if (
+          resurfaceConfig &&
+          selectedAccounts.some((a) => a.platform === "twitter_x")
+        ) {
+          await createResurfaceSchedule(
+            result.postId,
+            "x",
+            resurfaceConfig.intervalHours,
+            resurfaceConfig.maxResurfaces,
+            resurfaceConfig.plugComment?.trim() || null,
+          );
+        }
+        if (autoPlugConfig) {
+          const xAccount = selectedAccounts.find(
+            (a) => a.platform === "twitter_x",
+          );
+          if (xAccount) {
+            await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
+          }
+        }
+        setOverlayPhase("done");
+        router.refresh();
+        return;
+      }
+      if (effectiveMode === "scheduled") {
+        const result = await updatePost(
+          initialDraftId,
+          text,
+          accountIds,
+          scheduledAt,
+          mediaIds,
+          meta,
+        );
+        setLoading(false);
+        setOverlayPhase("idle");
+        if (result.success) {
+          router.push("/dashboard/posts/scheduled");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+    }
+
     const result = await createPost(
       text,
-      Array.from(selectedIds),
+      accountIds,
       effectiveMode,
       scheduledAt,
       mediaIds,
-      Object.keys(metadata).length > 0 ? metadata : undefined,
+      meta,
     );
     setLoading(false);
     if (!result.success) {
@@ -460,6 +585,14 @@ export function CollectionPostForm({
 
   const allItemsSorted = useMemo(() => getAllItems(), [getAllItems]);
   const previewItem = allItemsSorted[carouselPreviewIndex] ?? null;
+
+  if (draftLoading) {
+    return (
+      <div className="flex items-center justify-center py-12 text-text-muted">
+        Loading draft...
+      </div>
+    );
+  }
 
   return (
     <>
@@ -699,6 +832,8 @@ export function CollectionPostForm({
           onCancel={() => router.push("/dashboard/posts")}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
+          draftId={initialDraftId ?? null}
+          onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}
           autoRepost={
             resurfaceVisible
               ? {

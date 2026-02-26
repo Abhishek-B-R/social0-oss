@@ -104,7 +104,7 @@ export interface PostResultDto {
 // ----- Social Accounts -----
 export interface SocialAccountDto {
   id: number;
-  /** One of Social0 supported platforms (linkedin, facebook, instagram, youtube, pinterest, tiktok, twitter, threads, bluesky, medium, hashnode, devto) */
+  /** One of Social0 supported platforms (linkedin, facebook, instagram, youtube, pinterest, tiktok, twitter, threads, bluesky) */
   platform: SupportedPlatform | string;
   username: string;
 }

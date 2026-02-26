@@ -46,6 +46,9 @@ type SchedulePostSidebarProps = {
   autoPlug?: SidebarAutoPlug | null;
   /** TikTok Settings: compact row with settings icon (opens list modal) */
   tiktokSettings?: SidebarTikTokSettings | null;
+  /** When editing a draft: show Delete draft button and call this on confirm */
+  draftId?: string | null;
+  onDeleteDraft?: () => void;
 };
 
 export function SchedulePostSidebar({
@@ -65,6 +68,8 @@ export function SchedulePostSidebar({
   autoRepost,
   autoPlug,
   tiktokSettings,
+  draftId,
+  onDeleteDraft,
 }: SchedulePostSidebarProps) {
   const isScheduled = mode === "scheduled";
 
@@ -296,13 +301,28 @@ export function SchedulePostSidebar({
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={onCancel}
-        className="rounded-xl border border-border bg-bg-elevated px-4 py-2.5 font-medium text-text transition-colors hover:bg-bg-muted -mt-4"
-      >
-        Cancel
-      </button>
+      <div className="flex flex-wrap items-center gap-2 -mt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-xl border border-border bg-bg-elevated px-4 py-2.5 font-medium text-text transition-colors hover:bg-bg-muted"
+        >
+          Cancel
+        </button>
+        {draftId && onDeleteDraft && (
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm("Are you sure? This cannot be undone.")) {
+                onDeleteDraft();
+              }
+            }}
+            className="rounded-xl border border-red-300 bg-red-50 px-4 py-2.5 font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300 dark:hover:bg-red-900/50"
+          >
+            Delete draft
+          </button>
+        )}
+      </div>
 
       <div className="space-y-2 shrink-0 min-h-0">
         {autoRepost?.visible && (
