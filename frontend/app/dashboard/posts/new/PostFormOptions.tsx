@@ -36,6 +36,9 @@ type PostFormOptionsProps = {
   hideScheduleAndActions?: boolean;
   /** Optional slot (e.g. search input) rendered between the label and AccountBubbleSelector */
   searchSlot?: React.ReactNode;
+  /** When true, show "Remember" checkbox; when checked, parent should persist selection to localStorage */
+  remember?: boolean;
+  onRememberChange?: (checked: boolean) => void;
 };
 
 export function PostFormOptions({
@@ -56,6 +59,8 @@ export function PostFormOptions({
   betweenScheduleAndActions,
   hideScheduleAndActions = false,
   searchSlot,
+  remember = false,
+  onRememberChange,
 }: PostFormOptionsProps) {
   const platformName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
@@ -69,13 +74,21 @@ export function PostFormOptions({
     <>
       <section className="border-b border-border pt-5 pb-5 -mt-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label className="shrink-0 text-base font-semibold text-text">
-            Post to
-          </label>
           {searchSlot && (
-            <div className="min-w-0 w-full sm:ml-auto sm:max-w-[340px] [&_input]:h-9">
+            <div className="min-w-0 w-full sm:max-w-[340px] [&_input]:h-9">
               {searchSlot}
             </div>
+          )}
+          {onRememberChange != null && (
+            <label className="sm:ml-auto flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => onRememberChange(e.target.checked)}
+                className="rounded border-input bg-bg text-accent focus:ring-accent"
+              />
+              <span className="text-sm text-text">Remember</span>
+            </label>
           )}
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">

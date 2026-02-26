@@ -110,7 +110,7 @@ export function NewPostForm({
           id="content"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Write your post... Use --- on its own line to split into a Twitter thread (each part max 280 characters)."
+          placeholder="Write your post..."
           rows={6}
           className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
           required

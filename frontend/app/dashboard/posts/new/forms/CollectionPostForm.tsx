@@ -8,6 +8,7 @@ import {
   createResurfaceSchedule,
   createAutoPlug,
 } from "@/app/actions/resurface";
+import { useRememberedAccounts } from "@/lib/remembered-accounts";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
@@ -37,32 +38,52 @@ type Account = {
   tokenExpired?: boolean;
 };
 
-type ImageFile = { file: File; preview: string; order: number };
-type VideoFile = { file: File; preview: string; order: number };
+type ImageFile = {
+  file?: File;
+  preview: string;
+  order: number;
+  existingId?: string;
+};
+type VideoFile = {
+  file?: File;
+  preview: string;
+  order: number;
+  existingId?: string;
+};
 
 export function CollectionPostForm({
   accounts,
   use24HourTimeFormat = false,
+  draftId: initialDraftId,
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
+  draftId?: string;
 }) {
   const router = useRouter();
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null);
+  const unifiedInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
   const [content, setContent] = useState("");
   const [images, setImages] = useState<ImageFile[]>([]);
   const [videos, setVideos] = useState<VideoFile[]>([]);
   const [carouselPreviewIndex, setCarouselPreviewIndex] = useState(0);
+  const validIds = useMemo(
+    () => new Set(accounts.filter((a) => !a.tokenExpired).map((a) => a.id)),
+    [accounts],
+  );
+  const { remember, setRemember, getInitialSelectedIds, persistSelection } =
+    useRememberedAccounts("post-form");
   const [accountSearch, setAccountSearch] = useState("");
   const imagesRef = useRef<ImageFile[]>([]);
   const videosRef = useRef<VideoFile[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
+    initialDraftId ? new Set() : getInitialSelectedIds(validIds),
+  );
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
   const [error, setError] = useState<string | null>(null);
   type OverlayPhase = "idle" | "uploading" | "publishing" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
@@ -107,6 +128,70 @@ export function CollectionPostForm({
       videosRef.current.forEach((v) => URL.revokeObjectURL(v.preview));
     };
   }, []);
+
+  useEffect(() => {
+    if (!initialDraftId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getDraft } = await import("@/app/actions/posts");
+        const result = await getDraft(initialDraftId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        const { draft } = result;
+        setContent(draft.originalContent ?? "");
+        setSelectedIds(new Set(draft.connectedAccountIds));
+        setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
+        if (draft.scheduledAt) setMode("scheduled");
+        const orderedMedia = draft.media.map((m, i) => ({
+          ...m,
+          order: i + 1,
+        }));
+        const draftImages = orderedMedia
+          .filter((m) => m.mimeType.startsWith("image/"))
+          .map((m) => ({
+            preview: m.thumbnailUrl ?? m.url ?? "",
+            order: m.order,
+            existingId: m.id,
+          }));
+        const draftVideos = orderedMedia
+          .filter((m) => m.mimeType.startsWith("video/"))
+          .map((m) => ({
+            preview: m.thumbnailUrl ?? m.url ?? "",
+            order: m.order,
+            existingId: m.id,
+          }));
+        if (draftImages.length > 0) setImages(draftImages);
+        if (draftVideos.length > 0) setVideos(draftVideos);
+      } catch {
+        if (!cancelled) setError("Failed to load draft");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialDraftId]);
+
+  useEffect(() => {
+    if (remember) persistSelection(selectedIds);
+  }, [remember, selectedIds, persistSelection]);
+
+  const handleDeleteDraft = async () => {
+    if (!initialDraftId) return;
+    const { deleteDraft } = await import("@/app/actions/posts");
+    const result = await deleteDraft(initialDraftId);
+    if (result.success) {
+      router.push("/dashboard/posts/drafts");
+      router.refresh();
+    } else {
+      setError(result.error);
+    }
+  };
 
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
@@ -159,7 +244,7 @@ export function CollectionPostForm({
       setError(null);
       setImages((prev) => [...prev, ...newImages]);
     }
-    if (imageInputRef.current) imageInputRef.current.value = "";
+    if (unifiedInputRef.current) unifiedInputRef.current.value = "";
   };
 
   const onVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,8 +268,69 @@ export function CollectionPostForm({
       setError(null);
       setVideos((prev) => [...prev, ...newVideos]);
     }
-    if (videoInputRef.current) videoInputRef.current.value = "";
+    if (unifiedInputRef.current) unifiedInputRef.current.value = "";
   };
+
+  const onUnifiedFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    setError(null);
+    const maxOrder = getMaxOrder();
+    let orderOffset = 0;
+    const newImages: ImageFile[] = [];
+    const newVideos: VideoFile[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type.startsWith("image/")) {
+        newImages.push({
+          file,
+          preview: URL.createObjectURL(file),
+          order: maxOrder + orderOffset + 1,
+        });
+        orderOffset++;
+      } else if (file.type.startsWith("video/")) {
+        newVideos.push({
+          file,
+          preview: URL.createObjectURL(file),
+          order: maxOrder + orderOffset + 1,
+        });
+        orderOffset++;
+      }
+    }
+    if (newImages.length > 0)
+      setImages((prev) => [...prev, ...newImages]);
+    if (newVideos.length > 0)
+      setVideos((prev) => [...prev, ...newVideos]);
+    if (unifiedInputRef.current) unifiedInputRef.current.value = "";
+  };
+
+  const [isUploadZoneHovered, setIsUploadZoneHovered] = useState(false);
+  useEffect(() => {
+    if (!isUploadZoneHovered) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const file = e.clipboardData?.files?.[0];
+      if (!file) return;
+      if (file.type.startsWith("image/")) {
+        e.preventDefault();
+        setError(null);
+        const maxOrder = getMaxOrder();
+        setImages((prev) => [
+          ...prev,
+          { file, preview: URL.createObjectURL(file), order: maxOrder + 1 },
+        ]);
+      } else if (file.type.startsWith("video/")) {
+        e.preventDefault();
+        setError(null);
+        const maxOrder = getMaxOrder();
+        setVideos((prev) => [
+          ...prev,
+          { file, preview: URL.createObjectURL(file), order: maxOrder + 1 },
+        ]);
+      }
+    };
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [isUploadZoneHovered]);
 
   const getAllItems = () => {
     return [
@@ -212,16 +358,18 @@ export function CollectionPostForm({
     const newImages = reordered
       .filter((i) => i.type === "image")
       .map((i) => ({
-        file: i.file,
+        ...(i.file && { file: i.file }),
         preview: i.preview,
         order: i.order,
+        ...(i.existingId && { existingId: i.existingId }),
       }));
     const newVideos = reordered
       .filter((i) => i.type === "video")
       .map((i) => ({
-        file: i.file,
+        ...(i.file && { file: i.file }),
         preview: i.preview,
         order: i.order,
+        ...(i.existingId && { existingId: i.existingId }),
       }));
     setImages(newImages);
     setVideos(newVideos);
@@ -235,7 +383,7 @@ export function CollectionPostForm({
   const removeImage = (preview: string) => {
     setImages((prev) => {
       const item = prev.find((i) => i.preview === preview);
-      if (item) URL.revokeObjectURL(item.preview);
+      if (item?.preview.startsWith("blob:")) URL.revokeObjectURL(item.preview);
       const filtered = prev.filter((i) => i.preview !== preview);
       const allItems = [...filtered, ...videos].sort(
         (a, b) => a.order - b.order,
@@ -263,7 +411,7 @@ export function CollectionPostForm({
   const removeVideo = (preview: string) => {
     setVideos((prev) => {
       const item = prev.find((v) => v.preview === preview);
-      if (item) URL.revokeObjectURL(item.preview);
+      if (item?.preview.startsWith("blob:")) URL.revokeObjectURL(item.preview);
       const filtered = prev.filter((v) => v.preview !== preview);
       const allItems = [...images, ...filtered].sort(
         (a, b) => a.order - b.order,
@@ -340,37 +488,45 @@ export function CollectionPostForm({
     setError(null);
     setOverlayPhase("uploading");
 
-    const allMedia: Array<{ file: File; order: number }> = [
-      ...images.map((img) => ({ file: img.file, order: img.order })),
-      ...videos.map((vid) => ({ file: vid.file, order: vid.order })),
-    ].sort((a, b) => a.order - b.order);
-
+    const sortedItems = getAllItems();
     const mediaIds: string[] = [];
-    const total = allMedia.length;
-    for (let i = 0; i < allMedia.length; i++) {
-      const item = allMedia[i];
-      setUploadProgress(`${i + 1} of ${total}`);
-      try {
-        const fd = new FormData();
-        fd.set("file", item.file);
-        const res = await fetch("/api/media/upload", {
-          method: "POST",
-          body: fd,
-        });
-        const data = await res.json();
-        if (data.id) mediaIds.push(data.id);
-      } catch {
-        setError("Failed to upload media.");
-        setLoading(false);
-        setOverlayPhase("idle");
-        setUploadProgress(null);
-        return;
+    const toUpload = sortedItems.filter(
+      (i): i is typeof i & { file: File } => !!i.file,
+    );
+    let uploadIndex = 0;
+    const total = toUpload.length;
+
+    for (const item of sortedItems) {
+      if (item.existingId) {
+        mediaIds.push(item.existingId);
+      } else {
+        const withFile = toUpload[uploadIndex];
+        if (!withFile) continue;
+        uploadIndex++;
+        setUploadProgress(`${uploadIndex} of ${total}`);
+        try {
+          const fd = new FormData();
+          fd.set("file", withFile.file);
+          const res = await fetch("/api/media/upload", {
+            method: "POST",
+            body: fd,
+          });
+          const data = await res.json();
+          if (data.id) mediaIds.push(data.id);
+        } catch {
+          setError("Failed to upload media.");
+          setLoading(false);
+          setOverlayPhase("idle");
+          setUploadProgress(null);
+          return;
+        }
       }
     }
     setUploadProgress(null);
     setOverlayPhase("publishing");
 
     const text = content.trim();
+    const accountIds = Array.from(selectedIds);
 
     const metadata: Record<string, unknown> = {};
     if (hasTikTok) {
@@ -382,16 +538,106 @@ export function CollectionPostForm({
         return acc;
       }, {});
     }
+    const meta = Object.keys(metadata).length > 0 ? metadata : undefined;
 
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
+
+    if (initialDraftId) {
+      const {
+        updateDraft,
+        updateAndPublish,
+        updatePost,
+      } = await import("@/app/actions/posts");
+      if (effectiveMode === "draft") {
+        const result = await updateDraft(
+          initialDraftId,
+          text,
+          accountIds,
+          mediaIds,
+          meta,
+        );
+        setLoading(false);
+        setOverlayPhase("idle");
+        if (result.success) {
+          router.push("/dashboard/posts/drafts");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+      if (effectiveMode === "now") {
+        const result = await updateAndPublish(
+          initialDraftId,
+          text,
+          accountIds,
+          mediaIds,
+          meta,
+        );
+        setLoading(false);
+        if (!result.success) {
+          setError(result.error);
+          setOverlayPhase("idle");
+          return;
+        }
+        setPublishedPostId(result.postId);
+        setOverlayPhase("done");
+        router.refresh();
+        if (
+          resurfaceConfig &&
+          selectedAccounts.some((a) => a.platform === "twitter_x")
+        ) {
+          createResurfaceSchedule(
+            result.postId,
+            "x",
+            resurfaceConfig.intervalHours,
+            resurfaceConfig.maxResurfaces,
+            resurfaceConfig.plugComment?.trim() || null,
+          ).catch(() => {});
+        }
+        if (autoPlugConfig) {
+          const xAccount = selectedAccounts.find(
+            (a) => a.platform === "twitter_x",
+          );
+          if (xAccount) {
+            createAutoPlug(
+              result.postId,
+              xAccount.id,
+              autoPlugConfig,
+            ).catch(() => {});
+          }
+        }
+        return;
+      }
+      if (effectiveMode === "scheduled") {
+        const result = await updatePost(
+          initialDraftId,
+          text,
+          accountIds,
+          scheduledAt,
+          mediaIds,
+          meta,
+        );
+        setLoading(false);
+        setOverlayPhase("idle");
+        if (result.success) {
+          router.push("/dashboard/posts/scheduled");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+    }
+
     const result = await createPost(
       text,
-      Array.from(selectedIds),
+      accountIds,
       effectiveMode,
       scheduledAt,
       mediaIds,
-      Object.keys(metadata).length > 0 ? metadata : undefined,
+      meta,
     );
     setLoading(false);
     if (!result.success) {
@@ -407,24 +653,30 @@ export function CollectionPostForm({
         return;
       }
       setPublishedPostId(result.postId);
+      setOverlayPhase("done");
+      router.refresh();
       if (
         resurfaceConfig &&
         selectedAccounts.some((a) => a.platform === "twitter_x")
       ) {
-        await createResurfaceSchedule(
+        createResurfaceSchedule(
           result.postId,
           "x",
           resurfaceConfig.intervalHours,
           resurfaceConfig.maxResurfaces,
           resurfaceConfig.plugComment?.trim() || null,
-        );
+        ).catch(() => {});
       }
       if (autoPlugConfig) {
         const xAccount = selectedAccounts.find(
           (a) => a.platform === "twitter_x",
         );
         if (xAccount) {
-          await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
+          createAutoPlug(
+            result.postId,
+            xAccount.id,
+            autoPlugConfig,
+          ).catch(() => {});
         }
       }
     }
@@ -460,6 +712,14 @@ export function CollectionPostForm({
 
   const allItemsSorted = useMemo(() => getAllItems(), [getAllItems]);
   const previewItem = allItemsSorted[carouselPreviewIndex] ?? null;
+
+  if (draftLoading) {
+    return (
+      <div className="flex items-center justify-center py-12 text-text-muted">
+        Loading draft...
+      </div>
+    );
+  }
 
   return (
     <>
@@ -526,6 +786,8 @@ export function CollectionPostForm({
                 className="h-8 w-full text-xs rounded border border-border px-2 py-1 text-text placeholder-text-subtle focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
               />
             }
+            remember={remember}
+            onRememberChange={setRemember}
           />
 
           {(() => {
@@ -563,58 +825,37 @@ export function CollectionPostForm({
             )}
 
             <input
-              ref={imageInputRef}
+              ref={unifiedInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               multiple
-              onChange={onImagesChange}
+              onChange={onUnifiedFileChange}
               className="hidden"
             />
-            <input
-              ref={videoInputRef}
-              type="file"
-              accept="video/*"
-              onChange={onVideoChange}
-              className="hidden"
-            />
+            <button
+              type="button"
+              onClick={() => unifiedInputRef.current?.click()}
+              onMouseEnter={() => setIsUploadZoneHovered(true)}
+              onMouseLeave={() => setIsUploadZoneHovered(false)}
+              className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed py-8 text-text-muted transition-colors ${
+                isUploadZoneHovered
+                  ? "border-accent bg-accent/5"
+                  : "border-border bg-bg-subtle"
+              }`}
+            >
+              <MdOutlineAddPhotoAlternate className="mb-2 h-8 w-8 text-text-muted" />
+              <MdOutlineVideocam className="mb-2 h-8 w-8 text-text-muted" />
+              <span className="text-sm font-medium">
+                Click to add images or videos
+              </span>
+              <span className="text-xs text-text-muted mt-1">
+                JPG, PNG, GIF, MP4, MOV · Hover & paste from clipboard (Ctrl+V)
+              </span>
+            </button>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <label
-                htmlFor="collection-images"
-                className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-subtle px-3 py-2 text-sm font-medium text-text-muted hover:bg-bg-muted cursor-pointer"
-              >
-                <MdOutlineAddPhotoAlternate className="w-5 h-5" />
-                Images
-                {images.length > 0 && (
-                  <span className="text-text-muted">({images.length})</span>
-                )}
-              </label>
-              <input
-                id="collection-images"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={onImagesChange}
-                className="hidden"
-              />
-              <label
-                htmlFor="collection-video"
-                className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-subtle px-3 py-2 text-sm font-medium text-text-muted hover:bg-bg-muted cursor-pointer"
-              >
-                <MdOutlineVideocam className="w-5 h-5" />
-                Videos
-                {videos.length > 0 && (
-                  <span className="text-text-muted">({videos.length})</span>
-                )}
-              </label>
-              <input
-                id="collection-video"
-                type="file"
-                accept="video/*"
-                multiple
-                onChange={onVideoChange}
-                className="hidden"
-              />
+            <div className="flex flex-wrap items-center gap-3 text-sm text-text-muted">
+              <span>Images {images.length > 0 && `(${images.length})`}</span>
+              <span>Videos {videos.length > 0 && `(${videos.length})`}</span>
             </div>
 
             {(images.length > 0 || videos.length > 0) && (
@@ -699,6 +940,8 @@ export function CollectionPostForm({
           onCancel={() => router.push("/dashboard/posts")}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
+          draftId={initialDraftId ?? null}
+          onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}
           autoRepost={
             resurfaceVisible
               ? {

@@ -1,9 +1,18 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createPost, type PublishMode } from "@/app/actions/posts";
+import {
+  createPost,
+  getDraft,
+  deleteDraft,
+  updateDraft,
+  updateAndPublish,
+  updatePost,
+  type PublishMode,
+} from "@/app/actions/posts";
 import { createAutoPlug } from "@/app/actions/resurface";
+import { useRememberedAccounts } from "@/lib/remembered-accounts";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
@@ -30,19 +39,30 @@ type Account = {
 export function TextPostForm({
   accounts,
   use24HourTimeFormat = false,
+  draftId: initialDraftId,
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
+  draftId?: string;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
   const [content, setContent] = useState("");
+  const { remember, setRemember, getInitialSelectedIds, persistSelection } =
+    useRememberedAccounts("post-form");
   const [accountSearch, setAccountSearch] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
+    if (initialDraftId) return new Set();
+    const validIds = new Set(
+      accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
+    );
+    return getInitialSelectedIds(validIds);
+  });
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
   const [error, setError] = useState<string | null>(null);
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
@@ -54,6 +74,43 @@ export function TextPostForm({
   const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
   const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   const [showContentError, setShowContentError] = useState(false);
+
+  useEffect(() => {
+    if (!initialDraftId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await getDraft(initialDraftId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        const { draft } = result;
+        const validAccountIds = new Set(
+          accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
+        );
+        const restoredIds = draft.connectedAccountIds.filter((id) =>
+          validAccountIds.has(id),
+        );
+        setContent(draft.originalContent ?? "");
+        setSelectedIds(new Set(restoredIds));
+        setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
+        if (draft.scheduledAt) setMode("scheduled");
+      } catch {
+        if (!cancelled) setError("Failed to load draft");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialDraftId, accounts]);
+
+  useEffect(() => {
+    if (remember) persistSelection(selectedIds);
+  }, [remember, selectedIds, persistSelection]);
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
   const selectedAccountIds = Array.from(selectedIds);
@@ -112,9 +169,72 @@ export function TextPostForm({
     setLoading(true);
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
+    const accountIds = Array.from(selectedIds);
+
+    if (initialDraftId) {
+      if (effectiveMode === "draft") {
+        const result = await updateDraft(
+          initialDraftId,
+          content.trim(),
+          accountIds,
+        );
+        setLoading(false);
+        if (result.success) {
+          router.push("/dashboard/posts/drafts");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+      if (effectiveMode === "now") {
+        const result = await updateAndPublish(
+          initialDraftId,
+          content.trim(),
+          accountIds,
+        );
+        setLoading(false);
+        if (result.success) {
+          if (autoPlugConfig) {
+            const xAccount = selectedAccounts.find(
+              (a) => a.platform === "twitter_x",
+            );
+            if (xAccount) {
+              createAutoPlug(
+                result.postId,
+                xAccount.id,
+                autoPlugConfig,
+              ).catch(() => {});
+            }
+          }
+          router.push("/dashboard/posts");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+      if (effectiveMode === "scheduled") {
+        const result = await updatePost(
+          initialDraftId,
+          content.trim(),
+          accountIds,
+          scheduledAt,
+        );
+        setLoading(false);
+        if (result.success) {
+          router.push("/dashboard/posts/scheduled");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+    }
+
     const result = await createPost(
       content.trim(),
-      Array.from(selectedIds),
+      accountIds,
       effectiveMode,
       scheduledAt,
     );
@@ -129,6 +249,17 @@ export function TextPostForm({
         }
       }
       router.push("/dashboard/posts");
+      router.refresh();
+    } else {
+      setError(result.error);
+    }
+  };
+
+  const handleDeleteDraft = async () => {
+    if (!initialDraftId) return;
+    const result = await deleteDraft(initialDraftId);
+    if (result.success) {
+      router.push("/dashboard/posts/drafts");
       router.refresh();
     } else {
       setError(result.error);
@@ -151,6 +282,14 @@ export function TextPostForm({
       : mode === "scheduled"
         ? "Schedule post"
         : "Post now";
+
+  if (draftLoading) {
+    return (
+      <div className="flex items-center justify-center py-12 text-text-muted">
+        Loading draft...
+      </div>
+    );
+  }
 
   return (
     <form
@@ -189,6 +328,8 @@ export function TextPostForm({
               className="h-8 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
             />
           }
+          remember={remember}
+          onRememberChange={setRemember}
         />
 
         <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
@@ -202,7 +343,7 @@ export function TextPostForm({
             id="content"
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Write your post... Use --- on its own line to split into a Twitter thread (each part max 280 characters)."
+            placeholder="Write your post..."
             rows={6}
             className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             required
@@ -239,6 +380,8 @@ export function TextPostForm({
         onCancel={() => router.push("/dashboard/posts")}
         intendedModeRef={intendedModeRef}
         formRef={formRef}
+        draftId={initialDraftId ?? null}
+        onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}
         autoRepost={
           resurfaceVisible
             ? {

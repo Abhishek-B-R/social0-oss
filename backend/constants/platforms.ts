@@ -1,7 +1,7 @@
 /**
  * Social0 supported platforms (see PROJECT_STATUS.md).
  * OAuth: LinkedIn, Instagram, YouTube, Pinterest, TikTok, X, Threads, Facebook.
- * BYOK: Bluesky, Medium, Hashnode, Dev.to.
+ * BYOK: Bluesky.
  */
 export const SUPPORTED_PLATFORMS = [
   "linkedin",
@@ -13,9 +13,6 @@ export const SUPPORTED_PLATFORMS = [
   "twitter", // X (Twitter)
   "threads",
   "bluesky",
-  "medium",
-  "hashnode",
-  "devto",
 ] as const;
 
 export type SupportedPlatform = (typeof SUPPORTED_PLATFORMS)[number];

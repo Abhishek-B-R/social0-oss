@@ -1,13 +1,17 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { AccountBubbleSelector } from "@/components/AccountBubbleSelector";
 import { PLATFORMS } from "@/lib/platforms";
+import { useRememberedAccounts } from "@/lib/remembered-accounts";
 import { BulkUploadZone } from "./BulkUploadZone";
 import { VideoCard, type VideoItem } from "./VideoCard";
-import { BulkScheduleSettings, type CoverFrame } from "./BulkScheduleSettings";
-import { computeBulkSchedule, formatSchedulePreview } from "@/lib/bulk-schedule";
+import { BulkScheduleSettings } from "./BulkScheduleSettings";
+import {
+  computeBulkSchedule,
+  formatSchedulePreview,
+} from "@/lib/bulk-schedule";
 import { createPost } from "@/app/actions/posts";
 
 const MAX_VIDEOS = 100;
@@ -25,22 +29,45 @@ type Account = {
 
 function getTodayStr(): string {
   const d = new Date();
-  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  return (
+    d.getFullYear() +
+    "-" +
+    String(d.getMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(d.getDate()).padStart(2, "0")
+  );
 }
 function getNowTimeStr(): string {
   const d = new Date();
-  return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  return (
+    String(d.getHours()).padStart(2, "0") +
+    ":" +
+    String(d.getMinutes()).padStart(2, "0")
+  );
 }
 
+const REMEMBER_KEY_VIDEO = "bulk-video";
+
 export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
+  const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
+  const validIds = useMemo(
+    () => new Set(selectableAccounts.map((a) => a.id)),
+    [selectableAccounts],
+  );
+  const { remember, setRemember, getInitialSelectedIds, persistSelection } =
+    useRememberedAccounts(REMEMBER_KEY_VIDEO);
+
   const [items, setItems] = useState<VideoItem[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
+    getInitialSelectedIds(validIds),
+  );
+  const [accountSearch, setAccountSearch] = useState("");
   const [bulkCaption, setBulkCaption] = useState("");
   const [startDate, setStartDate] = useState(getTodayStr);
   const [startTime, setStartTime] = useState(getNowTimeStr);
   const [videosPerDay, setVideosPerDay] = useState(1);
   const [gapHours, setGapHours] = useState(2);
-  const [coverFrame, setCoverFrame] = useState<CoverFrame>("middle");
+  // const [coverFrame, setCoverFrame] = useState<CoverFrame>("middle");
   const [scheduling, setScheduling] = useState(false);
   const [progress, setProgress] = useState("");
   const [success, setSuccess] = useState(false);
@@ -50,6 +77,24 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
   const platformName = (id: string) =>
     PLATFORMS.find((p) => p.id === id)?.name ?? id;
 
+  const filteredAccounts = useMemo(() => {
+    if (!accountSearch.trim()) return accounts;
+    const q = accountSearch.toLowerCase().trim();
+    return accounts.filter((a) => {
+      const platformDisplay =
+        PLATFORMS.find((p) => p.id === a.platform)?.name ?? a.platform;
+      return (
+        a.platformUsername?.toLowerCase().includes(q) ||
+        a.platform?.toLowerCase().includes(q) ||
+        platformDisplay.toLowerCase().includes(q)
+      );
+    });
+  }, [accounts, accountSearch]);
+
+  useEffect(() => {
+    if (remember) persistSelection(selectedIds);
+  }, [remember, selectedIds, persistSelection]);
+
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -58,7 +103,6 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
       return next;
     });
   };
-  const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
   const selectAll = () => {
     if (selectableAccounts.every((a) => selectedIds.has(a.id)))
       setSelectedIds(new Set());
@@ -191,18 +235,6 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
 
   return (
     <div className="space-y-6 -ml-2 sm:-ml-3 lg:-ml-4">
-      <div className="flex items-center gap-2">
-        <Link
-          href="/dashboard/bulk-tools"
-          className="text-sm font-medium text-muted-foreground hover:text-foreground"
-        >
-          ← Bulk tools
-        </Link>
-        <span className="text-muted-foreground">/</span>
-        <span className="text-sm font-medium text-foreground">
-          Bulk Video Upload
-        </span>
-      </div>
       <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
         Bulk Video Scheduling
         <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
@@ -227,11 +259,33 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
           {/* Left column */}
           <div className="lg:col-span-2 space-y-6">
             <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-              <label className="mb-3 block text-sm font-semibold text-foreground">
-                Post to
-              </label>
+              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <label className="text-sm font-semibold text-foreground">
+                  Post to
+                </label>
+                <div className="flex items-center gap-3 min-w-0">
+                  <input
+                    type="search"
+                    placeholder="Search accounts..."
+                    value={accountSearch}
+                    onChange={(e) => setAccountSearch(e.target.value)}
+                    className="h-9 flex-1 min-w-0 max-w-[220px] rounded border border-border bg-bg px-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
+                  />
+                  <label className="flex shrink-0 items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)}
+                      className="rounded border-input bg-bg text-accent focus:ring-accent"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      Remember
+                    </span>
+                  </label>
+                </div>
+              </div>
               <AccountBubbleSelector
-                accounts={accounts}
+                accounts={filteredAccounts}
                 selectedIds={selectedIds}
                 onToggleAccount={toggleAccount}
                 selectAll={selectAll}
@@ -283,8 +337,8 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
               onGapHoursChange={setGapHours}
               onApplyBulkSchedule={applyBulkSchedule}
               schedulePreview={schedulePreview}
-              coverFrame={coverFrame}
-              onCoverFrameChange={setCoverFrame}
+              // coverFrame={coverFrame}
+              // onCoverFrameChange={setCoverFrame}
               totalItems={items.length}
               selectedAccountCount={selectedIds.size}
               onScheduleAll={handleScheduleAll}
@@ -307,7 +361,9 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
             <p className="font-medium text-foreground">{progress}</p>
             <button
               type="button"
-              onClick={() => { cancelledRef.current = true; }}
+              onClick={() => {
+                cancelledRef.current = true;
+              }}
               className="rounded-lg border border-border bg-muted px-4 py-2 text-sm font-medium text-foreground hover:bg-background transition-colors"
             >
               Cancel

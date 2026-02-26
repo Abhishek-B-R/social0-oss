@@ -8,6 +8,7 @@ import {
   createResurfaceSchedule,
   createAutoPlug,
 } from "@/app/actions/resurface";
+import { useRememberedAccounts } from "@/lib/remembered-accounts";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
@@ -52,9 +53,11 @@ function formatDuration(seconds: number): string {
 export function VideoPostForm({
   accounts,
   use24HourTimeFormat = false,
+  draftId: initialDraftId,
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
+  draftId?: string;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,17 +67,27 @@ export function VideoPostForm({
   const [content, setContent] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [existingVideoId, setExistingVideoId] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(0);
   const [isVertical, setIsVertical] = useState(false);
   const [customThumbnail, setCustomThumbnail] = useState<File | null>(null);
   const [customThumbnailPreview, setCustomThumbnailPreview] = useState<
     string | null
   >(null);
+  const validIds = useMemo(
+    () => new Set(accounts.filter((a) => !a.tokenExpired).map((a) => a.id)),
+    [accounts],
+  );
+  const { remember, setRemember, getInitialSelectedIds, persistSelection } =
+    useRememberedAccounts("post-form");
   const [accountSearch, setAccountSearch] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
+    initialDraftId ? new Set() : getInitialSelectedIds(validIds),
+  );
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
   const [error, setError] = useState<string | null>(null);
   type OverlayPhase = "idle" | "uploading" | "publishing" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
@@ -125,6 +138,57 @@ export function VideoPostForm({
   }, [videoPreview]);
 
   useEffect(() => {
+    if (remember) persistSelection(selectedIds);
+  }, [remember, selectedIds, persistSelection]);
+
+  useEffect(() => {
+    if (!initialDraftId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getDraft } = await import("@/app/actions/posts");
+        const result = await getDraft(initialDraftId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        const { draft } = result;
+        setContent(draft.originalContent ?? "");
+        setSelectedIds(new Set(draft.connectedAccountIds));
+        setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
+        if (draft.scheduledAt) setMode("scheduled");
+        const videoMedia = draft.media.find((m) =>
+          m.mimeType.startsWith("video/"),
+        );
+        if (videoMedia) {
+          setExistingVideoId(videoMedia.id);
+          setVideoPreview(videoMedia.url ?? videoMedia.thumbnailUrl ?? null);
+        }
+      } catch {
+        if (!cancelled) setError("Failed to load draft");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialDraftId]);
+
+  const handleDeleteDraft = async () => {
+    if (!initialDraftId) return;
+    const { deleteDraft } = await import("@/app/actions/posts");
+    const result = await deleteDraft(initialDraftId);
+    if (result.success) {
+      router.push("/dashboard/posts/drafts");
+      router.refresh();
+    } else {
+      setError(result.error);
+    }
+  };
+
+  useEffect(() => {
     if (userToggledPreviewRef.current) return;
     const selected = accounts.filter((a) => selectedAccountIds.includes(a.id));
     const hasMediaPreviewPlatform = selected.some(
@@ -166,6 +230,32 @@ export function VideoPostForm({
     }
   };
 
+  const [isUploadZoneHovered, setIsUploadZoneHovered] = useState(false);
+  const videoPreviewRef = useRef<string | null>(null);
+  const customThumbnailPreviewRef = useRef<string | null>(null);
+  videoPreviewRef.current = videoPreview;
+  customThumbnailPreviewRef.current = customThumbnailPreview;
+  useEffect(() => {
+    if (!isUploadZoneHovered) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const file = e.clipboardData?.files?.[0];
+      if (!file || !file.type.startsWith("video/")) return;
+      e.preventDefault();
+      setError(null);
+      if (videoPreviewRef.current) URL.revokeObjectURL(videoPreviewRef.current);
+      if (customThumbnailPreviewRef.current)
+        URL.revokeObjectURL(customThumbnailPreviewRef.current);
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+      setVideoDuration(0);
+      setCustomThumbnail(null);
+      setCustomThumbnailPreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [isUploadZoneHovered]);
+
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -185,11 +275,12 @@ export function VideoPostForm({
   };
 
   const removeVideo = () => {
-    if (videoPreview) URL.revokeObjectURL(videoPreview);
+    if (videoPreview?.startsWith("blob:")) URL.revokeObjectURL(videoPreview);
     if (customThumbnailPreview) URL.revokeObjectURL(customThumbnailPreview);
     setVideoFile(null);
     setVideoPreview(null);
     setVideoDuration(0);
+    setExistingVideoId(null);
     setCustomThumbnail(null);
     setCustomThumbnailPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -264,7 +355,9 @@ export function VideoPostForm({
     setOverlayPhase("uploading");
 
     const mediaIds: string[] = [];
-    if (videoFile) {
+    if (existingVideoId && !videoFile) {
+      mediaIds.push(existingVideoId);
+    } else if (videoFile) {
       try {
         const fd = new FormData();
         fd.set("file", videoFile);
@@ -284,6 +377,7 @@ export function VideoPostForm({
     setOverlayPhase("publishing");
 
     const text = content.trim();
+    const accountIds = Array.from(selectedIds);
 
     const metadata: Record<string, unknown> = {};
     if (hasTikTok) {
@@ -295,16 +389,106 @@ export function VideoPostForm({
         return acc;
       }, {});
     }
+    const meta = Object.keys(metadata).length > 0 ? metadata : undefined;
 
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
+
+    if (initialDraftId) {
+      const {
+        updateDraft,
+        updateAndPublish,
+        updatePost,
+      } = await import("@/app/actions/posts");
+      if (effectiveMode === "draft") {
+        const result = await updateDraft(
+          initialDraftId,
+          text,
+          accountIds,
+          mediaIds,
+          meta,
+        );
+        setLoading(false);
+        setOverlayPhase("idle");
+        if (result.success) {
+          router.push("/dashboard/posts/drafts");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+      if (effectiveMode === "now") {
+        const result = await updateAndPublish(
+          initialDraftId,
+          text,
+          accountIds,
+          mediaIds,
+          meta,
+        );
+        setLoading(false);
+        if (!result.success) {
+          setError(result.error);
+          setOverlayPhase("idle");
+          return;
+        }
+        setPublishedPostId(result.postId);
+        setOverlayPhase("done");
+        router.refresh();
+        if (
+          resurfaceConfig &&
+          selectedAccounts.some((a) => a.platform === "twitter_x")
+        ) {
+          createResurfaceSchedule(
+            result.postId,
+            "x",
+            resurfaceConfig.intervalHours,
+            resurfaceConfig.maxResurfaces,
+            resurfaceConfig.plugComment?.trim() || null,
+          ).catch(() => {});
+        }
+        if (autoPlugConfig) {
+          const xAccount = selectedAccounts.find(
+            (a) => a.platform === "twitter_x",
+          );
+          if (xAccount) {
+            createAutoPlug(
+              result.postId,
+              xAccount.id,
+              autoPlugConfig,
+            ).catch(() => {});
+          }
+        }
+        return;
+      }
+      if (effectiveMode === "scheduled") {
+        const result = await updatePost(
+          initialDraftId,
+          text,
+          accountIds,
+          scheduledAt,
+          mediaIds,
+          meta,
+        );
+        setLoading(false);
+        setOverlayPhase("idle");
+        if (result.success) {
+          router.push("/dashboard/posts/scheduled");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+    }
+
     const result = await createPost(
       text,
-      Array.from(selectedIds),
+      accountIds,
       effectiveMode,
       scheduledAt,
       mediaIds,
-      Object.keys(metadata).length > 0 ? metadata : undefined,
+      meta,
     );
     setLoading(false);
     if (!result.success) {
@@ -362,6 +546,16 @@ export function VideoPostForm({
         ? "Schedule post"
         : "Post now";
 
+  const hasVideo = !!videoFile || !!existingVideoId;
+
+  if (draftLoading) {
+    return (
+      <div className="flex items-center justify-center py-12 text-text-muted">
+        Loading draft...
+      </div>
+    );
+  }
+
   return (
     <>
       {overlayPhase !== "idle" && (
@@ -414,7 +608,7 @@ export function VideoPostForm({
             submitDisabled={
               accounts.length === 0 ||
               !content.trim() ||
-              !videoFile ||
+              !hasVideo ||
               (mode === "scheduled" && !scheduledAt)
             }
             use24HourTimeFormat={use24HourTimeFormat}
@@ -428,6 +622,8 @@ export function VideoPostForm({
                 className="h-8 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
               />
             }
+            remember={remember}
+            onRememberChange={setRemember}
           />
 
           <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm space-y-4">
@@ -445,10 +641,19 @@ export function VideoPostForm({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-bg-muted/30 py-10 text-text-muted transition-colors hover:border-accent hover:bg-accent/10 hover:text-accent"
+                onMouseEnter={() => setIsUploadZoneHovered(true)}
+                onMouseLeave={() => setIsUploadZoneHovered(false)}
+                className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed py-10 text-text-muted transition-colors ${
+                  isUploadZoneHovered
+                    ? "border-accent bg-accent/5"
+                    : "border-border bg-bg-subtle"
+                }`}
               >
                 <MdOutlineVideoLibrary className="mb-2 h-10 w-10" />
                 <span className="text-sm font-medium">Click to add video</span>
+                <span className="text-xs text-text-muted mt-1">
+                  Hover & paste from clipboard (Ctrl+V)
+                </span>
               </button>
             ) : (
               <div className="flex items-center gap-2">
@@ -494,7 +699,7 @@ export function VideoPostForm({
           submitDisabled={
             accounts.length === 0 ||
           !content.trim() ||
-          !videoFile ||
+          !hasVideo ||
           (mode === "scheduled" && !scheduledAt)
           }
           hasAccountSelected={selectedIds.size > 0}
@@ -503,6 +708,8 @@ export function VideoPostForm({
           onCancel={() => router.push("/dashboard/posts")}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
+          draftId={initialDraftId ?? null}
+          onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}
           autoRepost={
             resurfaceVisible
               ? {

@@ -35,13 +35,23 @@ const FORM_MAP = {
 
 export default async function NewPostByTypePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ type: string }>;
+  searchParams: Promise<{ draft?: string }>;
 }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/");
 
   const { type: typeSlug } = await params;
+  const rawSearchParams = await searchParams;
+  const draftParam = rawSearchParams.draft;
+  const draftId =
+    typeof draftParam === "string"
+      ? draftParam
+      : Array.isArray(draftParam) && draftParam[0]
+        ? draftParam[0]
+        : undefined;
   const contentType = getContentTypeBySlug(typeSlug);
   if (!contentType) notFound();
 
@@ -85,25 +95,14 @@ export default async function NewPostByTypePage({
 
   return (
     <div>
-      <div className="mb-3 flex items-center gap-2">
-        <Link
-          href="/dashboard/posts/new"
-          className="text-sm font-medium text-text-muted hover:text-text transition-colors"
-        >
-          ← Back to post types
-        </Link>
-        <span className="text-text-muted">/</span>
-        <span className="text-sm font-medium text-text">
-          {contentType.name}
-        </span>
-      </div>
-      <h2 className="text-2xl font-extrabold text-text mb-2">
+      <h2 className="text-2xl font-extrabold text-text mb-16">
         {contentType.name}
       </h2>
-      <p className="text-text-muted mb-8 font-medium">
-        {contentType.description}
-      </p>
-      <FormComponent accounts={filtered} use24HourTimeFormat={use24HourTimeFormat} />
+      <FormComponent
+        accounts={filtered}
+        use24HourTimeFormat={use24HourTimeFormat}
+        draftId={draftId ?? undefined}
+      />
     </div>
   );
 }

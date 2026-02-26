@@ -11,6 +11,7 @@ import {
   createResurfaceSchedule,
   createAutoPlug,
 } from "@/app/actions/resurface";
+import { useRememberedAccounts } from "@/lib/remembered-accounts";
 import { PostFormOptions } from "../PostFormOptions";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
@@ -35,14 +36,21 @@ type Account = {
   tokenExpired?: boolean;
 };
 
-type ImageFile = { file: File; preview: string; order: number };
+type ImageFile = {
+  file?: File;
+  preview: string;
+  order: number;
+  existingId?: string;
+};
 
 export function ImagePostForm({
   accounts,
   use24HourTimeFormat = false,
+  draftId: initialDraftId,
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
+  draftId?: string;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,12 +59,21 @@ export function ImagePostForm({
   const [content, setContent] = useState("");
   const [images, setImages] = useState<ImageFile[]>([]);
   const imagesRef = useRef<ImageFile[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const validIds = useMemo(
+    () => new Set(accounts.filter((a) => !a.tokenExpired).map((a) => a.id)),
+    [accounts],
+  );
+  const { remember, setRemember, getInitialSelectedIds, persistSelection } =
+    useRememberedAccounts("post-form");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
+    initialDraftId ? new Set() : getInitialSelectedIds(validIds),
+  );
   const [accountSearch, setAccountSearch] = useState("");
   const [previewIndex, setPreviewIndex] = useState(0);
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
   const [error, setError] = useState<string | null>(null);
   type OverlayPhase = "idle" | "uploading" | "publishing" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
@@ -100,9 +117,113 @@ export function ImagePostForm({
   }, [images]);
   useEffect(() => {
     return () => {
-      imagesRef.current.forEach((i) => URL.revokeObjectURL(i.preview));
+      imagesRef.current.forEach((i) => {
+        if (i.preview.startsWith("blob:")) URL.revokeObjectURL(i.preview);
+      });
     };
   }, []);
+
+  useEffect(() => {
+    if (!initialDraftId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getDraft } = await import("@/app/actions/posts");
+        const result = await getDraft(initialDraftId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        const { draft } = result;
+        const validAccountIds = new Set(
+          accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
+        );
+        const restoredIds = draft.connectedAccountIds.filter((id) =>
+          validAccountIds.has(id),
+        );
+        setContent(draft.originalContent ?? "");
+        setSelectedIds(new Set(restoredIds));
+        setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
+        if (draft.scheduledAt) setMode("scheduled");
+        const imageMedia = draft.media.filter((m) =>
+          m.mimeType.startsWith("image/"),
+        );
+        setImages(
+          imageMedia.map((m, i) => ({
+            preview: m.thumbnailUrl ?? m.url ?? "",
+            order: i + 1,
+            existingId: m.id,
+          })),
+        );
+      } catch {
+        if (!cancelled) setError("Failed to load draft");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialDraftId, accounts]);
+
+  useEffect(() => {
+    if (remember) persistSelection(selectedIds);
+  }, [remember, selectedIds, persistSelection]);
+
+  const addImageFromClipboard = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setError(null);
+    setImages((prev) => {
+      const maxOrder =
+        prev.length > 0 ? Math.max(...prev.map((i) => i.order)) : 0;
+      return [
+        ...prev,
+        {
+          file,
+          preview: URL.createObjectURL(file),
+          order: maxOrder + 1,
+        },
+      ];
+    });
+  };
+
+  const [isUploadZoneHovered, setIsUploadZoneHovered] = useState(false);
+  useEffect(() => {
+    if (!isUploadZoneHovered) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            addImageFromClipboard(file);
+            return;
+          }
+        }
+      }
+    };
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [isUploadZoneHovered]);
+
+  const handleDeleteDraft = async () => {
+    if (!initialDraftId) return;
+    try {
+      const { deleteDraft } = await import("@/app/actions/posts");
+      const result = await deleteDraft(initialDraftId);
+      if (result.success) {
+        router.push("/dashboard/posts/drafts");
+        router.refresh();
+      } else {
+        setError(result.error);
+      }
+    } catch {
+      setError("Failed to delete draft");
+    }
+  };
 
   const selectedAccountIds = useMemo(
     () => Array.from(selectedIds),
@@ -265,6 +386,11 @@ export function ImagePostForm({
     const total = sortedImages.length;
     for (let i = 0; i < sortedImages.length; i++) {
       const img = sortedImages[i];
+      if (img.existingId) {
+        mediaIds.push(img.existingId);
+        continue;
+      }
+      if (!img.file) continue;
       setUploadProgress(`${i + 1} of ${total}`);
       try {
         const fd = new FormData();
@@ -287,6 +413,7 @@ export function ImagePostForm({
     setOverlayPhase("publishing");
 
     const text = content.trim();
+    const accountIds = Array.from(selectedIds);
 
     const metadata: Record<string, unknown> = {};
     if (hasTikTok) {
@@ -298,16 +425,106 @@ export function ImagePostForm({
         return acc;
       }, {});
     }
+    const meta = Object.keys(metadata).length > 0 ? metadata : undefined;
 
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
+
+    if (initialDraftId) {
+      const {
+        updateDraft,
+        updateAndPublish,
+        updatePost,
+      } = await import("@/app/actions/posts");
+      if (effectiveMode === "draft") {
+        const result = await updateDraft(
+          initialDraftId,
+          text,
+          accountIds,
+          mediaIds,
+          meta,
+        );
+        setLoading(false);
+        setOverlayPhase("idle");
+        if (result.success) {
+          router.push("/dashboard/posts/drafts");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+      if (effectiveMode === "now") {
+        const result = await updateAndPublish(
+          initialDraftId,
+          text,
+          accountIds,
+          mediaIds,
+          meta,
+        );
+        setLoading(false);
+        if (!result.success) {
+          setError(result.error);
+          setOverlayPhase("idle");
+          return;
+        }
+        setPublishedPostId(result.postId);
+        setOverlayPhase("done");
+        router.refresh();
+        if (
+          resurfaceConfig &&
+          selectedAccounts.some((a) => a.platform === "twitter_x")
+        ) {
+          createResurfaceSchedule(
+            result.postId,
+            "x",
+            resurfaceConfig.intervalHours,
+            resurfaceConfig.maxResurfaces,
+            resurfaceConfig.plugComment?.trim() || null,
+          ).catch(() => {});
+        }
+        if (autoPlugConfig) {
+          const xAccount = selectedAccounts.find(
+            (a) => a.platform === "twitter_x",
+          );
+          if (xAccount) {
+            createAutoPlug(
+              result.postId,
+              xAccount.id,
+              autoPlugConfig,
+            ).catch(() => {});
+          }
+        }
+        return;
+      }
+      if (effectiveMode === "scheduled") {
+        const result = await updatePost(
+          initialDraftId,
+          text,
+          accountIds,
+          scheduledAt,
+          mediaIds,
+          meta,
+        );
+        setLoading(false);
+        setOverlayPhase("idle");
+        if (result.success) {
+          router.push("/dashboard/posts/scheduled");
+          router.refresh();
+        } else {
+          setError(result.error);
+        }
+        return;
+      }
+    }
+
     const result = await createPost(
       text,
-      Array.from(selectedIds),
+      accountIds,
       effectiveMode,
       scheduledAt,
       mediaIds,
-      Object.keys(metadata).length > 0 ? metadata : undefined,
+      meta,
     );
     setLoading(false);
     if (!result.success) {
@@ -377,6 +594,14 @@ export function ImagePostForm({
         ? "Schedule post"
         : "Post now";
 
+  if (draftLoading) {
+    return (
+      <div className="flex items-center justify-center py-12 text-text-muted">
+        Loading draft...
+      </div>
+    );
+  }
+
   return (
     <>
       {overlayPhase !== "idle" && (
@@ -443,6 +668,8 @@ export function ImagePostForm({
                 className="h-8 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
               />
             }
+            remember={remember}
+            onRememberChange={setRemember}
           />
 
           <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm space-y-4">
@@ -461,14 +688,20 @@ export function ImagePostForm({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-bg-muted/30 py-10 text-text-muted transition-colors hover:border-accent hover:bg-accent/10 hover:text-accent"
+                onMouseEnter={() => setIsUploadZoneHovered(true)}
+                onMouseLeave={() => setIsUploadZoneHovered(false)}
+                className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed py-10 text-text-muted transition-colors ${
+                  isUploadZoneHovered
+                    ? "border-accent bg-accent/5"
+                    : "border-border bg-bg-subtle"
+                }`}
               >
                 <MdOutlineAddPhotoAlternate className="mb-2 h-10 w-10" />
                 <span className="text-sm font-medium">
                   Click to add image(s)
                 </span>
                 <span className="text-xs text-text-muted mt-1">
-                  Select multiple to add all at once
+                  Select multiple to add all at once · Hover & paste from clipboard (Ctrl+V)
                 </span>
               </button>
             ) : (
@@ -513,7 +746,14 @@ export function ImagePostForm({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-bg-muted/30 text-text-muted transition-colors hover:border-accent hover:bg-accent/10 hover:text-accent"
+                    onMouseEnter={() => setIsUploadZoneHovered(true)}
+                    onMouseLeave={() => setIsUploadZoneHovered(false)}
+                    className={`flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed text-text-muted transition-colors ${
+                      isUploadZoneHovered
+                        ? "border-accent bg-accent/5"
+                        : "border-border bg-bg-subtle"
+                    }`}
+                    title="Add more · Hover & paste (Ctrl+V)"
                   >
                     <MdOutlineAddPhotoAlternate className="h-6 w-6" />
                     <span className="text-xs mt-0.5">Add more</span>
@@ -552,6 +792,8 @@ export function ImagePostForm({
           onCancel={() => router.push("/dashboard/posts")}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
+          draftId={initialDraftId ?? null}
+          onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}
           autoRepost={
             resurfaceVisible
               ? {
@@ -786,7 +1028,7 @@ export function ImagePostForm({
                         />
                       </div>
                       <p className="truncate text-center text-xs text-text-muted">
-                        {previewImage.file.name}
+                        {previewImage.file?.name ?? (previewImage.existingId ? "Uploaded image" : "")}
                       </p>
                       {sortedImages.length > 1 && (
                         <div className="mt-2 flex items-center justify-center gap-2">

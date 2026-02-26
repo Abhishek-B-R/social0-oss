@@ -10,6 +10,8 @@ import {
 import { eq, desc, asc, inArray, and } from "drizzle-orm";
 import { startOfWeek, startOfMonth } from "date-fns";
 
+export const POSTS_PAGE_SIZE = 18;
+
 export type StatusFilter = "draft" | "scheduled" | "published" | null;
 
 export type PostsListParams = {
@@ -19,6 +21,10 @@ export type PostsListParams = {
   platform?: string | null;
   time?: string | null;
   account?: string | null;
+  /** 1-based page number; used with limit/offset for pagination */
+  page?: number;
+  limit?: number;
+  offset?: number;
 };
 
 export type PublicationRow = {
@@ -39,7 +45,12 @@ export async function getPostsListData({
   platform: platformFilter,
   time: timeFilter,
   account: accountFilter,
+  page = 1,
+  limit = POSTS_PAGE_SIZE,
+  offset: offsetParam,
 }: PostsListParams) {
+  const offset = offsetParam ?? (page - 1) * limit;
+
   const whereClause = statusFilter
     ? and(eq(posts.userId, userId), eq(posts.status, statusFilter))
     : eq(posts.userId, userId);
@@ -131,7 +142,7 @@ export async function getPostsListData({
       const d = p.createdAt ? new Date(p.createdAt) : null;
       return d && d >= weekStart;
     });
-  } else   if (timeFilter === "month") {
+  } else if (timeFilter === "month") {
     const monthStart = startOfMonth(new Date());
     userPosts = userPosts.filter((p) => {
       const d = p.createdAt ? new Date(p.createdAt) : null;
@@ -139,8 +150,11 @@ export async function getPostsListData({
     });
   }
 
+  const totalCount = userPosts.length;
+  const pagePosts = userPosts.slice(offset, offset + limit);
+
   // Use derived status so "publishing" shows as "published" when all publications succeeded
-  const userPostsWithStatus = userPosts.map((p) => {
+  const userPostsWithStatus = pagePosts.map((p) => {
     const pubs = publicationsByPostId[p.id] ?? [];
     const effectiveStatus =
       p.status === "publishing" &&
@@ -285,6 +299,7 @@ export async function getPostsListData({
     accountOptions,
     resurfaceByPostId,
     autoPlugByPostId,
+    totalCount,
   };
 }
 
