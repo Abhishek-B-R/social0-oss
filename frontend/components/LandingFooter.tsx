@@ -53,7 +53,9 @@ export function LandingFooter() {
             </ul>
           </div>
           <div>
-            <h4 className="font-semibold text-foreground text-sm mb-3">Legal</h4>
+            <h4 className="font-semibold text-foreground text-sm mb-3">
+              Legal
+            </h4>
             <ul className="space-y-2">
               <li>
                 <Link
@@ -75,7 +77,8 @@ export function LandingFooter() {
           </div>
         </div>
         <div className="mt-10 pt-8 border-t border-border text-center text-muted-foreground text-sm">
-          © {currentYear} Social0. All rights reserved.
+          © {currentYear} Social0. All rights reserved. Social0 is operated by B
+          R Abhishek, Hosapete, Karnataka, India.
         </div>
       </div>
     </footer>
