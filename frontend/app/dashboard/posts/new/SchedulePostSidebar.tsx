@@ -321,6 +321,7 @@ export function SchedulePostSidebar({
                 type="button"
                 role="switch"
                 aria-checked={autoRepost.enabled}
+                aria-label={autoRepost.enabled ? "Disable Auto-Repost" : "Enable Auto-Repost"}
                 onClick={autoRepost.onToggle}
                 className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
                   autoRepost.enabled ? "bg-emerald-600" : "bg-gray-300"
@@ -355,6 +356,7 @@ export function SchedulePostSidebar({
                 type="button"
                 role="switch"
                 aria-checked={autoPlug.enabled}
+                aria-label={autoPlug.enabled ? "Disable Auto-Plug" : "Enable Auto-Plug"}
                 onClick={autoPlug.onToggle}
                 className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
                   autoPlug.enabled ? "bg-emerald-600" : "bg-gray-300"

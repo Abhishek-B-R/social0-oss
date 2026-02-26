@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { AutoResurfacePanel, type AutoResurfaceConfig, type ConnectedAccountLike } from "./AutoResurfacePanel";
 
 type AutoResurfaceSettingsModalProps = {
@@ -21,50 +28,24 @@ export function AutoResurfaceSettingsModal({
   onDone,
   onCancel,
 }: AutoResurfaceSettingsModalProps) {
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="auto-resurface-settings-title"
-      onClick={(e) => e.target === e.currentTarget && onCancel()}
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onCancel();
+      }}
     >
-      <div
-        className="rounded-2xl border border-border bg-bg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+      <DialogContent
+        className="max-w-lg max-h-[90vh] flex flex-col gap-0 p-0 border-border bg-bg"
+        aria-labelledby="auto-resurface-settings-title"
       >
-        <div className="flex items-center justify-between shrink-0 p-4 border-b border-border">
-          <h2
-            id="auto-resurface-settings-title"
-            className="text-lg font-semibold text-text"
-          >
+        <DialogHeader className="shrink-0 p-4 border-b border-border pb-4">
+          <DialogTitle id="auto-resurface-settings-title" className="text-lg font-semibold text-text">
             ♻️ Auto-Repost settings
-          </h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="text-text-muted hover:text-text rounded-lg p-1.5 transition-colors"
-            aria-label="Close"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 p-4">
+        <div className="overflow-y-auto flex-1 p-4 min-h-0">
           <AutoResurfacePanel
             selectedAccountIds={selectedAccountIds}
             allAccounts={allAccounts}
@@ -75,7 +56,7 @@ export function AutoResurfaceSettingsModal({
           />
         </div>
 
-        <div className="shrink-0 p-4 border-t border-border flex gap-3">
+        <DialogFooter className="shrink-0 p-4 border-t border-border flex gap-3 pt-4">
           <button
             type="button"
             onClick={onCancel}
@@ -90,8 +71,8 @@ export function AutoResurfaceSettingsModal({
           >
             Done
           </button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
