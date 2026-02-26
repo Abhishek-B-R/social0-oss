@@ -25,8 +25,6 @@ export const platformEnum = pgEnum("platform", [
   "threads",
   "bluesky",
   "facebook",
-  "devto",
-  "hashnode",
 ]);
 
 export const postStatusEnum = pgEnum("post_status", [
@@ -126,7 +124,7 @@ export const connectedAccounts = pgTable(
     encryptedAccessToken: text("encrypted_access_token").notNull(),
     encryptedRefreshToken: text("encrypted_refresh_token"),
     tokenExpiresAt: timestamp("token_expires_at"),
-    platformMetadata: jsonb("platform_metadata").$type<Record<string, unknown>>(), // e.g. { publicationId } for Hashnode
+    platformMetadata: jsonb("platform_metadata").$type<Record<string, unknown>>(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

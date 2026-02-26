@@ -4,8 +4,6 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { PLATFORMS } from "@/lib/platforms";
 import { BlueskyByokModal } from "@/components/BlueskyByokModal";
-import { DevToByokModal } from "@/components/DevToByokModal";
-import { HashnodeByokModal } from "@/components/HashnodeByokModal";
 import { PreConnectModal } from "@/components/PreConnectModal";
 import { InstagramConnectionModal } from "@/components/InstagramConnectionModal";
 
@@ -42,8 +40,6 @@ export function ConnectPlatformButton({
   className?: string;
 }) {
   const [showBlueskyModal, setShowBlueskyModal] = useState(false);
-  const [showDevToModal, setShowDevToModal] = useState(false);
-  const [showHashnodeModal, setShowHashnodeModal] = useState(false);
   const [showPreConnectModal, setShowPreConnectModal] = useState(false);
   const [showInstagramModal, setShowInstagramModal] = useState(false);
   const preConnect = PRE_CONNECT[platform.id];
@@ -51,14 +47,6 @@ export function ConnectPlatformButton({
   const handleConnect = () => {
     if (platform.id === "bluesky") {
       setShowBlueskyModal(true);
-      return;
-    }
-    if (platform.id === "devto") {
-      setShowDevToModal(true);
-      return;
-    }
-    if (platform.id === "hashnode") {
-      setShowHashnodeModal(true);
       return;
     }
     if (platform.id === "instagram") {
@@ -103,20 +91,6 @@ export function ConnectPlatformButton({
           isOpen={showBlueskyModal}
           onClose={() => setShowBlueskyModal(false)}
           onSuccess={() => setShowBlueskyModal(false)}
-        />
-      )}
-      {platform.id === "devto" && (
-        <DevToByokModal
-          isOpen={showDevToModal}
-          onClose={() => setShowDevToModal(false)}
-          onSuccess={() => setShowDevToModal(false)}
-        />
-      )}
-      {platform.id === "hashnode" && (
-        <HashnodeByokModal
-          isOpen={showHashnodeModal}
-          onClose={() => setShowHashnodeModal(false)}
-          onSuccess={() => setShowHashnodeModal(false)}
         />
       )}
       {platform.id === "instagram" && (

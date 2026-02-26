@@ -18,7 +18,6 @@ import {
   Video,
   FileText,
   Layers,
-  BookOpen,
   LayoutGrid,
 } from "lucide-react";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
@@ -27,7 +26,6 @@ const TYPE_ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
   Thread: Layers,
   Image: ImageIcon,
   Video,
-  Blog: BookOpen,
   Collection: LayoutGrid,
 };
 
@@ -100,8 +98,6 @@ function getDisplayType(
   media: PostMediaRow[],
 ): string {
   if (partCount > 1) return "Thread";
-  const meta = post.metadata as { contentType?: string } | undefined;
-  if (meta?.contentType === "blog") return "Blog";
   if (media.length > 1) return "Collection";
   const hasVideo = media.some((m) => m.mimeType.startsWith("video/"));
   const hasImage = media.some((m) => m.mimeType.startsWith("image/"));

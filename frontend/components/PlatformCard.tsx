@@ -4,8 +4,6 @@ import { PLATFORMS } from "@/lib/platforms";
 import { useState } from "react";
 import { AccountAvatar } from "./AccountAvatar";
 import { BlueskyByokModal } from "./BlueskyByokModal";
-import { DevToByokModal } from "./DevToByokModal";
-import { HashnodeByokModal } from "./HashnodeByokModal";
 import { PreConnectModal } from "./PreConnectModal";
 import { InstagramConnectionModal } from "./InstagramConnectionModal";
 
@@ -39,8 +37,6 @@ const PRE_CONNECT: Record<string, { title: string; checkmark: string; info: stri
 export function PlatformCard({ platform, account }: PlatformCardProps) {
   const isConnected = !!account;
   const [showBlueskyModal, setShowBlueskyModal] = useState(false);
-  const [showDevToModal, setShowDevToModal] = useState(false);
-  const [showHashnodeModal, setShowHashnodeModal] = useState(false);
   const [showPreConnectModal, setShowPreConnectModal] = useState(false);
   const [showInstagramModal, setShowInstagramModal] = useState(false);
 
@@ -49,14 +45,6 @@ export function PlatformCard({ platform, account }: PlatformCardProps) {
   const handleConnect = () => {
     if (platform.id === "bluesky") {
       setShowBlueskyModal(true);
-      return;
-    }
-    if (platform.id === "devto") {
-      setShowDevToModal(true);
-      return;
-    }
-    if (platform.id === "hashnode") {
-      setShowHashnodeModal(true);
       return;
     }
     if (platform.id === "instagram") {
@@ -139,20 +127,6 @@ export function PlatformCard({ platform, account }: PlatformCardProps) {
           isOpen={showBlueskyModal}
           onClose={() => setShowBlueskyModal(false)}
           onSuccess={() => setShowBlueskyModal(false)}
-        />
-      )}
-      {platform.id === "devto" && (
-        <DevToByokModal
-          isOpen={showDevToModal}
-          onClose={() => setShowDevToModal(false)}
-          onSuccess={() => setShowDevToModal(false)}
-        />
-      )}
-      {platform.id === "hashnode" && (
-        <HashnodeByokModal
-          isOpen={showHashnodeModal}
-          onClose={() => setShowHashnodeModal(false)}
-          onSuccess={() => setShowHashnodeModal(false)}
         />
       )}
       {platform.id === "instagram" && (

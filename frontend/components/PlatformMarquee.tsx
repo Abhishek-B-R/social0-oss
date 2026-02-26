@@ -10,8 +10,6 @@ import {
   SiThreads,
   SiBluesky,
   SiFacebook,
-  SiDevdotto,
-  SiHashnode,
 } from "react-icons/si";
 
 // Same order as lib/platforms.ts: blues → reds → gradient → blacks
@@ -19,7 +17,6 @@ const PLATFORMS = [
   { name: "LinkedIn", icon: SiLinkedin, color: "bg-[#0A66C2]", textColor: "text-white" },
   { name: "Facebook", icon: SiFacebook, color: "bg-[#1877F2]", textColor: "text-white" },
   { name: "Bluesky", icon: SiBluesky, color: "bg-[#0085FF]", textColor: "text-white" },
-  { name: "Hashnode", icon: SiHashnode, color: "bg-[#2962FF]", textColor: "text-white" },
   { name: "YouTube", icon: SiYoutube, color: "bg-[#FF0000]", textColor: "text-white" },
   { name: "Pinterest", icon: SiPinterest, color: "bg-[#E60023]", textColor: "text-white" },
   {
@@ -31,7 +28,6 @@ const PLATFORMS = [
   { name: "TikTok", icon: SiTiktok, color: "bg-[#000000]", textColor: "text-white" },
   { name: "X", icon: SiX, color: "bg-[#000000]", textColor: "text-white" },
   { name: "Threads", icon: SiThreads, color: "bg-[#000000]", textColor: "text-white" },
-  { name: "Dev.to", icon: SiDevdotto, color: "bg-[#0A0A0A]", textColor: "text-white" },
 ];
 
 function PlatformPill({

@@ -11,8 +11,6 @@ import {
   SiThreads,
   SiBluesky,
   SiFacebook,
-  SiDevdotto,
-  SiHashnode,
 } from "react-icons/si";
 import { HiOutlineDocumentText } from "react-icons/hi";
 import {
@@ -30,7 +28,6 @@ const PLATFORM_DISPLAY: Record<
   linkedin: { name: "LinkedIn", icon: SiLinkedin, color: "bg-[#0A66C2]" },
   facebook: { name: "Facebook", icon: SiFacebook, color: "bg-[#1877F2]" },
   bluesky: { name: "Bluesky", icon: SiBluesky, color: "bg-[#0085FF]" },
-  hashnode: { name: "Hashnode", icon: SiHashnode, color: "bg-[#2962FF]" },
   youtube: { name: "YouTube", icon: SiYoutube, color: "bg-[#FF0000]" },
   pinterest: { name: "Pinterest", icon: SiPinterest, color: "bg-[#E60023]" },
   instagram: {
@@ -41,7 +38,6 @@ const PLATFORM_DISPLAY: Record<
   tiktok: { name: "TikTok", icon: SiTiktok, color: "bg-[#000000]" },
   twitter_x: { name: "X", icon: SiX, color: "bg-[#000000]" },
   threads: { name: "Threads", icon: SiThreads, color: "bg-[#000000]" },
-  devto: { name: "Dev.to", icon: SiDevdotto, color: "bg-[#0A0A0A]" },
 };
 
 const CONTENT_TYPE_ICONS: Record<
@@ -51,7 +47,6 @@ const CONTENT_TYPE_ICONS: Record<
   text: HiOutlineDocumentText,
   image: MdOutlineImage,
   video: MdOutlineVideoLibrary,
-  blog: HiOutlineDocumentText,
   threads: TbListDetails,
   collection: MdOutlineCollections,
 };

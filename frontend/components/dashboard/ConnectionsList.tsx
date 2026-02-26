@@ -22,8 +22,6 @@ const PLATFORM_UI: Record<string, { name: string; color: string }> = {
   tiktok: { name: "TikTok", color: "bg-[#000000]" },
   twitter_x: { name: "X (Twitter)", color: "bg-[#000000]" },
   threads: { name: "Threads", color: "bg-[#000000]" },
-  devto: { name: "Dev.to", color: "bg-[#0A0A0A]" },
-  hashnode: { name: "Hashnode", color: "bg-[#2962FF]" },
 };
 
 type Account = {

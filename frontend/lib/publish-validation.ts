@@ -8,13 +8,11 @@
 const CONTENT_LIMITS: Record<string, { max: number; name: string }> = {
   facebook: { max: 63_206, name: "Facebook" },
   bluesky: { max: 3000, name: "Bluesky" },
-  hashnode: { max: 100_000, name: "Hashnode" },
   youtube: { max: 5000, name: "YouTube Shorts" },
   pinterest: { max: 500, name: "Pinterest" }, // description
   instagram: { max: 2_200, name: "Instagram" }, // caption
   tiktok: { max: 2_200, name: "TikTok" },
   threads: { max: 500, name: "Threads" },
-  devto: { max: 100_000, name: "Dev.to" },
   linkedin: { max: 3000, name: "LinkedIn" },
   twitter_x: { max: 280, name: "X (Twitter)" },
 };

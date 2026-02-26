@@ -26,7 +26,7 @@ const plans = [
     features: [
       "Unlimited connected platforms",
       "Advanced scheduling",
-      "Threads & blog-style posts",
+      "Threads (multi-post)",
       "Priority support",
     ],
     cta: "Get started",

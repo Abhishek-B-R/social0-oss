@@ -12,11 +12,6 @@ import { and, eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { decryptToken } from "@/lib/encryption";
 import { revalidatePath } from "next/cache";
-import {
-  getLinkedInArticleSourceUrl,
-  publishLinkedInArticle,
-  uploadLinkedInArticleImage,
-} from "@/lib/linkedin-articles";
 import { uploadLinkedInImage, uploadLinkedInVideo } from "@/lib/linkedin-media";
 import { publishToPlatform } from "@/lib/publish-platform";
 import {
@@ -365,101 +360,6 @@ export async function executePublish(
       }
 
       const authorUrn = `urn:li:person:${pub.platformUserId}`;
-
-      const isLinkedInBlog =
-        (post.metadata as Record<string, unknown>)?.contentType === "blog";
-
-      if (isLinkedInBlog) {
-        // LinkedIn Articles (REST /rest/posts with content.article): title + description + source URL + optional cover
-        const raw = (post.finalContent || "").trim();
-        const firstLine = raw.split("\n")[0]?.trim().slice(0, 400) ?? "Article";
-        const title = firstLine;
-        const bodyAfterTitle = raw.includes("\n")
-          ? raw.slice(raw.indexOf("\n") + 1).trim()
-          : "";
-        const description =
-          bodyAfterTitle.slice(0, 4086) || firstLine.slice(0, 300);
-        const sourceUrl = getLinkedInArticleSourceUrl(post.id);
-
-        let thumbnailImageUrn: string | null = null;
-        if (post.mediaIds && post.mediaIds.length > 0) {
-          const media = await db
-            .select({
-              id: mediaUploads.id,
-              url: mediaUploads.url,
-              mimeType: mediaUploads.mimeType,
-            })
-            .from(mediaUploads)
-            .where(inArray(mediaUploads.id, post.mediaIds));
-          const firstImage = media.find((m) =>
-            m.mimeType?.startsWith("image/"),
-          );
-          if (firstImage?.url) {
-            try {
-              thumbnailImageUrn = await uploadLinkedInArticleImage(
-                firstImage.url,
-                linkedInToken,
-                authorUrn,
-              );
-            } catch (e) {
-              console.error(
-                "[executePublish] LinkedIn article cover image upload failed:",
-                e,
-              );
-            }
-          }
-        }
-
-        try {
-          const { postId: articlePostId, platformPostUrl: articleUrl } =
-            await publishLinkedInArticle({
-              accessToken: linkedInToken,
-              authorUrn,
-              title,
-              description,
-              sourceUrl,
-              thumbnailImageUrn: thumbnailImageUrn ?? undefined,
-              commentary: "",
-            });
-
-          await db
-            .update(postPublications)
-            .set({
-              status: "published",
-              publishedAt: new Date(),
-              platformPostId: articlePostId ?? null,
-              platformPostUrl: articleUrl ?? null,
-              lastError: null,
-              updatedAt: new Date(),
-            })
-            .where(eq(postPublications.id, pub.publicationId));
-
-          results.push({
-            platform: pub.platform,
-            connectedAccountId: pub.connectedAccountId,
-            status: "published",
-            platformPostUrl: articleUrl ?? undefined,
-          });
-        } catch (err) {
-          const errMessage =
-            err instanceof Error ? err.message : "LinkedIn Articles publish failed";
-          await db
-            .update(postPublications)
-            .set({
-              status: "failed",
-              lastError: errMessage,
-              updatedAt: new Date(),
-            })
-            .where(eq(postPublications.id, pub.publicationId));
-          results.push({
-            platform: pub.platform,
-            connectedAccountId: pub.connectedAccountId,
-            status: "failed",
-            error: errMessage,
-          });
-        }
-        continue;
-      }
 
       // Fetch media if post has mediaIds (regular LinkedIn UGC post)
       const mediaAssets: string[] = [];
@@ -1188,13 +1088,11 @@ export async function executePublish(
     } else if (
       pub.platform === "facebook" ||
       pub.platform === "bluesky" ||
-      pub.platform === "hashnode" ||
       pub.platform === "youtube" ||
       pub.platform === "pinterest" ||
       pub.platform === "instagram" ||
       pub.platform === "tiktok" ||
-      pub.platform === "threads" ||
-      pub.platform === "devto"
+      pub.platform === "threads"
     ) {
       if (
         pub.platform === "threads" &&

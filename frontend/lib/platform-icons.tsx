@@ -3,14 +3,12 @@ import {
   SiLinkedin,
   SiFacebook,
   SiBluesky,
-  SiHashnode,
   SiYoutube,
   SiPinterest,
   SiInstagram,
   SiTiktok,
   SiX,
   SiThreads,
-  SiDevdotto,
 } from "react-icons/si";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: string | number }>;
@@ -19,14 +17,12 @@ const PLATFORM_ICON_MAP: Record<string, IconComponent> = {
   linkedin: SiLinkedin,
   facebook: SiFacebook,
   bluesky: SiBluesky,
-  hashnode: SiHashnode,
   youtube: SiYoutube,
   pinterest: SiPinterest,
   instagram: SiInstagram,
   tiktok: SiTiktok,
   twitter_x: SiX,
   threads: SiThreads,
-  devto: SiDevdotto,
 };
 
 /**

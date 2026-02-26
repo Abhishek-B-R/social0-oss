@@ -12,7 +12,6 @@ import Link from "next/link";
 import { TextPostForm } from "../forms/TextPostForm";
 import { ImagePostForm } from "../forms/ImagePostForm";
 import { VideoPostForm } from "../forms/VideoPostForm";
-import { BlogPostForm } from "../forms/BlogPostForm";
 import { ThreadsPostForm } from "../forms/ThreadsPostForm";
 import { CollectionPostForm } from "../forms/CollectionPostForm";
 
@@ -30,7 +29,6 @@ const FORM_MAP = {
   text: TextPostForm,
   image: ImagePostForm,
   video: VideoPostForm,
-  blog: BlogPostForm,
   threads: ThreadsPostForm,
   collection: CollectionPostForm,
 } as const;

@@ -16,7 +16,7 @@ const BATCH_SIZE = 5;
 const DELAY_MS = 200;
 
 /** BYOK / static credentials: never run health check, never mark expired. */
-export const BYOK_PLATFORMS = new Set(["bluesky", "devto", "hashnode"]);
+export const BYOK_PLATFORMS = new Set(["bluesky"]);
 
 /** Only run token health checks for platforms where tokens can actually expire. */
 const PLATFORMS_WITH_EXPIRING_TOKENS = new Set([
@@ -30,12 +30,7 @@ const PLATFORMS_WITH_EXPIRING_TOKENS = new Set([
 ]);
 
 /** Never show "expired" in UI for these platforms (BYOK + Twitter app passwords). */
-export const NEVER_EXPIRES_PLATFORMS = new Set([
-  "bluesky",
-  "devto",
-  "hashnode",
-  "twitter_x",
-]);
+export const NEVER_EXPIRES_PLATFORMS = new Set(["bluesky", "twitter_x"]);
 
 export type AccountForHealthCheck = {
   id: string;
@@ -142,28 +137,6 @@ async function verifyToken(
         "https://api.pinterest.com/v5/user_account",
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
-      return r.status;
-    }
-    case "devto": {
-      const r = await fetch("https://dev.to/api/users/me", {
-        headers: {
-          "api-key": accessToken,
-          "Content-Type": "application/json",
-        },
-      });
-      return r.status;
-    }
-    case "hashnode": {
-      const r = await fetch("https://gql.hashnode.com", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: accessToken,
-        },
-        body: JSON.stringify({
-          query: "query { me { id } }",
-        }),
-      });
       return r.status;
     }
     default:

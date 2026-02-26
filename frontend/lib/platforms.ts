@@ -9,8 +9,6 @@ export const PLATFORMS = [
   { id: "tiktok", name: "TikTok", icon: null },
   { id: "twitter_x", name: "X (Twitter)", icon: null },
   { id: "threads", name: "Threads", icon: null },
-  { id: "devto", name: "Dev.to", icon: null },
-  { id: "hashnode", name: "Hashnode", icon: null },
 ] as const;
 
 export type Platform = (typeof PLATFORMS)[number]["id"];
@@ -87,6 +85,4 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     scope:
       "pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata",
   },
-  devto: null, // BYOK - API key
-  hashnode: null, // BYOK - API key + Publication ID
 };

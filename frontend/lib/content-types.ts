@@ -44,13 +44,6 @@ export const CONTENT_TYPES = [
     ],
   },
   {
-    id: "blog",
-    name: "Blog / Article",
-    description: "Long-form articles and blog posts",
-    slug: "blog",
-    platforms: ["hashnode", "devto"],
-  },
-  {
     id: "threads",
     name: "Threads",
     description: "Multi-post thread (Twitter / Threads / Bluesky style)",

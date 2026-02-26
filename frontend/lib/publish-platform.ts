@@ -1,6 +1,6 @@
 /**
- * Platform-specific publish logic for Facebook, Bluesky, Hashnode, YouTube,
- * Pinterest, Instagram, TikTok, Threads, and Dev.to.
+ * Platform-specific publish logic for Facebook, Bluesky, YouTube,
+ * Pinterest, Instagram, TikTok, and Threads.
  * Uses validation and allowlisted media URLs for security.
  */
 
@@ -94,8 +94,6 @@ export async function publishToPlatform(
       return publishToFacebook(pub, post, accessToken);
     case "bluesky":
       return publishToBluesky(pub, post, accessToken, accessSecret);
-    case "hashnode":
-      return publishToHashnode(pub, post, accessToken);
     case "youtube":
       return publishToYouTube(pub, post, accessToken);
     case "pinterest":
@@ -106,8 +104,6 @@ export async function publishToPlatform(
       return publishToTikTok(pub, post, accessToken);
     case "threads":
       return publishToThreads(pub, post, accessToken);
-    case "devto":
-      return publishToDevTo(pub, post, accessToken);
     default:
       return {
         status: "failed",
@@ -1114,110 +1110,6 @@ async function publishToBluesky(
       error: String(error),
     };
   }
-}
-
-async function publishToHashnode(
-  pub: Pub,
-  post: Post,
-  apiKey: string,
-): Promise<PublishPlatformResult> {
-  const publicationId = (
-    pub.platformMetadata as { publicationId?: string } | null
-  )?.publicationId;
-  if (!publicationId) {
-    return {
-      status: "failed",
-      lastError: "Hashnode publication ID missing. Reconnect the account.",
-      error: "Publication ID missing",
-    };
-  }
-  const content = post.finalContent?.trim() ?? "";
-  if (!content) {
-    return {
-      status: "failed",
-      lastError: "Post content is empty",
-      error: "Post content is empty",
-    };
-  }
-  const firstLine = content.split("\n")[0]?.slice(0, 100) ?? "Post";
-  const title =
-    firstLine.length === content.length ? firstLine : `${firstLine}...`;
-
-  const input = { publicationId, title, contentMarkdown: content };
-
-  // Try createPublicationStory (Hashnode Public API 2.0); fallback to createStory for older schema
-  const mutations = [
-    {
-      name: "createPublicationStory",
-      query: `
-        mutation CreatePublicationStory($input: CreatePublicationStoryInput!) {
-          createPublicationStory(input: $input) {
-            post { id url }
-          }
-        }
-      `,
-      resultPath: "createPublicationStory",
-    },
-    {
-      name: "createStory",
-      query: `
-        mutation CreateStory($input: CreateStoryInput!) {
-          createStory(input: $input) {
-            post { id url }
-          }
-        }
-      `,
-      resultPath: "createStory",
-    },
-  ] as const;
-
-  console.log("Hashnode publication ID:", publicationId);
-  for (const { name, query, resultPath } of mutations) {
-    const mutation = { query, variables: { input } };
-    console.log(
-      "Hashnode mutation:",
-      JSON.stringify({ operation: name, ...mutation }, null, 2),
-    );
-    const res = await fetch("https://gql.hashnode.com/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: apiKey,
-      },
-      body: JSON.stringify(mutation),
-    });
-    const data = (await res.json().catch(() => ({}))) as {
-      data?: Record<
-        string,
-        { post?: { id?: string; url?: string } } | undefined
-      >;
-      errors?: Array<{ message?: string }>;
-    };
-    console.log("Hashnode response:", JSON.stringify(data, null, 2));
-    if (data.errors?.length) {
-      const errMsg = data.errors[0]?.message ?? "";
-      if (errMsg.includes("Unknown") || errMsg.includes("doesn't exist"))
-        continue;
-      return { status: "failed", lastError: errMsg, error: errMsg };
-    }
-    if (!res.ok) continue;
-    const postNode = data.data?.[resultPath]?.post;
-    if (postNode) {
-      return {
-        status: "published",
-        platformPostId: postNode.id ?? null,
-        platformPostUrl: postNode.url ?? null,
-        publishedAt: new Date(),
-      };
-    }
-  }
-
-  return {
-    status: "failed",
-    lastError:
-      "Hashnode API did not accept the publish mutation. Check your publication ID and API token.",
-    error: "Hashnode publish failed",
-  };
 }
 
 /** Max size for YouTube Shorts (Shorts only; long videos not supported). ~60s is typically under 50MB. */
@@ -2830,59 +2722,6 @@ async function publishToThreads(
   return {
     status: "published",
     platformPostId: publishData.id ?? null,
-    platformPostUrl,
-    publishedAt: new Date(),
-  };
-}
-
-async function publishToDevTo(
-  pub: Pub,
-  post: Post,
-  apiKey: string,
-): Promise<PublishPlatformResult> {
-  const bodyMarkdown = post.finalContent?.trim() ?? "";
-  if (!bodyMarkdown) {
-    return {
-      status: "failed",
-      lastError: "Article content is empty",
-      error: "Content is empty",
-    };
-  }
-  const firstLine = bodyMarkdown.split("\n")[0]?.slice(0, 100) ?? "Article";
-  const title =
-    firstLine.length === bodyMarkdown.length ? firstLine : `${firstLine}...`;
-
-  const res = await fetch("https://dev.to/api/articles", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "api-key": apiKey,
-    },
-    body: JSON.stringify({
-      article: {
-        title,
-        body_markdown: bodyMarkdown,
-        published: true,
-      },
-    }),
-  });
-  const data = (await res.json().catch(() => ({}))) as {
-    id?: number;
-    url?: string;
-    error?: string;
-  };
-  if (!res.ok) {
-    const err = data.error ?? `HTTP ${res.status}`;
-    return { status: "failed", lastError: err, error: err };
-  }
-  const platformPostUrl =
-    data.url ??
-    (data.id
-      ? `https://dev.to/${pub.platformUsername ?? "user"}/${data.id}`
-      : null);
-  return {
-    status: "published",
-    platformPostId: data.id != null ? String(data.id) : null,
     platformPostUrl,
     publishedAt: new Date(),
   };

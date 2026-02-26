@@ -12,7 +12,6 @@ const PLATFORM_DISPLAY: Record<string, { name: string; color: string }> = {
   linkedin: { name: "LinkedIn", color: "bg-[#0A66C2]" },
   facebook: { name: "Facebook", color: "bg-[#1877F2]" },
   bluesky: { name: "Bluesky", color: "bg-[#0085FF]" },
-  hashnode: { name: "Hashnode", color: "bg-[#2962FF]" },
   youtube: { name: "YouTube", color: "bg-[#FF0000]" },
   pinterest: { name: "Pinterest", color: "bg-[#E60023]" },
   instagram: {
@@ -22,7 +21,6 @@ const PLATFORM_DISPLAY: Record<string, { name: string; color: string }> = {
   tiktok: { name: "TikTok", color: "bg-[#000000]" },
   twitter_x: { name: "X", color: "bg-[#000000]" },
   threads: { name: "Threads", color: "bg-[#000000]" },
-  devto: { name: "Dev.to", color: "bg-[#0A0A0A]" },
 };
 
 function PlatformIcons({ platformIds }: { platformIds: readonly string[] }) {
