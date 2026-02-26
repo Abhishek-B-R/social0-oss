@@ -2,10 +2,11 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
-import { getPostsListData } from "./posts-list-data";
+import { getPostsListData, POSTS_PAGE_SIZE } from "./posts-list-data";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { AllPostsFilters } from "./AllPostsFilters";
 import { PostListCards } from "./PostListCards";
+import { Pagination } from "@/components/ui/Pagination";
 
 export default async function PostsPage({
   searchParams,
@@ -16,11 +17,14 @@ export default async function PostsPage({
     platform?: string;
     time?: string;
     account?: string;
+    page?: string;
   }>;
 }) {
   const params = await searchParams;
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return null;
+
+  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
 
   const {
     userPosts,
@@ -30,12 +34,15 @@ export default async function PostsPage({
     accountOptions,
     resurfaceByPostId,
     autoPlugByPostId,
+    totalCount,
   } = await getPostsListData({
     userId: session.user.id,
     sort: params.sort === "oldest" ? "oldest" : "newest",
     platform: params.platform || null,
     time: params.time || null,
     account: params.account || null,
+    page,
+    limit: POSTS_PAGE_SIZE,
   });
 
   const { use24HourTimeFormat } = await getUserSettingsSnapshot();
@@ -91,6 +98,18 @@ export default async function PostsPage({
         filterMessage="No posts match your filters."
         hasActiveFilters={hasActiveFilters}
         use24HourTimeFormat={use24HourTimeFormat}
+      />
+
+      <Pagination
+        currentPage={page}
+        totalPages={Math.ceil(totalCount / POSTS_PAGE_SIZE) || 1}
+        basePath="/dashboard/posts"
+        searchParams={{
+          sort: params.sort,
+          platform: params.platform,
+          time: params.time,
+          account: params.account,
+        }}
       />
     </div>
   );

@@ -37,6 +37,7 @@ export function AllPostsFilters({
     const next = new URLSearchParams(searchParams.toString());
     if (value === "all" || !value) next.delete(key);
     else next.set(key, value);
+    next.delete("page"); // reset to page 1 when filters change
     router.push(`${basePath}?${next.toString()}`);
   };
 
