@@ -38,13 +38,13 @@ const PLATFORMS = [
 
 export function SupportedPlatforms() {
   return (
-    <section className="py-16 sm:py-20 bg-white">
+    <section className="py-16 sm:py-20 bg-background">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <RevealSection>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 text-center mb-3">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground text-center mb-3">
             Supported platforms
           </h2>
-          <p className="text-base text-gray-500 text-center max-w-xl mx-auto mb-10 font-medium">
+          <p className="text-base text-muted-foreground text-center max-w-xl mx-auto mb-10 font-medium">
             Connect the networks you use. We add more over time.
           </p>
         </RevealSection>

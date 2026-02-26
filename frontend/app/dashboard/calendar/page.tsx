@@ -37,8 +37,8 @@ export default async function CalendarPage() {
   if (postIds.length === 0) {
     return (
       <div className="flex min-h-full flex-1 flex-col">
-        <h1 className="text-2xl font-extrabold text-gray-900">Calendar</h1>
-        <p className="mt-2 text-gray-500">
+        <h1 className="text-2xl font-extrabold text-text">Calendar</h1>
+        <p className="mt-2 text-text-muted">
           View your scheduled and published posts by month, week, or day.
         </p>
         <div className="mt-6 flex min-h-0 flex-1 flex-col">
@@ -113,8 +113,8 @@ export default async function CalendarPage() {
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <h1 className="text-2xl font-extrabold text-gray-900">Calendar</h1>
-      <p className="mt-2 text-gray-500">
+      <h1 className="text-2xl font-extrabold text-text">Calendar</h1>
+      <p className="mt-2 text-text-muted">
         View your scheduled and published posts by month, week, or day.
       </p>
       <div className="mt-6 flex min-h-0 flex-1 flex-col">

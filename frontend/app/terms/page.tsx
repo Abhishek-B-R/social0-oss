@@ -9,19 +9,19 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
       <LandingHeader />
-      <main className="flex-1 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 bg-white">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8">
+      <main className="flex-1 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-8">
           Terms and Conditions
         </h1>
-        <p className="text-sm text-gray-500 mb-10">
+        <p className="text-sm text-muted-foreground mb-10">
           Last updated: February 2026
         </p>
 
-        <div className="prose prose-gray max-w-none space-y-8 text-gray-700 text-base leading-relaxed">
+        <div className="prose prose-zinc dark:prose-invert max-w-none space-y-8 text-base leading-relaxed">
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               1. Acceptance of terms
             </h2>
             <p>
@@ -32,7 +32,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               2. Description of service
             </h2>
             <p>
@@ -45,7 +45,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               3. Account and third-party connections
             </h2>
             <p>
@@ -62,7 +62,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               4. Your content and conduct
             </h2>
             <p>
@@ -76,7 +76,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               5. Data handling and security
             </h2>
             <p>
@@ -90,7 +90,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               6. Termination and data deletion
             </h2>
             <p>
@@ -104,7 +104,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               7. Changes to the service and terms
             </h2>
             <p>
@@ -117,7 +117,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               8. Disclaimers and limitation of liability
             </h2>
             <p>
@@ -130,7 +130,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               9. Contact
             </h2>
             <p>
@@ -138,7 +138,7 @@ export default function TermsPage() {
               at{" "}
               <a
                 href="mailto:support@social0.app"
-                className="text-emerald-600 hover:text-emerald-700 underline"
+                className="text-emerald-600 hover:text-emerald-700 underline dark:text-emerald-400 dark:hover:text-emerald-300"
               >
                 support@social0.app
               </a>

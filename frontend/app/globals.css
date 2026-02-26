@@ -4,9 +4,54 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --accent: oklch(0.97 0 0); /* emerald-600 */
-  --accent-hover: #047857; /* emerald-700 */
-  --warm-bg: #fafaf9; /* Keep for backward compatibility, but prefer gray-50 */ --radius: 0.625rem; --background: oklch(1 0 0); --foreground: oklch(0.145 0 0); --card: oklch(1 0 0); --card-foreground: oklch(0.145 0 0); --popover: oklch(1 0 0); --popover-foreground: oklch(0.145 0 0); --primary: oklch(0.205 0 0); --primary-foreground: oklch(0.985 0 0); --secondary: oklch(0.97 0 0); --secondary-foreground: oklch(0.205 0 0); --muted: oklch(0.97 0 0); --muted-foreground: oklch(0.556 0 0); --accent-foreground: oklch(0.205 0 0); --destructive: oklch(0.577 0.245 27.325); --border: oklch(0.922 0 0); --input: oklch(0.922 0 0); --ring: oklch(0.708 0 0); --chart-1: oklch(0.646 0.222 41.116); --chart-2: oklch(0.6 0.118 184.704); --chart-3: oklch(0.398 0.07 227.392); --chart-4: oklch(0.828 0.189 84.429); --chart-5: oklch(0.769 0.188 70.08); --sidebar: oklch(0.985 0 0); --sidebar-foreground: oklch(0.145 0 0); --sidebar-primary: oklch(0.205 0 0); --sidebar-primary-foreground: oklch(0.985 0 0); --sidebar-accent: oklch(0.97 0 0); --sidebar-accent-foreground: oklch(0.205 0 0); --sidebar-border: oklch(0.922 0 0); --sidebar-ring: oklch(0.708 0 0);
+  /* Semantic dashboard color system */
+  --bg: #ffffff;
+  --bg-subtle: #f9fafb;
+  --bg-muted: #f3f4f6;
+  --bg-elevated: #ffffff;
+  --border: #e5e7eb;
+  --border-subtle: #f3f4f6;
+  --text: #111827;
+  --text-muted: #6b7280;
+  --text-subtle: #9ca3af;
+  --accent: #10b981;
+  --accent-hover: #059669;
+  --destructive: #ef4444;
+  --sidebar-bg: #f9fafb;
+  --sidebar-text: #111827;
+  --sidebar-muted: #6b7280;
+  --sidebar-border: #e5e7eb;
+  --sidebar-active: #e5e7eb;
+
+  --warm-bg: #fafaf9; /* Keep for backward compatibility, but prefer gray-50 */
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 @keyframes bannerSlideUp {
@@ -46,6 +91,22 @@
 }
 
 @theme inline {
+  /* Semantic dashboard colors */
+  --color-bg: var(--bg);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-bg-muted: var(--bg-muted);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-text: var(--sidebar-text);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-active: var(--sidebar-active);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-accent: var(--accent);
@@ -54,7 +115,6 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
@@ -68,7 +128,6 @@
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
-  --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-muted-foreground: var(--muted-foreground);
@@ -95,6 +154,25 @@ html {
 }
 
 .dark {
+  /* Semantic dashboard color system (dark) */
+  --bg: #0a0a0a;
+  --bg-subtle: #111111;
+  --bg-muted: #1a1a1a;
+  --bg-elevated: #141414;
+  --border: #2a2a2a;
+  --border-subtle: #1f1f1f;
+  --text: #f5f5f5;
+  --text-muted: #a3a3a3;
+  --text-subtle: #737373;
+  --accent: #10b981;
+  --accent-hover: #059669;
+  --destructive: #ef4444;
+  --sidebar-bg: #0a0a0a;
+  --sidebar-text: #f5f5f5;
+  --sidebar-muted: #737373;
+  --sidebar-border: #1a1a1a;
+  --sidebar-active: #1a1a1a;
+
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -107,10 +185,7 @@ html {
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.488 0.243 264.376);
@@ -133,6 +208,67 @@ html {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-bg text-text;
+  }
+}
+
+/* Force sidebar nav text and icons to bright white (overrides any inherited/link styles) */
+.dashboard-sidebar[data-sidebar="dashboard"] a {
+  color: var(--sidebar-text) !important;
+}
+.dashboard-sidebar[data-sidebar="dashboard"] a svg {
+  color: var(--sidebar-text) !important;
+  stroke: var(--sidebar-text);
+}
+.dashboard-sidebar[data-sidebar="dashboard"] .sidebar-user-block p,
+.dashboard-sidebar[data-sidebar="dashboard"]
+  .sidebar-user-block
+  [class*="shrink-0"] {
+  color: var(--sidebar-text) !important;
+}
+.dashboard-sidebar[data-sidebar="dashboard"] .sidebar-user-block svg {
+  color: var(--sidebar-text) !important;
+  stroke: var(--sidebar-text);
+}
+
+@layer utilities {
+  /* Dark-mode compatibility for legacy Tailwind gray/white usage. */
+  .dark .bg-white {
+    background-color: var(--card);
+  }
+  .dark .bg-gray-50,
+  .dark .bg-gray-50\/50,
+  .dark .bg-gray-50\/80 {
+    background-color: var(--muted);
+  }
+  .dark .bg-gray-100 {
+    background-color: var(--muted);
+  }
+
+  /* .dark .text-gray-900,
+  .dark .text-gray-800,
+  .dark .text-gray-700 {
+    color: var(--foreground);
+  } */
+  .dark .text-gray-600,
+  .dark .text-gray-500,
+  .dark .text-gray-400 {
+    color: var(--muted-foreground);
+  }
+
+  .dark .border-gray-100,
+  .dark .border-gray-200,
+  .dark .border-gray-300 {
+    border-color: var(--border);
+  }
+
+  .dark .hover\:bg-gray-50:hover,
+  .dark .hover\:bg-gray-100:hover {
+    background-color: var(--muted);
+  }
+  .dark .hover\:text-gray-900:hover,
+  .dark .hover\:text-gray-800:hover,
+  .dark .hover\:text-gray-700:hover {
+    color: var(--foreground);
   }
 }

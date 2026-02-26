@@ -154,15 +154,15 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
                 placeholder="Search accounts..."
                 value={accountSearch}
                 onChange={(e) => setAccountSearch(e.target.value)}
-                className="h-8 w-full text-xs rounded border border-gray-200 px-2 py-1 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
+                className="h-8 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
               />
             }
           />
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
           <label
             htmlFor="content"
-            className="block text-sm font-semibold text-gray-900 mb-2"
+            className="block text-sm font-semibold text-text mb-2"
           >
             What do you want to post?
           </label>
@@ -172,7 +172,7 @@ export function TextPostForm({ accounts }: { accounts: Account[] }) {
             onChange={(e) => setContent(e.target.value)}
             placeholder="Write your post... Use --- on its own line to split into a Twitter thread (each part max 280 characters)."
             rows={6}
-            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             required
           />
           {twitterThreadWarning && (

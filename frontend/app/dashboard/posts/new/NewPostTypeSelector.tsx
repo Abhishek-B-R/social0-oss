@@ -67,12 +67,12 @@ function ContentTypeCard({
   return (
     <Link
       href={`/dashboard/posts/new/${slug}`}
-      className="group flex flex-col rounded-2xl border-2 border-dashed border-gray-300 bg-white p-6 shadow-sm transition-all hover:border-emerald-400 hover:bg-emerald-50/30 hover:shadow-md"
+      className="group flex flex-col rounded-2xl border-2 border-dashed border-border bg-bg-elevated p-6 shadow-sm transition-all hover:border-accent hover:bg-accent/10 hover:shadow-md"
     >
-      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-gray-600 group-hover:bg-emerald-100 group-hover:text-emerald-700">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-bg-muted text-text-muted group-hover:bg-accent/20 group-hover:text-accent">
         {Icon && <Icon className="h-6 w-6" />}
       </div>
-      <h3 className="mb-3 font-semibold text-gray-900">{name}</h3>
+      <h3 className="mb-3 font-semibold text-text">{name}</h3>
       <div className="mt-auto flex flex-wrap gap-1.5">
         {platforms.map((platformId) => {
           const p = PLATFORM_DISPLAY[platformId];
@@ -107,14 +107,14 @@ export function NewPostTypeSelector() {
           />
         ))}
       </div>
-      <p className="flex items-center gap-2 text-sm text-gray-500">
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+      <p className="flex items-center gap-2 text-sm text-text-muted">
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-accent">
           ✓
         </span>
         You can connect more accounts{" "}
         <Link
           href="/dashboard"
-          className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline"
+          className="font-medium text-accent hover:text-accent-hover hover:underline"
         >
           here
         </Link>

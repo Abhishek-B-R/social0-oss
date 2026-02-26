@@ -42,11 +42,11 @@ export function AllPostsFilters({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Filter className="h-4 w-4 text-gray-500" />
+      <Filter className="h-4 w-4 text-text-muted" />
       <select
         value={sort}
         onChange={(e) => update("sort", e.target.value)}
-        className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        className="rounded-lg border border-input bg-bg px-3 py-2 text-sm text-text shadow-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
       >
         {SORT_OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>
@@ -57,7 +57,7 @@ export function AllPostsFilters({
       <select
         value={platform}
         onChange={(e) => update("platform", e.target.value)}
-        className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        className="rounded-lg border border-input bg-bg px-3 py-2 text-sm text-text shadow-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
       >
         <option value="all">All platforms</option>
         {platformOptions.map((o) => (
@@ -69,7 +69,7 @@ export function AllPostsFilters({
       <select
         value={time}
         onChange={(e) => update("time", e.target.value)}
-        className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        className="rounded-lg border border-input bg-bg px-3 py-2 text-sm text-text shadow-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
       >
         {TIME_OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>
@@ -80,7 +80,7 @@ export function AllPostsFilters({
       <select
         value={account}
         onChange={(e) => update("account", e.target.value)}
-        className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        className="rounded-lg border border-input bg-bg px-3 py-2 text-sm text-text shadow-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
       >
         <option value="all">All accounts</option>
         {accountOptions.map((o) => (

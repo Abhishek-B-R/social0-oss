@@ -40,27 +40,27 @@ export function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section className="py-16 sm:py-20 bg-white">
+    <section className="py-16 sm:py-20 bg-background">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         <RevealSection>
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-10">
+          <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-center mb-10">
             Frequently asked questions
           </h2>
         </RevealSection>
         <div className="space-y-3">
           {faqs.map((faq, i) => (
             <RevealSection key={i} delay={i < 4 ? (i as 0 | 1 | 2 | 3) : 0}>
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="bg-card rounded-xl border border-border overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                  className="w-full flex items-center justify-between gap-4 py-5 px-6 text-left hover:bg-gray-50/80 transition-colors duration-200"
+                  className="w-full flex items-center justify-between gap-4 py-5 px-6 text-left hover:bg-muted/60 transition-colors duration-200"
                 >
-                  <span className="text-lg font-semibold text-gray-900">
+                  <span className="text-lg font-semibold text-foreground">
                     {faq.question}
                   </span>
                   <span
-                    className={`shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-xl leading-none transition-transform duration-300 ease-out ${
+                    className={`shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xl leading-none transition-transform duration-300 ease-out ${
                       openIndex === i ? "rotate-45" : ""
                     }`}
                   >
@@ -75,7 +75,7 @@ export function FAQ() {
                 >
                   <div className="overflow-hidden">
                     <div className="px-6 pb-5 pt-0">
-                      <p className="text-gray-500 text-base leading-relaxed">
+                      <p className="text-muted-foreground text-base leading-relaxed">
                         {faq.answer}
                       </p>
                     </div>

@@ -59,18 +59,18 @@ function DayCell({
 
   return (
     <div
-      className={`border border-gray-200 p-2 ${
+      className={`border border-border p-2 ${
         fillHeight ? "flex min-h-0 flex-1 flex-col" : "min-h-[100px]"
       } ${
-        isCurrentMonth ? "bg-white" : "bg-gray-50"
-      } ${isToday(date) ? "bg-emerald-50/50" : ""}`}
+        isCurrentMonth ? "bg-bg" : "bg-bg-subtle"
+      } ${isToday(date) ? "bg-accent/10" : ""}`}
     >
-      <div className="text-right text-sm font-medium text-gray-700">
+      <div className="text-right text-sm font-medium text-text">
         {onDayClick ? (
           <button
             type="button"
             onClick={() => onDayClick(date)}
-            className="rounded hover:bg-gray-100 hover:text-emerald-700"
+            className="rounded hover:bg-bg-muted hover:text-accent"
           >
             {format(date, "d")}
           </button>
@@ -80,20 +80,20 @@ function DayCell({
       </div>
       <div className={`mt-1 space-y-1 ${fillHeight ? "min-h-0 flex-1 overflow-auto" : ""}`}>
         {visible.length === 0 && (
-          <p className="text-xs text-gray-400">No posts</p>
+          <p className="text-xs text-text-muted">No posts</p>
         )}
         {visible.map((post) => (
           <Link
             key={post.id}
             href="/dashboard/posts"
-            className="block rounded border border-gray-100 bg-white p-1.5 shadow-sm hover:bg-gray-50"
+            className="block rounded border border-border-subtle bg-bg p-1.5 shadow-sm hover:bg-bg-muted"
           >
             <div className="flex items-start gap-1.5">
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-gray-900 line-clamp-1">
+                <p className="text-xs font-medium text-text line-clamp-1">
                   {post.snippet || "(No caption)"}
                 </p>
-                <p className="text-[10px] text-gray-500">
+                <p className="text-[10px] text-text-muted">
                   {format(parseISO(post.displayDate), "h:mm a")}
                 </p>
               </div>
@@ -110,7 +110,7 @@ function DayCell({
           <button
             type="button"
             onClick={() => onToggleExpand(dateKey)}
-            className="w-full rounded border border-dashed border-gray-200 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50"
+            className="w-full rounded border border-dashed border-border py-1 text-xs font-medium text-accent hover:bg-accent/10"
           >
             +{moreCount} more
           </button>
@@ -119,7 +119,7 @@ function DayCell({
           <button
             type="button"
             onClick={() => onToggleExpand(dateKey)}
-            className="w-full text-xs text-gray-500 hover:text-gray-700"
+            className="w-full text-xs text-text-muted hover:text-text"
           >
             Show less
           </button>
@@ -252,15 +252,15 @@ export function CalendarClient({
           <button
             type="button"
             onClick={handlePrev}
-            className="rounded-lg p-2 text-gray-600 hover:bg-gray-100"
+            className="rounded-lg p-2 text-text-muted hover:bg-bg-muted"
             aria-label={view === "week" ? "Previous week" : view === "day" ? "Previous day" : "Previous month"}
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <h2 className="min-w-[180px] text-center text-lg font-semibold text-gray-900">
+          <h2 className="min-w-[180px] text-center text-lg font-semibold text-text">
             {headerTitle}
             {view === "day" && isToday(selectedDate) && (
-              <span className="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+              <span className="ml-2 rounded bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
                 Today
               </span>
             )}
@@ -268,18 +268,18 @@ export function CalendarClient({
           <button
             type="button"
             onClick={handleNext}
-            className="rounded-lg p-2 text-gray-600 hover:bg-gray-100"
+            className="rounded-lg p-2 text-text-muted hover:bg-bg-muted"
             aria-label={view === "week" ? "Next week" : view === "day" ? "Next day" : "Next month"}
           >
             <ChevronRight className="h-5 w-5" />
           </button>
         </div>
-        <div className="flex rounded-lg border border-gray-200 p-0.5">
+        <div className="flex rounded-lg border border-border p-0.5">
           <button
             type="button"
             onClick={switchToMonth}
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-              view === "month" ? "bg-emerald-50 text-emerald-700" : "text-gray-600 hover:bg-gray-50"
+              view === "month" ? "bg-accent/15 text-accent" : "text-text-muted hover:bg-bg-muted"
             }`}
           >
             <Calendar className="h-4 w-4" />
@@ -289,7 +289,7 @@ export function CalendarClient({
             type="button"
             onClick={handleSwitchToWeek}
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-              view === "week" ? "bg-emerald-50 text-emerald-700" : "text-gray-600 hover:bg-gray-50"
+              view === "week" ? "bg-accent/15 text-accent" : "text-text-muted hover:bg-bg-muted"
             }`}
           >
             <LayoutGrid className="h-4 w-4" />
@@ -299,7 +299,7 @@ export function CalendarClient({
             type="button"
             onClick={handleSwitchToDay}
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-              view === "day" ? "bg-emerald-50 text-emerald-700" : "text-gray-600 hover:bg-gray-50"
+              view === "day" ? "bg-accent/15 text-accent" : "text-text-muted hover:bg-bg-muted"
             }`}
           >
             <CalendarDays className="h-4 w-4" />
@@ -309,12 +309,12 @@ export function CalendarClient({
       </div>
 
       {view === "month" && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-          <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+        <div className="overflow-hidden rounded-xl border border-border bg-bg">
+          <div className="grid grid-cols-7 border-b border-border bg-bg-subtle">
             {weekDays.map((day) => (
               <div
                 key={day.toISOString()}
-                className="p-2 text-center text-xs font-semibold uppercase text-gray-500"
+                className="p-2 text-center text-xs font-semibold uppercase text-text-muted"
               >
                 {format(day, "EEE")}
               </div>
@@ -339,12 +339,12 @@ export function CalendarClient({
       )}
 
       {view === "week" && (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
-          <div className="grid grid-cols-7 shrink-0 border-b border-gray-200 bg-gray-50">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-bg">
+          <div className="grid grid-cols-7 shrink-0 border-b border-border bg-bg-subtle">
             {weekDates.map((day) => (
               <div
                 key={day.toISOString()}
-                className="border-r border-gray-200 p-2 text-center text-xs font-semibold uppercase text-gray-500 last:border-r-0"
+                className="border-r border-border p-2 text-center text-xs font-semibold uppercase text-text-muted last:border-r-0"
               >
                 {format(day, "EEE d")}
               </div>
@@ -352,7 +352,7 @@ export function CalendarClient({
           </div>
           <div className="grid min-h-0 flex-1 grid-cols-7" style={{ gridTemplateRows: "1fr" }}>
             {weekDates.map((day) => (
-              <div key={day.toISOString()} className="flex min-h-0 flex-1 flex-col border-r border-gray-200 last:border-r-0">
+              <div key={day.toISOString()} className="flex min-h-0 flex-1 flex-col border-r border-border last:border-r-0">
                 <DayCell
                   date={day}
                   posts={postsByDate[format(day, "yyyy-MM-dd")] ?? []}
@@ -371,7 +371,7 @@ export function CalendarClient({
       )}
 
       {view === "day" && (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-bg">
           <div className="min-h-0 flex-1 overflow-auto p-4">
             {(() => {
               const dateKey = format(selectedDate, "yyyy-MM-dd");
@@ -382,7 +382,7 @@ export function CalendarClient({
               );
               if (dayPosts.length === 0) {
                 return (
-                  <p className="py-8 text-center text-gray-500">
+                  <p className="py-8 text-center text-text-muted">
                     No posts scheduled or published on this day.
                   </p>
                 );
@@ -393,16 +393,16 @@ export function CalendarClient({
                     <li key={post.id}>
                       <Link
                         href="/dashboard/posts"
-                        className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:bg-gray-50"
+                        className="flex items-center gap-4 rounded-xl border border-border bg-bg p-4 shadow-sm hover:bg-bg-muted"
                       >
-                        <span className="shrink-0 text-sm font-medium text-gray-500 tabular-nums">
+                        <span className="shrink-0 text-sm font-medium text-text-muted tabular-nums">
                           {format(parseISO(post.displayDate), "h:mm a")}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium text-gray-900 line-clamp-2">
+                          <p className="font-medium text-text line-clamp-2">
                             {post.snippet || "(No caption)"}
                           </p>
-                          <span className="mt-1 inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                          <span className="mt-1 inline-block rounded bg-bg-muted px-2 py-0.5 text-xs text-text-muted">
                             {post.status === "published" ? "Posted" : "Scheduled"}
                           </span>
                         </div>
@@ -422,8 +422,8 @@ export function CalendarClient({
         </div>
       )}
 
-      <p className="shrink-0 text-sm text-gray-500">
-        <Link href="/dashboard/posts" className="font-medium text-emerald-600 hover:text-emerald-700">
+      <p className="shrink-0 text-sm text-text-muted">
+        <Link href="/dashboard/posts" className="font-medium text-accent hover:text-accent/90">
           View all posts →
         </Link>
       </p>

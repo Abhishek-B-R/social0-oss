@@ -98,17 +98,17 @@ export function VideoCard({
   };
 
   return (
-    <div className="relative flex gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="relative flex gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
       <button
         type="button"
         onClick={() => onDelete(item.id)}
-        className="absolute top-3 right-3 rounded-lg p-1.5 text-red-500 hover:bg-red-50 transition-colors"
+        className="absolute top-3 right-3 rounded-lg p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
         aria-label="Delete"
       >
         <Trash2 className="h-4 w-4" />
       </button>
 
-      <div className="h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-gray-100 relative">
+      <div className="h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-muted relative">
         <video
           ref={videoRef}
           src={item.previewUrl}
@@ -128,26 +128,26 @@ export function VideoCard({
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
         {!thumbReady && (
-          <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-100">
+          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground bg-muted">
             <Video className="h-8 w-8" />
           </div>
         )}
       </div>
 
       <div className="min-w-0 flex-1 space-y-2">
-        <p className="truncate text-sm font-medium text-gray-900">
+        <p className="truncate text-sm font-medium text-foreground">
           {item.file.name}
         </p>
-        <p className="text-xs text-gray-500">{formatFileSize(item.file.size)}</p>
+        <p className="text-xs text-muted-foreground">{formatFileSize(item.file.size)}</p>
         <textarea
           value={item.caption}
           onChange={(e) => onCaptionChange(item.id, e.target.value.slice(0, MAX_CAPTION))}
           placeholder="Video caption..."
           rows={5}
-          className="w-full resize-y min-h-[120px] rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          className="w-full resize-y min-h-[120px] rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
         />
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-gray-500">
+          <span className="text-muted-foreground">
             {item.caption.length} / {MAX_CAPTION}
           </span>
           <div className="flex items-center gap-2">
@@ -155,13 +155,13 @@ export function VideoCard({
               type="date"
               value={dateStr}
               onChange={handleDateChange}
-              className="rounded border border-gray-200 px-2 py-1.5 text-gray-900"
+              className="rounded border border-input bg-background px-2 py-1.5 text-foreground"
             />
             <input
               type="time"
               value={timeStr}
               onChange={handleTimeChange}
-              className="rounded border border-gray-200 px-2 py-1.5 text-gray-900"
+              className="rounded border border-input bg-background px-2 py-1.5 text-foreground"
             />
           </div>
         </div>

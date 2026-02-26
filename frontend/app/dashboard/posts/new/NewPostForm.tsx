@@ -93,10 +93,10 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
         <label
           htmlFor="content"
-          className="block text-sm font-semibold text-gray-900 mb-2"
+          className="block text-sm font-semibold text-text mb-2"
         >
           What do you want to post?
         </label>
@@ -106,7 +106,7 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
           onChange={(e) => setContent(e.target.value)}
           placeholder="Write your post... Use --- on its own line to split into a Twitter thread (each part max 280 characters)."
           rows={6}
-          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
           required
         />
         {twitterThreadWarning && (
@@ -119,15 +119,15 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
         )}
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
         <div className="flex items-center justify-between mb-3">
-          <label className="block text-sm font-semibold text-gray-900">
+          <label className="block text-sm font-semibold text-text">
             Post to
           </label>
           <button
             type="button"
             onClick={selectAll}
-            className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
+            className="text-sm font-medium text-accent hover:text-accent-hover"
           >
             {selectableAccounts.length > 0 &&
             selectableAccounts.every((a) => selectedIds.has(a.id))
@@ -146,10 +146,10 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
               return (
                 <label
                   key={acc.id}
-                  className={`flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 hover:border-gray-300 has-checked:border-emerald-500 has-checked:bg-emerald-50/50 ${
+                  className={`flex items-center gap-3 p-4 rounded-xl border border-border bg-bg-muted/30 hover:bg-bg-muted/50 has-checked:border-accent has-checked:bg-accent/10 ${
                     expired
                       ? "cursor-not-allowed opacity-60"
-                      : "cursor-pointer hover:bg-gray-50"
+                      : "cursor-pointer"
                   }`}
                   title={expired ? "Token expired — reconnect in Connections page" : undefined}
                 >
@@ -158,7 +158,7 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
                     checked={selectedIds.has(acc.id)}
                     onChange={() => !expired && toggleAccount(acc.id)}
                     disabled={expired}
-                    className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4 disabled:opacity-50"
+                    className="size-4 rounded border-input bg-bg text-accent focus:ring-accent disabled:opacity-50"
                   />
                   <AccountAvatar
                     profileImageUrl={acc.profileImageUrl}
@@ -166,18 +166,18 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
                     platform={acc.platform}
                     size="sm"
                   />
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-text">
                     {platformName(acc.platform)}
                     {expired && (
                       <span
-                        className="ml-1.5 inline-flex items-center rounded bg-red-100 text-red-700 px-1.5 py-0.5 text-xs font-medium"
+                        className="ml-1.5 inline-flex items-center rounded bg-destructive/10 text-destructive px-1.5 py-0.5 text-xs font-medium"
                         title="Token expired — reconnect in Connections page"
                       >
                         Token expired
                       </span>
                     )}
                     {acc.platformUsername && (
-                      <span className="text-gray-500 font-normal">
+                      <span className="text-text-muted font-normal">
                         {" "}
                         @{acc.platformUsername}
                       </span>
@@ -190,39 +190,39 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
         )}
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <p className="block text-sm font-semibold text-gray-900 mb-4">
+      <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
+        <p className="block text-sm font-semibold text-text mb-4">
           When do you want to publish?
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 has-checked:border-emerald-500 has-checked:bg-emerald-50/50 transition-colors">
+          <label className="flex items-start gap-3 p-4 rounded-xl border border-border bg-bg-muted/30 cursor-pointer hover:bg-bg-muted/50 has-checked:border-accent has-checked:bg-accent/10 transition-colors">
             <input
               type="radio"
               name="publishMode"
               checked={mode === "now"}
               onChange={() => setMode("now")}
-              className="mt-0.5 size-4 border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              className="mt-0.5 size-4 border-input bg-bg text-accent focus:ring-accent"
             />
             <div>
-              <span className="block font-medium text-gray-900">Post now</span>
-              <span className="block text-sm text-gray-500 mt-0.5">
+              <span className="block font-medium text-text">Post now</span>
+              <span className="block text-sm text-text-muted mt-0.5">
                 Publish right away
               </span>
             </div>
           </label>
-          <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer hover:bg-gray-50 has-checked:border-emerald-500 has-checked:bg-emerald-50/50 transition-colors">
+          <label className="flex items-start gap-3 p-4 rounded-xl border border-border bg-bg-muted/30 cursor-pointer hover:bg-bg-muted/50 has-checked:border-accent has-checked:bg-accent/10 transition-colors">
             <input
               type="radio"
               name="publishMode"
               checked={mode === "scheduled"}
               onChange={() => setMode("scheduled")}
-              className="mt-0.5 size-4 border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              className="mt-0.5 size-4 border-input bg-bg text-accent focus:ring-accent"
             />
             <div>
-              <span className="block font-medium text-gray-900">
+              <span className="block font-medium text-text">
                 Schedule for later
               </span>
-              <span className="block text-sm text-gray-500 mt-0.5">
+              <span className="block text-sm text-text-muted mt-0.5">
                 Pick date & time
               </span>
             </div>
@@ -237,9 +237,9 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
             />
           </div>
         )}
-        <p className="mt-4 text-sm text-gray-500">
+        <p className="mt-4 text-sm text-text-muted">
           {mode === "draft" ? (
-            <span className="text-emerald-700 font-medium">
+            <span className="text-accent font-medium">
               Saving as draft — you can publish later from Posts.
             </span>
           ) : (
@@ -248,7 +248,7 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
               <button
                 type="button"
                 onClick={() => setMode("draft")}
-                className="font-medium text-emerald-600 hover:text-emerald-700"
+                className="font-medium text-accent hover:text-accent-hover"
               >
                 save as draft
               </button>{" "}
@@ -259,7 +259,7 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
       </div>
 
       {error && (
-        <div className="rounded-xl bg-red-50 text-red-700 px-4 py-3 text-sm font-medium border border-red-100">
+        <div className="rounded-xl bg-destructive/10 text-destructive px-4 py-3 text-sm font-medium border border-destructive/30">
           {error}
         </div>
       )}
@@ -274,7 +274,7 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
             (mode === "scheduled" && !scheduledAt) ||
             !!twitterValidationError
           }
-          className="rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 shadow-lg transition-colors"
+          className="rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 shadow-lg transition-colors"
         >
           {loading
             ? "Saving..."
@@ -287,7 +287,7 @@ export function NewPostForm({ accounts }: { accounts: Account[] }) {
         <button
           type="button"
           onClick={() => router.push("/dashboard/posts")}
-          className="rounded-xl border border-gray-200 bg-white px-6 py-3 font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+          className="rounded-xl border border-border bg-bg-elevated px-6 py-3 font-medium text-text shadow-sm hover:bg-bg-muted transition-colors"
         >
           Cancel
         </button>

@@ -394,13 +394,13 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                   placeholder="Search accounts..."
                   value={accountSearch}
                   onChange={(e) => setAccountSearch(e.target.value)}
-                  className="h-8 w-full text-xs rounded border border-gray-200 px-2 py-1 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
+                  className="h-8 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
                 />
               }
             />
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-            <label className="block text-sm font-semibold text-gray-900">
+          <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm space-y-4">
+            <label className="block text-sm font-semibold text-text">
               Images & caption
             </label>
             <input
@@ -415,17 +415,17 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/50 py-10 text-gray-500 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-700 transition-colors"
+                className="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-bg-muted/30 py-10 text-text-muted transition-colors hover:border-accent hover:bg-accent/10 hover:text-accent"
               >
                 <MdOutlineAddPhotoAlternate className="mb-2 h-10 w-10" />
                 <span className="text-sm font-medium">Click to add image(s)</span>
-                <span className="text-xs text-gray-400 mt-1">
+                <span className="text-xs text-text-muted mt-1">
                   Select multiple to add all at once
                 </span>
               </button>
             ) : (
               <div className="space-y-3">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-text-muted">
                   Carousel post: Drag to reorder (mainly for Instagram)
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -438,7 +438,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                       onDragEnd={handleDragEnd}
                       onMouseEnter={() => setPreviewIndex(index)}
                       onClick={() => setPreviewIndex(index)}
-                      className="relative h-20 w-20 shrink-0 cursor-move overflow-hidden rounded-lg border border-gray-200 hover:border-emerald-400 transition-colors"
+                      className="relative h-20 w-20 shrink-0 cursor-move overflow-hidden rounded-lg border border-border hover:border-accent transition-colors"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */}
                       <img
@@ -465,7 +465,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/50 text-gray-500 hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-600"
+                    className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-bg-muted/30 text-text-muted transition-colors hover:border-accent hover:bg-accent/10 hover:text-accent"
                   >
                     <MdOutlineAddPhotoAlternate className="h-6 w-6" />
                     <span className="text-xs mt-0.5">Add more</span>
@@ -478,7 +478,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
               onChange={(e) => setContent(e.target.value)}
               placeholder="Add a caption..."
               rows={3}
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
           </div>
 
@@ -522,9 +522,9 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
           intendedModeRef={intendedModeRef}
           formRef={formRef}
         >
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <div className="flex rounded-full border border-gray-200 bg-gray-100 p-0.5">
+              <div className="flex rounded-full border border-border bg-bg-muted p-0.5">
                 <button
                   type="button"
                   onClick={() => {
@@ -533,8 +533,8 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                   }}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                     previewCardMode === "post"
-                      ? "bg-emerald-600 text-white"
-                      : "bg-transparent text-gray-700 hover:bg-gray-200"
+                      ? "bg-accent text-white"
+                      : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
                   }`}
                 >
                   Post Preview
@@ -547,8 +547,8 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                   }}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                     previewCardMode === "media"
-                      ? "bg-emerald-600 text-white"
-                      : "bg-transparent text-gray-700 hover:bg-gray-200"
+                      ? "bg-accent text-white"
+                      : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
                   }`}
                 >
                   Media Preview
@@ -557,9 +557,9 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
             </div>
             {previewCardMode === "post" ? (
               <>
-                <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                <div className="rounded-lg border border-border bg-bg p-3 shadow-sm">
                   <div className="flex gap-3">
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-bg-muted flex items-center justify-center text-sm font-semibold text-text-muted">
                       {selectedAccounts[0]?.profileImageUrl?.trim() ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img
@@ -573,15 +573,19 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-900">
+                      <p className="text-sm font-semibold text-text">
                         {selectedAccounts[0]?.platformUsername
                           ? `@${selectedAccounts[0].platformUsername}`
                           : "@username"}{" "}
-                        <span className="font-normal text-gray-500">· now</span>
+                        <span className="font-normal text-text-muted">
+                          · now
+                        </span>
                       </p>
-                      <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap wrap-break-word">
+                      <p className="mt-1 text-sm text-text/80 whitespace-pre-wrap wrap-break-word">
                         {content.trim() || (
-                          <span className="italic text-gray-400">Caption...</span>
+                          <span className="italic text-text-muted">
+                            Caption...
+                          </span>
                         )}
                       </p>
                       {sortedImages.length > 0 && (
@@ -590,7 +594,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                           style={{ maxHeight: PREVIEW_MEDIA_MAX_H }}
                         >
                           {sortedImages.length === 1 && (
-                            <div className="aspect-video w-full min-h-0 max-h-[200px] overflow-hidden rounded-lg bg-gray-100">
+                            <div className="aspect-video w-full min-h-0 max-h-[200px] overflow-hidden rounded-lg bg-bg-muted">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={sortedImages[0].preview}
@@ -666,7 +670,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                           )}
                         </div>
                       )}
-                      <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
+                      <div className="mt-2 flex items-center gap-4 text-sm text-text-muted">
                         <span>♡ 0</span>
                         <span>↺ 0</span>
                         <span>💬 0</span>
@@ -675,7 +679,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                   </div>
                 </div>
                 {selectedAccounts.length > 1 && (
-                  <p className="mt-2 text-xs text-gray-500">
+                  <p className="mt-2 text-xs text-text-muted">
                     Posting to {selectedAccounts.length} platforms
                   </p>
                 )}
@@ -683,13 +687,13 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
             ) : (
               <>
                 {!previewImage ? (
-                  <div className="flex aspect-square w-full flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-gray-400">
+                  <div className="flex aspect-square w-full flex-col items-center justify-center rounded-lg border border-dashed border-border bg-bg-muted/30 text-text-muted">
                     <MdOutlineAddPhotoAlternate className="mb-2 h-12 w-12" />
                     <span className="text-xs">Upload media to see preview</span>
                   </div>
                 ) : (
                   <>
-                    <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-gray-100">
+                    <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-bg-muted">
                       {/* eslint-disable-next-line @next/next/no-img-element -- blob URL */}
                       <img
                         src={previewImage.preview}
@@ -697,7 +701,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                         className="h-full w-full object-contain"
                       />
                     </div>
-                    <p className="mt-2 truncate text-center text-xs text-gray-500">
+                    <p className="mt-2 truncate text-center text-xs text-text-muted">
                       {previewImage.file.name}
                     </p>
                     {sortedImages.length > 1 && (
@@ -709,12 +713,12 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                               i <= 0 ? sortedImages.length - 1 : i - 1,
                             )
                           }
-                          className="rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                          className="rounded-full p-1 text-text-muted hover:bg-bg hover:text-text"
                           aria-label="Previous"
                         >
                           ←
                         </button>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-text-muted">
                           {previewIndex + 1} / {sortedImages.length}
                         </span>
                         <button
@@ -724,7 +728,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                               i >= sortedImages.length - 1 ? 0 : i + 1,
                             )
                           }
-                          className="rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                          className="rounded-full p-1 text-text-muted hover:bg-bg hover:text-text"
                           aria-label="Next"
                         >
                           →

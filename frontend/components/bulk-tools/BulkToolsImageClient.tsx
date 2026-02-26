@@ -174,30 +174,30 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
       <div className="flex items-center gap-2">
         <Link
           href="/dashboard/bulk-tools"
-          className="text-sm font-medium text-gray-600 hover:text-gray-900"
+          className="text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           ← Bulk tools
         </Link>
-        <span className="text-gray-400">/</span>
-        <span className="text-sm font-medium text-gray-900">
+        <span className="text-muted-foreground">/</span>
+        <span className="text-sm font-medium text-foreground">
           Bulk Image Upload
         </span>
       </div>
-      <h1 className="text-2xl font-extrabold text-gray-900 flex items-center gap-2">
+      <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
         Bulk Image Scheduling
-        <span className="rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700">
+        <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
           Beta
         </span>
       </h1>
 
       {success ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
-          <p className="font-semibold text-emerald-800">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/40 p-6 text-center">
+          <p className="font-semibold text-emerald-800 dark:text-emerald-200">
             All images scheduled successfully.
           </p>
           <Link
             href="/dashboard/calendar"
-            className="mt-3 inline-block text-sm font-medium text-emerald-600 hover:text-emerald-700"
+            className="mt-3 inline-block text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
           >
             View Calendar →
           </Link>
@@ -205,8 +205,8 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-              <label className="mb-3 block text-sm font-semibold text-gray-900">
+            <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <label className="mb-3 block text-sm font-semibold text-foreground">
                 Post to
               </label>
               <AccountBubbleSelector
@@ -228,7 +228,7 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
             />
 
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">
+              <h2 className="text-lg font-semibold text-foreground mb-3">
                 Your Images ({items.length})
               </h2>
               <div className="space-y-3">
@@ -272,19 +272,19 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
       )}
 
       {error && (
-        <div className="rounded-xl bg-red-50 text-red-700 px-4 py-3 text-sm font-medium border border-red-100">
+        <div className="rounded-xl bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900/60 px-4 py-3 text-sm font-medium border border-red-100">
           {error}
         </div>
       )}
 
       {scheduling && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="rounded-2xl bg-white p-8 shadow-xl flex flex-col items-center gap-4">
-            <p className="font-medium text-gray-900">{progress}</p>
+          <div className="rounded-2xl bg-card border border-border p-8 shadow-xl flex flex-col items-center gap-4">
+            <p className="font-medium text-foreground">{progress}</p>
             <button
               type="button"
               onClick={() => { cancelledRef.current = true; }}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-border bg-muted px-4 py-2 text-sm font-medium text-foreground hover:bg-background transition-colors"
             >
               Cancel
             </button>

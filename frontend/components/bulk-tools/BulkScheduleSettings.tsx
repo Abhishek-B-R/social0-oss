@@ -66,14 +66,14 @@ export function BulkScheduleSettings({
   const captionCount = bulkCaption.length;
 
   return (
-    <div className="space-y-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="flex items-center gap-2">
-        <h3 className="text-lg font-semibold text-gray-900">
+        <h3 className="text-lg font-semibold text-foreground">
           Bulk Schedule Settings
         </h3>
         <button
           type="button"
-          className="text-gray-400 hover:text-gray-600"
+          className="text-muted-foreground hover:text-foreground"
           aria-label="Help"
         >
           <HelpCircle className="h-4 w-4" />
@@ -83,10 +83,10 @@ export function BulkScheduleSettings({
       {/* Section 1: Bulk Caption */}
       <div>
         <div className="flex justify-between">
-          <h4 className="text-sm font-semibold text-gray-900 mb-2">
+          <h4 className="text-sm font-semibold text-foreground mb-2">
             Bulk Caption
           </h4>
-          <span className="text-xs text-gray-500 ml-2">
+          <span className="text-xs text-muted-foreground ml-2">
             {captionCount} / {CAPTION_MAX}
           </span>
         </div>
@@ -97,7 +97,7 @@ export function BulkScheduleSettings({
           }
           placeholder={`Enter a caption to apply to all ${variant === "video" ? "videos" : "images"}.`}
           rows={4}
-          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
         />
 
         <button
@@ -111,40 +111,40 @@ export function BulkScheduleSettings({
 
       {/* Section 2: Schedule Settings */}
       <div>
-        <h4 className="text-sm font-semibold text-gray-900 mb-3">
+        <h4 className="text-sm font-semibold text-foreground mb-3">
           Schedule Settings
         </h4>
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
               Start Date
             </label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => onStartDateChange(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
               Start Time
             </label>
             <input
               type="time"
               value={startTime}
               onChange={(e) => onStartTimeChange(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
               {variant === "video" ? "Videos" : "Images"} per day (1–24)
             </label>
             <select
               value={videosPerDay}
               onChange={(e) => onVideosPerDayChange(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
             >
               {VIDEOS_PER_DAY_OPTIONS.map((n) => (
                 <option key={n} value={n}>
@@ -155,13 +155,13 @@ export function BulkScheduleSettings({
           </div>
           {videosPerDay > 1 && (
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
                 Time between posts (hours)
               </label>
               <select
                 value={gapHours}
                 onChange={(e) => onGapHoursChange(Number(e.target.value))}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
               >
                 {GAP_HOURS_OPTIONS.map((h) => (
                   <option key={h} value={h}>
@@ -170,7 +170,7 @@ export function BulkScheduleSettings({
                 ))}
               </select>
               {gapHours < 24 && (
-                <p className="mt-1 text-xs text-gray-500">Within same day</p>
+                <p className="mt-1 text-xs text-muted-foreground">Within same day</p>
               )}
             </div>
           )}
@@ -182,7 +182,7 @@ export function BulkScheduleSettings({
             Apply Bulk Schedule
           </button>
           {schedulePreview && (
-            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 whitespace-pre-wrap">
+            <div className="rounded-lg border border-border bg-muted px-3 py-2 text-xs text-foreground whitespace-pre-wrap">
               {schedulePreview}
             </div>
           )}
@@ -191,22 +191,22 @@ export function BulkScheduleSettings({
 
       {/* Section 3: Confirm & Schedule All */}
       <div>
-        <h4 className="text-sm font-semibold text-gray-900 mb-1">
+        <h4 className="text-sm font-semibold text-foreground mb-1">
           Confirm & Schedule All
         </h4>
-        <p className="text-xs text-gray-500 mb-3">
+        <p className="text-xs text-muted-foreground mb-3">
           Review individual {variant === "video" ? "videos" : "images"}, then
           click below to schedule all.
         </p>
         {variant === "video" && onCoverFrameChange && (
           <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-600 mb-1">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
               Video Cover Frame
             </label>
             <select
               value={coverFrame}
               onChange={(e) => onCoverFrameChange(e.target.value as CoverFrame)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
             >
               {COVER_FRAME_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -229,7 +229,7 @@ export function BulkScheduleSettings({
             : `Schedule All ${totalItems} ${variant === "video" ? "Videos" : "Images"}`}
         </button>
         {selectedAccountCount === 0 && totalItems > 0 && (
-          <p className="mt-2 text-xs text-gray-500">
+          <p className="mt-2 text-xs text-muted-foreground">
             Please select at least one account.
           </p>
         )}

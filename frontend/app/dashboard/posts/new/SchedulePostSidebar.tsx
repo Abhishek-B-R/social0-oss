@@ -154,9 +154,9 @@ export function SchedulePostSidebar({
     >
       {children}
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
         <div className="flex items-center justify-between gap-2 mb-4">
-          <span className="text-sm font-semibold text-gray-900">
+          <span className="text-sm font-semibold text-text">
             Schedule post
           </span>
           <button
@@ -164,14 +164,14 @@ export function SchedulePostSidebar({
             role="switch"
             aria-checked={isScheduled}
             onClick={toggleScheduled}
-            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
+            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-accent/20 ${
               isScheduled
-                ? "border-emerald-500 bg-emerald-600"
-                : "border-gray-200 bg-gray-200"
+                ? "border-accent bg-accent"
+                : "border-border bg-bg-muted"
             }`}
           >
             <span
-              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform ${
+              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-bg shadow ring-0 transition-transform ${
                 isScheduled ? "translate-x-5" : "translate-x-0.5"
               }`}
               style={{ marginTop: 2 }}
@@ -185,7 +185,7 @@ export function SchedulePostSidebar({
               type="button"
               onClick={handlePostNow}
               disabled={loading || !hasAccountSelected || submitDisabled}
-              className="w-full rounded-xl bg-emerald-600 py-3 font-semibold text-white shadow transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-emerald-600"
+              className="w-full rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-accent"
             >
               {loading ? "Saving..." : "Post now"}
             </button>
@@ -193,12 +193,14 @@ export function SchedulePostSidebar({
               type="button"
               onClick={handleSaveDraft}
               disabled={loading || submitDisabled}
-              className="w-full rounded-xl border border-gray-200 bg-white py-3 font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-xl border border-border bg-bg-elevated py-3 font-medium text-text transition-colors hover:bg-bg-muted disabled:cursor-not-allowed disabled:opacity-50"
             >
               Save to Drafts
             </button>
             {!hasAccountSelected && (
-              <p className="text-xs text-gray-500">Select an account to post</p>
+              <p className="text-xs text-text-muted">
+                Select an account to post
+              </p>
             )}
           </div>
         ) : (
@@ -207,7 +209,7 @@ export function SchedulePostSidebar({
               <div className="min-w-0 flex-1">
                 <label
                   htmlFor="schedule-date"
-                  className="block text-xs font-medium text-gray-600 mb-1"
+                  className="block text-xs font-medium text-text-muted mb-1"
                 >
                   Date
                 </label>
@@ -216,13 +218,13 @@ export function SchedulePostSidebar({
                   type="date"
                   value={dateValue}
                   onChange={(e) => setDateValue(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-medium text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full rounded-xl border border-input bg-bg px-3 py-3 text-sm font-medium text-text shadow-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
                 />
               </div>
               <div className="min-w-0 flex-1">
                 <label
                   htmlFor="schedule-time"
-                  className="block text-xs font-medium text-gray-600 mb-1"
+                  className="block text-xs font-medium text-text-muted mb-1"
                 >
                   Time
                 </label>
@@ -231,12 +233,12 @@ export function SchedulePostSidebar({
                   type="time"
                   value={timeValue}
                   onChange={(e) => setTimeValue(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-medium text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full rounded-xl border border-input bg-bg px-3 py-3 text-sm font-medium text-text shadow-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
                 />
               </div>
             </div>
 
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-text-muted">
               {scheduledReadable ?? "Pick a date and time to schedule"}
             </p>
 
@@ -249,7 +251,7 @@ export function SchedulePostSidebar({
                 !combinedDateTime ||
                 submitDisabled
               }
-              className="w-full rounded-xl bg-emerald-600 py-3 font-semibold text-white shadow transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-emerald-600"
+              className="w-full rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-accent"
             >
               {loading ? "Saving..." : "Schedule"}
             </button>
@@ -258,7 +260,7 @@ export function SchedulePostSidebar({
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+        <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
           {error}
         </div>
       )}
@@ -266,7 +268,7 @@ export function SchedulePostSidebar({
       <button
         type="button"
         onClick={onCancel}
-        className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-50"
+        className="rounded-xl border border-border bg-bg-elevated px-4 py-2.5 font-medium text-text transition-colors hover:bg-bg-muted"
       >
         Cancel
       </button>

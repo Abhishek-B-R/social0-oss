@@ -8,11 +8,11 @@ const ITEMS = [
 
 export function SecurityChecklistMockup() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-xl p-5 max-w-md mx-auto">
+    <div className="rounded-xl border border-border bg-bg shadow-xl p-5 max-w-md mx-auto">
       <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center">
           <svg
-            className="w-4 h-4 text-emerald-600"
+            className="w-4 h-4 text-accent"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -25,17 +25,17 @@ export function SecurityChecklistMockup() {
             />
           </svg>
         </div>
-        <span className="text-sm font-semibold text-gray-900">Security</span>
+        <span className="text-sm font-semibold text-text">Security</span>
       </div>
       <ul className="space-y-2">
         {ITEMS.map((item) => (
           <li
             key={item.label}
-            className="flex items-center gap-2 text-sm text-gray-700"
+            className="flex items-center gap-2 text-sm text-text"
           >
-            <span className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+            <span className="w-5 h-5 rounded-full bg-accent/15 flex items-center justify-center shrink-0">
               <svg
-                className="w-3 h-3 text-emerald-600"
+                className="w-3 h-3 text-accent"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >

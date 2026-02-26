@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { DashboardSkeleton } from "@/components/DashboardSkeleton";
+import { ConnectionsSkeleton } from "@/components/dashboard/ConnectionsSkeleton";
 import { OAuthErrorHandler } from "@/components/OAuthErrorHandler";
 import { ConnectionsList } from "@/components/dashboard/ConnectionsList";
 import {
@@ -92,7 +92,7 @@ async function ConnectionsContent() {
 
 export default function ConnectionsPage() {
   return (
-    <Suspense fallback={<DashboardSkeleton />}>
+    <Suspense fallback={<ConnectionsSkeleton />}>
       <ConnectionsContent />
     </Suspense>
   );

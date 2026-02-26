@@ -192,23 +192,23 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
                 placeholder="Search accounts..."
                 value={accountSearch}
                 onChange={(e) => setAccountSearch(e.target.value)}
-                className="h-8 w-full text-xs rounded border border-gray-200 px-2 py-1 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
+                className="h-8 w-full text-xs rounded border border-border px-2 py-1 text-text placeholder-text-subtle focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
               />
             }
           />
 
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        <label className="block text-sm font-semibold text-gray-900 px-6 pt-6 pb-2">
+      <div className="rounded-2xl border border-border bg-bg shadow-sm overflow-hidden">
+        <label className="block text-sm font-semibold text-text px-6 pt-6 pb-2">
           Write your article (Markdown)
         </label>
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-1 px-4 py-2 border-y border-gray-100 bg-gray-50/80">
+        <div className="flex flex-wrap items-center gap-1 px-4 py-2 border-y border-border-subtle bg-bg-subtle">
           {TOOLBAR_BUTTONS.map(({ icon: Icon, label, wrap }) => (
             <button
               key={label}
               type="button"
               onClick={() => insertMarkdown(wrap)}
-              className="p-2 rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors"
+              className="p-2 rounded-lg text-text-muted hover:bg-bg-muted hover:text-text transition-colors"
               title={label}
             >
               <Icon className="w-5 h-5" />
@@ -222,7 +222,7 @@ export function BlogPostForm({ accounts }: { accounts: Account[] }) {
           onChange={(e) => setContent(e.target.value)}
           placeholder="# Title&#10;&#10;Start writing your blog post in Markdown. Use the toolbar above for headings, **bold**, *italic*, lists, code, links, and more."
           rows={20}
-          className="w-full resize-y min-h-[400px] px-6 py-4 text-gray-900 placeholder-gray-400 border-0 focus:ring-0 focus:outline-none font-mono text-sm leading-relaxed"
+          className="w-full resize-y min-h-[400px] px-6 py-4 text-text placeholder-text-subtle border-0 focus:ring-0 focus:outline-none font-mono text-sm leading-relaxed"
           required
         />
       </div>

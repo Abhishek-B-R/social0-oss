@@ -5,30 +5,39 @@ export function LandingFooter() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-gray-50 border-t border-gray-200">
+    <footer className="border-t border-border bg-muted/30">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center gap-2">
-              <Image
-                src="/logo.png"
-                alt="Social0"
-                width={32}
-                height={32}
-                className="rounded-lg"
-              />
-              <span className="font-semibold text-gray-900">Social0</span>
+              <span className="relative h-8 w-8 block">
+                <Image
+                  src="/logo.png"
+                  alt="Social0"
+                  width={32}
+                  height={32}
+                  className="rounded-lg dark:hidden"
+                />
+                <Image
+                  src="/logo-dark.png"
+                  alt="Social0"
+                  width={32}
+                  height={32}
+                  className="rounded-lg hidden dark:block absolute inset-0"
+                />
+              </span>
+              <span className="font-semibold text-foreground">Social0</span>
             </Link>
           </div>
           <div>
-            <h4 className="font-semibold text-gray-900 text-sm mb-3">
+            <h4 className="font-semibold text-foreground text-sm mb-3">
               Product
             </h4>
             <ul className="space-y-2">
               <li>
                 <Link
                   href="#features"
-                  className="text-gray-700 hover:text-gray-900 text-sm"
+                  className="text-sm text-muted-foreground hover:text-foreground"
                 >
                   Features
                 </Link>
@@ -36,7 +45,7 @@ export function LandingFooter() {
               <li>
                 <Link
                   href="#pricing"
-                  className="text-gray-700 hover:text-gray-900 text-sm"
+                  className="text-sm text-muted-foreground hover:text-foreground"
                 >
                   Pricing
                 </Link>
@@ -44,12 +53,12 @@ export function LandingFooter() {
             </ul>
           </div>
           <div>
-            <h4 className="font-semibold text-gray-900 text-sm mb-3">Legal</h4>
+            <h4 className="font-semibold text-foreground text-sm mb-3">Legal</h4>
             <ul className="space-y-2">
               <li>
                 <Link
                   href="/terms"
-                  className="text-gray-700 hover:text-gray-900 text-sm"
+                  className="text-sm text-muted-foreground hover:text-foreground"
                 >
                   Terms & Conditions
                 </Link>
@@ -57,7 +66,7 @@ export function LandingFooter() {
               <li>
                 <Link
                   href="/privacy"
-                  className="text-gray-700 hover:text-gray-900 text-sm"
+                  className="text-sm text-muted-foreground hover:text-foreground"
                 >
                   Privacy Policy
                 </Link>
@@ -65,7 +74,7 @@ export function LandingFooter() {
             </ul>
           </div>
         </div>
-        <div className="mt-10 pt-8 border-t border-gray-200 text-center text-gray-600 text-sm">
+        <div className="mt-10 pt-8 border-t border-border text-center text-muted-foreground text-sm">
           © {currentYear} Social0. All rights reserved.
         </div>
       </div>

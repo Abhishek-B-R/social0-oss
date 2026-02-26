@@ -49,7 +49,7 @@ export function AccountBubbleSelector({
 
   if (accounts.length === 0) {
     return (
-      <p className="rounded-xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-700">
+      <p className="rounded-xl border border-amber-100 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/40 p-4 text-sm text-amber-700 dark:text-amber-200">
         Connect at least one account from the dashboard to post.
       </p>
     );
@@ -59,17 +59,19 @@ export function AccountBubbleSelector({
   const allSelected =
     selectableAccounts.length > 0 &&
     selectableAccounts.every((a) => selectedIds.has(a.id));
-  const avatarSize = compact ? "h-11 w-11" : "h-14 w-14";
-  const badgeSize = compact ? "h-3.5 w-3.5" : "h-3.5 w-3.5";
-  const badgeInner = compact ? "h-2 w-2" : "h-2.5 w-2.5";
-  const bubbleGap = compact ? "gap-2" : "gap-3";
-  const usernameMaxChars = compact ? 8 : 10;
+  const avatarSize = compact ? "h-14 w-14" : "h-14 w-14";
+  const badgeSize = compact ? "h-4 w-4" : "h-4 w-4";
+  const badgeInner = compact ? "h-2.5 w-2.5" : "h-2.5 w-2.5";
+  const bubbleGap = compact ? "gap-4" : "gap-4";
+  const usernameMaxChars = compact ? 10 : 12;
   const usernameClass = compact
-    ? "mt-1 max-w-[4.5rem] truncate text-center text-[10px] text-gray-900"
-    : "mt-1.5 max-w-[72px] truncate text-center text-xs text-gray-900";
-  const platformClass = compact ? "text-[9px] text-gray-500" : "text-[10px] text-gray-500";
+    ? "mt-1.5 max-w-[5rem] truncate text-center text-xs font-medium text-text"
+    : "mt-1.5 max-w-[80px] truncate text-center text-xs font-medium text-text";
+  const platformClass = compact
+    ? "text-xs text-text-muted"
+    : "text-xs text-text-muted";
   const initialClass =
-    "flex h-full w-full items-center justify-center rounded-full bg-gray-200 font-semibold text-gray-600 " +
+    "flex h-full w-full items-center justify-center rounded-full bg-muted font-semibold text-muted-foreground " +
     (compact ? "text-sm" : "text-lg");
 
   return (
@@ -79,7 +81,7 @@ export function AccountBubbleSelector({
           type="button"
           onClick={selectAll}
           className={cn(
-            "shrink-0 rounded-full border border-gray-200 bg-white font-medium text-gray-600 transition-colors hover:bg-gray-50",
+            "shrink-0 rounded-full border border-border bg-card font-medium text-muted-foreground transition-colors hover:bg-muted",
             compact ? "px-2 py-0.5 text-xs" : "px-3 py-1.5 text-xs",
           )}
         >
@@ -102,7 +104,11 @@ export function AccountBubbleSelector({
                     ? "border-emerald-500 opacity-100 grayscale-0"
                     : "border-transparent opacity-60 grayscale hover:opacity-80",
               )}
-              title={expired ? "Token expired — reconnect in Connections page" : undefined}
+              title={
+                expired
+                  ? "Token expired — reconnect in Connections page"
+                  : undefined
+              }
             >
               <button
                 type="button"
@@ -131,15 +137,38 @@ export function AccountBubbleSelector({
                       .toUpperCase()}
                   </span>
                 )}
-                <span className={cn("absolute bottom-0 right-0 flex items-center justify-center rounded-full border-2 border-white bg-white", badgeSize)}>
-                  <span className={cn("flex items-center justify-center [&_svg]:max-h-full [&_svg]:max-w-full [&_svg]:h-auto [&_svg]:w-auto [&_svg]:shrink-0", badgeInner)}>
-                    <PlatformIcon platform={acc.platform} size={compact ? 8 : 10} />
+                <span
+                  className={cn(
+                    "absolute bottom-0 right-0 flex items-center justify-center rounded-full border-2 border-card bg-card",
+                    badgeSize,
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex items-center justify-center [&_svg]:max-h-full [&_svg]:max-w-full [&_svg]:h-auto [&_svg]:w-auto [&_svg]:shrink-0",
+                      badgeInner,
+                    )}
+                  >
+                    <PlatformIcon
+                      platform={acc.platform}
+                      size={compact ? 10 : 12}
+                    />
                   </span>
                 </span>
                 {selected && !expired && (
                   <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-white">
-                    <svg className="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="h-2.5 w-2.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2.5}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   </span>
                 )}
@@ -154,14 +183,15 @@ export function AccountBubbleSelector({
               </button>
             </div>
             <span className={usernameClass}>
-              {truncate(acc.platformUsername || platformName(acc.platform), usernameMaxChars)}
+              {truncate(
+                acc.platformUsername || platformName(acc.platform),
+                usernameMaxChars,
+              )}
             </span>
-            <span className={platformClass}>
-              {platformName(acc.platform)}
-            </span>
+            <span className={platformClass}>{platformName(acc.platform)}</span>
             {expired && (
               <span
-                className="mt-0.5 inline-block rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-medium text-red-700"
+                className="mt-0.5 inline-block rounded bg-red-100 dark:bg-red-950/40 px-1.5 py-0.5 text-[9px] font-medium text-red-700 dark:text-red-200"
                 title="Token expired — reconnect in Connections page"
               >
                 Token expired
