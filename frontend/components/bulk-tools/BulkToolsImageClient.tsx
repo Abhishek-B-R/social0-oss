@@ -7,7 +7,10 @@ import { PLATFORMS } from "@/lib/platforms";
 import { BulkUploadZone } from "./BulkUploadZone";
 import { ImageCard, type ImageItem } from "./ImageCard";
 import { BulkScheduleSettings } from "./BulkScheduleSettings";
-import { computeBulkSchedule, formatSchedulePreview } from "@/lib/bulk-schedule";
+import {
+  computeBulkSchedule,
+  formatSchedulePreview,
+} from "@/lib/bulk-schedule";
 import { createPost } from "@/app/actions/posts";
 
 const MAX_IMAGES = 100;
@@ -25,11 +28,21 @@ type Account = {
 
 function getTodayStr(): string {
   const d = new Date();
-  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  return (
+    d.getFullYear() +
+    "-" +
+    String(d.getMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(d.getDate()).padStart(2, "0")
+  );
 }
 function getNowTimeStr(): string {
   const d = new Date();
-  return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  return (
+    String(d.getHours()).padStart(2, "0") +
+    ":" +
+    String(d.getMinutes()).padStart(2, "0")
+  );
 }
 
 export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
@@ -120,12 +133,7 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
 
   const schedulePreview =
     items.length > 0
-      ? formatSchedulePreview(
-          items.length,
-          startTime,
-          videosPerDay,
-          gapHours,
-        )
+      ? formatSchedulePreview(items.length, startTime, videosPerDay, gapHours)
       : null;
 
   const handleScheduleAll = async () => {
@@ -171,18 +179,6 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Link
-          href="/dashboard/bulk-tools"
-          className="text-sm font-medium text-muted-foreground hover:text-foreground"
-        >
-          ← Bulk tools
-        </Link>
-        <span className="text-muted-foreground">/</span>
-        <span className="text-sm font-medium text-foreground">
-          Bulk Image Upload
-        </span>
-      </div>
       <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
         Bulk Image Scheduling
         <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
@@ -283,7 +279,9 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
             <p className="font-medium text-foreground">{progress}</p>
             <button
               type="button"
-              onClick={() => { cancelledRef.current = true; }}
+              onClick={() => {
+                cancelledRef.current = true;
+              }}
               className="rounded-lg border border-border bg-muted px-4 py-2 text-sm font-medium text-foreground hover:bg-background transition-colors"
             >
               Cancel

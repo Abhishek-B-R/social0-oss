@@ -20,6 +20,7 @@ export const auth = betterAuth({
     google: {
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
+      // Better Auth maps Google profile (name, email, image) to the user record by default on sign-in.
     },
   },
 });

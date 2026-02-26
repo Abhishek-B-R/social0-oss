@@ -69,14 +69,15 @@ export function PostFormOptions({
     <>
       <section className="border-b border-border pt-5 pb-5 -mt-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label className="shrink-0 text-base font-semibold text-text">
-            Post to
-          </label>
           {searchSlot && (
-            <div className="min-w-0 w-full sm:ml-auto sm:max-w-[340px] [&_input]:h-9">
+            <div className="min-w-0 w-full sm:max-w-[340px] [&_input]:h-9">
               {searchSlot}
             </div>
           )}
+          <div className="sm:ml-auto flex items-center gap-2">
+            <input type="checkbox" />
+            <span className="text-sm text-text">Remember</span>
+          </div>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
