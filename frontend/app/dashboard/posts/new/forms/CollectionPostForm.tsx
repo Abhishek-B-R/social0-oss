@@ -426,9 +426,6 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
   const resurfaceVisible = hasXForResurface;
   const autoPlugVisible = hasXForResurface;
   const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
-  const tiktokAccounts = selectedAccounts.filter(
-    (a) => a.platform === "tiktok",
-  );
 
   const hasContent =
     content.trim().length > 0 || images.length > 0 || videos.length > 0;
@@ -449,8 +446,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
     );
   }, [accounts, accountSearch]);
 
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  const allItemsSorted = useMemo(() => getAllItems(), [images, videos]);
+  const allItemsSorted = useMemo(() => getAllItems(), [getAllItems]);
   const previewItem = allItemsSorted[carouselPreviewIndex] ?? null;
 
   return (
@@ -519,7 +515,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
             }
           />
 
-          <div className="rounded-2xl border border-border bg-bg p-6 shadow-sm space-y-4">
+          <div className="rounded-2xl border border-border bg-bg p-6 shadow-sm space-y-4 -mt-4">
             <label className="block text-sm font-semibold text-text">
               Collection of images and videos (one post)
             </label>
@@ -718,7 +714,7 @@ export function CollectionPostForm({ accounts }: { accounts: Account[] }) {
               : null
           }
         >
-          <div className="rounded-xl border border-border bg-bg p-4 shadow-sm">
+          <div className="rounded-xl border border-border bg-bg p-4 shadow-sm -mt-3">
             <h3 className="mb-3 text-sm font-semibold text-text">
               Carousel preview
             </h3>

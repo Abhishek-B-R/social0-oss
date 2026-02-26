@@ -178,12 +178,12 @@ export function SchedulePostSidebar({
 
   return (
     <aside
-      className="sticky top-[80px] flex max-h-[calc(100vh-100px)] w-full flex-col gap-6 overflow-y-auto lg:w-[35%]"
+      className="flex w-full flex-col gap-6 pb-24 lg:sticky lg:top-[60px] lg:max-h-[calc(100vh-100px)] lg:w-[35%] lg:overflow-y-auto lg:pb-0 -mt-20"
       style={{ minWidth: 0 }}
     >
       {children}
 
-      <div className="rounded-xl border border-border bg-bg-elevated -mt-3 p-4 shadow-sm">
+      <div className="rounded-xl border border-border bg-bg-elevated -mt-3 px-4 py-2 shadow-sm">
         <div className="flex items-center justify-between gap-2 mb-3">
           <span className="text-sm font-semibold text-text">Schedule post</span>
           <button
@@ -300,10 +300,12 @@ export function SchedulePostSidebar({
         Cancel
       </button>
 
-      <div className="space-y-2">
+      <div className="space-y-2 shrink-0 min-h-0">
         {autoRepost?.visible && (
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated px-3 py-2">
-            <span className="text-sm font-medium text-text">Auto-Repost</span>
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated px-3 py-2 -mt-3 min-w-0">
+            <span className="text-sm font-medium text-text truncate shrink-0">
+              Auto-Repost
+            </span>
             <div className="flex items-center gap-2">
               {autoRepost.enabled && (
                 <button
@@ -321,7 +323,7 @@ export function SchedulePostSidebar({
                 aria-checked={autoRepost.enabled}
                 onClick={autoRepost.onToggle}
                 className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
-                  autoRepost.enabled ? "bg-emerald-600" : "bg-bg-muted"
+                  autoRepost.enabled ? "bg-emerald-600" : "bg-gray-300"
                 }`}
               >
                 <span
@@ -334,8 +336,10 @@ export function SchedulePostSidebar({
           </div>
         )}
         {autoPlug?.visible && (
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated px-3 py-2">
-            <span className="text-sm font-medium text-text">Auto-Plug</span>
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated px-3 py-2 min-w-0">
+            <span className="text-sm font-medium text-text truncate shrink-0">
+              Auto-Plug
+            </span>
             <div className="flex items-center gap-2">
               {autoPlug.enabled && (
                 <button
@@ -353,7 +357,7 @@ export function SchedulePostSidebar({
                 aria-checked={autoPlug.enabled}
                 onClick={autoPlug.onToggle}
                 className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
-                  autoPlug.enabled ? "bg-emerald-600" : "bg-bg-muted"
+                  autoPlug.enabled ? "bg-emerald-600" : "bg-gray-300"
                 }`}
               >
                 <span
@@ -366,8 +370,8 @@ export function SchedulePostSidebar({
           </div>
         )}
         {tiktokSettings?.visible && (
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated px-3 py-2">
-            <span className="text-sm font-medium text-text">
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated px-3 py-1 min-w-0">
+            <span className="text-sm font-medium text-text truncate shrink-0">
               TikTok Settings
             </span>
             <button

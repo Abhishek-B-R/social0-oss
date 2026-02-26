@@ -743,7 +743,7 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
         onSubmit={handleSubmit}
         className="flex flex-col gap-6 lg:flex-row lg:items-start"
       >
-        <div className="min-w-0 flex-1 space-y-6 lg:max-w-[65%]">
+        <div className="min-w-0 flex-1 space-y-6 lg:max-w-[65%] -mt-4">
           <PostFormOptions
             accounts={filteredAccounts}
             selectedIds={selectedIds}
@@ -1002,8 +1002,8 @@ export function ThreadsPostForm({ accounts }: { accounts: Account[] }) {
               : null
           }
         >
-          <div className="rounded-xl border border-border bg-bg p-4 shadow-sm">
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-text">
+          <div className="hidden lg:block rounded-xl border border-border bg-bg p-4 shadow-sm">
+            <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-text">
               Thread Preview
             </h3>
             {posts.length === 0 ||

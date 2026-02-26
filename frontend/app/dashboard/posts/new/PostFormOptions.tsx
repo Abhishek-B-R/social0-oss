@@ -64,7 +64,7 @@ export function PostFormOptions({
 
   return (
     <>
-      <section className="border-b border-border pt-5 pb-5">
+      <section className="border-b border-border pt-5 pb-5 -mt-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <label className="shrink-0 text-base font-semibold text-text">
             Post to
@@ -112,9 +112,7 @@ export function PostFormOptions({
                 className="mt-0.5 size-4 border-input bg-bg text-accent focus:ring-accent"
               />
               <div>
-                <span className="block font-medium text-text">
-                  Post now
-                </span>
+                <span className="block font-medium text-text">Post now</span>
                 <span className="block text-sm text-text-muted mt-0.5">
                   Publish right away
                 </span>

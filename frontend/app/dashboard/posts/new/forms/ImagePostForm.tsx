@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 
-const PREVIEW_MEDIA_MAX_H = 200;
+const PREVIEW_MEDIA_MAX_H = 196;
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
@@ -653,11 +653,11 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                         </p>
                         {sortedImages.length > 0 && (
                           <div
-                            className="mt-2 w-full max-h-[200px] flex gap-0.5 overflow-hidden rounded-lg"
+                            className="mt-2 w-full max-h-[150px] flex gap-0.5 overflow-hidden rounded-lg"
                             style={{ maxHeight: PREVIEW_MEDIA_MAX_H }}
                           >
                             {sortedImages.length === 1 && (
-                              <div className="aspect-video w-full min-h-0 max-h-[200px] overflow-hidden rounded-lg bg-bg-muted">
+                              <div className="aspect-video w-full min-h-0 max-h-[150px] overflow-hidden rounded-lg bg-bg-muted">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={sortedImages[0].preview}
@@ -667,7 +667,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                               </div>
                             )}
                             {sortedImages.length === 2 && (
-                              <div className="flex h-[200px] w-full gap-0.5">
+                              <div className="flex h-[150px] w-full gap-0.5">
                                 <div className="flex-1 min-w-0 overflow-hidden rounded-l-lg">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
@@ -687,7 +687,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                               </div>
                             )}
                             {sortedImages.length === 3 && (
-                              <div className="grid grid-cols-2 gap-0.5 w-full max-h-[200px]">
+                              <div className="grid grid-cols-2 gap-0.5 w-full max-h-[150px]">
                                 <div className="row-span-2 min-h-0 overflow-hidden rounded-l-lg">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
@@ -715,7 +715,7 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                               </div>
                             )}
                             {sortedImages.length >= 4 && (
-                              <div className="grid grid-cols-2 grid-rows-2 gap-0.5 w-full h-[200px]">
+                              <div className="grid grid-cols-2 grid-rows-2 gap-0.5 w-full h-[150px]">
                                 {sortedImages.slice(0, 4).map((img) => (
                                   <div
                                     key={img.preview}
