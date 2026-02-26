@@ -43,6 +43,8 @@ type AutoResurfacePanelProps = {
   initialConfig?: Partial<AutoResurfaceConfig> | null;
   /** When true, render without card wrapper (for use inside combined AutoFeaturesCard) */
   embedded?: boolean;
+  /** When true, show only the form (no toggle); for use inside settings modal */
+  modalMode?: boolean;
 };
 
 function formatFirstReshare(intervalHours: number): string {
@@ -64,6 +66,7 @@ export function AutoResurfacePanel({
   onChange,
   initialConfig,
   embedded = false,
+  modalMode = false,
 }: AutoResurfacePanelProps) {
   const supportedPlatforms = getResurfacePlatforms(
     selectedAccountIds,
@@ -74,10 +77,10 @@ export function AutoResurfacePanel({
     (publishedAt === undefined || isWithinResurfaceWindow(publishedAt));
 
   useEffect(() => {
-    if (!visible) onChange(null);
-  }, [visible, onChange]);
+    if (!visible && !modalMode) onChange(null);
+  }, [visible, modalMode, onChange]);
 
-  if (!visible) return null;
+  if (!visible && !modalMode) return null;
 
   const labels = getResurfacePlatformLabels(selectedAccountIds, allAccounts);
   const subtitle = labels.length > 0 ? `(${labels.join(", ")})` : "";
@@ -88,6 +91,7 @@ export function AutoResurfacePanel({
       initialConfig={initialConfig}
       onChange={onChange}
       embedded={embedded}
+      modalMode={modalMode}
     />
   );
 }
@@ -97,13 +101,15 @@ function AutoResurfacePanelInner({
   initialConfig,
   onChange,
   embedded = false,
+  modalMode = false,
 }: {
   subtitle: string;
   initialConfig?: Partial<AutoResurfaceConfig> | null;
   onChange: (config: AutoResurfaceConfig | null) => void;
   embedded?: boolean;
+  modalMode?: boolean;
 }) {
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState(modalMode || !!initialConfig);
   const [intervalHours, setIntervalHours] = useState(
     initialConfig?.intervalHours ?? 4,
   );
@@ -146,6 +152,7 @@ function AutoResurfacePanelInner({
 
   const content = (
     <>
+      {!modalMode && (
       <div className="flex items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-foreground">
@@ -175,8 +182,8 @@ function AutoResurfacePanelInner({
           />
         </button>
       </div>
-
-      {enabled && (
+      )}
+      {(enabled || modalMode) && (
         <div className="mt-4 space-y-4 border-t border-border pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

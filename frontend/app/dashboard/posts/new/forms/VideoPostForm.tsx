@@ -10,10 +10,15 @@ import {
 } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
-import { AutoFeaturesCard } from "@/components/repost/AutoFeaturesCard";
-import { TikTokSettingsCard } from "@/components/TikTokSettingsCard";
+import { getResurfacePlatforms } from "@/lib/resurface-utils";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
-import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import type {
+  AutoPlugConfig,
+  ConnectedAccount,
+} from "@/components/autoplug/AutoPlugPanel";
+import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
+import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
+import { TikTokSettingsListModal } from "@/components/TikTokSettingsListModal";
 import { MdOutlineVideoLibrary, MdClose, MdImage } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettingsModal } from "@/components/TikTokSettingsModal";
@@ -56,7 +61,9 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
   const [videoDuration, setVideoDuration] = useState<number>(0);
   const [isVertical, setIsVertical] = useState(false);
   const [customThumbnail, setCustomThumbnail] = useState<File | null>(null);
-  const [customThumbnailPreview, setCustomThumbnailPreview] = useState<string | null>(null);
+  const [customThumbnailPreview, setCustomThumbnailPreview] = useState<
+    string | null
+  >(null);
   const [accountSearch, setAccountSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<PublishMode>("now");
@@ -77,8 +84,14 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
     null,
   );
+  const [resurfaceModalOpen, setResurfaceModalOpen] = useState(false);
+  const [autoplugModalOpen, setAutoplugModalOpen] = useState(false);
+  const [tiktokListModalOpen, setTiktokListModalOpen] = useState(false);
+  const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
+  const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   type PreviewCardMode = "post" | "media";
-  const [previewCardMode, setPreviewCardMode] = useState<PreviewCardMode>("post");
+  const [previewCardMode, setPreviewCardMode] =
+    useState<PreviewCardMode>("post");
   const userToggledPreviewRef = useRef(false);
 
   const selectedAccounts = useMemo(
@@ -86,9 +99,21 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
     [accounts, selectedIds],
   );
 
-  const selectedAccountIds = useMemo(() => Array.from(selectedIds), [selectedIds]);
+  const selectedAccountIds = useMemo(
+    () => Array.from(selectedIds),
+    [selectedIds],
+  );
+
+  const hasXForResurface =
+    getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
+  const resurfaceVisible = hasXForResurface;
+  const autoPlugVisible = hasXForResurface;
+  const hasTikTokSelected = accounts.some(
+    (a) => selectedIds.has(a.id) && a.platform === "tiktok",
+  );
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!videoPreview) setIsVertical(false);
   }, [videoPreview]);
 
@@ -103,6 +128,7 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
         acc.platform === "pinterest",
     );
     if (hasMediaPreviewPlatform) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPreviewCardMode("media");
     } else {
       setPreviewCardMode("post");
@@ -354,37 +380,41 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
           }
         />
       )}
-      <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-6 lg:flex-row lg:items-start">
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-6 lg:flex-row lg:items-start"
+      >
         <div className="min-w-0 flex-1 space-y-6 lg:max-w-[65%]">
           <PostFormOptions
-              accounts={filteredAccounts}
-              selectedIds={selectedIds}
-              onToggleAccount={toggleAccount}
-              selectAll={selectAll}
-              mode={mode}
-              setMode={setMode}
-              scheduledAt={scheduledAt}
-              setScheduledAt={setScheduledAt}
-              error={error}
-              loading={loading}
-              onCancel={() => router.push("/dashboard/posts")}
-              submitLabel={submitLabel}
-              submitDisabled={
-                accounts.length === 0 ||
-                (mode === "scheduled" && !scheduledAt) ||
-                (!content.trim() && !videoFile)
-              }
-              hideScheduleAndActions
-              searchSlot={
-                <input
-                  type="search"
-                  placeholder="Search accounts..."
-                  value={accountSearch}
-                  onChange={(e) => setAccountSearch(e.target.value)}
-                  className="h-8 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
-                />
-              }
-            />
+            accounts={filteredAccounts}
+            selectedIds={selectedIds}
+            onToggleAccount={toggleAccount}
+            selectAll={selectAll}
+            mode={mode}
+            setMode={setMode}
+            scheduledAt={scheduledAt}
+            setScheduledAt={setScheduledAt}
+            error={error}
+            loading={loading}
+            onCancel={() => router.push("/dashboard/posts")}
+            submitLabel={submitLabel}
+            submitDisabled={
+              accounts.length === 0 ||
+              (mode === "scheduled" && !scheduledAt) ||
+              (!content.trim() && !videoFile)
+            }
+            hideScheduleAndActions
+            searchSlot={
+              <input
+                type="search"
+                placeholder="Search accounts..."
+                value={accountSearch}
+                onChange={(e) => setAccountSearch(e.target.value)}
+                className="h-8 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
+              />
+            }
+          />
 
           <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm space-y-4">
             <label className="block text-sm font-semibold text-text">
@@ -436,28 +466,6 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
               className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
           </div>
-
-          <AutoFeaturesCard
-            selectedAccountIds={Array.from(selectedIds)}
-            allAccounts={accounts}
-            onResurfaceChange={setResurfaceConfig}
-            onAutoPlugChange={setAutoPlugConfig}
-          />
-
-          <TikTokSettingsCard
-            selectedAccountIds={Array.from(selectedIds)}
-            allAccounts={accounts}
-            configuredIds={
-              hasTikTok
-                ? new Set(
-                    tiktokAccounts
-                      .filter((a) => tiktokSettings[a.id]?.privacy_level)
-                      .map((a) => a.id),
-                  )
-                : undefined
-            }
-            onOpenSettings={setTiktokModalAccountId}
-          />
         </div>
 
         <SchedulePostSidebar
@@ -476,8 +484,54 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
           onCancel={() => router.push("/dashboard/posts")}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
+          autoRepost={
+            resurfaceVisible
+              ? {
+                  visible: true,
+                  enabled: !!resurfaceConfig,
+                  onToggle: () => {
+                    if (resurfaceConfig) setResurfaceConfig(null);
+                    else {
+                      configBeforeResurfaceRef.current = resurfaceConfig;
+                      setResurfaceModalOpen(true);
+                    }
+                  },
+                  onOpenSettings: () => {
+                    configBeforeResurfaceRef.current = resurfaceConfig;
+                    setResurfaceModalOpen(true);
+                  },
+                }
+              : null
+          }
+          autoPlug={
+            autoPlugVisible
+              ? {
+                  visible: true,
+                  enabled: !!autoPlugConfig,
+                  onToggle: () => {
+                    if (autoPlugConfig) setAutoPlugConfig(null);
+                    else {
+                      configBeforeAutoPlugRef.current = autoPlugConfig;
+                      setAutoplugModalOpen(true);
+                    }
+                  },
+                  onOpenSettings: () => {
+                    configBeforeAutoPlugRef.current = autoPlugConfig;
+                    setAutoplugModalOpen(true);
+                  },
+                }
+              : null
+          }
+          tiktokSettings={
+            hasTikTokSelected
+              ? {
+                  visible: true,
+                  onOpenSettings: () => setTiktokListModalOpen(true),
+                }
+              : null
+          }
         >
-          <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
+          <div className="hidden lg:block rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="flex rounded-full border border-border bg-bg-muted p-0.5">
                 <button
@@ -488,8 +542,8 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
                   }}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                     previewCardMode === "post"
-                    ? "bg-accent text-white"
-                    : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
+                      ? "bg-accent text-white"
+                      : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
                   }`}
                 >
                   Post Preview
@@ -502,8 +556,8 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
                   }}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                     previewCardMode === "media"
-                    ? "bg-accent text-white"
-                    : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
+                      ? "bg-accent text-white"
+                      : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
                   }`}
                 >
                   Media Preview
@@ -524,7 +578,9 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
                           referrerPolicy="no-referrer"
                         />
                       ) : (
-                        (selectedAccounts[0]?.platformUsername ?? "?").charAt(0).toUpperCase()
+                        (selectedAccounts[0]?.platformUsername ?? "?")
+                          .charAt(0)
+                          .toUpperCase()
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -532,11 +588,15 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
                         {selectedAccounts[0]?.platformUsername
                           ? `@${selectedAccounts[0].platformUsername}`
                           : "@username"}{" "}
-                        <span className="font-normal text-text-muted">· now</span>
+                        <span className="font-normal text-text-muted">
+                          · now
+                        </span>
                       </p>
                       <p className="mt-1 text-sm text-text/80 whitespace-pre-wrap wrap-break-word">
                         {content.trim() || (
-                          <span className="italic text-text-muted">Caption...</span>
+                          <span className="italic text-text-muted">
+                            Caption...
+                          </span>
                         )}
                       </p>
                       {videoPreview && (
@@ -550,7 +610,11 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
                           />
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50">
-                              <svg className="h-5 w-5 ml-0.5 text-white fill-current" viewBox="0 0 24 24" aria-hidden>
+                              <svg
+                                className="h-5 w-5 ml-0.5 text-white fill-current"
+                                viewBox="0 0 24 24"
+                                aria-hidden
+                              >
                                 <path d="M8 5v14l11-7z" />
                               </svg>
                             </div>
@@ -585,7 +649,10 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
                         isVertical ? "w-[240px]" : "w-[280px]"
                       }`}
                     >
-                      <div className="h-[6px] w-[60px] shrink-0 rounded-full bg-text-muted mt-2 mx-auto" aria-hidden />
+                      <div
+                        className="h-[6px] w-[60px] shrink-0 rounded-full bg-text-muted mt-2 mx-auto"
+                        aria-hidden
+                      />
                       <div className="flex-1 min-h-0 flex items-center justify-center bg-black">
                         <video
                           src={videoPreview}
@@ -599,7 +666,10 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
                           }}
                         />
                       </div>
-                      <div className="h-[4px] w-[40px] shrink-0 rounded-full bg-text-muted mb-2 mx-auto" aria-hidden />
+                      <div
+                        className="h-[4px] w-[40px] shrink-0 rounded-full bg-text-muted mb-2 mx-auto"
+                        aria-hidden
+                      />
                     </div>
                     <p className="mt-2 truncate text-center text-xs text-text-muted">
                       {videoFile?.name}
@@ -655,6 +725,60 @@ export function VideoPostForm({ accounts }: { accounts: Account[] }) {
           </div>
         </SchedulePostSidebar>
 
+        {resurfaceModalOpen && (
+          <AutoResurfaceSettingsModal
+            isOpen={true}
+            selectedAccountIds={selectedAccountIds}
+            allAccounts={accounts}
+            initialConfig={resurfaceConfig}
+            onChange={setResurfaceConfig}
+            onDone={() => setResurfaceModalOpen(false)}
+            onCancel={() => {
+              setResurfaceConfig(configBeforeResurfaceRef.current ?? null);
+              setResurfaceModalOpen(false);
+            }}
+          />
+        )}
+        {autoplugModalOpen && (
+          <AutoPlugSettingsModal
+            isOpen={true}
+            selectedAccountIds={selectedAccountIds}
+            allAccounts={accounts as ConnectedAccount[]}
+            initialConfig={autoPlugConfig}
+            onChange={setAutoPlugConfig}
+            onDone={() => setAutoplugModalOpen(false)}
+            onCancel={() => {
+              setAutoPlugConfig(configBeforeAutoPlugRef.current ?? null);
+              setAutoplugModalOpen(false);
+            }}
+          />
+        )}
+        {tiktokListModalOpen && (
+          <TikTokSettingsListModal
+            isOpen={true}
+            selectedAccountIds={selectedAccountIds}
+            allAccounts={accounts}
+            configuredIds={
+              selectedAccountIds.length > 0
+                ? new Set(
+                    accounts
+                      .filter(
+                        (a) =>
+                          selectedIds.has(a.id) &&
+                          a.platform === "tiktok" &&
+                          tiktokSettings[a.id]?.privacy_level,
+                      )
+                      .map((a) => a.id),
+                  )
+                : undefined
+            }
+            onOpenSettings={(id) => {
+              setTiktokModalAccountId(id);
+              setTiktokListModalOpen(false);
+            }}
+            onClose={() => setTiktokListModalOpen(false)}
+          />
+        )}
         {tiktokModalAccountId && (
           <TikTokSettingsModal
             isOpen={true}

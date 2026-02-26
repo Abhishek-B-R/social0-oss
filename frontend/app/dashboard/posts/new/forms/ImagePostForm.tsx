@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 
-const PREVIEW_MEDIA_MAX_H = 200;
+const PREVIEW_MEDIA_MAX_H = 196;
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
@@ -12,10 +12,15 @@ import {
   createAutoPlug,
 } from "@/app/actions/resurface";
 import { PostFormOptions } from "../PostFormOptions";
-import { AutoFeaturesCard } from "@/components/repost/AutoFeaturesCard";
-import { TikTokSettingsCard } from "@/components/TikTokSettingsCard";
+import { getResurfacePlatforms } from "@/lib/resurface-utils";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
-import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import type {
+  AutoPlugConfig,
+  ConnectedAccount,
+} from "@/components/autoplug/AutoPlugPanel";
+import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
+import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
+import { TikTokSettingsListModal } from "@/components/TikTokSettingsListModal";
 import { MdOutlineAddPhotoAlternate, MdClose } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettingsModal } from "@/components/TikTokSettingsModal";
@@ -63,8 +68,14 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
     null,
   );
+  const [resurfaceModalOpen, setResurfaceModalOpen] = useState(false);
+  const [autoplugModalOpen, setAutoplugModalOpen] = useState(false);
+  const [tiktokListModalOpen, setTiktokListModalOpen] = useState(false);
+  const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
+  const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   type PreviewCardMode = "post" | "media";
-  const [previewCardMode, setPreviewCardMode] = useState<PreviewCardMode>("post");
+  const [previewCardMode, setPreviewCardMode] =
+    useState<PreviewCardMode>("post");
   const userToggledPreviewRef = useRef(false);
 
   const defaultTiktokSettings: TikTokPostSettings = {
@@ -86,16 +97,33 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
     };
   }, []);
 
-  const selectedAccountIds = useMemo(() => Array.from(selectedIds), [selectedIds]);
+  const selectedAccountIds = useMemo(
+    () => Array.from(selectedIds),
+    [selectedIds],
+  );
+
+  const hasXForResurface =
+    getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
+  const resurfaceVisible = hasXForResurface; // publishedAt undefined for new posts
+  const autoPlugVisible = hasXForResurface; // publishedAt undefined for new posts
+  const hasTikTokSelected = accounts.some(
+    (a) => selectedIds.has(a.id) && a.platform === "tiktok",
+  );
 
   useEffect(() => {
     if (userToggledPreviewRef.current) return;
-    const selectedAccounts = accounts.filter((a) => selectedAccountIds.includes(a.id));
-    console.log("selected accounts platforms:", selectedAccounts.map((a) => a.platform));
+    const selectedAccounts = accounts.filter((a) =>
+      selectedAccountIds.includes(a.id),
+    );
+    console.log(
+      "selected accounts platforms:",
+      selectedAccounts.map((a) => a.platform),
+    );
     const hasInstagramOrTikTok = selectedAccounts.some(
       (acc) => acc.platform === "instagram" || acc.platform === "tiktok",
     );
     if (hasInstagramOrTikTok) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPreviewCardMode("media");
     } else {
       setPreviewCardMode("post");
@@ -367,37 +395,41 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
           }
         />
       )}
-      <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-6 lg:flex-row lg:items-start">
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-6 lg:flex-row lg:items-start -mt-10"
+      >
         <div className="min-w-0 flex-1 space-y-6 lg:max-w-[65%]">
           <PostFormOptions
-              accounts={filteredAccounts}
-              selectedIds={selectedIds}
-              onToggleAccount={toggleAccount}
-              selectAll={selectAll}
-              mode={mode}
-              setMode={setMode}
-              scheduledAt={scheduledAt}
-              setScheduledAt={setScheduledAt}
-              error={error}
-              loading={loading}
-              onCancel={() => router.push("/dashboard/posts")}
-              submitLabel={submitLabel}
-              submitDisabled={
-                accounts.length === 0 ||
-                (mode === "scheduled" && !scheduledAt) ||
-                (!content.trim() && images.length === 0)
-              }
-              hideScheduleAndActions
-              searchSlot={
-                <input
-                  type="search"
-                  placeholder="Search accounts..."
-                  value={accountSearch}
-                  onChange={(e) => setAccountSearch(e.target.value)}
-                  className="h-8 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
-                />
-              }
-            />
+            accounts={filteredAccounts}
+            selectedIds={selectedIds}
+            onToggleAccount={toggleAccount}
+            selectAll={selectAll}
+            mode={mode}
+            setMode={setMode}
+            scheduledAt={scheduledAt}
+            setScheduledAt={setScheduledAt}
+            error={error}
+            loading={loading}
+            onCancel={() => router.push("/dashboard/posts")}
+            submitLabel={submitLabel}
+            submitDisabled={
+              accounts.length === 0 ||
+              (mode === "scheduled" && !scheduledAt) ||
+              (!content.trim() && images.length === 0)
+            }
+            hideScheduleAndActions
+            searchSlot={
+              <input
+                type="search"
+                placeholder="Search accounts..."
+                value={accountSearch}
+                onChange={(e) => setAccountSearch(e.target.value)}
+                className="h-8 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
+              />
+            }
+          />
 
           <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm space-y-4">
             <label className="block text-sm font-semibold text-text">
@@ -418,7 +450,9 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                 className="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-bg-muted/30 py-10 text-text-muted transition-colors hover:border-accent hover:bg-accent/10 hover:text-accent"
               >
                 <MdOutlineAddPhotoAlternate className="mb-2 h-10 w-10" />
-                <span className="text-sm font-medium">Click to add image(s)</span>
+                <span className="text-sm font-medium">
+                  Click to add image(s)
+                </span>
                 <span className="text-xs text-text-muted mt-1">
                   Select multiple to add all at once
                 </span>
@@ -481,28 +515,6 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
               className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
           </div>
-
-          <AutoFeaturesCard
-            selectedAccountIds={Array.from(selectedIds)}
-            allAccounts={accounts}
-            onResurfaceChange={setResurfaceConfig}
-            onAutoPlugChange={setAutoPlugConfig}
-          />
-
-          <TikTokSettingsCard
-            selectedAccountIds={Array.from(selectedIds)}
-            allAccounts={accounts}
-            configuredIds={
-              hasTikTok
-                ? new Set(
-                    tiktokAccounts
-                      .filter((a) => tiktokSettings[a.id]?.privacy_level)
-                      .map((a) => a.id),
-                  )
-                : undefined
-            }
-            onOpenSettings={setTiktokModalAccountId}
-          />
         </div>
 
         <SchedulePostSidebar
@@ -521,91 +533,131 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
           onCancel={() => router.push("/dashboard/posts")}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
+          autoRepost={
+            resurfaceVisible
+              ? {
+                  visible: true,
+                  enabled: !!resurfaceConfig,
+                  onToggle: () => {
+                    if (resurfaceConfig) {
+                      setResurfaceConfig(null);
+                    } else {
+                      configBeforeResurfaceRef.current = resurfaceConfig;
+                      setResurfaceModalOpen(true);
+                    }
+                  },
+                  onOpenSettings: () => {
+                    configBeforeResurfaceRef.current = resurfaceConfig;
+                    setResurfaceModalOpen(true);
+                  },
+                }
+              : null
+          }
+          autoPlug={
+            autoPlugVisible
+              ? {
+                  visible: true,
+                  enabled: !!autoPlugConfig,
+                  onToggle: () => {
+                    if (autoPlugConfig) {
+                      setAutoPlugConfig(null);
+                    } else {
+                      configBeforeAutoPlugRef.current = autoPlugConfig;
+                      setAutoplugModalOpen(true);
+                    }
+                  },
+                  onOpenSettings: () => {
+                    configBeforeAutoPlugRef.current = autoPlugConfig;
+                    setAutoplugModalOpen(true);
+                  },
+                }
+              : null
+          }
+          tiktokSettings={
+            hasTikTokSelected
+              ? {
+                  visible: true,
+                  onOpenSettings: () => setTiktokListModalOpen(true),
+                }
+              : null
+          }
         >
-          <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <div className="flex rounded-full border border-border bg-bg-muted p-0.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    userToggledPreviewRef.current = true;
-                    setPreviewCardMode("post");
-                  }}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    previewCardMode === "post"
-                      ? "bg-accent text-white"
-                      : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
-                  }`}
-                >
-                  Post Preview
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    userToggledPreviewRef.current = true;
-                    setPreviewCardMode("media");
-                  }}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    previewCardMode === "media"
-                      ? "bg-accent text-white"
-                      : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
-                  }`}
-                >
-                  Media Preview
-                </button>
+          <div className="hidden lg:block">
+            <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="flex rounded-full border border-border bg-bg-muted p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      userToggledPreviewRef.current = true;
+                      setPreviewCardMode("post");
+                    }}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                      previewCardMode === "post"
+                        ? "bg-accent text-white"
+                        : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
+                    }`}
+                  >
+                    Post Preview
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      userToggledPreviewRef.current = true;
+                      setPreviewCardMode("media");
+                    }}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                      previewCardMode === "media"
+                        ? "bg-accent text-white"
+                        : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
+                    }`}
+                  >
+                    Media Preview
+                  </button>
+                </div>
               </div>
-            </div>
-            {previewCardMode === "post" ? (
-              <>
-                <div className="rounded-lg border border-border bg-bg p-3 shadow-sm">
-                  <div className="flex gap-3">
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-bg-muted flex items-center justify-center text-sm font-semibold text-text-muted">
-                      {selectedAccounts[0]?.profileImageUrl?.trim() ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={selectedAccounts[0].profileImageUrl}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        (selectedAccounts[0]?.platformUsername ?? "?").charAt(0).toUpperCase()
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-text">
-                        {selectedAccounts[0]?.platformUsername
-                          ? `@${selectedAccounts[0].platformUsername}`
-                          : "@username"}{" "}
-                        <span className="font-normal text-text-muted">
-                          · now
-                        </span>
-                      </p>
-                      <p className="mt-1 text-sm text-text/80 whitespace-pre-wrap wrap-break-word">
-                        {content.trim() || (
-                          <span className="italic text-text-muted">
-                            Caption...
-                          </span>
+              {previewCardMode === "post" ? (
+                <>
+                  <div className="rounded-lg border border-border bg-bg p-3 shadow-sm">
+                    <div className="flex gap-3">
+                      <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-bg-muted flex items-center justify-center text-sm font-semibold text-text-muted">
+                        {selectedAccounts[0]?.profileImageUrl?.trim() ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={selectedAccounts[0].profileImageUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          (selectedAccounts[0]?.platformUsername ?? "?")
+                            .charAt(0)
+                            .toUpperCase()
                         )}
-                      </p>
-                      {sortedImages.length > 0 && (
-                        <div
-                          className="mt-2 w-full max-h-[200px] flex gap-0.5 overflow-hidden rounded-lg"
-                          style={{ maxHeight: PREVIEW_MEDIA_MAX_H }}
-                        >
-                          {sortedImages.length === 1 && (
-                            <div className="aspect-video w-full min-h-0 max-h-[200px] overflow-hidden rounded-lg bg-bg-muted">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={sortedImages[0].preview}
-                                alt=""
-                                className="h-full w-full object-cover"
-                              />
-                            </div>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-text">
+                          {selectedAccounts[0]?.platformUsername
+                            ? `@${selectedAccounts[0].platformUsername}`
+                            : "@username"}{" "}
+                          <span className="font-normal text-text-muted">
+                            · now
+                          </span>
+                        </p>
+                        <p className="mt-1 text-sm text-text/80 whitespace-pre-wrap wrap-break-word">
+                          {content.trim() || (
+                            <span className="italic text-text-muted">
+                              Caption...
+                            </span>
                           )}
-                          {sortedImages.length === 2 && (
-                            <div className="flex h-[200px] w-full gap-0.5">
-                              <div className="flex-1 min-w-0 overflow-hidden rounded-l-lg">
+                        </p>
+                        {sortedImages.length > 0 && (
+                          <div
+                            className="mt-2 w-full max-h-[150px] flex gap-0.5 overflow-hidden rounded-lg"
+                            style={{ maxHeight: PREVIEW_MEDIA_MAX_H }}
+                          >
+                            {sortedImages.length === 1 && (
+                              <div className="aspect-video w-full min-h-0 max-h-[150px] overflow-hidden rounded-lg bg-bg-muted">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={sortedImages[0].preview}
@@ -613,135 +665,203 @@ export function ImagePostForm({ accounts }: { accounts: Account[] }) {
                                   className="h-full w-full object-cover"
                                 />
                               </div>
-                              <div className="flex-1 min-w-0 overflow-hidden rounded-r-lg">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={sortedImages[1].preview}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                              </div>
-                            </div>
-                          )}
-                          {sortedImages.length === 3 && (
-                            <div className="grid grid-cols-2 gap-0.5 w-full max-h-[200px]">
-                              <div className="row-span-2 min-h-0 overflow-hidden rounded-l-lg">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={sortedImages[0].preview}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                              </div>
-                              <div className="min-h-0 overflow-hidden rounded-tr-lg">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={sortedImages[1].preview}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                              </div>
-                              <div className="min-h-0 overflow-hidden rounded-br-lg">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={sortedImages[2].preview}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                              </div>
-                            </div>
-                          )}
-                          {sortedImages.length >= 4 && (
-                            <div className="grid grid-cols-2 grid-rows-2 gap-0.5 w-full h-[200px]">
-                              {sortedImages.slice(0, 4).map((img) => (
-                                <div
-                                  key={img.preview}
-                                  className="min-w-0 min-h-0 overflow-hidden rounded-lg"
-                                >
+                            )}
+                            {sortedImages.length === 2 && (
+                              <div className="flex h-[150px] w-full gap-0.5">
+                                <div className="flex-1 min-w-0 overflow-hidden rounded-l-lg">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
-                                    src={img.preview}
+                                    src={sortedImages[0].preview}
                                     alt=""
                                     className="h-full w-full object-cover"
                                   />
                                 </div>
-                              ))}
-                            </div>
-                          )}
+                                <div className="flex-1 min-w-0 overflow-hidden rounded-r-lg">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={sortedImages[1].preview}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            {sortedImages.length === 3 && (
+                              <div className="grid grid-cols-2 gap-0.5 w-full max-h-[150px]">
+                                <div className="row-span-2 min-h-0 overflow-hidden rounded-l-lg">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={sortedImages[0].preview}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                </div>
+                                <div className="min-h-0 overflow-hidden rounded-tr-lg">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={sortedImages[1].preview}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                </div>
+                                <div className="min-h-0 overflow-hidden rounded-br-lg">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={sortedImages[2].preview}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            {sortedImages.length >= 4 && (
+                              <div className="grid grid-cols-2 grid-rows-2 gap-0.5 w-full h-[150px]">
+                                {sortedImages.slice(0, 4).map((img) => (
+                                  <div
+                                    key={img.preview}
+                                    className="min-w-0 min-h-0 overflow-hidden rounded-lg"
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={img.preview}
+                                      alt=""
+                                      className="h-full w-full object-cover"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <div className="mt-2 flex items-center gap-4 text-sm text-text-muted">
+                          <span>♡ 0</span>
+                          <span>↺ 0</span>
+                          <span>💬 0</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {selectedAccounts.length > 1 && (
+                    <p className="mt-2 text-xs text-text-muted">
+                      Posting to {selectedAccounts.length} platforms
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  {!previewImage ? (
+                    <div className="flex aspect-square w-full flex-col items-center justify-center rounded-lg border border-dashed border-border bg-bg-muted/30 text-text-muted">
+                      <MdOutlineAddPhotoAlternate className="mb-2 h-12 w-12" />
+                      <span className="text-xs">
+                        Upload media to see preview
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-bg-muted">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- blob URL */}
+                        <img
+                          src={previewImage.preview}
+                          alt=""
+                          className="h-full w-full object-contain"
+                        />
+                      </div>
+                      <p className="truncate text-center text-xs text-text-muted">
+                        {previewImage.file.name}
+                      </p>
+                      {sortedImages.length > 1 && (
+                        <div className="mt-2 flex items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewIndex((i) =>
+                                i <= 0 ? sortedImages.length - 1 : i - 1,
+                              )
+                            }
+                            className="rounded-full p-1 text-text-muted hover:bg-bg hover:text-text"
+                            aria-label="Previous"
+                          >
+                            ←
+                          </button>
+                          <span className="text-xs text-text-muted">
+                            {previewIndex + 1} / {sortedImages.length}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewIndex((i) =>
+                                i >= sortedImages.length - 1 ? 0 : i + 1,
+                              )
+                            }
+                            className="rounded-full p-1 text-text-muted hover:bg-bg hover:text-text"
+                            aria-label="Next"
+                          >
+                            →
+                          </button>
                         </div>
                       )}
-                      <div className="mt-2 flex items-center gap-4 text-sm text-text-muted">
-                        <span>♡ 0</span>
-                        <span>↺ 0</span>
-                        <span>💬 0</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {selectedAccounts.length > 1 && (
-                  <p className="mt-2 text-xs text-text-muted">
-                    Posting to {selectedAccounts.length} platforms
-                  </p>
-                )}
-              </>
-            ) : (
-              <>
-                {!previewImage ? (
-                  <div className="flex aspect-square w-full flex-col items-center justify-center rounded-lg border border-dashed border-border bg-bg-muted/30 text-text-muted">
-                    <MdOutlineAddPhotoAlternate className="mb-2 h-12 w-12" />
-                    <span className="text-xs">Upload media to see preview</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-bg-muted">
-                      {/* eslint-disable-next-line @next/next/no-img-element -- blob URL */}
-                      <img
-                        src={previewImage.preview}
-                        alt=""
-                        className="h-full w-full object-contain"
-                      />
-                    </div>
-                    <p className="mt-2 truncate text-center text-xs text-text-muted">
-                      {previewImage.file.name}
-                    </p>
-                    {sortedImages.length > 1 && (
-                      <div className="mt-2 flex items-center justify-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPreviewIndex((i) =>
-                              i <= 0 ? sortedImages.length - 1 : i - 1,
-                            )
-                          }
-                          className="rounded-full p-1 text-text-muted hover:bg-bg hover:text-text"
-                          aria-label="Previous"
-                        >
-                          ←
-                        </button>
-                        <span className="text-xs text-text-muted">
-                          {previewIndex + 1} / {sortedImages.length}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPreviewIndex((i) =>
-                              i >= sortedImages.length - 1 ? 0 : i + 1,
-                            )
-                          }
-                          className="rounded-full p-1 text-text-muted hover:bg-bg hover:text-text"
-                          aria-label="Next"
-                        >
-                          →
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </>
-            )}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </SchedulePostSidebar>
 
+        {resurfaceModalOpen && (
+          <AutoResurfaceSettingsModal
+            isOpen={true}
+            selectedAccountIds={selectedAccountIds}
+            allAccounts={accounts}
+            initialConfig={resurfaceConfig}
+            onChange={setResurfaceConfig}
+            onDone={() => setResurfaceModalOpen(false)}
+            onCancel={() => {
+              setResurfaceConfig(configBeforeResurfaceRef.current ?? null);
+              setResurfaceModalOpen(false);
+            }}
+          />
+        )}
+        {autoplugModalOpen && (
+          <AutoPlugSettingsModal
+            isOpen={true}
+            selectedAccountIds={selectedAccountIds}
+            allAccounts={accounts as ConnectedAccount[]}
+            initialConfig={autoPlugConfig}
+            onChange={setAutoPlugConfig}
+            onDone={() => setAutoplugModalOpen(false)}
+            onCancel={() => {
+              setAutoPlugConfig(configBeforeAutoPlugRef.current ?? null);
+              setAutoplugModalOpen(false);
+            }}
+          />
+        )}
+        {tiktokListModalOpen && (
+          <TikTokSettingsListModal
+            isOpen={true}
+            selectedAccountIds={selectedAccountIds}
+            allAccounts={accounts}
+            configuredIds={
+              selectedAccountIds.length > 0
+                ? new Set(
+                    accounts
+                      .filter(
+                        (a) =>
+                          selectedIds.has(a.id) &&
+                          a.platform === "tiktok" &&
+                          tiktokSettings[a.id]?.privacy_level,
+                      )
+                      .map((a) => a.id),
+                  )
+                : undefined
+            }
+            onOpenSettings={(id) => {
+              setTiktokModalAccountId(id);
+              setTiktokListModalOpen(false);
+            }}
+            onClose={() => setTiktokListModalOpen(false)}
+          />
+        )}
         {tiktokModalAccountId && (
           <TikTokSettingsModal
             isOpen={true}

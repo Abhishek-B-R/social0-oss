@@ -32,6 +32,8 @@ type AutoPlugPanelProps = {
   initialConfig?: Partial<AutoPlugConfig> | null;
   /** When true, render without card wrapper (for use inside combined AutoFeaturesCard) */
   embedded?: boolean;
+  /** When true, show only the form (no toggle); for use inside settings modal */
+  modalMode?: boolean;
 };
 
 export function AutoPlugPanel({
@@ -41,6 +43,7 @@ export function AutoPlugPanel({
   onChange,
   initialConfig,
   embedded = false,
+  modalMode = false,
 }: AutoPlugPanelProps) {
   const supportedPlatforms = getResurfacePlatforms(
     selectedAccountIds,
@@ -51,10 +54,10 @@ export function AutoPlugPanel({
     (publishedAt === undefined || isWithinAutoPlugWindow(publishedAt));
 
   useEffect(() => {
-    if (!visible) onChange(null);
-  }, [visible, onChange]);
+    if (!visible && !modalMode) onChange(null);
+  }, [visible, modalMode, onChange]);
 
-  if (!visible) return null;
+  if (!visible && !modalMode) return null;
 
   const xAccount = allAccounts.find(
     (a) => a.platform === "twitter_x" && selectedAccountIds.includes(a.id),
@@ -66,6 +69,7 @@ export function AutoPlugPanel({
       initialConfig={initialConfig}
       onChange={onChange}
       embedded={embedded}
+      modalMode={modalMode}
     />
   );
 }
@@ -75,13 +79,15 @@ function AutoPlugPanelInner({
   initialConfig,
   onChange,
   embedded = false,
+  modalMode = false,
 }: {
   xAccount: ConnectedAccount | null;
   initialConfig?: Partial<AutoPlugConfig> | null;
   onChange: (config: AutoPlugConfig | null) => void;
   embedded?: boolean;
+  modalMode?: boolean;
 }) {
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState(modalMode || !!initialConfig);
   const [threshold, setThreshold] = useState(
     initialConfig?.threshold ?? DEFAULT_THRESHOLD,
   );
@@ -109,6 +115,7 @@ function AutoPlugPanelInner({
 
   const content = (
     <>
+      {!modalMode && (
       <div className="flex items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-foreground">🔌 Auto-Plug</h3>
@@ -132,8 +139,9 @@ function AutoPlugPanelInner({
           />
         </button>
       </div>
+      )}
 
-      {enabled && (
+      {(enabled || modalMode) && (
         <div className="mt-4 space-y-4 border-t border-border pt-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium text-muted-foreground">
