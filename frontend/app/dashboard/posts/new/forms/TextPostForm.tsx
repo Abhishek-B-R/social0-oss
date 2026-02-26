@@ -55,7 +55,7 @@ export function TextPostForm({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
     if (initialDraftId) return new Set();
     const validIds = new Set(
-      accounts.filter((a) => !a.tokenExpired).map((a) => a.id)
+      accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
     );
     return getInitialSelectedIds(validIds);
   });
@@ -189,11 +189,7 @@ export function TextPostForm({
               (a) => a.platform === "twitter_x",
             );
             if (xAccount) {
-              await createAutoPlug(
-                result.postId,
-                xAccount.id,
-                autoPlugConfig,
-              );
+              await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
             }
           }
           router.push("/dashboard/posts");
@@ -332,7 +328,7 @@ export function TextPostForm({
             id="content"
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Write your post... Use --- on its own line to split into a Twitter thread (each part max 280 characters)."
+            placeholder="Write your post..."
             rows={6}
             className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             required

@@ -177,20 +177,10 @@ export function ImagePostForm({
     });
   };
 
-  const handleDeleteDraft = async () => {
-    if (!initialDraftId) return;
-    const { deleteDraft } = await import("@/app/actions/posts");
-    const result = await deleteDraft(initialDraftId);
-    if (result.success) {
-      router.push("/dashboard/posts/drafts");
-      router.refresh();
-    } else {
-      setError(result.error);
-    }
-  };
-
+  const [isUploadZoneHovered, setIsUploadZoneHovered] = useState(false);
   useEffect(() => {
-    const onPaste = (e: ClipboardEvent) => {
+    if (!isUploadZoneHovered) return;
+    const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items) return;
       for (const item of items) {
@@ -204,9 +194,21 @@ export function ImagePostForm({
         }
       }
     };
-    document.addEventListener("paste", onPaste);
-    return () => document.removeEventListener("paste", onPaste);
-  }, []);
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [isUploadZoneHovered]);
+
+  const handleDeleteDraft = async () => {
+    if (!initialDraftId) return;
+    const { deleteDraft } = await import("@/app/actions/posts");
+    const result = await deleteDraft(initialDraftId);
+    if (result.success) {
+      router.push("/dashboard/posts/drafts");
+      router.refresh();
+    } else {
+      setError(result.error);
+    }
+  };
 
   const selectedAccountIds = useMemo(
     () => Array.from(selectedIds),
@@ -667,14 +669,20 @@ export function ImagePostForm({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-bg-muted/30 py-10 text-text-muted transition-colors hover:border-accent hover:bg-accent/10 hover:text-accent"
+                onMouseEnter={() => setIsUploadZoneHovered(true)}
+                onMouseLeave={() => setIsUploadZoneHovered(false)}
+                className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed py-10 text-text-muted transition-colors ${
+                  isUploadZoneHovered
+                    ? "border-accent bg-accent/5"
+                    : "border-border bg-bg-subtle"
+                }`}
               >
                 <MdOutlineAddPhotoAlternate className="mb-2 h-10 w-10" />
                 <span className="text-sm font-medium">
                   Click to add image(s)
                 </span>
                 <span className="text-xs text-text-muted mt-1">
-                  Select multiple to add all at once · Or paste from clipboard (Ctrl+V)
+                  Select multiple to add all at once · Hover & paste from clipboard (Ctrl+V)
                 </span>
               </button>
             ) : (
@@ -719,8 +727,14 @@ export function ImagePostForm({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-bg-muted/30 text-text-muted transition-colors hover:border-accent hover:bg-accent/10 hover:text-accent"
-                    title="Add more or paste image (Ctrl+V)"
+                    onMouseEnter={() => setIsUploadZoneHovered(true)}
+                    onMouseLeave={() => setIsUploadZoneHovered(false)}
+                    className={`flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed text-text-muted transition-colors ${
+                      isUploadZoneHovered
+                        ? "border-accent bg-accent/5"
+                        : "border-border bg-bg-subtle"
+                    }`}
+                    title="Add more · Hover & paste (Ctrl+V)"
                   >
                     <MdOutlineAddPhotoAlternate className="h-6 w-6" />
                     <span className="text-xs mt-0.5">Add more</span>

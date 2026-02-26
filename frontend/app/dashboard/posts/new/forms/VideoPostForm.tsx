@@ -223,6 +223,32 @@ export function VideoPostForm({
     }
   };
 
+  const [isUploadZoneHovered, setIsUploadZoneHovered] = useState(false);
+  const videoPreviewRef = useRef<string | null>(null);
+  const customThumbnailPreviewRef = useRef<string | null>(null);
+  videoPreviewRef.current = videoPreview;
+  customThumbnailPreviewRef.current = customThumbnailPreview;
+  useEffect(() => {
+    if (!isUploadZoneHovered) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const file = e.clipboardData?.files?.[0];
+      if (!file || !file.type.startsWith("video/")) return;
+      e.preventDefault();
+      setError(null);
+      if (videoPreviewRef.current) URL.revokeObjectURL(videoPreviewRef.current);
+      if (customThumbnailPreviewRef.current)
+        URL.revokeObjectURL(customThumbnailPreviewRef.current);
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+      setVideoDuration(0);
+      setCustomThumbnail(null);
+      setCustomThumbnailPreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [isUploadZoneHovered]);
+
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -603,10 +629,19 @@ export function VideoPostForm({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-bg-muted/30 py-10 text-text-muted transition-colors hover:border-accent hover:bg-accent/10 hover:text-accent"
+                onMouseEnter={() => setIsUploadZoneHovered(true)}
+                onMouseLeave={() => setIsUploadZoneHovered(false)}
+                className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed py-10 text-text-muted transition-colors ${
+                  isUploadZoneHovered
+                    ? "border-accent bg-accent/5"
+                    : "border-border bg-bg-subtle"
+                }`}
               >
                 <MdOutlineVideoLibrary className="mb-2 h-10 w-10" />
                 <span className="text-sm font-medium">Click to add video</span>
+                <span className="text-xs text-text-muted mt-1">
+                  Hover & paste from clipboard (Ctrl+V)
+                </span>
               </button>
             ) : (
               <div className="flex items-center gap-2">

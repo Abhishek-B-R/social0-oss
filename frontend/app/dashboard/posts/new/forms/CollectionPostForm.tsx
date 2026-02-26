@@ -51,8 +51,7 @@ export function CollectionPostForm({
   draftId?: string;
 }) {
   const router = useRouter();
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null);
+  const unifiedInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
   const [content, setContent] = useState("");
@@ -210,7 +209,7 @@ export function CollectionPostForm({
       setError(null);
       setImages((prev) => [...prev, ...newImages]);
     }
-    if (imageInputRef.current) imageInputRef.current.value = "";
+    if (unifiedInputRef.current) unifiedInputRef.current.value = "";
   };
 
   const onVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -234,8 +233,69 @@ export function CollectionPostForm({
       setError(null);
       setVideos((prev) => [...prev, ...newVideos]);
     }
-    if (videoInputRef.current) videoInputRef.current.value = "";
+    if (unifiedInputRef.current) unifiedInputRef.current.value = "";
   };
+
+  const onUnifiedFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    setError(null);
+    const maxOrder = getMaxOrder();
+    let orderOffset = 0;
+    const newImages: ImageFile[] = [];
+    const newVideos: VideoFile[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type.startsWith("image/")) {
+        newImages.push({
+          file,
+          preview: URL.createObjectURL(file),
+          order: maxOrder + orderOffset + 1,
+        });
+        orderOffset++;
+      } else if (file.type.startsWith("video/")) {
+        newVideos.push({
+          file,
+          preview: URL.createObjectURL(file),
+          order: maxOrder + orderOffset + 1,
+        });
+        orderOffset++;
+      }
+    }
+    if (newImages.length > 0)
+      setImages((prev) => [...prev, ...newImages]);
+    if (newVideos.length > 0)
+      setVideos((prev) => [...prev, ...newVideos]);
+    if (unifiedInputRef.current) unifiedInputRef.current.value = "";
+  };
+
+  const [isUploadZoneHovered, setIsUploadZoneHovered] = useState(false);
+  useEffect(() => {
+    if (!isUploadZoneHovered) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const file = e.clipboardData?.files?.[0];
+      if (!file) return;
+      if (file.type.startsWith("image/")) {
+        e.preventDefault();
+        setError(null);
+        const maxOrder = getMaxOrder();
+        setImages((prev) => [
+          ...prev,
+          { file, preview: URL.createObjectURL(file), order: maxOrder + 1 },
+        ]);
+      } else if (file.type.startsWith("video/")) {
+        e.preventDefault();
+        setError(null);
+        const maxOrder = getMaxOrder();
+        setVideos((prev) => [
+          ...prev,
+          { file, preview: URL.createObjectURL(file), order: maxOrder + 1 },
+        ]);
+      }
+    };
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [isUploadZoneHovered]);
 
   const getAllItems = () => {
     return [
@@ -711,58 +771,37 @@ export function CollectionPostForm({
             )}
 
             <input
-              ref={imageInputRef}
+              ref={unifiedInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               multiple
-              onChange={onImagesChange}
+              onChange={onUnifiedFileChange}
               className="hidden"
             />
-            <input
-              ref={videoInputRef}
-              type="file"
-              accept="video/*"
-              onChange={onVideoChange}
-              className="hidden"
-            />
+            <button
+              type="button"
+              onClick={() => unifiedInputRef.current?.click()}
+              onMouseEnter={() => setIsUploadZoneHovered(true)}
+              onMouseLeave={() => setIsUploadZoneHovered(false)}
+              className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed py-8 text-text-muted transition-colors ${
+                isUploadZoneHovered
+                  ? "border-accent bg-accent/5"
+                  : "border-border bg-bg-subtle"
+              }`}
+            >
+              <MdOutlineAddPhotoAlternate className="mb-2 h-8 w-8 text-text-muted" />
+              <MdOutlineVideocam className="mb-2 h-8 w-8 text-text-muted" />
+              <span className="text-sm font-medium">
+                Click to add images or videos
+              </span>
+              <span className="text-xs text-text-muted mt-1">
+                JPG, PNG, GIF, MP4, MOV · Hover & paste from clipboard (Ctrl+V)
+              </span>
+            </button>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <label
-                htmlFor="collection-images"
-                className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-subtle px-3 py-2 text-sm font-medium text-text-muted hover:bg-bg-muted cursor-pointer"
-              >
-                <MdOutlineAddPhotoAlternate className="w-5 h-5" />
-                Images
-                {images.length > 0 && (
-                  <span className="text-text-muted">({images.length})</span>
-                )}
-              </label>
-              <input
-                id="collection-images"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={onImagesChange}
-                className="hidden"
-              />
-              <label
-                htmlFor="collection-video"
-                className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-subtle px-3 py-2 text-sm font-medium text-text-muted hover:bg-bg-muted cursor-pointer"
-              >
-                <MdOutlineVideocam className="w-5 h-5" />
-                Videos
-                {videos.length > 0 && (
-                  <span className="text-text-muted">({videos.length})</span>
-                )}
-              </label>
-              <input
-                id="collection-video"
-                type="file"
-                accept="video/*"
-                multiple
-                onChange={onVideoChange}
-                className="hidden"
-              />
+            <div className="flex flex-wrap items-center gap-3 text-sm text-text-muted">
+              <span>Images {images.length > 0 && `(${images.length})`}</span>
+              <span>Videos {videos.length > 0 && `(${videos.length})`}</span>
             </div>
 
             {(images.length > 0 || videos.length > 0) && (

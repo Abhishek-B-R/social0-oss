@@ -25,7 +25,6 @@ import { MdClose } from "react-icons/md";
 import { MdOutlinePhotoLibrary, MdOutlineVideocam } from "react-icons/md";
 import { SiX } from "react-icons/si";
 
-const MAX_CHARS = 280;
 const PREVIEW_MEDIA_MAX_H = 200;
 const MAX_ATTACHMENTS_PER_POST = 4;
 
@@ -245,6 +244,9 @@ export function ThreadsPostForm({
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const postsRef = useRef<ThreadPost[]>(posts);
   const [showFirstTextError, setShowFirstTextError] = useState(false);
+  const [addMediaZoneHover, setAddMediaZoneHover] = useState<number | null>(
+    null,
+  );
 
   useEffect(() => {
     postsRef.current = posts;
@@ -535,6 +537,23 @@ export function ThreadsPostForm({
     ].sort((a, b) => a.order - b.order);
   };
 
+  useEffect(() => {
+    if (addMediaZoneHover === null) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const file = e.clipboardData?.files?.[0];
+      if (!file) return;
+      if (file.type.startsWith("image/")) {
+        e.preventDefault();
+        addImagesToPost(addMediaZoneHover, [file]);
+      } else if (file.type.startsWith("video/")) {
+        e.preventDefault();
+        addVideoToPost(addMediaZoneHover, [file]);
+      }
+    };
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [addMediaZoneHover]);
+
   const handleDragStart = (postId: number, index: number) => {
     setDraggedPostId(postId);
     setDraggedIndex(index);
@@ -708,11 +727,8 @@ export function ThreadsPostForm({
     };
 
     if (initialDraftId) {
-      const {
-        updateDraft,
-        updateAndPublish,
-        updatePost,
-      } = await import("@/app/actions/posts");
+      const { updateDraft, updateAndPublish, updatePost } =
+        await import("@/app/actions/posts");
       if (effectiveMode === "draft") {
         const result = await updateDraft(
           initialDraftId,
@@ -842,7 +858,6 @@ export function ThreadsPostForm({
     router.refresh();
   };
 
-  const anyOverLimit = posts.some((p) => p.text.length > MAX_CHARS);
   const firstPostText = posts[0]?.text.trim() ?? "";
   const hasContent = firstPostText.length > 0;
 
@@ -928,7 +943,6 @@ export function ThreadsPostForm({
             submitDisabled={
               accounts.length === 0 ||
               (mode === "scheduled" && !scheduledAt) ||
-              anyOverLimit ||
               !hasContent
             }
             use24HourTimeFormat={use24HourTimeFormat}
@@ -951,8 +965,7 @@ export function ThreadsPostForm({
               Thread posts (stacked in order when published)
             </p>
             <p className="text-sm text-text-muted -mt-2">
-              Short posts work best — e.g. {MAX_CHARS} chars per post. You can
-              add images or a video to each post.
+              You can add images or a video to each post.
             </p>
 
             {posts.map((post, index) => (
@@ -980,7 +993,6 @@ export function ThreadsPostForm({
                   onChange={(e) => updatePost(post.id, e.target.value)}
                   placeholder="What's happening?"
                   rows={3}
-                  maxLength={MAX_CHARS}
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
                 />
                 {index === 0 && showFirstTextError && !firstPostText && (
@@ -988,17 +1000,6 @@ export function ThreadsPostForm({
                     Caption is required
                   </p>
                 )}
-                <div className="flex justify-end text-sm">
-                  <span
-                    className={
-                      post.text.length > MAX_CHARS
-                        ? "text-destructive font-medium"
-                        : "text-text-muted"
-                    }
-                  >
-                    {post.text.length} / {MAX_CHARS}
-                  </span>
-                </div>
 
                 {/* Media previews - draggable with serial numbers */}
                 {(post.images.length > 0 || post.videos.length > 0) && (
@@ -1063,49 +1064,45 @@ export function ThreadsPostForm({
                   </div>
                 )}
 
-                {/* Add media buttons */}
-                <div className="flex items-center gap-2 pt-1 border-t border-border-subtle">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    id={`thread-images-${post.id}`}
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      if (files && files.length > 0) {
-                        addImagesToPost(post.id, files);
-                      }
-                      e.target.value = "";
-                    }}
-                  />
-                  <input
-                    type="file"
-                    accept="video/*"
-                    multiple
-                    className="hidden"
-                    id={`thread-video-${post.id}`}
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      if (files && files.length > 0) {
-                        addVideoToPost(post.id, files);
-                      }
-                      e.target.value = "";
-                    }}
-                  />
+                {/* Add media */}
+                <div className="pt-1 border-t border-border-subtle">
                   <label
-                    htmlFor={`thread-images-${post.id}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-sm font-medium text-text hover:bg-bg-muted cursor-pointer"
+                    onMouseEnter={() => setAddMediaZoneHover(post.id)}
+                    onMouseLeave={() => setAddMediaZoneHover(null)}
+                    className={`flex items-center justify-center gap-2 w-full rounded-xl border px-4 py-2 cursor-pointer transition-colors text-sm text-text-muted ${
+                      addMediaZoneHover === post.id
+                        ? "border-accent bg-accent/5"
+                        : "border-border bg-bg-subtle hover:border-accent hover:bg-accent/5"
+                    }`}
                   >
-                    <MdOutlinePhotoLibrary className="w-4 h-4 text-text-muted" />
-                    Images ({post.images.length}/{MAX_ATTACHMENTS_PER_POST})
-                  </label>
-                  <label
-                    htmlFor={`thread-video-${post.id}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-sm font-medium text-text hover:bg-bg-muted cursor-pointer"
-                  >
-                    <MdOutlineVideocam className="w-4 h-4 text-text-muted" />
-                    Videos ({post.videos.length}/{MAX_ATTACHMENTS_PER_POST})
+                    <MdOutlinePhotoLibrary className="h-4 w-4" />
+                    <MdOutlineVideocam className="h-4 w-4" />
+                    <span>
+                      Add media ({post.images.length + post.videos.length}/
+                      {MAX_ATTACHMENTS_PER_POST}) · Hover and paste from
+                      clipboard (Ctrl+V)
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        const files = e.target.files;
+                        if (!files?.length) return;
+                        const imageFiles = Array.from(files).filter((f) =>
+                          f.type.startsWith("image/"),
+                        );
+                        const videoFiles = Array.from(files).filter((f) =>
+                          f.type.startsWith("video/"),
+                        );
+                        if (imageFiles.length > 0)
+                          addImagesToPost(post.id, imageFiles);
+                        if (videoFiles.length > 0)
+                          addVideoToPost(post.id, videoFiles);
+                        e.target.value = "";
+                      }}
+                    />
                   </label>
                 </div>
               </div>
@@ -1131,7 +1128,6 @@ export function ThreadsPostForm({
           submitDisabled={
             accounts.length === 0 ||
             (mode === "scheduled" && !scheduledAt) ||
-            anyOverLimit ||
             !hasContent
           }
           hasAccountSelected={selectedIds.size > 0}
@@ -1238,13 +1234,7 @@ export function ThreadsPostForm({
                         </p>
                         {hasContent ? (
                           <>
-                            <p
-                              className={`mt-0.5 text-sm ${
-                                post.text.length > MAX_CHARS
-                                  ? "text-destructive"
-                                  : "text-text"
-                              }`}
-                            >
+                            <p className="mt-0.5 text-sm text-text">
                               {post.text.trim() || (
                                 <span className="italic text-text-muted">
                                   Post {index + 1}
