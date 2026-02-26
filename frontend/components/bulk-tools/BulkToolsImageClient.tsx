@@ -122,10 +122,25 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
         previewUrl: URL.createObjectURL(file),
         caption: "",
         scheduledAt: new Date(now.getTime() + (prev.length + i) * 60000),
+        collapsed: false,
       }));
       return [...prev, ...newItems];
     });
   }, []);
+
+  const toggleItemCollapsed = (id: string) => {
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === id ? { ...it, collapsed: it.collapsed !== true } : it,
+      ),
+    );
+  };
+  const collapseAll = () => {
+    setItems((prev) => prev.map((it) => ({ ...it, collapsed: true })));
+  };
+  const expandAll = () => {
+    setItems((prev) => prev.map((it) => ({ ...it, collapsed: false })));
+  };
 
   const updateCaption = (id: string, caption: string) => {
     setItems((prev) =>
@@ -279,17 +294,39 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
             />
 
             <div>
-              <h2 className="text-lg font-semibold text-foreground mb-3">
-                Your Images ({items.length})
-              </h2>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Your Images ({items.length})
+                </h2>
+                {items.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={collapseAll}
+                      className="rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted/80 transition-colors"
+                    >
+                      Collapse all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={expandAll}
+                      className="rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted/80 transition-colors"
+                    >
+                      Expand all
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="space-y-3">
-                {items.map((item) => (
+                {items.map((item, index) => (
                   <ImageCard
                     key={item.id}
                     item={item}
+                    index={index}
                     onCaptionChange={updateCaption}
                     onScheduleChange={updateSchedule}
                     onDelete={removeItem}
+                    onToggleCollapsed={toggleItemCollapsed}
                   />
                 ))}
               </div>
