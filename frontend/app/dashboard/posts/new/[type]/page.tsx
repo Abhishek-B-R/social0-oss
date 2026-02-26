@@ -44,7 +44,14 @@ export default async function NewPostByTypePage({
   if (!session) redirect("/");
 
   const { type: typeSlug } = await params;
-  const { draft: draftId } = await searchParams;
+  const rawSearchParams = await searchParams;
+  const draftParam = rawSearchParams.draft;
+  const draftId =
+    typeof draftParam === "string"
+      ? draftParam
+      : Array.isArray(draftParam) && draftParam[0]
+        ? draftParam[0]
+        : undefined;
   const contentType = getContentTypeBySlug(typeSlug);
   if (!contentType) notFound();
 

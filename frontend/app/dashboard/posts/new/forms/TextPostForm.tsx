@@ -79,23 +79,34 @@ export function TextPostForm({
     if (!initialDraftId) return;
     let cancelled = false;
     (async () => {
-      const result = await getDraft(initialDraftId);
-      if (cancelled) return;
-      setDraftLoading(false);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await getDraft(initialDraftId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        const { draft } = result;
+        const validAccountIds = new Set(
+          accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
+        );
+        const restoredIds = draft.connectedAccountIds.filter((id) =>
+          validAccountIds.has(id),
+        );
+        setContent(draft.originalContent ?? "");
+        setSelectedIds(new Set(restoredIds));
+        setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
+        if (draft.scheduledAt) setMode("scheduled");
+      } catch {
+        if (!cancelled) setError("Failed to load draft");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
       }
-      const { draft } = result;
-      setContent(draft.originalContent ?? "");
-      setSelectedIds(new Set(draft.connectedAccountIds));
-      setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
-      if (draft.scheduledAt) setMode("scheduled");
     })();
     return () => {
       cancelled = true;
     };
-  }, [initialDraftId]);
+  }, [initialDraftId, accounts]);
 
   useEffect(() => {
     if (remember) persistSelection(selectedIds);
@@ -189,7 +200,11 @@ export function TextPostForm({
               (a) => a.platform === "twitter_x",
             );
             if (xAccount) {
-              await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
+              createAutoPlug(
+                result.postId,
+                xAccount.id,
+                autoPlugConfig,
+              ).catch(() => {});
             }
           }
           router.push("/dashboard/posts");

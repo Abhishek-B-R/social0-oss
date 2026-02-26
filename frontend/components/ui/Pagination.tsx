@@ -44,10 +44,12 @@ export function Pagination({
 }: PaginationProps) {
   if (totalPages <= 1) return null;
 
-  const prevPage = currentPage - 1;
-  const nextPage = currentPage + 1;
+  const page = Math.max(1, Math.min(currentPage, totalPages));
+  const prevPage = page - 1;
+  const nextPage = page + 1;
   const prevHref = buildPaginationUrl(basePath, prevPage, searchParams);
   const nextHref = buildPaginationUrl(basePath, nextPage, searchParams);
+  const displayPage = page;
   const buttonClass =
     "inline-flex items-center gap-1 rounded-lg border border-input bg-bg px-3 py-2 text-sm font-medium text-text shadow-sm transition-colors hover:bg-bg-muted disabled:pointer-events-none disabled:opacity-50";
 
@@ -56,7 +58,7 @@ export function Pagination({
       className="flex items-center justify-center gap-4 py-6"
       aria-label="Pagination"
     >
-      {currentPage <= 1 ? (
+      {displayPage <= 1 ? (
         <span
           className={buttonClass}
           aria-disabled
@@ -76,10 +78,10 @@ export function Pagination({
       )}
 
       <span className="text-sm text-text-muted">
-        Page {currentPage} of {totalPages}
+        Page {displayPage} of {totalPages}
       </span>
 
-      {currentPage >= totalPages ? (
+      {displayPage >= totalPages ? (
         <span
           className={buttonClass}
           aria-disabled

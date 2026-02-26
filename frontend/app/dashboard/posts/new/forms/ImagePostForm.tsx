@@ -127,34 +127,45 @@ export function ImagePostForm({
     if (!initialDraftId) return;
     let cancelled = false;
     (async () => {
-      const { getDraft } = await import("@/app/actions/posts");
-      const result = await getDraft(initialDraftId);
-      if (cancelled) return;
-      setDraftLoading(false);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const { getDraft } = await import("@/app/actions/posts");
+        const result = await getDraft(initialDraftId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        const { draft } = result;
+        const validAccountIds = new Set(
+          accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
+        );
+        const restoredIds = draft.connectedAccountIds.filter((id) =>
+          validAccountIds.has(id),
+        );
+        setContent(draft.originalContent ?? "");
+        setSelectedIds(new Set(restoredIds));
+        setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
+        if (draft.scheduledAt) setMode("scheduled");
+        const imageMedia = draft.media.filter((m) =>
+          m.mimeType.startsWith("image/"),
+        );
+        setImages(
+          imageMedia.map((m, i) => ({
+            preview: m.thumbnailUrl ?? m.url ?? "",
+            order: i + 1,
+            existingId: m.id,
+          })),
+        );
+      } catch {
+        if (!cancelled) setError("Failed to load draft");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
       }
-      const { draft } = result;
-      setContent(draft.originalContent ?? "");
-      setSelectedIds(new Set(draft.connectedAccountIds));
-      setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
-      if (draft.scheduledAt) setMode("scheduled");
-      const imageMedia = draft.media.filter((m) =>
-        m.mimeType.startsWith("image/"),
-      );
-      setImages(
-        imageMedia.map((m, i) => ({
-          preview: m.thumbnailUrl ?? m.url ?? "",
-          order: i + 1,
-          existingId: m.id,
-        })),
-      );
     })();
     return () => {
       cancelled = true;
     };
-  }, [initialDraftId]);
+  }, [initialDraftId, accounts]);
 
   useEffect(() => {
     if (remember) persistSelection(selectedIds);
@@ -200,13 +211,17 @@ export function ImagePostForm({
 
   const handleDeleteDraft = async () => {
     if (!initialDraftId) return;
-    const { deleteDraft } = await import("@/app/actions/posts");
-    const result = await deleteDraft(initialDraftId);
-    if (result.success) {
-      router.push("/dashboard/posts/drafts");
-      router.refresh();
-    } else {
-      setError(result.error);
+    try {
+      const { deleteDraft } = await import("@/app/actions/posts");
+      const result = await deleteDraft(initialDraftId);
+      if (result.success) {
+        router.push("/dashboard/posts/drafts");
+        router.refresh();
+      } else {
+        setError(result.error);
+      }
+    } catch {
+      setError("Failed to delete draft");
     }
   };
 
@@ -454,28 +469,32 @@ export function ImagePostForm({
           return;
         }
         setPublishedPostId(result.postId);
+        setOverlayPhase("done");
+        router.refresh();
         if (
           resurfaceConfig &&
           selectedAccounts.some((a) => a.platform === "twitter_x")
         ) {
-          await createResurfaceSchedule(
+          createResurfaceSchedule(
             result.postId,
             "x",
             resurfaceConfig.intervalHours,
             resurfaceConfig.maxResurfaces,
             resurfaceConfig.plugComment?.trim() || null,
-          );
+          ).catch(() => {});
         }
         if (autoPlugConfig) {
           const xAccount = selectedAccounts.find(
             (a) => a.platform === "twitter_x",
           );
           if (xAccount) {
-            await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
+            createAutoPlug(
+              result.postId,
+              xAccount.id,
+              autoPlugConfig,
+            ).catch(() => {});
           }
         }
-        setOverlayPhase("done");
-        router.refresh();
         return;
       }
       if (effectiveMode === "scheduled") {

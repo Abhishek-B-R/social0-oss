@@ -145,23 +145,30 @@ export function VideoPostForm({
     if (!initialDraftId) return;
     let cancelled = false;
     (async () => {
-      const { getDraft } = await import("@/app/actions/posts");
-      const result = await getDraft(initialDraftId);
-      if (cancelled) return;
-      setDraftLoading(false);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-      const { draft } = result;
-      setContent(draft.originalContent ?? "");
-      setSelectedIds(new Set(draft.connectedAccountIds));
-      setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
-      if (draft.scheduledAt) setMode("scheduled");
-      const videoMedia = draft.media.find((m) => m.mimeType.startsWith("video/"));
-      if (videoMedia) {
-        setExistingVideoId(videoMedia.id);
-        setVideoPreview(videoMedia.thumbnailUrl ?? videoMedia.url ?? null);
+      try {
+        const { getDraft } = await import("@/app/actions/posts");
+        const result = await getDraft(initialDraftId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        const { draft } = result;
+        setContent(draft.originalContent ?? "");
+        setSelectedIds(new Set(draft.connectedAccountIds));
+        setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
+        if (draft.scheduledAt) setMode("scheduled");
+        const videoMedia = draft.media.find((m) =>
+          m.mimeType.startsWith("video/"),
+        );
+        if (videoMedia) {
+          setExistingVideoId(videoMedia.id);
+          setVideoPreview(videoMedia.url ?? videoMedia.thumbnailUrl ?? null);
+        }
+      } catch {
+        if (!cancelled) setError("Failed to load draft");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
       }
     })();
     return () => {
@@ -268,11 +275,12 @@ export function VideoPostForm({
   };
 
   const removeVideo = () => {
-    if (videoPreview) URL.revokeObjectURL(videoPreview);
+    if (videoPreview?.startsWith("blob:")) URL.revokeObjectURL(videoPreview);
     if (customThumbnailPreview) URL.revokeObjectURL(customThumbnailPreview);
     setVideoFile(null);
     setVideoPreview(null);
     setVideoDuration(0);
+    setExistingVideoId(null);
     setCustomThumbnail(null);
     setCustomThumbnailPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -425,28 +433,32 @@ export function VideoPostForm({
           return;
         }
         setPublishedPostId(result.postId);
+        setOverlayPhase("done");
+        router.refresh();
         if (
           resurfaceConfig &&
           selectedAccounts.some((a) => a.platform === "twitter_x")
         ) {
-          await createResurfaceSchedule(
+          createResurfaceSchedule(
             result.postId,
             "x",
             resurfaceConfig.intervalHours,
             resurfaceConfig.maxResurfaces,
             resurfaceConfig.plugComment?.trim() || null,
-          );
+          ).catch(() => {});
         }
         if (autoPlugConfig) {
           const xAccount = selectedAccounts.find(
             (a) => a.platform === "twitter_x",
           );
           if (xAccount) {
-            await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
+            createAutoPlug(
+              result.postId,
+              xAccount.id,
+              autoPlugConfig,
+            ).catch(() => {});
           }
         }
-        setOverlayPhase("done");
-        router.refresh();
         return;
       }
       if (effectiveMode === "scheduled") {

@@ -38,8 +38,18 @@ type Account = {
   tokenExpired?: boolean;
 };
 
-type ImageFile = { file: File; preview: string; order: number };
-type VideoFile = { file: File; preview: string; order: number };
+type ImageFile = {
+  file?: File;
+  preview: string;
+  order: number;
+  existingId?: string;
+};
+type VideoFile = {
+  file?: File;
+  preview: string;
+  order: number;
+  existingId?: string;
+};
 
 export function CollectionPostForm({
   accounts,
@@ -123,19 +133,44 @@ export function CollectionPostForm({
     if (!initialDraftId) return;
     let cancelled = false;
     (async () => {
-      const { getDraft } = await import("@/app/actions/posts");
-      const result = await getDraft(initialDraftId);
-      if (cancelled) return;
-      setDraftLoading(false);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const { getDraft } = await import("@/app/actions/posts");
+        const result = await getDraft(initialDraftId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        const { draft } = result;
+        setContent(draft.originalContent ?? "");
+        setSelectedIds(new Set(draft.connectedAccountIds));
+        setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
+        if (draft.scheduledAt) setMode("scheduled");
+        const orderedMedia = draft.media.map((m, i) => ({
+          ...m,
+          order: i + 1,
+        }));
+        const draftImages = orderedMedia
+          .filter((m) => m.mimeType.startsWith("image/"))
+          .map((m) => ({
+            preview: m.thumbnailUrl ?? m.url ?? "",
+            order: m.order,
+            existingId: m.id,
+          }));
+        const draftVideos = orderedMedia
+          .filter((m) => m.mimeType.startsWith("video/"))
+          .map((m) => ({
+            preview: m.thumbnailUrl ?? m.url ?? "",
+            order: m.order,
+            existingId: m.id,
+          }));
+        if (draftImages.length > 0) setImages(draftImages);
+        if (draftVideos.length > 0) setVideos(draftVideos);
+      } catch {
+        if (!cancelled) setError("Failed to load draft");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
       }
-      const { draft } = result;
-      setContent(draft.originalContent ?? "");
-      setSelectedIds(new Set(draft.connectedAccountIds));
-      setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
-      if (draft.scheduledAt) setMode("scheduled");
     })();
     return () => {
       cancelled = true;
@@ -323,16 +358,18 @@ export function CollectionPostForm({
     const newImages = reordered
       .filter((i) => i.type === "image")
       .map((i) => ({
-        file: i.file,
+        ...(i.file && { file: i.file }),
         preview: i.preview,
         order: i.order,
+        ...(i.existingId && { existingId: i.existingId }),
       }));
     const newVideos = reordered
       .filter((i) => i.type === "video")
       .map((i) => ({
-        file: i.file,
+        ...(i.file && { file: i.file }),
         preview: i.preview,
         order: i.order,
+        ...(i.existingId && { existingId: i.existingId }),
       }));
     setImages(newImages);
     setVideos(newVideos);
@@ -346,7 +383,7 @@ export function CollectionPostForm({
   const removeImage = (preview: string) => {
     setImages((prev) => {
       const item = prev.find((i) => i.preview === preview);
-      if (item) URL.revokeObjectURL(item.preview);
+      if (item?.preview.startsWith("blob:")) URL.revokeObjectURL(item.preview);
       const filtered = prev.filter((i) => i.preview !== preview);
       const allItems = [...filtered, ...videos].sort(
         (a, b) => a.order - b.order,
@@ -374,7 +411,7 @@ export function CollectionPostForm({
   const removeVideo = (preview: string) => {
     setVideos((prev) => {
       const item = prev.find((v) => v.preview === preview);
-      if (item) URL.revokeObjectURL(item.preview);
+      if (item?.preview.startsWith("blob:")) URL.revokeObjectURL(item.preview);
       const filtered = prev.filter((v) => v.preview !== preview);
       const allItems = [...images, ...filtered].sort(
         (a, b) => a.order - b.order,
@@ -451,31 +488,38 @@ export function CollectionPostForm({
     setError(null);
     setOverlayPhase("uploading");
 
-    const allMedia: Array<{ file: File; order: number }> = [
-      ...images.map((img) => ({ file: img.file, order: img.order })),
-      ...videos.map((vid) => ({ file: vid.file, order: vid.order })),
-    ].sort((a, b) => a.order - b.order);
-
+    const sortedItems = getAllItems();
     const mediaIds: string[] = [];
-    const total = allMedia.length;
-    for (let i = 0; i < allMedia.length; i++) {
-      const item = allMedia[i];
-      setUploadProgress(`${i + 1} of ${total}`);
-      try {
-        const fd = new FormData();
-        fd.set("file", item.file);
-        const res = await fetch("/api/media/upload", {
-          method: "POST",
-          body: fd,
-        });
-        const data = await res.json();
-        if (data.id) mediaIds.push(data.id);
-      } catch {
-        setError("Failed to upload media.");
-        setLoading(false);
-        setOverlayPhase("idle");
-        setUploadProgress(null);
-        return;
+    const toUpload = sortedItems.filter(
+      (i): i is typeof i & { file: File } => !!i.file,
+    );
+    let uploadIndex = 0;
+    const total = toUpload.length;
+
+    for (const item of sortedItems) {
+      if (item.existingId) {
+        mediaIds.push(item.existingId);
+      } else {
+        const withFile = toUpload[uploadIndex];
+        if (!withFile) continue;
+        uploadIndex++;
+        setUploadProgress(`${uploadIndex} of ${total}`);
+        try {
+          const fd = new FormData();
+          fd.set("file", withFile.file);
+          const res = await fetch("/api/media/upload", {
+            method: "POST",
+            body: fd,
+          });
+          const data = await res.json();
+          if (data.id) mediaIds.push(data.id);
+        } catch {
+          setError("Failed to upload media.");
+          setLoading(false);
+          setOverlayPhase("idle");
+          setUploadProgress(null);
+          return;
+        }
       }
     }
     setUploadProgress(null);
@@ -538,28 +582,32 @@ export function CollectionPostForm({
           return;
         }
         setPublishedPostId(result.postId);
+        setOverlayPhase("done");
+        router.refresh();
         if (
           resurfaceConfig &&
           selectedAccounts.some((a) => a.platform === "twitter_x")
         ) {
-          await createResurfaceSchedule(
+          createResurfaceSchedule(
             result.postId,
             "x",
             resurfaceConfig.intervalHours,
             resurfaceConfig.maxResurfaces,
             resurfaceConfig.plugComment?.trim() || null,
-          );
+          ).catch(() => {});
         }
         if (autoPlugConfig) {
           const xAccount = selectedAccounts.find(
             (a) => a.platform === "twitter_x",
           );
           if (xAccount) {
-            await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
+            createAutoPlug(
+              result.postId,
+              xAccount.id,
+              autoPlugConfig,
+            ).catch(() => {});
           }
         }
-        setOverlayPhase("done");
-        router.refresh();
         return;
       }
       if (effectiveMode === "scheduled") {
@@ -605,24 +653,30 @@ export function CollectionPostForm({
         return;
       }
       setPublishedPostId(result.postId);
+      setOverlayPhase("done");
+      router.refresh();
       if (
         resurfaceConfig &&
         selectedAccounts.some((a) => a.platform === "twitter_x")
       ) {
-        await createResurfaceSchedule(
+        createResurfaceSchedule(
           result.postId,
           "x",
           resurfaceConfig.intervalHours,
           resurfaceConfig.maxResurfaces,
           resurfaceConfig.plugComment?.trim() || null,
-        );
+        ).catch(() => {});
       }
       if (autoPlugConfig) {
         const xAccount = selectedAccounts.find(
           (a) => a.platform === "twitter_x",
         );
         if (xAccount) {
-          await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
+          createAutoPlug(
+            result.postId,
+            xAccount.id,
+            autoPlugConfig,
+          ).catch(() => {});
         }
       }
     }

@@ -23,7 +23,6 @@ import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
 import { IoMdAddCircleOutline } from "react-icons/io";
 import { MdClose } from "react-icons/md";
 import { MdOutlinePhotoLibrary, MdOutlineVideocam } from "react-icons/md";
-import { SiX } from "react-icons/si";
 
 const PREVIEW_MEDIA_MAX_H = 200;
 const MAX_ATTACHMENTS_PER_POST = 4;
@@ -265,31 +264,36 @@ export function ThreadsPostForm({
     if (!initialDraftId) return;
     let cancelled = false;
     (async () => {
-      const { getDraft } = await import("@/app/actions/posts");
-      const result = await getDraft(initialDraftId);
-      if (cancelled) return;
-      setDraftLoading(false);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const { getDraft } = await import("@/app/actions/posts");
+        const result = await getDraft(initialDraftId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        const { draft } = result;
+        const raw = draft.originalContent ?? "";
+        const parts = raw.split(THREAD_SEPARATOR).map((s) => s.trim());
+        if (parts.length > 0) {
+          setPosts(
+            parts.map((text, i) => ({
+              id: i + 1,
+              text,
+              images: [],
+              videos: [],
+            })),
+          );
+          nextIdRef.current = parts.length + 1;
+        }
+        setSelectedIds(new Set(draft.connectedAccountIds));
+        setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
+        if (draft.scheduledAt) setMode("scheduled");
+      } catch {
+        if (!cancelled) setError("Failed to load draft");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
       }
-      const { draft } = result;
-      const raw = draft.originalContent ?? "";
-      const parts = raw.split(THREAD_SEPARATOR).map((s) => s.trim());
-      if (parts.length > 0) {
-        setPosts(
-          parts.map((text, i) => ({
-            id: i + 1,
-            text,
-            images: [],
-            videos: [],
-          })),
-        );
-        nextIdRef.current = parts.length + 1;
-      }
-      setSelectedIds(new Set(draft.connectedAccountIds));
-      setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
-      if (draft.scheduledAt) setMode("scheduled");
     })();
     return () => {
       cancelled = true;
@@ -552,6 +556,7 @@ export function ThreadsPostForm({
     };
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addMediaZoneHover]);
 
   const handleDragStart = (postId: number, index: number) => {
@@ -762,28 +767,32 @@ export function ThreadsPostForm({
           return;
         }
         setPublishedPostId(result.postId);
+        setOverlayPhase("done");
+        router.refresh();
         if (
           resurfaceConfig &&
           selectedAccounts.some((a) => a.platform === "twitter_x")
         ) {
-          await createResurfaceSchedule(
+          createResurfaceSchedule(
             result.postId,
             "x",
             resurfaceConfig.intervalHours,
             resurfaceConfig.maxResurfaces,
             resurfaceConfig.plugComment?.trim() || null,
-          );
+          ).catch(() => {});
         }
         if (autoPlugConfig) {
           const xAccount = selectedAccounts.find(
             (a) => a.platform === "twitter_x",
           );
           if (xAccount) {
-            await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
+            createAutoPlug(
+              result.postId,
+              xAccount.id,
+              autoPlugConfig,
+            ).catch(() => {});
           }
         }
-        setOverlayPhase("done");
-        router.refresh();
         return;
       }
       if (effectiveMode === "scheduled") {

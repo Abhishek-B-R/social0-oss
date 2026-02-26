@@ -481,6 +481,14 @@ export async function updateAndPublish(
   if (!result.success) {
     return result;
   }
-  await executePublish(draftId, session.user.id);
+  try {
+    await executePublish(draftId, session.user.id);
+  } catch (err) {
+    return {
+      success: false,
+      error:
+        err instanceof Error ? err.message : "Publish failed after update",
+    };
+  }
   return { success: true, postId: draftId };
 }
