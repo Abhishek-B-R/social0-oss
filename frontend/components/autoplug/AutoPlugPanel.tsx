@@ -97,18 +97,24 @@ function AutoPlugPanelInner({
   const [plugComment, setPlugComment] = useState(
     initialConfig?.plugComment ?? "",
   );
+  const plugCommentTrimmed = plugComment.slice(0, MAX_PLUG_COMMENT_LENGTH).trim();
+  const plugCommentMissing = (enabled || modalMode) && plugCommentTrimmed.length === 0;
 
   useEffect(() => {
     if (!enabled) {
       onChange(null);
       return;
     }
+    if (plugCommentTrimmed.length === 0) {
+      onChange(null);
+      return;
+    }
     onChange({
       metricType,
       threshold: Math.max(1, Math.round(threshold)),
-      plugComment: plugComment.slice(0, MAX_PLUG_COMMENT_LENGTH).trim(),
+      plugComment: plugCommentTrimmed,
     });
-  }, [enabled, metricType, threshold, plugComment, onChange]);
+  }, [enabled, metricType, threshold, plugCommentTrimmed, onChange]);
 
   const commentSlice = plugComment.slice(0, MAX_PLUG_COMMENT_LENGTH);
   const charCount = commentSlice.length;
@@ -194,6 +200,11 @@ function AutoPlugPanelInner({
               rows={3}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
+            {plugCommentMissing && (
+              <p className="mt-2 text-xs font-medium text-destructive" role="alert">
+                Auto-Plug message can’t be empty.
+              </p>
+            )}
             <div className="mt-2 rounded-lg border border-border bg-muted p-3">
               <p className="text-xs text-muted-foreground mb-2">Preview</p>
               <div className="flex gap-3">

@@ -85,7 +85,10 @@ export async function createAutoPlug(
 
   const threshold = Math.max(1, Math.round(config.threshold));
   const metricType = config.metricType === "retweets" ? "retweets" : "likes";
-  const plugComment = (config.plugComment ?? "").trim().slice(0, 280) || " ";
+  const plugComment = (config.plugComment ?? "").trim().slice(0, 280);
+  if (!plugComment) {
+    return { success: false, error: "Auto-Plug message is required" };
+  }
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 

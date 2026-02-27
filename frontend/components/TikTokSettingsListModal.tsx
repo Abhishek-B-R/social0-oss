@@ -45,10 +45,9 @@ export function TikTokSettingsListModal({
     >
       <DialogContent
         className="max-w-lg max-h-[90vh] flex flex-col gap-0 p-0 border-border bg-bg"
-        aria-labelledby="tiktok-settings-list-title"
       >
         <DialogHeader className="shrink-0 p-4 border-b border-border pb-4">
-          <DialogTitle id="tiktok-settings-list-title" className="text-lg font-semibold text-text">
+          <DialogTitle className="text-lg font-semibold text-text">
             TikTok settings
           </DialogTitle>
         </DialogHeader>

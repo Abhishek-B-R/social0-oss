@@ -59,7 +59,7 @@ export function AccountBubbleSelector({
   const allSelected =
     selectableAccounts.length > 0 &&
     selectableAccounts.every((a) => selectedIds.has(a.id));
-  const avatarSize = compact ? "h-14 w-14" : "h-14 w-14";
+  const avatarSize = compact ? "h-12 w-12" : "h-12 w-12";
   const badgeSize = compact ? "h-4 w-4" : "h-4 w-4";
   const badgeInner = compact ? "h-2.5 w-2.5" : "h-2.5 w-2.5";
   const bubbleGap = compact ? "gap-4" : "gap-4";

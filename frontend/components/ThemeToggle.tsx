@@ -16,15 +16,44 @@ const OPTIONS: Array<{
   { value: "dark", label: "Dark", Icon: Moon },
 ];
 
-export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+type ThemeToggleProps = {
+  /** On landing page: show only sun/moon toggle. In settings: show Light / System / Dark. */
+  variant?: "full" | "simple";
+};
+
+export function ThemeToggle({ variant = "full" }: ThemeToggleProps) {
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => setMounted(true), []);
 
   if (!mounted) {
     return (
-      <div className="h-10 w-[248px] rounded-xl border border-border bg-muted" />
+      <div
+        className={
+          variant === "simple"
+            ? "h-10 w-10 rounded-xl border border-border bg-muted"
+            : "h-10 w-[248px] rounded-xl border border-border bg-muted"
+        }
+      />
+    );
+  }
+
+  if (variant === "simple") {
+    const isDark = resolvedTheme === "dark";
+    return (
+      <button
+        type="button"
+        onClick={() => setTheme(isDark ? "light" : "dark")}
+        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted text-foreground transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      >
+        {isDark ? (
+          <Moon className="h-5 w-5" />
+        ) : (
+          <Sun className="h-5 w-5" />
+        )}
+      </button>
     );
   }
 

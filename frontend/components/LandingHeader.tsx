@@ -55,7 +55,7 @@ export function LandingHeader() {
           </Link>
         </nav>
         <div className="flex items-center gap-3">
-          <ThemeToggle />
+          <ThemeToggle variant="simple" />
           <Link
             href="/auth"
             className="bg-accent hover:bg-accent-hover text-white font-semibold py-2.5 px-5 rounded-xl transition-colors text-sm shrink-0 shadow-md"

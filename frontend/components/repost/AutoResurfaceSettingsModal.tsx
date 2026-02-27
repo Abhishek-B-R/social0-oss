@@ -39,10 +39,9 @@ export function AutoResurfaceSettingsModal({
     >
       <DialogContent
         className="max-w-lg max-h-[90vh] flex flex-col gap-0 p-0 border-border bg-bg"
-        aria-labelledby="auto-resurface-settings-title"
       >
         <DialogHeader className="shrink-0 p-4 border-b border-border pb-4">
-          <DialogTitle id="auto-resurface-settings-title" className="text-lg font-semibold text-text">
+          <DialogTitle className="text-lg font-semibold text-text">
             ♻️ Auto-Repost settings
           </DialogTitle>
         </DialogHeader>

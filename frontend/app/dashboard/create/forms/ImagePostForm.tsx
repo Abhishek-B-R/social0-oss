@@ -22,7 +22,7 @@ import type {
 } from "@/components/autoplug/AutoPlugPanel";
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
-import { MdOutlineAddPhotoAlternate, MdClose } from "react-icons/md";
+import { MdClose } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettings } from "@/components/TikTokSettings";
 import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
@@ -35,6 +35,7 @@ import {
   AlertTriangle,
   Check,
   Circle,
+  ImagePlus,
 } from "lucide-react";
 
 type PlatformCaptionState = {
@@ -736,7 +737,7 @@ export function ImagePostForm({
         onSubmit={handleSubmit}
         className="flex flex-col gap-6 lg:flex-row lg:items-start"
       >
-        <div className="min-w-0 flex-1 space-y-6 lg:max-w-[65%]">
+        <div className="min-w-0 flex-1 space-y-6">
           <PostFormOptions
             accounts={filteredAccounts}
             selectedIds={selectedIds}
@@ -788,13 +789,13 @@ export function ImagePostForm({
                 onClick={() => fileInputRef.current?.click()}
                 onMouseEnter={() => setIsUploadZoneHovered(true)}
                 onMouseLeave={() => setIsUploadZoneHovered(false)}
-                className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed py-10 text-text-muted transition-colors ${
+                className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed py-4 text-text-muted transition-colors ${
                   isUploadZoneHovered
                     ? "border-accent bg-accent/5"
                     : "border-border bg-bg-subtle"
                 }`}
               >
-                <MdOutlineAddPhotoAlternate className="mb-2 h-10 w-10" />
+                <ImagePlus className="mb-2 h-6 w-6" />
                 <span className="text-sm font-medium">
                   Click to add image(s)
                 </span>
@@ -854,7 +855,7 @@ export function ImagePostForm({
                     }`}
                     title="Add more · Hover & paste (Ctrl+V)"
                   >
-                    <MdOutlineAddPhotoAlternate className="h-6 w-6" />
+                    <ImagePlus className="h-6 w-6" />
                     <span className="text-xs mt-0.5">Add more</span>
                   </button>
                 </div>
@@ -1439,7 +1440,7 @@ export function ImagePostForm({
                 <>
                   {!previewImage ? (
                     <div className="flex aspect-square w-full flex-col items-center justify-center rounded-lg border border-dashed border-border bg-bg-muted/30 text-text-muted">
-                      <MdOutlineAddPhotoAlternate className="mb-2 h-12 w-12" />
+                      <ImagePlus className="mb-2 h-12 w-12" />
                       <span className="text-xs">
                         Upload media to see preview
                       </span>

@@ -32,6 +32,7 @@ import {
   AlertTriangle,
   Check,
   Circle,
+  Clapperboard,
 } from "lucide-react";
 
 type PlatformCaptionState = {
@@ -717,13 +718,13 @@ export function VideoPostForm({
                 onClick={() => fileInputRef.current?.click()}
                 onMouseEnter={() => setIsUploadZoneHovered(true)}
                 onMouseLeave={() => setIsUploadZoneHovered(false)}
-                className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed py-10 text-text-muted transition-colors ${
+                className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed py-6 text-text-muted transition-colors ${
                   isUploadZoneHovered
                     ? "border-accent bg-accent/5"
                     : "border-border bg-bg-subtle"
                 }`}
               >
-                <MdOutlineVideoLibrary className="mb-2 h-10 w-10" />
+                <Clapperboard className="mb-2 h-6 w-6" />
                 <span className="text-sm font-medium">Click to add video</span>
                 <span className="text-xs text-text-muted mt-1">
                   Hover & paste from clipboard (Ctrl+V)

@@ -93,7 +93,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
 
   return (
     <aside
-      className="dashboard-sidebar hidden h-full w-64 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar-bg lg:flex"
+      className="dashboard-sidebar hidden h-full w-60 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar-bg lg:flex"
       data-sidebar="dashboard"
     >
       <div className="flex flex-col gap-6 p-4">

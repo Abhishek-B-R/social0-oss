@@ -34,10 +34,12 @@ export function AccountAvatar({
     "?";
 
   // Reset failed state when URL changes
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setFailed(false), [profileImageUrl]);
 
   if (profileImageUrl?.trim() && !failed) {
     return (
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={profileImageUrl}
         alt={username || platform || "Account"}

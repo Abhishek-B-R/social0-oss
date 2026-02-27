@@ -55,7 +55,12 @@ export function EditPostForm({
     setContent(post.originalContent ?? "");
     setSelectedIds(new Set(post.connectedAccountIds));
     setScheduledAt(post.scheduledAt ? new Date(post.scheduledAt) : null);
-  }, [post.id, post.originalContent, post.connectedAccountIds, post.scheduledAt]);
+  }, [
+    post.id,
+    post.originalContent,
+    post.connectedAccountIds,
+    post.scheduledAt,
+  ]);
 
   const platformName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
@@ -82,14 +87,15 @@ export function EditPostForm({
     setIdsToRemove((prev) => new Set(prev).add(id));
   };
 
-  const isImage = (mime: string) => mime.startsWith("image/");
+  // const isImage = (mime: string) => mime.startsWith("image/");
   const isVideo = (mime: string) => mime.startsWith("video/");
   const validateFile = (file: File): string | null => {
     const img = file.type.startsWith("image/");
     const vid = file.type.startsWith("video/");
     if (!img && !vid) return "Unsupported file type.";
     const max = img ? MAX_IMAGE_SIZE_BYTES : MAX_VIDEO_SIZE_BYTES;
-    if (file.size > max) return `File too large (max ${img ? "50MB" : "500MB"}).`;
+    if (file.size > max)
+      return `File too large (max ${img ? "50MB" : "500MB"}).`;
     return null;
   };
 
@@ -140,7 +146,10 @@ export function EditPostForm({
       for (const { file } of newFiles) {
         const formData = new FormData();
         formData.append("file", file);
-        const res = await fetch("/api/media/upload", { method: "POST", body: formData });
+        const res = await fetch("/api/media/upload", {
+          method: "POST",
+          body: formData,
+        });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error ?? "Upload failed");
@@ -148,7 +157,9 @@ export function EditPostForm({
         const data = (await res.json()) as { id: string };
         newMediaIds.push(data.id);
       }
-      const keptExistingIds = (post.mediaIds ?? []).filter((id) => !idsToRemove.has(id));
+      const keptExistingIds = (post.mediaIds ?? []).filter(
+        (id) => !idsToRemove.has(id),
+      );
       const finalMediaIds = [...keptExistingIds, ...newMediaIds];
       const result = await updatePost(
         post.id,
@@ -248,7 +259,10 @@ export function EditPostForm({
                       />
                     )}
                   </div>
-                  <p className="text-xs text-text-muted truncate px-1 py-1" title={m.originalFilename}>
+                  <p
+                    className="text-xs text-text-muted truncate px-1 py-1"
+                    title={m.originalFilename}
+                  >
                     {m.originalFilename}
                   </p>
                   <button
@@ -284,7 +298,10 @@ export function EditPostForm({
                     />
                   )}
                 </div>
-                <p className="text-xs text-text-muted truncate px-1 py-1" title={item.file.name}>
+                <p
+                  className="text-xs text-text-muted truncate px-1 py-1"
+                  title={item.file.name}
+                >
                   {item.file.name}
                 </p>
                 <button
@@ -376,7 +393,9 @@ export function EditPostForm({
         </p>
         {scheduledAt === null ? (
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm text-text-muted">Not scheduled (draft)</span>
+            <span className="text-sm text-text-muted">
+              Not scheduled (draft)
+            </span>
             <button
               type="button"
               onClick={() =>
@@ -420,7 +439,10 @@ export function EditPostForm({
         <button
           type="submit"
           disabled={
-            loading || accounts.length === 0 || !content.trim() || selectedIds.size === 0
+            loading ||
+            accounts.length === 0 ||
+            !content.trim() ||
+            selectedIds.size === 0
           }
           className="rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 shadow-lg transition-colors"
         >
