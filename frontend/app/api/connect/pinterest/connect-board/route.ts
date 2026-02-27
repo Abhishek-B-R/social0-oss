@@ -59,12 +59,9 @@ export async function POST(req: NextRequest) {
       profileImageUrl: string | null;
     };
     try {
-      const userRes = await fetch(
-        "https://api-sandbox.pinterest.com/v5/user_account",
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        },
-      );
+      const userRes = await fetch("https://api.pinterest.com/v5/user_account", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       const userData = (await userRes.json().catch(() => ({}))) as {
         id?: string;
         username?: string;

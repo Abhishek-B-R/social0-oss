@@ -124,13 +124,20 @@ export async function GET(
       });
       const { accessToken, accessSecret } = await client.login(oauthVerifier);
 
-      let userInfo: { id: string; username: string | null; profileImageUrl: string | null };
+      let userInfo: {
+        id: string;
+        username: string | null;
+        profileImageUrl: string | null;
+      };
       try {
         const oauth = new OAuth({
           consumer: { key: consumerKey, secret: consumerSecret },
           signature_method: "HMAC-SHA1",
           hash_function(base_string: string, key: string) {
-            return crypto.createHmac("sha1", key).update(base_string).digest("base64");
+            return crypto
+              .createHmac("sha1", key)
+              .update(base_string)
+              .digest("base64");
           },
         });
         const verifyUrl =
@@ -141,17 +148,33 @@ export async function GET(
             { key: accessToken, secret: accessSecret },
           ),
         );
-        const response = await fetch(verifyUrl, { headers: authHeader as unknown as Record<string, string> });
+        const response = await fetch(verifyUrl, {
+          headers: authHeader as unknown as Record<string, string>,
+        });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
-          console.error("Twitter verify_credentials error:", response.status, data);
-          userInfo = { id: `twitter_x-${Date.now()}`, username: null, profileImageUrl: null };
+          console.error(
+            "Twitter verify_credentials error:",
+            response.status,
+            data,
+          );
+          userInfo = {
+            id: `twitter_x-${Date.now()}`,
+            username: null,
+            profileImageUrl: null,
+          };
         } else {
           let profileImageUrl: string | null =
-            typeof data.profile_image_url_https === "string" ? data.profile_image_url_https : null;
+            typeof data.profile_image_url_https === "string"
+              ? data.profile_image_url_https
+              : null;
           if (profileImageUrl) {
-            profileImageUrl = profileImageUrl.replace(/_normal(\.[a-z]+)?$/i, "_400x400$1") as string;
-            if (!isValidProfileImageUrl(profileImageUrl)) profileImageUrl = null;
+            profileImageUrl = profileImageUrl.replace(
+              /_normal(\.[a-z]+)?$/i,
+              "_400x400$1",
+            ) as string;
+            if (!isValidProfileImageUrl(profileImageUrl))
+              profileImageUrl = null;
           }
           userInfo = {
             id: data.id_str ?? `twitter_x-${Date.now()}`,
@@ -167,8 +190,15 @@ export async function GET(
         if (err instanceof Error && err.message === "NEXT_REDIRECT") {
           throw err;
         }
-        console.error("Twitter OAuth 1.0a verify_credentials fetch failed:", err);
-        userInfo = { id: `twitter_x-${Date.now()}`, username: null, profileImageUrl: null };
+        console.error(
+          "Twitter OAuth 1.0a verify_credentials fetch failed:",
+          err,
+        );
+        userInfo = {
+          id: `twitter_x-${Date.now()}`,
+          username: null,
+          profileImageUrl: null,
+        };
       }
 
       if (!userId) {
@@ -217,7 +247,10 @@ export async function GET(
           isActive: true,
         });
       }
-      return safeRedirect("/dashboard/connections?connected=twitter_x", "/dashboard/connections");
+      return safeRedirect(
+        "/dashboard/connections?connected=twitter_x",
+        "/dashboard/connections",
+      );
     } catch (err) {
       if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
         throw err;
@@ -354,10 +387,17 @@ export async function GET(
           body: tokenParams,
         });
       } catch (fetchError) {
-        if ((fetchError as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+        if (
+          (fetchError as { digest?: string })?.digest?.startsWith(
+            "NEXT_REDIRECT",
+          )
+        ) {
           throw fetchError;
         }
-        if (fetchError instanceof Error && fetchError.message === "NEXT_REDIRECT") {
+        if (
+          fetchError instanceof Error &&
+          fetchError.message === "NEXT_REDIRECT"
+        ) {
           throw fetchError;
         }
         const err = fetchError as Error & { code?: string; cause?: Error };
@@ -380,10 +420,17 @@ export async function GET(
         try {
           errorJson = JSON.parse(errorText);
         } catch (parseErr) {
-          if ((parseErr as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          if (
+            (parseErr as { digest?: string })?.digest?.startsWith(
+              "NEXT_REDIRECT",
+            )
+          ) {
             throw parseErr;
           }
-          if (parseErr instanceof Error && parseErr.message === "NEXT_REDIRECT") {
+          if (
+            parseErr instanceof Error &&
+            parseErr.message === "NEXT_REDIRECT"
+          ) {
             throw parseErr;
           }
           errorJson = { raw: errorText };
@@ -442,7 +489,10 @@ export async function GET(
             tokens.expires_in = longLived.expires_in ?? 60 * 24 * 60 * 60;
           }
         } else {
-          console.error("Instagram long-lived token exchange failed:", await exchangeRes.text());
+          console.error(
+            "Instagram long-lived token exchange failed:",
+            await exchangeRes.text(),
+          );
         }
       }
     } else if (platform === "tiktok") {
@@ -481,10 +531,17 @@ export async function GET(
         try {
           errorJson = JSON.parse(errorText);
         } catch (parseErr) {
-          if ((parseErr as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          if (
+            (parseErr as { digest?: string })?.digest?.startsWith(
+              "NEXT_REDIRECT",
+            )
+          ) {
             throw parseErr;
           }
-          if (parseErr instanceof Error && parseErr.message === "NEXT_REDIRECT") {
+          if (
+            parseErr instanceof Error &&
+            parseErr.message === "NEXT_REDIRECT"
+          ) {
             throw parseErr;
           }
           errorJson = { raw: errorText };
@@ -516,21 +573,18 @@ export async function GET(
       const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString(
         "base64",
       );
-      tokenResponse = await fetch(
-        "https://api-sandbox.pinterest.com/v5/oauth/token",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Authorization: `Basic ${basicAuth}`,
-          },
-          body: new URLSearchParams({
-            grant_type: "authorization_code",
-            code: code!,
-            redirect_uri: redirectUri,
-          }).toString(),
+      tokenResponse = await fetch("https://api.pinterest.com/v5/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${basicAuth}`,
         },
-      );
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code: code!,
+          redirect_uri: redirectUri,
+        }).toString(),
+      });
 
       if (!tokenResponse.ok) {
         console.error("Pinterest token exchange failed:", tokenResponse.status);
@@ -565,12 +619,9 @@ export async function GET(
     // Pinterest: fetch boards and redirect to selection (store in verification table)
     // Using sandbox API for trial access
     if (platform === "pinterest") {
-      const boardsRes = await fetch(
-        "https://api-sandbox.pinterest.com/v5/boards",
-        {
-          headers: { Authorization: `Bearer ${tokens.access_token}` },
-        },
-      );
+      const boardsRes = await fetch("https://api.pinterest.com/v5/boards", {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
       const boardsData = (await boardsRes.json().catch(() => ({}))) as {
         items?: { id: string; name?: string }[];
       };
@@ -640,8 +691,12 @@ export async function GET(
         );
       }
       const pagesData = await pagesRes.json();
-      const pages: { id: string; name: string; access_token: string; picture?: { data?: { url?: string } } }[] =
-        pagesData.data || [];
+      const pages: {
+        id: string;
+        name: string;
+        access_token: string;
+        picture?: { data?: { url?: string } };
+      }[] = pagesData.data || [];
       if (pages.length === 0) {
         return safeRedirect(
           `/dashboard?error=no_facebook_pages&platform=${platform}`,
@@ -665,7 +720,9 @@ export async function GET(
               if (isValidProfileImageUrl(url)) profileImageUrl = url;
             }
           } catch (err) {
-            if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+            if (
+              (err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")
+            ) {
               throw err;
             }
             if (err instanceof Error && err.message === "NEXT_REDIRECT") {
@@ -711,7 +768,10 @@ export async function GET(
           });
         }
       }
-      return safeRedirect("/dashboard/connections?connected=facebook", "/dashboard/connections");
+      return safeRedirect(
+        "/dashboard/connections?connected=facebook",
+        "/dashboard/connections",
+      );
     }
 
     // Fetch platform user info (platform-specific)
@@ -871,9 +931,15 @@ export async function GET(
     });
 
     if (platform === "threads") {
-      return safeRedirect("/dashboard/connections?connected=threads", "/dashboard/connections");
+      return safeRedirect(
+        "/dashboard/connections?connected=threads",
+        "/dashboard/connections",
+      );
     }
-    return safeRedirect(`/dashboard/connections?connected=${platform}`, "/dashboard/connections");
+    return safeRedirect(
+      `/dashboard/connections?connected=${platform}`,
+      "/dashboard/connections",
+    );
   } catch (err) {
     if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
       throw err;
@@ -917,19 +983,28 @@ async function fetchPlatformUserInfo(
           );
           if (profileRes.ok) {
             const profileData = await profileRes.json().catch(() => ({}));
-            console.log("LinkedIn raw data:", JSON.stringify(profileData.profilePicture, null, 2));
-            const elements = profileData.profilePicture?.["displayImage~"]?.elements;
-            const urlFromProjection = elements?.[elements.length - 1]?.identifiers?.[0]?.identifier ?? null;
+            console.log(
+              "LinkedIn raw data:",
+              JSON.stringify(profileData.profilePicture, null, 2),
+            );
+            const elements =
+              profileData.profilePicture?.["displayImage~"]?.elements;
+            const urlFromProjection =
+              elements?.[elements.length - 1]?.identifiers?.[0]?.identifier ??
+              null;
             if (isValidProfileImageUrl(urlFromProjection)) {
               profileImageUrl = urlFromProjection;
             }
           }
           if (!profileImageUrl) {
             const fallbackUrl = data.picture ?? null;
-            if (isValidProfileImageUrl(fallbackUrl)) profileImageUrl = fallbackUrl;
+            if (isValidProfileImageUrl(fallbackUrl))
+              profileImageUrl = fallbackUrl;
           }
         } catch (err) {
-          if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          if (
+            (err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")
+          ) {
             throw err;
           }
           if (err instanceof Error && err.message === "NEXT_REDIRECT") {
@@ -937,7 +1012,8 @@ async function fetchPlatformUserInfo(
           }
           console.error("LinkedIn profile picture fetch failed:", err);
           const fallbackUrl = data.picture ?? null;
-          if (isValidProfileImageUrl(fallbackUrl)) profileImageUrl = fallbackUrl;
+          if (isValidProfileImageUrl(fallbackUrl))
+            profileImageUrl = fallbackUrl;
         }
         return {
           id: data.sub,
@@ -970,7 +1046,10 @@ async function fetchPlatformUserInfo(
           );
           if (fallbackRes.ok) {
             const fallbackData = await fallbackRes.json();
-            console.log("Instagram direct user data (fallback):", JSON.stringify(fallbackData, null, 2));
+            console.log(
+              "Instagram direct user data (fallback):",
+              JSON.stringify(fallbackData, null, 2),
+            );
             return {
               id: fallbackData.id || `instagram-${Date.now()}`,
               username: fallbackData.username || null,
@@ -980,16 +1059,24 @@ async function fetchPlatformUserInfo(
           break;
         }
         const data = await response.json();
-        console.log("Instagram direct user data:", JSON.stringify(data, null, 2));
+        console.log(
+          "Instagram direct user data:",
+          JSON.stringify(data, null, 2),
+        );
         let profileImageUrl: string | null = null;
         try {
           const raw = data.profile_picture_url;
           // Store whatever URL is returned (may expire); AccountAvatar onError handles display. If URL is from cdninstagram.com or fbcdn.net, use referrerPolicy="no-referrer" on the img.
-          if (typeof raw === "string" && (raw.startsWith("http://") || raw.startsWith("https://"))) {
+          if (
+            typeof raw === "string" &&
+            (raw.startsWith("http://") || raw.startsWith("https://"))
+          ) {
             profileImageUrl = raw;
           }
         } catch (pfpErr) {
-          if ((pfpErr as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+          if (
+            (pfpErr as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")
+          ) {
             throw pfpErr;
           }
           if (pfpErr instanceof Error && pfpErr.message === "NEXT_REDIRECT") {
@@ -1026,7 +1113,9 @@ async function fetchPlatformUserInfo(
           const channel = channelData.items?.[0];
           if (channel) {
             const thumb = channel.snippet?.thumbnails?.default?.url;
-            const profileImageUrl = isValidProfileImageUrl(thumb) ? thumb : null;
+            const profileImageUrl = isValidProfileImageUrl(thumb)
+              ? thumb
+              : null;
             return {
               id: channel.id,
               username:
@@ -1044,7 +1133,9 @@ async function fetchPlatformUserInfo(
         if (userResponse.ok) {
           const userData = await userResponse.json();
           const picture = userData.picture;
-          const profileImageUrl = isValidProfileImageUrl(picture) ? picture : null;
+          const profileImageUrl = isValidProfileImageUrl(picture)
+            ? picture
+            : null;
           return {
             id: userData.id || `youtube-${Date.now()}`,
             username: userData.name || "YouTube User",
@@ -1082,10 +1173,15 @@ async function fetchPlatformUserInfo(
         if (response.ok) {
           const data = await response.json();
           if (data.data) {
-            let profileImageUrl: string | null = data.data.profile_image_url || null;
+            let profileImageUrl: string | null =
+              data.data.profile_image_url || null;
             if (profileImageUrl && typeof profileImageUrl === "string") {
-              profileImageUrl = profileImageUrl.replace(/_normal(\.[a-z]+)?$/i, "_400x400$1") as string;
-              if (!isValidProfileImageUrl(profileImageUrl)) profileImageUrl = null;
+              profileImageUrl = profileImageUrl.replace(
+                /_normal(\.[a-z]+)?$/i,
+                "_400x400$1",
+              ) as string;
+              if (!isValidProfileImageUrl(profileImageUrl))
+                profileImageUrl = null;
             }
             return {
               id: data.data.id || `twitter_x-${Date.now()}`,
@@ -1142,7 +1238,7 @@ async function fetchPlatformUserInfo(
     case "pinterest": {
       try {
         const response = await fetch(
-          "https://api-sandbox.pinterest.com/v5/user_account",
+          "https://api.pinterest.com/v5/user_account",
           {
             headers: { Authorization: `Bearer ${accessToken}` },
           },

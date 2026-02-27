@@ -63,7 +63,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientIdEnv: "PINTEREST_CLIENT_ID",
     clientSecretEnv: "PINTEREST_CLIENT_SECRET",
     authUrl: "https://www.pinterest.com/oauth/",
-    tokenUrl: "https://api-sandbox.pinterest.com/v5/oauth/token",
+    tokenUrl: "https://api.pinterest.com/v5/oauth/token",
     // Pinterest OAuth scopes (user_accounts:read required for profile fetch in callback)
     scope: "boards:read boards:write pins:read pins:write user_accounts:read",
   },

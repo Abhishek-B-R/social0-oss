@@ -91,31 +91,27 @@ async function verifyToken(
       return r.status;
     }
     case "instagram": {
-      const r = await fetch(
-        "https://graph.instagram.com/me?fields=id",
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      );
+      const r = await fetch("https://graph.instagram.com/me?fields=id", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       return r.status;
     }
     case "facebook": {
-      const r = await fetch(
-        "https://graph.facebook.com/me?fields=id",
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      );
+      const r = await fetch("https://graph.facebook.com/me?fields=id", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       return r.status;
     }
     case "threads": {
-      const r = await fetch(
-        "https://graph.threads.net/me?fields=id",
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      );
+      const r = await fetch("https://graph.threads.net/me?fields=id", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       return r.status;
     }
     case "youtube": {
-      const r = await fetch(
-        "https://www.googleapis.com/oauth2/v3/userinfo",
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      );
+      const r = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       return r.status;
     }
     case "tiktok": {
@@ -134,10 +130,9 @@ async function verifyToken(
     }
     case "pinterest": {
       // Use same base as rest of app (sandbox); sandbox tokens are invalid on production API
-      const r = await fetch(
-        "https://api-sandbox.pinterest.com/v5/user_account",
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      );
+      const r = await fetch("https://api.pinterest.com/v5/user_account", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       return r.status;
     }
     default:
@@ -279,7 +274,9 @@ export function filterAccountsNeedingHealthCheck(
  * On-demand: run token health check for a user's accounts not checked in the last 6 hours.
  * Call from Connections page load.
  */
-export async function runTokenHealthCheckForUser(userId: string): Promise<void> {
+export async function runTokenHealthCheckForUser(
+  userId: string,
+): Promise<void> {
   const now = new Date();
   const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
 

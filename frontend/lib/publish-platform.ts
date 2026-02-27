@@ -181,9 +181,7 @@ async function publishBlueskyThread(
   for (let partIndex = 0; partIndex < parts.length; partIndex++) {
     const part = parts[partIndex];
     const media =
-      part.mediaIds.length > 0
-        ? await getMediaWithUrls(part.mediaIds)
-        : [];
+      part.mediaIds.length > 0 ? await getMediaWithUrls(part.mediaIds) : [];
     const images = media
       .filter((m) => m.mimeType.startsWith("image/"))
       .slice(0, 4);
@@ -263,7 +261,10 @@ async function publishBlueskyThread(
               jobStatus?: { state?: string; blob?: unknown };
             };
             const state = statusData.jobStatus?.state;
-            if (state === "JOB_STATE_COMPLETED" && (statusData.blob ?? statusData.jobStatus?.blob)) {
+            if (
+              state === "JOB_STATE_COMPLETED" &&
+              (statusData.blob ?? statusData.jobStatus?.blob)
+            ) {
               videoBlob = statusData.blob ?? statusData.jobStatus?.blob;
               break;
             }
@@ -318,7 +319,8 @@ async function publishBlueskyThread(
       error?: string;
     };
     if (!createRes.ok || !createData.uri) {
-      const err = createData.message ?? createData.error ?? "Bluesky thread post failed";
+      const err =
+        createData.message ?? createData.error ?? "Bluesky thread post failed";
       return { status: "failed", lastError: err, error: err };
     }
     const cid = createData.cid ?? "";
@@ -380,12 +382,16 @@ async function getOrderedMediaWithUrls(
     })
     .from(mediaUploads)
     .where(inArray(mediaUploads.id, mediaIds));
-  const filtered = media.filter((m): m is { id: string; url: string; mimeType: string } => {
-    if (!m.url || !m.mimeType) return false;
-    return isAllowedMediaUrl(m.url, allowed);
-  });
+  const filtered = media.filter(
+    (m): m is { id: string; url: string; mimeType: string } => {
+      if (!m.url || !m.mimeType) return false;
+      return isAllowedMediaUrl(m.url, allowed);
+    },
+  );
   const order = new Map(mediaIds.map((id, i) => [id, i]));
-  return filtered.slice().sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+  return filtered
+    .slice()
+    .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }
 
 const MEDIA_FETCH_TIMEOUT_MS = 60_000;
@@ -647,10 +653,9 @@ async function publishToBluesky(
   appPassword: string | null,
 ): Promise<PublishPlatformResult> {
   try {
-    const contentType =
-      (post.metadata as Record<string, unknown> | null | undefined)?.[
-        "contentType"
-      ];
+    const contentType = (
+      post.metadata as Record<string, unknown> | null | undefined
+    )?.["contentType"];
     if (contentType === "collection") {
       const err =
         "Collection posts not supported on Bluesky — use Image Post or Video Post instead.";
@@ -714,12 +719,8 @@ async function publishToBluesky(
     const orderedMedia = post.mediaIds?.length
       ? await getOrderedMediaWithUrls(post.mediaIds)
       : [];
-    const images = orderedMedia.filter((m) =>
-      m.mimeType.startsWith("image/"),
-    );
-    const videos = orderedMedia.filter((m) =>
-      m.mimeType.startsWith("video/"),
-    );
+    const images = orderedMedia.filter((m) => m.mimeType.startsWith("image/"));
+    const videos = orderedMedia.filter((m) => m.mimeType.startsWith("video/"));
     const selectedImages = images.slice(0, 4);
 
     if (selectedImages.length > 0) {
@@ -928,8 +929,7 @@ async function publishToBluesky(
               };
 
               const jobState = statusData.jobStatus?.state;
-              const blob =
-                statusData.blob ?? statusData.jobStatus?.blob;
+              const blob = statusData.blob ?? statusData.jobStatus?.blob;
 
               console.log(
                 `Video processing status: ${jobState} (attempt ${retries + 1}/${maxRetries})`,
@@ -1262,7 +1262,7 @@ async function publishToYouTube(
   };
 }
 
-const PINTEREST_API_BASE = "https://api-sandbox.pinterest.com/v5";
+const PINTEREST_API_BASE = "https://api.pinterest.com/v5";
 
 /**
  * Register a video upload with Pinterest and upload the file to the returned S3 URL.
@@ -1289,7 +1289,8 @@ async function uploadPinterestVideo(
   };
   if (!registerRes.ok || !registerData.media_id || !registerData.upload_url) {
     const err =
-      registerData.message ?? `Pinterest media register failed: HTTP ${registerRes.status}`;
+      registerData.message ??
+      `Pinterest media register failed: HTTP ${registerRes.status}`;
     throw new Error(err);
   }
 
@@ -1433,21 +1434,16 @@ async function publishToInstagram(
   const orderedMedia = post.mediaIds?.length
     ? (await getOrderedMediaWithUrls(post.mediaIds)).slice(0, 10)
     : [];
-  const images = orderedMedia.filter((m) =>
-    m.mimeType.startsWith("image/"),
-  );
-  const videos = orderedMedia.filter((m) =>
-    m.mimeType.startsWith("video/"),
-  );
+  const images = orderedMedia.filter((m) => m.mimeType.startsWith("image/"));
+  const videos = orderedMedia.filter((m) => m.mimeType.startsWith("video/"));
   const imageUrl = images[0]?.url;
   const videoUrl = videos[0]?.url;
   const isCarousel = orderedMedia.length > 1;
 
   if (orderedMedia.length === 0) {
-    const hint =
-      post.mediaIds?.length
-        ? "Upload media through this app; external URLs are not allowed."
-        : "Instagram requires at least one image or video.";
+    const hint = post.mediaIds?.length
+      ? "Upload media through this app; external URLs are not allowed."
+      : "Instagram requires at least one image or video.";
     return { status: "failed", lastError: hint, error: "No media" };
   }
 
@@ -1936,7 +1932,8 @@ async function publishToTikTok(
   // Photo post: TikTok supports JPG/JPEG/WEBP only — PNG is not supported
   if (isPhotoPost) {
     const hasPng = imageEntries.some(
-      (m) => m.mimeType === "image/png" || m.mimeType?.toLowerCase().includes("png"),
+      (m) =>
+        m.mimeType === "image/png" || m.mimeType?.toLowerCase().includes("png"),
     );
     if (hasPng) {
       return {
@@ -2058,7 +2055,10 @@ async function publishToTikTok(
       const entry = imageEntries[i];
       if (!entry.url) continue;
       try {
-        const processedUrl = await processImageForTikTok(entry.url, entry.mimeType);
+        const processedUrl = await processImageForTikTok(
+          entry.url,
+          entry.mimeType,
+        );
         photoUrls.push(processedUrl);
       } catch (err) {
         const msg =
@@ -2315,9 +2315,7 @@ async function publishThreadsThread(
     const part = parts[i];
     const safeText = truncate(part.text, 500);
     const media =
-      part.mediaIds.length > 0
-        ? await getMediaWithUrls(part.mediaIds)
-        : [];
+      part.mediaIds.length > 0 ? await getMediaWithUrls(part.mediaIds) : [];
     const images = media.filter((m) => m.mimeType.startsWith("image/"));
     const videos = media.filter((m) => m.mimeType.startsWith("video/"));
     const imageUrl = images[0]?.url;
@@ -2355,7 +2353,8 @@ async function publishThreadsThread(
         if (!res.ok || !data.id) {
           return {
             status: "failed",
-            lastError: data.error?.message ?? `Threads thread part ${i + 1} failed`,
+            lastError:
+              data.error?.message ?? `Threads thread part ${i + 1} failed`,
             error: "Upload failed",
           };
         }
@@ -2474,12 +2473,8 @@ async function publishToThreads(
   const orderedMedia = post.mediaIds?.length
     ? (await getOrderedMediaWithUrls(post.mediaIds)).slice(0, 10)
     : [];
-  const images = orderedMedia.filter((m) =>
-    m.mimeType.startsWith("image/"),
-  );
-  const videos = orderedMedia.filter((m) =>
-    m.mimeType.startsWith("video/"),
-  );
+  const images = orderedMedia.filter((m) => m.mimeType.startsWith("image/"));
+  const videos = orderedMedia.filter((m) => m.mimeType.startsWith("video/"));
   const imageUrl = images[0]?.url;
   const videoUrl = videos[0]?.url;
 

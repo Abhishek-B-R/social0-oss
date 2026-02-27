@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Create board in Pinterest sandbox
-  const createRes = await fetch("https://api-sandbox.pinterest.com/v5/boards", {
+  const createRes = await fetch("https://api.pinterest.com/v5/boards", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${payload.access_token}`,
