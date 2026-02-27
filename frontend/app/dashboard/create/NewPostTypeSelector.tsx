@@ -65,7 +65,7 @@ function ContentTypeCard({
   const Icon = CONTENT_TYPE_ICONS[id];
   return (
     <Link
-      href={`/dashboard/posts/new/${slug}`}
+      href={`/dashboard/create/${slug}`}
       className="group flex flex-col rounded-2xl border-2 border-dashed border-border bg-bg-elevated p-6 shadow-sm transition-all hover:border-accent hover:bg-accent/10 hover:shadow-md"
     >
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-bg-muted text-text-muted group-hover:bg-accent/20 group-hover:text-accent">

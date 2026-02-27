@@ -17,7 +17,7 @@ export default function Home() {
   const handleTryFree = () => {
     signIn.social({
       provider: "google",
-      callbackURL: "/dashboard/posts/new",
+      callbackURL: "/dashboard/create",
     });
   };
 

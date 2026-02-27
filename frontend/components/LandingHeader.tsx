@@ -8,7 +8,7 @@ export function LandingHeader() {
   const handleTryFree = () => {
     signIn.social({
       provider: "google",
-      callbackURL: "/dashboard/posts/new",
+      callbackURL: "/dashboard/create",
     });
   };
 

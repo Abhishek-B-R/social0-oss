@@ -7,7 +7,7 @@ import { FilePlus, List, Link2, MoreHorizontal } from "lucide-react";
 const NAV_ITEMS = [
   { href: "/dashboard/connections", label: "Connections", icon: Link2 },
   { href: "/dashboard/posts", label: "Posts", icon: List },
-  { href: "/dashboard/posts/new", label: "Create", icon: FilePlus },
+  { href: "/dashboard/create", label: "Create", icon: FilePlus },
   { href: "/dashboard/more", label: "More", icon: MoreHorizontal },
 ] as const;
 
@@ -16,10 +16,10 @@ export function DashboardBottomNav() {
 
   const isActive = (href: string) => {
     if (href === "/dashboard/connections") return pathname === "/dashboard/connections";
-    if (href === "/dashboard/posts/new")
+    if (href === "/dashboard/create")
       return (
-        pathname === "/dashboard/posts/new" ||
-        pathname.startsWith("/dashboard/posts/new/")
+        pathname === "/dashboard/create" ||
+        pathname.startsWith("/dashboard/create/")
       );
     if (href === "/dashboard/posts")
       return (

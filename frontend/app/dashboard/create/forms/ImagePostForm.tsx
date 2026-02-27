@@ -439,11 +439,10 @@ export function ImagePostForm({
     }
     const accountCaptions: Record<string, string> = {};
     for (const account of selectedAccounts) {
-      const platformState =
-        platformCaptions[account.platform] ?? {
-          overridden: false,
-          value: "",
-        };
+      const platformState = platformCaptions[account.platform] ?? {
+        overridden: false,
+        value: "",
+      };
       if (platformState.overridden) {
         accountCaptions[account.id] = platformState.value.trim();
       }
@@ -457,11 +456,8 @@ export function ImagePostForm({
     intendedModeRef.current = null;
 
     if (initialDraftId) {
-      const {
-        updateDraft,
-        updateAndPublish,
-        updatePost,
-      } = await import("@/app/actions/posts");
+      const { updateDraft, updateAndPublish, updatePost } =
+        await import("@/app/actions/posts");
       if (effectiveMode === "draft") {
         const result = await updateDraft(
           initialDraftId,
@@ -514,11 +510,9 @@ export function ImagePostForm({
             (a) => a.platform === "twitter_x",
           );
           if (xAccount) {
-            createAutoPlug(
-              result.postId,
-              xAccount.id,
-              autoPlugConfig,
-            ).catch(() => {});
+            createAutoPlug(result.postId, xAccount.id, autoPlugConfig).catch(
+              () => {},
+            );
           }
         }
         return;
@@ -668,7 +662,7 @@ export function ImagePostForm({
       <form
         ref={formRef}
         onSubmit={handleSubmit}
-        className="flex flex-col gap-6 lg:flex-row lg:items-start -mt-10"
+        className="flex flex-col gap-6 lg:flex-row lg:items-start"
       >
         <div className="min-w-0 flex-1 space-y-6 lg:max-w-[65%]">
           <PostFormOptions
@@ -734,7 +728,8 @@ export function ImagePostForm({
                   Click to add image(s)
                 </span>
                 <span className="text-xs text-text-muted mt-1">
-                  Select multiple to add all at once · Hover & paste from clipboard (Ctrl+V)
+                  Select multiple to add all at once · Hover & paste from
+                  clipboard (Ctrl+V)
                 </span>
               </button>
             ) : (
@@ -802,7 +797,9 @@ export function ImagePostForm({
               className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
             {showCaptionError && !content.trim() && (
-              <p className="mt-2 text-xs text-destructive">Caption is required</p>
+              <p className="mt-2 text-xs text-destructive">
+                Caption is required
+              </p>
             )}
           </div>
 
@@ -810,9 +807,7 @@ export function ImagePostForm({
             <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
               <button
                 type="button"
-                onClick={() =>
-                  setPlatformCaptionsExpanded((prev) => !prev)
-                }
+                onClick={() => setPlatformCaptionsExpanded((prev) => !prev)}
                 className="flex w-full items-center justify-between text-left"
               >
                 <span className="text-sm font-semibold text-text">
@@ -826,7 +821,8 @@ export function ImagePostForm({
                 <div className="mt-4 space-y-4">
                   {uniquePlatformsFromSelection.map((platformId) => {
                     const state =
-                      platformCaptions[platformId] ?? ({
+                      platformCaptions[platformId] ??
+                      ({
                         overridden: false,
                         value: "",
                       } as PlatformCaptionState);
@@ -928,9 +924,9 @@ export function ImagePostForm({
           loading={loading}
           submitDisabled={
             accounts.length === 0 ||
-          !content.trim() ||
-          images.length === 0 ||
-          (mode === "scheduled" && !scheduledAt)
+            !content.trim() ||
+            images.length === 0 ||
+            (mode === "scheduled" && !scheduledAt)
           }
           hasAccountSelected={selectedIds.size > 0}
           error={error}
@@ -1180,7 +1176,8 @@ export function ImagePostForm({
                         />
                       </div>
                       <p className="truncate text-center text-xs text-text-muted">
-                        {previewImage.file?.name ?? (previewImage.existingId ? "Uploaded image" : "")}
+                        {previewImage.file?.name ??
+                          (previewImage.existingId ? "Uploaded image" : "")}
                       </p>
                       {sortedImages.length > 1 && (
                         <div className="mt-2 flex items-center justify-center gap-2">

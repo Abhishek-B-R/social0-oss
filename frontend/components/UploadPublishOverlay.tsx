@@ -32,7 +32,7 @@ const DONT_KEEP_WAITING = (
   <p className="mt-4 text-sm text-text-muted">
     Don&apos;t keep waiting — if you have another post idea,{" "}
     <Link
-      href="/dashboard/posts/new"
+      href="/dashboard/create"
       className="font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
     >
       post/schedule
@@ -88,7 +88,7 @@ export function UploadPublishOverlay({
             {DONT_KEEP_WAITING}
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/dashboard/posts/new"
+                href="/dashboard/create"
                 className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
               >
                 Create another post

@@ -39,7 +39,7 @@ export function PricingSection() {
   const handleGetStarted = () => {
     signIn.social({
       provider: "google",
-      callbackURL: "/dashboard/posts/new",
+      callbackURL: "/dashboard/create",
     });
   };
 

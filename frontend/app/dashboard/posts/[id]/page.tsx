@@ -144,7 +144,7 @@ export default async function PostDetailPage({
     const parts = getThreadParts(post);
     const displayType = getDisplayType(post, parts.length, media);
     const slug = DISPLAY_TYPE_TO_SLUG[displayType] ?? "text";
-    redirect(`/dashboard/posts/new/${slug}?draft=${id}`);
+    redirect(`/dashboard/create/${slug}?draft=${id}`);
   }
 
   const media =

@@ -23,7 +23,7 @@ test.describe("Draft lifecycle", () => {
   });
 
   test("create → edit → delete draft", async ({ page }) => {
-    await page.goto("/dashboard/posts/new");
+    await page.goto("/dashboard/create");
     await page.getByRole("link", { name: /Text Post/i }).click();
     await expect(page).toHaveURL(/\/dashboard\/posts\/new\/text/);
 

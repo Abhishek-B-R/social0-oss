@@ -144,7 +144,7 @@ export async function createPost(
 
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/posts");
-    revalidatePath("/dashboard/posts/new");
+    revalidatePath("/dashboard/create");
 
     return { success: true, postId: postRow.id };
   } catch (e) {

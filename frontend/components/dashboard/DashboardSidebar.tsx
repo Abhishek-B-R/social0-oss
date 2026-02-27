@@ -98,7 +98,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
     >
       <div className="flex flex-col gap-6 p-4">
         <Link
-          href="/dashboard/posts/new"
+          href="/dashboard/create"
           className="flex items-center gap-3 rounded-lg px-3 py-2 font-semibold text-lg text-sidebar-text hover:bg-sidebar-active transition-colors"
         >
           <Image
@@ -118,7 +118,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         </div> */}
 
         <Link
-          href="/dashboard/posts/new"
+          href="/dashboard/create"
           className="sidebar-create-post-cta flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm hover:bg-accent-hover transition-colors"
         >
           <FilePlus className="h-4 w-4 shrink-0" />
@@ -128,12 +128,12 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         <nav className="flex flex-1 flex-col gap-6">
           <Section title="Create">
             <NavLink
-              href="/dashboard/posts/new"
+              href="/dashboard/create"
               label="New post"
               icon={FilePlus}
               isActive={
-                pathname === "/dashboard/posts/new" ||
-                pathname.startsWith("/dashboard/posts/new/")
+                pathname === "/dashboard/create" ||
+                pathname.startsWith("/dashboard/create/")
               }
             />
             <NavLink

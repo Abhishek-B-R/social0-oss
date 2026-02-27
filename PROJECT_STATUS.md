@@ -45,7 +45,7 @@
 
 - **Post Creation UI**
   - **Dashboard nav**: Added “Connect”, “Posts”, “New post” links in dashboard header.
-  - **New post page** (`/dashboard/posts/new`): Text area for content, platform selector (only connected accounts), “Save as draft” option, Create post / Save draft actions. Uses server action to create post and `post_publications` (pending) for selected accounts.
+  - **New post page** (`/dashboard/create`): Text area for content, platform selector (only connected accounts), “Save as draft” option, Create post / Save draft actions. Uses server action to create post and `post_publications` (pending) for selected accounts.
   - **Posts list** (`/dashboard/posts`): Lists all posts for the user with status badge, created date, scheduled time (if set), platform count, and “View” link when a publication has a platform URL.
 - **Create post flow**
   - **Server action** (`app/actions/posts.ts`): `createPost(content, selectedAccountIds, asDraft)` — inserts into `posts` (draft or scheduled), then inserts one `post_publications` row per selected connected account with status `pending`. Revalidates dashboard and posts paths.
@@ -205,7 +205,7 @@ The platform supports OAuth 2.0 connections for the following platforms:
 
 - ✅ **Database Schema**: Posts table with media support
 - ✅ **Post Status Tracking**: Draft, scheduled, publishing, published, failed
-- ✅ **Post Creation UI**: New post page at `/dashboard/posts/new` with content textarea, platform selection (connected accounts), save as draft / create post
+- ✅ **Post Creation UI**: New post page at `/dashboard/create` with content textarea, platform selection (connected accounts), save as draft / create post
 - ✅ **Posts List**: `/dashboard/posts` lists all user posts with status, date, platform count, and link to view published post
 - ✅ **Create Post Server Action**: Inserts post + `post_publications` rows for selected accounts (status pending)
 - ⚠️ **Post Editor**: Edit existing posts not yet implemented

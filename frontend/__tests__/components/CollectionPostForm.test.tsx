@@ -7,7 +7,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CollectionPostForm } from "@/app/dashboard/posts/new/forms/CollectionPostForm";
+import { CollectionPostForm } from "@/app/dashboard/create/forms/CollectionPostForm";
 
 const mockPush = jest.fn();
 const mockRefresh = jest.fn();
