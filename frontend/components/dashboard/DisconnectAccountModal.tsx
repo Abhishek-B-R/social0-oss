@@ -59,8 +59,8 @@ export function DisconnectAccountModal({
         className="relative z-10 w-full max-w-md rounded-xl border border-border bg-bg p-6 shadow-xl"
       >
         <div className="flex gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100">
-            <AlertTriangle className="h-5 w-5 text-amber-700" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50">
+            <AlertTriangle className="h-5 w-5 text-amber-700 dark:text-amber-300" />
           </div>
           <div className="min-w-0 flex-1">
             <h2

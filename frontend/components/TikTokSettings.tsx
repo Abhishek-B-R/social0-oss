@@ -209,7 +209,7 @@ export function TikTokSettings({
               <div className="flex-1">
                 <span className="text-sm text-text">Your brand</span>
                 {settings.brand_organic && !settings.brand_content && (
-                  <p className="text-xs text-amber-600 mt-1 italic">
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 italic">
                     Your video will be labeled as &quot;Promotional
                     content&quot;
                   </p>
@@ -235,7 +235,7 @@ export function TikTokSettings({
               <div className="flex-1">
                 <span className="text-sm text-text">Branded content</span>
                 {!settings.brand_organic && settings.brand_content && (
-                  <p className="text-xs text-amber-600 mt-1 italic">
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 italic">
                     Your video will be labeled as &quot;Paid partnership&quot;
                   </p>
                 )}

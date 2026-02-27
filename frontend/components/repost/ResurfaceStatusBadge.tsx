@@ -50,8 +50,8 @@ export function ResurfaceStatusBadge({ schedule }: ResurfaceStatusBadgeProps) {
         }}
         className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium ${
           isDone
-            ? "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+            ? "bg-gray-100 dark:bg-bg-muted text-gray-600 dark:text-text-muted hover:bg-gray-200 dark:hover:bg-bg-subtle"
+            : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
         }`}
       >
         {label}
@@ -104,7 +104,7 @@ export function ResurfaceStatusBadge({ schedule }: ResurfaceStatusBadgeProps) {
               )}
             </dl>
             {disableError && (
-              <p className="mt-4 text-sm text-red-600">{disableError}</p>
+              <p className="mt-4 text-sm text-red-600 dark:text-red-400">{disableError}</p>
             )}
             <div className="mt-6 flex justify-end gap-2">
               <button

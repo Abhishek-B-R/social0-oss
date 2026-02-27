@@ -76,8 +76,8 @@ export default function InstagramFacebookSelectPage() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-        <p className="text-gray-600 font-medium">
+      <div className="rounded-2xl border border-border bg-bg-elevated p-8 shadow-sm">
+        <p className="text-text-muted font-medium">
           Loading your Instagram accounts...
         </p>
       </div>
@@ -86,11 +86,11 @@ export default function InstagramFacebookSelectPage() {
 
   if (error && pages.length === 0) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-        <p className="font-medium text-red-800">{error}</p>
+      <div className="rounded-2xl border border-red-200 dark:border-red-800/60 bg-red-50 dark:bg-red-950/40 p-6">
+        <p className="font-medium text-red-800 dark:text-red-200">{error}</p>
         <Link
           href="/dashboard"
-          className="mt-4 inline-block text-sm font-medium text-emerald-600 hover:text-emerald-700"
+          className="mt-4 inline-block text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
         >
           ← Back to Dashboard
         </Link>
@@ -100,10 +100,10 @@ export default function InstagramFacebookSelectPage() {
 
   return (
     <div className="max-w-md">
-      <h2 className="text-2xl font-extrabold text-gray-900 mb-2">
+      <h2 className="text-2xl font-extrabold text-text mb-2">
         Choose an Instagram Account
       </h2>
-      <p className="text-gray-500 mb-6 font-medium">
+      <p className="text-text-muted mb-6 font-medium">
         Select the Instagram account you want to connect to Social0.
       </p>
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -111,7 +111,7 @@ export default function InstagramFacebookSelectPage() {
           {pages.map((page) => (
             <label
               key={page.instagramAccountId}
-              className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white cursor-pointer hover:bg-gray-50 has-checked:border-emerald-500 has-checked:bg-emerald-50/50"
+              className="flex items-center gap-3 p-4 rounded-xl border border-border bg-bg-elevated cursor-pointer hover:bg-bg-subtle has-checked:border-accent has-checked:bg-accent/10"
             >
               <input
                 type="radio"
@@ -131,10 +131,10 @@ export default function InstagramFacebookSelectPage() {
                   />
                 )}
                 <div className="flex-1">
-                  <div className="font-medium text-gray-900">
+                  <div className="font-medium text-text">
                     @{page.instagramUsername || "instagram"}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-text-muted">
                     via {page.pageName}
                   </div>
                 </div>
@@ -142,11 +142,11 @@ export default function InstagramFacebookSelectPage() {
             </label>
           ))}
         </div>
-        {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+        {error && <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>}
         <div className="flex gap-3">
           <Link
             href="/dashboard"
-            className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+            className="rounded-xl border border-border bg-bg-elevated px-5 py-2.5 font-medium text-text shadow-sm hover:bg-bg-subtle"
           >
             Cancel
           </Link>

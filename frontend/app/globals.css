@@ -257,12 +257,18 @@ html {
   .dark .bg-gray-100 {
     background-color: var(--muted);
   }
+  .dark .bg-gray-200 {
+    background-color: var(--muted);
+  }
+  .dark .bg-gray-300 {
+    background-color: var(--border);
+  }
 
-  /* .dark .text-gray-900,
+  .dark .text-gray-900,
   .dark .text-gray-800,
   .dark .text-gray-700 {
     color: var(--foreground);
-  } */
+  }
   .dark .text-gray-600,
   .dark .text-gray-500,
   .dark .text-gray-400 {
@@ -283,5 +289,44 @@ html {
   .dark .hover\:text-gray-800:hover,
   .dark .hover\:text-gray-700:hover {
     color: var(--foreground);
+  }
+
+  /* Amber: ensure warning/note boxes and badges read well in dark mode */
+  .dark .bg-amber-50 {
+    background-color: rgb(69 26 26 / 0.4);
+  }
+  .dark .bg-amber-100 {
+    background-color: rgb(69 26 26 / 0.5);
+  }
+  .dark .border-amber-100,
+  .dark .border-amber-200 {
+    border-color: rgb(120 53 15 / 0.5);
+  }
+
+  /* Red: error boxes and destructive states */
+  .dark .bg-red-50 {
+    background-color: rgb(127 29 29 / 0.4);
+  }
+  .dark .bg-red-100 {
+    background-color: rgb(127 29 29 / 0.5);
+  }
+  .dark .text-red-700,
+  .dark .text-red-800 {
+    color: rgb(254 202 202);
+  }
+  .dark .border-red-100,
+  .dark .border-red-200 {
+    border-color: rgb(127 29 29 / 0.6);
+  }
+
+  /* Emerald: success states (optional fallback; many components use explicit dark:) */
+  .dark .bg-emerald-50 {
+    background-color: rgb(6 78 59 / 0.35);
+  }
+  .dark .text-emerald-700 {
+    color: rgb(167 243 208);
+  }
+  .dark .border-emerald-200 {
+    border-color: rgb(6 78 59 / 0.5);
   }
 }

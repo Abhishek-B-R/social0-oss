@@ -45,27 +45,27 @@ function getPublicationStatusBadge(
     case "published":
       return {
         label: "Posted",
-        className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+        className: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60",
       };
     case "publishing":
       return {
         label: "Publishing",
-        className: "bg-amber-50 text-amber-700 border-amber-200",
+        className: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60",
       };
     case "scheduled":
       return {
         label: "Scheduled",
-        className: "bg-blue-50 text-blue-700 border-blue-200",
+        className: "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/60",
       };
     case "failed":
       return {
         label: "Failed",
-        className: "bg-red-50 text-red-700 border-red-200",
+        className: "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/60",
       };
     default:
       return {
         label: "Pending",
-        className: "bg-gray-50 text-gray-700 border-gray-200",
+        className: "bg-gray-50 dark:bg-bg-muted text-gray-700 dark:text-text-muted border-gray-200 dark:border-border",
       };
   }
 }
@@ -367,7 +367,7 @@ export default async function PostDetailPage({
                             </p>
                           )}
                           {pub.lastError && pub.status === "failed" && (
-                            <p className="mt-0.5 text-[11px] text-red-600 line-clamp-2">
+                            <p className="mt-0.5 text-[11px] text-red-600 dark:text-red-400 line-clamp-2">
                               {pub.lastError}
                             </p>
                           )}
@@ -379,7 +379,7 @@ export default async function PostDetailPage({
                             href={pub.platformPostUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                            className="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
                           >
                             View
                           </a>

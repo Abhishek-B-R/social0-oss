@@ -138,7 +138,7 @@ export function ConnectionsList({ accounts }: { accounts: Account[] }) {
                           )}
                           {isExpiringSoon && account.expiresInDays != null && (
                             <span
-                              className="shrink-0 inline-flex items-center gap-0.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800"
+                              className="shrink-0 inline-flex items-center gap-0.5 rounded bg-amber-100 dark:bg-amber-900/50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200"
                               title="Token expires soon — reconnect to refresh"
                             >
                               <AlertTriangle className="h-3 w-3" />

@@ -22,7 +22,7 @@ export function PlatformIcon({
   if (!Icon) {
     return (
       <span
-        className={cn("shrink-0 rounded-full bg-gray-300", className)}
+        className={cn("shrink-0 rounded-full bg-bg-muted", className)}
         style={{ width: size, height: size }}
         aria-hidden
       />

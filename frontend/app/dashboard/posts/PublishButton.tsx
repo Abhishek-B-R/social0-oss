@@ -44,7 +44,7 @@ export function PublishButton({
         {loading ? "Publishing…" : label}
       </button>
       {error && (
-        <p className="text-xs text-red-600 max-w-[280px] text-right" title={error}>
+        <p className="text-xs text-red-600 dark:text-red-400 max-w-[280px] text-right" title={error}>
           {error}
         </p>
       )}

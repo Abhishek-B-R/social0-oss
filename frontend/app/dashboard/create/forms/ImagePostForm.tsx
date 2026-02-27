@@ -926,9 +926,9 @@ export function ImagePostForm({
                       (acc) =>
                         !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
                     ) ? (
-                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                     ) : (
-                      <Check className="h-3.5 w-3.5 text-green-600" />
+                      <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                     )}
                     <span>Pinterest Config</span>
                     {activeConfigPanel === "pinterest" ? (

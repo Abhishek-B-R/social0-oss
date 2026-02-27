@@ -116,9 +116,9 @@ export function NewPostForm({
           required
         />
         {twitterThreadWarning && (
-          <p className="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <p className="mt-3 text-sm text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg px-3 py-2">
             Twitter: This will post as a thread (each part between{" "}
-            <code className="bg-amber-100 px-1 rounded">---</code> is a separate
+            <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">---</code> is a separate
             tweet). Max {TWITTER_MAX_LENGTH} characters per part. Media will
             only appear on the first tweet.
           </p>
@@ -142,7 +142,7 @@ export function NewPostForm({
           </button>
         </div>
         {accounts.length === 0 ? (
-          <p className="text-sm text-amber-700 bg-amber-50 rounded-xl p-4 border border-amber-100">
+          <p className="text-sm text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 rounded-xl p-4 border border-amber-100 dark:border-amber-800/60">
             Connect at least one account from the dashboard to post.
           </p>
         ) : (

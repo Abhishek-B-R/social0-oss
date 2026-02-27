@@ -81,14 +81,14 @@ export default async function EditPostPage({
       <div className="mb-6 flex items-center gap-2">
         <Link
           href="/dashboard/posts"
-          className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+          className="text-sm font-medium text-text-muted hover:text-text transition-colors"
         >
           ← Back to Posts
         </Link>
         <span className="text-gray-400">/</span>
-        <span className="text-sm font-medium text-gray-900">Edit post</span>
+        <span className="text-sm font-medium text-text">Edit post</span>
       </div>
-      <h2 className="text-2xl font-extrabold text-gray-900 mb-2">
+      <h2 className="text-2xl font-extrabold text-text mb-2">
         Edit post
       </h2>
       <p className="text-gray-500 mb-8 font-medium">

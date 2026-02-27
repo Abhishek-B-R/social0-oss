@@ -61,14 +61,14 @@ export function ResurfaceSetup({
 
   if (done) {
     return (
-      <p className="mt-4 text-sm text-emerald-600 font-medium">
+      <p className="mt-4 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
         ♻️ Auto-Repost enabled. Your post will be retweeted at the chosen intervals.
       </p>
     );
   }
 
   return (
-    <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50/50 p-4">
+    <div className="mt-6 rounded-xl border border-border bg-bg-muted/50 p-4">
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -76,29 +76,29 @@ export function ResurfaceSetup({
           aria-checked={enabled}
           onClick={() => setEnabled((e) => !e)}
           className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
-            enabled ? "bg-emerald-600" : "bg-gray-200"
+            enabled ? "bg-emerald-600" : "bg-gray-200 dark:bg-gray-600"
           }`}
         >
           <span
-            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+            className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-[#e5e5e5]! shadow transition-transform ${
               enabled ? "translate-x-5" : "translate-x-0.5"
             } mt-0.5`}
           />
         </button>
-        <span className="text-sm font-semibold text-gray-900">
+        <span className="text-sm font-semibold text-text">
           ♻️ Auto-Repost this post
         </span>
       </div>
       {enabled && (
         <div className="mt-4 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
+            <label className="block text-xs font-medium text-text-muted mb-1">
               Reshare every
             </label>
             <select
               value={intervalHours}
               onChange={(e) => setIntervalHours(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+              className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text"
             >
               {INTERVAL_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -108,13 +108,13 @@ export function ResurfaceSetup({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
+            <label className="block text-xs font-medium text-text-muted mb-1">
               Number of reshares
             </label>
             <select
               value={maxResurfaces}
               onChange={(e) => setMaxResurfaces(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+              className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text"
             >
               {MAX_OPTIONS.map((n) => (
                 <option key={n} value={n}>
@@ -124,7 +124,7 @@ export function ResurfaceSetup({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
+            <label className="block text-xs font-medium text-text-muted mb-1">
               Quote tweet text (optional)
             </label>
             <input
@@ -132,11 +132,11 @@ export function ResurfaceSetup({
               value={plugComment}
               onChange={(e) => setPlugComment(e.target.value)}
               placeholder="Add text to post as a quote tweet with each reshare"
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400"
+              className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text placeholder:text-text-muted"
             />
           </div>
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           )}
           <button
             type="button"

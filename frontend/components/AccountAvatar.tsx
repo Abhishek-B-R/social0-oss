@@ -56,7 +56,7 @@ export function AccountAvatar({
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-full bg-gray-200 text-gray-600 font-semibold shrink-0",
+        "flex items-center justify-center rounded-full bg-bg-muted text-text-muted font-semibold shrink-0",
         sizeClass,
         className,
       )}

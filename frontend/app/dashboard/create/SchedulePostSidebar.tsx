@@ -343,7 +343,7 @@ export function SchedulePostSidebar({
                 }
                 onClick={autoRepost.onToggle}
                 className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
-                  autoRepost.enabled ? "bg-emerald-600" : "bg-gray-300"
+                  autoRepost.enabled ? "bg-emerald-600" : "bg-gray-300 dark:bg-gray-600"
                 }`}
               >
                 <span
@@ -380,7 +380,7 @@ export function SchedulePostSidebar({
                 }
                 onClick={autoPlug.onToggle}
                 className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
-                  autoPlug.enabled ? "bg-emerald-600" : "bg-gray-300"
+                  autoPlug.enabled ? "bg-emerald-600" : "bg-gray-300 dark:bg-gray-600"
                 }`}
               >
                 <span

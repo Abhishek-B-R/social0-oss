@@ -219,7 +219,7 @@ export function EditPostForm({
               .map((m) => (
                 <div
                   key={m.id}
-                  className="relative flex flex-col rounded-lg border border-border overflow-hidden bg-gray-50 w-24 shrink-0"
+                  className="relative flex flex-col rounded-lg border border-border overflow-hidden bg-gray-50 dark:bg-bg-muted w-24 shrink-0"
                 >
                   <div className="h-20 w-24 bg-bg-muted flex items-center justify-center overflow-hidden">
                     {isVideo(m.mimeType) ? (
@@ -264,7 +264,7 @@ export function EditPostForm({
             {newFiles.map((item) => (
               <div
                 key={item.previewUrl}
-                className="relative flex flex-col rounded-lg border border-border overflow-hidden bg-gray-50 w-24 shrink-0"
+                className="relative flex flex-col rounded-lg border border-border overflow-hidden bg-gray-50 dark:bg-bg-muted w-24 shrink-0"
               >
                 <div className="h-20 w-24 bg-bg-muted flex items-center justify-center overflow-hidden">
                   {item.file.type.startsWith("video/") ? (
@@ -330,7 +330,7 @@ export function EditPostForm({
           </button>
         </div>
         {accounts.length === 0 ? (
-          <p className="text-sm text-amber-700 bg-amber-50 rounded-xl p-4 border border-amber-100">
+          <p className="text-sm text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 rounded-xl p-4 border border-amber-100 dark:border-amber-800/60">
             Connect at least one account from the dashboard to post.
           </p>
         ) : (
@@ -411,7 +411,7 @@ export function EditPostForm({
       </div>
 
       {error && (
-        <div className="rounded-xl bg-red-50 text-red-700 px-4 py-3 text-sm font-medium border border-red-100">
+        <div className="rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 px-4 py-3 text-sm font-medium border border-red-100 dark:border-red-800/60">
           {error}
         </div>
       )}

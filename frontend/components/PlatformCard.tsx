@@ -75,8 +75,8 @@ export function PlatformCard({ platform, account }: PlatformCardProps) {
 
   return (
     <>
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm hover:shadow-md transition-shadow">
+        <h3 className="text-lg font-semibold text-text mb-4">
           {platform.name}
         </h3>
         {isConnected ? (
@@ -89,15 +89,15 @@ export function PlatformCard({ platform, account }: PlatformCardProps) {
                 size="lg"
               />
             </div>
-            <p className="text-sm text-gray-600 text-center">
+            <p className="text-sm text-text-muted text-center">
               Connected as{" "}
-              <span className="font-medium text-gray-900">
+              <span className="font-medium text-text">
                 @{account.platformUsername || "user"}
               </span>
             </p>
             <button
               disabled
-              className="w-full rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 font-semibold cursor-default"
+              className="w-full rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 px-4 py-2.5 font-semibold cursor-default"
             >
               Connected
             </button>
