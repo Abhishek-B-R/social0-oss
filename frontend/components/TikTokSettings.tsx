@@ -21,10 +21,12 @@ export type TikTokPostSettings = {
 };
 
 const DEFAULT_SETTINGS: TikTokPostSettings = {
-  privacy_level: "PUBLIC_TO_EVERYONE", // Default to Public
-  disable_comment: false, // Allow comments (checked = allowed)
-  disable_duet: false, // Allow duet (checked = allowed)
-  disable_stitch: false, // Allow stitch (checked = allowed)
+  // TikTok requires user to choose privacy explicitly (no default).
+  privacy_level: "",
+  // TikTok requires interactions OFF by default; user must opt in.
+  disable_comment: true,
+  disable_duet: true,
+  disable_stitch: true,
   brand_content_toggle: false,
   brand_organic: false,
   brand_content: false,
@@ -101,7 +103,6 @@ export function TikTokSettings({
         </p>
       </div>
 
-      {/* Privacy Level - Public is default */}
       <div>
         <label className="block text-sm font-medium text-text mb-2">
           Privacy Level <span className="text-destructive">*</span>
@@ -111,7 +112,8 @@ export function TikTokSettings({
           onChange={(e) => updateSetting("privacy_level", e.target.value)}
           className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
         >
-          <option value="PUBLIC_TO_EVERYONE">Public (default)</option>
+          <option value="">Select privacy level</option>
+          <option value="PUBLIC_TO_EVERYONE">Public</option>
           <option value="MUTUAL_FOLLOW_FRIENDS">Friends</option>
           <option value="SELF_ONLY">Only me</option>
         </select>

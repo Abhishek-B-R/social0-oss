@@ -41,10 +41,11 @@ type Account = {
 };
 
 const defaultTiktokSettings: TikTokPostSettings = {
-  privacy_level: "PUBLIC_TO_EVERYONE", // Default to Public
-  disable_comment: false,
-  disable_duet: false,
-  disable_stitch: false,
+  // Match TikTokSettings defaults: require explicit privacy choice, all interactions off by default.
+  privacy_level: "",
+  disable_comment: true,
+  disable_duet: true,
+  disable_stitch: true,
   brand_content_toggle: false,
   brand_organic: false,
   brand_content: false,
@@ -409,11 +410,10 @@ export function VideoPostForm({
     }
     const accountCaptions: Record<string, string> = {};
     for (const account of selectedAccounts) {
-      const platformState =
-        platformCaptions[account.platform] ?? {
-          overridden: false,
-          value: "",
-        };
+      const platformState = platformCaptions[account.platform] ?? {
+        overridden: false,
+        value: "",
+      };
       if (platformState.overridden) {
         accountCaptions[account.id] = platformState.value.trim();
       }
@@ -427,11 +427,8 @@ export function VideoPostForm({
     intendedModeRef.current = null;
 
     if (initialDraftId) {
-      const {
-        updateDraft,
-        updateAndPublish,
-        updatePost,
-      } = await import("@/app/actions/posts");
+      const { updateDraft, updateAndPublish, updatePost } =
+        await import("@/app/actions/posts");
       if (effectiveMode === "draft") {
         const result = await updateDraft(
           initialDraftId,
@@ -484,11 +481,9 @@ export function VideoPostForm({
             (a) => a.platform === "twitter_x",
           );
           if (xAccount) {
-            createAutoPlug(
-              result.postId,
-              xAccount.id,
-              autoPlugConfig,
-            ).catch(() => {});
+            createAutoPlug(result.postId, xAccount.id, autoPlugConfig).catch(
+              () => {},
+            );
           }
         }
         return;
@@ -658,7 +653,7 @@ export function VideoPostForm({
             onRememberChange={setRemember}
           />
 
-          <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm space-y-4">
+          <div className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm space-y-4">
             <label className="block text-sm font-semibold text-text">
               Video & caption
             </label>
@@ -717,7 +712,9 @@ export function VideoPostForm({
               className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
             {showCaptionError && !content.trim() && (
-              <p className="mt-2 text-xs text-destructive">Caption is required</p>
+              <p className="mt-2 text-xs text-destructive">
+                Caption is required
+              </p>
             )}
           </div>
 
@@ -725,9 +722,7 @@ export function VideoPostForm({
             <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
               <button
                 type="button"
-                onClick={() =>
-                  setPlatformCaptionsExpanded((prev) => !prev)
-                }
+                onClick={() => setPlatformCaptionsExpanded((prev) => !prev)}
                 className="flex w-full items-center justify-between text-left"
               >
                 <span className="text-sm font-semibold text-text">
@@ -741,7 +736,8 @@ export function VideoPostForm({
                 <div className="mt-4 space-y-4">
                   {uniquePlatformsFromSelection.map((platformId) => {
                     const state =
-                      platformCaptions[platformId] ?? ({
+                      platformCaptions[platformId] ??
+                      ({
                         overridden: false,
                         value: "",
                       } as PlatformCaptionState);
@@ -843,9 +839,9 @@ export function VideoPostForm({
           loading={loading}
           submitDisabled={
             accounts.length === 0 ||
-          !content.trim() ||
-          !hasVideo ||
-          (mode === "scheduled" && !scheduledAt)
+            !content.trim() ||
+            !hasVideo ||
+            (mode === "scheduled" && !scheduledAt)
           }
           hasAccountSelected={selectedIds.size > 0}
           error={error}
@@ -897,7 +893,13 @@ export function VideoPostForm({
             hasTikTokSelected
               ? {
                   visible: true,
-                  onOpenSettings: () => setTiktokListModalOpen(true),
+                  onOpenSettings: () => {
+                    if (tiktokAccounts.length === 1) {
+                      setTiktokModalAccountId(tiktokAccounts[0].id);
+                    } else {
+                      setTiktokListModalOpen(true);
+                    }
+                  },
                 }
               : null
           }
@@ -1042,7 +1044,7 @@ export function VideoPostForm({
                         aria-hidden
                       />
                     </div>
-                    <p className="mt-2 truncate text-center text-xs text-text-muted">
+                    {/* <p className="mt-2 truncate text-center text-xs text-text-muted">
                       {videoFile?.name}
                     </p>
                     {videoDuration > 0 && (
@@ -1078,7 +1080,6 @@ export function VideoPostForm({
                     </div>
                     {customThumbnailPreview && (
                       <div className="mt-2 flex items-center gap-2">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={customThumbnailPreview}
                           alt="Cover"
@@ -1087,8 +1088,8 @@ export function VideoPostForm({
                         <span className="text-xs font-medium text-emerald-600">
                           Cover image set ✓
                         </span>
-                      </div>
-                    )}
+                      </div> 
+                    )} */}
                   </>
                 )}
               </>

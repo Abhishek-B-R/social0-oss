@@ -979,7 +979,16 @@ export function CollectionPostForm({
             hasTikTok
               ? {
                   visible: true,
-                  onOpenSettings: () => setTiktokListModalOpen(true),
+                  onOpenSettings: () => {
+                    const tiktokAccounts = selectedAccounts.filter(
+                      (a) => a.platform === "tiktok",
+                    );
+                    if (tiktokAccounts.length === 1) {
+                      setTiktokModalAccountId(tiktokAccounts[0].id);
+                    } else {
+                      setTiktokListModalOpen(true);
+                    }
+                  },
                 }
               : null
           }

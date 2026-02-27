@@ -72,7 +72,7 @@ export function PostFormOptions({
 
   return (
     <>
-      <section className="border-b border-border pt-5 pb-5 -mt-4">
+      <section className="border-b border-border pt-5 pb-5 -mt-16">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           {searchSlot && (
             <div className="min-w-0 w-full sm:max-w-[340px] [&_input]:h-9">

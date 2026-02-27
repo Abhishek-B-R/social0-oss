@@ -114,10 +114,11 @@ export function ImagePostForm({
   >({});
 
   const defaultTiktokSettings: TikTokPostSettings = {
-    privacy_level: "PUBLIC_TO_EVERYONE", // Default to Public
-    disable_comment: false,
-    disable_duet: false,
-    disable_stitch: false,
+    // Match TikTokSettings defaults: require explicit privacy choice, all interactions off by default.
+    privacy_level: "",
+    disable_comment: true,
+    disable_duet: true,
+    disable_stitch: true,
     brand_content_toggle: false,
     brand_organic: false,
     brand_content: false,
@@ -983,7 +984,13 @@ export function ImagePostForm({
             hasTikTokSelected
               ? {
                   visible: true,
-                  onOpenSettings: () => setTiktokListModalOpen(true),
+                  onOpenSettings: () => {
+                    if (tiktokAccounts.length === 1) {
+                      setTiktokModalAccountId(tiktokAccounts[0].id);
+                    } else {
+                      setTiktokListModalOpen(true);
+                    }
+                  },
                 }
               : null
           }
