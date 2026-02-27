@@ -34,7 +34,6 @@ type SchedulePostSidebarProps = {
   submitDisabled: boolean;
   hasAccountSelected: boolean;
   error: string | null;
-  onCancel: () => void;
   /** When true, show times in 24h format */
   use24HourTimeFormat?: boolean;
   /** Set this ref before calling requestSubmit so handleSubmit uses the correct mode */
@@ -61,7 +60,6 @@ export function SchedulePostSidebar({
   submitDisabled,
   hasAccountSelected,
   error,
-  onCancel,
   use24HourTimeFormat = false,
   intendedModeRef,
   formRef,
@@ -301,15 +299,8 @@ export function SchedulePostSidebar({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 -mt-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-xl border border-border bg-bg-elevated px-4 py-2.5 font-medium text-text transition-colors hover:bg-bg-muted"
-        >
-          Cancel
-        </button>
-        {draftId && onDeleteDraft && (
+      {draftId && onDeleteDraft && (
+        <div className="flex flex-wrap items-center gap-2 -mt-4">
           <button
             type="button"
             onClick={() => {
@@ -321,8 +312,8 @@ export function SchedulePostSidebar({
           >
             Delete draft
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="space-y-2 shrink-0 min-h-0">
         {autoRepost?.visible && (

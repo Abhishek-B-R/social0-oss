@@ -19,18 +19,20 @@ import type {
 } from "@/components/autoplug/AutoPlugPanel";
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
-import { TikTokSettingsListModal } from "@/components/TikTokSettingsListModal";
 import { MdOutlineVideoLibrary, MdClose, MdImage } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
-import { TikTokSettingsModal } from "@/components/TikTokSettingsModal";
-import { TikTokSettingsCard } from "@/components/TikTokSettingsCard";
-import {
-  PinterestSettingsModal,
-  type PinterestPostSettings,
-} from "@/components/PinterestSettingsModal";
+import { TikTokSettings } from "@/components/TikTokSettings";
+import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
+import { PinterestConfigInline } from "@/components/PinterestConfigInline";
 import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
 import { PLATFORMS } from "@/lib/platforms";
-import { Settings } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  Check,
+  Circle,
+} from "lucide-react";
 
 type PlatformCaptionState = {
   overridden: boolean;
@@ -107,9 +109,6 @@ export function VideoPostForm({
   const [tiktokSettings, setTiktokSettings] = useState<
     Record<string, TikTokPostSettings>
   >({});
-  const [tiktokModalAccountId, setTiktokModalAccountId] = useState<
-    string | null
-  >(null);
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
@@ -118,15 +117,17 @@ export function VideoPostForm({
   );
   const [resurfaceModalOpen, setResurfaceModalOpen] = useState(false);
   const [autoplugModalOpen, setAutoplugModalOpen] = useState(false);
-  const [tiktokListModalOpen, setTiktokListModalOpen] = useState(false);
   const [pinterestSettingsByAccount, setPinterestSettingsByAccount] = useState<
     Record<string, PinterestPostSettings>
   >({});
-  const [pinterestModalAccountId, setPinterestModalAccountId] = useState<
-    string | null
-  >(null);
   const [pinterestError, setPinterestError] = useState<string | null>(null);
   const pinterestSectionRef = useRef<HTMLDivElement>(null);
+  type ConfigPanel = "platform-captions" | "pinterest" | "tiktok" | null;
+  const [activeConfigPanel, setActiveConfigPanel] = useState<ConfigPanel>(null);
+  const [selectedPinterestAccountIndex, setSelectedPinterestAccountIndex] =
+    useState(0);
+  const [selectedTiktokAccountIndex, setSelectedTiktokAccountIndex] =
+    useState(0);
   const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
   const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   type PreviewCardMode = "post" | "media";
@@ -134,8 +135,6 @@ export function VideoPostForm({
     useState<PreviewCardMode>("post");
   const userToggledPreviewRef = useRef(false);
   const [showCaptionError, setShowCaptionError] = useState(false);
-  const [platformCaptionsExpanded, setPlatformCaptionsExpanded] =
-    useState(false);
   const [platformCaptions, setPlatformCaptions] = useState<
     Record<string, PlatformCaptionState>
   >({});
@@ -244,8 +243,6 @@ export function VideoPostForm({
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
-        // Close modal if this account's modal was open
-        if (tiktokModalAccountId === id) setTiktokModalAccountId(null);
       } else {
         next.add(id);
         // Don't auto-open modal - only open when badge is clicked
@@ -391,10 +388,12 @@ export function VideoPostForm({
 
     if (hasPinterestSelected) {
       const missingBoard = pinterestAccounts.some(
-        (acc) => !(pinterestSettingsByAccount[acc.id]?.boardId?.trim()),
+        (acc) => !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
       );
       if (missingBoard) {
-        setPinterestError("Please select a board for Pinterest before posting.");
+        setPinterestError(
+          "Please select a board for Pinterest before posting.",
+        );
         setError(null);
         pinterestSectionRef.current?.scrollIntoView({
           behavior: "smooth",
@@ -451,9 +450,7 @@ export function VideoPostForm({
         if (!s?.boardId?.trim()) return acc;
         acc[accnt.id] = {
           boardId: s.boardId.trim(),
-          ...(s.title?.trim()
-            ? { title: s.title.trim().slice(0, 100) }
-            : {}),
+          ...(s.title?.trim() ? { title: s.title.trim().slice(0, 100) } : {}),
           ...(s.link?.trim() ? { link: s.link.trim() } : {}),
         };
         return acc;
@@ -681,7 +678,6 @@ export function VideoPostForm({
             setScheduledAt={setScheduledAt}
             error={error}
             loading={loading}
-            onCancel={() => router.push("/dashboard/posts")}
             submitLabel={submitLabel}
             submitDisabled={
               accounts.length === 0 ||
@@ -769,113 +765,245 @@ export function VideoPostForm({
             )}
           </div>
 
-          {hasTikTokSelected && (
-            <TikTokSettingsCard
-              selectedAccountIds={selectedAccountIds}
-              allAccounts={accounts}
-              configuredIds={
-                selectedAccountIds.length > 0
-                  ? new Set(
-                      accounts
-                        .filter(
-                          (a) =>
-                            selectedIds.has(a.id) &&
-                            a.platform === "tiktok" &&
-                            tiktokSettings[a.id]?.privacy_level,
-                        )
-                        .map((a) => a.id),
-                    )
-                  : undefined
-              }
-              onOpenSettings={(id) => {
-                setTiktokModalAccountId(id);
-                setTiktokListModalOpen(false);
-              }}
-            />
-          )}
-
-          {hasPinterestSelected && (
-            <div ref={pinterestSectionRef} className="space-y-2">
-              <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
-                <h3 className="text-sm font-semibold text-text mb-1">
-                  Pinterest settings
-                </h3>
-                <p className="text-xs text-text-muted mb-4">
-                  Choose a board and optional pin details per account.
-                </p>
-                <div className="space-y-2">
-                  {pinterestAccounts.map((acc) => {
-                    const settings =
-                      pinterestSettingsByAccount[acc.id] ?? ({
-                        boardId: "",
-                        title: "",
-                        link: "",
-                        rememberBoard: false,
-                        rememberLink: false,
-                      } as PinterestPostSettings);
-                    const hasBoard = !!settings.boardId?.trim();
-                    return (
-                      <div
-                        key={acc.id}
-                        className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 ${
-                          pinterestError && !hasBoard
-                            ? "border-destructive bg-destructive/5"
-                            : "border-border bg-bg-muted/50"
-                        }`}
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-text">
-                            {acc.platformUsername?.trim()
-                              ? `@${acc.platformUsername}`
-                              : "Pinterest account"}
-                          </p>
-                          <p
-                            className={
-                              hasBoard
-                                ? "mt-0.5 text-xs font-medium text-accent"
-                                : "mt-0.5 text-xs font-medium text-amber-600"
-                            }
-                          >
-                            {hasBoard ? "Board selected" : "Needs board"}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setPinterestModalAccountId(acc.id)}
-                          className="shrink-0 rounded-lg p-2 text-text-muted hover:bg-bg-subtle hover:text-text transition-colors"
-                          aria-label="Pinterest settings"
-                        >
-                          <Settings className="h-4 w-4" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                {pinterestError && (
-                  <p className="mt-3 text-sm text-destructive font-medium" role="alert">
-                    {pinterestError}
-                  </p>
+          {(showPlatformCaptionsSection ||
+            hasPinterestSelected ||
+            hasTikTokSelected) && (
+            <div
+              ref={pinterestSectionRef}
+              className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm"
+            >
+              <p className="text-xs text-text-muted mb-3">
+                Post configurations & tools
+              </p>
+              <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
+                {showPlatformCaptionsSection && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveConfigPanel((p) =>
+                        p === "platform-captions" ? null : "platform-captions",
+                      )
+                    }
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
+                      activeConfigPanel === "platform-captions"
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
+                    }`}
+                  >
+                    <Circle className="h-3.5 w-3.5 text-text-muted" />
+                    <span>Platform Captions</span>
+                    {activeConfigPanel === "platform-captions" ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                )}
+                {hasPinterestSelected && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveConfigPanel((p) =>
+                        p === "pinterest" ? null : "pinterest",
+                      )
+                    }
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
+                      activeConfigPanel === "pinterest"
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
+                    }`}
+                  >
+                    {pinterestAccounts.some(
+                      (acc) =>
+                        !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
+                    ) ? (
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                    ) : (
+                      <Check className="h-3.5 w-3.5 text-green-600" />
+                    )}
+                    <span>Pinterest Config</span>
+                    {activeConfigPanel === "pinterest" ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                )}
+                {hasTikTokSelected && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveConfigPanel((p) =>
+                        p === "tiktok" ? null : "tiktok",
+                      )
+                    }
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
+                      activeConfigPanel === "tiktok"
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
+                    }`}
+                  >
+                    <Circle className="h-3.5 w-3.5 text-text-muted" />
+                    <span>TikTok Config</span>
+                    {activeConfigPanel === "tiktok" ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
                 )}
               </div>
-            </div>
-          )}
 
-          {showPlatformCaptionsSection && (
-            <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
-              <button
-                type="button"
-                onClick={() => setPlatformCaptionsExpanded((prev) => !prev)}
-                className="flex w-full items-center justify-between text-left"
-              >
-                <span className="text-sm font-semibold text-text">
-                  Platform Captions
-                </span>
-                <span className="text-text-muted">
-                  {platformCaptionsExpanded ? "▼" : "▶"}
-                </span>
-              </button>
-              {platformCaptionsExpanded && (
-                <div className="mt-4 space-y-4">
+              {activeConfigPanel === "pinterest" && (
+                <div className="mt-2 border-t border-border pt-4">
+                  {pinterestAccounts.length > 1 ? (
+                    <>
+                      <div className="flex rounded-lg border border-border bg-bg-muted/30 p-0.5 mb-4">
+                        {pinterestAccounts.map((acc, idx) => (
+                          <button
+                            key={acc.id}
+                            type="button"
+                            onClick={() =>
+                              setSelectedPinterestAccountIndex(idx)
+                            }
+                            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                              selectedPinterestAccountIndex === idx
+                                ? "bg-bg-elevated text-text shadow-sm"
+                                : "text-text-muted hover:text-text"
+                            }`}
+                          >
+                            {acc.platformUsername?.trim()
+                              ? `@${acc.platformUsername}`
+                              : `Account ${idx + 1}`}
+                          </button>
+                        ))}
+                      </div>
+                      <PinterestConfigInline
+                        accountId={
+                          pinterestAccounts[selectedPinterestAccountIndex]
+                            ?.id ?? ""
+                        }
+                        value={
+                          pinterestSettingsByAccount[
+                            pinterestAccounts[selectedPinterestAccountIndex]
+                              ?.id ?? ""
+                          ] ?? {
+                            boardId: "",
+                            title: "",
+                            link: "",
+                            rememberBoard: false,
+                            rememberLink: false,
+                          }
+                        }
+                        onChange={(s) => {
+                          const id =
+                            pinterestAccounts[selectedPinterestAccountIndex]
+                              ?.id;
+                          if (id)
+                            setPinterestSettingsByAccount((prev) => ({
+                              ...prev,
+                              [id]: s,
+                            }));
+                        }}
+                        isVisible={true}
+                      />
+                    </>
+                  ) : (
+                    <PinterestConfigInline
+                      accountId={pinterestAccounts[0]?.id ?? ""}
+                      value={
+                        pinterestSettingsByAccount[
+                          pinterestAccounts[0]?.id ?? ""
+                        ] ?? {
+                          boardId: "",
+                          title: "",
+                          link: "",
+                          rememberBoard: false,
+                          rememberLink: false,
+                        }
+                      }
+                      onChange={(s) => {
+                        const id = pinterestAccounts[0]?.id;
+                        if (id)
+                          setPinterestSettingsByAccount((prev) => ({
+                            ...prev,
+                            [id]: s,
+                          }));
+                      }}
+                      isVisible={true}
+                    />
+                  )}
+                  {pinterestError && (
+                    <p
+                      className="mt-3 text-sm text-destructive font-medium"
+                      role="alert"
+                    >
+                      {pinterestError}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {activeConfigPanel === "tiktok" && (
+                <div className="mt-2 border-t border-border pt-4">
+                  {tiktokAccounts.length > 1 ? (
+                    <>
+                      <div className="flex rounded-lg border border-border bg-bg-muted/30 p-0.5 mb-4">
+                        {tiktokAccounts.map((acc, idx) => (
+                          <button
+                            key={acc.id}
+                            type="button"
+                            onClick={() => setSelectedTiktokAccountIndex(idx)}
+                            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                              selectedTiktokAccountIndex === idx
+                                ? "bg-bg-elevated text-text shadow-sm"
+                                : "text-text-muted hover:text-text"
+                            }`}
+                          >
+                            {acc.platformUsername?.trim()
+                              ? `@${acc.platformUsername}`
+                              : `Account ${idx + 1}`}
+                          </button>
+                        ))}
+                      </div>
+                      <TikTokSettings
+                        accountId={
+                          tiktokAccounts[selectedTiktokAccountIndex]?.id ?? ""
+                        }
+                        value={
+                          tiktokSettings[
+                            tiktokAccounts[selectedTiktokAccountIndex]?.id ?? ""
+                          ] ?? defaultTiktokSettings
+                        }
+                        onChange={(s) => {
+                          const id =
+                            tiktokAccounts[selectedTiktokAccountIndex]?.id;
+                          if (id)
+                            setTiktokSettings((prev) => ({ ...prev, [id]: s }));
+                        }}
+                        mediaType="video"
+                      />
+                    </>
+                  ) : (
+                    <TikTokSettings
+                      accountId={tiktokAccounts[0]?.id ?? ""}
+                      value={
+                        tiktokSettings[tiktokAccounts[0]?.id ?? ""] ??
+                        defaultTiktokSettings
+                      }
+                      onChange={(s) => {
+                        const id = tiktokAccounts[0]?.id;
+                        if (id)
+                          setTiktokSettings((prev) => ({ ...prev, [id]: s }));
+                      }}
+                      mediaType="video"
+                    />
+                  )}
+                </div>
+              )}
+
+              {activeConfigPanel === "platform-captions" && (
+                <div className="mt-2 border-t border-border pt-4 space-y-4">
                   {uniquePlatformsFromSelection.map((platformId) => {
                     const state =
                       platformCaptions[platformId] ??
@@ -988,7 +1116,6 @@ export function VideoPostForm({
           hasAccountSelected={selectedIds.size > 0}
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
-          onCancel={() => router.push("/dashboard/posts")}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
           draftId={initialDraftId ?? null}
@@ -1101,7 +1228,7 @@ export function VideoPostForm({
                         )}
                       </p>
                       {videoPreview && (
-                        <div className="mt-2 relative w-full aspect-video max-h-[200px] overflow-hidden rounded-lg bg-bg-muted">
+                        <div className="mt-2 relative w-full aspect-video max-h-[180px] overflow-hidden rounded-lg bg-bg-muted">
                           <video
                             src={videoPreview}
                             className="h-full w-full object-cover"
@@ -1147,7 +1274,9 @@ export function VideoPostForm({
                   <>
                     <div
                       className={`mx-auto flex flex-col rounded-3xl overflow-hidden bg-black border-2 border-[#333] aspect-9/16 ${
-                        isVertical ? "w-[240px]" : "w-[280px]"
+                        isVertical
+                          ? "w-[260px] max-h-[420px]"
+                          : "w-[308px] max-h-[460px]"
                       }`}
                     >
                       <div
@@ -1252,81 +1381,6 @@ export function VideoPostForm({
               setAutoPlugConfig(configBeforeAutoPlugRef.current ?? null);
               setAutoplugModalOpen(false);
             }}
-          />
-        )}
-        {tiktokListModalOpen && (
-          <TikTokSettingsListModal
-            isOpen={true}
-            selectedAccountIds={selectedAccountIds}
-            allAccounts={accounts}
-            configuredIds={
-              selectedAccountIds.length > 0
-                ? new Set(
-                    accounts
-                      .filter(
-                        (a) =>
-                          selectedIds.has(a.id) &&
-                          a.platform === "tiktok" &&
-                          tiktokSettings[a.id]?.privacy_level,
-                      )
-                      .map((a) => a.id),
-                  )
-                : undefined
-            }
-            onOpenSettings={(id) => {
-              setTiktokModalAccountId(id);
-              setTiktokListModalOpen(false);
-            }}
-            onClose={() => setTiktokListModalOpen(false)}
-          />
-        )}
-        {tiktokModalAccountId && (
-          <TikTokSettingsModal
-            isOpen={true}
-            accountId={tiktokModalAccountId}
-            accountUsername={
-              accounts.find((a) => a.id === tiktokModalAccountId)
-                ?.platformUsername
-            }
-            value={
-              tiktokSettings[tiktokModalAccountId] ?? defaultTiktokSettings
-            }
-            onChange={(settings) => {
-              setTiktokSettings((prev) => ({
-                ...prev,
-                [tiktokModalAccountId]: settings,
-              }));
-            }}
-            onSave={() => setTiktokModalAccountId(null)}
-            onClose={() => setTiktokModalAccountId(null)}
-            mediaType="video"
-          />
-        )}
-        {pinterestModalAccountId && (
-          <PinterestSettingsModal
-            isOpen={true}
-            accountId={pinterestModalAccountId}
-            accountUsername={
-              accounts.find((a) => a.id === pinterestModalAccountId)
-                ?.platformUsername
-            }
-            value={
-              pinterestSettingsByAccount[pinterestModalAccountId] ?? {
-                boardId: "",
-                title: "",
-                link: "",
-                rememberBoard: false,
-                rememberLink: false,
-              }
-            }
-            onChange={(settings) => {
-              setPinterestSettingsByAccount((prev) => ({
-                ...prev,
-                [pinterestModalAccountId]: settings,
-              }));
-            }}
-            onSave={() => setPinterestModalAccountId(null)}
-            onClose={() => setPinterestModalAccountId(null)}
           />
         )}
       </form>

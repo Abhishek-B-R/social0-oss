@@ -341,7 +341,6 @@ export function TextPostForm({
           setScheduledAt={setScheduledAt}
           error={error}
           loading={loading}
-          onCancel={() => router.push("/dashboard/posts")}
           submitLabel={submitLabel}
           submitDisabled={
             accounts.length === 0 ||
@@ -550,7 +549,6 @@ export function TextPostForm({
         hasAccountSelected={selectedIds.size > 0}
         error={error}
         use24HourTimeFormat={use24HourTimeFormat}
-        onCancel={() => router.push("/dashboard/posts")}
         intendedModeRef={intendedModeRef}
         formRef={formRef}
         draftId={initialDraftId ?? null}

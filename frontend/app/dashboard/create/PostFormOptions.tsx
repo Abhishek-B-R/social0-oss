@@ -25,7 +25,6 @@ type PostFormOptionsProps = {
   setScheduledAt: (d: Date | null) => void;
   error: string | null;
   loading: boolean;
-  onCancel: () => void;
   submitLabel: string;
   submitDisabled?: boolean;
   /** When true, show times in 24h format across schedule/time displays */
@@ -52,7 +51,6 @@ export function PostFormOptions({
   setScheduledAt,
   error,
   loading,
-  onCancel,
   submitLabel,
   submitDisabled = false,
   use24HourTimeFormat = false,
@@ -198,13 +196,6 @@ export function PostFormOptions({
             className="rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 shadow-lg transition-colors"
           >
             {loading ? "Saving..." : submitLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-xl border border-border bg-bg-elevated px-6 py-3 font-medium text-text shadow-sm hover:bg-bg-muted transition-colors"
-          >
-            Cancel
           </button>
         </div>
       )}

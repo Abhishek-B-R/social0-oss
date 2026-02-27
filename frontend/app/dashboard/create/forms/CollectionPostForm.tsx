@@ -19,16 +19,15 @@ import type {
 } from "@/components/autoplug/AutoPlugPanel";
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
-import { TikTokSettingsListModal } from "@/components/TikTokSettingsListModal";
 import {
   MdOutlineAddPhotoAlternate,
   MdOutlineVideocam,
   MdClose,
 } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
-import { TikTokSettingsModal } from "@/components/TikTokSettingsModal";
-import { TikTokSettingsCard } from "@/components/TikTokSettingsCard";
+import { TikTokSettings } from "@/components/TikTokSettings";
 import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
+import { ChevronDown, ChevronUp, Circle } from "lucide-react";
 
 type Account = {
   id: string;
@@ -93,9 +92,6 @@ export function CollectionPostForm({
   const [tiktokSettings, setTiktokSettings] = useState<
     Record<string, TikTokPostSettings>
   >({});
-  const [tiktokModalAccountId, setTiktokModalAccountId] = useState<
-    string | null
-  >(null);
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
@@ -104,7 +100,10 @@ export function CollectionPostForm({
   );
   const [resurfaceModalOpen, setResurfaceModalOpen] = useState(false);
   const [autoplugModalOpen, setAutoplugModalOpen] = useState(false);
-  const [tiktokListModalOpen, setTiktokListModalOpen] = useState(false);
+  type ConfigPanel = "tiktok" | null;
+  const [activeConfigPanel, setActiveConfigPanel] = useState<ConfigPanel>(null);
+  const [selectedTiktokAccountIndex, setSelectedTiktokAccountIndex] =
+    useState(0);
   const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
   const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   const [showCaptionError, setShowCaptionError] = useState(false);
@@ -199,8 +198,6 @@ export function CollectionPostForm({
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
-        // Close modal if this account's modal was open
-        if (tiktokModalAccountId === id) setTiktokModalAccountId(null);
       } else {
         next.add(id);
         // Don't auto-open modal - only open when badge is clicked
@@ -763,7 +760,6 @@ export function CollectionPostForm({
             setScheduledAt={setScheduledAt}
             error={error}
             loading={loading}
-            onCancel={() => router.push("/dashboard/posts")}
             submitLabel={submitLabel}
             submitDisabled={
               accounts.length === 0 ||
@@ -922,28 +918,91 @@ export function CollectionPostForm({
           </div>
 
           {hasTikTok && (
-            <TikTokSettingsCard
-              selectedAccountIds={selectedAccountIds}
-              allAccounts={accounts}
-              configuredIds={
-                selectedAccountIds.length > 0
-                  ? new Set(
-                      accounts
-                        .filter(
-                          (a) =>
-                            selectedIds.has(a.id) &&
-                            a.platform === "tiktok" &&
-                            tiktokSettings[a.id]?.privacy_level,
-                        )
-                        .map((a) => a.id),
+            <div className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm">
+              <p className="text-xs text-text-muted mb-3">
+                Post configurations & tools
+              </p>
+              <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveConfigPanel((p) =>
+                      p === "tiktok" ? null : "tiktok",
                     )
-                  : undefined
-              }
-              onOpenSettings={(id) => {
-                setTiktokModalAccountId(id);
-                setTiktokListModalOpen(false);
-              }}
-            />
+                  }
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
+                    activeConfigPanel === "tiktok"
+                      ? "border-accent bg-accent/10 text-accent"
+                      : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
+                  }`}
+                >
+                  <Circle className="h-3.5 w-3.5 text-text-muted" />
+                  <span>TikTok Config</span>
+                  {activeConfigPanel === "tiktok" ? (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </div>
+              {activeConfigPanel === "tiktok" && (
+                <div className="mt-2 border-t border-border pt-4">
+                  {tiktokAccounts.length > 1 ? (
+                    <>
+                      <div className="flex rounded-lg border border-border bg-bg-muted/30 p-0.5 mb-4">
+                        {tiktokAccounts.map((acc, idx) => (
+                          <button
+                            key={acc.id}
+                            type="button"
+                            onClick={() => setSelectedTiktokAccountIndex(idx)}
+                            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                              selectedTiktokAccountIndex === idx
+                                ? "bg-bg-elevated text-text shadow-sm"
+                                : "text-text-muted hover:text-text"
+                            }`}
+                          >
+                            {acc.platformUsername?.trim()
+                              ? `@${acc.platformUsername}`
+                              : `Account ${idx + 1}`}
+                          </button>
+                        ))}
+                      </div>
+                      <TikTokSettings
+                        accountId={
+                          tiktokAccounts[selectedTiktokAccountIndex]?.id ?? ""
+                        }
+                        value={
+                          tiktokSettings[
+                            tiktokAccounts[selectedTiktokAccountIndex]?.id ?? ""
+                          ] ?? defaultTiktokSettings
+                        }
+                        onChange={(s) => {
+                          const id =
+                            tiktokAccounts[selectedTiktokAccountIndex]?.id;
+                          if (id)
+                            setTiktokSettings((prev) => ({ ...prev, [id]: s }));
+                        }}
+                        mediaType={videos.length > 0 ? "video" : "photo"}
+                      />
+                    </>
+                  ) : (
+                    <TikTokSettings
+                      accountId={tiktokAccounts[0]?.id ?? ""}
+                      value={
+                        tiktokSettings[tiktokAccounts[0]?.id ?? ""] ??
+                        defaultTiktokSettings
+                      }
+                      onChange={(s) => {
+                        const id = tiktokAccounts[0]?.id;
+                        if (id)
+                          setTiktokSettings((prev) => ({ ...prev, [id]: s }));
+                      }}
+                      mediaType={videos.length > 0 ? "video" : "photo"}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -961,7 +1020,6 @@ export function CollectionPostForm({
           hasAccountSelected={selectedIds.size > 0}
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
-          onCancel={() => router.push("/dashboard/posts")}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
           draftId={initialDraftId ?? null}
@@ -1037,12 +1095,12 @@ export function CollectionPostForm({
                 <div className="mt-2 flex items-center justify-center gap-2">
                   <button
                     type="button"
-                    onClick={() =>
-                      setCarouselPreviewIndex((i) =>
-                        i <= 0 ? allItemsSorted.length - 1 : i - 1,
-                      )
-                    }
-                    className="rounded-full p-1 text-text-muted hover:bg-bg-muted"
+                    onClick={() => {
+                      if (carouselPreviewIndex > 0)
+                        setCarouselPreviewIndex(carouselPreviewIndex - 1);
+                    }}
+                    disabled={carouselPreviewIndex === 0}
+                    className="rounded-full p-1 text-text-muted hover:bg-bg hover:text-text disabled:opacity-30 disabled:cursor-not-allowed"
                     aria-label="Previous"
                   >
                     ←
@@ -1052,12 +1110,14 @@ export function CollectionPostForm({
                   </span>
                   <button
                     type="button"
-                    onClick={() =>
-                      setCarouselPreviewIndex((i) =>
-                        i >= allItemsSorted.length - 1 ? 0 : i + 1,
-                      )
+                    onClick={() => {
+                      if (carouselPreviewIndex < allItemsSorted.length - 1)
+                        setCarouselPreviewIndex(carouselPreviewIndex + 1);
+                    }}
+                    disabled={
+                      carouselPreviewIndex === allItemsSorted.length - 1
                     }
-                    className="rounded-full p-1 text-text-muted hover:bg-bg-muted"
+                    className="rounded-full p-1 text-text-muted hover:bg-bg hover:text-text disabled:opacity-30 disabled:cursor-not-allowed"
                     aria-label="Next"
                   >
                     →
@@ -1130,54 +1190,6 @@ export function CollectionPostForm({
               setAutoPlugConfig(configBeforeAutoPlugRef.current ?? null);
               setAutoplugModalOpen(false);
             }}
-          />
-        )}
-        {tiktokListModalOpen && (
-          <TikTokSettingsListModal
-            isOpen={true}
-            selectedAccountIds={selectedAccountIds}
-            allAccounts={accounts}
-            configuredIds={
-              selectedAccountIds.length > 0
-                ? new Set(
-                    accounts
-                      .filter(
-                        (a) =>
-                          selectedIds.has(a.id) &&
-                          a.platform === "tiktok" &&
-                          tiktokSettings[a.id]?.privacy_level,
-                      )
-                      .map((a) => a.id),
-                  )
-                : undefined
-            }
-            onOpenSettings={(id) => {
-              setTiktokModalAccountId(id);
-              setTiktokListModalOpen(false);
-            }}
-            onClose={() => setTiktokListModalOpen(false)}
-          />
-        )}
-        {tiktokModalAccountId && (
-          <TikTokSettingsModal
-            isOpen={true}
-            accountId={tiktokModalAccountId}
-            accountUsername={
-              accounts.find((a) => a.id === tiktokModalAccountId)
-                ?.platformUsername
-            }
-            value={
-              tiktokSettings[tiktokModalAccountId] ?? defaultTiktokSettings
-            }
-            onChange={(settings) => {
-              setTiktokSettings((prev) => ({
-                ...prev,
-                [tiktokModalAccountId]: settings,
-              }));
-            }}
-            onSave={() => setTiktokModalAccountId(null)}
-            onClose={() => setTiktokModalAccountId(null)}
-            mediaType={videos.length > 0 ? "video" : "photo"}
           />
         )}
       </form>
