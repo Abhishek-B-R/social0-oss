@@ -155,6 +155,7 @@ export function PostFormOptions({
               <ScheduleDateTimePicker
                 value={scheduledAt}
                 onChange={setScheduledAt}
+                minDate={new Date()}
                 placeholder="Pick date & time"
                 use24HourTimeFormat={use24HourTimeFormat}
               />

@@ -57,9 +57,21 @@ export function ScheduleDateTimePicker({
   const [timeValue, setTimeValue] = useState(
     value ? format(value, "HH:mm") : initialTime
   );
+  const [timeError, setTimeError] = useState<string | null>(null);
   const datePickerRef = useRef<HTMLDivElement>(null);
   const timeInputRef = useRef<HTMLInputElement>(null);
   const hasInitialized = useRef(false);
+
+  const applyCombined = (combined: Date) => {
+    const now = new Date();
+    const earliestAllowed = isBefore(minDate, now) ? now : minDate;
+    if (isBefore(combined, earliestAllowed)) {
+      setTimeError("Scheduled time must be in the future.");
+      return;
+    }
+    setTimeError(null);
+    onChange(combined);
+  };
 
   // Auto-initialize when value is null on mount (only once)
   useEffect(() => {
@@ -67,13 +79,12 @@ export function ScheduleDateTimePicker({
       const today = startOfToday();
       const now = new Date();
       const initial = setMinutes(setHours(today, now.getHours()), now.getMinutes());
-      const safe = isBefore(initial, minDate) ? minDate : initial;
       // Use setTimeout to avoid calling onChange during render
       setTimeout(() => {
-        onChange(safe);
+        onChange(initial);
       }, 0);
-      setSelectedDate(safe);
-      setTimeValue(format(safe, "HH:mm"));
+      setSelectedDate(initial);
+      setTimeValue(format(initial, "HH:mm"));
       hasInitialized.current = true;
     }
   }, []);
@@ -102,13 +113,11 @@ export function ScheduleDateTimePicker({
       const [h, m] = timeValue.split(":").map(Number);
       if (!isNaN(h) && !isNaN(m)) {
         const combined = setMinutes(setHours(today, h), m);
-        const safe = isBefore(combined, minDate) ? minDate : combined;
-        onChange(safe);
+        applyCombined(combined);
       } else {
         const now = new Date();
         const combined = setMinutes(setHours(today, now.getHours()), now.getMinutes());
-        const safe = isBefore(combined, minDate) ? minDate : combined;
-        onChange(safe);
+        applyCombined(combined);
       }
       return;
     }
@@ -117,15 +126,13 @@ export function ScheduleDateTimePicker({
     const [h, m] = timeValue.split(":").map(Number);
     if (!isNaN(h) && !isNaN(m)) {
       const combined = setMinutes(setHours(date, h), m);
-      const safe = isBefore(combined, minDate) ? minDate : combined;
-      onChange(safe);
+      applyCombined(combined);
     } else {
       // If time is invalid, use current time
       const now = new Date();
       const combined = setMinutes(setHours(date, now.getHours()), now.getMinutes());
-      const safe = isBefore(combined, minDate) ? minDate : combined;
-      setTimeValue(format(safe, "HH:mm"));
-      onChange(safe);
+      setTimeValue(format(combined, "HH:mm"));
+      applyCombined(combined);
     }
   };
 
@@ -144,14 +151,12 @@ export function ScheduleDateTimePicker({
     // If we have a selected date, update the combined date-time
     if (selectedDate) {
       const combined = setMinutes(setHours(selectedDate, h), m);
-      const safe = isBefore(combined, minDate) ? minDate : combined;
-      onChange(safe);
+      applyCombined(combined);
     } else {
       // If no date selected yet, use today with the new time
       const newDate = createDateWithTime(newTime);
-      const safe = isBefore(newDate, minDate) ? minDate : newDate;
-      setSelectedDate(safe);
-      onChange(safe);
+      setSelectedDate(newDate);
+      applyCombined(newDate);
     }
   };
 
@@ -168,7 +173,7 @@ export function ScheduleDateTimePicker({
             mode="single"
             selected={selectedDate}
             onSelect={handleDateSelect}
-            disabled={(date) => startOfDay(date) < startOfDay(minDate)}
+            disabled={(date) => startOfDay(date) < startOfDay(new Date())}
             defaultMonth={selectedDate || startOfToday()}
             classNames={{
               root: "rdp-root",
@@ -205,6 +210,9 @@ export function ScheduleDateTimePicker({
           onChange={handleTimeChange}
           className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-sm font-medium text-text shadow-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 transition-colors [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
         />
+        {timeError && (
+          <p className="mt-1 text-xs text-destructive">{timeError}</p>
+        )}
         {selectedDate && timeValue && (
           <p className="mt-2 text-xs text-text-muted">
             {format(

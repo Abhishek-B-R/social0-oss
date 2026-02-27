@@ -180,6 +180,16 @@ export function TextPostForm({
       setError(twitterValidationError);
       return;
     }
+    if ((intendedModeRef.current ?? mode) === "scheduled") {
+      if (!scheduledAt) {
+        setError("Please select a date and time.");
+        return;
+      }
+      if (scheduledAt <= new Date()) {
+        setError("Scheduled time must be in the future.");
+        return;
+      }
+    }
     setLoading(true);
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;

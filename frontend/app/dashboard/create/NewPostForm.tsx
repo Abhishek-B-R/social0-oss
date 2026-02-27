@@ -81,6 +81,16 @@ export function NewPostForm({
       setError(twitterValidationError);
       return;
     }
+    if (mode === "scheduled") {
+      if (!scheduledAt) {
+        setError("Please select a date and time.");
+        return;
+      }
+      if (scheduledAt <= new Date()) {
+        setError("Scheduled time must be in the future.");
+        return;
+      }
+    }
     setLoading(true);
     const result = await createPost(
       content.trim(),
@@ -241,6 +251,7 @@ export function NewPostForm({
             <ScheduleDateTimePicker
               value={scheduledAt}
               onChange={setScheduledAt}
+              minDate={new Date()}
               placeholder="Pick date & time"
               use24HourTimeFormat={use24HourTimeFormat}
             />

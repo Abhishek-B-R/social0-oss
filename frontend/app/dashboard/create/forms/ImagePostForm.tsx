@@ -393,6 +393,17 @@ export function ImagePostForm({
     }
     setShowCaptionError(false);
 
+    if ((intendedModeRef.current ?? mode) === "scheduled") {
+      if (!scheduledAt) {
+        setError("Please select a date and time.");
+        return;
+      }
+      if (scheduledAt <= new Date()) {
+        setError("Scheduled time must be in the future.");
+        return;
+      }
+    }
+
     if (hasTikTok) {
       for (const tiktokAccount of tiktokAccounts) {
         const settings =

@@ -140,6 +140,12 @@ export function EditPostForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (scheduledAt !== null) {
+      if (scheduledAt <= new Date()) {
+        setError("Scheduled time must be in the future.");
+        return;
+      }
+    }
     setLoading(true);
     try {
       const newMediaIds: string[] = [];
@@ -415,6 +421,7 @@ export function EditPostForm({
             <ScheduleDateTimePicker
               value={scheduledAt}
               onChange={setScheduledAt}
+              minDate={new Date()}
               placeholder="Pick date & time"
               use24HourTimeFormat={use24HourTimeFormat}
             />
