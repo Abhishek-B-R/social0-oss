@@ -30,6 +30,7 @@
     "lucide-react": "^0.574.0",
     "next": "16.1.6",
     "next-themes": "^0.4.6",
+    "nextjs-toploader": "^3.9.17",
     "oauth-1.0a": "^2.2.6",
     "pg": "^8.18.0",
     "radix-ui": "^1.4.3",
