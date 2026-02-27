@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn } from "@/lib/auth-client";
+import Link from "next/link";
 import { RevealSection } from "@/components/RevealSection";
 
 const plans = [
@@ -36,13 +36,6 @@ const plans = [
 ];
 
 export function PricingSection() {
-  const handleGetStarted = () => {
-    signIn.social({
-      provider: "google",
-      callbackURL: "/dashboard/create",
-    });
-  };
-
   return (
     <section id="pricing" className="py-16 sm:py-20 bg-muted/30">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -94,16 +87,16 @@ export function PricingSection() {
                     </li>
                   ))}
                 </ul>
-                <button
-                  onClick={handleGetStarted}
-                  className={`w-full py-4 px-4 rounded-xl font-semibold transition-colors ${
+                <Link
+                  href="/auth"
+                  className={`w-full inline-flex items-center justify-center py-4 px-4 rounded-xl font-semibold transition-colors ${
                     plan.highlighted
                       ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
                       : "bg-muted hover:bg-muted/80 text-foreground"
                   }`}
                 >
                   {plan.cta}
-                </button>
+                </Link>
               </div>
             </RevealSection>
           ))}

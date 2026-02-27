@@ -61,7 +61,10 @@ export function FeaturesSection() {
                     {feature.description}
                   </p>
                 </div>
-                <div className={i % 2 === 1 ? "md:order-1" : ""} style={{ minWidth: "50%" }}>
+                <div
+                  className={i % 2 === 1 ? "md:order-1" : ""}
+                  style={{ minWidth: "50%" }}
+                >
                   {feature.mockup}
                 </div>
               </div>

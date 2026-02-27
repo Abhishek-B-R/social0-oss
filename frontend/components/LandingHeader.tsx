@@ -2,15 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { signIn } from "@/lib/auth-client";
 
 export function LandingHeader() {
-  const handleTryFree = () => {
-    signIn.social({
-      provider: "google",
-      callbackURL: "/dashboard/create",
-    });
-  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 shadow-sm backdrop-blur">
@@ -60,12 +53,12 @@ export function LandingHeader() {
             Privacy
           </Link>
         </nav>
-        <button
-          onClick={handleTryFree}
+        <Link
+          href="/auth"
           className="bg-accent hover:bg-accent-hover text-white font-semibold py-2.5 px-5 rounded-xl transition-colors text-sm shrink-0 shadow-md"
         >
           Try it free
-        </button>
+        </Link>
       </div>
     </header>
   );

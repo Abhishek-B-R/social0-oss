@@ -70,7 +70,7 @@ export function SecuritySection() {
     <section className="py-16 sm:py-20 bg-emerald-800 relative overflow-hidden">
       {/* Subtle pattern overlay */}
       <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_1px_1px,rgb(255,255,255)_1px,transparent_0)] bg-size-[24px_24px] pointer-events-none" />
-      
+
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <RevealSection>
           <div className="max-w-2xl mx-auto text-center mb-12">

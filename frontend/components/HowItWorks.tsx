@@ -40,7 +40,7 @@ export function HowItWorks() {
           <div className="hidden md:block absolute top-7 left-[calc(16.666%+1.5rem)] right-[calc(16.666%+1.5rem)] h-0.5 bg-border">
             <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-muted border-2 border-background shadow-sm" />
           </div>
-          
+
           {steps.map((step, i) => (
             <RevealSection key={step.number} delay={i as 0 | 1 | 2}>
               <div className="relative text-center md:text-left">

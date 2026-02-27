@@ -25,8 +25,14 @@ import { TikTokSettingsListModal } from "@/components/TikTokSettingsListModal";
 import { MdOutlineAddPhotoAlternate, MdClose } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettingsModal } from "@/components/TikTokSettingsModal";
+import {
+  PinterestSettingsModal,
+  type PinterestPostSettings,
+} from "@/components/PinterestSettingsModal";
+import { TikTokSettingsCard } from "@/components/TikTokSettingsCard";
 import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
 import { PLATFORMS } from "@/lib/platforms";
+import { Settings } from "lucide-react";
 
 type PlatformCaptionState = {
   overridden: boolean;
@@ -100,6 +106,14 @@ export function ImagePostForm({
   const [resurfaceModalOpen, setResurfaceModalOpen] = useState(false);
   const [autoplugModalOpen, setAutoplugModalOpen] = useState(false);
   const [tiktokListModalOpen, setTiktokListModalOpen] = useState(false);
+  const [pinterestSettingsByAccount, setPinterestSettingsByAccount] = useState<
+    Record<string, PinterestPostSettings>
+  >({});
+  const [pinterestModalAccountId, setPinterestModalAccountId] = useState<
+    string | null
+  >(null);
+  const [pinterestError, setPinterestError] = useState<string | null>(null);
+  const pinterestSectionRef = useRef<HTMLDivElement>(null);
   const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
   const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   type PreviewCardMode = "post" | "media";
@@ -168,6 +182,29 @@ export function ImagePostForm({
             existingId: m.id,
           })),
         );
+        const meta = draft.metadata as Record<string, unknown> | null;
+        if (meta?.pinterest && typeof meta.pinterest === "object") {
+          const pinterest = meta.pinterest as Record<
+            string,
+            { boardId?: string; title?: string; link?: string }
+          >;
+          const next: Record<string, PinterestPostSettings> = {};
+          for (const id of restoredIds) {
+            const acc = accounts.find((a) => a.id === id);
+            if (acc?.platform !== "pinterest") continue;
+            const p = pinterest[id];
+            if (p) {
+              next[id] = {
+                boardId: p.boardId ?? "",
+                title: p.title ?? "",
+                link: p.link ?? "",
+                rememberBoard: false,
+                rememberLink: false,
+              };
+            }
+          }
+          if (Object.keys(next).length > 0) setPinterestSettingsByAccount(next);
+        }
       } catch {
         if (!cancelled) setError("Failed to load draft");
       } finally {
@@ -182,6 +219,7 @@ export function ImagePostForm({
   useEffect(() => {
     if (remember) persistSelection(selectedIds);
   }, [remember, selectedIds, persistSelection]);
+
 
   const addImageFromClipboard = (file: File) => {
     if (!file.type.startsWith("image/")) return;
@@ -389,6 +427,21 @@ export function ImagePostForm({
       }
     }
 
+    if (hasPinterestSelected) {
+      const missingBoard = pinterestAccounts.some(
+        (acc) => !(pinterestSettingsByAccount[acc.id]?.boardId?.trim()),
+      );
+      if (missingBoard) {
+        setPinterestError("Please select a board for Pinterest before posting.");
+        setError(null);
+        pinterestSectionRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+        return;
+      }
+    }
+    setPinterestError(null);
     setLoading(true);
     setError(null);
     setOverlayPhase("uploading");
@@ -434,6 +487,22 @@ export function ImagePostForm({
       >((acc, tiktokAccount) => {
         acc[tiktokAccount.id] =
           tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
+        return acc;
+      }, {});
+    }
+    if (hasPinterestSelected) {
+      metadata.pinterest = pinterestAccounts.reduce<
+        Record<string, { boardId: string; title?: string; link?: string }>
+      >((acc, accnt) => {
+        const s = pinterestSettingsByAccount[accnt.id];
+        if (!s?.boardId?.trim()) return acc;
+        acc[accnt.id] = {
+          boardId: s.boardId.trim(),
+          ...(s.title?.trim()
+            ? { title: s.title.trim().slice(0, 100) }
+            : {}),
+          ...(s.link?.trim() ? { link: s.link.trim() } : {}),
+        };
         return acc;
       }, {});
     }
@@ -596,6 +665,12 @@ export function ImagePostForm({
   const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
   const tiktokAccounts = selectedAccounts.filter(
     (a) => a.platform === "tiktok",
+  );
+  const hasPinterestSelected = selectedAccounts.some(
+    (a) => a.platform === "pinterest",
+  );
+  const pinterestAccounts = selectedAccounts.filter(
+    (a) => a.platform === "pinterest",
   );
 
   const filteredAccounts = useMemo(() => {
@@ -803,6 +878,97 @@ export function ImagePostForm({
             )}
           </div>
 
+          {hasTikTokSelected && (
+            <TikTokSettingsCard
+              selectedAccountIds={selectedAccountIds}
+              allAccounts={accounts}
+              configuredIds={
+                selectedAccountIds.length > 0
+                  ? new Set(
+                      accounts
+                        .filter(
+                          (a) =>
+                            selectedIds.has(a.id) &&
+                            a.platform === "tiktok" &&
+                            tiktokSettings[a.id]?.privacy_level,
+                        )
+                        .map((a) => a.id),
+                    )
+                  : undefined
+              }
+              onOpenSettings={(id) => {
+                setTiktokModalAccountId(id);
+                setTiktokListModalOpen(false);
+              }}
+            />
+          )}
+
+          {hasPinterestSelected && (
+            <div ref={pinterestSectionRef} className="space-y-2">
+              <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
+                <h3 className="text-sm font-semibold text-text mb-1">
+                  Pinterest settings
+                </h3>
+                <p className="text-xs text-text-muted mb-4">
+                  Choose a board and optional pin details per account.
+                </p>
+                <div className="space-y-2">
+                  {pinterestAccounts.map((acc) => {
+                    const settings =
+                      pinterestSettingsByAccount[acc.id] ?? ({
+                        boardId: "",
+                        title: "",
+                        link: "",
+                        rememberBoard: false,
+                        rememberLink: false,
+                      } as PinterestPostSettings);
+                    const hasBoard = !!settings.boardId?.trim();
+                    return (
+                      <div
+                        key={acc.id}
+                        className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 ${
+                          pinterestError && !hasBoard
+                            ? "border-destructive bg-destructive/5"
+                            : "border-border bg-bg-muted/50"
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-text">
+                            {acc.platformUsername?.trim()
+                              ? `@${acc.platformUsername}`
+                              : "Pinterest account"}
+                          </p>
+                          <p
+                            className={
+                              hasBoard
+                                ? "mt-0.5 text-xs font-medium text-accent"
+                                : "mt-0.5 text-xs font-medium text-amber-600"
+                            }
+                          >
+                            {hasBoard ? "Board selected" : "Needs board"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPinterestModalAccountId(acc.id)}
+                          className="shrink-0 rounded-lg p-2 text-text-muted hover:bg-bg-subtle hover:text-text transition-colors"
+                          aria-label="Pinterest settings"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {pinterestError && (
+                  <p className="mt-3 text-sm text-destructive font-medium" role="alert">
+                    {pinterestError}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {showPlatformCaptionsSection && (
             <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
               <button
@@ -972,20 +1138,6 @@ export function ImagePostForm({
                   onOpenSettings: () => {
                     configBeforeAutoPlugRef.current = autoPlugConfig;
                     setAutoplugModalOpen(true);
-                  },
-                }
-              : null
-          }
-          tiktokSettings={
-            hasTikTokSelected
-              ? {
-                  visible: true,
-                  onOpenSettings: () => {
-                    if (tiktokAccounts.length === 1) {
-                      setTiktokModalAccountId(tiktokAccounts[0].id);
-                    } else {
-                      setTiktokListModalOpen(true);
-                    }
                   },
                 }
               : null
@@ -1293,6 +1445,33 @@ export function ImagePostForm({
             onSave={() => setTiktokModalAccountId(null)}
             onClose={() => setTiktokModalAccountId(null)}
             mediaType="photo"
+          />
+        )}
+        {pinterestModalAccountId && (
+          <PinterestSettingsModal
+            isOpen={true}
+            accountId={pinterestModalAccountId}
+            accountUsername={
+              accounts.find((a) => a.id === pinterestModalAccountId)
+                ?.platformUsername
+            }
+            value={
+              pinterestSettingsByAccount[pinterestModalAccountId] ?? {
+                boardId: "",
+                title: "",
+                link: "",
+                rememberBoard: false,
+                rememberLink: false,
+              }
+            }
+            onChange={(settings) => {
+              setPinterestSettingsByAccount((prev) => ({
+                ...prev,
+                [pinterestModalAccountId]: settings,
+              }));
+            }}
+            onSave={() => setPinterestModalAccountId(null)}
+            onClose={() => setPinterestModalAccountId(null)}
           />
         )}
       </form>

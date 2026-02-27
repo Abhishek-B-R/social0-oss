@@ -39,7 +39,7 @@ export default function PinterestCreateBoardPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Failed to create board");
-      window.location.href = `/dashboard/connect/pinterest/select?token=${encodeURIComponent(token)}`;
+      window.location.href = "/dashboard/connections?connected=pinterest";
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create board");
     } finally {

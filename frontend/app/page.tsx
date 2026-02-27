@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn } from "@/lib/auth-client";
+import Link from "next/link";
 import { LandingHeader } from "@/components/LandingHeader";
 import { LandingFooter } from "@/components/LandingFooter";
 import { HowItWorks } from "@/components/HowItWorks";
@@ -14,13 +14,6 @@ import { HeroMockup } from "@/components/HeroMockup";
 import { RevealSection } from "@/components/RevealSection";
 
 export default function Home() {
-  const handleTryFree = () => {
-    signIn.social({
-      provider: "google",
-      callbackURL: "/dashboard/create",
-    });
-  };
-
   return (
     <div
       className="min-h-screen flex flex-col bg-background font-sans text-foreground"
@@ -49,12 +42,12 @@ export default function Home() {
               Plan, schedule and publish your content with ease. Write once and
               hit every network from one dashboard.
             </p>
-            <button
-              onClick={handleTryFree}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-4 px-10 rounded-xl transition-colors text-base shadow-lg"
+            <Link
+              href="/auth"
+              className="inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-4 px-10 rounded-xl transition-colors text-base shadow-lg"
             >
               Try it free
-            </button>
+            </Link>
             <HeroMockup />
           </div>
           </div>
@@ -79,12 +72,12 @@ export default function Home() {
                   <p className="text-base text-muted-foreground mb-8 font-medium">
                     Join Social0 and publish everywhere from one place.
                   </p>
-                  <button
-                    onClick={handleTryFree}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-4 px-10 rounded-xl transition-all shadow-lg hover:scale-105"
+                  <Link
+                    href="/auth"
+                    className="inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-4 px-10 rounded-xl transition-all shadow-lg hover:scale-105"
                   >
                     Get started
-                  </button>
+                  </Link>
                 </div>
               </div>
             </RevealSection>

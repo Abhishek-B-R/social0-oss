@@ -1185,6 +1185,22 @@ export async function executePublish(
         }
       }
 
+      // For Pinterest, merge post-level pin settings (board, title, link) into platformMetadata
+      let effectivePlatformMetadata = pub.platformMetadata ?? null;
+      if (pub.platform === "pinterest" && post.metadata && typeof post.metadata === "object") {
+        const pinterestMeta = (post.metadata as Record<string, unknown>).pinterest;
+        const accountMeta =
+          pinterestMeta &&
+          typeof pinterestMeta === "object" &&
+          (pinterestMeta as Record<string, unknown>)[pub.connectedAccountId];
+        if (accountMeta && typeof accountMeta === "object") {
+          effectivePlatformMetadata = {
+            ...((effectivePlatformMetadata as Record<string, unknown>) ?? {}),
+            ...(accountMeta as Record<string, unknown>),
+          };
+        }
+      }
+
       try {
         const platformPostResult = await publishToPlatform(
           {
@@ -1193,7 +1209,7 @@ export async function executePublish(
             platform: pub.platform,
             platformUserId: pub.platformUserId,
             platformUsername: pub.platformUsername,
-            platformMetadata: pub.platformMetadata ?? null,
+            platformMetadata: effectivePlatformMetadata,
           },
           {
             id: post.id,

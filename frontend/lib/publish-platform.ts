@@ -1334,7 +1334,7 @@ async function publishToPinterest(
     return {
       status: "failed",
       lastError:
-        "Pinterest board not selected. Please reconnect Pinterest from the dashboard to choose a default board.",
+        "Pinterest board not selected. Please select a board in the post composer when publishing to Pinterest.",
       error: "No board",
     };
   }
@@ -1356,8 +1356,18 @@ async function publishToPinterest(
   }
 
   const rawDesc = post.finalContent?.trim() ?? "";
-  const title = truncate(rawDesc, 100) || "Pin";
+  const metaTitle =
+    pub.platformMetadata && typeof pub.platformMetadata.title === "string"
+      ? pub.platformMetadata.title.trim()
+      : null;
+  const title = (metaTitle && metaTitle.length > 0
+    ? truncate(metaTitle, 100)
+    : truncate(rawDesc, 100)) || "Pin";
   const description = truncate(rawDesc, 500);
+  const link =
+    pub.platformMetadata && typeof pub.platformMetadata.link === "string"
+      ? pub.platformMetadata.link.trim()
+      : null;
 
   let media_source: {
     source_type: "image_url" | "video_id";
@@ -1389,18 +1399,23 @@ async function publishToPinterest(
     };
   }
 
+  const pinPayload: Record<string, unknown> = {
+    board_id: boardId,
+    title,
+    description: description || undefined,
+    media_source,
+  };
+  if (link && link.length > 0) {
+    pinPayload.destination_link = link;
+  }
+
   const res = await fetch(`${PINTEREST_API_BASE}/pins`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({
-      board_id: boardId,
-      title,
-      description: description || undefined,
-      media_source,
-    }),
+    body: JSON.stringify(pinPayload),
   });
   const data = (await res.json().catch(() => ({}))) as {
     id?: string;

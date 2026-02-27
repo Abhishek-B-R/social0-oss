@@ -647,30 +647,58 @@ export async function GET(
             : `/dashboard/connect/pinterest/create-board?token=${stateId}`;
         return safeRedirect(createBoardUrl, "/dashboard/connections");
       }
-      // Store boards and tokens in verification table for selection page
-      const stateId = crypto.randomBytes(16).toString("hex");
-      const payload = JSON.stringify({
-        userId,
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token || null,
-        expires_in: tokens.expires_in || null,
-        boards: boardsData.items.map((b) => ({
-          id: b.id,
-          name: b.name || b.id,
-        })),
+      // Complete Pinterest connection without board selection (board chosen at post time)
+      const userInfo = await fetchPlatformUserInfo(platform, tokens.access_token);
+      const existing = await db.query.connectedAccounts.findFirst({
+        where: and(
+          eq(connectedAccounts.userId, userId),
+          eq(connectedAccounts.platform, "pinterest"),
+          eq(connectedAccounts.platformUserId, userInfo.id),
+        ),
       });
-      await db.insert(verification).values({
-        id: stateId,
-        identifier: "pinterest_boards",
-        value: encryptToken(payload, stateId),
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-      });
-      const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
-      const pinterestSelectUrl =
-        typeof baseUrl === "string" && baseUrl
-          ? `${baseUrl}/dashboard/connect/pinterest/select?token=${stateId}`
-          : `/dashboard/connect/pinterest/select?token=${stateId}`;
-      return safeRedirect(pinterestSelectUrl, "/dashboard/connections");
+      const accountId = existing?.id ?? crypto.randomUUID();
+      const tokenExpiresAt = tokens.expires_in
+        ? new Date(Date.now() + tokens.expires_in * 1000)
+        : null;
+      if (existing) {
+        await db
+          .update(connectedAccounts)
+          .set({
+            platformUsername: userInfo.username,
+            profileImageUrl: userInfo.profileImageUrl,
+            encryptedAccessToken: encryptToken(tokens.access_token, existing.id),
+            encryptedRefreshToken: tokens.refresh_token
+              ? encryptToken(tokens.refresh_token, existing.id)
+              : null,
+            tokenExpiresAt,
+            tokenStatus: "active",
+            isActive: true,
+            platformMetadata: (existing.platformMetadata as Record<string, unknown>) ?? {},
+            updatedAt: new Date(),
+          })
+          .where(eq(connectedAccounts.id, existing.id));
+      } else {
+        await db.insert(connectedAccounts).values({
+          id: accountId,
+          userId,
+          platform: "pinterest",
+          platformUserId: userInfo.id,
+          platformUsername: userInfo.username,
+          profileImageUrl: userInfo.profileImageUrl,
+          encryptedAccessToken: encryptToken(tokens.access_token, accountId),
+          encryptedRefreshToken: tokens.refresh_token
+            ? encryptToken(tokens.refresh_token, accountId)
+            : null,
+          tokenExpiresAt,
+          tokenStatus: "active",
+          isActive: true,
+          platformMetadata: {},
+        });
+      }
+      return safeRedirect(
+        "/dashboard/connections?connected=pinterest",
+        "/dashboard/connections",
+      );
     }
 
     // Facebook: fetch all Pages and insert/update each one (no redirect to select)

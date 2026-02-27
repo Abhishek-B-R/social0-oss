@@ -13,7 +13,11 @@ import {
 
 const PLATFORMS = [
   { name: "LinkedIn", icon: SiLinkedin, color: "bg-[#0A66C2]" },
-  { name: "Instagram", icon: SiInstagram, color: "bg-gradient-to-br from-[#F58529] to-[#8134AF]" },
+  {
+    name: "Instagram",
+    icon: SiInstagram,
+    color: "bg-gradient-to-br from-[#F58529] to-[#8134AF]",
+  },
   { name: "YouTube", icon: SiYoutube, color: "bg-[#FF0000]" },
   { name: "Pinterest", icon: SiPinterest, color: "bg-[#E60023]" },
   { name: "X", icon: SiX, color: "bg-gray-900" },
@@ -25,11 +29,11 @@ const PLATFORMS = [
 export function HeroMockup() {
   return (
     <div className="w-full max-w-4xl mx-auto mt-14 sm:mt-16 px-4">
-      <div 
+      <div
         className="rounded-2xl border border-border bg-card shadow-2xl shadow-black/10 dark:shadow-black/40 overflow-hidden transform transition-transform hover:scale-[1.01]"
-        style={{ 
-          transform: 'perspective(1000px) rotateX(1deg)',
-          transformStyle: 'preserve-3d'
+        style={{
+          transform: "perspective(1000px) rotateX(1deg)",
+          transformStyle: "preserve-3d",
         }}
       >
         {/* Fake browser chrome */}
@@ -54,7 +58,8 @@ export function HeroMockup() {
               Excited to announce our new product launch! 🚀
             </div>
             <div className="text-sm text-foreground/80 leading-relaxed">
-              After months of development, we&apos;re thrilled to share what we&apos;ve been building. This is a game-changer for our industry.
+              After months of development, we&apos;re thrilled to share what
+              we&apos;ve been building. This is a game-changer for our industry.
             </div>
             <div className="text-sm text-muted-foreground leading-relaxed">
               #innovation #productlaunch #tech

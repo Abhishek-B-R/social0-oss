@@ -27,6 +27,7 @@ import {
 } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettingsModal } from "@/components/TikTokSettingsModal";
+import { TikTokSettingsCard } from "@/components/TikTokSettingsCard";
 import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
 
 type Account = {
@@ -682,6 +683,9 @@ export function CollectionPostForm({
   const resurfaceVisible = hasXForResurface;
   const autoPlugVisible = hasXForResurface;
   const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
+  const tiktokAccounts = selectedAccounts.filter(
+    (a) => a.platform === "tiktok",
+  );
 
   const hasContent = content.trim().length > 0;
   const submitLabel =
@@ -916,6 +920,31 @@ export function CollectionPostForm({
               </div>
             )}
           </div>
+
+          {hasTikTok && (
+            <TikTokSettingsCard
+              selectedAccountIds={selectedAccountIds}
+              allAccounts={accounts}
+              configuredIds={
+                selectedAccountIds.length > 0
+                  ? new Set(
+                      accounts
+                        .filter(
+                          (a) =>
+                            selectedIds.has(a.id) &&
+                            a.platform === "tiktok" &&
+                            tiktokSettings[a.id]?.privacy_level,
+                        )
+                        .map((a) => a.id),
+                    )
+                  : undefined
+              }
+              onOpenSettings={(id) => {
+                setTiktokModalAccountId(id);
+                setTiktokListModalOpen(false);
+              }}
+            />
+          )}
         </div>
 
         <SchedulePostSidebar
@@ -971,23 +1000,6 @@ export function CollectionPostForm({
                   onOpenSettings: () => {
                     configBeforeAutoPlugRef.current = autoPlugConfig;
                     setAutoplugModalOpen(true);
-                  },
-                }
-              : null
-          }
-          tiktokSettings={
-            hasTikTok
-              ? {
-                  visible: true,
-                  onOpenSettings: () => {
-                    const tiktokAccounts = selectedAccounts.filter(
-                      (a) => a.platform === "tiktok",
-                    );
-                    if (tiktokAccounts.length === 1) {
-                      setTiktokModalAccountId(tiktokAccounts[0].id);
-                    } else {
-                      setTiktokListModalOpen(true);
-                    }
                   },
                 }
               : null
