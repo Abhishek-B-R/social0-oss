@@ -127,7 +127,48 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-2">
-              7. Data retention and deletion
+              7. Google user data
+            </h2>
+            <p className="mb-3">
+              Social0&apos;s use of data received from Google APIs adheres to
+              the{" "}
+              <a
+                href="https://developers.google.com/terms/api-services-user-data-policy"
+                className="text-emerald-600 hover:text-emerald-700 underline dark:text-emerald-400"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Google API Services User Data Policy
+              </a>
+              , including the Limited Use requirements.
+            </p>
+            <p className="mb-3">
+              When you connect your YouTube account, we request the following
+              scopes:
+            </p>
+            <ul className="list-disc pl-5 space-y-1 mb-3">
+              <li>
+                <strong>youtube.upload</strong> — to upload and publish videos
+                to your YouTube channel on your behalf.
+              </li>
+              <li>
+                <strong>youtube.readonly</strong> — to verify your channel
+                details and check upload status.
+              </li>
+            </ul>
+            <p>
+              We do not sell, share, transfer, or disclose your Google user data
+              to any third parties. Google user data is used exclusively to
+              provide the core scheduling and publishing features of Social0. It
+              is never used for advertising, profiling, or any purpose unrelated
+              to the Service. Data is stored encrypted and access is revoked
+              upon disconnecting your account.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-foreground mb-2">
+              8. Data retention and deletion
             </h2>
             <p>
               We retain your data for as long as your account is active and as
@@ -144,7 +185,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-2">
-              8. Your rights
+              9. Your rights
             </h2>
             <p>
               Depending on your location, you may have the right to access,
@@ -158,7 +199,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-2">
-              9. Updates to this policy
+              10. Updates to this policy
             </h2>
             <p>
               We may update this Privacy Policy from time to time. We will post
@@ -171,7 +212,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-2">
-              10. Contact
+              11. Contact
             </h2>
             <p>
               For privacy-related questions or to exercise your rights, please

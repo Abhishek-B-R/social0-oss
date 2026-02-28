@@ -45,7 +45,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     tokenUrl: "https://oauth2.googleapis.com/token",
     // YouTube + userinfo.profile for channel/name and avatar
     scope:
-      "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/userinfo.profile",
   },
   twitter_x: null, // OAuth 1.0a - handled separately in route handler
   threads: {
