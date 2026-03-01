@@ -374,15 +374,20 @@ export default async function PostDetailPage({
               <ul className="space-y-2">
                 {publications.map((pub, i) => {
                   const badge = getPublicationStatusBadge(pub.status);
-                  const viewUrl =
-                    pub.platformPostUrl ??
-                    (pub.platform === "tiktok" &&
+                  let viewUrl: string | null = null;
+                  if (pub.platform === "instagram" && pub.platformUsername) {
+                    viewUrl = `https://www.instagram.com/${pub.platformUsername}/`;
+                  } else if (
+                    pub.platform === "tiktok" &&
                     pub.status === "published" &&
                     pub.platformPostId &&
                     /^\d+$/.test(String(pub.platformPostId)) &&
                     pub.platformUsername
-                      ? `https://www.tiktok.com/@${pub.platformUsername}/video/${pub.platformPostId}`
-                      : null);
+                  ) {
+                    viewUrl = `https://www.tiktok.com/@${pub.platformUsername}/video/${pub.platformPostId}`;
+                  } else {
+                    viewUrl = pub.platformPostUrl ?? null;
+                  }
                   return (
                     <li
                       key={`${pub.platform}-${i}`}
@@ -419,7 +424,7 @@ export default async function PostDetailPage({
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {viewUrl && (
+                        {viewUrl && pub.status === "published" && (
                           <a
                             href={viewUrl}
                             target="_blank"

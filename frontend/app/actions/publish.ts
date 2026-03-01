@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { publishLimiter } from "@/lib/ratelimit";
 import { db } from "@/db";
 import {
   posts,
@@ -238,7 +239,14 @@ export async function executePublish(
       }
     }
 
+    // YouTube and TikTok use getValidToken during publish which auto-refreshes expired tokens.
+    // Skipping the tokenStatus/tokenExpiresAt guards for these platforms lets that refresh run.
+    // All other platforms without refresh support still fail fast here.
+    const supportsAutoRefresh =
+      pub.platform === "youtube" || pub.platform === "tiktok";
+
     if (
+      !supportsAutoRefresh &&
       pub.tokenStatus === "expired" &&
       !NEVER_EXPIRES_PLATFORMS.has(pub.platform)
     ) {
@@ -261,10 +269,14 @@ export async function executePublish(
       continue;
     }
 
-    // Do not attempt to publish with an expired token (by time)
+    // Do not attempt to publish with an expired token (by time).
+    // Exception: YouTube, TikTok, and LinkedIn call getValidToken which handles refresh on-demand.
     if (
       pub.tokenExpiresAt &&
-      new Date(pub.tokenExpiresAt) < new Date()
+      new Date(pub.tokenExpiresAt) < new Date() &&
+      pub.platform !== "youtube" &&
+      pub.platform !== "tiktok" &&
+      pub.platform !== "linkedin"
     ) {
       const tokenExpiredMsg =
         "Token expired — user must reconnect this account";
@@ -1353,6 +1365,17 @@ export async function publishPost(postId: string): Promise<PublishResult> {
       error: "Unauthorized",
       results: [],
     };
+  }
+
+  if (publishLimiter) {
+    const { success } = await publishLimiter.limit(session.user.id);
+    if (!success) {
+      return {
+        success: false,
+        error: "Publish rate limit exceeded. Try again later.",
+        results: [],
+      };
+    }
   }
 
   if (!isValidPostId(postId)) {

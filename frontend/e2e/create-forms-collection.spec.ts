@@ -7,8 +7,54 @@ const useManualMedia =
   process.env.E2E_MANUAL_MEDIA === "1" ||
   process.env.E2E_MANUAL_MEDIA === "true";
 
+function getFutureDate(): { dateStr: string; timeStr: string } {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(10, 0, 0, 0);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return { dateStr: `${yyyy}-${mm}-${dd}`, timeStr: `${hh}:${min}` };
+}
+
+/** Adds at least one image and one video to the collection (2+ media total). */
+async function selectAccountsAndAddCollectionMedia(
+  page: import("@playwright/test").Page,
+) {
+  const accountToggleBtn = page.getByRole("button", {
+    name: /Select all|Deselect all/,
+  });
+  await expect(accountToggleBtn).toBeVisible({ timeout: 10000 });
+  if ((await accountToggleBtn.textContent())?.trim() === "Select all") {
+    await accountToggleBtn.click();
+  }
+
+  if (useManualMedia) {
+    await page
+      .getByRole("button", { name: "Click to add images or videos" })
+      .click();
+    await page.waitForTimeout(5000);
+  } else {
+    const fileInput = page
+      .locator('input[type="file"][accept*="image"]')
+      .first();
+    await expect(fileInput).toBeAttached({ timeout: 5000 });
+    const imagePath = path.join(__dirname, "../fixtures/test-image.jpg");
+    const videoPath = path.join(__dirname, "../fixtures/test-video.mp4");
+    await fileInput.setInputFiles([imagePath, videoPath]);
+    await expect(page.locator('img[src^="blob:"]').first()).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.locator('video[src^="blob:"]').first()).toBeVisible({
+      timeout: 15000,
+    });
+  }
+}
+
 test.describe("Create forms – CollectionPostForm", () => {
-  test("collection post form loads with caption and upload zone", async ({
+  test("collection post form loads with caption, upload zone, Post now, and Save to Drafts", async ({
     page,
   }) => {
     test.setTimeout(15000);
@@ -32,42 +78,25 @@ test.describe("Create forms – CollectionPostForm", () => {
       page.getByRole("button", { name: "Click to add images or videos" }),
     ).toBeVisible({ timeout: 5000 });
 
+    await expect(
+      page.getByRole("button", { name: "Post now" }),
+    ).toBeVisible({ timeout: 5000 });
     const saveDraftBtn = page
       .getByRole("button", { name: /save.*draft/i, exact: false })
       .first();
     await expect(saveDraftBtn).toBeVisible({ timeout: 5000 });
   });
 
-  test("collection post can save draft with caption (optional media via E2E_MANUAL_MEDIA)", async ({
+  test("Save to Drafts – selects accounts, adds media, fills caption, saves draft, redirects to drafts", async ({
     page,
   }) => {
-    test.setTimeout(useManualMedia ? 60000 : 30000);
+    test.setTimeout(useManualMedia ? 60000 : 35000);
     await loginAsTestUser(page);
     await page.goto("/dashboard/create/collection");
     await page.waitForLoadState("networkidle");
     await expect(page).toHaveURL(/\/dashboard\/create\/collection/);
 
-    const accountToggleBtn = page.getByRole("button", {
-      name: /Select all|Deselect all/,
-    });
-    await expect(accountToggleBtn).toBeVisible({ timeout: 10000 });
-    if ((await accountToggleBtn.textContent())?.trim() === "Select all") {
-      await accountToggleBtn.click();
-    }
-
-    if (useManualMedia) {
-      await page
-        .getByRole("button", { name: "Click to add images or videos" })
-        .click();
-      await page.waitForTimeout(5000);
-    } else {
-      const fileInput = page.locator(
-        'input[type="file"][accept*="image"]',
-      ).first();
-      await expect(fileInput).toBeAttached({ timeout: 5000 });
-      const imagePath = path.join(__dirname, "../fixtures/test-image.jpg");
-      await fileInput.setInputFiles(imagePath);
-    }
+    await selectAccountsAndAddCollectionMedia(page);
 
     const uniqueCaption = "Collection draft " + Date.now();
     const captionField = page.locator(
@@ -97,5 +126,75 @@ test.describe("Create forms – CollectionPostForm", () => {
     await expect(page.getByText(uniqueCaption)).toBeVisible({
       timeout: 10000,
     });
+  });
+
+  test("Post now – selects accounts, adds media, fills caption, clicks Post now, redirects to posts", async ({
+    page,
+  }) => {
+    test.setTimeout(useManualMedia ? 60000 : 35000);
+    await loginAsTestUser(page);
+    await page.goto("/dashboard/create/collection");
+    await page.waitForLoadState("networkidle");
+    await expect(page).toHaveURL(/\/dashboard\/create\/collection/);
+
+    await selectAccountsAndAddCollectionMedia(page);
+
+    const uniqueCaption = "Post now collection " + Date.now();
+    const captionField = page.locator(
+      'textarea[placeholder="Write your caption..."]',
+    ).first();
+    await expect(captionField).toBeVisible({ timeout: 5000 });
+    await captionField.fill(uniqueCaption);
+
+    const postNowBtn = page.getByRole("button", { name: "Post now" }).first();
+    await expect(postNowBtn).toBeVisible({ timeout: 5000 });
+    await postNowBtn.click();
+
+    await page.waitForURL(/\/dashboard\/posts(?:\/|$)/, { timeout: 25000 });
+    await page.waitForLoadState("networkidle");
+    await expect(page).toHaveURL(/\/dashboard\/posts/);
+  });
+
+  test("Schedule – selects accounts, adds media, fills caption, enables schedule, sets future time, schedules", async ({
+    page,
+  }) => {
+    test.setTimeout(useManualMedia ? 70000 : 40000);
+    await loginAsTestUser(page);
+    await page.goto("/dashboard/create/collection");
+    await page.waitForLoadState("networkidle");
+    await expect(page).toHaveURL(/\/dashboard\/create\/collection/);
+
+    await selectAccountsAndAddCollectionMedia(page);
+
+    const uniqueCaption = "Scheduled collection " + Date.now();
+    const captionField = page.locator(
+      'textarea[placeholder="Write your caption..."]',
+    ).first();
+    await expect(captionField).toBeVisible({ timeout: 5000 });
+    await captionField.fill(uniqueCaption);
+
+    const scheduleSwitch = page.getByRole("switch").first();
+    await expect(scheduleSwitch).toBeVisible({ timeout: 5000 });
+    await scheduleSwitch.click();
+
+    const { dateStr, timeStr } = getFutureDate();
+    const dateInput = page.locator("#schedule-date");
+    const timeInput = page.locator("#schedule-time");
+    await expect(dateInput).toBeVisible({ timeout: 5000 });
+    await expect(timeInput).toBeVisible({ timeout: 5000 });
+    await dateInput.fill(dateStr);
+    await timeInput.fill(timeStr);
+
+    const scheduleBtn = page
+      .getByRole("button", { name: "Schedule", exact: true })
+      .first();
+    await expect(scheduleBtn).toBeVisible({ timeout: 5000 });
+    await scheduleBtn.click();
+
+    await page.waitForURL(/\/dashboard\/posts\/scheduled(?:\/|$)/, {
+      timeout: 25000,
+    });
+    await page.waitForLoadState("networkidle");
+    await expect(page).toHaveURL(/\/dashboard\/posts\/scheduled/);
   });
 });

@@ -8,8 +8,9 @@ import { normalizeAppUrl } from "@/lib/url-utils";
 import crypto from "crypto";
 import { db } from "@/db";
 import { verification } from "@/db/schema";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { TwitterApi } from "twitter-api-v2";
+import { oauthLimiter } from "@/lib/ratelimit";
 
 export async function GET(
   req: NextRequest,
@@ -28,6 +29,15 @@ export async function GET(
 
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (oauthLimiter) {
+    const { success } = await oauthLimiter.limit(session.user.id);
+    if (!success) {
+      return NextResponse.redirect(
+        new URL("/dashboard/connections?error=rate_limited", req.url),
+      );
+    }
   }
 
   // Twitter/X: OAuth 1.0a flow (separate from standard OAuth 2.0)

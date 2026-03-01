@@ -35,6 +35,9 @@ const envSchema = z.object({
   R2_BUCKET_NAME: z.string().optional(),
   R2_PUBLIC_URL: z.string().url().optional(),
   R2_ENDPOINT: z.string().url().optional(),
+  // Upstash Redis for rate limiting (optional — rate limiting is skipped if not set)
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

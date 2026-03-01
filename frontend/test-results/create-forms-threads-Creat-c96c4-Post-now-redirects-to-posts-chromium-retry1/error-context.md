@@ -1,0 +1,219 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - link "Social0 Social0" [ref=e5] [cursor=pointer]:
+          - /url: /dashboard/create
+          - img "Social0" [ref=e6]
+          - generic [ref=e7]: Social0
+        - link "Create post" [ref=e8] [cursor=pointer]:
+          - /url: /dashboard/create
+          - img [ref=e9]
+          - text: Create post
+        - navigation [ref=e12]:
+          - generic [ref=e13]:
+            - paragraph [ref=e14]: Create
+            - link "New post" [ref=e15] [cursor=pointer]:
+              - /url: /dashboard/create
+              - img [ref=e16]
+              - text: New post
+            - link "Bulk tools" [ref=e19] [cursor=pointer]:
+              - /url: /dashboard/bulk-tools
+              - img [ref=e20]
+              - text: Bulk tools
+          - generic [ref=e24]:
+            - paragraph [ref=e25]: Posts
+            - link "All" [ref=e26] [cursor=pointer]:
+              - /url: /dashboard/posts
+              - img [ref=e27]
+              - text: All
+            - link "Posted" [ref=e28] [cursor=pointer]:
+              - /url: /dashboard/posts/posted
+              - img [ref=e29]
+              - text: Posted
+            - link "Scheduled" [ref=e32] [cursor=pointer]:
+              - /url: /dashboard/posts/scheduled
+              - img [ref=e33]
+              - text: Scheduled
+            - link "Drafts" [ref=e36] [cursor=pointer]:
+              - /url: /dashboard/posts/drafts
+              - img [ref=e37]
+              - text: Drafts
+            - link "Calendar" [ref=e40] [cursor=pointer]:
+              - /url: /dashboard/calendar
+              - img [ref=e41]
+              - text: Calendar
+          - generic [ref=e43]:
+            - paragraph [ref=e44]: Workspace
+            - link "Connections" [ref=e45] [cursor=pointer]:
+              - /url: /dashboard/connections
+              - img [ref=e46]
+              - text: Connections
+            - link "Teams" [ref=e49] [cursor=pointer]:
+              - /url: /dashboard/teams
+              - img [ref=e50]
+              - text: Teams
+          - generic [ref=e55]:
+            - paragraph [ref=e56]: Configuration
+            - link "Settings" [ref=e57] [cursor=pointer]:
+              - /url: /dashboard/settings
+              - img [ref=e58]
+              - text: Settings
+            - link "Billing" [ref=e61] [cursor=pointer]:
+              - /url: /dashboard/billing
+              - img [ref=e62]
+              - text: Billing
+          - generic [ref=e64]:
+            - paragraph [ref=e65]: Support
+            - link "Share feedback" [ref=e66] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e67]
+              - text: Share feedback
+      - generic [ref=e69]:
+        - generic [ref=e70]:
+          - img "Abhishek BR" [ref=e71]
+          - generic [ref=e72]:
+            - paragraph [ref=e73]: Abhishek BR
+            - paragraph [ref=e74]: Creator Plan
+          - img [ref=e75]
+        - button "Sign out" [ref=e78]
+    - main [ref=e79]:
+      - generic [ref=e81]:
+        - heading "Threads" [level=2] [ref=e82]
+        - generic [ref=e84]:
+          - img [ref=e86]
+          - heading "Publishing post…" [level=2] [ref=e88]
+          - paragraph [ref=e89]: Publishing your post to all the places.
+          - paragraph [ref=e90]: Posts can take up to a few minutes to show on all platforms.
+          - paragraph [ref=e91]:
+            - text: Don't keep waiting — if you have another post idea,
+            - link "post/schedule" [ref=e92] [cursor=pointer]:
+              - /url: /dashboard/create
+            - text: it as well :)
+        - generic [ref=e93]:
+          - generic [ref=e94]:
+            - generic [ref=e95]:
+              - generic [ref=e96]:
+                - searchbox "Search accounts..." [ref=e98]
+                - generic [ref=e99] [cursor=pointer]:
+                  - checkbox "Remember" [ref=e100]
+                  - generic [ref=e101]: Remember
+              - generic [ref=e102]:
+                - button "Deselect all" [ref=e103]
+                - generic [ref=e104]:
+                  - generic [ref=e105]:
+                    - button "social0-app.bsky.social" [pressed] [ref=e107]:
+                      - img "social0-app.bsky.social" [ref=e108]
+                      - img [ref=e111]
+                      - img [ref=e114]
+                    - generic [ref=e116]: social0-ap...
+                    - generic [ref=e117]: Bluesky
+                  - generic [ref=e118]:
+                    - button "S" [pressed] [ref=e120]:
+                      - generic [ref=e121]: S
+                      - img [ref=e124]
+                      - img [ref=e127]
+                    - generic [ref=e129]: social0_ap...
+                    - generic [ref=e130]: X (Twitter)
+                  - generic [ref=e131]:
+                    - button "S" [pressed] [ref=e133]:
+                      - generic [ref=e134]: S
+                      - img [ref=e137]
+                      - img [ref=e140]
+                    - generic [ref=e142]: social0_ap...
+                    - generic [ref=e143]: Threads
+            - generic [ref=e144]:
+              - paragraph [ref=e145]: Thread posts (stacked in order when published)
+              - paragraph [ref=e146]: You can add images or a video to each post.
+              - generic [ref=e147]:
+                - generic [ref=e148]:
+                  - generic [ref=e149]: Post 1
+                  - button "Remove this post" [ref=e150]:
+                    - img [ref=e151]
+                - textbox "What's happening?" [ref=e154]: Thread 1772366543892 First tweet.
+                - generic [ref=e155]:
+                  - paragraph [ref=e156]: Drag to reorder media (carousel order)
+                  - generic [ref=e158]:
+                    - generic [ref=e159]: "1"
+                    - button [ref=e160]:
+                      - img [ref=e161]
+                - generic [ref=e165] [cursor=pointer]:
+                  - img [ref=e166]
+                  - img [ref=e169]
+                  - generic [ref=e172]: Add media (1/4) · Hover and paste from clipboard (Ctrl+V)
+              - generic [ref=e173]:
+                - generic [ref=e174]:
+                  - generic [ref=e175]: Post 2
+                  - button "Remove this post" [ref=e176]:
+                    - img [ref=e177]
+                - textbox "What's happening?" [ref=e180]: Thread 1772366543892 Second tweet.
+                - generic [ref=e181]:
+                  - paragraph [ref=e182]: Drag to reorder media (carousel order)
+                  - generic [ref=e184]:
+                    - generic [ref=e186]: "1"
+                    - button [ref=e187]:
+                      - img [ref=e188]
+                - generic [ref=e192] [cursor=pointer]:
+                  - img [ref=e193]
+                  - img [ref=e196]
+                  - generic [ref=e199]: Add media (1/4) · Hover and paste from clipboard (Ctrl+V)
+              - generic [ref=e200]:
+                - generic [ref=e201]:
+                  - generic [ref=e202]: Post 3
+                  - button "Remove this post" [ref=e203]:
+                    - img [ref=e204]
+                - textbox "What's happening?" [ref=e207]: Thread 1772366543892 Third tweet.
+                - generic [ref=e209] [cursor=pointer]:
+                  - img [ref=e210]
+                  - img [ref=e213]
+                  - generic [ref=e216]: Add media (0/4) · Hover and paste from clipboard (Ctrl+V)
+              - button "Add another post" [ref=e217]:
+                - img [ref=e218]
+                - text: Add another post
+          - complementary [ref=e221]:
+            - generic [ref=e222]:
+              - heading "Thread Preview" [level=3] [ref=e223]
+              - generic [ref=e224]:
+                - generic [ref=e229]:
+                  - paragraph [ref=e230]: "@social0-app.bsky.social"
+                  - paragraph [ref=e231]: Thread 1772366543892 First tweet.
+                - generic [ref=e239]:
+                  - paragraph [ref=e240]: "@social0-app.bsky.social"
+                  - paragraph [ref=e241]: Thread 1772366543892 Second tweet.
+                  - generic [ref=e245]:
+                    - generic:
+                      - generic:
+                        - img
+                - generic [ref=e250]:
+                  - paragraph [ref=e251]: "@social0-app.bsky.social"
+                  - paragraph [ref=e252]: Thread 1772366543892 Third tweet.
+            - generic [ref=e253]:
+              - generic [ref=e254]:
+                - generic [ref=e255]: Schedule post
+                - switch [ref=e256]
+              - generic [ref=e257]:
+                - button "Saving..." [disabled] [ref=e258]
+                - button "Save to Drafts" [disabled] [ref=e259]
+            - generic [ref=e260]:
+              - generic [ref=e261]:
+                - generic [ref=e262]:
+                  - generic [ref=e263]: Auto-Repost
+                  - generic [ref=e264]: (Twitter/X only)
+                - switch "Enable Auto-Repost" [ref=e266]
+              - generic [ref=e268]:
+                - generic [ref=e269]:
+                  - generic [ref=e270]: Auto-Plug
+                  - generic [ref=e271]: (Twitter/X only)
+                - switch "Enable Auto-Plug" [ref=e273]
+  - button "Open Next.js Dev Tools" [ref=e280] [cursor=pointer]:
+    - generic [ref=e283]:
+      - text: Rendering
+      - generic [ref=e284]:
+        - generic [ref=e285]: .
+        - generic [ref=e286]: .
+        - generic [ref=e287]: .
+  - alert [ref=e288]
+```

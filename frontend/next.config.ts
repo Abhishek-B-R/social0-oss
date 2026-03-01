@@ -10,6 +10,15 @@ const rootDir =
 const appRoot = path.resolve(rootDir);
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+        pathname: "/**",
+      },
+    ],
+  },
   experimental: {
     optimizePackageImports: ["react-icons"],
   },

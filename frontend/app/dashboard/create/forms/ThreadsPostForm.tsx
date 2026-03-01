@@ -694,10 +694,17 @@ export function ThreadsPostForm({
     setLoading(true);
     setOverlayPhase("uploading");
 
-    const threadPosts = posts.filter(
-      (p) =>
-        p.text.trim().length > 0 || p.images.length > 0 || p.videos.length > 0,
-    );
+    // Keep strict UI order: first post = first tweet (root), second = reply to first, etc.
+    const threadPosts = posts
+      .map((p, index) => ({ post: p, index }))
+      .filter(
+        ({ post }) =>
+          post.text.trim().length > 0 ||
+          post.images.length > 0 ||
+          post.videos.length > 0,
+      )
+      .sort((a, b) => a.index - b.index)
+      .map(({ post }) => post);
     const contentParts = threadPosts.map((p) => p.text.trim()).filter(Boolean);
     const content = contentParts.join(THREAD_SEPARATOR);
     if (!content.trim()) {

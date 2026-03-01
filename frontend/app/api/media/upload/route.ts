@@ -4,6 +4,7 @@ import { mediaUploads } from "@/db/schema";
 import { headers } from "next/headers";
 import { isR2Configured, uploadToR2 } from "@/lib/r2";
 import { sanitizeFilename, validateFileContent } from "@/lib/validation";
+import { uploadLimiter } from "@/lib/ratelimit";
 
 const MAX_IMAGE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB (bulk image upload)
 const MAX_VIDEO_SIZE_BYTES = 500 * 1024 * 1024; // 500MB (bulk video upload)
@@ -24,6 +25,16 @@ export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (uploadLimiter) {
+    const { success } = await uploadLimiter.limit(session.user.id);
+    if (!success) {
+      return Response.json(
+        { error: "Upload rate limit exceeded. Try again later." },
+        { status: 429 },
+      );
+    }
   }
 
   if (!isR2Configured()) {

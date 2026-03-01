@@ -2557,10 +2557,10 @@ async function publishThreadsThread(
   let firstPublishedId: string | null = null;
 
   for (let i = 0; i < parts.length; i++) {
-    // Wait for previous publish to complete before creating the next container
-    // (Threads needs the published post id to be valid as reply_to_id)
+    // Wait for previous publish to be visible before creating the next reply
+    // (reply_to_id must be the published post ID from threads_publish, not the container ID)
     if (previousPublishedId && i > 0) {
-      await new Promise((r) => setTimeout(r, 3000));
+      await new Promise((r) => setTimeout(r, 15000));
     }
 
     const part = parts[i];
@@ -2572,13 +2572,10 @@ async function publishThreadsThread(
     const imageUrl = images[0]?.url;
     const videoUrl = videos[0]?.url;
 
-    // Build container payload: for replies, set reply_to_id to previous post's published id
+    // reply_to_id must be the PUBLISHED post ID from threads_publish (step 2), never the container ID from threads (step 1).
     const body: Record<string, string | boolean> = {};
-    if (previousPublishedId) {
+    if (i > 0 && previousPublishedId) {
       body.reply_to_id = previousPublishedId;
-    }
-    if (i === 1) {
-      console.log("[Threads] Part 2 reply_to_id:", body.reply_to_id);
     }
 
     if (images.length > 1) {
@@ -2629,9 +2626,9 @@ async function publishThreadsThread(
     }
 
     // Step 1: Create container for this part only (with reply_to_id if not first).
-    // Threads API requires application/x-www-form-urlencoded; JSON can cause reply_to_id to be ignored.
+    // Use /me/threads so reply_to_id is resolved in the token user's context (per Meta docs).
     const createRes = await fetch(
-      `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`,
+      `https://graph.threads.net/v1.0/me/threads?${threadParams}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -2658,8 +2655,10 @@ async function publishThreadsThread(
       };
     }
 
-    // Step 2: Poll container status until FINISHED (Threads API requires container to be ready before publish)
+    // Container ID from step 1 — do NOT use as reply_to_id; only the threads_publish response id is valid.
     const containerId = createData.id;
+
+    // Step 2: Poll container status until FINISHED (Threads API requires container to be ready before publish)
     const maxPollAttempts = 40;
     const pollDelayMs = 3000;
     let pollAttempt = 0;
@@ -2746,9 +2745,12 @@ async function publishThreadsThread(
       console.log("[Threads] Part 1 publish response:", publishData);
     }
 
-    // Step 3: Use this published id as reply_to_id for the next part (next iteration)
+    // Step 3: reply_to_id must use the published post ID from threads_publish (publishData.id), NOT the container ID (createData.id).
     previousPublishedId = publishData.id;
     if (!firstPublishedId) firstPublishedId = publishData.id;
+    if (i < parts.length - 1) {
+      await new Promise((r) => setTimeout(r, 2000));
+    }
   }
 
   const rootId = firstPublishedId ?? previousPublishedId;

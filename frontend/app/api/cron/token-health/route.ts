@@ -16,22 +16,19 @@ export const maxDuration = 300;
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   const expected = process.env.CRON_SECRET;
-  const isDevelopment = process.env.NODE_ENV === "development";
 
-  if (!isDevelopment) {
-    if (!expected) {
-      return NextResponse.json(
-        { error: "Cron not configured" },
-        { status: 503 },
-      );
-    }
-    if (
-      !authHeader ||
-      !authHeader.startsWith("Bearer ") ||
-      !constantTimeEquals(authHeader.slice(7), expected)
-    ) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!expected) {
+    return NextResponse.json(
+      { error: "Cron not configured" },
+      { status: 503 },
+    );
+  }
+  if (
+    !authHeader ||
+    !authHeader.startsWith("Bearer ") ||
+    !constantTimeEquals(authHeader.slice(7), expected)
+  ) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const now = new Date();

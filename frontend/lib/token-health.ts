@@ -314,7 +314,7 @@ export async function runTokenHealthCheckForUser(
     const batch = toCheck.slice(i, i + BATCH_SIZE);
     await runTokenHealthCheck(batch, {
       now,
-      tryRefreshYouTubeTikTok: false,
+      tryRefreshYouTubeTikTok: true,
     });
   }
 }

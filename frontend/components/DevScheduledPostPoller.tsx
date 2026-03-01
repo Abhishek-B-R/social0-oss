@@ -7,6 +7,9 @@ const POLL_INTERVAL_MS = 60000; // 1 minute
 /**
  * Development-only component that polls cron endpoints locally.
  * In production, Vercel Cron Jobs handle these.
+ *
+ * Calls /api/dev/trigger-crons (session-gated proxy) which injects
+ * the CRON_SECRET server-side — the secret never touches the browser.
  */
 export function DevScheduledPostPoller() {
   useEffect(() => {
@@ -15,54 +18,37 @@ export function DevScheduledPostPoller() {
     }
 
     const runCrons = async () => {
-      // 1. Publish scheduled posts
       try {
-        const res = await fetch("/api/cron/publish-scheduled");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.processed > 0) {
-            console.log(
-              "[Dev] Published",
-              data.processed,
-              "scheduled post(s)",
-              data.ids,
-            );
-            window.location.reload();
-          }
+        const res = await fetch("/api/dev/trigger-crons");
+        if (!res.ok) {
+          console.error("[Dev] trigger-crons failed:", res.status, await res.text());
+          return;
+        }
+        const data = await res.json();
+
+        const { publishScheduled, resurface, autoplug } = data;
+
+        if (publishScheduled?.processed > 0) {
+          console.log(
+            "[Dev] Published",
+            publishScheduled.processed,
+            "scheduled post(s)",
+            publishScheduled.ids,
+          );
+          window.location.reload();
+          return;
+        }
+        if (resurface?.processed > 0) {
+          console.log("[Dev] Resurface processed", resurface.processed);
+          window.location.reload();
+          return;
+        }
+        if ((autoplug?.triggered ?? 0) > 0 || (autoplug?.expired ?? 0) > 0) {
+          console.log("[Dev] Autoplug", autoplug);
+          window.location.reload();
         }
       } catch (e) {
-        console.error("[Dev] Error publish-scheduled:", e);
-      }
-      // 2. Auto-Repost (resurface)
-      try {
-        const res = await fetch("/api/cron/resurface");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.processed > 0) {
-            console.log("[Dev] Resurface processed", data.processed);
-            window.location.reload();
-          }
-        }
-      } catch (e) {
-        console.error("[Dev] Error resurface:", e);
-      }
-      // 3. Auto-Plug
-      try {
-        const res = await fetch("/api/cron/autoplug");
-        if (res.ok) {
-          const data = await res.json();
-          if (
-            (data.checked ?? 0) > 0 ||
-            (data.triggered ?? 0) > 0 ||
-            (data.expired ?? 0) > 0
-          ) {
-            console.log("[Dev] Autoplug", data);
-            if ((data.triggered ?? 0) > 0 || (data.expired ?? 0) > 0)
-              window.location.reload();
-          }
-        }
-      } catch (e) {
-        console.error("[Dev] Error autoplug:", e);
+        console.error("[Dev] Error polling crons:", e);
       }
     };
 
