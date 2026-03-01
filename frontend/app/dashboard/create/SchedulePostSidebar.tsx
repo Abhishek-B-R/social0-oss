@@ -293,12 +293,6 @@ export function SchedulePostSidebar({
         )}
       </div>
 
-      {error && (
-        <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
-          {error}
-        </div>
-      )}
-
       {draftId && onDeleteDraft && (
         <div className="flex flex-wrap items-center gap-2 -mt-4">
           <button
@@ -308,7 +302,7 @@ export function SchedulePostSidebar({
                 onDeleteDraft();
               }
             }}
-            className="rounded-xl border border-red-300 bg-red-50 px-4 py-2.5 font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300 dark:hover:bg-red-900/50"
+            className="rounded-xl border border-red-300 bg-red-50 w-full px-4 py-2.5 font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300 dark:hover:bg-red-900/50"
           >
             Delete draft
           </button>
@@ -318,9 +312,12 @@ export function SchedulePostSidebar({
       <div className="space-y-2 shrink-0 min-h-0">
         {autoRepost?.visible && (
           <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated px-3 py-2 -mt-3 min-w-0">
-            <span className="text-sm font-medium text-text truncate shrink-0">
-              Auto-Repost
-            </span>
+            <div className="flex flex-col gap-0.5 shrink-0 min-w-0">
+              <span className="text-sm font-medium text-text truncate">
+                Auto-Repost
+              </span>
+              <span className="text-xs text-text-muted">(Twitter/X only)</span>
+            </div>
             <div className="flex items-center gap-2">
               {autoRepost.enabled && (
                 <button
@@ -343,7 +340,9 @@ export function SchedulePostSidebar({
                 }
                 onClick={autoRepost.onToggle}
                 className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
-                  autoRepost.enabled ? "bg-emerald-600" : "bg-gray-300 dark:bg-gray-600"
+                  autoRepost.enabled
+                    ? "bg-emerald-600"
+                    : "bg-gray-300 dark:bg-gray-600"
                 }`}
               >
                 <span
@@ -357,9 +356,12 @@ export function SchedulePostSidebar({
         )}
         {autoPlug?.visible && (
           <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated px-3 py-2 min-w-0">
-            <span className="text-sm font-medium text-text truncate shrink-0">
-              Auto-Plug
-            </span>
+            <div className="flex flex-col gap-0.5 shrink-0 min-w-0">
+              <span className="text-sm font-medium text-text truncate">
+                Auto-Plug
+              </span>
+              <span className="text-xs text-text-muted">(Twitter/X only)</span>
+            </div>
             <div className="flex items-center gap-2">
               {autoPlug.enabled && (
                 <button
@@ -380,7 +382,9 @@ export function SchedulePostSidebar({
                 }
                 onClick={autoPlug.onToggle}
                 className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
-                  autoPlug.enabled ? "bg-emerald-600" : "bg-gray-300 dark:bg-gray-600"
+                  autoPlug.enabled
+                    ? "bg-emerald-600"
+                    : "bg-gray-300 dark:bg-gray-600"
                 }`}
               >
                 <span

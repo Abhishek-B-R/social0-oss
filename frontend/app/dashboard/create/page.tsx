@@ -9,7 +9,7 @@ export default async function NewPostPage() {
   if (!session) redirect("/");
 
   return (
-    <div>
+    <div className="px-10">
       <div className="mb-6">
         <Link
           href="/dashboard/posts"

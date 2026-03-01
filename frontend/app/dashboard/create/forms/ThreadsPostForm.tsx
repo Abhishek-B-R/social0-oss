@@ -95,12 +95,15 @@ function ThreadPreviewMediaGrid({ items }: { items: PreviewMediaItem[] }) {
         key={key}
         className="relative w-full h-full min-h-0 bg-bg-muted rounded-lg overflow-hidden"
       >
-        {item.thumbnailUrl ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img src={item.thumbnailUrl} alt="" className={imgClass} />
-        ) : (
-          <div className="absolute inset-0 bg-bg-muted" />
-        )}
+        <video
+          key={item.preview}
+          src={item.preview}
+          poster={item.thumbnailUrl ?? undefined}
+          className={imgClass}
+          muted
+          playsInline
+          preload="auto"
+        />
         {playOverlay}
       </div>
     );
@@ -176,12 +179,18 @@ type Account = {
   tokenExpired?: boolean;
 };
 
-type MediaImage = { file: File; preview: string; order: number };
+type MediaImage = {
+  file?: File;
+  preview: string;
+  order: number;
+  mediaId?: string;
+};
 type MediaVideo = {
-  file: File;
+  file?: File;
   preview: string;
   order: number;
   thumbnailUrl?: string;
+  mediaId?: string;
 };
 
 type ThreadPost = {
@@ -237,7 +246,7 @@ export function ThreadsPostForm({
   const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   const [draggedPostId, setDraggedPostId] = useState<number | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  type OverlayPhase = "idle" | "uploading" | "publishing" | "done";
+  type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
@@ -273,18 +282,61 @@ export function ThreadsPostForm({
           return;
         }
         const { draft } = result;
-        const raw = draft.originalContent ?? "";
-        const parts = raw.split(THREAD_SEPARATOR).map((s) => s.trim());
-        if (parts.length > 0) {
-          setPosts(
-            parts.map((text, i) => ({
+        const metadata = draft.metadata as Record<string, unknown> | null;
+        const twitterThread =
+          metadata?.twitterThread as
+            | { parts?: Array<{ text?: string; mediaIds?: string[] }> }
+            | undefined;
+        const partsFromMeta = twitterThread?.parts;
+
+        if (partsFromMeta && Array.isArray(partsFromMeta) && partsFromMeta.length > 0) {
+          const mediaById = new Map(
+            draft.media.map((m) => [m.id, m]),
+          );
+          const restoredPosts: ThreadPost[] = partsFromMeta.map((part, i) => {
+            const text = typeof part.text === "string" ? part.text : "";
+            const partMediaIds = Array.isArray(part.mediaIds) ? part.mediaIds : [];
+            const images: MediaImage[] = [];
+            const videos: MediaVideo[] = [];
+            partMediaIds.forEach((mid, idx) => {
+              const row = mediaById.get(mid);
+              if (!row?.url) return;
+              const order = idx + 1;
+              const preview = row.url;
+              if (row.mimeType.startsWith("video/")) {
+                videos.push({
+                  preview: row.thumbnailUrl || preview,
+                  order,
+                  mediaId: row.id,
+                  thumbnailUrl: row.thumbnailUrl ?? undefined,
+                });
+              } else {
+                images.push({ preview, order, mediaId: row.id });
+              }
+            });
+            return {
               id: i + 1,
               text,
-              images: [],
-              videos: [],
-            })),
-          );
-          nextIdRef.current = parts.length + 1;
+              images,
+              videos,
+            };
+          });
+          setPosts(restoredPosts);
+          nextIdRef.current = restoredPosts.length + 1;
+        } else {
+          const raw = draft.originalContent ?? "";
+          const parts = raw.split(THREAD_SEPARATOR).map((s) => s.trim());
+          if (parts.length > 0) {
+            setPosts(
+              parts.map((text, i) => ({
+                id: i + 1,
+                text,
+                images: [],
+                videos: [],
+              })),
+            );
+            nextIdRef.current = parts.length + 1;
+          }
         }
         setSelectedIds(new Set(draft.connectedAccountIds));
         setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
@@ -351,8 +403,12 @@ export function ThreadsPostForm({
     setPosts((prev) => {
       const post = prev.find((p) => p.id === id);
       if (post) {
-        post.images.forEach((i) => URL.revokeObjectURL(i.preview));
-        post.videos.forEach((v) => URL.revokeObjectURL(v.preview));
+        post.images.forEach((i) => {
+          if (i.preview.startsWith("blob:")) URL.revokeObjectURL(i.preview);
+        });
+        post.videos.forEach((v) => {
+          if (v.preview.startsWith("blob:")) URL.revokeObjectURL(v.preview);
+        });
       }
       return prev.filter((p) => p.id !== id);
     });
@@ -418,7 +474,7 @@ export function ThreadsPostForm({
       prev.map((p) => {
         if (p.id !== postId) return p;
         const img = p.images.find((i) => i.preview === preview);
-        if (img) URL.revokeObjectURL(img.preview);
+        if (img?.preview.startsWith("blob:")) URL.revokeObjectURL(img.preview);
         const filtered = p.images.filter((i) => i.preview !== preview);
         const allItems = [...filtered, ...p.videos].sort(
           (a, b) => a.order - b.order,
@@ -511,7 +567,7 @@ export function ThreadsPostForm({
       prev.map((p) => {
         if (p.id !== postId) return p;
         const vid = p.videos.find((v) => v.preview === preview);
-        if (vid) URL.revokeObjectURL(vid.preview);
+        if (vid?.preview.startsWith("blob:")) URL.revokeObjectURL(vid.preview);
         const filtered = p.videos.filter((v) => v.preview !== preview);
         const allItems = [...p.images, ...filtered].sort(
           (a, b) => a.order - b.order,
@@ -595,6 +651,7 @@ export function ThreadsPostForm({
           file: i.file,
           preview: i.preview,
           order: i.order,
+          mediaId: "mediaId" in i ? i.mediaId : undefined,
         }));
       const newVideos = reordered
         .filter((i) => i.type === "video")
@@ -603,6 +660,7 @@ export function ThreadsPostForm({
           preview: i.preview,
           order: i.order,
           thumbnailUrl: "thumbnailUrl" in i ? i.thumbnailUrl : undefined,
+          mediaId: "mediaId" in i ? i.mediaId : undefined,
         }));
       return prev.map((p) => {
         if (p.id !== postId) return p;
@@ -659,6 +717,12 @@ export function ThreadsPostForm({
       const allMedia = getAllMediaForPost(post);
       const thisPostMediaIds: string[] = [];
       for (const item of allMedia) {
+        if ("mediaId" in item && item.mediaId) {
+          mediaIds.push(item.mediaId);
+          thisPostMediaIds.push(item.mediaId);
+          continue;
+        }
+        if (!item.file) continue;
         setUploadProgress(`${uploaded + 1} of ${totalMedia}`);
         try {
           const fd = new FormData();
@@ -715,7 +779,9 @@ export function ThreadsPostForm({
       perThreadPostMediaIds.push(thisPostMediaIds);
     }
     setUploadProgress(null);
-    setOverlayPhase("publishing");
+    setOverlayPhase(
+      (intendedModeRef.current ?? mode) === "draft" ? "saving" : "publishing",
+    );
 
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
@@ -832,7 +898,10 @@ export function ThreadsPostForm({
     }
     if (effectiveMode === "now" && result.postId) {
       const publishResult = await publishPost(result.postId);
-      if (!publishResult?.success) {
+      const succeededCount =
+        publishResult?.results?.filter((r) => r.status === "published")
+          .length ?? 0;
+      if (succeededCount === 0) {
         const msg =
           publishResult?.error && publishResult.error.trim()
             ? publishResult.error
@@ -862,8 +931,24 @@ export function ThreadsPostForm({
           await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
         }
       }
+      setOverlayPhase("done");
+      router.push(`/dashboard/posts/${result.postId}`);
+      router.refresh();
+      return;
     }
-    setOverlayPhase("done");
+    if (effectiveMode === "draft") {
+      setOverlayPhase("idle");
+      router.push("/dashboard/posts/drafts");
+      router.refresh();
+      return;
+    }
+    if (effectiveMode === "scheduled") {
+      setOverlayPhase("idle");
+      router.push("/dashboard/posts/scheduled");
+      router.refresh();
+      return;
+    }
+    setOverlayPhase("idle");
     router.refresh();
   };
 
@@ -907,9 +992,11 @@ export function ThreadsPostForm({
           phase={
             overlayPhase === "uploading"
               ? "uploading"
-              : overlayPhase === "publishing"
-                ? "publishing"
-                : "publishing"
+              : overlayPhase === "saving"
+                ? "saving"
+                : overlayPhase === "publishing"
+                  ? "publishing"
+                  : "publishing"
           }
           uploadProgress={uploadProgress}
           mediaType={overlayMediaType}
@@ -967,6 +1054,12 @@ export function ThreadsPostForm({
             remember={remember}
             onRememberChange={setRemember}
           />
+
+          {error && (
+            <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+              {error}
+            </div>
+          )}
 
           <div className="rounded-2xl border border-border bg-bg p-6 shadow-sm space-y-4">
             <p className="text-sm font-semibold text-text">
@@ -1033,10 +1126,12 @@ export function ThreadsPostForm({
                           >
                             {isVideo ? (
                               <video
+                                key={item.preview}
                                 src={item.preview}
                                 className="h-full w-full object-cover"
                                 muted
                                 playsInline
+                                preload="auto"
                                 draggable={false}
                               />
                             ) : (
@@ -1241,8 +1336,10 @@ export function ThreadsPostForm({
                         </p>
                         {hasContent ? (
                           <>
-                            <p className="mt-0.5 text-sm text-text">
-                              {post.text.trim() || (
+                            <p className="mt-0.5 text-sm text-text whitespace-pre-wrap wrap-break-word">
+                              {post.text.trim() ? (
+                                post.text
+                              ) : (
                                 <span className="italic text-text-muted">
                                   Post {index + 1}
                                 </span>

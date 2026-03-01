@@ -47,11 +47,11 @@ type Account = {
   profileImageUrl: string | null;
   isActive: boolean | null;
   tokenExpired?: boolean;
+  platformMetadata?: Record<string, unknown>;
 };
 
 const defaultTiktokSettings: TikTokPostSettings = {
-  // Match TikTokSettings defaults: require explicit privacy choice, all interactions off by default.
-  privacy_level: "",
+  privacy_level: "SELF_ONLY", // Default to Public
   disable_comment: true,
   disable_duet: true,
   disable_stitch: true,
@@ -105,7 +105,7 @@ export function VideoPostForm({
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
   const [error, setError] = useState<string | null>(null);
-  type OverlayPhase = "idle" | "uploading" | "publishing" | "done";
+  type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [tiktokSettings, setTiktokSettings] = useState<
     Record<string, TikTokPostSettings>
@@ -174,6 +174,36 @@ export function VideoPostForm({
     if (remember) persistSelection(selectedIds);
   }, [remember, selectedIds, persistSelection]);
 
+  // Initialize Pinterest board from DB (platformMetadata.pinterestDefaultBoardId)
+  useEffect(() => {
+    if (initialDraftId) return;
+    setPinterestSettingsByAccount((prev) => {
+      let next = prev;
+      for (const acc of accounts) {
+        if (acc.platform !== "pinterest") continue;
+        const meta = acc.platformMetadata as
+          | Record<string, unknown>
+          | undefined;
+        const defaultBoardId =
+          typeof meta?.pinterestDefaultBoardId === "string"
+            ? meta.pinterestDefaultBoardId.trim()
+            : "";
+        if (!defaultBoardId || prev[acc.id]?.boardId) continue;
+        next = {
+          ...next,
+          [acc.id]: {
+            boardId: defaultBoardId,
+            title: next[acc.id]?.title ?? "",
+            link: next[acc.id]?.link ?? "",
+            rememberBoard: next[acc.id]?.rememberBoard ?? false,
+            rememberLink: next[acc.id]?.rememberLink ?? false,
+          },
+        };
+      }
+      return next;
+    });
+  }, [accounts, initialDraftId]);
+
   useEffect(() => {
     if (!initialDraftId) return;
     let cancelled = false;
@@ -198,6 +228,28 @@ export function VideoPostForm({
           setExistingVideoId(videoMedia.id);
           setVideoPreview(videoMedia.url ?? videoMedia.thumbnailUrl ?? null);
         }
+        const meta = draft.metadata as Record<string, unknown> | null;
+        if (meta?.tiktok && typeof meta.tiktok === "object") {
+          const tiktok = meta.tiktok as Record<string, TikTokPostSettings>;
+          const next: Record<string, TikTokPostSettings> = {};
+          for (const id of draft.connectedAccountIds) {
+            const acc = accounts.find((a) => a.id === id);
+            if (acc?.platform !== "tiktok") continue;
+            const t = tiktok[id];
+            if (t && typeof t === "object") {
+              next[id] = {
+                privacy_level: typeof t.privacy_level === "string" ? t.privacy_level : "",
+                disable_comment: !!t.disable_comment,
+                disable_duet: !!t.disable_duet,
+                disable_stitch: !!t.disable_stitch,
+                brand_content_toggle: !!t.brand_content_toggle,
+                brand_organic: !!t.brand_organic,
+                brand_content: !!t.brand_content,
+              };
+            }
+          }
+          if (Object.keys(next).length > 0) setTiktokSettings(next);
+        }
       } catch {
         if (!cancelled) setError("Failed to load draft");
       } finally {
@@ -207,7 +259,7 @@ export function VideoPostForm({
     return () => {
       cancelled = true;
     };
-  }, [initialDraftId]);
+  }, [initialDraftId, accounts]);
 
   const handleDeleteDraft = async () => {
     if (!initialDraftId) return;
@@ -336,6 +388,12 @@ export function VideoPostForm({
   const tiktokAccounts = selectedAccounts.filter(
     (a) => a.platform === "tiktok",
   );
+  const tiktokMissingPrivacy =
+    hasTikTokSelected &&
+    tiktokAccounts.some((acc) => {
+      const s = tiktokSettings[acc.id];
+      return s !== undefined && (s.privacy_level ?? "").trim() === "";
+    });
   const hasPinterestSelected = selectedAccounts.some(
     (a) => a.platform === "pinterest",
   );
@@ -439,7 +497,9 @@ export function VideoPostForm({
         return;
       }
     }
-    setOverlayPhase("publishing");
+    setOverlayPhase(
+      (intendedModeRef.current ?? mode) === "draft" ? "saving" : "publishing",
+    );
 
     const text = content.trim();
     const accountIds = Array.from(selectedIds);
@@ -585,7 +645,10 @@ export function VideoPostForm({
     }
     if (effectiveMode === "now" && result.postId) {
       const publishResult = await publishPost(result.postId);
-      if (!publishResult?.success) {
+      const succeededCount =
+        publishResult?.results?.filter((r) => r.status === "published")
+          .length ?? 0;
+      if (succeededCount === 0) {
         setError(publishResult?.error ?? "Publish failed");
         setOverlayPhase("idle");
         return;
@@ -611,8 +674,24 @@ export function VideoPostForm({
           await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
         }
       }
+      setOverlayPhase("done");
+      router.push(`/dashboard/posts/${result.postId}`);
+      router.refresh();
+      return;
     }
-    setOverlayPhase("done");
+    if (effectiveMode === "draft") {
+      setOverlayPhase("idle");
+      router.push("/dashboard/posts/drafts");
+      router.refresh();
+      return;
+    }
+    if (effectiveMode === "scheduled") {
+      setOverlayPhase("idle");
+      router.push("/dashboard/posts/scheduled");
+      router.refresh();
+      return;
+    }
+    setOverlayPhase("idle");
     router.refresh();
   };
 
@@ -650,9 +729,11 @@ export function VideoPostForm({
           phase={
             overlayPhase === "uploading"
               ? "uploading"
-              : overlayPhase === "publishing"
-                ? "publishing"
-                : "publishing"
+              : overlayPhase === "saving"
+                ? "saving"
+                : overlayPhase === "publishing"
+                  ? "publishing"
+                  : "publishing"
           }
           uploadProgress={videoFile ? "1 of 1" : null}
           mediaType="video"
@@ -777,6 +858,12 @@ export function VideoPostForm({
             )}
           </div>
 
+          {error && (
+            <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+              {error}
+            </div>
+          )}
+
           {(showPlatformCaptionsSection ||
             hasPinterestSelected ||
             hasTikTokSelected) && (
@@ -855,7 +942,11 @@ export function VideoPostForm({
                         : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
                     }`}
                   >
-                    <Circle className="h-3.5 w-3.5 text-text-muted" />
+                    {tiktokMissingPrivacy ? (
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                    ) : (
+                      <Circle className="h-3.5 w-3.5 text-text-muted" />
+                    )}
                     <span>TikTok Config</span>
                     {activeConfigPanel === "tiktok" ? (
                       <ChevronUp className="h-3.5 w-3.5" />
@@ -1242,11 +1333,13 @@ export function VideoPostForm({
                       {videoPreview && (
                         <div className="mt-2 relative w-full aspect-video max-h-[180px] overflow-hidden rounded-lg bg-bg-muted">
                           <video
+                            key={videoPreview}
                             src={videoPreview}
+                            poster={customThumbnailPreview ?? undefined}
                             className="h-full w-full object-cover"
                             muted
                             playsInline
-                            preload="metadata"
+                            preload="auto"
                           />
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50">

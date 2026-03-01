@@ -49,7 +49,10 @@ type AutoResurfacePanelProps = {
   use24HourTimeFormat?: boolean;
 };
 
-function formatFirstReshare(intervalHours: number, use24HourTimeFormat = false): string {
+function formatFirstReshare(
+  intervalHours: number,
+  use24HourTimeFormat = false,
+): string {
   const t = new Date();
   t.setTime(t.getTime() + intervalHours * 60 * 60 * 1000);
   return t.toLocaleString(undefined, {
@@ -163,7 +166,7 @@ function AutoResurfacePanelInner({
         <div className="flex items-center justify-between gap-2">
           <div>
             <h3 className="text-sm font-semibold text-foreground">
-              ♻️ Auto-Repost{" "}
+              Auto-Repost{" "}
               {subtitle && (
                 <span className="text-muted-foreground font-normal">
                   {subtitle}
@@ -230,7 +233,9 @@ function AutoResurfacePanelInner({
           </div>
 
           <p className="text-xs text-muted-foreground">
-            First reshare: {formatFirstReshare(intervalHours, use24HourTimeFormat)}, if published now
+            First reshare:{" "}
+            {formatFirstReshare(intervalHours, use24HourTimeFormat)}, if
+            published now
           </p>
 
           <div>

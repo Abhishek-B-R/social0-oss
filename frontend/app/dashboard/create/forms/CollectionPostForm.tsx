@@ -85,7 +85,7 @@ export function CollectionPostForm({
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
   const [error, setError] = useState<string | null>(null);
-  type OverlayPhase = "idle" | "uploading" | "publishing" | "done";
+  type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -519,7 +519,9 @@ export function CollectionPostForm({
       }
     }
     setUploadProgress(null);
-    setOverlayPhase("publishing");
+    setOverlayPhase(
+      (intendedModeRef.current ?? mode) === "draft" ? "saving" : "publishing",
+    );
 
     const text = content.trim();
     const accountIds = Array.from(selectedIds);
@@ -638,14 +640,16 @@ export function CollectionPostForm({
     }
     if (effectiveMode === "now" && result.postId) {
       const publishResult = await publishPost(result.postId);
-      if (!publishResult?.success) {
+      const succeededCount =
+        publishResult?.results?.filter((r) => r.status === "published")
+          .length ?? 0;
+      if (succeededCount === 0) {
         setError(publishResult?.error ?? "Publish failed");
         setOverlayPhase("idle");
         return;
       }
       setPublishedPostId(result.postId);
       setOverlayPhase("done");
-      router.refresh();
       if (
         resurfaceConfig &&
         selectedAccounts.some((a) => a.platform === "twitter_x")
@@ -668,8 +672,23 @@ export function CollectionPostForm({
           );
         }
       }
+      router.push(`/dashboard/posts/${result.postId}`);
+      router.refresh();
+      return;
     }
-    setOverlayPhase("done");
+    if (effectiveMode === "draft") {
+      setOverlayPhase("idle");
+      router.push("/dashboard/posts/drafts");
+      router.refresh();
+      return;
+    }
+    if (effectiveMode === "scheduled") {
+      setOverlayPhase("idle");
+      router.push("/dashboard/posts/scheduled");
+      router.refresh();
+      return;
+    }
+    setOverlayPhase("idle");
     router.refresh();
   };
 
@@ -720,9 +739,11 @@ export function CollectionPostForm({
           phase={
             overlayPhase === "uploading"
               ? "uploading"
-              : overlayPhase === "publishing"
-                ? "publishing"
-                : "publishing"
+              : overlayPhase === "saving"
+                ? "saving"
+                : overlayPhase === "publishing"
+                  ? "publishing"
+                  : "publishing"
           }
           uploadProgress={uploadProgress}
           mediaType="mixed"
@@ -916,6 +937,12 @@ export function CollectionPostForm({
               </div>
             )}
           </div>
+
+          {error && (
+            <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+              {error}
+            </div>
+          )}
 
           {hasTikTok && (
             <div className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm">

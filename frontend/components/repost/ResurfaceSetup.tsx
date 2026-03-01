@@ -62,7 +62,8 @@ export function ResurfaceSetup({
   if (done) {
     return (
       <p className="mt-4 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
-        ♻️ Auto-Repost enabled. Your post will be retweeted at the chosen intervals.
+        Auto-Repost enabled. Your post will be retweeted at the chosen
+        intervals.
       </p>
     );
   }
@@ -86,7 +87,7 @@ export function ResurfaceSetup({
           />
         </button>
         <span className="text-sm font-semibold text-text">
-          ♻️ Auto-Repost this post
+          Auto-Repost this post
         </span>
       </div>
       {enabled && (

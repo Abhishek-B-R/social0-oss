@@ -32,7 +32,9 @@ export function AddAutoPlugModal({
   const [error, setError] = useState<string | null>(null);
 
   const supportedPubs = publications.filter((p) =>
-    RESURFACE_PLATFORMS.includes(p.platform as (typeof RESURFACE_PLATFORMS)[number]),
+    RESURFACE_PLATFORMS.includes(
+      p.platform as (typeof RESURFACE_PLATFORMS)[number],
+    ),
   );
   const xPub = supportedPubs.find((p) => p.platform === "twitter_x");
 
@@ -48,7 +50,11 @@ export function AddAutoPlugModal({
     if (!config || !xPub) return;
     setError(null);
     setSaving(true);
-    const result = await createAutoPlug(postId, xPub.connectedAccountId, config);
+    const result = await createAutoPlug(
+      postId,
+      xPub.connectedAccountId,
+      config,
+    );
     setSaving(false);
     if (result.success) {
       onClose();
@@ -71,8 +77,11 @@ export function AddAutoPlugModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <h2 id="add-autoplug-title" className="text-lg font-semibold text-gray-900">
-            🔌 Add Auto-Plug
+          <h2
+            id="add-autoplug-title"
+            className="text-lg font-semibold text-gray-900"
+          >
+            Add Auto-Plug
           </h2>
           <button
             type="button"
@@ -91,9 +100,7 @@ export function AddAutoPlugModal({
             publishedAt={publishedAt}
             onChange={setConfig}
           />
-          {error && (
-            <p className="mt-3 text-sm text-red-600">{error}</p>
-          )}
+          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
           <div className="mt-4 flex justify-end gap-2">
             <button
               type="button"

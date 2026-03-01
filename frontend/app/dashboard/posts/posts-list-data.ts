@@ -31,6 +31,7 @@ export type PublicationRow = {
   connectedAccountId: string;
   status: string | null;
   platformPostUrl: string | null;
+  platformPostId: string | null;
   platform: string;
   lastError: string | null;
   profileImageUrl: string | null;
@@ -78,6 +79,7 @@ export async function getPostsListData({
             connectedAccountId: postPublications.connectedAccountId,
             status: postPublications.status,
             platformPostUrl: postPublications.platformPostUrl,
+            platformPostId: postPublications.platformPostId,
             platform: connectedAccounts.platform,
             lastError: postPublications.lastError,
             profileImageUrl: connectedAccounts.profileImageUrl,
@@ -101,8 +103,8 @@ export async function getPostsListData({
     {} as Record<string, PublicationRow[]>
   );
 
-  // Fix posts stuck in "publishing" when all publications are actually "published"
-  const toFixPublishingIds = userPosts
+  // Fix posts stuck in "publishing" when publications have finished (all published or mixed)
+  const toFixPublishedIds = userPosts
     .filter(
       (p) =>
         p.status === "publishing" &&
@@ -112,11 +114,27 @@ export async function getPostsListData({
         )
     )
     .map((p) => p.id);
-  if (toFixPublishingIds.length > 0) {
+  if (toFixPublishedIds.length > 0) {
     await db
       .update(posts)
       .set({ status: "published", updatedAt: new Date() })
-      .where(inArray(posts.id, toFixPublishingIds));
+      .where(inArray(posts.id, toFixPublishedIds));
+  }
+  const toFixPartialIds = userPosts
+    .filter((p) => {
+      if (p.status !== "publishing") return false;
+      const pubs = publicationsByPostId[p.id] ?? [];
+      if (pubs.length === 0) return false;
+      const somePublished = pubs.some((pub) => pub.status === "published");
+      const someFailed = pubs.some((pub) => pub.status === "failed");
+      return somePublished && someFailed;
+    })
+    .map((p) => p.id);
+  if (toFixPartialIds.length > 0) {
+    await db
+      .update(posts)
+      .set({ status: "partial", updatedAt: new Date() })
+      .where(inArray(posts.id, toFixPartialIds));
   }
 
   const platforms = [...new Set(publications.map((p) => p.platform))];
@@ -153,15 +171,17 @@ export async function getPostsListData({
   const totalCount = userPosts.length;
   const pagePosts = userPosts.slice(offset, offset + limit);
 
-  // Use derived status so "publishing" shows as "published" when all publications succeeded
+  // Use derived status: "publishing" -> "published" when all succeeded, "partial" when mixed
   const userPostsWithStatus = pagePosts.map((p) => {
     const pubs = publicationsByPostId[p.id] ?? [];
-    const effectiveStatus =
-      p.status === "publishing" &&
-      pubs.length > 0 &&
-      pubs.every((pub) => pub.status === "published")
-        ? "published"
-        : p.status;
+    let effectiveStatus = p.status;
+    if (p.status === "publishing" && pubs.length > 0) {
+      const allPublished = pubs.every((pub) => pub.status === "published");
+      const somePublished = pubs.some((pub) => pub.status === "published");
+      const someFailed = pubs.some((pub) => pub.status === "failed");
+      if (allPublished) effectiveStatus = "published";
+      else if (somePublished && someFailed) effectiveStatus = "partial";
+    }
     return { ...p, status: effectiveStatus };
   });
 
@@ -393,54 +413,59 @@ export type PostDetailRow = {
   metadata: Record<string, unknown> | null;
 };
 
-/** Fetch a single post by id; verifies userId. Returns null if not found or not owner. */
+/** Fetch a single post by id; verifies userId. Returns null if not found, not owner, or invalid id. */
 export async function getPostDetail(
   postId: string,
   userId: string,
 ): Promise<{ post: PostDetailRow; publications: PublicationRow[] } | null> {
-  const [post] = await db
-    .select({
-      id: posts.id,
-      originalContent: posts.originalContent,
-      status: posts.status,
-      scheduledAt: posts.scheduledAt,
-      createdAt: posts.createdAt,
-      mediaIds: posts.mediaIds,
-      metadata: posts.metadata,
-    })
-    .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+  try {
+    const [post] = await db
+      .select({
+        id: posts.id,
+        originalContent: posts.originalContent,
+        status: posts.status,
+        scheduledAt: posts.scheduledAt,
+        createdAt: posts.createdAt,
+        mediaIds: posts.mediaIds,
+        metadata: posts.metadata,
+      })
+      .from(posts)
+      .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
 
-  if (!post) return null;
+    if (!post) return null;
 
-  const pubs = await db
-    .select({
-      connectedAccountId: postPublications.connectedAccountId,
-      status: postPublications.status,
-      platformPostUrl: postPublications.platformPostUrl,
-      platform: connectedAccounts.platform,
-      lastError: postPublications.lastError,
-      profileImageUrl: connectedAccounts.profileImageUrl,
-      platformUsername: connectedAccounts.platformUsername,
-      publishedAt: postPublications.publishedAt,
-    })
-    .from(postPublications)
-    .innerJoin(
-      connectedAccounts,
-      eq(postPublications.connectedAccountId, connectedAccounts.id),
-    )
-    .where(eq(postPublications.postId, postId));
+    const pubs = await db
+      .select({
+        connectedAccountId: postPublications.connectedAccountId,
+        status: postPublications.status,
+        platformPostUrl: postPublications.platformPostUrl,
+        platformPostId: postPublications.platformPostId,
+        platform: connectedAccounts.platform,
+        lastError: postPublications.lastError,
+        profileImageUrl: connectedAccounts.profileImageUrl,
+        platformUsername: connectedAccounts.platformUsername,
+        publishedAt: postPublications.publishedAt,
+      })
+      .from(postPublications)
+      .innerJoin(
+        connectedAccounts,
+        eq(postPublications.connectedAccountId, connectedAccounts.id),
+      )
+      .where(eq(postPublications.postId, postId));
 
-  return {
-    post: {
-      id: post.id,
-      originalContent: post.originalContent,
-      status: post.status,
-      scheduledAt: post.scheduledAt,
-      createdAt: post.createdAt,
-      mediaIds: post.mediaIds,
-      metadata: post.metadata ?? null,
-    },
-    publications: pubs,
-  };
+    return {
+      post: {
+        id: post.id,
+        originalContent: post.originalContent,
+        status: post.status,
+        scheduledAt: post.scheduledAt,
+        createdAt: post.createdAt,
+        mediaIds: post.mediaIds,
+        metadata: post.metadata ?? null,
+      },
+      publications: pubs,
+    };
+  } catch {
+    return null;
+  }
 }

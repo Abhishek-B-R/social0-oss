@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import {
   getResurfacePlatforms,
@@ -53,9 +53,11 @@ export function AutoPlugPanel({
     supportedPlatforms.length > 0 &&
     (publishedAt === undefined || isWithinAutoPlugWindow(publishedAt));
 
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
   useEffect(() => {
-    if (!visible && !modalMode) onChange(null);
-  }, [visible, modalMode, onChange]);
+    if (!visible && !modalMode) onChangeRef.current(null);
+  }, [visible, modalMode]);
 
   if (!visible && !modalMode) return null;
 
@@ -97,24 +99,30 @@ function AutoPlugPanelInner({
   const [plugComment, setPlugComment] = useState(
     initialConfig?.plugComment ?? "",
   );
-  const plugCommentTrimmed = plugComment.slice(0, MAX_PLUG_COMMENT_LENGTH).trim();
-  const plugCommentMissing = (enabled || modalMode) && plugCommentTrimmed.length === 0;
+  const plugCommentTrimmed = plugComment
+    .slice(0, MAX_PLUG_COMMENT_LENGTH)
+    .trim();
+  const plugCommentMissing =
+    (enabled || modalMode) && plugCommentTrimmed.length === 0;
 
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
   useEffect(() => {
+    const notify = onChangeRef.current;
     if (!enabled) {
-      onChange(null);
+      notify(null);
       return;
     }
     if (plugCommentTrimmed.length === 0) {
-      onChange(null);
+      notify(null);
       return;
     }
-    onChange({
+    notify({
       metricType,
       threshold: Math.max(1, Math.round(threshold)),
       plugComment: plugCommentTrimmed,
     });
-  }, [enabled, metricType, threshold, plugCommentTrimmed, onChange]);
+  }, [enabled, metricType, threshold, plugCommentTrimmed]);
 
   const commentSlice = plugComment.slice(0, MAX_PLUG_COMMENT_LENGTH);
   const charCount = commentSlice.length;
@@ -122,29 +130,32 @@ function AutoPlugPanelInner({
   const content = (
     <>
       {!modalMode && (
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">🔌 Auto-Plug</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Reply automatically when this post hits a milestone.
-          </p>
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">
+              {" "}
+              Auto-Plug
+            </h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Reply automatically when this post hits a milestone.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={enabled}
+            onClick={() => setEnabled((e) => !e)}
+            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
+              enabled ? "bg-emerald-600" : "bg-muted"
+            }`}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-background shadow transition-transform ${
+                enabled ? "translate-x-5" : "translate-x-0.5"
+              } mt-0.5`}
+            />
+          </button>
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={enabled}
-          onClick={() => setEnabled((e) => !e)}
-          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
-            enabled ? "bg-emerald-600" : "bg-muted"
-          }`}
-        >
-          <span
-            className={`inline-block h-5 w-5 transform rounded-full bg-background shadow transition-transform ${
-              enabled ? "translate-x-5" : "translate-x-0.5"
-            } mt-0.5`}
-          />
-        </button>
-      </div>
       )}
 
       {(enabled || modalMode) && (
@@ -201,7 +212,10 @@ function AutoPlugPanelInner({
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
             {plugCommentMissing && (
-              <p className="mt-2 text-xs font-medium text-destructive" role="alert">
+              <p
+                className="mt-2 text-xs font-medium text-destructive"
+                role="alert"
+              >
                 Auto-Plug message can’t be empty.
               </p>
             )}

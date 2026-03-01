@@ -6,6 +6,7 @@ import {
   setRememberedBoard,
   getRememberedLink,
   setRememberedLink,
+  savePinterestDefaultBoardToDb,
 } from "@/lib/pinterest-remembered";
 
 export type PinterestPostSettings = {
@@ -91,6 +92,9 @@ export function PinterestSettings({
     const next = { ...value, boardId };
     if (value.rememberBoard) {
       setRememberedBoard(accountId, boardId);
+    }
+    if (boardId) {
+      savePinterestDefaultBoardToDb(accountId, boardId);
     }
     onChange(next);
   };
@@ -181,7 +185,8 @@ export function PinterestSettings({
           <p className="mt-1 text-xs text-destructive">{boardsError}</p>
         )}
         <p className="mt-1 text-xs text-text-muted">
-          This is the board your post will be posted to.
+          This is the board your post will be posted to. Only public boards can
+          receive pins from this app.
         </p>
         <label className="mt-2 flex items-center gap-3">
           <input

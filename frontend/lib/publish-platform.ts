@@ -49,6 +49,82 @@ export type ThreadPart = { text: string; mediaIds: string[] };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** Build application/x-www-form-urlencoded body. Threads API expects form data, not JSON. */
+function threadsFormBody(
+  params: Record<string, string | boolean | undefined>,
+): string {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined) continue;
+    p.set(k, typeof v === "boolean" ? (v ? "true" : "false") : v);
+  }
+  return p.toString();
+}
+
+/** 64-char alphabet for base-64 style shortcode encoding. */
+const INSTAGRAM_SHORTCODE_CHARSET =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+/** Threads shortcode charset (+ and _). */
+const THREADS_SHORTCODE_CHARSET =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+_";
+
+/**
+ * Encode numeric media ID to shortcode (base-64 style, 64-char alphabet).
+ * Returns "" if id is invalid or charset is not length 64.
+ */
+function mediaIdToShortcode(id: string | number, charset: string): string {
+  if (charset.length !== 64) return "";
+  const idStr =
+    typeof id === "number" ? String(Math.floor(id)) : String(id).trim();
+  if (!idStr) return "";
+  let n: bigint;
+  try {
+    n = BigInt(idStr);
+  } catch {
+    return "";
+  }
+  const zero = BigInt(0);
+  const sixtyFour = BigInt(64);
+  if (n <= zero) return "";
+  let result = "";
+  while (n > zero) {
+    const remainder = n % sixtyFour;
+    result = charset[Number(remainder)] + result;
+    n = (n - remainder) / sixtyFour;
+  }
+  return result;
+}
+
+/**
+ * Instagram media ID (or "id_userId") to shortcode for post URLs.
+ * Uses only the numeric part before "_" if present. Returns "" on invalid input.
+ */
+function instagramMediaIdToShortcode(id: string | number): string {
+  const raw = typeof id === "number" ? String(id) : String(id).trim();
+  const numericId = raw.includes("_") ? raw.slice(0, raw.indexOf("_")) : raw;
+  if (!numericId || !/^\d+$/.test(numericId)) return "";
+
+  try {
+    const sixtyFour = BigInt(64);
+    let mediaId = BigInt(numericId);
+    let shortcode = "";
+    while (mediaId > BigInt(0)) {
+      const remainder = mediaId % sixtyFour;
+      mediaId = (mediaId - remainder) / sixtyFour;
+      shortcode = INSTAGRAM_SHORTCODE_CHARSET[Number(remainder)] + shortcode;
+    }
+    return shortcode;
+  } catch {
+    return "";
+  }
+}
+
+function threadsMediaIdToShortcode(id: string | number): string {
+  const s = mediaIdToShortcode(id, THREADS_SHORTCODE_CHARSET);
+  return s || "";
+}
+
 export function getThreadParts(post: Post): ThreadPart[] | null {
   const md = post.metadata;
   if (!md || typeof md !== "object") return null;
@@ -366,6 +442,37 @@ async function getMediaWithUrls(
     if (!m.url || !m.mimeType) return false;
     return isAllowedMediaUrl(m.url, allowed);
   });
+}
+
+/** Fetch media by IDs with thumbnailUrl for videos (for Pinterest video pin cover). */
+async function getMediaWithUrlsAndThumbnail(
+  mediaIds: string[],
+): Promise<{ url: string; mimeType: string; thumbnailUrl: string | null }[]> {
+  const allowed = getAllowedMediaOrigins();
+  if (!allowed.appUrl || !mediaIds.length) return [];
+  const media = await db
+    .select({
+      url: mediaUploads.url,
+      mimeType: mediaUploads.mimeType,
+      thumbnailUrl: mediaUploads.thumbnailUrl,
+    })
+    .from(mediaUploads)
+    .where(inArray(mediaUploads.id, mediaIds));
+  return media.filter(
+    (
+      m,
+    ): m is { url: string; mimeType: string; thumbnailUrl: string | null } => {
+      if (!m.url || !m.mimeType) return false;
+      if (!isAllowedMediaUrl(m.url, allowed)) return false;
+      if (
+        m.thumbnailUrl != null &&
+        m.thumbnailUrl !== "" &&
+        !isAllowedMediaUrl(m.thumbnailUrl, allowed)
+      )
+        return false;
+      return true;
+    },
+  );
 }
 
 /** Fetch media by IDs in the same order as mediaIds; only allowlisted URLs. Used for collection/carousel. */
@@ -1298,7 +1405,6 @@ async function uploadPinterestVideo(
   const form = new FormData();
   const params = registerData.upload_parameters ?? {};
   for (const [key, value] of Object.entries(params)) {
-    if (key.toLowerCase() === "content-type") continue;
     form.append(key, value);
   }
   form.append(
@@ -1318,7 +1424,27 @@ async function uploadPinterestVideo(
     );
   }
 
-  return registerData.media_id;
+  // Poll until Pinterest finishes processing the video
+  const mediaId = registerData.media_id;
+  for (let i = 0; i < 24; i++) {
+    await new Promise((r) => setTimeout(r, 5000));
+    const statusRes = await fetch(`${PINTEREST_API_BASE}/media/${mediaId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const statusData = (await statusRes.json().catch(() => ({}))) as {
+      status?: string;
+      message?: string;
+    };
+    console.log(`[Pinterest] video status (attempt ${i + 1}):`, statusData.status);
+    if (statusData.status === "succeeded") break;
+    if (statusData.status === "failed") {
+      throw new Error(
+        `Pinterest video processing failed: ${statusData.message ?? "unknown"}`,
+      );
+    }
+  }
+
+  return mediaId;
 }
 
 async function publishToPinterest(
@@ -1340,12 +1466,16 @@ async function publishToPinterest(
   }
 
   const media = post.mediaIds?.length
-    ? await getMediaWithUrls(post.mediaIds)
+    ? await getMediaWithUrlsAndThumbnail(post.mediaIds)
     : [];
   const imageEntry = media.find((m) => m.mimeType.startsWith("image/"));
   const videoEntry = media.find((m) => m.mimeType.startsWith("video/"));
   const imageUrl = imageEntry?.url;
   const videoUrl = videoEntry?.url;
+  const videoCoverUrl =
+    videoEntry?.thumbnailUrl && videoEntry.thumbnailUrl.trim() !== ""
+      ? videoEntry.thumbnailUrl.trim()
+      : null;
 
   if (!imageUrl && !videoUrl) {
     const hint =
@@ -1360,9 +1490,10 @@ async function publishToPinterest(
     pub.platformMetadata && typeof pub.platformMetadata.title === "string"
       ? pub.platformMetadata.title.trim()
       : null;
-  const title = (metaTitle && metaTitle.length > 0
-    ? truncate(metaTitle, 100)
-    : truncate(rawDesc, 100)) || "Pin";
+  const title =
+    (metaTitle && metaTitle.length > 0
+      ? truncate(metaTitle, 100)
+      : truncate(rawDesc, 100)) || "Pin";
   const description = truncate(rawDesc, 500);
   const link =
     pub.platformMetadata && typeof pub.platformMetadata.link === "string"
@@ -1374,6 +1505,9 @@ async function publishToPinterest(
     url?: string;
     content_type?: string;
     media_id?: string;
+    cover_image_url?: string;
+    cover_image_content_type?: string;
+    cover_image_key_frame_time?: number;
   };
   if (videoUrl && videoEntry) {
     try {
@@ -1382,7 +1516,16 @@ async function publishToPinterest(
         videoEntry.mimeType ?? "video/mp4",
         accessToken,
       );
-      media_source = { source_type: "video_id", media_id: mediaId };
+      media_source = {
+        source_type: "video_id",
+        media_id: mediaId,
+        ...(videoCoverUrl
+          ? {
+              cover_image_url: videoCoverUrl,
+              cover_image_content_type: "image/jpeg",
+            }
+          : { cover_image_key_frame_time: 1 }),
+      };
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e);
       return {
@@ -1408,7 +1551,7 @@ async function publishToPinterest(
   if (link && link.length > 0) {
     pinPayload.destination_link = link;
   }
-
+  console.log("[Pinterest] pinPayload:", JSON.stringify(pinPayload, null, 2));
   const res = await fetch(`${PINTEREST_API_BASE}/pins`, {
     method: "POST",
     headers: {
@@ -1423,13 +1566,25 @@ async function publishToPinterest(
     message?: string;
   };
   if (!res.ok) {
-    const err = data.message ?? `HTTP ${res.status}`;
+    const raw = data.message ?? `HTTP ${res.status}`;
+    const err =
+      raw.toLowerCase().includes("not permitted") ||
+      raw.toLowerCase().includes("access that resource")
+        ? "Pinterest’s API doesn’t allow posting to private boards. Use a public board to publish pins from this app."
+        : raw;
     return { status: "failed", lastError: err, error: err };
   }
+  const pinId = data.id ?? null;
+  const platformPostUrl =
+    typeof data.link === "string" && data.link.trim().length > 0
+      ? data.link.trim()
+      : pinId
+        ? `https://www.pinterest.com/pin/${pinId}/`
+        : null;
   return {
     status: "published",
-    platformPostId: data.id ?? null,
-    platformPostUrl: data.link ?? null,
+    platformPostId: pinId,
+    platformPostUrl,
     publishedAt: new Date(),
   };
 }
@@ -1905,9 +2060,12 @@ async function publishToInstagram(
     return { status: "failed", lastError: err, error: err };
   }
 
-  const platformPostUrl = publishData.id
-    ? `https://www.instagram.com/p/${publishData.id}/`
-    : null;
+  const shortcode = publishData.id
+    ? instagramMediaIdToShortcode(publishData.id)
+    : "";
+  const platformPostUrl = shortcode
+    ? `https://www.instagram.com/p/${shortcode}/`
+    : `https://www.instagram.com/${pub.platformUsername}/`;
 
   console.log("✅ Instagram post published successfully:", {
     postId: publishData.id,
@@ -2232,8 +2390,8 @@ async function publishToTikTok(
     };
   }
 
-  // Poll status briefly; TikTok pulls the video asynchronously for PULL_FROM_URL
-  for (let i = 0; i < 12; i++) {
+  // Poll status; TikTok returns publicaly_available_post_id only after moderation (often within 1 min)
+  for (let i = 0; i < 24; i++) {
     await new Promise((r) => setTimeout(r, 5000));
     const statusRes = await fetch(
       "https://open.tiktokapis.com/v2/post/publish/status/fetch/",
@@ -2250,7 +2408,11 @@ async function publishToTikTok(
       console.error("TikTok publish/status: failed to parse JSON", e);
       return {};
     })) as {
-      data?: { status?: string; publicaly_available_post_id?: string[] };
+      data?: {
+        status?: string;
+        fail_reason?: string;
+        publicaly_available_post_id?: (string | number)[];
+      };
       error?: { code?: string; message?: string };
     };
     const status = statusData.data?.status;
@@ -2269,35 +2431,109 @@ async function publishToTikTok(
 
     if (status === "PUBLISH_COMPLETE") {
       const postIds = statusData.data?.publicaly_available_post_id;
-      const videoId = Array.isArray(postIds) ? postIds[0] : undefined;
-      const platformPostUrl =
-        videoId && pub.platformUsername
-          ? `https://www.tiktok.com/@${pub.platformUsername}/video/${videoId}`
-          : videoId
-            ? `https://www.tiktok.com/video/${videoId}`
-            : null;
-      return {
-        status: "published",
-        platformPostId: videoId ?? publishId,
-        platformPostUrl,
-        publishedAt: new Date(),
-      };
+      const firstId =
+        Array.isArray(postIds) && postIds.length > 0 ? postIds[0] : undefined;
+      const videoId = firstId !== undefined ? String(firstId) : undefined;
+      if (videoId) {
+        const platformPostUrl = pub.platformUsername
+          ? `https://www.tiktok.com/@${pub.platformUsername}`
+          : null;
+        return {
+          status: "published",
+          platformPostId: videoId,
+          platformPostUrl,
+          publishedAt: new Date(),
+        };
+      }
     }
     if (status === "FAILED") {
+      const failReason = statusData.data?.fail_reason as string | undefined;
+      const failReasonMessages: Record<string, string> = {
+        picture_size_check_failed:
+          "Video resolution doesn't meet TikTok's requirements. Use a vertical 9:16 video at 720×1280 or higher.",
+        video_size_check_failed:
+          "Video file size exceeds TikTok's limit. Please use a smaller video.",
+        video_duration_check_failed:
+          "Video duration doesn't meet TikTok's requirements (3 seconds minimum, 10 minutes maximum).",
+        video_format_check_failed:
+          "Video format not supported by TikTok. Please use MP4 or MOV.",
+        url_ownership_unverified:
+          "Video URL domain is not verified in your TikTok app.",
+        spam: "TikTok flagged this post as spam. Try again later.",
+      };
       const lastError =
-        (statusData.error as { message?: string } | undefined)?.message ||
-        `TikTok rejected or failed to process the ${isPhotoPost ? "photo" : "video"}.`;
+        failReason && failReasonMessages[failReason]
+          ? failReasonMessages[failReason]
+          : failReason
+            ? `TikTok rejected the post: ${failReason.replace(/_/g, " ")}`
+            : `TikTok failed to process the ${isPhotoPost ? "photo" : "video"}.`;
+      return { status: "failed", lastError, error: "Publish failed" };
+    }
+  }
+
+  // One final status check (TikTok may return the public post ID shortly after COMPLETE)
+  const finalRes = await fetch(
+    "https://open.tiktokapis.com/v2/post/publish/status/fetch/",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=UTF-8",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ publish_id: publishId }),
+    },
+  );
+  const finalData = (await finalRes.json().catch(() => ({}))) as {
+    data?: {
+      status?: string;
+      fail_reason?: string;
+      publicaly_available_post_id?: (string | number)[];
+    };
+  };
+  if (finalData.data?.status === "FAILED") {
+    const failReason = finalData.data?.fail_reason as string | undefined;
+    const failReasonMessages: Record<string, string> = {
+      picture_size_check_failed:
+        "Video resolution doesn't meet TikTok's requirements. Use a vertical 9:16 video at 720×1280 or higher.",
+      video_size_check_failed:
+        "Video file size exceeds TikTok's limit. Please use a smaller video.",
+      video_duration_check_failed:
+        "Video duration doesn't meet TikTok's requirements (3 seconds minimum, 10 minutes maximum).",
+      video_format_check_failed:
+        "Video format not supported by TikTok. Please use MP4 or MOV.",
+      url_ownership_unverified:
+        "Video URL domain is not verified in your TikTok app.",
+      spam: "TikTok flagged this post as spam. Try again later.",
+    };
+    const lastError =
+      failReason && failReasonMessages[failReason]
+        ? failReasonMessages[failReason]
+        : failReason
+          ? `TikTok rejected the post: ${failReason.replace(/_/g, " ")}`
+          : `TikTok failed to process the ${isPhotoPost ? "photo" : "video"}.`;
+    return { status: "failed", lastError, error: "Publish failed" };
+  }
+  if (finalData.data?.status === "PUBLISH_COMPLETE") {
+    const postIds = finalData.data.publicaly_available_post_id;
+    const firstId =
+      Array.isArray(postIds) && postIds.length > 0 ? postIds[0] : undefined;
+    const videoId = firstId !== undefined ? String(firstId) : undefined;
+    if (videoId) {
+      const platformPostUrl = pub.platformUsername
+        ? `https://www.tiktok.com/@${pub.platformUsername}`
+        : null;
       return {
-        status: "failed",
-        lastError,
-        error: "Publish failed",
+        status: "published",
+        platformPostId: videoId,
+        platformPostUrl,
+        publishedAt: new Date(),
       };
     }
   }
 
   return {
     status: "published",
-    platformPostId: publishId,
+    platformPostId: null,
     platformPostUrl: null,
     publishedAt: new Date(),
   };
@@ -2353,8 +2589,8 @@ async function publishThreadsThread(
           `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: threadsFormBody({
               media_type: "IMAGE",
               image_url: img.url,
               is_carousel_item: true,
@@ -2392,13 +2628,14 @@ async function publishThreadsThread(
       body.text = safeText;
     }
 
-    // Step 1: Create container for this part only (with reply_to_id if not first)
+    // Step 1: Create container for this part only (with reply_to_id if not first).
+    // Threads API requires application/x-www-form-urlencoded; JSON can cause reply_to_id to be ignored.
     const createRes = await fetch(
       `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: threadsFormBody(body),
       },
     );
     const createData = (await createRes.json().catch(() => ({}))) as {
@@ -2421,23 +2658,78 @@ async function publishThreadsThread(
       };
     }
 
-    // Step 2: Wait for container to be processable, then publish (required by Threads API)
-    await new Promise((r) => setTimeout(r, 3000));
+    // Step 2: Poll container status until FINISHED (Threads API requires container to be ready before publish)
+    const containerId = createData.id;
+    const maxPollAttempts = 40;
+    const pollDelayMs = 3000;
+    let pollAttempt = 0;
+    for (; pollAttempt < maxPollAttempts; pollAttempt++) {
+      await sleep(pollDelayMs);
+      const statusRes = await fetch(
+        `https://graph.threads.net/v1.0/${containerId}?fields=status,error_message&${threadParams.toString()}`,
+      );
+      if (!statusRes.ok) continue;
+      const statusData = (await statusRes.json().catch(() => ({}))) as {
+        status?: string;
+        error_message?: string;
+        error?: { message?: string };
+      };
+      const status = statusData.status;
+      if (status === "FINISHED") break;
+      if (status === "ERROR" || status === "EXPIRED") {
+        const errMsg =
+          statusData.error_message ??
+          statusData.error?.message ??
+          (status === "EXPIRED"
+            ? "Threads media container expired. Try again."
+            : "Threads media processing failed.");
+        console.error("[Threads] Container not publishable:", {
+          part: i + 1,
+          status,
+          error_message: statusData.error_message,
+        });
+        return {
+          status: "failed",
+          lastError: errMsg,
+          error: "Container error",
+        };
+      }
+      if (pollAttempt < maxPollAttempts - 1) {
+        console.log(
+          `[Threads] Part ${i + 1} container status: ${status ?? "unknown"} (attempt ${pollAttempt + 1}/${maxPollAttempts})`,
+        );
+      }
+    }
+    if (pollAttempt >= maxPollAttempts) {
+      const err =
+        "Threads media container did not become ready in time. Try again.";
+      console.error("[Threads]", err);
+      return { status: "failed", lastError: err, error: "Timeout" };
+    }
+
     const publishRes = await fetch(
       `https://graph.threads.net/v1.0/${threadsUserId}/threads_publish?${threadParams}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ creation_id: createData.id }),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: threadsFormBody({ creation_id: containerId }),
       },
     );
     const publishData = (await publishRes.json().catch(() => ({}))) as {
       id?: string;
-      error?: { message?: string };
+      error?: {
+        message?: string;
+        error_user_msg?: string;
+        error_user_title?: string;
+      };
     };
     if (!publishRes.ok || !publishData.id) {
+      const err = publishData.error;
       const errMsg =
-        (publishData as { error?: { message?: string } }).error?.message ??
+        err?.error_user_msg ??
+        (err?.error_user_title && err?.message
+          ? `${err.error_user_title}: ${err.message}`
+          : err?.message) ??
         "Threads publish failed";
       console.error("[Threads] Publish failed:", {
         part: i + 1,
@@ -2460,10 +2752,13 @@ async function publishThreadsThread(
   }
 
   const rootId = firstPublishedId ?? previousPublishedId;
+  const threadShortcode = rootId ? threadsMediaIdToShortcode(rootId) : "";
   const platformPostUrl =
-    rootId && pub.platformUsername
-      ? `https://www.threads.net/@${pub.platformUsername}/post/${rootId}`
-      : null;
+    threadShortcode && pub.platformUsername
+      ? `https://www.threads.net/@${pub.platformUsername}/post/${threadShortcode}`
+      : pub.platformUsername
+        ? `https://www.threads.net/@${pub.platformUsername}`
+        : null;
   return {
     status: "published",
     platformPostId: rootId ?? null,
@@ -2800,9 +3095,15 @@ async function publishToThreads(
     const err = publishData.error?.message ?? `HTTP ${publishRes.status}`;
     return { status: "failed", lastError: err, error: err };
   }
-  const platformPostUrl = publishData.id
-    ? `https://www.threads.net/@${pub.platformUsername ?? "user"}/post/${publishData.id}`
-    : null;
+  const threadShortcode = publishData.id
+    ? threadsMediaIdToShortcode(publishData.id)
+    : "";
+  const platformPostUrl =
+    threadShortcode && pub.platformUsername
+      ? `https://www.threads.net/@${pub.platformUsername}/post/${threadShortcode}`
+      : pub.platformUsername
+        ? `https://www.threads.net/@${pub.platformUsername}`
+        : null;
   return {
     status: "published",
     platformPostId: publishData.id ?? null,

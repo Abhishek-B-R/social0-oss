@@ -50,6 +50,7 @@ type Account = {
   profileImageUrl: string | null;
   isActive: boolean | null;
   tokenExpired?: boolean;
+  platformMetadata?: Record<string, unknown>;
 };
 
 type ImageFile = {
@@ -91,7 +92,7 @@ export function ImagePostForm({
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
   const [error, setError] = useState<string | null>(null);
-  type OverlayPhase = "idle" | "uploading" | "publishing" | "done";
+  type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -109,6 +110,36 @@ export function ImagePostForm({
   const [pinterestSettingsByAccount, setPinterestSettingsByAccount] = useState<
     Record<string, PinterestPostSettings>
   >({});
+
+  // Initialize Pinterest board from DB (platformMetadata.pinterestDefaultBoardId) so user doesn't have to re-select
+  useEffect(() => {
+    if (initialDraftId) return;
+    setPinterestSettingsByAccount((prev) => {
+      let next = prev;
+      for (const acc of accounts) {
+        if (acc.platform !== "pinterest") continue;
+        const meta = acc.platformMetadata as
+          | Record<string, unknown>
+          | undefined;
+        const defaultBoardId =
+          typeof meta?.pinterestDefaultBoardId === "string"
+            ? meta.pinterestDefaultBoardId.trim()
+            : "";
+        if (!defaultBoardId || prev[acc.id]?.boardId) continue;
+        next = {
+          ...next,
+          [acc.id]: {
+            boardId: defaultBoardId,
+            title: next[acc.id]?.title ?? "",
+            link: next[acc.id]?.link ?? "",
+            rememberBoard: next[acc.id]?.rememberBoard ?? false,
+            rememberLink: next[acc.id]?.rememberLink ?? false,
+          },
+        };
+      }
+      return next;
+    });
+  }, [accounts, initialDraftId]);
   const [pinterestError, setPinterestError] = useState<string | null>(null);
   const pinterestSectionRef = useRef<HTMLDivElement>(null);
   type ConfigPanel = "platform-captions" | "pinterest" | "tiktok" | null;
@@ -129,8 +160,7 @@ export function ImagePostForm({
   >({});
 
   const defaultTiktokSettings: TikTokPostSettings = {
-    // Match TikTokSettings defaults: require explicit privacy choice, all interactions off by default.
-    privacy_level: "",
+    privacy_level: "SELF_ONLY", // Default to Public
     disable_comment: true,
     disable_duet: true,
     disable_stitch: true,
@@ -205,6 +235,27 @@ export function ImagePostForm({
             }
           }
           if (Object.keys(next).length > 0) setPinterestSettingsByAccount(next);
+        }
+        if (meta?.tiktok && typeof meta.tiktok === "object") {
+          const tiktok = meta.tiktok as Record<string, TikTokPostSettings>;
+          const next: Record<string, TikTokPostSettings> = {};
+          for (const id of restoredIds) {
+            const acc = accounts.find((a) => a.id === id);
+            if (acc?.platform !== "tiktok") continue;
+            const t = tiktok[id];
+            if (t && typeof t === "object") {
+              next[id] = {
+                privacy_level: typeof t.privacy_level === "string" ? t.privacy_level : "",
+                disable_comment: !!t.disable_comment,
+                disable_duet: !!t.disable_duet,
+                disable_stitch: !!t.disable_stitch,
+                brand_content_toggle: !!t.brand_content_toggle,
+                brand_organic: !!t.brand_organic,
+                brand_content: !!t.brand_content,
+              };
+            }
+          }
+          if (Object.keys(next).length > 0) setTiktokSettings(next);
         }
       } catch {
         if (!cancelled) setError("Failed to load draft");
@@ -486,7 +537,9 @@ export function ImagePostForm({
       }
     }
     setUploadProgress(null);
-    setOverlayPhase("publishing");
+    setOverlayPhase(
+      (intendedModeRef.current ?? mode) === "draft" ? "saving" : "publishing",
+    );
 
     const text = content.trim();
     const accountIds = Array.from(selectedIds);
@@ -632,7 +685,10 @@ export function ImagePostForm({
     }
     if (effectiveMode === "now" && result.postId) {
       const publishResult = await publishPost(result.postId);
-      if (!publishResult?.success) {
+      const succeededCount =
+        publishResult?.results?.filter((r) => r.status === "published")
+          .length ?? 0;
+      if (succeededCount === 0) {
         setError(publishResult?.error ?? "Publish failed");
         setOverlayPhase("idle");
         return;
@@ -658,8 +714,24 @@ export function ImagePostForm({
           await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
         }
       }
+      setOverlayPhase("done");
+      router.push(`/dashboard/posts/${result.postId}`);
+      router.refresh();
+      return;
     }
-    setOverlayPhase("done");
+    if (effectiveMode === "draft") {
+      setOverlayPhase("idle");
+      router.push("/dashboard/posts/drafts");
+      router.refresh();
+      return;
+    }
+    if (effectiveMode === "scheduled") {
+      setOverlayPhase("idle");
+      router.push("/dashboard/posts/scheduled");
+      router.refresh();
+      return;
+    }
+    setOverlayPhase("idle");
     router.refresh();
   };
 
@@ -675,6 +747,12 @@ export function ImagePostForm({
   const tiktokAccounts = selectedAccounts.filter(
     (a) => a.platform === "tiktok",
   );
+  const tiktokMissingPrivacy =
+    hasTikTokSelected &&
+    tiktokAccounts.some((acc) => {
+      const s = tiktokSettings[acc.id];
+      return s !== undefined && (s.privacy_level ?? "").trim() === "";
+    });
   const hasPinterestSelected = selectedAccounts.some(
     (a) => a.platform === "pinterest",
   );
@@ -720,9 +798,11 @@ export function ImagePostForm({
           phase={
             overlayPhase === "uploading"
               ? "uploading"
-              : overlayPhase === "publishing"
-                ? "publishing"
-                : "publishing"
+              : overlayPhase === "saving"
+                ? "saving"
+                : overlayPhase === "publishing"
+                  ? "publishing"
+                  : "publishing"
           }
           uploadProgress={uploadProgress}
           mediaType="image"
@@ -886,6 +966,20 @@ export function ImagePostForm({
             )}
           </div>
 
+          {error && (
+            <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+              {error}
+            </div>
+          )}
+          {pinterestError && (
+            <p
+              className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive"
+              role="alert"
+            >
+              Pinterest: {pinterestError}
+            </p>
+          )}
+
           {(showPlatformCaptionsSection ||
             hasPinterestSelected ||
             hasTikTokSelected) && (
@@ -964,7 +1058,11 @@ export function ImagePostForm({
                         : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
                     }`}
                   >
-                    <Circle className="h-3.5 w-3.5 text-text-muted" />
+                    {tiktokMissingPrivacy ? (
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                    ) : (
+                      <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                    )}
                     <span>TikTok Config</span>
                     {activeConfigPanel === "tiktok" ? (
                       <ChevronUp className="h-3.5 w-3.5" />
@@ -1053,14 +1151,6 @@ export function ImagePostForm({
                       }}
                       isVisible={true}
                     />
-                  )}
-                  {pinterestError && (
-                    <p
-                      className="mt-3 text-sm text-destructive font-medium"
-                      role="alert"
-                    >
-                      {pinterestError}
-                    </p>
                   )}
                 </div>
               )}

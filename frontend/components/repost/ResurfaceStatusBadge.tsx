@@ -25,7 +25,7 @@ export function ResurfaceStatusBadge({ schedule }: ResurfaceStatusBadgeProps) {
 
   const isDone =
     !schedule.isActive || schedule.resurfacesDone >= schedule.maxResurfaces;
-  const label = isDone ? "♻️ Done" : "♻️ Active";
+  const label = isDone ? "  Done" : "  Active";
 
   const handleDisable = async () => {
     setDisableError(null);
@@ -104,7 +104,9 @@ export function ResurfaceStatusBadge({ schedule }: ResurfaceStatusBadgeProps) {
               )}
             </dl>
             {disableError && (
-              <p className="mt-4 text-sm text-red-600 dark:text-red-400">{disableError}</p>
+              <p className="mt-4 text-sm text-red-600 dark:text-red-400">
+                {disableError}
+              </p>
             )}
             <div className="mt-6 flex justify-end gap-2">
               <button

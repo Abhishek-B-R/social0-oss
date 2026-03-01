@@ -30,7 +30,7 @@ export function AddAutoPlugCardButton({
         onClick={() => setOpen(true)}
         className="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
       >
-        🔌 Add Auto-Plug
+        Add Auto-Plug
       </button>
       {open && (
         <AddAutoPlugModal

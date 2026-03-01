@@ -32,7 +32,7 @@ describe("AutoPlugPanel", () => {
         onChange={() => {}}
       />,
     );
-    expect(screen.getByText("🔌 Auto-Plug")).toBeInTheDocument();
+    expect(screen.getByText("  Auto-Plug")).toBeInTheDocument();
   });
 
   it("default metric is likes", async () => {
@@ -94,7 +94,9 @@ describe("AutoPlugPanel", () => {
     const long = "a".repeat(281);
     await userEvent.type(textarea, long);
     expect(screen.getByText("280/280")).toBeInTheDocument();
-    expect((textarea as HTMLTextAreaElement).value.length).toBeGreaterThanOrEqual(280);
+    expect(
+      (textarea as HTMLTextAreaElement).value.length,
+    ).toBeGreaterThanOrEqual(280);
   });
 
   it("onChange fires with correct metricType, threshold, plugComment", async () => {
@@ -107,7 +109,10 @@ describe("AutoPlugPanel", () => {
       />,
     );
     await userEvent.click(screen.getByRole("switch", { name: "" }));
-    await userEvent.type(screen.getByPlaceholderText(/Your reply tweet/), "My reply");
+    await userEvent.type(
+      screen.getByPlaceholderText(/Your reply tweet/),
+      "My reply",
+    );
     expect(onChange).toHaveBeenLastCalledWith(
       expect.objectContaining({
         metricType: "likes",

@@ -8,7 +8,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AutoPlugPanel, type AutoPlugConfig, type ConnectedAccount } from "./AutoPlugPanel";
+import {
+  AutoPlugPanel,
+  type AutoPlugConfig,
+  type ConnectedAccount,
+} from "./AutoPlugPanel";
 
 type AutoPlugSettingsModalProps = {
   isOpen: boolean;
@@ -40,12 +44,10 @@ export function AutoPlugSettingsModal({
         if (!open) onCancel();
       }}
     >
-      <DialogContent
-        className="max-w-lg max-h-[90vh] flex flex-col gap-0 p-0 border-border bg-bg"
-      >
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col gap-0 p-0 border-border bg-bg">
         <DialogHeader className="shrink-0 p-4 border-b border-border pb-4">
           <DialogTitle className="text-lg font-semibold text-text">
-            🔌 Auto-Plug settings
+            Auto-Plug settings
           </DialogTitle>
         </DialogHeader>
 
@@ -62,7 +64,10 @@ export function AutoPlugSettingsModal({
             modalMode
           />
           {!currentConfig && (
-            <p className="mt-3 text-sm font-medium text-destructive" role="alert">
+            <p
+              className="mt-3 text-sm font-medium text-destructive"
+              role="alert"
+            >
               Auto-Plug message is required.
             </p>
           )}

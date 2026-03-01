@@ -25,6 +25,7 @@ import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSet
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
 import { PLATFORMS } from "@/lib/platforms";
 import { PlatformIcon } from "@/components/PlatformIcon";
+import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
 
 const TWITTER_MAX_LENGTH = 280;
 const TWITTER_THREAD_SEP = "---";
@@ -70,6 +71,9 @@ export function TextPostForm({
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
+  type OverlayPhase = "idle" | "publishing" | "saving" | "done";
+  const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
+  const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
@@ -193,6 +197,8 @@ export function TextPostForm({
     setLoading(true);
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
+    if (effectiveMode === "now") setOverlayPhase("publishing");
+    if (effectiveMode === "draft") setOverlayPhase("saving");
     const accountIds = Array.from(selectedIds);
     const accountCaptions: Record<string, string> = {};
     for (const account of selectedAccounts) {
@@ -221,6 +227,7 @@ export function TextPostForm({
           router.push("/dashboard/posts/drafts");
           router.refresh();
         } else {
+          setOverlayPhase("idle");
           setError(result.error);
         }
         return;
@@ -245,9 +252,10 @@ export function TextPostForm({
               );
             }
           }
-          router.push("/dashboard/posts");
-          router.refresh();
+          setPublishedPostId(result.postId ?? null);
+          setOverlayPhase("done");
         } else {
+          setOverlayPhase("idle");
           setError(result.error);
         }
         return;
@@ -266,6 +274,7 @@ export function TextPostForm({
           router.push("/dashboard/posts/scheduled");
           router.refresh();
         } else {
+          setOverlayPhase("idle");
           setError(result.error);
         }
         return;
@@ -290,9 +299,17 @@ export function TextPostForm({
           await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
         }
       }
-      router.push("/dashboard/posts");
-      router.refresh();
+      if (effectiveMode === "now") {
+        setPublishedPostId(result.postId ?? null);
+        setOverlayPhase("done");
+      } else {
+        if (effectiveMode === "draft") router.push("/dashboard/posts/drafts");
+        if (effectiveMode === "scheduled")
+          router.push("/dashboard/posts/scheduled");
+        router.refresh();
+      }
     } else {
+      setOverlayPhase("idle");
       setError(result.error);
     }
   };
@@ -334,7 +351,32 @@ export function TextPostForm({
   }
 
   return (
-    <form
+    <>
+      {overlayPhase !== "idle" && (
+        <UploadPublishOverlay
+          phase={
+            overlayPhase === "saving"
+              ? "saving"
+              : "publishing"
+          }
+          isScheduling={mode === "scheduled"}
+          showLinks={overlayPhase === "done"}
+          publishedPostId={overlayPhase === "done" ? publishedPostId : null}
+          publishedToX={selectedAccounts.some(
+            (a) => a.platform === "twitter_x",
+          )}
+          resurfacePreFill={
+            overlayPhase === "done" && resurfaceConfig
+              ? {
+                  intervalHours: resurfaceConfig.intervalHours,
+                  maxResurfaces: resurfaceConfig.maxResurfaces,
+                  plugComment: resurfaceConfig.plugComment ?? "",
+                }
+              : null
+          }
+        />
+      )}
+      <form
       ref={formRef}
       onSubmit={handleSubmit}
       className="flex flex-col gap-6 lg:flex-row lg:items-start"
@@ -373,6 +415,12 @@ export function TextPostForm({
           onRememberChange={setRemember}
         />
 
+        {error && (
+          <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+            {error}
+          </div>
+        )}
+
         <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
           <label
             htmlFor="content"
@@ -395,9 +443,11 @@ export function TextPostForm({
           {twitterThreadWarning && (
             <p className="mt-3 text-sm text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg px-3 py-2">
               Twitter: This will post as a thread (each part between{" "}
-              <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">---</code> is a
-              separate tweet). Max {TWITTER_MAX_LENGTH} characters per part.
-              Media will only appear on the first tweet.
+              <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">
+                ---
+              </code>{" "}
+              is a separate tweet). Max {TWITTER_MAX_LENGTH} characters per
+              part. Media will only appear on the first tweet.
             </p>
           )}
         </div>
@@ -684,5 +734,6 @@ export function TextPostForm({
         />
       )}
     </form>
+    </>
   );
 }

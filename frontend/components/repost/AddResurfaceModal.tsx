@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createResurfaceSchedule } from "@/app/actions/resurface";
-import { AutoResurfacePanel, type AutoResurfaceConfig } from "./AutoResurfacePanel";
+import {
+  AutoResurfacePanel,
+  type AutoResurfaceConfig,
+} from "./AutoResurfacePanel";
 import { RESURFACE_PLATFORMS } from "@/lib/resurface-utils";
 
 type PublicationLike = { connectedAccountId: string; platform: string };
@@ -27,7 +30,9 @@ export function AddResurfaceModal({
   const [error, setError] = useState<string | null>(null);
 
   const supportedPubs = publications.filter((p) =>
-    RESURFACE_PLATFORMS.includes(p.platform as (typeof RESURFACE_PLATFORMS)[number]),
+    RESURFACE_PLATFORMS.includes(
+      p.platform as (typeof RESURFACE_PLATFORMS)[number],
+    ),
   );
   const hasX = supportedPubs.some((p) => p.platform === "twitter_x");
 
@@ -70,8 +75,11 @@ export function AddResurfaceModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <h2 id="add-resurface-title" className="text-lg font-semibold text-gray-900">
-            ♻️ Add Auto-Repost
+          <h2
+            id="add-resurface-title"
+            className="text-lg font-semibold text-gray-900"
+          >
+            Add Auto-Repost
           </h2>
           <button
             type="button"
@@ -90,9 +98,7 @@ export function AddResurfaceModal({
             publishedAt={publishedAt}
             onChange={setConfig}
           />
-          {error && (
-            <p className="mt-3 text-sm text-red-600">{error}</p>
-          )}
+          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
           <div className="mt-4 flex justify-end gap-2">
             <button
               type="button"

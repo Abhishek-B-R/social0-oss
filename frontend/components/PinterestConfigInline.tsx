@@ -6,6 +6,7 @@ import {
   setRememberedBoard,
   getRememberedLink,
   setRememberedLink,
+  savePinterestDefaultBoardToDb,
 } from "@/lib/pinterest-remembered";
 import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
 
@@ -99,6 +100,9 @@ export function PinterestConfigInline({
     if (value.rememberBoard) {
       setRememberedBoard(accountId, boardId);
     }
+    if (boardId) {
+      savePinterestDefaultBoardToDb(accountId, boardId);
+    }
     onChange(next);
   };
 
@@ -110,8 +114,9 @@ export function PinterestConfigInline({
     onChange(next);
   };
 
-  const handleCreateBoard = async (e: React.FormEvent) => {
+  const handleCreateBoard = async (e: React.FormEvent | React.MouseEvent | React.KeyboardEvent) => {
     e.preventDefault();
+    (e as React.SyntheticEvent).stopPropagation();
     if (!createName.trim()) return;
     setCreateSubmitting(true);
     setBoardsError(null);
@@ -154,19 +159,34 @@ export function PinterestConfigInline({
             required
           </span>
         </div>
-        <select
-          value={value.boardId}
-          onChange={(e) => handleBoardChange(e.target.value)}
-          disabled={boardsLoading}
-          className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
-        >
-          <option value="">Select a board</option>
-          {boards.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            value={value.boardId}
+            onChange={(e) => handleBoardChange(e.target.value)}
+            disabled={boardsLoading}
+            className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
+          >
+            <option value="">{boardsLoading ? "Loading boards…" : "Select a board"}</option>
+            {boards.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+          {boardsLoading && (
+            <div
+              className="absolute bottom-0 left-0 right-0 h-0.5 rounded-b-lg overflow-hidden bg-bg-muted"
+              aria-hidden
+            >
+              <div
+                className="h-full w-1/3 max-w-[120px] rounded-full bg-accent"
+                style={{
+                  animation: "loadingBar 1.4s ease-in-out infinite",
+                }}
+              />
+            </div>
+          )}
+        </div>
         <div className="mt-2">
           {!createBoardInline ? (
             <button
@@ -177,17 +197,29 @@ export function PinterestConfigInline({
               + Create a new board
             </button>
           ) : (
-            <form onSubmit={handleCreateBoard} className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 type="text"
                 value={createName}
                 onChange={(e) => setCreateName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleCreateBoard(e);
+                  }
+                }}
                 placeholder="Board name"
                 className="rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text w-full min-w-[180px] flex-1"
               />
               <button
-                type="submit"
+                type="button"
                 disabled={createSubmitting || !createName.trim()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleCreateBoard(e);
+                }}
                 className="rounded-lg bg-accent text-white px-3 py-2 text-sm font-medium disabled:opacity-50"
               >
                 {createSubmitting ? "Creating..." : "Create"}
@@ -202,14 +234,15 @@ export function PinterestConfigInline({
               >
                 Cancel
               </button>
-            </form>
+            </div>
           )}
         </div>
         {boardsError && (
           <p className="mt-1 text-xs text-destructive">{boardsError}</p>
         )}
         <p className="mt-1 text-xs text-text-muted">
-          This is the board your post will be posted to.
+          This is the board your post will be posted to. Only public boards can
+          receive pins from this app.
         </p>
         <label className="mt-2 flex items-center gap-3">
           <input

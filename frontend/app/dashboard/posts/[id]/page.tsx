@@ -19,6 +19,7 @@ import {
   FileText,
   Layers,
   LayoutGrid,
+  FileQuestion,
 } from "lucide-react";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 
@@ -46,6 +47,11 @@ function getPublicationStatusBadge(
       return {
         label: "Posted",
         className: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60",
+      };
+    case "partial":
+      return {
+        label: "Partial",
+        className: "bg-purple-500/15 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/20 dark:border-purple-500/30",
       };
     case "publishing":
       return {
@@ -132,7 +138,32 @@ export default async function PostDetailPage({
 
   const { id } = await params;
   const data = await getPostDetail(id, session.user.id);
-  if (!data) redirect("/dashboard/posts");
+  if (!data) {
+    return (
+      <div className="space-y-6">
+        <Link
+          href="/dashboard/posts"
+          className="inline-flex items-center gap-2 text-sm font-medium text-text-muted hover:text-emerald-600 dark:hover:text-emerald-400 mb-6 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to posts
+        </Link>
+        <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-8 text-center border-l-4 border-l-emerald-500 dark:border-l-emerald-400">
+          <FileQuestion className="mx-auto h-12 w-12 text-emerald-600 dark:text-emerald-400" aria-hidden />
+          <p className="mt-4 text-base font-medium text-text">No such post.</p>
+          <p className="mt-2 text-sm text-text-muted">
+            This post may not exist or you don’t have access to it.
+          </p>
+          <Link
+            href="/dashboard/posts"
+            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium transition-colors"
+          >
+            View all posts
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const { post, publications } = data;
 
@@ -275,7 +306,7 @@ export default async function PostDetailPage({
                     post.status === "published"
                       ? "bg-emerald-600 text-white"
                       : post.status === "partial"
-                        ? "bg-violet-600 text-white"
+                        ? "bg-purple-500/20 text-purple-800 dark:text-purple-200 border border-purple-500/30"
                         : post.status === "publishing"
                           ? "bg-amber-500 text-white"
                           : post.status === "scheduled"
@@ -293,10 +324,15 @@ export default async function PostDetailPage({
 
               {(post.status === "draft" ||
                 post.status === "scheduled" ||
-                post.status === "failed") && (
+                post.status === "failed" ||
+                post.status === "partial") && (
                 <PublishButton
                   postId={post.id}
-                  label={post.status === "failed" ? "Retry publish" : "Publish now"}
+                  label={
+                    post.status === "failed" || post.status === "partial"
+                      ? "Retry publish"
+                      : "Publish now"
+                  }
                 />
               )}
             </div>
@@ -338,6 +374,15 @@ export default async function PostDetailPage({
               <ul className="space-y-2">
                 {publications.map((pub, i) => {
                   const badge = getPublicationStatusBadge(pub.status);
+                  const viewUrl =
+                    pub.platformPostUrl ??
+                    (pub.platform === "tiktok" &&
+                    pub.status === "published" &&
+                    pub.platformPostId &&
+                    /^\d+$/.test(String(pub.platformPostId)) &&
+                    pub.platformUsername
+                      ? `https://www.tiktok.com/@${pub.platformUsername}/video/${pub.platformPostId}`
+                      : null);
                   return (
                     <li
                       key={`${pub.platform}-${i}`}
@@ -374,9 +419,9 @@ export default async function PostDetailPage({
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {pub.platformPostUrl && (
+                        {viewUrl && (
                           <a
-                            href={pub.platformPostUrl}
+                            href={viewUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"

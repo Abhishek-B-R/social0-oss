@@ -6,6 +6,7 @@ import {
   setRememberedBoard,
   getRememberedLink,
   setRememberedLink,
+  savePinterestDefaultBoardToDb,
 } from "@/lib/pinterest-remembered";
 
 export type PinterestPostSettings = {
@@ -111,6 +112,9 @@ export function PinterestSettingsModal({
     const next = { ...value, boardId };
     if (value.rememberBoard) {
       setRememberedBoard(accountId, boardId);
+    }
+    if (boardId) {
+      savePinterestDefaultBoardToDb(accountId, boardId);
     }
     onChange(next);
   };

@@ -1,0 +1,69 @@
+import { auth } from "@/lib/auth";
+import { db } from "@/db";
+import { connectedAccounts } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { NextRequest } from "next/server";
+
+/**
+ * PUT { accountId, boardId } – save the user's default Pinterest board for this
+ * connected account. Stored in platformMetadata.pinterestDefaultBoardId so the
+ * board is pre-selected next time.
+ */
+export async function PUT(req: NextRequest) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  let body: { accountId?: string; boardId?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: "Invalid body" }, { status: 400 });
+  }
+  const { accountId, boardId } = body;
+  if (!accountId || typeof boardId !== "string" || !boardId.trim()) {
+    return Response.json(
+      { error: "accountId and boardId are required" },
+      { status: 400 },
+    );
+  }
+
+  const [account] = await db
+    .select({
+      id: connectedAccounts.id,
+      platform: connectedAccounts.platform,
+      platformMetadata: connectedAccounts.platformMetadata,
+    })
+    .from(connectedAccounts)
+    .where(
+      and(
+        eq(connectedAccounts.id, accountId),
+        eq(connectedAccounts.userId, session.user.id),
+      ),
+    )
+    .limit(1);
+
+  if (!account || account.platform !== "pinterest") {
+    return Response.json(
+      { error: "Account not found or not Pinterest" },
+      { status: 404 },
+    );
+  }
+
+  const current = (account.platformMetadata as Record<string, unknown>) ?? {};
+  const nextMetadata: Record<string, unknown> = {
+    ...current,
+    pinterestDefaultBoardId: boardId.trim(),
+  };
+
+  await db
+    .update(connectedAccounts)
+    .set({
+      platformMetadata: nextMetadata,
+      updatedAt: new Date(),
+    })
+    .where(eq(connectedAccounts.id, accountId));
+
+  return Response.json({ ok: true });
+}

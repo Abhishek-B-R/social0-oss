@@ -65,6 +65,7 @@ export default async function NewPostByTypePage({
       isActive: true,
       tokenExpiresAt: true,
       tokenStatus: true,
+      platformMetadata: true,
     },
   });
 
@@ -87,6 +88,7 @@ export default async function NewPostByTypePage({
             (!skipExpiryDisplay.has(a.platform) &&
               !!a.tokenExpiresAt &&
               new Date(a.tokenExpiresAt).getTime() < now),
+        platformMetadata: a.platformMetadata ?? undefined,
       })),
   );
 

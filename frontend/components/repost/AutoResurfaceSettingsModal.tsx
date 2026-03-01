@@ -7,7 +7,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AutoResurfacePanel, type AutoResurfaceConfig, type ConnectedAccountLike } from "./AutoResurfacePanel";
+import {
+  AutoResurfacePanel,
+  type AutoResurfaceConfig,
+  type ConnectedAccountLike,
+} from "./AutoResurfacePanel";
 
 type AutoResurfaceSettingsModalProps = {
   isOpen: boolean;
@@ -37,12 +41,10 @@ export function AutoResurfaceSettingsModal({
         if (!open) onCancel();
       }}
     >
-      <DialogContent
-        className="max-w-lg max-h-[90vh] flex flex-col gap-0 p-0 border-border bg-bg"
-      >
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col gap-0 p-0 border-border bg-bg">
         <DialogHeader className="shrink-0 p-4 border-b border-border pb-4">
           <DialogTitle className="text-lg font-semibold text-text">
-            ♻️ Auto-Repost settings
+            Auto-Repost settings
           </DialogTitle>
         </DialogHeader>
 

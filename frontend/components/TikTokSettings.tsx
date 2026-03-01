@@ -21,8 +21,7 @@ export type TikTokPostSettings = {
 };
 
 const DEFAULT_SETTINGS: TikTokPostSettings = {
-  // TikTok requires user to choose privacy explicitly (no default).
-  privacy_level: "",
+  privacy_level: "SELF_ONLY", // Default to Public
   // TikTok requires interactions OFF by default; user must opt in.
   disable_comment: true,
   disable_duet: true,

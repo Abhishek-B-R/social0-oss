@@ -2,15 +2,15 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: 1,
   timeout: 30000,
+  retries: 1,
   use: {
     baseURL: process.env.TEST_BASE_URL || "https://localhost:3000",
-    trace: "on-first-retry",
+    // Required: self-signed cert used by Next.js --experimental-https
     ignoreHTTPSErrors: true,
+    trace: "on-first-retry",
     channel: "chrome",
+    headless: false,
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });

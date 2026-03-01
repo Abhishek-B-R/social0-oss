@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Loader2, Upload, Send, Image, Video, Layers } from "lucide-react";
 import { ResurfaceSetup } from "@/components/repost/ResurfaceSetup";
 
-export type OverlayPhase = "uploading" | "publishing";
+export type OverlayPhase = "uploading" | "publishing" | "saving";
 
 export type ResurfacePreFill = {
   intervalHours?: number;
@@ -64,6 +64,7 @@ export function UploadPublishOverlay({
   resurfacePreFill = null,
 }: UploadPublishOverlayProps) {
   const isUploading = phase === "uploading";
+  const isSavingDraft = phase === "saving";
   const isPublishing = phase === "publishing" && !showLinks;
 
   return (
@@ -94,7 +95,7 @@ export function UploadPublishOverlay({
                 Create another post
               </Link>
               <Link
-                href="/dashboard/posts"
+                href={publishedPostId ? `/dashboard/posts/${publishedPostId}` : "/dashboard/posts"}
                 className="rounded-xl border border-border bg-bg px-5 py-2.5 text-sm font-semibold text-text hover:bg-bg-muted transition-colors"
               >
                 View posts
@@ -117,6 +118,17 @@ export function UploadPublishOverlay({
                 {uploadProgress ? ` ${uploadProgress}` : ""}
               </p>
             )}
+            {DONT_KEEP_WAITING}
+          </>
+        ) : isSavingDraft ? (
+          <>
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
+              <Loader2 className="h-7 w-7 animate-spin text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <h2 className="mt-4 text-xl font-semibold text-text">
+              Saving this post…
+            </h2>
+            <p className="mt-2 text-sm text-text-muted">Saving to drafts.</p>
             {DONT_KEEP_WAITING}
           </>
         ) : (

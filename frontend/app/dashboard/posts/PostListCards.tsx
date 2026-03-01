@@ -98,7 +98,11 @@ function getStatusBadge(status: string | null): { label: string; className: stri
     case "published":
       return { label: "Posted", prefix: "●", className: "bg-emerald-600 text-white" };
     case "partial":
-      return { label: "Partial", prefix: "◐", className: "bg-violet-600 text-white" };
+      return {
+        label: "Partial",
+        prefix: "◐",
+        className: "bg-purple-600 text-white",
+      };
     case "publishing":
       return { label: "Publishing", prefix: "◌", className: "bg-amber-400 text-amber-950" };
     case "scheduled":
