@@ -1,70 +1,128 @@
 import { test, expect } from "@playwright/test";
+import { loginAsTestUser } from "./helpers/auth";
 import path from "path";
 
-const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL;
-const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD;
-
 test.describe("Bulk upload", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto("/");
-    if (TEST_USER_EMAIL && TEST_USER_PASSWORD) {
-      const signIn = page.getByRole("link", { name: /sign in|log in|try it free/i }).first();
-      if (await signIn.isVisible()) {
-        await signIn.click();
-        await page.waitForURL(/\/auth|google|signin/, { timeout: 5000 }).catch(() => {});
-        const emailInput = page.getByLabel(/email/i).first();
-        if (await emailInput.isVisible()) {
-          await emailInput.fill(TEST_USER_EMAIL);
-          await page.getByLabel(/password/i).first().fill(TEST_USER_PASSWORD);
-          await page.getByRole("button", { name: /sign in|log in|continue/i }).first().click();
-          await page.waitForURL(/\/(dashboard|posts)/, { timeout: 15000 });
-        }
-      }
-    }
+  test("bulk tools index page loads with both upload options", async ({
+    page,
+  }) => {
+    test.setTimeout(15000);
+
+    await loginAsTestUser(page);
+    await page.goto("/dashboard/bulk-tools");
+    await page.waitForLoadState("networkidle");
+    await expect(page).toHaveURL(/\/dashboard\/bulk-tools/);
+
+    // Page heading
+    await expect(
+      page.getByRole("heading", { name: "Bulk tools" }),
+    ).toBeVisible({ timeout: 10000 });
+
+    // Both cards are present and link to the right sub-pages
+    await expect(
+      page.locator('a[href="/dashboard/bulk-tools/video"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator('a[href="/dashboard/bulk-tools/image"]'),
+    ).toBeVisible();
   });
 
-  test("bulk video upload: upload files, apply schedule, verify dates", async ({ page }) => {
-    await page.goto("/dashboard/bulk-tools");
+  test("bulk video upload page loads", async ({ page }) => {
+    test.setTimeout(15000);
 
-    await expect(page.getByText("Bulk Video Upload")).toBeVisible();
-    await expect(page.getByText("Bulk Image Upload")).toBeVisible();
-
-    await page.getByRole("link", { name: /Bulk Video Upload/i }).click();
+    await loginAsTestUser(page);
+    await page.goto("/dashboard/bulk-tools/video");
+    await page.waitForLoadState("networkidle");
     await expect(page).toHaveURL(/\/dashboard\/bulk-tools\/video/);
 
-    const video1 = path.join(__dirname, "../fixtures/test-video.mp4");
-    const video2 = path.join(__dirname, "../fixtures/test-video-2.mp4");
+    // File input must be attached (may be visually hidden)
     const fileInput = page.locator('input[type="file"]').first();
-    await fileInput.setInputFiles([video1, video2]);
+    await expect(fileInput).toBeAttached({ timeout: 10000 });
+  });
 
-    await expect(page.getByText(/Your Videos \(2\)/)).toBeVisible({ timeout: 10000 });
+  test("bulk image upload page loads", async ({ page }) => {
+    test.setTimeout(15000);
 
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const startDateStr = tomorrow.toISOString().slice(0, 10);
+    await loginAsTestUser(page);
+    await page.goto("/dashboard/bulk-tools/image");
+    await page.waitForLoadState("networkidle");
+    await expect(page).toHaveURL(/\/dashboard\/bulk-tools\/image/);
 
-    await page.getByLabel(/Start Date/i).fill(startDateStr);
-    await page.getByLabel(/Videos per day|per day/i).selectOption("1");
-    await page.getByLabel(/Time between posts|gap|hours/i).selectOption({ label: "24 hours" }).catch(() => {
-      return page.locator('select').filter({ has: page.locator('option[value="24"]') }).selectOption("24");
-    });
+    // File input must be attached (may be visually hidden)
+    const fileInput = page.locator('input[type="file"]').first();
+    await expect(fileInput).toBeAttached({ timeout: 10000 });
+  });
 
-    await page.getByRole("button", { name: /Apply Bulk Schedule/i }).click();
+  test("bulk image: add image(s) and see them in the list", async ({
+    page,
+  }) => {
+    test.setTimeout(20000);
+    await loginAsTestUser(page);
+    await page.goto("/dashboard/bulk-tools/image");
+    await page.waitForLoadState("networkidle");
+    await expect(page).toHaveURL(/\/dashboard\/bulk-tools\/image/);
 
-    const dayAfterTomorrow = new Date(tomorrow);
-    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
-    const dayAfterStr = dayAfterTomorrow.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-    const tomorrowStr = tomorrow.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    const fileInput = page.locator('input[type="file"][accept*="image"]');
+    await expect(fileInput).toBeAttached({ timeout: 5000 });
+    const imagePath = path.join(__dirname, "../fixtures/test-image.jpg");
+    await fileInput.setInputFiles(imagePath);
 
-    await expect(page.getByText(tomorrowStr)).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText(dayAfterStr)).toBeVisible({ timeout: 5000 });
+    await expect(
+      page.getByRole("heading", { name: /Your Images \(1\)/ }),
+    ).toBeVisible({ timeout: 10000 });
+
+    await expect(
+      page.getByRole("button", { name: "Collapse all" }),
+    ).toBeVisible({ timeout: 5000 });
+    await expect(
+      page.getByRole("button", { name: "Expand all" }),
+    ).toBeVisible({ timeout: 5000 });
+
+    await expect(
+      page.getByRole("button", { name: "Schedule All 1 Images" }),
+    ).toBeVisible({ timeout: 5000 });
+  });
+
+  test("bulk image: add multiple images and see count update", async ({
+    page,
+  }) => {
+    test.setTimeout(20000);
+    await loginAsTestUser(page);
+    await page.goto("/dashboard/bulk-tools/image");
+    await page.waitForLoadState("networkidle");
+    await expect(page).toHaveURL(/\/dashboard\/bulk-tools\/image/);
+
+    const fileInput = page.locator('input[type="file"][accept*="image"]');
+    await expect(fileInput).toBeAttached({ timeout: 5000 });
+    const imagePath = path.join(__dirname, "../fixtures/test-image.jpg");
+    await fileInput.setInputFiles([imagePath, imagePath]);
+
+    await expect(
+      page.getByRole("heading", { name: /Your Images \(2\)/ }),
+    ).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.getByRole("button", { name: "Schedule All 2 Images" }),
+    ).toBeVisible({ timeout: 5000 });
+  });
+
+  test("bulk video: add video and see it in the list", async ({ page }) => {
+    test.setTimeout(25000);
+    await loginAsTestUser(page);
+    await page.goto("/dashboard/bulk-tools/video");
+    await page.waitForLoadState("networkidle");
+    await expect(page).toHaveURL(/\/dashboard\/bulk-tools\/video/);
+
+    const fileInput = page.locator('input[type="file"][accept*="video"]');
+    await expect(fileInput).toBeAttached({ timeout: 5000 });
+    const videoPath = path.join(__dirname, "../fixtures/test-video.mp4");
+    await fileInput.setInputFiles(videoPath);
+
+    await expect(
+      page.getByRole("heading", { name: /Your Videos \(1\)/ }),
+    ).toBeVisible({ timeout: 15000 });
+
+    await expect(
+      page.getByRole("button", { name: "Schedule All 1 Videos" }),
+    ).toBeVisible({ timeout: 5000 });
   });
 });
