@@ -546,6 +546,7 @@ export function ThreadsPostForm({
       });
     });
     toAdd.forEach((vid) => {
+      if (!vid.file) return;
       getVideoThumbnail(vid.file).then((thumbnailUrl) => {
         setPosts((prev) =>
           prev.map((p) => {
