@@ -10,7 +10,11 @@ import {
 
 const PLATFORM_ICONS = [
   { name: "LinkedIn", icon: SiLinkedin, color: "bg-[#0A66C2]" },
-  { name: "Instagram", icon: SiInstagram, color: "bg-gradient-to-br from-[#F58529] to-[#8134AF]" },
+  {
+    name: "Instagram",
+    icon: SiInstagram,
+    color: "bg-gradient-to-br from-[#F58529] to-[#8134AF]",
+  },
   { name: "YouTube", icon: SiYoutube, color: "bg-[#FF0000]" },
   { name: "Pinterest", icon: SiPinterest, color: "bg-[#E60023]" },
   { name: "X", icon: SiX, color: "bg-gray-900" },
@@ -32,14 +36,22 @@ export function PostComposerMockup() {
         <span className="px-3 py-1.5 rounded-md bg-bg-muted text-text-muted text-xs font-semibold">
           Thread
         </span>
+        <span className="px-3 py-1.5 rounded-md bg-bg-muted text-text-muted text-xs font-semibold">
+          Collection
+        </span>
       </div>
       <div className="h-24 rounded-lg border-2 border-dashed border-border bg-bg-subtle/50 flex items-center justify-center mb-4 relative overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
             <div className="text-text-muted text-sm mb-1">📷</div>
-            <div className="text-text-muted text-xs">Drop image here or click to upload</div>
+            <div className="text-text-muted text-xs">
+              Drop image here or click to upload
+            </div>
           </div>
         </div>
+      </div>
+      <div className="h-10 rounded-lg border-2 border-dashed border-border bg-bg-subtle/50 flex items-center justify-center mb-4 relative overflow-hidden text-text-muted text-xs">
+        Write your caption...
       </div>
       <div className="flex items-center justify-between pt-3 border-t border-border">
         <div className="flex gap-1.5">

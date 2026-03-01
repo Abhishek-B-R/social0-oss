@@ -32,13 +32,13 @@ export function LandingHeader() {
         </Link>
         <nav className="hidden sm:flex items-center gap-8">
           <Link
-            href="#features"
+            href="/#features"
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Features
           </Link>
           <Link
-            href="#pricing"
+            href="/#pricing"
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Pricing

@@ -7,7 +7,7 @@ export function CalendarMockup() {
   return (
     <div className="rounded-xl border border-border bg-bg shadow-lg p-4 max-w-sm mx-auto">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-semibold text-text">March 2025</span>
+        <span className="text-sm font-semibold text-text">March 2026</span>
         <span className="text-text-muted text-xs">&lt; &gt;</span>
       </div>
       <div className="grid grid-cols-7 gap-0.5 mb-2">

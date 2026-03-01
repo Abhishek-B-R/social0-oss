@@ -7,12 +7,12 @@ const faqs = [
   {
     question: "What platforms do you support?",
     answer:
-      "Social0 supports LinkedIn, Instagram, YouTube, Pinterest, TikTok, X (Twitter), Threads, and Bluesky. Connect any combination of these and publish to all of them from one place.",
+      "Social0 supports LinkedIn, Instagram, Facebook, YouTube, Pinterest, TikTok, X (Twitter), Threads, and Bluesky. Connect any combination of these and publish to all of them from one place.",
   },
   {
     question: "What content types can I post?",
     answer:
-      "You can create text posts, image posts, video posts, and threaded posts. We format your content appropriately for each platform so it looks right everywhere.",
+      "You can create text posts, image posts, video posts, threaded posts, and collection posts. We format your content appropriately for each platform so it looks right everywhere.",
   },
   {
     question: "How does scheduling work?",
@@ -22,17 +22,17 @@ const faqs = [
   {
     question: "Is my data secure?",
     answer:
-      "Yes. We use OAuth to connect your accounts—we never see your passwords. Your access tokens are encrypted with AES-256-GCM and stored securely. We only request the minimum permissions needed to publish on your behalf. You can disconnect any platform or delete your account and data at any time.",
+      "Yes. We use OAuth to connect your accounts. Your access tokens are encrypted with AES-256-GCM and stored securely. We only request the minimum permissions needed to publish on your behalf. You can disconnect any platform or delete your account and data at any time.",
   },
   {
     question: "Do I need a business account on each platform?",
     answer:
-      "It depends on the platform. Instagram requires an Instagram Business or Creator account linked to a Facebook Page. LinkedIn, X, TikTok, Threads, YouTube, Pinterest, and Bluesky work with standard personal or creator accounts where posting is allowed. We'll guide you during connection if a specific account type is required.",
+      "It depends on the platform. Instagram requires an Instagram Business or Creator account. LinkedIn, X, TikTok, Threads, YouTube, Pinterest, and Bluesky work with standard personal or creator accounts where posting is allowed. We'll guide you during connection if a specific account type is required.",
   },
   {
     question: "Can I try it for free?",
     answer:
-      "Yes. You can sign up with Google and connect your accounts at no cost. Our Free plan lets you get started; upgrade to Pro when you need more.",
+      "Yes. Sign in and you’ll get a 7-day free trial so you can try everything with no commitment. After the trial, we’ll charge only if you choose to stay. If it’s not for you, you can disconnect your accounts anytime, no hard feelings.",
   },
 ];
 

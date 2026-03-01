@@ -93,11 +93,11 @@ export function SupportedPlatforms() {
           </p>
         </RevealSection>
         <RevealSection delay={1}>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
             {PLATFORMS.map((p) => (
               <div
                 key={p.name}
-                className={`rounded-xl ${p.color} ${p.textColor} p-4 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer`}
+                className={`rounded-xl ${p.color} ${p.textColor} p-4 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer border dark:border-white border-black`}
               >
                 <div className="flex flex-col items-center text-center">
                   <div className="w-12 h-12 rounded-lg bg-white/20 flex items-center justify-center mb-2">

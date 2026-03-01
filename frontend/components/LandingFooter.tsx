@@ -36,7 +36,7 @@ export function LandingFooter() {
             <ul className="space-y-2">
               <li>
                 <Link
-                  href="#features"
+                  href="/#features"
                   className="text-sm text-muted-foreground hover:text-foreground"
                 >
                   Features
@@ -44,7 +44,7 @@ export function LandingFooter() {
               </li>
               <li>
                 <Link
-                  href="#pricing"
+                  href="/#pricing"
                   className="text-sm text-muted-foreground hover:text-foreground"
                 >
                   Pricing
