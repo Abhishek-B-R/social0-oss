@@ -29,7 +29,9 @@ export function BulkUploadZone({
       if (!files?.length) return;
       const list = Array.from(files);
       if (list.length > maxFiles) {
-        setError(`Maximum ${maxFiles} files. You selected ${list.length}.`);
+        setError(
+          `Maximum ${maxFiles} files. You selected ${list.length}. Select fewer files or split into multiple uploads.`,
+        );
         return;
       }
       const oversized = list.filter((f) => f.size > maxSizeBytes);
@@ -103,7 +105,10 @@ export function BulkUploadZone({
         </p>
       </label>
       {error && (
-        <p className="text-sm text-red-600 font-medium dark:text-red-400" role="alert">
+        <p
+          className="text-sm text-red-600 font-medium dark:text-red-400"
+          role="alert"
+        >
           {error}
         </p>
       )}

@@ -31,7 +31,7 @@ export default function AuthPage() {
                 alt="Social0"
                 width={36}
                 height={36}
-                className="rounded-lg hidden dark:block absolute inset-0"
+                className="rounded-full hidden dark:block absolute inset-0 border border-white"
               />
             </span>
             <span className="font-semibold text-lg text-foreground">

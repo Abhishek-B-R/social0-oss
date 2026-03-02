@@ -164,29 +164,45 @@ export async function publishToPlatform(
   if (contentErr) {
     return { status: "failed", lastError: contentErr, error: contentErr };
   }
+  let result: PublishPlatformResult;
 
   switch (pub.platform) {
     case "facebook":
-      return publishToFacebook(pub, post, accessToken);
+      result = await publishToFacebook(pub, post, accessToken);
+      break;
     case "bluesky":
-      return publishToBluesky(pub, post, accessToken, accessSecret);
+      result = await publishToBluesky(pub, post, accessToken, accessSecret);
+      break;
     case "youtube":
-      return publishToYouTube(pub, post, accessToken);
+      result = await publishToYouTube(pub, post, accessToken);
+      break;
     case "pinterest":
-      return publishToPinterest(pub, post, accessToken);
+      result = await publishToPinterest(pub, post, accessToken);
+      break;
     case "instagram":
-      return publishToInstagram(pub, post, accessToken);
+      result = await publishToInstagram(pub, post, accessToken);
+      break;
     case "tiktok":
-      return publishToTikTok(pub, post, accessToken);
+      result = await publishToTikTok(pub, post, accessToken);
+      break;
     case "threads":
-      return publishToThreads(pub, post, accessToken);
+      result = await publishToThreads(pub, post, accessToken);
+      break;
     default:
-      return {
+      result = {
         status: "failed",
         lastError: "Unknown platform",
         error: "Unknown platform",
       };
+      break;
   }
+
+  console.log(
+    `[publishToPlatform] ${pub.platform} final result:`,
+    JSON.stringify(result),
+  );
+
+  return result;
 }
 
 /**
@@ -1220,7 +1236,7 @@ async function publishToBluesky(
 }
 
 /** Max size for YouTube Shorts (Shorts only; long videos not supported). ~60s is typically under 50MB. */
-const YOUTUBE_SHORTS_MAX_BYTES = 50 * 1024 * 1024;
+const YOUTUBE_SHORTS_MAX_BYTES = 512 * 1024 * 1024;
 
 async function publishToYouTube(
   pub: Pub,
@@ -1435,7 +1451,10 @@ async function uploadPinterestVideo(
       status?: string;
       message?: string;
     };
-    console.log(`[Pinterest] video status (attempt ${i + 1}):`, statusData.status);
+    console.log(
+      `[Pinterest] video status (attempt ${i + 1}):`,
+      statusData.status,
+    );
     if (statusData.status === "succeeded") break;
     if (statusData.status === "failed") {
       throw new Error(

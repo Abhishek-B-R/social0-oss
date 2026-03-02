@@ -57,7 +57,7 @@ export async function validateFileContent(
     return true;
   }
 
-  return expectedSignatures.some((sig) => {
+  const matchesStrict = expectedSignatures.some((sig) => {
     if (expectedMimeType === "image/webp") {
       // WebP: check for RIFF at start and WEBP at offset 8
       return (
@@ -74,6 +74,18 @@ export async function validateFileContent(
     }
     return buffer.subarray(0, sig.length).equals(sig);
   });
+  if (matchesStrict) return true;
+
+  // Lenient fallback for video: many MP4/MOV files use ISO base media (ftyp box at offset 4)
+  if (
+    (expectedMimeType === "video/mp4" || expectedMimeType === "video/quicktime") &&
+    buffer.length >= 12
+  ) {
+    const ftyp = buffer.subarray(4, 8).toString();
+    if (ftyp === "ftyp") return true;
+  }
+
+  return false;
 }
 
 /**

@@ -807,12 +807,41 @@ export function CollectionPostForm({
             const hasTwitterX = selectedAccounts.some(
               (a) => a.platform === "twitter_x",
             );
-            const showMax4Warning = hasTwitterX && totalAttachments > 4;
-            if (!showMax4Warning) return null;
+            const hasBluesky = selectedAccounts.some(
+              (a) => a.platform === "bluesky",
+            );
+            const hasPinterest = selectedAccounts.some(
+              (a) => a.platform === "pinterest",
+            );
+            const platformsLabel =
+              hasTwitterX && hasBluesky
+                ? "X (Twitter) and Bluesky"
+                : hasTwitterX
+                  ? "X (Twitter)"
+                  : hasBluesky
+                    ? "Bluesky"
+                    : "";
+            const showMax4Warning =
+              totalAttachments > 4 && (hasTwitterX || hasBluesky);
+            const showPinterestWarning =
+              totalAttachments > 1 && hasPinterest;
+            if (!showMax4Warning && !showPinterestWarning) return null;
             return (
-              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                ⚠ X (Twitter) supports max 4 attachments — only the first 4 will
-                be published.
+              <div className="space-y-1">
+                {showMax4Warning && (
+                  <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                    ⚠ {platformsLabel} support up to 4 media attachments per post.
+                    You&apos;ve added more than 4, so only the first 4 will be
+                    published on those platforms; extra media will be ignored there.
+                  </div>
+                )}
+                {showPinterestWarning && (
+                  <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                    ⚠ Pinterest supports only 1 media attachment per post.
+                    You&apos;ve added more than 1, so only the first media item
+                    will be used on Pinterest; the rest will be ignored there.
+                  </div>
+                )}
               </div>
             );
           })()}

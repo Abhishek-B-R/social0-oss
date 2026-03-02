@@ -763,6 +763,13 @@ export function ImagePostForm({
     (a) => a.platform === "pinterest",
   );
 
+  const hasTwitterXSelected = selectedAccounts.some(
+    (a) => a.platform === "twitter_x",
+  );
+  const hasBlueskySelected = selectedAccounts.some(
+    (a) => a.platform === "bluesky",
+  );
+
   const filteredAccounts = useMemo(() => {
     if (!accountSearch.trim()) return accounts;
     const q = accountSearch.toLowerCase().trim();
@@ -903,6 +910,31 @@ export function ImagePostForm({
                 <p className="text-xs text-text-muted">
                   Carousel post: Drag to reorder (mainly for Instagram)
                 </p>
+                {images.length > 4 && (hasTwitterXSelected || hasBlueskySelected) && (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-300" />
+                    <p>
+                      {hasTwitterXSelected && hasBlueskySelected
+                        ? "X (Twitter) and Bluesky"
+                        : hasTwitterXSelected
+                          ? "X (Twitter)"
+                          : "Bluesky"}{" "}
+                      support up to 4 media attachments per post. You&apos;ve added
+                      more than 4, so only the first 4 will be published on those
+                      platforms; extra media will be ignored there.
+                    </p>
+                  </div>
+                )}
+                {images.length > 1 && hasPinterestSelected && (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-300" />
+                    <p>
+                      Pinterest supports only 1 media attachment per post. You&apos;ve
+                      added more than 1, so only the first image will be used on
+                      Pinterest; the rest will be ignored there.
+                    </p>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2">
                   {sortedImages.map((img, index) => (
                     <div

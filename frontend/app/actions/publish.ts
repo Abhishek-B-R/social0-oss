@@ -149,6 +149,7 @@ export async function executePublish(
     .select({
       publicationId: postPublications.id,
       publicationStatus: postPublications.status,
+      platformPostUrl: postPublications.platformPostUrl,
       connectedAccountId: connectedAccounts.id,
       platform: connectedAccounts.platform,
       platformUserId: connectedAccounts.platformUserId,
@@ -202,17 +203,19 @@ export async function executePublish(
     return joined || null;
   })();
 
-  let accessToken: string;
+  type PublicationWithAccount = (typeof publicationsWithAccounts)[number];
 
-  for (const pub of publicationsWithAccounts) {
+  async function handlePublication(pub: PublicationWithAccount) {
+    let accessToken: string;
+
     if (pub.publicationStatus === "published") {
       results.push({
         platform: pub.platform,
         connectedAccountId: pub.connectedAccountId,
         status: "published",
-        platformPostUrl: null,
+        platformPostUrl: pub.platformPostUrl ?? null,
       });
-      continue;
+      return;
     }
     // Skip if already in progress (e.g. concurrent request); leave DB as "publishing" for other request to complete
     if (pub.publicationStatus === "publishing") {
@@ -222,7 +225,7 @@ export async function executePublish(
         status: "failed",
         error: "Publish already in progress",
       });
-      continue;
+      return;
     }
 
     // Collection/mixed media: log per-platform warnings (do not fail publish)
@@ -266,7 +269,7 @@ export async function executePublish(
         status: "failed",
         error: tokenExpiredMsg,
       });
-      continue;
+      return;
     }
 
     // Do not attempt to publish with an expired token (by time).
@@ -294,7 +297,7 @@ export async function executePublish(
         status: "failed",
         error: tokenExpiredMsg,
       });
-      continue;
+      return;
     }
 
     try {
@@ -319,7 +322,7 @@ export async function executePublish(
         status: "failed",
         error: err,
       });
-      continue;
+      return;
     }
 
     // Twitter OAuth 1.0a: require access secret as well
@@ -342,7 +345,7 @@ export async function executePublish(
           error:
             "Twitter account missing access secret. Please reconnect the account.",
         });
-        continue;
+        return;
       }
       try {
         accessSecret = decryptToken(
@@ -367,7 +370,7 @@ export async function executePublish(
           status: "failed",
           error: err,
         });
-        continue;
+        return;
       }
     }
 
@@ -410,7 +413,7 @@ export async function executePublish(
           status: "failed",
           error: errorMsg,
         });
-        continue;
+        return;
       }
 
       const authorUrn = `urn:li:person:${pub.platformUserId}`;
@@ -462,7 +465,7 @@ export async function executePublish(
                 status: "failed",
                 error: `Video upload failed: ${err}`,
               });
-              continue;
+              return;
             }
           } else {
             const imagesWithUrl = images.filter((i) => i.url);
@@ -496,7 +499,7 @@ export async function executePublish(
                   status: "failed",
                   error: `Image upload failed: ${err}`,
                 });
-                continue;
+                return;
               }
             } else if (images.length > 0) {
               // Post has image media but no URL (e.g. upload failed or legacy)
@@ -515,7 +518,7 @@ export async function executePublish(
                 status: "failed",
                 error: "Image has no URL. Re-upload and retry.",
               });
-              continue;
+              return;
             }
           }
         }
@@ -586,7 +589,7 @@ export async function executePublish(
           status: "failed",
           error: errMessage,
         });
-        continue;
+        return;
       }
 
       const postUrn = (responseData as { id?: string }).id;
@@ -612,6 +615,7 @@ export async function executePublish(
         status: "published",
         platformPostUrl,
       });
+      return;
     } else if (pub.platform === "twitter_x") {
       // Handle X/Twitter publishing (OAuth 1.0a: access token + access secret)
       const appKey = process.env.TWITTER_CONSUMER_KEY;
@@ -632,7 +636,7 @@ export async function executePublish(
           status: "failed",
           error: "Twitter OAuth 1.0a not configured or missing access secret",
         });
-        continue;
+        return;
       }
       const client = new TwitterApi({
         appKey,
@@ -691,7 +695,7 @@ export async function executePublish(
             status: "failed",
             error: msg,
           });
-          continue;
+          return;
         }
 
         const overLimit = parts.findIndex((p) => p.text.length > TWITTER_MAX_LENGTH);
@@ -713,7 +717,7 @@ export async function executePublish(
             status: "failed",
             error: msg,
           });
-          continue;
+          return;
         }
 
         const uniqueDbMediaIds = [
@@ -754,7 +758,7 @@ export async function executePublish(
             status: "failed",
             error: msg,
           });
-          continue;
+          return;
         }
 
         const missingUrlId = uniqueDbMediaIds.find((id) => {
@@ -777,7 +781,7 @@ export async function executePublish(
             status: "failed",
             error: msg,
           });
-          continue;
+          return;
         }
 
         type MediaIdsTuple =
@@ -909,7 +913,7 @@ export async function executePublish(
           });
         }
 
-        continue;
+        return;
       }
       const mediaIds: string[] = [];
 
@@ -973,7 +977,7 @@ export async function executePublish(
             break;
           }
         }
-        if (twitterUploadFailed) continue;
+        if (twitterUploadFailed) return;
       }
 
       // Twitter thread: split by "---" for native thread (reply chain)
@@ -999,7 +1003,7 @@ export async function executePublish(
           status: "failed",
           error: "Tweet content is empty",
         });
-        continue;
+        return;
       }
 
       // Validate each thread part ≤ 280 characters
@@ -1022,7 +1026,7 @@ export async function executePublish(
           status: "failed",
           error: msg,
         });
-        continue;
+        return;
       }
 
       type MediaIdsTuple =
@@ -1130,6 +1134,7 @@ export async function executePublish(
           error: errorMessage,
         });
       }
+      return;
     } else if (
       pub.platform === "facebook" ||
       pub.platform === "bluesky" ||
@@ -1156,7 +1161,7 @@ export async function executePublish(
           status: "failed",
           error: msg,
         });
-        continue;
+        return;
       }
       let platformAccessSecret = accessSecret;
       if (pub.platform === "bluesky" && pub.encryptedRefreshToken) {
@@ -1185,7 +1190,7 @@ export async function executePublish(
             status: "failed",
             error: err,
           });
-          continue;
+          return;
         }
       }
 
@@ -1212,7 +1217,7 @@ export async function executePublish(
             status: "failed",
             error: errorMsg,
           });
-          continue;
+          return;
         }
       }
 
@@ -1251,6 +1256,10 @@ export async function executePublish(
           tokenForPublish,
           platformAccessSecret,
         );
+        console.log(
+          `[${pub.platform}] publishToPlatform result:`,
+          JSON.stringify(platformPostResult),
+        );
         const isPublished = platformPostResult.status === "published";
         if (platformPostResult.status === "failed") {
           const errMsg =
@@ -1269,8 +1278,8 @@ export async function executePublish(
             publishedAt: isPublished
               ? (platformPostResult.publishedAt ?? new Date())
               : undefined,
-            platformPostId: platformPostResult.platformPostId ?? undefined,
-            platformPostUrl: platformPostResult.platformPostUrl ?? undefined,
+            platformPostId: platformPostResult.platformPostId ?? null,
+            platformPostUrl: platformPostResult.platformPostUrl ?? null,
             lastError: platformPostResult.lastError ?? null,
             updatedAt: new Date(),
           })
@@ -1301,8 +1310,15 @@ export async function executePublish(
           error: err,
         });
       }
+      return;
     }
   }
+
+  const publishTasks = publicationsWithAccounts.map((pub) =>
+    handlePublication(pub),
+  );
+
+  await Promise.allSettled(publishTasks);
 
   // Always update post status so we never leave it stuck on "publishing"
   console.log("Publication results:", results);

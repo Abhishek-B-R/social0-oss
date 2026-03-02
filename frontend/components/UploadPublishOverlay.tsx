@@ -15,6 +15,10 @@ type UploadPublishOverlayProps = {
   phase: OverlayPhase;
   /** e.g. "2 of 5" – we show "Uploading 2 of 5" and media type */
   uploadProgress?: string | null;
+  /** 0–100 upload percentage for granular progress bar */
+  uploadPercent?: number | null;
+  /** When true, show a tab-close warning under the progress bar */
+  showUploadWarning?: boolean;
   /** "image" | "video" | "mixed" for upload phase label */
   mediaType?: "image" | "video" | "mixed";
   /** When publishing: show "Scheduling" vs "Publishing" */
@@ -56,6 +60,8 @@ function mediaTypeLabel(type: "image" | "video" | "mixed"): string {
 export function UploadPublishOverlay({
   phase,
   uploadProgress,
+  uploadPercent = null,
+  showUploadWarning = false,
   mediaType = "image",
   isScheduling = false,
   showLinks = false,
@@ -119,7 +125,23 @@ export function UploadPublishOverlay({
                 {uploadProgress ? ` ${uploadProgress}` : ""}
               </p>
             )}
-            {DONT_KEEP_WAITING}
+            {typeof uploadPercent === "number" && (
+              <div className="mt-4 w-full max-w-sm space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-bg-muted">
+                    <div
+                      className="h-full bg-emerald-500 transition-all duration-200"
+                      style={{ width: `${uploadPercent}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-medium text-text-muted">
+                    Uploading {mediaTypeLabel(mediaType).toLowerCase()}
+                    {uploadProgress ? ` ${uploadProgress}` : ""}…{" "}
+                    {uploadPercent}%
+                  </span>
+                </div>
+              </div>
+            )}
           </>
         ) : isSavingDraft ? (
           <>

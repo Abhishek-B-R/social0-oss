@@ -188,6 +188,14 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
 
   const handleScheduleAll = async () => {
     if (selectedIds.size === 0 || items.length === 0) return;
+
+    // Require a caption for every image before scheduling
+    const missingCaption = items.some((item) => !item.caption.trim());
+    if (missingCaption) {
+      setError("Caption is required for all images before scheduling.");
+      return;
+    }
+
     setError(null);
     cancelledRef.current = false;
     setScheduling(true);
