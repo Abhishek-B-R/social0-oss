@@ -210,8 +210,12 @@ export function TextPostForm({
         accountCaptions[account.id] = captionState.value.trim();
       }
     }
-    const metadata =
-      Object.keys(accountCaptions).length > 0 ? { accountCaptions } : undefined;
+    const metadata: Record<string, unknown> = {
+      contentType: "text",
+    };
+    if (Object.keys(accountCaptions).length > 0) {
+      metadata.accountCaptions = accountCaptions;
+    }
 
     if (initialDraftId) {
       if (effectiveMode === "draft") {

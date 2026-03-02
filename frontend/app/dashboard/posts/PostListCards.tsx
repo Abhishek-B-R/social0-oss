@@ -20,7 +20,19 @@ type ThreadPreview = {
 };
 
 function getThreadPreview(post: PostRow): ThreadPreview {
-  const meta = post.metadata as { twitterThread?: { parts?: { text: string }[] } } | undefined;
+  const meta = post.metadata as
+    | {
+        contentType?: string;
+        twitterThread?: { parts?: { text: string }[] };
+      }
+    | undefined;
+  const contentType = meta?.contentType;
+  if (contentType === "threads") {
+    return {
+      parts: [post.originalContent ?? "(No caption)"],
+      isThread: true,
+    };
+  }
   const partsArr = meta?.twitterThread?.parts;
   if (Array.isArray(partsArr) && partsArr.length > 0) {
     const parts = partsArr.map((p) => {
@@ -42,10 +54,24 @@ function getDisplayType(
   partCount: number,
   firstMime: string,
   mediaIds: string[],
+  isThread: boolean,
 ): string {
-  if (partCount > 1) return "Thread";
+  const meta = post.metadata as { contentType?: string } | undefined;
+  const contentType = meta?.contentType;
+
+  // Respect original form semantics: if a post was created via a specific
+  // content type form, keep that label forever.
+  if (contentType === "threads") return "Thread";
+  if (contentType === "collection") return "Collection";
+  if (contentType === "image") return "Image";
+  if (contentType === "video") return "Video";
+  if (contentType === "text") return "Text";
+
+  // Fallbacks for older posts without contentType metadata.
+  if (isThread) return "Thread";
+  if (mediaIds.length > 1) return "Collection";
   if (firstMime.startsWith("video/")) return "Video";
-  if (mediaIds.length >= 1 && firstMime.startsWith("image/")) return "Image";
+  if (mediaIds.length === 1 && firstMime.startsWith("image/")) return "Image";
   return "Text";
 }
 
@@ -169,10 +195,16 @@ export function PostListCards({
       {userPosts.map((post) => {
         const mediaMeta = firstMediaByPost.get(post.id);
         const mime = mediaMeta?.mimeType ?? "";
-        const { parts } = getThreadPreview(post);
+        const { parts, isThread } = getThreadPreview(post);
         const partCount = parts.length;
         const mediaIds = post.mediaIds ?? [];
-        const displayType = getDisplayType(post, partCount, mime, mediaIds);
+        const displayType = getDisplayType(
+          post,
+          partCount,
+          mime,
+          mediaIds,
+          isThread,
+        );
         const uiStatus = getUiStatus(post);
         const timestampLabel = getTimestampLabel(
           post,

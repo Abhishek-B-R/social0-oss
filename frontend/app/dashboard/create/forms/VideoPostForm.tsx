@@ -605,7 +605,9 @@ export function VideoPostForm({
     const text = content.trim();
     const accountIds = Array.from(selectedIds);
 
-    const metadata: Record<string, unknown> = {};
+    const metadata: Record<string, unknown> = {
+      contentType: "video",
+    };
     if (hasTikTok) {
       metadata.tiktok = tiktokAccounts.reduce<
         Record<string, TikTokPostSettings>
@@ -642,7 +644,7 @@ export function VideoPostForm({
     if (Object.keys(accountCaptions).length > 0) {
       metadata.accountCaptions = accountCaptions;
     }
-    const meta = Object.keys(metadata).length > 0 ? metadata : undefined;
+    const meta = metadata;
 
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;

@@ -719,6 +719,50 @@ export function ThreadsPostForm({
       return;
     }
 
+    // Twitter/X media constraints: per tweet, either up to 4 images OR a single video, not both.
+    const hasTwitterX = selectedAccounts.some(
+      (a) => a.platform === "twitter_x",
+    );
+    if (hasTwitterX) {
+      for (let i = 0; i < threadPosts.length; i++) {
+        const post = threadPosts[i];
+        const allMedia = getAllMediaForPost(post);
+        const images = allMedia.filter((m) => m.type === "image");
+        const videos = allMedia.filter((m) => m.type === "video");
+
+        if (videos.length > 0 && images.length > 0) {
+          setError(
+            `Twitter X only supports either images or a single video per tweet. Remove images or video from part ${
+              i + 1
+            }.`,
+          );
+          setLoading(false);
+          setOverlayPhase("idle");
+          return;
+        }
+        if (videos.length > 1) {
+          setError(
+            `Twitter X only supports one video per tweet. Part ${
+              i + 1
+            } currently has ${videos.length} videos.`,
+          );
+          setLoading(false);
+          setOverlayPhase("idle");
+          return;
+        }
+        if (images.length > 4) {
+          setError(
+            `Twitter X supports up to 4 images per tweet. Part ${
+              i + 1
+            } currently has ${images.length} images.`,
+          );
+          setLoading(false);
+          setOverlayPhase("idle");
+          return;
+        }
+      }
+    }
+
     const mediaIds: string[] = [];
     const perThreadPostMediaIds: string[][] = [];
 
@@ -813,6 +857,7 @@ export function ThreadsPostForm({
     intendedModeRef.current = null;
     const accountIds = Array.from(selectedIds);
     const metadata = {
+      contentType: "threads" as const,
       twitterThread: {
         version: 1,
         separator: THREAD_SEPARATOR,

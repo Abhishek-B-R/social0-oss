@@ -103,6 +103,15 @@ function getDisplayType(
   partCount: number,
   media: PostMediaRow[],
 ): string {
+  const meta = post.metadata as { contentType?: string } | undefined;
+  const contentType = meta?.contentType;
+  if (contentType === "threads") return "Thread";
+  if (contentType === "collection") return "Collection";
+  if (contentType === "image") return "Image";
+  if (contentType === "video") return "Video";
+  if (contentType === "text") return "Text";
+
+  // Fallbacks for legacy posts with no contentType metadata.
   if (partCount > 1) return "Thread";
   if (media.length > 1) return "Collection";
   const hasVideo = media.some((m) => m.mimeType.startsWith("video/"));
