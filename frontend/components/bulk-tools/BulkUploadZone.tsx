@@ -7,16 +7,35 @@ type BulkUploadZoneProps = {
   accept: string;
   maxFiles: number;
   maxSizeBytes: number;
+  maxTotalBytes?: number;
+  currentTotalBytes?: number;
+  currentCount?: number;
   maxSizeLabel: string;
+  helperText?: string;
   onFilesSelected: (files: File[]) => void;
   disabled?: boolean;
 };
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0B";
+  const kb = 1024;
+  const mb = kb * 1024;
+  const gb = mb * 1024;
+  if (bytes >= gb) return `${(bytes / gb).toFixed(2)}GB`;
+  if (bytes >= mb) return `${(bytes / mb).toFixed(0)}MB`;
+  if (bytes >= kb) return `${(bytes / kb).toFixed(0)}KB`;
+  return `${Math.round(bytes)}B`;
+}
 
 export function BulkUploadZone({
   accept,
   maxFiles,
   maxSizeBytes,
+  maxTotalBytes,
+  currentTotalBytes,
+  currentCount,
   maxSizeLabel,
+  helperText,
   onFilesSelected,
   disabled = false,
 }: BulkUploadZoneProps) {
@@ -28,9 +47,11 @@ export function BulkUploadZone({
       setError(null);
       if (!files?.length) return;
       const list = Array.from(files);
-      if (list.length > maxFiles) {
+      const alreadyCount = currentCount ?? 0;
+      const nextCount = alreadyCount + list.length;
+      if (nextCount > maxFiles) {
         setError(
-          `Maximum ${maxFiles} files. You selected ${list.length}. Select fewer files or split into multiple uploads.`,
+          `Maximum ${maxFiles} files. You selected ${list.length} (total would be ${nextCount}). Select fewer files or split into multiple uploads.`,
         );
         return;
       }
@@ -41,9 +62,28 @@ export function BulkUploadZone({
         );
         return;
       }
+      if (maxTotalBytes != null) {
+        const alreadyBytes = currentTotalBytes ?? 0;
+        const incomingBytes = list.reduce((sum, f) => sum + f.size, 0);
+        const nextBytes = alreadyBytes + incomingBytes;
+        if (nextBytes > maxTotalBytes) {
+          setError(
+            `Total batch size limit exceeded (${formatBytes(nextBytes)} / ${formatBytes(maxTotalBytes)}). Select fewer files or split into multiple uploads.`,
+          );
+          return;
+        }
+      }
       onFilesSelected(list);
     },
-    [maxFiles, maxSizeBytes, maxSizeLabel, onFilesSelected],
+    [
+      currentCount,
+      currentTotalBytes,
+      maxFiles,
+      maxSizeBytes,
+      maxSizeLabel,
+      maxTotalBytes,
+      onFilesSelected,
+    ],
   );
 
   const handleDrop = useCallback(
@@ -100,9 +140,18 @@ export function BulkUploadZone({
         <p className="text-sm font-medium text-foreground">
           Click to upload or drag and drop
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {maxSizeLabel}. Max {maxFiles} files.
-        </p>
+        {helperText ? (
+          <p className="mt-1 text-xs text-muted-foreground">{helperText}</p>
+        ) : (
+          <p className="mt-1 text-xs text-muted-foreground">
+            {maxSizeLabel}. Max {maxFiles} files.
+          </p>
+        )}
+        {maxTotalBytes != null && (
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {formatBytes(currentTotalBytes ?? 0)} / {formatBytes(maxTotalBytes)}
+          </p>
+        )}
       </label>
       {error && (
         <p

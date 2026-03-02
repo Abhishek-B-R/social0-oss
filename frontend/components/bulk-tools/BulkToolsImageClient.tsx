@@ -15,7 +15,11 @@ import {
 import { createPost } from "@/app/actions/posts";
 import { uploadFile } from "@/lib/upload-file";
 
-const MAX_IMAGES = 100;
+const LIMITS = {
+  totalSize: 250 * 1024 * 1024, // 250MB total batch
+  maxCount: 100, // 100 images max count
+};
+const MAX_IMAGES = LIMITS.maxCount;
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024; // 50MB - API may limit to 10MB
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 
@@ -59,6 +63,10 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
     useRememberedAccounts(REMEMBER_KEY_IMAGE);
 
   const [items, setItems] = useState<ImageItem[]>([]);
+  const totalSelectedBytes = useMemo(
+    () => items.reduce((sum, it) => sum + (it.file?.size ?? 0), 0),
+    [items],
+  );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
     getInitialSelectedIds(validIds),
   );
@@ -70,6 +78,7 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
   const [gapHours, setGapHours] = useState(2);
   const [scheduling, setScheduling] = useState(false);
   const [progress, setProgress] = useState("");
+  const [uploadPercent, setUploadPercent] = useState(0);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cancelledRef = useRef(false);
@@ -212,13 +221,30 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
     setError(null);
     cancelledRef.current = false;
     setScheduling(true);
-    setProgress(`Uploading ${items.length} image${items.length === 1 ? "" : "s"}…`);
+    setUploadPercent(0);
+    setProgress(
+      `Uploading ${items.length} image${items.length === 1 ? "" : "s"}… 0%`,
+    );
     const accountIds = Array.from(selectedIds);
 
     try {
       // Phase 1: upload all images in parallel
+      const perFileProgress = new Array(items.length).fill(0);
       const uploadResults = await Promise.allSettled(
-        items.map((item, index) => uploadFile(item.file, index)),
+        items.map((item, index) =>
+          uploadFile(item.file, index, (idx, percent) => {
+            perFileProgress[idx] = percent;
+            const sum = perFileProgress.reduce((a, b) => a + b, 0);
+            const avg =
+              perFileProgress.length > 0
+                ? Math.round(sum / perFileProgress.length)
+                : percent;
+            setUploadPercent(avg);
+            setProgress(
+              `Uploading ${items.length} image${items.length === 1 ? "" : "s"}… ${avg}%`,
+            );
+          }),
+        ),
       );
 
       const successfulUploads = uploadResults
@@ -245,6 +271,7 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
       }
 
       // Phase 2: create posts sequentially for successful uploads
+      setUploadPercent(100);
       setProgress("Creating scheduled posts…");
       for (const { result, index } of successfulUploads) {
         if (cancelledRef.current) break;
@@ -267,6 +294,7 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
     } finally {
       setScheduling(false);
       setProgress("");
+      setUploadPercent(0);
     }
   };
 
@@ -334,6 +362,10 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
               maxFiles={MAX_IMAGES}
               maxSizeBytes={MAX_IMAGE_BYTES}
               maxSizeLabel="JPG, PNG, WEBP, GIF. Max 50MB each."
+              maxTotalBytes={LIMITS.totalSize}
+              currentTotalBytes={totalSelectedBytes}
+              currentCount={items.length}
+              helperText="Up to 100 images · 250MB total batch size"
               onFilesSelected={addFiles}
               disabled={items.length >= MAX_IMAGES}
             />
@@ -422,8 +454,19 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
 
       {scheduling && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="rounded-2xl bg-card border border-border p-8 shadow-xl flex flex-col items-center gap-4">
+          <div className="w-[360px] max-w-[90vw] rounded-2xl bg-card border border-border p-8 shadow-xl flex flex-col items-center gap-4">
             <p className="font-medium text-foreground">{progress}</p>
+            <div className="w-full">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full bg-accent transition-all duration-200"
+                  style={{ width: `${uploadPercent}%` }}
+                />
+              </div>
+              <div className="mt-1 text-center text-xs font-medium text-foreground">
+                {uploadPercent}%
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => {

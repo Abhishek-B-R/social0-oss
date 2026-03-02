@@ -708,8 +708,7 @@ export function CollectionPostForm({
           );
         }
       }
-      router.push(`/dashboard/posts/${result.postId}`);
-      router.refresh();
+      // Keep the success overlay visible; let user choose when to navigate.
       return;
     }
     if (effectiveMode === "draft") {

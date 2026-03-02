@@ -22,8 +22,11 @@ import {
 } from "@/lib/video-aspect-ratio";
 import { uploadFile } from "@/lib/upload-file";
 
-const MAX_VIDEOS = 50;
-const MAX_VIDEO_BYTES = 500 * 1024 * 1024; // 500MB - API may limit to 100MB
+const LIMITS = {
+  totalSize: 250 * 1024 * 1024, // 250MB total batch
+  perFile: 250 * 1024 * 1024, // 250MB per file
+  maxCount: 100, // 100 videos max count
+};
 const VIDEO_ACCEPT = "video/mp4,video/quicktime,video/webm,video/x-msvideo";
 
 type Account = {
@@ -66,6 +69,10 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
     useRememberedAccounts(REMEMBER_KEY_VIDEO);
 
   const [items, setItems] = useState<VideoItem[]>([]);
+  const totalSelectedBytes = useMemo(
+    () => items.reduce((sum, it) => sum + (it.file?.size ?? 0), 0),
+    [items],
+  );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
     getInitialSelectedIds(validIds),
   );
@@ -142,7 +149,7 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
           setItems((prev) => {
             const toAdd = validFiles.slice(
               0,
-              Math.max(0, MAX_VIDEOS - prev.length),
+              Math.max(0, LIMITS.maxCount - prev.length),
             );
             if (toAdd.length === 0) return prev;
 
@@ -399,19 +406,22 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
 
             <BulkUploadZone
               accept={VIDEO_ACCEPT}
-              maxFiles={MAX_VIDEOS}
-              maxSizeBytes={MAX_VIDEO_BYTES}
+              maxFiles={LIMITS.maxCount}
+              maxSizeBytes={LIMITS.perFile}
+              maxTotalBytes={LIMITS.totalSize}
+              currentTotalBytes={totalSelectedBytes}
+              currentCount={items.length}
               maxSizeLabel="MP4, MOV, AVI. Max 500MB each."
+              helperText="Up to 100 videos · 250MB total batch size"
               onFilesSelected={addFiles}
-              disabled={items.length >= MAX_VIDEOS}
+              disabled={items.length >= LIMITS.maxCount}
             />
 
             <p className="text-xs text-muted-foreground">
-              Upload up to {MAX_VIDEOS} videos at once. Need more? Upload in
-              batches.
+              The 250MB total batch size limit is enforced client-side.
             </p>
 
-            {isUploading && (
+            {isUploading && !scheduling && (
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
@@ -497,8 +507,19 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
 
       {scheduling && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="rounded-2xl bg-card border border-border p-8 shadow-xl flex flex-col items-center gap-4">
-            <p className="font-medium text-foreground">{progress}</p>
+          <div className="w-[360px] max-w-[90vw] rounded-2xl bg-card border border-border p-8 shadow-xl flex flex-col items-center gap-4">
+            <p className="font-medium text-foreground text-center">{progress}</p>
+            <div className="w-full">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full bg-accent transition-all duration-200"
+                  style={{ width: `${uploadPercent}%` }}
+                />
+              </div>
+              <div className="mt-1 text-center text-xs font-medium text-foreground">
+                {uploadPercent}%
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => {

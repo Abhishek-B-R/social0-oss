@@ -105,7 +105,7 @@ export function UploadPublishOverlay({
                 }
                 className="rounded-xl border border-border bg-bg px-5 py-2.5 text-sm font-semibold text-text hover:bg-bg-muted transition-colors"
               >
-                View posts
+                {publishedPostId ? "View post" : "View posts"}
               </Link>
             </div>
           </>
