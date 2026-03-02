@@ -19,13 +19,19 @@ import type {
 } from "@/components/autoplug/AutoPlugPanel";
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
-import { MdOutlineVideoLibrary, MdClose, MdImage } from "react-icons/md";
+import { MdOutlineVideoLibrary, MdClose } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettings } from "@/components/TikTokSettings";
 import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
 import { PinterestConfigInline } from "@/components/PinterestConfigInline";
 import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
 import { PLATFORMS } from "@/lib/platforms";
+import {
+  validateVideoAspectRatio,
+  formatAspectRatioLabel,
+  getAspectRatioDescriptor,
+  ASPECT_RATIO_MESSAGE,
+} from "@/lib/video-aspect-ratio";
 import {
   ChevronDown,
   ChevronUp,
@@ -60,11 +66,11 @@ const defaultTiktokSettings: TikTokPostSettings = {
   brand_content: false,
 };
 
-function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
+// function formatDuration(seconds: number): string {
+//   const m = Math.floor(seconds / 60);
+//   const s = Math.floor(seconds % 60);
+//   return `${m}:${s.toString().padStart(2, "0")}`;
+// }
 
 export function VideoPostForm({
   accounts,
@@ -77,7 +83,6 @@ export function VideoPostForm({
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
   const [content, setContent] = useState("");
@@ -139,6 +144,8 @@ export function VideoPostForm({
   const [platformCaptions, setPlatformCaptions] = useState<
     Record<string, PlatformCaptionState>
   >({});
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadPercent, setUploadPercent] = useState<number | null>(null);
 
   const selectedAccounts = useMemo(
     () => accounts.filter((a) => selectedIds.has(a.id)),
@@ -166,7 +173,6 @@ export function VideoPostForm({
   );
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!videoPreview) setIsVertical(false);
   }, [videoPreview]);
 
@@ -285,7 +291,6 @@ export function VideoPostForm({
         acc.platform === "pinterest",
     );
     if (hasMediaPreviewPlatform) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPreviewCardMode("media");
     } else {
       setPreviewCardMode("post");
@@ -326,19 +331,38 @@ export function VideoPostForm({
       if (!file || !file.type.startsWith("video/")) return;
       e.preventDefault();
       setError(null);
-      if (videoPreviewRef.current) URL.revokeObjectURL(videoPreviewRef.current);
-      if (customThumbnailPreviewRef.current)
-        URL.revokeObjectURL(customThumbnailPreviewRef.current);
-      setVideoFile(file);
-      setVideoPreview(URL.createObjectURL(file));
-      setVideoDuration(0);
-      setCustomThumbnail(null);
-      setCustomThumbnailPreview(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      validateVideoAspectRatio(file).then((result) => {
+        if (!result.valid) {
+          setError(
+            `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(result.ratio)}${getAspectRatioDescriptor(result.ratio)}.`,
+          );
+          return;
+        }
+        if (videoPreviewRef.current)
+          URL.revokeObjectURL(videoPreviewRef.current);
+        if (customThumbnailPreviewRef.current)
+          URL.revokeObjectURL(customThumbnailPreviewRef.current);
+        setVideoFile(file);
+        setVideoPreview(URL.createObjectURL(file));
+        setVideoDuration(0);
+        setCustomThumbnail(null);
+        setCustomThumbnailPreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      });
     };
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
   }, [isUploadZoneHovered]);
+
+  useEffect(() => {
+    if (!isUploading) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isUploading]);
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -348,14 +372,22 @@ export function VideoPostForm({
       return;
     }
     setError(null);
-    if (videoPreview) URL.revokeObjectURL(videoPreview);
-    if (customThumbnailPreview) URL.revokeObjectURL(customThumbnailPreview);
-    setVideoFile(file);
-    setVideoPreview(URL.createObjectURL(file));
-    setVideoDuration(0);
-    setCustomThumbnail(null);
-    setCustomThumbnailPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    validateVideoAspectRatio(file).then((result) => {
+      if (!result.valid) {
+        setError(
+          `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(result.ratio)}${getAspectRatioDescriptor(result.ratio)}.`,
+        );
+        return;
+      }
+      if (videoPreview) URL.revokeObjectURL(videoPreview);
+      if (customThumbnailPreview) URL.revokeObjectURL(customThumbnailPreview);
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+      setVideoDuration(0);
+      setCustomThumbnail(null);
+      setCustomThumbnailPreview(null);
+    });
   };
 
   const removeVideo = () => {
@@ -370,20 +402,20 @@ export function VideoPostForm({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const onCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
-    if (customThumbnailPreview) URL.revokeObjectURL(customThumbnailPreview);
-    setCustomThumbnail(file);
-    setCustomThumbnailPreview(URL.createObjectURL(file));
-    if (coverInputRef.current) coverInputRef.current.value = "";
-  };
+  // const onCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0];
+  //   if (!file || !file.type.startsWith("image/")) return;
+  //   if (customThumbnailPreview) URL.revokeObjectURL(customThumbnailPreview);
+  //   setCustomThumbnail(file);
+  //   setCustomThumbnailPreview(URL.createObjectURL(file));
+  //   if (coverInputRef.current) coverInputRef.current.value = "";
+  // };
 
-  const clearCoverImage = () => {
-    if (customThumbnailPreview) URL.revokeObjectURL(customThumbnailPreview);
-    setCustomThumbnail(null);
-    setCustomThumbnailPreview(null);
-  };
+  // const clearCoverImage = () => {
+  //   if (customThumbnailPreview) URL.revokeObjectURL(customThumbnailPreview);
+  //   setCustomThumbnail(null);
+  //   setCustomThumbnailPreview(null);
+  // };
 
   const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
   const tiktokAccounts = selectedAccounts.filter(
@@ -401,6 +433,13 @@ export function VideoPostForm({
   const pinterestAccounts = selectedAccounts.filter(
     (a) => a.platform === "pinterest",
   );
+  const hasVideo = !!videoFile || !!existingVideoId;
+  const submitDisabled =
+    accounts.length === 0 ||
+    !content.trim() ||
+    !hasVideo ||
+    (mode === "scheduled" && !scheduledAt) ||
+    isUploading;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -482,20 +521,81 @@ export function VideoPostForm({
     if (existingVideoId && !videoFile) {
       mediaIds.push(existingVideoId);
     } else if (videoFile) {
+      setIsUploading(true);
       try {
-        const fd = new FormData();
-        fd.set("file", videoFile);
-        const res = await fetch("/api/media/upload", {
-          method: "POST",
-          body: fd,
+        const uploadResult = await new Promise<{
+          ok: boolean;
+          data: { id?: string; error?: string };
+        }>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          const fd = new FormData();
+          fd.set("file", videoFile);
+
+          xhr.open("POST", "/api/media/upload");
+          xhr.responseType = "json";
+
+          xhr.upload.onprogress = (event) => {
+            if (!event.lengthComputable) return;
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setUploadPercent(percent);
+          };
+
+          xhr.onerror = () => {
+            reject(new Error("Network error during video upload."));
+          };
+          xhr.onabort = () => {
+            reject(new Error("Video upload was aborted."));
+          };
+
+          xhr.onload = () => {
+            const status = xhr.status;
+            let body: { id?: string; error?: string } = {};
+            try {
+              body =
+                (xhr.response as { id?: string; error?: string }) ??
+                (xhr.responseText
+                  ? (JSON.parse(xhr.responseText) as {
+                      id?: string;
+                      error?: string;
+                    })
+                  : {});
+            } catch {
+              body = {};
+            }
+            resolve({ ok: status >= 200 && status < 300, data: body });
+          };
+
+          xhr.send(fd);
         });
-        const data = await res.json();
-        if (data.id) mediaIds.push(data.id);
-      } catch {
-        setError("Failed to upload video.");
+
+        if (!uploadResult.ok) {
+          setError(
+            uploadResult.data.error ??
+              "Video upload failed. The file may be unsupported or too large.",
+          );
+          setLoading(false);
+          setOverlayPhase("idle");
+          return;
+        }
+        if (uploadResult.data.id) mediaIds.push(uploadResult.data.id);
+        if (mediaIds.length === 0) {
+          setError("Video upload did not return an ID. Please try again.");
+          setLoading(false);
+          setOverlayPhase("idle");
+          return;
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to upload video. Please try again.",
+        );
         setLoading(false);
         setOverlayPhase("idle");
         return;
+      } finally {
+        setIsUploading(false);
+        setUploadPercent(null);
       }
     }
     setOverlayPhase(
@@ -713,8 +813,6 @@ export function VideoPostForm({
         ? "Schedule post"
         : "Post now";
 
-  const hasVideo = !!videoFile || !!existingVideoId;
-
   if (draftLoading) {
     return (
       <div className="flex items-center justify-center py-12 text-text-muted">
@@ -737,6 +835,8 @@ export function VideoPostForm({
                   : "publishing"
           }
           uploadProgress={videoFile ? "1 of 1" : null}
+          uploadPercent={uploadPercent}
+          showUploadWarning={isUploading}
           mediaType="video"
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
@@ -771,14 +871,9 @@ export function VideoPostForm({
             scheduledAt={scheduledAt}
             setScheduledAt={setScheduledAt}
             error={error}
-            loading={loading}
+            loading={loading || isUploading}
             submitLabel={submitLabel}
-            submitDisabled={
-              accounts.length === 0 ||
-              !content.trim() ||
-              !hasVideo ||
-              (mode === "scheduled" && !scheduledAt)
-            }
+            submitDisabled={submitDisabled}
             use24HourTimeFormat={use24HourTimeFormat}
             hideScheduleAndActions
             searchSlot={
