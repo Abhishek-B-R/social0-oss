@@ -554,6 +554,17 @@ export function CollectionPostForm({
       });
     }
 
+    const finalMediaIds = mediaIds.filter(
+      (id): id is string => id !== null,
+    );
+    if (finalMediaIds.length !== mediaIds.length) {
+      setError("One or more media items failed to upload. Please try again.");
+      setLoading(false);
+      setOverlayPhase("idle");
+      setUploadProgress(null);
+      return;
+    }
+
     setUploadProgress(null);
     setOverlayPhase(
       (intendedModeRef.current ?? mode) === "draft" ? "saving" : "publishing",
@@ -585,7 +596,7 @@ export function CollectionPostForm({
           initialDraftId,
           text,
           accountIds,
-          mediaIds,
+          finalMediaIds,
           meta,
         );
         setLoading(false);
@@ -603,7 +614,7 @@ export function CollectionPostForm({
           initialDraftId,
           text,
           accountIds,
-          mediaIds,
+          finalMediaIds,
           meta,
         );
         setLoading(false);
@@ -645,7 +656,7 @@ export function CollectionPostForm({
           text,
           accountIds,
           scheduledAt,
-          mediaIds,
+          finalMediaIds,
           meta,
         );
         setLoading(false);
@@ -665,7 +676,7 @@ export function CollectionPostForm({
       accountIds,
       effectiveMode,
       scheduledAt,
-      mediaIds,
+      finalMediaIds,
       meta,
     );
     setLoading(false);
