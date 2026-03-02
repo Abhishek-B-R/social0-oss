@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useFormStatus } from "react-dom";
 import {
   signOutAllDevices,
@@ -21,17 +20,6 @@ function SaveButton({ label = "Save" }: { label?: string }) {
       className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? "Saving..." : label}
-    </button>
-  );
-}
-
-function SecondaryButton({ label }: { label: string }) {
-  return (
-    <button
-      type="button"
-      className="rounded-xl border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text shadow-sm transition-colors hover:bg-bg-bg-muted"
-    >
-      {label}
     </button>
   );
 }
@@ -167,7 +155,9 @@ export function SettingsClient({
       </section>
 
       <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-text">Platform Preferences</h2>
+        <h2 className="text-lg font-semibold text-text">
+          Platform Preferences
+        </h2>
         <form action={updatePlatformPreferences} className="mt-4 space-y-4">
           <Toggle
             id="use24HourTimeFormat"
@@ -178,7 +168,6 @@ export function SettingsClient({
           <SaveButton />
         </form>
       </section>
-
     </div>
   );
 }

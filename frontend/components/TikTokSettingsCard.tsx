@@ -1,6 +1,6 @@
 "use client";
 
-type TikTokSettingsCardAccount = {
+export type TikTokSettingsCardAccount = {
   id: string;
   platform: string;
   platformUsername?: string | null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   TikTokSettings,
   type TikTokPostSettings,
@@ -33,13 +33,9 @@ export function TikTokSettingsModal({
 }: TikTokSettingsModalProps) {
   const [localValidation, setLocalValidation] = useState<string | null>(null);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (validationError) setLocalValidation(validationError);
-    else setLocalValidation(null);
-  }, [validationError]);
-
   if (!isOpen) return null;
+
+  const displayError = localValidation ?? validationError ?? null;
 
   const handleSave = () => {
     if (!value.privacy_level?.trim()) {
@@ -65,8 +61,6 @@ export function TikTokSettingsModal({
     setLocalValidation(null);
     onSave();
   };
-
-  const displayError = localValidation || validationError;
 
   return (
     <div

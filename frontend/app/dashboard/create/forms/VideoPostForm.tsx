@@ -238,7 +238,8 @@ export function VideoPostForm({
             const t = tiktok[id];
             if (t && typeof t === "object") {
               next[id] = {
-                privacy_level: typeof t.privacy_level === "string" ? t.privacy_level : "",
+                privacy_level:
+                  typeof t.privacy_level === "string" ? t.privacy_level : "",
                 disable_comment: !!t.disable_comment,
                 disable_duet: !!t.disable_duet,
                 disable_stitch: !!t.disable_stitch,

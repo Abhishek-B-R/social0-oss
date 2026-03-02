@@ -1,6 +1,6 @@
 "use client";
 
-import { RevealSection } from "@/components/RevealSection";
+import { RevealSection } from "@/components/landing/RevealSection";
 import {
   SiLinkedin,
   SiInstagram,

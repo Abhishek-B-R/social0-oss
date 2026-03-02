@@ -24,7 +24,12 @@ const MAX_ASPECT = 3; // 3:1
 export class TikTokImageError extends Error {
   constructor(
     message: string,
-    public readonly code: "min_dimensions" | "aspect_ratio" | "download" | "process" | "upload",
+    public readonly code:
+      | "min_dimensions"
+      | "aspect_ratio"
+      | "download"
+      | "process"
+      | "upload",
   ) {
     super(message);
     this.name = "TikTokImageError";
@@ -69,8 +74,8 @@ export async function processImageForTikTok(
   const inputBuffer = Buffer.from(await res.arrayBuffer());
   const image = sharp(inputBuffer);
   const metadata = await image.metadata();
-  let width = metadata.width ?? 0;
-  let height = metadata.height ?? 0;
+  const width = metadata.width ?? 0;
+  const height = metadata.height ?? 0;
 
   if (width < MIN_SIDE_TIKTOK || height < MIN_SIDE_TIKTOK) {
     throw new TikTokImageError(
@@ -121,7 +126,10 @@ export async function processImageForTikTok(
   if (outputBuffer.length > MAX_FILE_BYTES) {
     const scaleDown = Math.sqrt(MAX_FILE_BYTES / outputBuffer.length);
     const newW = Math.max(MIN_SIDE_TIKTOK, Math.round(targetWidth * scaleDown));
-    const newH = Math.max(MIN_SIDE_TIKTOK, Math.round(targetHeight * scaleDown));
+    const newH = Math.max(
+      MIN_SIDE_TIKTOK,
+      Math.round(targetHeight * scaleDown),
+    );
     outputBuffer = await sharp(workBuffer)
       .resize(newW, newH, { fit: "inside" })
       .jpeg({ quality: JPEG_QUALITY, mozjpeg: true })

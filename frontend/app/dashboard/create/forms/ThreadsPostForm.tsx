@@ -283,19 +283,22 @@ export function ThreadsPostForm({
         }
         const { draft } = result;
         const metadata = draft.metadata as Record<string, unknown> | null;
-        const twitterThread =
-          metadata?.twitterThread as
-            | { parts?: Array<{ text?: string; mediaIds?: string[] }> }
-            | undefined;
+        const twitterThread = metadata?.twitterThread as
+          | { parts?: Array<{ text?: string; mediaIds?: string[] }> }
+          | undefined;
         const partsFromMeta = twitterThread?.parts;
 
-        if (partsFromMeta && Array.isArray(partsFromMeta) && partsFromMeta.length > 0) {
-          const mediaById = new Map(
-            draft.media.map((m) => [m.id, m]),
-          );
+        if (
+          partsFromMeta &&
+          Array.isArray(partsFromMeta) &&
+          partsFromMeta.length > 0
+        ) {
+          const mediaById = new Map(draft.media.map((m) => [m.id, m]));
           const restoredPosts: ThreadPost[] = partsFromMeta.map((part, i) => {
             const text = typeof part.text === "string" ? part.text : "";
-            const partMediaIds = Array.isArray(part.mediaIds) ? part.mediaIds : [];
+            const partMediaIds = Array.isArray(part.mediaIds)
+              ? part.mediaIds
+              : [];
             const images: MediaImage[] = [];
             const videos: MediaVideo[] = [];
             partMediaIds.forEach((mid, idx) => {
@@ -860,11 +863,9 @@ export function ThreadsPostForm({
             (a) => a.platform === "twitter_x",
           );
           if (xAccount) {
-            createAutoPlug(
-              result.postId,
-              xAccount.id,
-              autoPlugConfig,
-            ).catch(() => {});
+            createAutoPlug(result.postId, xAccount.id, autoPlugConfig).catch(
+              () => {},
+            );
           }
         }
         return;

@@ -114,7 +114,9 @@ export function PinterestConfigInline({
     onChange(next);
   };
 
-  const handleCreateBoard = async (e: React.FormEvent | React.MouseEvent | React.KeyboardEvent) => {
+  const handleCreateBoard = async (
+    e: React.FormEvent | React.MouseEvent | React.KeyboardEvent,
+  ) => {
     e.preventDefault();
     (e as React.SyntheticEvent).stopPropagation();
     if (!createName.trim()) return;
@@ -140,7 +142,9 @@ export function PinterestConfigInline({
       setCreateBoardInline(false);
       setCreateName("");
     } catch (err) {
-      setBoardsError(err instanceof Error ? err.message : "Failed to create board");
+      setBoardsError(
+        err instanceof Error ? err.message : "Failed to create board",
+      );
     } finally {
       setCreateSubmitting(false);
     }
@@ -166,7 +170,9 @@ export function PinterestConfigInline({
             disabled={boardsLoading}
             className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
           >
-            <option value="">{boardsLoading ? "Loading boards…" : "Select a board"}</option>
+            <option value="">
+              {boardsLoading ? "Loading boards…" : "Select a board"}
+            </option>
             {boards.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
@@ -251,7 +257,9 @@ export function PinterestConfigInline({
             onChange={(e) => handleRememberBoardChange(e.target.checked)}
             className="rounded border-border text-accent focus:ring-accent size-4"
           />
-          <span className="text-sm text-text">Remember board for this account</span>
+          <span className="text-sm text-text">
+            Remember board for this account
+          </span>
         </label>
       </div>
 
@@ -268,15 +276,19 @@ export function PinterestConfigInline({
           type="text"
           value={value.title}
           onChange={(e) =>
-            onChange({ ...value, title: e.target.value.slice(0, PINTEREST_TITLE_MAX) })
+            onChange({
+              ...value,
+              title: e.target.value.slice(0, PINTEREST_TITLE_MAX),
+            })
           }
           maxLength={PINTEREST_TITLE_MAX}
           placeholder="Enter your pin title"
           className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
         />
         <p className="mt-1 text-xs text-text-muted">
-          Title for your Pinterest pin (max {PINTEREST_TITLE_MAX} characters). If not
-          provided, uses first {PINTEREST_TITLE_MAX} characters of caption.
+          Title for your Pinterest pin (max {PINTEREST_TITLE_MAX} characters).
+          If not provided, uses first {PINTEREST_TITLE_MAX} characters of
+          caption.
         </p>
       </div>
 
@@ -307,7 +319,9 @@ export function PinterestConfigInline({
             onChange={(e) => handleRememberLinkChange(e.target.checked)}
             className="rounded border-border text-accent focus:ring-accent size-4"
           />
-          <span className="text-sm text-text">Remember link for this account</span>
+          <span className="text-sm text-text">
+            Remember link for this account
+          </span>
         </label>
       </div>
     </div>

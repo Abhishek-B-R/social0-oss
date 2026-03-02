@@ -15,17 +15,17 @@ export function encrypt(data: {
     throw new Error("ENCRYPTION_KEY must be 64 hex characters (32 bytes)");
   }
 
-  const iv = crypto.randomBytes(16);
+  const iv = crypto.randomBytes(16); // 16 byte initialization vector
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
 
   const dataString = JSON.stringify(data);
   let encrypted = cipher.update(dataString, "utf8", "base64");
   encrypted += cipher.final("base64");
 
-  const authTag = cipher.getAuthTag();
+  const authTag = cipher.getAuthTag(); // Verifies ciphertext wasn’t modified & prevents tampering
 
   // Format: iv:encrypted:authTag (all base64)
-  return `${iv.toString("base64")}:${encrypted}:${authTag.toString("base64")}`;
+  return `${iv.toString("base64")}:${encrypted}:${authTag.toString("base64")}`; // iv : ciphertext : authTag
 }
 
 export function decrypt(encrypted: string): {
@@ -60,10 +60,7 @@ export function decrypt(encrypted: string): {
 
 // Token encryption (per plan §4: AES-256-GCM, HKDF per-account salt)
 // Storage format: version:salt:iv:ciphertext:authTag
-export function encryptToken(
-  token: string,
-  accountId: string,
-): string {
+export function encryptToken(token: string, accountId: string): string {
   const key = Buffer.from(env.ENCRYPTION_KEY, "hex");
   if (key.length !== 32) {
     throw new Error("ENCRYPTION_KEY must be 64 hex characters (32 bytes)");

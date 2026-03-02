@@ -122,6 +122,7 @@ export function AccountBubbleSelector({
                 aria-disabled={expired}
               >
                 {acc.profileImageUrl?.trim() && !failedImageIds.has(acc.id) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={acc.profileImageUrl}
                     alt={acc.platformUsername || acc.platform}

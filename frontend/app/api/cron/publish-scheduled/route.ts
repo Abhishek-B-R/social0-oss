@@ -3,26 +3,14 @@ import { db } from "@/db";
 import { posts } from "@/db/schema";
 import { and, eq, lt, lte } from "drizzle-orm";
 import { executePublish } from "@/app/actions/publish";
-import { constantTimeEquals } from "@/lib/validation";
+import { verifyCronAuth } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  const expected = process.env.CRON_SECRET;
-
-  if (!expected) {
-    return NextResponse.json({ error: "Cron not configured" }, { status: 503 });
-  }
-
-  if (
-    !authHeader ||
-    !authHeader.startsWith("Bearer ") ||
-    !constantTimeEquals(authHeader.slice(7), expected)
-  ) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authError = verifyCronAuth(request);
+  if (authError) return authError;
 
   // Mark stuck "publishing" posts as failed so they don't stay in limbo forever
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);

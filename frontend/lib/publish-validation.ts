@@ -5,6 +5,8 @@
  * - Input sanitization
  */
 
+import { isValidUUID } from "@/lib/validation";
+
 const CONTENT_LIMITS: Record<string, { max: number; name: string }> = {
   facebook: { max: 63_206, name: "Facebook" },
   bluesky: { max: 3000, name: "Bluesky" },
@@ -89,11 +91,9 @@ export function validateCollectionMedia(
   }
 }
 
-/** UUID v4 format (no secrets, just shape). */
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
+/** Post IDs are UUIDs. Re-export for callers that need post-id semantics. */
 export function isValidPostId(id: string): boolean {
-  return UUID_REGEX.test(id);
+  return isValidUUID(id);
 }
 
 /**

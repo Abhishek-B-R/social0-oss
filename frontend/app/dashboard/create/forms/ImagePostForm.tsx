@@ -23,8 +23,10 @@ import type {
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
 import { MdClose } from "react-icons/md";
-import { type TikTokPostSettings } from "@/components/TikTokSettings";
-import { TikTokSettings } from "@/components/TikTokSettings";
+import {
+  TikTokSettings,
+  type TikTokPostSettings,
+} from "@/components/TikTokSettings";
 import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
 import { PinterestConfigInline } from "@/components/PinterestConfigInline";
 import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
@@ -245,7 +247,8 @@ export function ImagePostForm({
             const t = tiktok[id];
             if (t && typeof t === "object") {
               next[id] = {
-                privacy_level: typeof t.privacy_level === "string" ? t.privacy_level : "",
+                privacy_level:
+                  typeof t.privacy_level === "string" ? t.privacy_level : "",
                 disable_comment: !!t.disable_comment,
                 disable_duet: !!t.disable_duet,
                 disable_stitch: !!t.disable_stitch,

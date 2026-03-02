@@ -25,9 +25,9 @@ export async function GET() {
   const authHeader = { Authorization: `Bearer ${cronSecret}` };
   const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-  const [publishRes, resurfaceRes, autoplugRes] = await Promise.allSettled([
+  const [publishRes, repostRes, autoplugRes] = await Promise.allSettled([
     fetch(`${base}/api/cron/publish-scheduled`, { headers: authHeader }),
-    fetch(`${base}/api/cron/resurface`, { headers: authHeader }),
+    fetch(`${base}/api/cron/repost`, { headers: authHeader }),
     fetch(`${base}/api/cron/autoplug`, { headers: authHeader }),
   ]);
 
@@ -42,7 +42,7 @@ export async function GET() {
 
   return NextResponse.json({
     publishScheduled: await result(publishRes),
-    resurface: await result(resurfaceRes),
+    repost: await result(repostRes),
     autoplug: await result(autoplugRes),
   });
 }

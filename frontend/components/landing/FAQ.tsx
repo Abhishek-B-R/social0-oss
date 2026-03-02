@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RevealSection } from "@/components/RevealSection";
+import { RevealSection } from "@/components/landing/RevealSection";
 
 const faqs = [
   {

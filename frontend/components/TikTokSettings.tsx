@@ -21,7 +21,7 @@ export type TikTokPostSettings = {
 };
 
 const DEFAULT_SETTINGS: TikTokPostSettings = {
-  privacy_level: "SELF_ONLY", // Default to Public
+  privacy_level: "SELF_ONLY", // Only me; user can change to Public/Friends
   // TikTok requires interactions OFF by default; user must opt in.
   disable_comment: true,
   disable_duet: true,
@@ -53,16 +53,7 @@ export function TikTokSettings({
       brand_organic: value.brand_organic ?? false,
       brand_content: value.brand_content ?? false,
     }));
-  }, [
-    value.privacy_level,
-    value.disable_comment,
-    value.disable_duet,
-    value.disable_stitch,
-    value.brand_content_toggle,
-    value.brand_organic,
-    value.brand_content,
-    value,
-  ]);
+  }, [value]);
 
   const updateSetting = <K extends keyof TikTokPostSettings>(
     key: K,
@@ -74,19 +65,11 @@ export function TikTokSettings({
   };
 
   const getDeclarationText = () => {
-    if (!settings.brand_content_toggle) {
+    if (!settings.brand_content_toggle || settings.brand_organic) {
       return "By posting, you agree to TikTok's Music Usage Confirmation";
     }
-    const hasOrganic = settings.brand_organic;
-    const hasBranded = settings.brand_content;
-    if (hasOrganic && hasBranded) {
+    if (settings.brand_content) {
       return "By posting, you agree to TikTok's Branded Content Policy and Music Usage Confirmation";
-    }
-    if (hasBranded) {
-      return "By posting, you agree to TikTok's Branded Content Policy and Music Usage Confirmation";
-    }
-    if (hasOrganic) {
-      return "By posting, you agree to TikTok's Music Usage Confirmation";
     }
     return "By posting, you agree to TikTok's Music Usage Confirmation";
   };

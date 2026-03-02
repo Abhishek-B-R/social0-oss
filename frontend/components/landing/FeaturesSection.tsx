@@ -1,10 +1,10 @@
 "use client";
 
-import { RevealSection } from "@/components/RevealSection";
-import { PostComposerMockup } from "@/components/feature-mockups/PostComposerMockup";
-import { CalendarMockup } from "@/components/feature-mockups/CalendarMockup";
-import { PlatformToggleMockup } from "@/components/feature-mockups/PlatformToggleMockup";
-import { SecurityChecklistMockup } from "@/components/feature-mockups/SecurityChecklistMockup";
+import { RevealSection } from "@/components/landing/RevealSection";
+import { PostComposerMockup } from "@/components/landing/feature-mockups/PostComposerMockup";
+import { CalendarMockup } from "@/components/landing/feature-mockups/CalendarMockup";
+import { PlatformToggleMockup } from "@/components/landing/feature-mockups/PlatformToggleMockup";
+import { SecurityChecklistMockup } from "@/components/landing/feature-mockups/SecurityChecklistMockup";
 
 const features = [
   {

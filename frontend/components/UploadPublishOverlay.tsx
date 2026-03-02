@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Loader2, Upload, Send, Image, Video, Layers } from "lucide-react";
-import { ResurfaceSetup } from "@/components/repost/ResurfaceSetup";
 
 export type OverlayPhase = "uploading" | "publishing" | "saving";
 
@@ -42,6 +41,7 @@ const DONT_KEEP_WAITING = (
 );
 
 function MediaTypeIcon({ type }: { type: "image" | "video" | "mixed" }) {
+  // eslint-disable-next-line jsx-a11y/alt-text
   if (type === "image") return <Image className="h-6 w-6 text-emerald-600" />;
   if (type === "video") return <Video className="h-6 w-6 text-emerald-600" />;
   return <Layers className="h-6 w-6 text-emerald-600" />;
@@ -60,12 +60,9 @@ export function UploadPublishOverlay({
   isScheduling = false,
   showLinks = false,
   publishedPostId = null,
-  publishedToX = false,
-  resurfacePreFill = null,
 }: UploadPublishOverlayProps) {
   const isUploading = phase === "uploading";
   const isSavingDraft = phase === "saving";
-  const isPublishing = phase === "publishing" && !showLinks;
 
   return (
     <div
@@ -95,7 +92,11 @@ export function UploadPublishOverlay({
                 Create another post
               </Link>
               <Link
-                href={publishedPostId ? `/dashboard/posts/${publishedPostId}` : "/dashboard/posts"}
+                href={
+                  publishedPostId
+                    ? `/dashboard/posts/${publishedPostId}`
+                    : "/dashboard/posts"
+                }
                 className="rounded-xl border border-border bg-bg px-5 py-2.5 text-sm font-semibold text-text hover:bg-bg-muted transition-colors"
               >
                 View posts

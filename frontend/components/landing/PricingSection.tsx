@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { RevealSection } from "@/components/RevealSection";
+import { RevealSection } from "@/components/landing/RevealSection";
 
 const plans = [
   {

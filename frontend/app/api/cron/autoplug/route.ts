@@ -4,28 +4,14 @@ import { autoPlugs, connectedAccounts } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { TwitterApi } from "twitter-api-v2";
 import { decryptToken } from "@/lib/encryption";
-import { constantTimeEquals } from "@/lib/validation";
+import { verifyCronAuth } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  const expected = process.env.CRON_SECRET;
-
-  if (!expected) {
-    return NextResponse.json(
-      { error: "Cron not configured" },
-      { status: 503 },
-    );
-  }
-  if (
-    !authHeader ||
-    !authHeader.startsWith("Bearer ") ||
-    !constantTimeEquals(authHeader.slice(7), expected)
-  ) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authError = verifyCronAuth(request);
+  if (authError) return authError;
 
   const now = new Date();
 

@@ -6,13 +6,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { TikTokSettingsCard } from "@/components/TikTokSettingsCard";
-
-type TikTokSettingsCardAccount = {
-  id: string;
-  platform: string;
-  platformUsername?: string | null;
-};
+import {
+  TikTokSettingsCard,
+  type TikTokSettingsCardAccount,
+} from "@/components/TikTokSettingsCard";
 
 type TikTokSettingsListModalProps = {
   isOpen: boolean;
@@ -31,11 +28,6 @@ export function TikTokSettingsListModal({
   onOpenSettings,
   onClose,
 }: TikTokSettingsListModalProps) {
-  const handleOpen = (accountId: string) => {
-    onOpenSettings(accountId);
-    onClose();
-  };
-
   return (
     <Dialog
       open={isOpen}
@@ -57,7 +49,10 @@ export function TikTokSettingsListModal({
             selectedAccountIds={selectedAccountIds}
             allAccounts={allAccounts}
             configuredIds={configuredIds}
-            onOpenSettings={handleOpen}
+            onOpenSettings={(accountId) => {
+              onOpenSettings(accountId);
+              onClose();
+            }}
           />
         </div>
       </DialogContent>

@@ -4,9 +4,9 @@ import { connectedAccounts, verification } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { decrypt, encryptToken } from "@/lib/encryption";
-import { redirect } from "next/navigation";
 import crypto from "crypto";
 import { normalizeAppUrl } from "@/lib/url-utils";
+import { safeRedirect, rethrowNextRedirect } from "@/lib/redirect";
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import OAuth from "oauth-1.0a";
@@ -17,17 +17,6 @@ function isValidProfileImageUrl(url: unknown): url is string {
   if (typeof url !== "string" || !url.trim()) return false;
   const u = url.trim();
   return u.startsWith("http://") || u.startsWith("https://");
-}
-
-/** Ensure we only ever redirect to a string URL. Passing an object (e.g. from state/callbackUrl) would 404. */
-function safeRedirect(url: unknown, fallback: string): never {
-  const s =
-    typeof url === "string" &&
-    url.trim().length > 0 &&
-    (url.startsWith("/") || url.startsWith("http"))
-      ? url.trim()
-      : fallback;
-  return redirect(s);
 }
 
 export async function GET(
@@ -184,12 +173,7 @@ export async function GET(
           console.log("Twitter pfp:", userInfo.profileImageUrl);
         }
       } catch (err) {
-        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-          throw err;
-        }
-        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-          throw err;
-        }
+        rethrowNextRedirect(err);
         console.error(
           "Twitter OAuth 1.0a verify_credentials fetch failed:",
           err,
@@ -252,12 +236,7 @@ export async function GET(
         "/dashboard/connections",
       );
     } catch (err) {
-      if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-        throw err;
-      }
-      if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-        throw err;
-      }
+      rethrowNextRedirect(err);
       console.error("Twitter OAuth 1.0a callback error:", err);
       return safeRedirect(
         `/dashboard?error=oauth_failed&platform=${platform}`,
@@ -317,12 +296,7 @@ export async function GET(
         .where(eq(verification.id, decrypted.stateId));
     }
   } catch (err) {
-    if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-      throw err;
-    }
-    if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-      throw err;
-    }
+    rethrowNextRedirect(err);
     console.error("OAuth state decryption failed");
     return safeRedirect(
       `/dashboard?error=invalid_state&platform=${platform}`,
@@ -616,38 +590,8 @@ export async function GET(
       tokens = await tokenResponse.json();
     }
 
-    // Pinterest: fetch boards and redirect to selection (store in verification table)
-    // Using sandbox API for trial access
+    // Pinterest: complete connection (board chosen at post time)
     if (platform === "pinterest") {
-      const boardsRes = await fetch("https://api.pinterest.com/v5/boards", {
-        headers: { Authorization: `Bearer ${tokens.access_token}` },
-      });
-      const boardsData = (await boardsRes.json().catch(() => ({}))) as {
-        items?: { id: string; name?: string }[];
-      };
-      if (!boardsData.items?.length) {
-        // No boards yet: send user to "create board" flow (sandbox helper)
-        const stateId = crypto.randomBytes(16).toString("hex");
-        const payload = JSON.stringify({
-          userId,
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token || null,
-          expires_in: tokens.expires_in || null,
-        });
-        await db.insert(verification).values({
-          id: stateId,
-          identifier: "pinterest_create_board",
-          value: encryptToken(payload, stateId),
-          expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-        });
-        const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
-        const createBoardUrl =
-          typeof baseUrl === "string" && baseUrl
-            ? `${baseUrl}/dashboard/connect/pinterest/create-board?token=${stateId}`
-            : `/dashboard/connect/pinterest/create-board?token=${stateId}`;
-        return safeRedirect(createBoardUrl, "/dashboard/connections");
-      }
-      // Complete Pinterest connection without board selection (board chosen at post time)
       const userInfo = await fetchPlatformUserInfo(platform, tokens.access_token);
       const existing = await db.query.connectedAccounts.findFirst({
         where: and(
@@ -748,14 +692,7 @@ export async function GET(
               if (isValidProfileImageUrl(url)) profileImageUrl = url;
             }
           } catch (err) {
-            if (
-              (err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")
-            ) {
-              throw err;
-            }
-            if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-              throw err;
-            }
+            rethrowNextRedirect(err);
             console.error("Facebook page picture fetch failed:", err);
           }
         }
@@ -821,12 +758,7 @@ export async function GET(
           userInfo.id = tokens.user_id;
         }
       } catch (err) {
-        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-          throw err;
-        }
-        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-          throw err;
-        }
+        rethrowNextRedirect(err);
         console.error(`Failed to fetch ${platform} user info:`, err);
         // Use user_id from token response
         userInfo = {
@@ -839,12 +771,7 @@ export async function GET(
       try {
         userInfo = await fetchPlatformUserInfo(platform, tokens.access_token);
       } catch (err) {
-        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-          throw err;
-        }
-        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-          throw err;
-        }
+        rethrowNextRedirect(err);
         console.error("Failed to fetch platform user info:", err);
         // Use placeholder values if fetch fails
         userInfo = {
@@ -969,12 +896,7 @@ export async function GET(
       "/dashboard/connections",
     );
   } catch (err) {
-    if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-      throw err;
-    }
-    if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-      throw err;
-    }
+    rethrowNextRedirect(err);
     console.error("OAuth callback error:", err);
     return safeRedirect(
       `/dashboard?error=oauth_failed&platform=${platform}`,
@@ -1030,14 +952,7 @@ async function fetchPlatformUserInfo(
               profileImageUrl = fallbackUrl;
           }
         } catch (err) {
-          if (
-            (err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")
-          ) {
-            throw err;
-          }
-          if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-            throw err;
-          }
+          rethrowNextRedirect(err);
           console.error("LinkedIn profile picture fetch failed:", err);
           const fallbackUrl = data.picture ?? null;
           if (isValidProfileImageUrl(fallbackUrl))
@@ -1049,12 +964,7 @@ async function fetchPlatformUserInfo(
           profileImageUrl,
         };
       } catch (err) {
-        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-          throw err;
-        }
-        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-          throw err;
-        }
+        rethrowNextRedirect(err);
         console.error("LinkedIn user info fetch failed:", err);
       }
       break;
@@ -1102,14 +1012,7 @@ async function fetchPlatformUserInfo(
             profileImageUrl = raw;
           }
         } catch (pfpErr) {
-          if (
-            (pfpErr as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")
-          ) {
-            throw pfpErr;
-          }
-          if (pfpErr instanceof Error && pfpErr.message === "NEXT_REDIRECT") {
-            throw pfpErr;
-          }
+          rethrowNextRedirect(pfpErr);
           console.error("Instagram profile_picture_url parse failed:", pfpErr);
         }
         return {
@@ -1118,12 +1021,7 @@ async function fetchPlatformUserInfo(
           profileImageUrl,
         };
       } catch (err) {
-        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-          throw err;
-        }
-        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-          throw err;
-        }
+        rethrowNextRedirect(err);
         console.error("Instagram user info fetch failed:", err);
       }
       break;
@@ -1177,12 +1075,7 @@ async function fetchPlatformUserInfo(
           userResponse.status,
         );
       } catch (err) {
-        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-          throw err;
-        }
-        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-          throw err;
-        }
+        rethrowNextRedirect(err);
         console.error("YouTube user info fetch failed:", err);
       }
       break;
@@ -1222,12 +1115,7 @@ async function fetchPlatformUserInfo(
           console.error("X/Twitter userinfo error:", errorText);
         }
       } catch (err) {
-        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-          throw err;
-        }
-        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-          throw err;
-        }
+        rethrowNextRedirect(err);
         console.error("X/Twitter user info fetch failed:", err);
       }
       break;
@@ -1248,12 +1136,7 @@ async function fetchPlatformUserInfo(
         const raw = data.threads_profile_picture_url;
         if (isValidProfileImageUrl(raw)) profileImageUrl = raw;
       } catch (err) {
-        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-          throw err;
-        }
-        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-          throw err;
-        }
+        rethrowNextRedirect(err);
         console.error("Threads threads_profile_picture_url parse failed:", err);
       }
       return {
@@ -1283,12 +1166,7 @@ async function fetchPlatformUserInfo(
         }
         console.error("Pinterest user_account error:", response.status, data);
       } catch (err) {
-        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-          throw err;
-        }
-        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-          throw err;
-        }
+        rethrowNextRedirect(err);
         console.error("Pinterest user info fetch failed:", err);
       }
       break;
@@ -1320,12 +1198,7 @@ async function fetchPlatformUserInfo(
           console.error("TikTok userinfo error:", errorText);
         }
       } catch (err) {
-        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-          throw err;
-        }
-        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-          throw err;
-        }
+        rethrowNextRedirect(err);
         console.error("TikTok user info fetch failed:", err);
       }
       break;

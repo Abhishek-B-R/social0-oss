@@ -354,11 +354,7 @@ export function TextPostForm({
     <>
       {overlayPhase !== "idle" && (
         <UploadPublishOverlay
-          phase={
-            overlayPhase === "saving"
-              ? "saving"
-              : "publishing"
-          }
+          phase={overlayPhase === "saving" ? "saving" : "publishing"}
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
           publishedPostId={overlayPhase === "done" ? publishedPostId : null}
@@ -377,363 +373,363 @@ export function TextPostForm({
         />
       )}
       <form
-      ref={formRef}
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-6 lg:flex-row lg:items-start"
-    >
-      <div className="min-w-0 flex-1 space-y-6 lg:max-w-[65%]">
-        <PostFormOptions
-          accounts={filteredAccounts}
-          selectedIds={selectedIds}
-          onToggleAccount={toggleAccount}
-          selectAll={selectAll}
+        ref={formRef}
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-6 lg:flex-row lg:items-start"
+      >
+        <div className="min-w-0 flex-1 space-y-6 lg:max-w-[65%]">
+          <PostFormOptions
+            accounts={filteredAccounts}
+            selectedIds={selectedIds}
+            onToggleAccount={toggleAccount}
+            selectAll={selectAll}
+            mode={mode}
+            setMode={setMode}
+            scheduledAt={scheduledAt}
+            setScheduledAt={setScheduledAt}
+            error={error}
+            loading={loading}
+            submitLabel={submitLabel}
+            submitDisabled={
+              accounts.length === 0 ||
+              !content.trim() ||
+              (mode === "scheduled" && !scheduledAt) ||
+              !!twitterValidationError
+            }
+            use24HourTimeFormat={use24HourTimeFormat}
+            hideScheduleAndActions
+            searchSlot={
+              <input
+                type="search"
+                placeholder="Search accounts..."
+                value={accountSearch}
+                onChange={(e) => setAccountSearch(e.target.value)}
+                className="h-8 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
+              />
+            }
+            remember={remember}
+            onRememberChange={setRemember}
+          />
+
+          {error && (
+            <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+              {error}
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
+            <label
+              htmlFor="content"
+              className="block text-sm font-semibold text-text mb-2"
+            >
+              What do you want to post?
+            </label>
+            <textarea
+              id="content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Write your post..."
+              rows={6}
+              className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+              required
+            />
+            {showContentError && !content.trim() && (
+              <p className="mt-2 text-xs text-destructive">Text is required</p>
+            )}
+            {twitterThreadWarning && (
+              <p className="mt-3 text-sm text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg px-3 py-2">
+                Twitter: This will post as a thread (each part between{" "}
+                <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">
+                  ---
+                </code>{" "}
+                is a separate tweet). Max {TWITTER_MAX_LENGTH} characters per
+                part. Media will only appear on the first tweet.
+              </p>
+            )}
+          </div>
+
+          {showCustomCaptionsSection && (
+            <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setCustomCaptionsExpanded((prev) => !prev)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <span className="text-sm font-semibold text-text">
+                  Custom Captions
+                </span>
+                <span className="text-text-muted">
+                  {customCaptionsExpanded ? "▼" : "▶"}
+                </span>
+              </button>
+              {customCaptionsExpanded && (
+                <div className="mt-4 space-y-4">
+                  {selectedAccounts.map((account) => {
+                    const state =
+                      accountCaptionsState[account.id] ??
+                      ({
+                        overridden: false,
+                        value: "",
+                      } as AccountCaptionState);
+                    const username = account.platformUsername?.trim()
+                      ? `@${account.platformUsername}`
+                      : account.platform;
+                    const platformName = platformDisplayName(account.platform);
+                    return (
+                      <div
+                        key={account.id}
+                        className="rounded-xl border border-border bg-bg p-4"
+                      >
+                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex min-w-0 flex-1 items-center gap-2">
+                            <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-muted text-sm font-semibold text-text-muted">
+                              {account.profileImageUrl?.trim() ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img
+                                  src={account.profileImageUrl}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                  referrerPolicy="no-referrer"
+                                />
+                              ) : (
+                                (account.platformUsername ?? account.platform)
+                                  .charAt(0)
+                                  .toUpperCase()
+                              )}
+                            </div>
+                            <span className="min-w-0 truncate text-sm font-medium text-text">
+                              {username}
+                              <span className="text-text-muted">
+                                {" · "}
+                                {platformName}
+                              </span>
+                            </span>
+                            <PlatformIcon
+                              platform={account.platform}
+                              size={14}
+                              className="shrink-0 text-text-muted"
+                            />
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            {state.overridden ? (
+                              <>
+                                <span className="rounded bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
+                                  Edited caption
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setAccountCaptionsState((prev) => ({
+                                      ...prev,
+                                      [account.id]: {
+                                        overridden: false,
+                                        value: "",
+                                      },
+                                    }))
+                                  }
+                                  className="text-xs font-medium text-accent hover:text-accent-hover"
+                                >
+                                  Clear
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-xs text-text-muted">
+                                  Using main caption
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setAccountCaptionsState((prev) => ({
+                                      ...prev,
+                                      [account.id]: {
+                                        overridden: true,
+                                        value: content.trim(),
+                                      },
+                                    }))
+                                  }
+                                  className="text-xs font-medium text-accent hover:text-accent-hover"
+                                >
+                                  Edit
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <textarea
+                          rows={3}
+                          placeholder={
+                            state.overridden
+                              ? undefined
+                              : content || "Main caption..."
+                          }
+                          value={state.overridden ? state.value : ""}
+                          readOnly={!state.overridden}
+                          onChange={(e) =>
+                            state.overridden &&
+                            setAccountCaptionsState((prev) => ({
+                              ...prev,
+                              [account.id]: {
+                                ...(prev[account.id] ?? {
+                                  overridden: false,
+                                  value: "",
+                                }),
+                                overridden: true,
+                                value: e.target.value,
+                              },
+                            }))
+                          }
+                          className="w-full rounded-lg border border-input bg-bg px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 disabled:opacity-70"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <SchedulePostSidebar
           mode={mode}
           setMode={setMode}
           scheduledAt={scheduledAt}
           setScheduledAt={setScheduledAt}
-          error={error}
           loading={loading}
-          submitLabel={submitLabel}
           submitDisabled={
             accounts.length === 0 ||
             !content.trim() ||
             (mode === "scheduled" && !scheduledAt) ||
             !!twitterValidationError
           }
+          hasAccountSelected={selectedIds.size > 0}
+          error={error}
           use24HourTimeFormat={use24HourTimeFormat}
-          hideScheduleAndActions
-          searchSlot={
-            <input
-              type="search"
-              placeholder="Search accounts..."
-              value={accountSearch}
-              onChange={(e) => setAccountSearch(e.target.value)}
-              className="h-8 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
-            />
-          }
-          remember={remember}
-          onRememberChange={setRemember}
-        />
-
-        {error && (
-          <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
-            {error}
-          </div>
-        )}
-
-        <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
-          <label
-            htmlFor="content"
-            className="block text-sm font-semibold text-text mb-2"
-          >
-            What do you want to post?
-          </label>
-          <textarea
-            id="content"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Write your post..."
-            rows={6}
-            className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-            required
-          />
-          {showContentError && !content.trim() && (
-            <p className="mt-2 text-xs text-destructive">Text is required</p>
-          )}
-          {twitterThreadWarning && (
-            <p className="mt-3 text-sm text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg px-3 py-2">
-              Twitter: This will post as a thread (each part between{" "}
-              <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">
-                ---
-              </code>{" "}
-              is a separate tweet). Max {TWITTER_MAX_LENGTH} characters per
-              part. Media will only appear on the first tweet.
-            </p>
-          )}
-        </div>
-
-        {showCustomCaptionsSection && (
-          <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
-            <button
-              type="button"
-              onClick={() => setCustomCaptionsExpanded((prev) => !prev)}
-              className="flex w-full items-center justify-between text-left"
-            >
-              <span className="text-sm font-semibold text-text">
-                Custom Captions
-              </span>
-              <span className="text-text-muted">
-                {customCaptionsExpanded ? "▼" : "▶"}
-              </span>
-            </button>
-            {customCaptionsExpanded && (
-              <div className="mt-4 space-y-4">
-                {selectedAccounts.map((account) => {
-                  const state =
-                    accountCaptionsState[account.id] ??
-                    ({
-                      overridden: false,
-                      value: "",
-                    } as AccountCaptionState);
-                  const username = account.platformUsername?.trim()
-                    ? `@${account.platformUsername}`
-                    : account.platform;
-                  const platformName = platformDisplayName(account.platform);
-                  return (
-                    <div
-                      key={account.id}
-                      className="rounded-xl border border-border bg-bg p-4"
-                    >
-                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex min-w-0 flex-1 items-center gap-2">
-                          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-muted text-sm font-semibold text-text-muted">
-                            {account.profileImageUrl?.trim() ? (
-                              /* eslint-disable-next-line @next/next/no-img-element */
-                              <img
-                                src={account.profileImageUrl}
-                                alt=""
-                                className="h-full w-full object-cover"
-                                referrerPolicy="no-referrer"
-                              />
-                            ) : (
-                              (account.platformUsername ?? account.platform)
-                                .charAt(0)
-                                .toUpperCase()
-                            )}
-                          </div>
-                          <span className="min-w-0 truncate text-sm font-medium text-text">
-                            {username}
-                            <span className="text-text-muted">
-                              {" · "}
-                              {platformName}
-                            </span>
-                          </span>
-                          <PlatformIcon
-                            platform={account.platform}
-                            size={14}
-                            className="shrink-0 text-text-muted"
-                          />
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          {state.overridden ? (
-                            <>
-                              <span className="rounded bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
-                                Edited caption
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setAccountCaptionsState((prev) => ({
-                                    ...prev,
-                                    [account.id]: {
-                                      overridden: false,
-                                      value: "",
-                                    },
-                                  }))
-                                }
-                                className="text-xs font-medium text-accent hover:text-accent-hover"
-                              >
-                                Clear
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-xs text-text-muted">
-                                Using main caption
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setAccountCaptionsState((prev) => ({
-                                    ...prev,
-                                    [account.id]: {
-                                      overridden: true,
-                                      value: content.trim(),
-                                    },
-                                  }))
-                                }
-                                className="text-xs font-medium text-accent hover:text-accent-hover"
-                              >
-                                Edit
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <textarea
-                        rows={3}
-                        placeholder={
-                          state.overridden
-                            ? undefined
-                            : content || "Main caption..."
-                        }
-                        value={state.overridden ? state.value : ""}
-                        readOnly={!state.overridden}
-                        onChange={(e) =>
-                          state.overridden &&
-                          setAccountCaptionsState((prev) => ({
-                            ...prev,
-                            [account.id]: {
-                              ...(prev[account.id] ?? {
-                                overridden: false,
-                                value: "",
-                              }),
-                              overridden: true,
-                              value: e.target.value,
-                            },
-                          }))
-                        }
-                        className="w-full rounded-lg border border-input bg-bg px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 disabled:opacity-70"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      <SchedulePostSidebar
-        mode={mode}
-        setMode={setMode}
-        scheduledAt={scheduledAt}
-        setScheduledAt={setScheduledAt}
-        loading={loading}
-        submitDisabled={
-          accounts.length === 0 ||
-          !content.trim() ||
-          (mode === "scheduled" && !scheduledAt) ||
-          !!twitterValidationError
-        }
-        hasAccountSelected={selectedIds.size > 0}
-        error={error}
-        use24HourTimeFormat={use24HourTimeFormat}
-        intendedModeRef={intendedModeRef}
-        formRef={formRef}
-        draftId={initialDraftId ?? null}
-        onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}
-        autoRepost={
-          resurfaceVisible
-            ? {
-                visible: true,
-                enabled: !!resurfaceConfig,
-                onToggle: () => {
-                  if (resurfaceConfig) setResurfaceConfig(null);
-                  else {
+          intendedModeRef={intendedModeRef}
+          formRef={formRef}
+          draftId={initialDraftId ?? null}
+          onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}
+          autoRepost={
+            resurfaceVisible
+              ? {
+                  visible: true,
+                  enabled: !!resurfaceConfig,
+                  onToggle: () => {
+                    if (resurfaceConfig) setResurfaceConfig(null);
+                    else {
+                      configBeforeResurfaceRef.current = resurfaceConfig;
+                      setResurfaceModalOpen(true);
+                    }
+                  },
+                  onOpenSettings: () => {
                     configBeforeResurfaceRef.current = resurfaceConfig;
                     setResurfaceModalOpen(true);
-                  }
-                },
-                onOpenSettings: () => {
-                  configBeforeResurfaceRef.current = resurfaceConfig;
-                  setResurfaceModalOpen(true);
-                },
-              }
-            : null
-        }
-        autoPlug={
-          autoPlugVisible
-            ? {
-                visible: true,
-                enabled: !!autoPlugConfig,
-                onToggle: () => {
-                  if (autoPlugConfig) setAutoPlugConfig(null);
-                  else {
+                  },
+                }
+              : null
+          }
+          autoPlug={
+            autoPlugVisible
+              ? {
+                  visible: true,
+                  enabled: !!autoPlugConfig,
+                  onToggle: () => {
+                    if (autoPlugConfig) setAutoPlugConfig(null);
+                    else {
+                      configBeforeAutoPlugRef.current = autoPlugConfig;
+                      setAutoplugModalOpen(true);
+                    }
+                  },
+                  onOpenSettings: () => {
                     configBeforeAutoPlugRef.current = autoPlugConfig;
                     setAutoplugModalOpen(true);
-                  }
-                },
-                onOpenSettings: () => {
-                  configBeforeAutoPlugRef.current = autoPlugConfig;
-                  setAutoplugModalOpen(true);
-                },
-              }
-            : null
-        }
-      >
-        <div className="hidden lg:block rounded-xl border border-border bg-bg p-4 shadow-sm mt-16">
-          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-text">
-            Post Preview
-          </h3>
-          {selectedAccounts.length === 0 ? (
-            <p className="text-sm italic text-text-muted">
-              Select an account to preview.
-            </p>
-          ) : (
-            <div className="flex gap-3">
-              <div className="flex flex-col items-center">
-                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-muted text-sm font-semibold text-text-muted">
-                  {selectedAccounts[0]?.profileImageUrl?.trim() ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={selectedAccounts[0].profileImageUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
+                  },
+                }
+              : null
+          }
+        >
+          <div className="hidden lg:block rounded-xl border border-border bg-bg p-4 shadow-sm mt-16">
+            <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-text">
+              Post Preview
+            </h3>
+            {selectedAccounts.length === 0 ? (
+              <p className="text-sm italic text-text-muted">
+                Select an account to preview.
+              </p>
+            ) : (
+              <div className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-muted text-sm font-semibold text-text-muted">
+                    {selectedAccounts[0]?.profileImageUrl?.trim() ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={selectedAccounts[0].profileImageUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      (
+                        selectedAccounts[0]?.platformUsername ??
+                        selectedAccounts[0]?.platform ??
+                        "A"
+                      )
+                        .charAt(0)
+                        .toUpperCase()
+                    )}
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-text">
+                    {selectedAccounts[0]?.platformUsername
+                      ? `@${selectedAccounts[0].platformUsername}`
+                      : (selectedAccounts[0]?.platform ?? "Account")}
+                  </p>
+                  {content.trim() ? (
+                    <p className="mt-0.5 text-sm text-text whitespace-pre-wrap wrap-break-word">
+                      {content}
+                    </p>
                   ) : (
-                    (
-                      selectedAccounts[0]?.platformUsername ??
-                      selectedAccounts[0]?.platform ??
-                      "A"
-                    )
-                      .charAt(0)
-                      .toUpperCase()
+                    <p className="mt-0.5 text-sm italic text-text-muted">
+                      Start typing to see your post preview.
+                    </p>
                   )}
                 </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-text">
-                  {selectedAccounts[0]?.platformUsername
-                    ? `@${selectedAccounts[0].platformUsername}`
-                    : (selectedAccounts[0]?.platform ?? "Account")}
-                </p>
-                {content.trim() ? (
-                  <p className="mt-0.5 text-sm text-text whitespace-pre-wrap wrap-break-word">
-                    {content}
-                  </p>
-                ) : (
-                  <p className="mt-0.5 text-sm italic text-text-muted">
-                    Start typing to see your post preview.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </SchedulePostSidebar>
+            )}
+          </div>
+        </SchedulePostSidebar>
 
-      {resurfaceModalOpen && (
-        <AutoResurfaceSettingsModal
-          isOpen={true}
-          selectedAccountIds={selectedAccountIds}
-          allAccounts={accounts}
-          initialConfig={resurfaceConfig}
-          onChange={setResurfaceConfig}
-          onDone={() => setResurfaceModalOpen(false)}
-          onCancel={() => {
-            setResurfaceConfig(configBeforeResurfaceRef.current ?? null);
-            setResurfaceModalOpen(false);
-          }}
-          use24HourTimeFormat={use24HourTimeFormat}
-        />
-      )}
-      {autoplugModalOpen && (
-        <AutoPlugSettingsModal
-          isOpen={true}
-          selectedAccountIds={selectedAccountIds}
-          allAccounts={accounts as ConnectedAccount[]}
-          initialConfig={autoPlugConfig}
-          onChange={setAutoPlugConfig}
-          onDone={() => setAutoplugModalOpen(false)}
-          onCancel={() => {
-            setAutoPlugConfig(configBeforeAutoPlugRef.current ?? null);
-            setAutoplugModalOpen(false);
-          }}
-        />
-      )}
-    </form>
+        {resurfaceModalOpen && (
+          <AutoResurfaceSettingsModal
+            isOpen={true}
+            selectedAccountIds={selectedAccountIds}
+            allAccounts={accounts}
+            initialConfig={resurfaceConfig}
+            onChange={setResurfaceConfig}
+            onDone={() => setResurfaceModalOpen(false)}
+            onCancel={() => {
+              setResurfaceConfig(configBeforeResurfaceRef.current ?? null);
+              setResurfaceModalOpen(false);
+            }}
+            use24HourTimeFormat={use24HourTimeFormat}
+          />
+        )}
+        {autoplugModalOpen && (
+          <AutoPlugSettingsModal
+            isOpen={true}
+            selectedAccountIds={selectedAccountIds}
+            allAccounts={accounts as ConnectedAccount[]}
+            initialConfig={autoPlugConfig}
+            onChange={setAutoPlugConfig}
+            onDone={() => setAutoplugModalOpen(false)}
+            onCancel={() => {
+              setAutoPlugConfig(configBeforeAutoPlugRef.current ?? null);
+              setAutoplugModalOpen(false);
+            }}
+          />
+        )}
+      </form>
     </>
   );
 }

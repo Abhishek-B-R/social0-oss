@@ -3,32 +3,12 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { PLATFORMS } from "@/lib/platforms";
+import { PRE_CONNECT } from "@/lib/preconnect";
 import { BlueskyByokModal } from "@/components/BlueskyByokModal";
 import { PreConnectModal } from "@/components/PreConnectModal";
 import { InstagramConnectionModal } from "@/components/InstagramConnectionModal";
 
 type Platform = (typeof PLATFORMS)[number];
-
-const PRE_CONNECT: Record<
-  string,
-  { title: string; checkmark: string; info: string }
-> = {
-  facebook: {
-    title: "Connect Facebook Page",
-    checkmark: "Must be a Facebook Page",
-    info: "Social0 only supports connecting Facebook Pages. Personal profiles and Groups are not supported.",
-  },
-  instagram: {
-    title: "Connect Instagram",
-    checkmark: "Must be a Business or Creator account",
-    info: "Personal Instagram accounts are not supported. Your account must be connected to a Facebook Page.",
-  },
-  youtube: {
-    title: "Connect YouTube",
-    checkmark: "Must have a YouTube channel",
-    info: "A Google account alone is not enough — you need an active YouTube channel to upload content.",
-  },
-};
 
 export function ConnectPlatformButton({
   platform,

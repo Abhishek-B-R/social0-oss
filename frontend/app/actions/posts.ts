@@ -17,6 +17,7 @@ import {
   getPostMedia,
   type PostMediaRow,
 } from "@/app/dashboard/posts/posts-list-data";
+import { isValidUUID } from "@/lib/validation";
 
 export type CreatePostResult =
   | { success: true; postId: string }
@@ -49,12 +50,9 @@ export async function createPost(
     };
   }
 
-  // Validate UUIDs
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (
-    !selectedAccountIds.every((id) => uuidRegex.test(id)) ||
-    !mediaIds.every((id) => uuidRegex.test(id))
+    !selectedAccountIds.every((id) => isValidUUID(id)) ||
+    !mediaIds.every((id) => isValidUUID(id))
   ) {
     return {
       success: false,
@@ -84,7 +82,8 @@ export async function createPost(
   ) {
     return {
       success: false,
-      error: "One or more selected accounts are invalid or do not belong to you",
+      error:
+        "One or more selected accounts are invalid or do not belong to you",
     };
   }
 
@@ -166,9 +165,7 @@ export async function deletePost(postId: string): Promise<DeletePostResult> {
     return { success: false, error: "Unauthorized" };
   }
 
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(postId)) {
+  if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
   }
 
@@ -176,14 +173,14 @@ export async function deletePost(postId: string): Promise<DeletePostResult> {
     const [post] = await db
       .select({ id: posts.id })
       .from(posts)
-      .where(
-        and(eq(posts.id, postId), eq(posts.userId, session.user.id)),
-      );
+      .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
     if (!post) {
       return { success: false, error: "Post not found" };
     }
 
-    await db.delete(postPublications).where(eq(postPublications.postId, postId));
+    await db
+      .delete(postPublications)
+      .where(eq(postPublications.postId, postId));
     await db.delete(posts).where(eq(posts.id, postId));
 
     revalidatePath("/dashboard");
@@ -229,14 +226,18 @@ export async function updatePost(
     };
   }
 
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(postId) || !selectedAccountIds.every((id) => uuidRegex.test(id))) {
+  if (
+    !isValidUUID(postId) ||
+    !selectedAccountIds.every((id) => isValidUUID(id))
+  ) {
     return { success: false, error: "Invalid ID format" };
   }
 
   const finalMediaIds = mediaIds ?? [];
-  if (finalMediaIds.length > 0 && !finalMediaIds.every((id) => uuidRegex.test(id))) {
+  if (
+    finalMediaIds.length > 0 &&
+    !finalMediaIds.every((id) => isValidUUID(id))
+  ) {
     return { success: false, error: "Invalid media ID format" };
   }
 
@@ -251,7 +252,10 @@ export async function updatePost(
     );
   const ownedIds = new Set(ownedAccounts.map((a) => a.id));
   const validIds = [...new Set(selectedAccountIds)];
-  if (validIds.length !== ownedIds.size || !validIds.every((id) => ownedIds.has(id))) {
+  if (
+    validIds.length !== ownedIds.size ||
+    !validIds.every((id) => ownedIds.has(id))
+  ) {
     return {
       success: false,
       error: "One or more selected accounts are invalid",
@@ -262,14 +266,15 @@ export async function updatePost(
     const [existing] = await db
       .select({ id: posts.id, status: posts.status, mediaIds: posts.mediaIds })
       .from(posts)
-      .where(
-        and(eq(posts.id, postId), eq(posts.userId, session.user.id)),
-      );
+      .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
     if (!existing) {
       return { success: false, error: "Post not found" };
     }
     if (existing.status !== "draft" && existing.status !== "scheduled") {
-      return { success: false, error: "Only drafts and scheduled posts can be edited" };
+      return {
+        success: false,
+        error: "Only drafts and scheduled posts can be edited",
+      };
     }
 
     if (finalMediaIds.length > 0) {
@@ -303,7 +308,9 @@ export async function updatePost(
       })
       .where(eq(posts.id, postId));
 
-    const removedMediaIds = oldMediaIds.filter((id) => !finalMediaIds.includes(id));
+    const removedMediaIds = oldMediaIds.filter(
+      (id) => !finalMediaIds.includes(id),
+    );
     if (removedMediaIds.length > 0) {
       await db
         .delete(mediaUploads)
@@ -315,7 +322,9 @@ export async function updatePost(
         );
     }
 
-    await db.delete(postPublications).where(eq(postPublications.postId, postId));
+    await db
+      .delete(postPublications)
+      .where(eq(postPublications.postId, postId));
     await db.insert(postPublications).values(
       validIds.map((connectedAccountId) => ({
         postId,
@@ -358,9 +367,7 @@ export async function getDraft(postId: string): Promise<GetDraftResult> {
   if (!session) {
     return { success: false, error: "Unauthorized" };
   }
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(postId)) {
+  if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
   }
   const post = await getPostForEdit(postId, session.user.id);
@@ -372,15 +379,11 @@ export async function getDraft(postId: string): Promise<GetDraftResult> {
   }
   const mediaIds = post.mediaIds ?? [];
   const media =
-    mediaIds.length > 0
-      ? await getPostMedia(session.user.id, mediaIds)
-      : [];
+    mediaIds.length > 0 ? await getPostMedia(session.user.id, mediaIds) : [];
   const [row] = await db
     .select({ metadata: posts.metadata })
     .from(posts)
-    .where(
-      and(eq(posts.id, postId), eq(posts.userId, session.user.id)),
-    );
+    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
   return {
     success: true,
     draft: {
@@ -403,25 +406,23 @@ export async function deleteDraft(postId: string): Promise<DeleteDraftResult> {
   if (!session) {
     return { success: false, error: "Unauthorized" };
   }
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(postId)) {
+  if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
   }
   try {
     const [post] = await db
       .select({ id: posts.id, status: posts.status })
       .from(posts)
-      .where(
-        and(eq(posts.id, postId), eq(posts.userId, session.user.id)),
-      );
+      .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
     if (!post) {
       return { success: false, error: "Post not found" };
     }
     if (post.status !== "draft") {
       return { success: false, error: "Only drafts can be deleted" };
     }
-    await db.delete(postPublications).where(eq(postPublications.postId, postId));
+    await db
+      .delete(postPublications)
+      .where(eq(postPublications.postId, postId));
     await db.delete(posts).where(eq(posts.id, postId));
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/posts");
@@ -486,8 +487,7 @@ export async function updateAndPublish(
   } catch (err) {
     return {
       success: false,
-      error:
-        err instanceof Error ? err.message : "Publish failed after update",
+      error: err instanceof Error ? err.message : "Publish failed after update",
     };
   }
   return { success: true, postId: draftId };

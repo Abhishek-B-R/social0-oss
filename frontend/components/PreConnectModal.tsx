@@ -39,7 +39,7 @@ export function PreConnectModal({
           <span className="shrink-0 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs">✓</span>
           <p className="text-sm font-medium text-gray-700">{checkmark}</p>
         </div>
-        <p className="text-sm text-gray-600 mb-6">{info}</p>
+        <p className="text-sm text-gray-600 mb-6 whitespace-pre-line">{info}</p>
         <div className="flex gap-3">
           <button
             type="button"

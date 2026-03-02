@@ -3,19 +3,10 @@ import { connectedAccounts, verification } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { decrypt, encryptToken } from "@/lib/encryption";
-import { redirect } from "next/navigation";
 import crypto from "crypto";
 import { normalizeAppUrl } from "@/lib/url-utils";
+import { safeRedirect, rethrowNextRedirect } from "@/lib/redirect";
 import { NextRequest } from "next/server";
-
-/** Ensure we only ever redirect to a string URL. Passing an object (e.g. from state/callbackUrl) would 404. */
-function safeRedirect(url: unknown, fallback: string): never {
-  const s =
-    typeof url === "string" && url.trim().length > 0 && (url.startsWith("/") || url.startsWith("http"))
-      ? url.trim()
-      : fallback;
-  return redirect(s);
-}
 
 export async function GET(
   req: NextRequest,
@@ -54,12 +45,7 @@ export async function GET(
       );
     }
   } catch (err) {
-    if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-      throw err;
-    }
-    if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-      throw err;
-    }
+    rethrowNextRedirect(err);
     console.error("Failed to decrypt state:", err);
     return safeRedirect(
       `/dashboard?error=invalid_state&platform=instagram`,
@@ -208,21 +194,11 @@ export async function GET(
               instagramProfilePictureUrl = rawUrl;
             }
           } catch (pfpErr) {
-            if ((pfpErr as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-              throw pfpErr;
-            }
-            if (pfpErr instanceof Error && pfpErr.message === "NEXT_REDIRECT") {
-              throw pfpErr;
-            }
+          rethrowNextRedirect(pfpErr);
             console.error("Instagram FB profile_picture_url parse failed:", pfpErr);
           }
         } catch (err) {
-          if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-            throw err;
-          }
-          if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-            throw err;
-          }
+          rethrowNextRedirect(err);
           console.error(`Error fetching Instagram details for ${instagramBusinessAccountId}:`, err);
           continue;
         }
@@ -236,12 +212,7 @@ export async function GET(
           instagramProfilePictureUrl,
         });
       } catch (err) {
-        if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-          throw err;
-        }
-        if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-          throw err;
-        }
+        rethrowNextRedirect(err);
         console.error(`Error checking Instagram for Page ${page.id}:`, err);
         continue;
       }
@@ -345,12 +316,7 @@ export async function GET(
       "/dashboard/connections",
     );
   } catch (err) {
-    if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-      throw err;
-    }
-    if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-      throw err;
-    }
+    rethrowNextRedirect(err);
     console.error("Instagram-Facebook OAuth callback error:", err);
     return safeRedirect(
       `/dashboard?error=oauth_failed&platform=instagram`,

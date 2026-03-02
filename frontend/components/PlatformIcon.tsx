@@ -29,6 +29,7 @@ export function PlatformIcon({
     );
   }
   return (
+    // eslint-disable-next-line react-hooks/static-components
     <Icon
       className={cn("shrink-0", className)}
       size={size}

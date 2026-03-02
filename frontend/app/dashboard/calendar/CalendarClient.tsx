@@ -13,13 +13,18 @@ import {
   addDays,
   subDays,
   isSameMonth,
-  isSameDay,
   isToday,
   parseISO,
   startOfDay,
 } from "date-fns";
 import { AccountAvatar } from "@/components/AccountAvatar";
-import { ChevronLeft, ChevronRight, Calendar, LayoutGrid, CalendarDays } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  LayoutGrid,
+  CalendarDays,
+} from "lucide-react";
 
 export type PostForCalendar = {
   id: string;
@@ -80,7 +85,9 @@ function DayCell({
           format(date, "d")
         )}
       </div>
-      <div className={`mt-1 space-y-1 ${fillHeight ? "min-h-0 flex-1 overflow-auto" : ""}`}>
+      <div
+        className={`mt-1 space-y-1 ${fillHeight ? "min-h-0 flex-1 overflow-auto" : ""}`}
+      >
         {visible.length === 0 && (
           <p className="text-xs text-text-muted">No posts</p>
         )}
@@ -96,7 +103,10 @@ function DayCell({
                   {post.snippet || "(No caption)"}
                 </p>
                 <p className="text-[10px] text-text-muted">
-                  {format(parseISO(post.displayDate), use24HourTimeFormat ? "HH:mm" : "h:mm a")}
+                  {format(
+                    parseISO(post.displayDate),
+                    use24HourTimeFormat ? "HH:mm" : "h:mm a",
+                  )}
                 </p>
               </div>
               <AccountAvatar
@@ -144,13 +154,13 @@ export function CalendarClient({
 }) {
   const today = startOfDay(new Date());
   const [currentMonth, setCurrentMonth] = useState(() =>
-    parseISO(initialMonth + "-01")
+    parseISO(initialMonth + "-01"),
   );
   const [view, setView] = useState<"month" | "week" | "day">("month");
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(() => today);
   const [weekStart, setWeekStart] = useState<Date>(() =>
-    startOfWeek(today, { weekStartsOn: WEEK_STARTS_ON })
+    startOfWeek(today, { weekStartsOn: WEEK_STARTS_ON }),
   );
 
   const postsByDate = useMemo(() => {
@@ -163,7 +173,7 @@ export function CalendarClient({
     for (const key of Object.keys(map)) {
       map[key].sort(
         (a, b) =>
-          new Date(a.displayDate).getTime() - new Date(b.displayDate).getTime()
+          new Date(a.displayDate).getTime() - new Date(b.displayDate).getTime(),
       );
     }
     return map;
@@ -171,7 +181,9 @@ export function CalendarClient({
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
-  const calendarStart = startOfWeek(monthStart, { weekStartsOn: WEEK_STARTS_ON });
+  const calendarStart = startOfWeek(monthStart, {
+    weekStartsOn: WEEK_STARTS_ON,
+  });
   const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: WEEK_STARTS_ON });
   const days: Date[] = [];
   let d = calendarStart;
@@ -199,7 +211,7 @@ export function CalendarClient({
   const handleSwitchToDay = () => {
     setView("day");
     setSelectedDate(
-      isSameMonth(today, currentMonth) ? today : startOfDay(monthStart)
+      isSameMonth(today, currentMonth) ? today : startOfDay(monthStart),
     );
   };
   const selectDay = (date: Date) => {
@@ -210,7 +222,7 @@ export function CalendarClient({
   const handlePrev = () => {
     if (view === "week") {
       goPrevWeek();
-      setCurrentMonth((m) => startOfMonth(subDays(weekStart, 7)));
+      setCurrentMonth(() => startOfMonth(subDays(weekStart, 7)));
     } else if (view === "day") {
       goPrevDay();
     } else {
@@ -220,7 +232,7 @@ export function CalendarClient({
   const handleNext = () => {
     if (view === "week") {
       goNextWeek();
-      setCurrentMonth((m) => startOfMonth(addDays(weekStart, 7)));
+      setCurrentMonth(() => startOfMonth(addDays(weekStart, 7)));
     } else if (view === "day") {
       goNextDay();
     } else {
@@ -246,9 +258,7 @@ export function CalendarClient({
   return (
     <div
       className={
-        isFullPageView
-          ? "flex min-h-0 flex-1 flex-col gap-4"
-          : "space-y-4"
+        isFullPageView ? "flex min-h-0 flex-1 flex-col gap-4" : "space-y-4"
       }
     >
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-4">
@@ -257,7 +267,13 @@ export function CalendarClient({
             type="button"
             onClick={handlePrev}
             className="rounded-lg p-2 text-text-muted hover:bg-bg-muted"
-            aria-label={view === "week" ? "Previous week" : view === "day" ? "Previous day" : "Previous month"}
+            aria-label={
+              view === "week"
+                ? "Previous week"
+                : view === "day"
+                  ? "Previous day"
+                  : "Previous month"
+            }
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -273,7 +289,13 @@ export function CalendarClient({
             type="button"
             onClick={handleNext}
             className="rounded-lg p-2 text-text-muted hover:bg-bg-muted"
-            aria-label={view === "week" ? "Next week" : view === "day" ? "Next day" : "Next month"}
+            aria-label={
+              view === "week"
+                ? "Next week"
+                : view === "day"
+                  ? "Next day"
+                  : "Next month"
+            }
           >
             <ChevronRight className="h-5 w-5" />
           </button>
@@ -283,7 +305,9 @@ export function CalendarClient({
             type="button"
             onClick={switchToMonth}
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-              view === "month" ? "bg-accent/15 text-accent" : "text-text-muted hover:bg-bg-muted"
+              view === "month"
+                ? "bg-accent/15 text-accent"
+                : "text-text-muted hover:bg-bg-muted"
             }`}
           >
             <Calendar className="h-4 w-4" />
@@ -293,7 +317,9 @@ export function CalendarClient({
             type="button"
             onClick={handleSwitchToWeek}
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-              view === "week" ? "bg-accent/15 text-accent" : "text-text-muted hover:bg-bg-muted"
+              view === "week"
+                ? "bg-accent/15 text-accent"
+                : "text-text-muted hover:bg-bg-muted"
             }`}
           >
             <LayoutGrid className="h-4 w-4" />
@@ -303,7 +329,9 @@ export function CalendarClient({
             type="button"
             onClick={handleSwitchToDay}
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-              view === "day" ? "bg-accent/15 text-accent" : "text-text-muted hover:bg-bg-muted"
+              view === "day"
+                ? "bg-accent/15 text-accent"
+                : "text-text-muted hover:bg-bg-muted"
             }`}
           >
             <CalendarDays className="h-4 w-4" />
@@ -355,9 +383,15 @@ export function CalendarClient({
               </div>
             ))}
           </div>
-          <div className="grid min-h-0 flex-1 grid-cols-7" style={{ gridTemplateRows: "1fr" }}>
+          <div
+            className="grid min-h-0 flex-1 grid-cols-7"
+            style={{ gridTemplateRows: "1fr" }}
+          >
             {weekDates.map((day) => (
-              <div key={day.toISOString()} className="flex min-h-0 flex-1 flex-col border-r border-border last:border-r-0">
+              <div
+                key={day.toISOString()}
+                className="flex min-h-0 flex-1 flex-col border-r border-border last:border-r-0"
+              >
                 <DayCell
                   date={day}
                   posts={postsByDate[format(day, "yyyy-MM-dd")] ?? []}
@@ -384,7 +418,8 @@ export function CalendarClient({
               const dayPosts = (postsByDate[dateKey] ?? []).slice();
               dayPosts.sort(
                 (a, b) =>
-                  new Date(a.displayDate).getTime() - new Date(b.displayDate).getTime()
+                  new Date(a.displayDate).getTime() -
+                  new Date(b.displayDate).getTime(),
               );
               if (dayPosts.length === 0) {
                 return (
@@ -402,14 +437,19 @@ export function CalendarClient({
                         className="flex items-center gap-4 rounded-xl border border-border bg-bg p-4 shadow-sm hover:bg-bg-muted"
                       >
                         <span className="shrink-0 text-sm font-medium text-text-muted tabular-nums">
-                          {format(parseISO(post.displayDate), use24HourTimeFormat ? "HH:mm" : "h:mm a")}
+                          {format(
+                            parseISO(post.displayDate),
+                            use24HourTimeFormat ? "HH:mm" : "h:mm a",
+                          )}
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-text line-clamp-2">
                             {post.snippet || "(No caption)"}
                           </p>
                           <span className="mt-1 inline-block rounded bg-bg-muted px-2 py-0.5 text-xs text-text-muted">
-                            {post.status === "published" ? "Posted" : "Scheduled"}
+                            {post.status === "published"
+                              ? "Posted"
+                              : "Scheduled"}
                           </span>
                         </div>
                         <AccountAvatar
@@ -429,7 +469,10 @@ export function CalendarClient({
       )}
 
       <p className="shrink-0 text-sm text-text-muted">
-        <Link href="/dashboard/posts" className="font-medium text-accent hover:text-accent/90">
+        <Link
+          href="/dashboard/posts"
+          className="font-medium text-accent hover:text-accent/90"
+        >
           View all posts →
         </Link>
       </p>
