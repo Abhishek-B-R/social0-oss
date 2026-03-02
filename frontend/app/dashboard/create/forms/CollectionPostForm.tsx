@@ -28,6 +28,7 @@ import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettings } from "@/components/TikTokSettings";
 import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
 import { ChevronDown, ChevronUp, Circle } from "lucide-react";
+import { uploadFile } from "@/lib/upload-file";
 
 type Account = {
   id: string;
@@ -107,6 +108,7 @@ export function CollectionPostForm({
   const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
   const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   const [showCaptionError, setShowCaptionError] = useState(false);
+  const [fileProgresses, setFileProgresses] = useState<number[]>([]);
 
   const defaultTiktokSettings: TikTokPostSettings = {
     privacy_level: "PUBLIC_TO_EVERYONE", // Default to Public
@@ -485,39 +487,73 @@ export function CollectionPostForm({
     setOverlayPhase("uploading");
 
     const sortedItems = getAllItems();
-    const mediaIds: string[] = [];
-    const toUpload = sortedItems.filter(
-      (i): i is typeof i & { file: File } => !!i.file,
+    const mediaIds: (string | null)[] = new Array(sortedItems.length).fill(
+      null,
     );
-    let uploadIndex = 0;
-    const total = toUpload.length;
 
-    for (const item of sortedItems) {
+    type UploadTarget = {
+      file: File;
+      mediaIndex: number;
+    };
+
+    const uploadTargets: UploadTarget[] = [];
+
+    sortedItems.forEach((item, mediaIndex) => {
       if (item.existingId) {
-        mediaIds.push(item.existingId);
-      } else {
-        const withFile = toUpload[uploadIndex];
-        if (!withFile) continue;
-        uploadIndex++;
-        setUploadProgress(`${uploadIndex} of ${total}`);
-        try {
-          const fd = new FormData();
-          fd.set("file", withFile.file);
-          const res = await fetch("/api/media/upload", {
-            method: "POST",
-            body: fd,
-          });
-          const data = await res.json();
-          if (data.id) mediaIds.push(data.id);
-        } catch {
-          setError("Failed to upload media.");
-          setLoading(false);
-          setOverlayPhase("idle");
-          setUploadProgress(null);
-          return;
-        }
+        mediaIds[mediaIndex] = item.existingId;
+      } else if (item.file) {
+        uploadTargets.push({ file: item.file, mediaIndex });
       }
+    });
+
+    if (uploadTargets.length > 0) {
+      setFileProgresses(new Array(uploadTargets.length).fill(0));
+      const uploadResults = await Promise.allSettled(
+        uploadTargets.map((target, fileIndex) =>
+          uploadFile(target.file, fileIndex, (idx, percent) => {
+            setFileProgresses((prev) => {
+              const next = [...prev];
+              next[idx] = percent;
+              const sum = next.reduce((a, b) => a + b, 0);
+              const avg =
+                next.length > 0 ? Math.round(sum / next.length) : percent;
+              setUploadProgress(`${avg}%`);
+              return next;
+            });
+          }),
+        ),
+      );
+
+      const failed = uploadResults
+        .map((result, i) => ({ result, target: uploadTargets[i] }))
+        .filter(
+          (
+            entry,
+          ): entry is { result: PromiseRejectedResult; target: UploadTarget } =>
+            entry.result.status === "rejected",
+        );
+
+      if (failed.length > 0) {
+        const firstReason = failed[0].result.reason;
+        const message =
+          firstReason instanceof Error
+            ? firstReason.message
+            : typeof firstReason === "string"
+              ? firstReason
+              : "Failed to upload one or more media items.";
+        setError(message);
+        setLoading(false);
+        setOverlayPhase("idle");
+        setUploadProgress(null);
+        return;
+      }
+
+      uploadTargets.forEach((target, i) => {
+        const result = uploadResults[i] as PromiseFulfilledResult<{ id: string }>;
+        mediaIds[target.mediaIndex] = result.value.id;
+      });
     }
+
     setUploadProgress(null);
     setOverlayPhase(
       (intendedModeRef.current ?? mode) === "draft" ? "saving" : "publishing",

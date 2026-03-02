@@ -12,15 +12,27 @@ export function computeBulkSchedule(
   gapHours: number,
 ): Date[] {
   const result: Date[] = [];
-  const msPerGap = gapHours * 60 * 60 * 1000;
+  const gapMinutes = Math.round(gapHours * 60);
+  const startMinutes = (startTimeHours ?? 0) * 60 + (startTimeMinutes ?? 0);
+  const minutesInDay = 24 * 60;
+  const spanMinutes = Math.max(0, (videosPerDay - 1) * gapMinutes);
+  const spillsToNextDay = startMinutes + spanMinutes >= minutesInDay;
 
   for (let i = 0; i < count; i++) {
     const dayIndex = Math.floor(i / videosPerDay);
     const slotInDay = i % videosPerDay;
     const d = new Date(startDate);
     d.setDate(d.getDate() + dayIndex);
-    d.setHours(startTimeHours, startTimeMinutes, 0, 0);
-    d.setTime(d.getTime() + slotInDay * msPerGap);
+    const slotMinutes = spillsToNextDay
+      ? // Keep all slots within the same calendar day by scheduling backwards
+        // from the chosen start time (which becomes the latest slot of that day).
+        startMinutes - (videosPerDay - 1 - slotInDay) * gapMinutes
+      : startMinutes + slotInDay * gapMinutes;
+
+    const clamped = Math.max(0, Math.min(minutesInDay - 1, slotMinutes));
+    const hh = Math.floor(clamped / 60);
+    const mm = clamped % 60;
+    d.setHours(hh, mm, 0, 0);
     result.push(d);
   }
 
@@ -40,14 +52,21 @@ export function formatSchedulePreview(
   const times: string[] = [];
   // Work in total minutes from midnight so 0.5h = +30 mins, not +0.5 to the hour
   const gapMinutes = Math.round(gapHours * 60);
-  let totalMinutes = (h ?? 0) * 60 + (m ?? 0);
+  const startMinutes = (h ?? 0) * 60 + (m ?? 0);
+  const minutesInDay = 24 * 60;
+  const spanMinutes = Math.max(0, (videosPerDay - 1) * gapMinutes);
+  const spillsToNextDay = startMinutes + spanMinutes >= minutesInDay;
+
   for (let i = 0; i < Math.min(videosPerDay, count); i++) {
-    const hour = Math.floor(totalMinutes / 60) % 24;
-    const minute = totalMinutes % 60;
+    const slotMinutes = spillsToNextDay
+      ? startMinutes - (videosPerDay - 1 - i) * gapMinutes
+      : startMinutes + i * gapMinutes;
+    const clamped = Math.max(0, Math.min(minutesInDay - 1, slotMinutes));
+    const hour = Math.floor(clamped / 60) % 24;
+    const minute = clamped % 60;
     times.push(
       `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
     );
-    totalMinutes += gapMinutes;
   }
 
   const totalDays = Math.ceil(count / videosPerDay);

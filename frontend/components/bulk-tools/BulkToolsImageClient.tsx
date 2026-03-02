@@ -13,6 +13,7 @@ import {
   formatSchedulePreview,
 } from "@/lib/bulk-schedule";
 import { createPost } from "@/app/actions/posts";
+import { uploadFile } from "@/lib/upload-file";
 
 const MAX_IMAGES = 100;
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024; // 50MB - API may limit to 10MB
@@ -52,18 +53,14 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
   const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
   const validIds = useMemo(
     () => new Set(selectableAccounts.map((a) => a.id)),
-    [selectableAccounts]
+    [selectableAccounts],
   );
-  const {
-    remember,
-    setRemember,
-    getInitialSelectedIds,
-    persistSelection,
-  } = useRememberedAccounts(REMEMBER_KEY_IMAGE);
+  const { remember, setRemember, getInitialSelectedIds, persistSelection } =
+    useRememberedAccounts(REMEMBER_KEY_IMAGE);
 
   const [items, setItems] = useState<ImageItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
-    getInitialSelectedIds(validIds)
+    getInitialSelectedIds(validIds),
   );
   const [accountSearch, setAccountSearch] = useState("");
   const [bulkCaption, setBulkCaption] = useState("");
@@ -112,21 +109,37 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
     else setSelectedIds(new Set(selectableAccounts.map((a) => a.id)));
   };
 
-  const addFiles = useCallback((files: File[]) => {
-    setItems((prev) => {
-      const toAdd = files.slice(0, Math.max(0, MAX_IMAGES - prev.length));
-      const now = new Date();
-      const newItems: ImageItem[] = toAdd.map((file, i) => ({
-        id: crypto.randomUUID(),
-        file,
-        previewUrl: URL.createObjectURL(file),
-        caption: "",
-        scheduledAt: new Date(now.getTime() + (prev.length + i) * 60000),
-        collapsed: false,
-      }));
-      return [...prev, ...newItems];
-    });
-  }, []);
+  const addFiles = useCallback(
+    (files: File[]) => {
+      setItems((prev) => {
+        const toAdd = files.slice(0, Math.max(0, MAX_IMAGES - prev.length));
+        if (toAdd.length === 0) return prev;
+
+        const [h, m] = startTime.split(":").map(Number);
+        const start = new Date(startDate + "T00:00:00");
+        const effectiveGapHours = videosPerDay === 1 ? 24 : gapHours;
+        const dates = computeBulkSchedule(
+          prev.length + toAdd.length,
+          start,
+          h ?? 0,
+          m ?? 0,
+          videosPerDay,
+          effectiveGapHours,
+        );
+
+        const newItems: ImageItem[] = toAdd.map((file, i) => ({
+          id: crypto.randomUUID(),
+          file,
+          previewUrl: URL.createObjectURL(file),
+          caption: "",
+          scheduledAt: dates[prev.length + i] ?? new Date(),
+          collapsed: false,
+        }));
+        return [...prev, ...newItems];
+      });
+    },
+    [gapHours, startDate, startTime, videosPerDay],
+  );
 
   const toggleItemCollapsed = (id: string) => {
     setItems((prev) =>
@@ -199,33 +212,55 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
     setError(null);
     cancelledRef.current = false;
     setScheduling(true);
+    setProgress(`Uploading ${items.length} image${items.length === 1 ? "" : "s"}…`);
     const accountIds = Array.from(selectedIds);
 
     try {
-      for (let i = 0; i < items.length; i++) {
+      // Phase 1: upload all images in parallel
+      const uploadResults = await Promise.allSettled(
+        items.map((item, index) => uploadFile(item.file, index)),
+      );
+
+      const successfulUploads = uploadResults
+        .map((result, index) => ({ result, index }))
+        .filter(
+          (
+            entry,
+          ): entry is {
+            result: PromiseFulfilledResult<{ id: string }>;
+            index: number;
+          } => entry.result.status === "fulfilled",
+        );
+
+      const failedUploads = uploadResults.filter(
+        (entry) => entry.status === "rejected",
+      );
+
+      if (failedUploads.length > 0) {
+        setError(`${failedUploads.length} image(s) failed to upload.`);
+      }
+
+      if (successfulUploads.length === 0) {
+        throw new Error("No images were uploaded successfully.");
+      }
+
+      // Phase 2: create posts sequentially for successful uploads
+      setProgress("Creating scheduled posts…");
+      for (const { result, index } of successfulUploads) {
         if (cancelledRef.current) break;
-        setProgress(`Scheduling image ${i + 1} of ${items.length}...`);
-        const item = items[i];
-        const formData = new FormData();
-        formData.append("file", item.file);
-        const uploadRes = await fetch("/api/media/upload", {
-          method: "POST",
-          body: formData,
-        });
-        if (!uploadRes.ok) {
-          const data = await uploadRes.json().catch(() => ({}));
-          throw new Error(data.error ?? `Upload failed: ${uploadRes.status}`);
-        }
-        const uploadData = (await uploadRes.json()) as { id: string };
-        const result = await createPost(
+        const item = items[index];
+        const createResult = await createPost(
           item.caption.trim() || "No caption",
           accountIds,
           "scheduled",
           item.scheduledAt,
-          [uploadData.id],
+          [result.value.id],
         );
-        if (!result.success) throw new Error(result.error);
+        if (!createResult.success) {
+          throw new Error(createResult.error);
+        }
       }
+
       setSuccess(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to schedule");
@@ -279,7 +314,9 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
                       onChange={(e) => setRemember(e.target.checked)}
                       className="rounded border-input bg-bg text-accent focus:ring-accent"
                     />
-                    <span className="text-sm text-muted-foreground">Remember</span>
+                    <span className="text-sm text-muted-foreground">
+                      Remember
+                    </span>
                   </label>
                 </div>
               </div>
@@ -326,6 +363,22 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
                 )}
               </div>
               <div className="space-y-3">
+                {error && (
+                  <div
+                    className="relative rounded-xl bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900/60 px-4 py-3 pr-10 text-sm font-medium border border-red-100"
+                    role="alert"
+                  >
+                    {error}
+                    <button
+                      type="button"
+                      onClick={() => setError(null)}
+                      className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-red-700/70 hover:bg-red-100 hover:text-red-800 dark:text-red-200/80 dark:hover:bg-red-900/30"
+                      aria-label="Dismiss error"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
                 {items.map((item, index) => (
                   <ImageCard
                     key={item.id}
@@ -364,12 +417,6 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
               progressLabel={progress}
             />
           </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="rounded-xl bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900/60 px-4 py-3 text-sm font-medium border border-red-100">
-          {error}
         </div>
       )}
 

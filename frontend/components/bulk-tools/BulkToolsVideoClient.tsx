@@ -20,8 +20,9 @@ import {
   ASPECT_RATIO_MESSAGE,
   type VideoAspectResult,
 } from "@/lib/video-aspect-ratio";
+import { uploadFile } from "@/lib/upload-file";
 
-const MAX_VIDEOS = 15;
+const MAX_VIDEOS = 50;
 const MAX_VIDEO_BYTES = 500 * 1024 * 1024; // 500MB - API may limit to 100MB
 const VIDEO_ACCEPT = "video/mp4,video/quicktime,video/webm,video/x-msvideo";
 
@@ -74,6 +75,7 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
   const [startTime, setStartTime] = useState(getNowTimeStr);
   const [videosPerDay, setVideosPerDay] = useState(1);
   const [gapHours, setGapHours] = useState(2);
+  const effectiveGapHours = videosPerDay === 1 ? 24 : gapHours;
   // const [coverFrame, setCoverFrame] = useState<CoverFrame>("middle");
   const [scheduling, setScheduling] = useState(false);
   const [progress, setProgress] = useState("");
@@ -82,10 +84,6 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
   const cancelledRef = useRef(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadPercent, setUploadPercent] = useState(0);
-  const [currentUploadIndex, setCurrentUploadIndex] = useState<number | null>(
-    null,
-  );
-  const [totalUploads, setTotalUploads] = useState<number | null>(null);
 
   const platformName = (id: string) =>
     PLATFORMS.find((p) => p.id === id)?.name ?? id;
@@ -122,42 +120,56 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
     else setSelectedIds(new Set(selectableAccounts.map((a) => a.id)));
   };
 
-  const addFiles = useCallback((files: File[]) => {
-    setError(null);
-    if (files.length === 0) return;
-    Promise.all(files.map(validateVideoAspectRatio)).then(
-      (results: VideoAspectResult[]) => {
-        const validFiles: File[] = [];
-        let firstInvalid: VideoAspectResult | null = null;
-        files.forEach((file, i) => {
-          if (results[i].valid) validFiles.push(file);
-          else if (!firstInvalid) firstInvalid = results[i];
-        });
-        if (firstInvalid) {
-          const { ratio } = firstInvalid as VideoAspectResult;
-          setError(
-            `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(ratio)}${getAspectRatioDescriptor(ratio)}.`,
-          );
-        }
-        if (validFiles.length === 0) return;
-        setItems((prev) => {
-          const toAdd = validFiles.slice(
-            0,
-            Math.max(0, MAX_VIDEOS - prev.length),
-          );
-          const now = new Date();
-          const newItems: VideoItem[] = toAdd.map((file, i) => ({
-            id: crypto.randomUUID(),
-            file,
-            previewUrl: URL.createObjectURL(file),
-            caption: "",
-            scheduledAt: new Date(now.getTime() + (prev.length + i) * 60000),
-          }));
-          return [...prev, ...newItems];
-        });
-      },
-    );
-  }, []);
+  const addFiles = useCallback(
+    (files: File[]) => {
+      setError(null);
+      if (files.length === 0) return;
+      Promise.all(files.map(validateVideoAspectRatio)).then(
+        (results: VideoAspectResult[]) => {
+          const validFiles: File[] = [];
+          let firstInvalid: VideoAspectResult | null = null;
+          files.forEach((file, i) => {
+            if (results[i].valid) validFiles.push(file);
+            else if (!firstInvalid) firstInvalid = results[i];
+          });
+          if (firstInvalid) {
+            const { ratio } = firstInvalid as VideoAspectResult;
+            setError(
+              `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(ratio)}${getAspectRatioDescriptor(ratio)}.`,
+            );
+          }
+          if (validFiles.length === 0) return;
+          setItems((prev) => {
+            const toAdd = validFiles.slice(
+              0,
+              Math.max(0, MAX_VIDEOS - prev.length),
+            );
+            if (toAdd.length === 0) return prev;
+
+            const [h, m] = startTime.split(":").map(Number);
+            const start = new Date(startDate + "T00:00:00");
+            const dates = computeBulkSchedule(
+              prev.length + toAdd.length,
+              start,
+              h ?? 0,
+              m ?? 0,
+              videosPerDay,
+              effectiveGapHours,
+            );
+            const newItems: VideoItem[] = toAdd.map((file, i) => ({
+              id: crypto.randomUUID(),
+              file,
+              previewUrl: URL.createObjectURL(file),
+              caption: "",
+              scheduledAt: dates[prev.length + i] ?? new Date(),
+            }));
+            return [...prev, ...newItems];
+          });
+        },
+      );
+    },
+    [startDate, startTime, videosPerDay, effectiveGapHours],
+  );
 
   const updateCaption = (id: string, caption: string) => {
     setItems((prev) =>
@@ -181,8 +193,6 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
     const capped = bulkCaption.slice(0, 2200);
     setItems((prev) => prev.map((it) => ({ ...it, caption: capped })));
   };
-
-  const effectiveGapHours = videosPerDay === 1 ? 24 : gapHours;
 
   const applyBulkSchedule = () => {
     const [h, m] = startTime.split(":").map(Number);
@@ -242,81 +252,70 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
     setScheduling(true);
     setIsUploading(true);
     setUploadPercent(0);
-    setCurrentUploadIndex(null);
-    setTotalUploads(items.length);
+    setProgress(
+      `Uploading ${items.length} video${items.length === 1 ? "" : "s"}…`,
+    );
     const accountIds = Array.from(selectedIds);
 
     try {
-      for (let i = 0; i < items.length; i++) {
-        if (cancelledRef.current) break;
-        setProgress(`Scheduling video ${i + 1} of ${items.length}...`);
-        const item = items[i];
-        setCurrentUploadIndex(i + 1);
+      // Phase 1: upload all videos in parallel
+      const perFileProgress = new Array(items.length).fill(0);
+      const uploadResults = await Promise.allSettled(
+        items.map((item, index) =>
+          uploadFile(item.file, index, (idx, percent) => {
+            // Use average progress across all files.
+            // We keep this local to avoid storing per-file state in React for bulk.
+            perFileProgress[idx] = percent;
+            const sum = perFileProgress.reduce((a, b) => a + b, 0);
+            const avg =
+              perFileProgress.length > 0
+                ? Math.round(sum / perFileProgress.length)
+                : percent;
+            setUploadPercent(avg);
+          }),
+        ),
+      );
 
-        const uploadData = await new Promise<{ id: string }>(
-          (resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            const formData = new FormData();
-            formData.append("file", item.file);
-
-            xhr.open("POST", "/api/media/upload");
-            xhr.responseType = "json";
-
-            xhr.upload.onprogress = (event) => {
-              if (!event.lengthComputable) return;
-              const percent = Math.round((event.loaded / event.total) * 100);
-              setUploadPercent(percent);
-            };
-
-            xhr.onerror = () => {
-              reject(new Error("Network error during video upload."));
-            };
-            xhr.onabort = () => {
-              reject(new Error("Video upload was aborted."));
-            };
-
-            xhr.onload = () => {
-              const status = xhr.status;
-              let body: { id?: string; error?: string } = {};
-              try {
-                body =
-                  (xhr.response as { id?: string; error?: string }) ??
-                  (xhr.responseText
-                    ? (JSON.parse(xhr.responseText) as {
-                        id?: string;
-                        error?: string;
-                      })
-                    : {});
-              } catch {
-                body = {};
-              }
-              if (status >= 200 && status < 300 && body.id) {
-                resolve({ id: body.id });
-              } else {
-                reject(
-                  new Error(
-                    body.error ??
-                      `Upload failed: ${
-                        status || "Unknown status"
-                      }. Please try again.`,
-                  ),
-                );
-              }
-            };
-
-            xhr.send(formData);
-          },
+      const successfulUploads = uploadResults
+        .map((result, index) => ({ result, index }))
+        .filter(
+          (
+            entry,
+          ): entry is {
+            result: PromiseFulfilledResult<{ id: string }>;
+            index: number;
+          } => entry.result.status === "fulfilled",
         );
 
-        const result = await createPost(
+      const failedUploads = uploadResults
+        .map((result, index) => ({ result, index }))
+        .filter((entry) => entry.result.status === "rejected");
+
+      if (failedUploads.length > 0) {
+        setError(`${failedUploads.length} video(s) failed to upload.`);
+      }
+
+      if (successfulUploads.length === 0) {
+        throw new Error("No videos were uploaded successfully.");
+      }
+
+      // Phase 2: create posts sequentially for successful uploads
+      setProgress("Creating scheduled posts…");
+      for (const { result, index } of successfulUploads) {
+        if (cancelledRef.current) break;
+        const item = items[index];
+        const createResult = await createPost(
           item.caption.trim() || "No caption",
           accountIds,
           "scheduled",
           item.scheduledAt,
-          [uploadData.id],
+          [result.value.id],
         );
-        if (!result.success) throw new Error(result.error);
+        if (!createResult.success) {
+          throw new Error(createResult.error);
+        }
       }
+
       setSuccess(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to schedule");
@@ -325,8 +324,6 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
       setProgress("");
       setIsUploading(false);
       setUploadPercent(0);
-      setCurrentUploadIndex(null);
-      setTotalUploads(null);
     }
   };
 
@@ -424,11 +421,8 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
                     />
                   </div>
                   <span className="text-xs font-medium text-foreground">
-                    Uploading video
-                    {currentUploadIndex && totalUploads
-                      ? ` ${currentUploadIndex} of ${totalUploads}…`
-                      : "…"}{" "}
-                    {uploadPercent}%
+                    Uploading {items.length} video
+                    {items.length === 1 ? "" : "s"}… {uploadPercent}%
                   </span>
                 </div>
                 <p className="text-[20px] text-amber-600 dark:text-amber-400">
@@ -438,8 +432,19 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
               </div>
             )}
             {error && (
-              <div className="rounded-xl bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900/60 px-4 py-3 text-sm font-medium border border-red-100">
+              <div
+                className="relative rounded-xl bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900/60 px-4 py-3 pr-10 text-sm font-medium border border-red-100"
+                role="alert"
+              >
                 {error}
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-red-700/70 hover:bg-red-100 hover:text-red-800 dark:text-red-200/80 dark:hover:bg-red-900/30"
+                  aria-label="Dismiss error"
+                >
+                  ×
+                </button>
               </div>
             )}
 

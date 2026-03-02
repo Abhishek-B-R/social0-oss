@@ -23,6 +23,7 @@ import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
 import { IoMdAddCircleOutline } from "react-icons/io";
 import { MdClose } from "react-icons/md";
 import { MdOutlinePhotoLibrary, MdOutlineVideocam } from "react-icons/md";
+import { uploadFile } from "@/lib/upload-file";
 
 const PREVIEW_MEDIA_MAX_H = 200;
 const MAX_ATTACHMENTS_PER_POST = 4;
@@ -255,6 +256,7 @@ export function ThreadsPostForm({
   const [addMediaZoneHover, setAddMediaZoneHover] = useState<number | null>(
     null,
   );
+  const [fileProgresses, setFileProgresses] = useState<number[]>([]);
 
   useEffect(() => {
     postsRef.current = posts;
@@ -719,76 +721,89 @@ export function ThreadsPostForm({
 
     const mediaIds: string[] = [];
     const perThreadPostMediaIds: string[][] = [];
-    const totalMedia = threadPosts.reduce(
-      (sum, p) => sum + getAllMediaForPost(p).length,
-      0,
-    );
-    let uploaded = 0;
-    for (const post of threadPosts) {
+
+    type MediaTarget = {
+      file: File;
+      type: "image" | "video";
+      postIndex: number;
+    };
+
+    const mediaTargets: MediaTarget[] = [];
+
+    threadPosts.forEach((post, postIdx) => {
       const allMedia = getAllMediaForPost(post);
       const thisPostMediaIds: string[] = [];
-      for (const item of allMedia) {
+      allMedia.forEach((item) => {
         if ("mediaId" in item && item.mediaId) {
           mediaIds.push(item.mediaId);
           thisPostMediaIds.push(item.mediaId);
-          continue;
-        }
-        if (!item.file) continue;
-        setUploadProgress(`${uploaded + 1} of ${totalMedia}`);
-        try {
-          const fd = new FormData();
-          fd.set("file", item.file);
-          const res = await fetch("/api/media/upload", {
-            method: "POST",
-            body: fd,
+        } else if (item.file) {
+          mediaTargets.push({
+            file: item.file,
+            type: item.type,
+            postIndex: postIdx,
           });
-          if (!res.ok) {
-            const errorData = await res
-              .json()
-              .catch(() => ({ error: "Upload failed" }));
-            setError(
-              errorData.error ||
-                `Failed to upload ${item.type === "video" ? "video" : "image"}`,
-            );
-            setLoading(false);
-            setOverlayPhase("idle");
-            setUploadProgress(null);
-            return;
-          }
-          const data = await res.json();
-          if (data.error) {
-            setError(data.error);
-            setLoading(false);
-            setOverlayPhase("idle");
-            setUploadProgress(null);
-            return;
-          }
-          if (data.id) {
-            mediaIds.push(data.id);
-            thisPostMediaIds.push(data.id);
-          } else {
-            setError(
-              `Failed to get media ID for ${item.type === "video" ? "video" : "image"}`,
-            );
-            setLoading(false);
-            setOverlayPhase("idle");
-            setUploadProgress(null);
-            return;
-          }
-          uploaded += 1;
-        } catch (err) {
-          console.error("Upload error:", err);
-          setError(
-            `Failed to upload ${item.type === "video" ? "video" : "image"}: ${err instanceof Error ? err.message : "Unknown error"}`,
-          );
-          setLoading(false);
-          setOverlayPhase("idle");
-          setUploadProgress(null);
-          return;
         }
-      }
+      });
       perThreadPostMediaIds.push(thisPostMediaIds);
+    });
+
+    if (mediaTargets.length > 0) {
+      setFileProgresses(new Array(mediaTargets.length).fill(0));
+      const uploadResults = await Promise.allSettled(
+        mediaTargets.map((target, fileIndex) =>
+          uploadFile(target.file, fileIndex, (idx, percent) => {
+            setFileProgresses((prev) => {
+              const next = [...prev];
+              next[idx] = percent;
+              const sum = next.reduce((a, b) => a + b, 0);
+              const avg =
+                next.length > 0 ? Math.round(sum / next.length) : percent;
+              setUploadProgress(`${avg}%`);
+              return next;
+            });
+          }),
+        ),
+      );
+
+      const failed = uploadResults
+        .map((result, i) => ({ result, target: mediaTargets[i] }))
+        .filter(
+          (
+            entry,
+          ): entry is {
+            result: PromiseRejectedResult;
+            target: MediaTarget;
+          } => entry.result.status === "rejected",
+        );
+
+      if (failed.length > 0) {
+        const first = failed[0];
+        const reason = first.result.reason;
+        const label = first.target.type === "video" ? "video" : "image";
+        const messageBase =
+          reason instanceof Error
+            ? reason.message
+            : typeof reason === "string"
+              ? reason
+              : `Failed to upload ${label}`;
+        setError(messageBase);
+        setLoading(false);
+        setOverlayPhase("idle");
+        setUploadProgress(null);
+        return;
+      }
+
+      uploadResults.forEach((result, i) => {
+        if (result.status === "fulfilled") {
+          const target = mediaTargets[i];
+          const id = result.value.id;
+          mediaIds.push(id);
+          perThreadPostMediaIds[target.postIndex].push(id);
+        }
+      });
     }
+
     setUploadProgress(null);
     setOverlayPhase(
       (intendedModeRef.current ?? mode) === "draft" ? "saving" : "publishing",

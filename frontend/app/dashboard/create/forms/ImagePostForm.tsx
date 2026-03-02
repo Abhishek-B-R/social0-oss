@@ -31,6 +31,7 @@ import type { PinterestPostSettings } from "@/components/PinterestSettingsModal"
 import { PinterestConfigInline } from "@/components/PinterestConfigInline";
 import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
 import { PLATFORMS } from "@/lib/platforms";
+import { uploadFile } from "@/lib/upload-file";
 import {
   ChevronDown,
   ChevronUp,
@@ -160,6 +161,7 @@ export function ImagePostForm({
   const [platformCaptions, setPlatformCaptions] = useState<
     Record<string, PlatformCaptionState>
   >({});
+  const [fileProgresses, setFileProgresses] = useState<number[]>([]);
 
   const defaultTiktokSettings: TikTokPostSettings = {
     privacy_level: "SELF_ONLY", // Default to Public
@@ -512,33 +514,67 @@ export function ImagePostForm({
     setOverlayPhase("uploading");
 
     const sortedImages = [...images].sort((a, b) => a.order - b.order);
-    const mediaIds: string[] = [];
-    const total = sortedImages.length;
-    for (let i = 0; i < sortedImages.length; i++) {
-      const img = sortedImages[i];
+    const mediaIds: (string | null)[] = new Array(sortedImages.length).fill(
+      null,
+    );
+
+    type UploadTarget = {
+      file: File;
+      mediaIndex: number;
+    };
+
+    const uploadTargets: UploadTarget[] = [];
+
+    sortedImages.forEach((img, mediaIndex) => {
       if (img.existingId) {
-        mediaIds.push(img.existingId);
-        continue;
+        mediaIds[mediaIndex] = img.existingId;
+      } else if (img.file) {
+        uploadTargets.push({ file: img.file, mediaIndex });
       }
-      if (!img.file) continue;
-      setUploadProgress(`${i + 1} of ${total}`);
-      try {
-        const fd = new FormData();
-        fd.set("file", img.file);
-        const res = await fetch("/api/media/upload", {
-          method: "POST",
-          body: fd,
-        });
-        const data = await res.json();
-        if (data.id) mediaIds.push(data.id);
-      } catch {
-        setError("Failed to upload an image.");
+    });
+
+    if (uploadTargets.length > 0) {
+      setFileProgresses(new Array(uploadTargets.length).fill(0));
+      const uploadResults = await Promise.allSettled(
+        uploadTargets.map((target, fileIndex) =>
+          uploadFile(target.file, fileIndex, (idx, percent) => {
+            setFileProgresses((prev) => {
+              const next = [...prev];
+              next[idx] = percent;
+              const sum = next.reduce((a, b) => a + b, 0);
+              const avg =
+                next.length > 0 ? Math.round(sum / next.length) : percent;
+              setUploadProgress(`${avg}%`);
+              return next;
+            });
+          }),
+        ),
+      );
+
+      const failed = uploadResults.filter(
+        (r): r is PromiseRejectedResult => r.status === "rejected",
+      );
+      if (failed.length > 0) {
+        const reason = failed[0].reason;
+        const message =
+          reason instanceof Error
+            ? reason.message
+            : typeof reason === "string"
+              ? reason
+              : "Failed to upload one or more images.";
+        setError(message);
         setLoading(false);
         setOverlayPhase("idle");
         setUploadProgress(null);
         return;
       }
+
+      uploadTargets.forEach((target, i) => {
+        const result = uploadResults[i] as PromiseFulfilledResult<{ id: string }>;
+        mediaIds[target.mediaIndex] = result.value.id;
+      });
     }
+
     setUploadProgress(null);
     setOverlayPhase(
       (intendedModeRef.current ?? mode) === "draft" ? "saving" : "publishing",
