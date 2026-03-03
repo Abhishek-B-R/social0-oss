@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   Settings,
   Layers,
-  Calendar,
   List,
   Clock,
   CheckCircle,
@@ -10,11 +9,15 @@ import {
   Users,
   CreditCard,
   MessageCircle,
+  FileStack,
 } from "lucide-react";
+
+const MANUAL_POSTING_LINKS = [
+  { href: "/dashboard/create", label: "Manual setup", icon: FileStack },
+] as const;
 
 const MORE_LINKS = [
   { href: "/dashboard/bulk-tools", label: "Bulk tools", icon: Layers },
-  { href: "/dashboard/calendar", label: "Calendar", icon: Calendar },
   { href: "/dashboard/posts", label: "All posts", icon: List },
   { href: "/dashboard/posts/scheduled", label: "Scheduled", icon: Clock },
   { href: "/dashboard/posts/posted", label: "Posted", icon: CheckCircle },
@@ -31,28 +34,53 @@ export default function MorePage() {
       <p className="mt-2 text-text-muted">
         Settings and the rest of the dashboard.
       </p>
-      <ul className="mt-6 space-y-1 rounded-xl border border-border bg-bg-elevated shadow-sm">
-        {MORE_LINKS.map(({ href, label, icon: Icon }) => (
-          <li key={href}>
-            <Link
-              href={href}
+
+      <section className="mt-6">
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-text-muted">
+          Manual posting
+        </h2>
+        <ul className="space-y-1 rounded-xl border border-border bg-bg-elevated shadow-sm">
+          {MANUAL_POSTING_LINKS.map(({ href, label, icon: Icon }) => (
+            <li key={href}>
+              <Link
+                href={href}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
+              >
+                <Icon className="h-4 w-4 shrink-0 text-text-muted" />
+                {label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-text-muted">
+          Posts & tools
+        </h2>
+        <ul className="space-y-1 rounded-xl border border-border bg-bg-elevated shadow-sm">
+          {MORE_LINKS.map(({ href, label, icon: Icon }) => (
+            <li key={href}>
+              <Link
+                href={href}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
+              >
+                <Icon className="h-4 w-4 shrink-0 text-text-muted" />
+                {label}
+              </Link>
+            </li>
+          ))}
+          <li>
+            <a
+              href="#"
               className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
             >
-              <Icon className="h-4 w-4 shrink-0 text-text-muted" />
-              {label}
-            </Link>
+              <MessageCircle className="h-4 w-4 shrink-0 text-text-muted" />
+              Share feedback
+            </a>
           </li>
-        ))}
-        <li>
-          <a
-            href="#"
-            className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
-          >
-            <MessageCircle className="h-4 w-4 shrink-0 text-text-muted" />
-            Share feedback
-          </a>
-        </li>
-      </ul>
+        </ul>
+      </section>
     </div>
   );
 }

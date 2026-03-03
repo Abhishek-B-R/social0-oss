@@ -19,6 +19,7 @@ import {
   CreditCard,
   MessageCircle,
   ChevronDown,
+  PenSquare,
 } from "lucide-react";
 import { SignOutButton } from "@/components/SignOutButton";
 
@@ -98,7 +99,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
     >
       <div className="flex flex-col gap-6 p-4">
         <Link
-          href="/dashboard/create"
+          href="/dashboard/composer"
           className="flex items-center gap-3 rounded-lg px-3 py-2 font-semibold text-lg text-sidebar-text hover:bg-sidebar-active transition-colors"
         >
           <Image
@@ -106,7 +107,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             alt="Social0"
             width={40}
             height={40}
-            className="h-10 w-10 shrink-0 rounded-full object-contain"
+            className="h-10 w-10 shrink-0 rounded-full object-contain border border-white"
           />
           <span>Social0</span>
         </Link>
@@ -118,18 +119,24 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         </div> */}
 
         <Link
-          href="/dashboard/create"
+          href="/dashboard/composer"
           className="sidebar-create-post-cta flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm hover:bg-accent-hover transition-colors"
         >
           <FilePlus className="h-4 w-4 shrink-0" />
-          Create post
+          New post
         </Link>
 
         <nav className="flex flex-1 flex-col gap-6">
           <Section title="Create">
             <NavLink
+              href="/dashboard/composer"
+              label="Composer"
+              icon={PenSquare}
+              isActive={pathname.startsWith("/dashboard/composer")}
+            />
+            <NavLink
               href="/dashboard/create"
-              label="New post"
+              label="Manual setup"
               icon={FilePlus}
               isActive={
                 pathname === "/dashboard/create" ||

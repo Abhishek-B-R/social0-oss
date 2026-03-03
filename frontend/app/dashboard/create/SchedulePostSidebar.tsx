@@ -33,6 +33,8 @@ type SchedulePostSidebarProps = {
   loading: boolean;
   submitDisabled: boolean;
   hasAccountSelected: boolean;
+  /** When submit is disabled, show this reason on hover (e.g. "Add a caption", "Add at least one image") */
+  submitDisabledReason?: string | null;
   error: string | null;
   /** When true, show times in 24h format */
   use24HourTimeFormat?: boolean;
@@ -59,6 +61,7 @@ export function SchedulePostSidebar({
   loading,
   submitDisabled,
   hasAccountSelected,
+  submitDisabledReason,
   error,
   use24HourTimeFormat = false,
   intendedModeRef,
@@ -219,6 +222,15 @@ export function SchedulePostSidebar({
               type="button"
               onClick={handlePostNow}
               disabled={loading || !hasAccountSelected || submitDisabled}
+              title={
+                loading
+                  ? undefined
+                  : !hasAccountSelected
+                    ? "Select at least one account to post"
+                    : submitDisabled
+                      ? submitDisabledReason ?? "Complete the form to post"
+                      : undefined
+              }
               className="w-full rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-accent"
             >
               {loading ? "Saving..." : "Post now"}
@@ -284,6 +296,17 @@ export function SchedulePostSidebar({
                 !hasAccountSelected ||
                 !combinedDateTime ||
                 submitDisabled
+              }
+              title={
+                loading
+                  ? undefined
+                  : !hasAccountSelected
+                    ? "Select at least one account to post"
+                    : !combinedDateTime
+                      ? "Pick a date and time to schedule"
+                      : submitDisabled
+                        ? submitDisabledReason ?? "Complete the form to schedule"
+                        : undefined
               }
               className="w-full rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-accent"
             >

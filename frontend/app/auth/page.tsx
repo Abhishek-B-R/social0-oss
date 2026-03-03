@@ -9,7 +9,7 @@ export default function AuthPage() {
   const handleGoogleSignIn = () => {
     signIn.social({
       provider: "google",
-      callbackURL: "/dashboard/create",
+      callbackURL: "/dashboard/composer",
     });
   };
 

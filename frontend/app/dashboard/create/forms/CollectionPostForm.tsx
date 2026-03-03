@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { publishPost } from "@/app/actions/publish";
 import {
@@ -27,6 +27,10 @@ import {
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettings } from "@/components/TikTokSettings";
 import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
+import {
+  consumeComposerPayload,
+  clearComposerPayload,
+} from "@/lib/composer-bridge";
 import { ChevronDown, ChevronUp, Circle } from "lucide-react";
 import { uploadFile } from "@/lib/upload-file";
 
@@ -62,6 +66,7 @@ export function CollectionPostForm({
   draftId?: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const unifiedInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
@@ -130,6 +135,41 @@ export function CollectionPostForm({
       videosRef.current.forEach((v) => URL.revokeObjectURL(v.preview));
     };
   }, []);
+
+  useEffect(() => {
+    if (initialDraftId) return;
+    if (searchParams.get("fromComposer") !== "1") return;
+    const payload = consumeComposerPayload();
+    if (!payload) return;
+    if (payload.text) {
+      setContent((prev) => (prev ? prev : payload.text));
+    }
+    const composerImages = payload.media.filter((m) => m.type === "image");
+    const composerVideos = payload.media.filter((m) => m.type === "video");
+    if (composerImages.length || composerVideos.length) {
+      const mappedImages = composerImages.map((m, index) => ({
+        file: m.file,
+        preview: URL.createObjectURL(m.file),
+        order: index + 1,
+      }));
+      const mappedVideos = composerVideos.map((m, index) => ({
+        file: m.file,
+        preview: URL.createObjectURL(m.file),
+        order: index + 1,
+      }));
+      if (mappedImages.length) {
+        setImages(mappedImages);
+        imagesRef.current = mappedImages;
+      }
+      if (mappedVideos.length) {
+        setVideos(mappedVideos);
+        videosRef.current = mappedVideos;
+      }
+    }
+    return () => {
+      setTimeout(clearComposerPayload, 100);
+    };
+  }, [initialDraftId, searchParams]);
 
   useEffect(() => {
     if (!initialDraftId) return;
@@ -752,6 +792,15 @@ export function CollectionPostForm({
   );
 
   const hasContent = content.trim().length > 0;
+  const hasMedia = images.length > 0 || videos.length > 0;
+  const submitDisabledReason =
+    !hasContent
+      ? "Add a caption"
+      : !hasMedia
+        ? "Add at least one image or video"
+        : mode === "scheduled" && !scheduledAt
+          ? "Pick a date and time to schedule"
+          : null;
   const submitLabel =
     mode === "draft"
       ? "Save draft"
@@ -974,6 +1023,7 @@ export function CollectionPostForm({
                             className="h-full w-full object-cover"
                             muted
                             playsInline
+                            preload="metadata"
                             draggable={false}
                           />
                         ) : (
@@ -1119,9 +1169,11 @@ export function CollectionPostForm({
           submitDisabled={
             accounts.length === 0 ||
             (mode === "scheduled" && !scheduledAt) ||
-            !hasContent
+            !hasContent ||
+            !hasMedia
           }
           hasAccountSelected={selectedIds.size > 0}
+          submitDisabledReason={submitDisabledReason}
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           intendedModeRef={intendedModeRef}
@@ -1181,11 +1233,13 @@ export function CollectionPostForm({
                 <div className="relative aspect-square w-full max-h-60 overflow-hidden rounded-lg bg-bg-muted">
                   {previewItem?.type === "video" ? (
                     <video
+                      key={previewItem.preview}
                       src={previewItem.preview}
                       className="h-full w-full object-contain"
                       controls
                       muted
                       playsInline
+                      preload="auto"
                     />
                   ) : (
                     /* eslint-disable-next-line @next/next/no-img-element */
@@ -1245,6 +1299,7 @@ export function CollectionPostForm({
                           className="h-full w-full object-cover"
                           muted
                           playsInline
+                          preload="metadata"
                         />
                       ) : (
                         /* eslint-disable-next-line @next/next/no-img-element */

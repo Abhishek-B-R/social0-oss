@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { publishPost } from "@/app/actions/publish";
 import {
@@ -24,6 +24,10 @@ import { IoMdAddCircleOutline } from "react-icons/io";
 import { MdClose } from "react-icons/md";
 import { MdOutlinePhotoLibrary, MdOutlineVideocam } from "react-icons/md";
 import { uploadFile } from "@/lib/upload-file";
+import {
+  consumeComposerPayload,
+  clearComposerPayload,
+} from "@/lib/composer-bridge";
 
 const PREVIEW_MEDIA_MAX_H = 200;
 const MAX_ATTACHMENTS_PER_POST = 4;
@@ -211,6 +215,7 @@ export function ThreadsPostForm({
   draftId?: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const nextIdRef = useRef(1);
   const nextId = () => {
     nextIdRef.current += 1;
@@ -270,6 +275,62 @@ export function ThreadsPostForm({
       });
     };
   }, []);
+
+  useEffect(() => {
+    if (initialDraftId) return;
+    if (searchParams.get("fromComposer") !== "1") return;
+    const payload = consumeComposerPayload();
+    if (!payload) return;
+
+    const toMediaImage = (m: { type: string; file: File; previewUrl: string }, order: number) => ({
+      file: m.file,
+      preview: URL.createObjectURL(m.file),
+      order,
+    });
+    const toMediaVideo = (m: { type: string; file: File; previewUrl: string }, order: number) => ({
+      file: m.file,
+      preview: URL.createObjectURL(m.file),
+      order,
+      thumbnailUrl: undefined,
+    });
+
+    const mainImages = payload.media
+      .filter((m) => m.type === "image")
+      .map((m, i) => toMediaImage(m, i + 1));
+    const mainVideos = payload.media
+      .filter((m) => m.type === "video")
+      .map((m, i) => toMediaVideo(m, i + 1));
+
+    const firstPost: ThreadPost = {
+      id: 1,
+      text: payload.text,
+      images: mainImages,
+      videos: mainVideos,
+    };
+
+    const threadPosts = payload.threadPosts ?? [];
+    const nextId = nextIdRef.current;
+    const restPosts: ThreadPost[] = threadPosts.map((p, idx) => {
+      const images = p.media
+        .filter((m) => m.type === "image")
+        .map((m, i) => toMediaImage(m, i + 1));
+      const videos = p.media
+        .filter((m) => m.type === "video")
+        .map((m, i) => toMediaVideo(m, i + 1));
+      return {
+        id: nextId + idx + 1,
+        text: p.text,
+        images,
+        videos,
+      };
+    });
+    nextIdRef.current = nextId + restPosts.length + 1;
+
+    setPosts([firstPost, ...restPosts]);
+    return () => {
+      setTimeout(clearComposerPayload, 100);
+    };
+  }, [initialDraftId, searchParams]);
 
   useEffect(() => {
     if (!initialDraftId) return;
@@ -1024,6 +1085,13 @@ export function ThreadsPostForm({
   const firstPostText = posts[0]?.text.trim() ?? "";
   const hasContent = firstPostText.length > 0;
 
+  const submitDisabledReason =
+    !hasContent
+      ? "Add text to the first post"
+      : mode === "scheduled" && !scheduledAt
+        ? "Pick a date and time to schedule"
+        : null;
+
   const submitLabel =
     mode === "draft"
       ? "Save draft"
@@ -1303,6 +1371,7 @@ export function ThreadsPostForm({
             !hasContent
           }
           hasAccountSelected={selectedIds.size > 0}
+          submitDisabledReason={submitDisabledReason}
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           intendedModeRef={intendedModeRef}

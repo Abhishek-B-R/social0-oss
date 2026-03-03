@@ -181,7 +181,7 @@ export function PostListCards({
           {hasActiveFilters ? filterMessage : emptyMessage}
         </p>
         <Link
-          href="/dashboard/create"
+          href="/dashboard/composer"
           className="inline-flex rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-lg transition-colors hover:bg-accent-hover"
         >
           Create your first post

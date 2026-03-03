@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 
 const PREVIEW_MEDIA_MAX_H = 196;
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import { publishPost } from "@/app/actions/publish";
@@ -40,6 +40,10 @@ import {
   Circle,
   ImagePlus,
 } from "lucide-react";
+import {
+  consumeComposerPayload,
+  clearComposerPayload,
+} from "@/lib/composer-bridge";
 
 type PlatformCaptionState = {
   overridden: boolean;
@@ -73,6 +77,7 @@ export function ImagePostForm({
   draftId?: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
@@ -143,6 +148,29 @@ export function ImagePostForm({
       return next;
     });
   }, [accounts, initialDraftId]);
+
+  useEffect(() => {
+    if (initialDraftId) return;
+    if (searchParams.get("fromComposer") !== "1") return;
+    const payload = consumeComposerPayload();
+    if (!payload) return;
+    if (payload.text) {
+      setContent((prev) => (prev ? prev : payload.text));
+    }
+    const composerImages = payload.media.filter((m) => m.type === "image");
+    if (composerImages.length) {
+      const mapped: ImageFile[] = composerImages.map((m, index) => ({
+        file: m.file,
+        preview: URL.createObjectURL(m.file),
+        order: index + 1,
+      }));
+      setImages(mapped);
+      imagesRef.current = mapped;
+    }
+    return () => {
+      setTimeout(clearComposerPayload, 100);
+    };
+  }, [initialDraftId, searchParams]);
   const [pinterestError, setPinterestError] = useState<string | null>(null);
   const pinterestSectionRef = useRef<HTMLDivElement>(null);
   type ConfigPanel = "platform-captions" | "pinterest" | "tiktok" | null;
@@ -835,6 +863,15 @@ export function ImagePostForm({
   );
   const previewImage = sortedImages[previewIndex] ?? null;
 
+  const submitDisabledReason =
+    !content.trim()
+      ? "Add a caption"
+      : images.length === 0
+        ? "Add at least one image"
+        : mode === "scheduled" && !scheduledAt
+          ? "Pick a date and time to schedule"
+          : null;
+
   const submitLabel =
     mode === "draft"
       ? "Save draft"
@@ -1409,6 +1446,7 @@ export function ImagePostForm({
             (mode === "scheduled" && !scheduledAt)
           }
           hasAccountSelected={selectedIds.size > 0}
+          submitDisabledReason={submitDisabledReason}
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           intendedModeRef={intendedModeRef}

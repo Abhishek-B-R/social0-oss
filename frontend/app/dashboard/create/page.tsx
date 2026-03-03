@@ -19,10 +19,10 @@ export default async function NewPostPage() {
         </Link>
       </div>
       <h2 className="text-2xl font-extrabold text-text mb-2">
-        Create a new post
+        Do it manually
       </h2>
       <p className="text-text-muted mb-8 font-medium">
-        Choose a content type to get started.
+        Select your preferred content type below and we&apos;ll take you to the right form.
       </p>
       <NewPostTypeSelector />
     </div>

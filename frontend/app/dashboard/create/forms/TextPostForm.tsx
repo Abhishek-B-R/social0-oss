@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   createPost,
   getDraft,
@@ -26,6 +26,10 @@ import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsMod
 import { PLATFORMS } from "@/lib/platforms";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
+import {
+  consumeComposerPayload,
+  clearComposerPayload,
+} from "@/lib/composer-bridge";
 
 const TWITTER_MAX_LENGTH = 280;
 const TWITTER_THREAD_SEP = "---";
@@ -89,6 +93,7 @@ export function TextPostForm({
   const [accountCaptionsState, setAccountCaptionsState] = useState<
     Record<string, AccountCaptionState>
   >({});
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (!initialDraftId) return;
@@ -122,6 +127,19 @@ export function TextPostForm({
       cancelled = true;
     };
   }, [initialDraftId, accounts]);
+
+  useEffect(() => {
+    if (initialDraftId) return;
+    if (searchParams.get("fromComposer") !== "1") return;
+    const payload = consumeComposerPayload();
+    if (!payload) return;
+    if (payload.text) {
+      setContent((prev) => (prev ? prev : payload.text));
+    }
+    return () => {
+      setTimeout(clearComposerPayload, 100);
+    };
+  }, [initialDraftId, searchParams]);
 
   useEffect(() => {
     if (remember) persistSelection(selectedIds);
@@ -338,6 +356,15 @@ export function TextPostForm({
         a.platform?.toLowerCase().includes(q),
     );
   }, [accounts, accountSearch]);
+
+  const submitDisabledReason =
+    !content.trim()
+      ? "Add some text to post"
+      : twitterValidationError
+        ? "Fix thread format or character limit"
+        : mode === "scheduled" && !scheduledAt
+          ? "Pick a date and time to schedule"
+          : null;
 
   const submitLabel =
     mode === "draft"
@@ -607,6 +634,7 @@ export function TextPostForm({
             !!twitterValidationError
           }
           hasAccountSelected={selectedIds.size > 0}
+          submitDisabledReason={submitDisabledReason}
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           intendedModeRef={intendedModeRef}

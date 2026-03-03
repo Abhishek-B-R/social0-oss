@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { publishPost } from "@/app/actions/publish";
 import {
@@ -40,6 +40,10 @@ import {
   Circle,
   Clapperboard,
 } from "lucide-react";
+import {
+  consumeComposerPayload,
+  clearComposerPayload,
+} from "@/lib/composer-bridge";
 
 type PlatformCaptionState = {
   overridden: boolean;
@@ -82,6 +86,7 @@ export function VideoPostForm({
   draftId?: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
@@ -171,6 +176,24 @@ export function VideoPostForm({
   const hasTikTokSelected = accounts.some(
     (a) => selectedIds.has(a.id) && a.platform === "tiktok",
   );
+
+  useEffect(() => {
+    if (initialDraftId) return;
+    if (searchParams.get("fromComposer") !== "1") return;
+    const payload = consumeComposerPayload();
+    if (!payload) return;
+    if (payload.text) {
+      setContent((prev) => (prev ? prev : payload.text));
+    }
+    const firstVideo = payload.media.find((m) => m.type === "video");
+    if (firstVideo) {
+      setVideoFile(firstVideo.file);
+      setVideoPreview(URL.createObjectURL(firstVideo.file));
+    }
+    return () => {
+      setTimeout(clearComposerPayload, 100);
+    };
+  }, [initialDraftId, searchParams]);
 
   useEffect(() => {
     if (!videoPreview) setIsVertical(false);
@@ -808,6 +831,15 @@ export function VideoPostForm({
     );
   }, [accounts, accountSearch]);
 
+  const submitDisabledReason =
+    !content.trim()
+      ? "Add a caption"
+      : !hasVideo
+        ? "Add a video"
+        : mode === "scheduled" && !scheduledAt
+          ? "Pick a date and time to schedule"
+          : null;
+
   const submitLabel =
     mode === "draft"
       ? "Save draft"
@@ -1315,6 +1347,7 @@ export function VideoPostForm({
             (mode === "scheduled" && !scheduledAt)
           }
           hasAccountSelected={selectedIds.size > 0}
+          submitDisabledReason={submitDisabledReason}
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           intendedModeRef={intendedModeRef}
