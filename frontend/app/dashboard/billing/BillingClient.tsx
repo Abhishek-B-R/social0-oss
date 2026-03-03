@@ -5,7 +5,7 @@ import type { SubscriptionState } from "@/lib/subscription";
 import type { AccountLimitResult, TwitterTweetLimitResult } from "@/lib/plan-limits";
 
 const POLL_INTERVAL_MS = 2000;
-const POLL_MAX_ATTEMPTS = 30; // ~1 min
+const POLL_MAX_ATTEMPTS = 45; // ~1.5 min
 
 type BillingClientProps = {
   subscription: SubscriptionState;
@@ -13,6 +13,10 @@ type BillingClientProps = {
   twitterTweetLimit: TwitterTweetLimitResult;
   justSubscribed?: boolean;
 };
+
+function redirectToComposer() {
+  window.location.href = "/dashboard/composer";
+}
 
 export function BillingClient({
   subscription,
@@ -28,25 +32,42 @@ export function BillingClient({
 
   useEffect(() => {
     if (!waitingForWebhook) return;
+
     let attempts = 0;
-    const id = setInterval(async () => {
-      attempts++;
+
+    const trySyncAndCheck = async () => {
       try {
-        const res = await fetch("/api/auth/subscription-check", { credentials: "include" });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.hasSubscription === true) {
-          setWaitingForWebhook(false);
-          window.location.href = "/dashboard/composer";
-          return;
+        // Sync from Polar by email (works even when webhook didn't reach localhost)
+        const syncRes = await fetch("/api/billing/sync", { method: "POST", credentials: "include" });
+        const syncData = await syncRes.json().catch(() => ({}));
+        if (syncData?.ok === true && (syncData.tier === "starter" || syncData.tier === "growth")) {
+          redirectToComposer();
+          return true;
+        }
+        const checkRes = await fetch("/api/auth/subscription-check", { credentials: "include" });
+        if (!checkRes.ok) return false;
+        const checkData = await checkRes.json();
+        if (checkData.hasSubscription === true) {
+          redirectToComposer();
+          return true;
         }
       } catch {
         // ignore
       }
+      return false;
+    };
+
+    const run = async () => {
+      attempts++;
+      const done = await trySyncAndCheck();
+      if (done) return;
       if (attempts >= POLL_MAX_ATTEMPTS) {
         setWaitingForWebhook(false);
       }
-    }, POLL_INTERVAL_MS);
+    };
+
+    run();
+    const id = setInterval(run, POLL_INTERVAL_MS);
     return () => clearInterval(id);
   }, [waitingForWebhook]);
 
@@ -86,6 +107,17 @@ export function BillingClient({
           Payment received. We’re activating your plan — this usually takes a few seconds.
         </p>
         <p className="mt-4 text-sm text-text-muted">You’ll be redirected to the dashboard shortly…</p>
+        <p className="mt-6 text-xs text-text-muted">
+          Still here after a minute?{" "}
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="font-medium text-accent hover:underline"
+          >
+            Refresh the page
+          </button>{" "}
+          to sync your plan.
+        </p>
       </div>
     );
   }

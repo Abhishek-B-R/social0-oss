@@ -64,7 +64,9 @@ export async function checkResurfaceAllowed(userId: string): Promise<boolean> {
 }
 
 /** Twitter tweets published this month (UTC) for the user. */
-export async function getTwitterTweetsThisMonth(userId: string): Promise<number> {
+export async function getTwitterTweetsThisMonth(
+  userId: string,
+): Promise<number> {
   const startOfMonth = new Date();
   startOfMonth.setUTCDate(1);
   startOfMonth.setUTCHours(0, 0, 0, 0);
@@ -72,7 +74,10 @@ export async function getTwitterTweetsThisMonth(userId: string): Promise<number>
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(postPublications)
-    .innerJoin(connectedAccounts, eq(postPublications.connectedAccountId, connectedAccounts.id))
+    .innerJoin(
+      connectedAccounts,
+      eq(postPublications.connectedAccountId, connectedAccounts.id),
+    )
     .where(
       and(
         eq(connectedAccounts.userId, userId),

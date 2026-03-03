@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export function OAuthErrorHandler() {
@@ -19,7 +20,11 @@ export function OAuthErrorHandler() {
       setShowError(true);
       switch (error) {
         case "limit":
-          setMessage(messageParam ? decodeURIComponent(messageParam) : "Account limit reached. Upgrade your plan to connect more.");
+          setMessage(
+            messageParam
+              ? decodeURIComponent(messageParam)
+              : "Account limit reached. Upgrade your plan to connect more.",
+          );
           break;
         case "oauth_failed":
           setMessage(`Failed to connect ${platform || "account"}`);
@@ -64,8 +69,21 @@ export function OAuthErrorHandler() {
   return (
     <div className="mb-6">
       {showError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 font-medium">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 font-medium dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
           {message}
+          {error === "limit" && (
+            <>
+              {" "}
+              Click{" "}
+              <Link
+                href="/dashboard/billing"
+                className="font-semibold underline underline-offset-2 hover:no-underline"
+              >
+                Billing
+              </Link>{" "}
+              to upgrade.
+            </>
+          )}
         </div>
       )}
       {showSuccess && (

@@ -8,9 +8,9 @@ import { SubscriptionSync } from "@/components/dashboard/SubscriptionSync";
 import { getSubscriptionForUser } from "@/lib/subscription";
 
 function getPlanLabel(tier: string): string {
-  if (tier === "growth") return "Growth";
-  if (tier === "starter") return "Starter (Lite)";
-  return "Free";
+  if (tier === "growth") return "Growth plan";
+  if (tier === "starter") return "Starter (Lite) plan";
+  return "Free plan";
 }
 
 export default async function DashboardLayout({
