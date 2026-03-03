@@ -1,6 +1,8 @@
 import { PLATFORM_OAUTH_CONFIG, Platform } from "@/lib/platforms";
 import { db } from "@/db";
 import { connectedAccounts, verification } from "@/db/schema";
+import { checkAccountLimits } from "@/lib/plan-limits";
+import { logConnectBlocked } from "@/lib/plan-analytics";
 import { eq, and } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { decrypt, encryptToken } from "@/lib/encryption";
@@ -218,6 +220,20 @@ export async function GET(
           })
           .where(eq(connectedAccounts.id, existing.id));
       } else {
+        const limitCheck = await checkAccountLimits(userId, "twitter_x");
+        if (!limitCheck.allowed) {
+          logConnectBlocked(
+            userId,
+            "twitter_x",
+            limitCheck.reason ?? "Account limit reached",
+            limitCheck.currentTotal,
+            limitCheck.limitTotal,
+          );
+          return safeRedirect(
+            `/dashboard/connections?error=limit&message=${encodeURIComponent(limitCheck.reason ?? "Account limit reached")}`,
+            "/dashboard/connections",
+          );
+        }
         await db.insert(connectedAccounts).values({
           id: accountId,
           userId,
@@ -866,6 +882,21 @@ export async function GET(
     }
     if (platform === "tiktok" && tokens.expires_in) {
       insertTokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+    }
+
+    const limitCheck = await checkAccountLimits(userId, platform);
+    if (!limitCheck.allowed) {
+      logConnectBlocked(
+        userId,
+        platform,
+        limitCheck.reason ?? "Account limit reached",
+        limitCheck.currentTotal,
+        limitCheck.limitTotal,
+      );
+      return safeRedirect(
+        `/dashboard/connections?error=limit&message=${encodeURIComponent(limitCheck.reason ?? "Account limit reached")}`,
+        "/dashboard/connections",
+      );
     }
 
     await db.insert(connectedAccounts).values({

@@ -2,8 +2,8 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { user, userSettings } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { user, userSettings, connectedAccounts } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -88,6 +88,66 @@ export async function updateDisplayName(formData: FormData): Promise<void> {
     .where(eq(user.id, userId));
 
   revalidatePath("/dashboard/settings");
+}
+
+export async function updateUserImage(imageUrl: string): Promise<{ error?: string }> {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    return { error: "Unauthorized" };
+  }
+  const url = String(imageUrl ?? "").trim();
+  if (!url) {
+    return { error: "Image URL is required" };
+  }
+  try {
+    await db
+      .update(user)
+      .set({
+        image: url,
+        updatedAt: new Date(),
+      })
+      .where(eq(user.id, userId));
+    revalidatePath("/dashboard/settings");
+    return {};
+  } catch {
+    return { error: "Failed to update avatar" };
+  }
+}
+
+export async function updateConnectionAvatar(
+  connectedAccountId: string,
+  profileImageUrl: string,
+): Promise<{ error?: string }> {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    return { error: "Unauthorized" };
+  }
+  const url = String(profileImageUrl ?? "").trim();
+  if (!url) {
+    return { error: "Image URL is required" };
+  }
+  try {
+    const [updated] = await db
+      .update(connectedAccounts)
+      .set({
+        profileImageUrl: url,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(connectedAccounts.id, connectedAccountId),
+          eq(connectedAccounts.userId, userId),
+        ),
+      )
+      .returning({ id: connectedAccounts.id });
+    if (!updated) {
+      return { error: "Connection not found or access denied" };
+    }
+    revalidatePath("/dashboard/settings");
+    return {};
+  } catch {
+    return { error: "Failed to update avatar" };
+  }
 }
 
 export async function updateAutomationEmails(formData: FormData): Promise<void> {

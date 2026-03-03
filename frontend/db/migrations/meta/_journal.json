@@ -113,6 +113,13 @@
       "when": 1772036257655,
       "tag": "0015_add_post_status_partial",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1772036257656,
+      "tag": "0016_add_polar_subscription_fields",
+      "breakpoints": true
     }
   ]
 }

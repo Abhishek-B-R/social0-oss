@@ -1,11 +1,13 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export function OAuthErrorHandler() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
+  const messageParam = searchParams.get("message");
   const platform = searchParams.get("platform");
   const connected = searchParams.get("connected");
   const [showError, setShowError] = useState(false);
@@ -17,6 +19,13 @@ export function OAuthErrorHandler() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowError(true);
       switch (error) {
+        case "limit":
+          setMessage(
+            messageParam
+              ? decodeURIComponent(messageParam)
+              : "Account limit reached. Upgrade your plan to connect more.",
+          );
+          break;
         case "oauth_failed":
           setMessage(`Failed to connect ${platform || "account"}`);
           break;
@@ -51,7 +60,7 @@ export function OAuthErrorHandler() {
       // Auto-hide after 3 seconds
       setTimeout(() => setShowSuccess(false), 3000);
     }
-  }, [error, platform, connected]);
+  }, [error, messageParam, platform, connected]);
 
   if (!showError && !showSuccess) {
     return null;
@@ -60,8 +69,21 @@ export function OAuthErrorHandler() {
   return (
     <div className="mb-6">
       {showError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 font-medium">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 font-medium dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
           {message}
+          {error === "limit" && (
+            <>
+              {" "}
+              Click{" "}
+              <Link
+                href="/dashboard/billing"
+                className="font-semibold underline underline-offset-2 hover:no-underline"
+              >
+                Billing
+              </Link>{" "}
+              to upgrade.
+            </>
+          )}
         </div>
       )}
       {showSuccess && (

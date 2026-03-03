@@ -8,6 +8,7 @@ import { BulkToolsVideoClient } from "@/components/bulk-tools/BulkToolsVideoClie
 import { CONTENT_TYPES } from "@/lib/content-types";
 import { PLATFORMS } from "@/lib/platforms";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
+import { checkBulkToolsAllowed } from "@/lib/plan-limits";
 
 const platformOrder: string[] = PLATFORMS.map((p) => p.id);
 const VIDEO_PLATFORMS = new Set<string>(
@@ -24,6 +25,9 @@ function sortAccounts<T extends { platform: string }>(accounts: T[]): T[] {
 export default async function BulkToolsVideoPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/");
+
+  const bulkAllowed = await checkBulkToolsAllowed(session.user.id);
+  if (!bulkAllowed) redirect("/dashboard/billing?upgrade=1");
 
   const all = await db.query.connectedAccounts.findMany({
     where: eq(connectedAccounts.userId, session.user.id),

@@ -72,9 +72,10 @@ type DashboardSidebarProps = {
     email?: string | null;
     image?: string | null;
   };
+  planLabel: string;
 };
 
-export function DashboardSidebar({ user }: DashboardSidebarProps) {
+export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -245,7 +246,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             <p className="truncate text-sm font-medium text-sidebar-text">
               {user.name || user.email || "User"}
             </p>
-            <p className="truncate text-xs text-sidebar-text">Creator Plan</p>
+            <p className="truncate text-xs text-sidebar-text">{planLabel}</p>
           </div>
           <IconChevronDown className="h-4 w-4 shrink-0 text-sidebar-text" size={16} />
         </div>

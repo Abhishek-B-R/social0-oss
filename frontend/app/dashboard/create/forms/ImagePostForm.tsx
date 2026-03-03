@@ -71,10 +71,14 @@ export function ImagePostForm({
   accounts,
   use24HourTimeFormat = false,
   draftId: initialDraftId,
+  allowAutoRepost = true,
+  allowAutoPlug = true,
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
   draftId?: string;
+  allowAutoRepost?: boolean;
+  allowAutoPlug?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1493,6 +1497,8 @@ export function ImagePostForm({
                 }
               : null
           }
+          allowAutoRepost={allowAutoRepost}
+          allowAutoPlug={allowAutoPlug}
         >
           <div className="hidden lg:block">
             <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">

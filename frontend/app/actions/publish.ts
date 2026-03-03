@@ -20,6 +20,10 @@ import {
   validateCollectionMedia,
 } from "@/lib/publish-validation";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
+import { checkTwitterTweetLimit } from "@/lib/plan-limits";
+import { getSubscriptionForUser } from "@/lib/subscription";
+import { isActiveTier } from "@/lib/plans";
+import { logPublishBlocked } from "@/lib/plan-analytics";
 import { uploadTwitterImage, uploadTwitterVideo } from "@/lib/twitter-media";
 import { TwitterApi } from "twitter-api-v2";
 
@@ -145,6 +149,17 @@ export async function executePublish(
     };
   }
 
+  // Free tier cannot publish (0 accounts allowed; block even if they had accounts from before)
+  const subscription = await getSubscriptionForUser(post.userId);
+  if (!isActiveTier(subscription.tier)) {
+    logPublishBlocked("subscription", post.userId, post.id);
+    return {
+      success: false,
+      error: "An active subscription is required to publish. Upgrade in Billing.",
+      results: [],
+    };
+  }
+
   const publicationsWithAccounts = await db
     .select({
       publicationId: postPublications.id,
@@ -166,6 +181,24 @@ export async function executePublish(
       eq(postPublications.connectedAccountId, connectedAccounts.id),
     )
     .where(eq(postPublications.postId, postId));
+
+  const hasPendingTwitter = publicationsWithAccounts.some(
+    (p) => p.publicationStatus === "pending" && p.platform === "twitter_x",
+  );
+  if (hasPendingTwitter && post.userId) {
+    const tweetLimit = await checkTwitterTweetLimit(post.userId);
+    if (!tweetLimit.allowed) {
+      logPublishBlocked("tweet_limit", post.userId, post.id, {
+        used: tweetLimit.used,
+        limit: tweetLimit.limit,
+      });
+      return {
+        success: false,
+        error: tweetLimit.reason ?? "Twitter monthly limit reached",
+        results: [],
+      };
+    }
+  }
 
   // Mark post and pending publications as "publishing" so UI shows progress and we avoid double-publish
   await db

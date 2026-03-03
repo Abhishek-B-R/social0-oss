@@ -1,8 +1,18 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { db } from "@/db";
+import { connectedAccounts } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { SettingsClient } from "./SettingsClient";
+
+export type SettingsConnection = {
+  id: string;
+  platform: string;
+  platformUsername: string | null;
+  profileImageUrl: string | null;
+};
 
 export default async function SettingsPage() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -11,13 +21,36 @@ export default async function SettingsPage() {
     redirect("/");
   }
 
-  const settings = await getUserSettingsSnapshot();
+  const [settings, connections] = await Promise.all([
+    getUserSettingsSnapshot(),
+    db.query.connectedAccounts.findMany({
+      where: and(
+        eq(connectedAccounts.userId, session.user.id),
+        eq(connectedAccounts.isActive, true),
+      ),
+      columns: {
+        id: true,
+        platform: true,
+        platformUsername: true,
+        profileImageUrl: true,
+      },
+    }),
+  ]);
+
+  const connectionsForClient: SettingsConnection[] = connections.map((c) => ({
+    id: c.id,
+    platform: c.platform,
+    platformUsername: c.platformUsername,
+    profileImageUrl: c.profileImageUrl,
+  }));
 
   return (
     <SettingsClient
       displayName={session.user.name ?? ""}
       email={session.user.email}
+      image={session.user.image ?? null}
       settings={settings}
+      connections={connectionsForClient}
     />
   );
 }

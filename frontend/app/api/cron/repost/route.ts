@@ -5,11 +5,14 @@ import {
   resurfaceEvents,
   postPublications,
   connectedAccounts,
+  posts,
 } from "@/db/schema";
 import { and, eq, lte, desc } from "drizzle-orm";
 import { TwitterApi } from "twitter-api-v2";
 import { decryptToken } from "@/lib/encryption";
 import { verifyCronAuth } from "@/lib/cron-auth";
+import { checkResurfaceAllowed } from "@/lib/plan-limits";
+import { logCronSkipped } from "@/lib/plan-analytics";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -41,7 +44,7 @@ export async function GET(request: Request) {
 
   for (const ev of pendingEvents) {
     try {
-      const [schedule] = await db
+      const [scheduleRow] = await db
         .select({
           id: resurfaceSchedules.id,
           postId: resurfaceSchedules.postId,
@@ -51,9 +54,24 @@ export async function GET(request: Request) {
           plugComment: resurfaceSchedules.plugComment,
           isActive: resurfaceSchedules.isActive,
           resurfacesDone: resurfaceSchedules.resurfacesDone,
+          userId: posts.userId,
         })
         .from(resurfaceSchedules)
+        .innerJoin(posts, eq(resurfaceSchedules.postId, posts.id))
         .where(eq(resurfaceSchedules.id, ev.scheduleId));
+
+      const schedule = scheduleRow
+        ? {
+            id: scheduleRow.id,
+            postId: scheduleRow.postId,
+            platform: scheduleRow.platform,
+            intervalHours: scheduleRow.intervalHours,
+            maxResurfaces: scheduleRow.maxResurfaces,
+            plugComment: scheduleRow.plugComment,
+            isActive: scheduleRow.isActive,
+            resurfacesDone: scheduleRow.resurfacesDone,
+          }
+        : null;
 
       if (
         !schedule ||
@@ -68,6 +86,14 @@ export async function GET(request: Request) {
       }
 
       if (schedule.platform !== "x") continue;
+
+      const scheduleUserId = scheduleRow?.userId;
+      if (!scheduleUserId || !(await checkResurfaceAllowed(scheduleUserId))) {
+        if (scheduleUserId) {
+          logCronSkipped("resurface", scheduleUserId, ev.scheduleId);
+        }
+        continue;
+      }
 
       const xPub = await db
         .select({

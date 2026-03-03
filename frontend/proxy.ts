@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Proxy runs at the network boundary (Next.js 16+)
-// For now, we do basic path handling; auth is enforced in layout and API routes
+// Auth is enforced in layout and API routes. Subscription gate removed for now.
 export async function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname;
 

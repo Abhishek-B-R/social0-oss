@@ -25,7 +25,7 @@ const plans = [
   },
   {
     name: "Growth",
-    price: "$19",
+    price: "$20",
     period: "/month",
     target: "Best for serious creators",
     features: [

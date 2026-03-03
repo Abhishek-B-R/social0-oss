@@ -38,6 +38,11 @@ const envSchema = z.object({
   // Upstash Redis for rate limiting (optional — rate limiting is skipped if not set)
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+  // Polar.sh billing
+  POLAR_ACCESS_TOKEN: z.string().optional(),
+  POLAR_WEBHOOK_SECRET: z.string().optional(),
+  POLAR_STARTER_PRODUCT_ID: z.string().uuid().optional(),
+  POLAR_GROWTH_PRODUCT_ID: z.string().uuid().optional(),
 });
 
 export const env = envSchema.parse(process.env);
