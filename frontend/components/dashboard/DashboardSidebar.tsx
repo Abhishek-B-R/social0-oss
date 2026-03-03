@@ -6,21 +6,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
-  FilePlus,
-  Layers,
-  Calendar,
-  List,
-  Clock,
-  CheckCircle,
-  FileText,
-  Link2,
-  Users,
-  Settings,
-  CreditCard,
-  MessageCircle,
-  ChevronDown,
-  PenSquare,
-} from "lucide-react";
+  IconFilePlus,
+  IconTool,
+  IconStack2,
+  IconCalendar,
+  IconList,
+  IconClock,
+  IconCircleCheck,
+  IconFileText,
+  IconLink,
+  IconUsers,
+  IconSettings,
+  IconCreditCard,
+  IconMessageCircle,
+  IconChevronDown,
+  IconPencil,
+} from "@tabler/icons-react";
 import { SignOutButton } from "@/components/SignOutButton";
 
 type NavItem = {
@@ -122,7 +123,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           href="/dashboard/composer"
           className="sidebar-create-post-cta flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm hover:bg-accent-hover transition-colors"
         >
-          <FilePlus className="h-4 w-4 shrink-0" />
+          <IconFilePlus className="h-4 w-4 shrink-0" size={16} />
           New post
         </Link>
 
@@ -131,13 +132,13 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             <NavLink
               href="/dashboard/composer"
               label="Composer"
-              icon={PenSquare}
+              icon={IconPencil}
               isActive={pathname.startsWith("/dashboard/composer")}
             />
             <NavLink
               href="/dashboard/create"
               label="Manual setup"
-              icon={FilePlus}
+              icon={IconTool}
               isActive={
                 pathname === "/dashboard/create" ||
                 pathname.startsWith("/dashboard/create/")
@@ -146,7 +147,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             <NavLink
               href="/dashboard/bulk-tools"
               label="Bulk tools"
-              icon={Layers}
+              icon={IconStack2}
               isActive={isActive("/dashboard/bulk-tools")}
             />
           </Section>
@@ -155,31 +156,31 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             <NavLink
               href="/dashboard/posts"
               label="All"
-              icon={List}
+              icon={IconList}
               isActive={pathname === "/dashboard/posts"}
             />
             <NavLink
               href="/dashboard/posts/posted"
               label="Posted"
-              icon={CheckCircle}
+              icon={IconCircleCheck}
               isActive={isActive("/dashboard/posts/posted")}
             />
             <NavLink
               href="/dashboard/posts/scheduled"
               label="Scheduled"
-              icon={Clock}
+              icon={IconClock}
               isActive={isActive("/dashboard/posts/scheduled")}
             />
             <NavLink
               href="/dashboard/posts/drafts"
               label="Drafts"
-              icon={FileText}
+              icon={IconFileText}
               isActive={isActive("/dashboard/posts/drafts")}
             />
             <NavLink
               href="/dashboard/calendar"
               label="Calendar"
-              icon={Calendar}
+              icon={IconCalendar}
               isActive={isActive("/dashboard/calendar")}
             />
           </Section>
@@ -188,13 +189,13 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             <NavLink
               href="/dashboard/connections"
               label="Connections"
-              icon={Link2}
+              icon={IconLink}
               isActive={pathname === "/dashboard/connections"}
             />
             <NavLink
               href="/dashboard/teams"
               label="Teams"
-              icon={Users}
+              icon={IconUsers}
               isActive={isActive("/dashboard/teams")}
             />
           </Section>
@@ -203,13 +204,13 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             <NavLink
               href="/dashboard/settings"
               label="Settings"
-              icon={Settings}
+              icon={IconSettings}
               isActive={isActive("/dashboard/settings")}
             />
             <NavLink
               href="/dashboard/billing"
               label="Billing"
-              icon={CreditCard}
+              icon={IconCreditCard}
               isActive={isActive("/dashboard/billing")}
             />
           </Section>
@@ -219,7 +220,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
               href="#"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-sidebar-text hover:bg-sidebar-active"
             >
-              <MessageCircle className="h-4 w-4 shrink-0 text-sidebar-text" />
+              <IconMessageCircle className="h-4 w-4 shrink-0 text-sidebar-text" size={16} />
               Share feedback
             </a>
           </Section>
@@ -246,7 +247,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             </p>
             <p className="truncate text-xs text-sidebar-text">Creator Plan</p>
           </div>
-          <ChevronDown className="h-4 w-4 shrink-0 text-sidebar-text" />
+          <IconChevronDown className="h-4 w-4 shrink-0 text-sidebar-text" size={16} />
         </div>
         <div className="mt-2">
           <SignOutButton />

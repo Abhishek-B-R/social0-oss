@@ -1,30 +1,30 @@
 import Link from "next/link";
 import {
-  Settings,
-  Layers,
-  List,
-  Clock,
-  CheckCircle,
-  FileText,
-  Users,
-  CreditCard,
-  MessageCircle,
-  FileStack,
-} from "lucide-react";
+  IconSettings,
+  IconStack2,
+  IconList,
+  IconClock,
+  IconCircleCheck,
+  IconFileText,
+  IconFiles,
+  IconUsers,
+  IconCreditCard,
+  IconMessageCircle,
+} from "@tabler/icons-react";
 
 const MANUAL_POSTING_LINKS = [
-  { href: "/dashboard/create", label: "Manual setup", icon: FileStack },
+  { href: "/dashboard/create", label: "Manual setup", icon: IconFiles },
 ] as const;
 
 const MORE_LINKS = [
-  { href: "/dashboard/bulk-tools", label: "Bulk tools", icon: Layers },
-  { href: "/dashboard/posts", label: "All posts", icon: List },
-  { href: "/dashboard/posts/scheduled", label: "Scheduled", icon: Clock },
-  { href: "/dashboard/posts/posted", label: "Posted", icon: CheckCircle },
-  { href: "/dashboard/posts/drafts", label: "Drafts", icon: FileText },
-  { href: "/dashboard/teams", label: "Teams", icon: Users },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
-  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
+  { href: "/dashboard/bulk-tools", label: "Bulk tools", icon: IconStack2 },
+  { href: "/dashboard/posts", label: "All posts", icon: IconList },
+  { href: "/dashboard/posts/scheduled", label: "Scheduled", icon: IconClock },
+  { href: "/dashboard/posts/posted", label: "Posted", icon: IconCircleCheck },
+  { href: "/dashboard/posts/drafts", label: "Drafts", icon: IconFileText },
+  { href: "/dashboard/teams", label: "Teams", icon: IconUsers },
+  { href: "/dashboard/settings", label: "Settings", icon: IconSettings },
+  { href: "/dashboard/billing", label: "Billing", icon: IconCreditCard },
 ] as const;
 
 export default function MorePage() {
@@ -75,7 +75,7 @@ export default function MorePage() {
               href="#"
               className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
             >
-              <MessageCircle className="h-4 w-4 shrink-0 text-text-muted" />
+              <IconMessageCircle className="h-4 w-4 shrink-0 text-text-muted" size={16} />
               Share feedback
             </a>
           </li>

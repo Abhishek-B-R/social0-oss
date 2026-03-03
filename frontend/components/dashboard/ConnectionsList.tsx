@@ -65,8 +65,8 @@ export function ConnectionsList({ accounts }: { accounts: Account[] }) {
           Link your social accounts to publish from one place. You can connect
           multiple accounts per platform.
         </p>
-        <div className="rounded-2xl border border-border bg-bg-elevated p-3 shadow-sm">
-          <div className="flex flex-col gap-1.5">
+        <div className="min-w-0 overflow-x-auto rounded-2xl border border-border bg-bg-elevated p-3 shadow-sm">
+          <div className="flex min-w-0 flex-col gap-1.5">
             {byPlatform.map(({ platform, accounts: platformAccounts }) => {
               const ui = PLATFORM_UI[platform.id] ?? {
                 name: platform.name,
@@ -76,7 +76,7 @@ export function ConnectionsList({ accounts }: { accounts: Account[] }) {
               return (
                 <div
                   key={platform.id}
-                  className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-lg border border-border bg-bg-muted px-2.5 py-1.5 transition-colors hover:bg-bg-muted"
+                  className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-lg border border-border bg-bg-muted px-2.5 py-1.5 transition-colors hover:bg-bg-muted"
                 >
                   <div className="flex w-9 shrink-0 items-center sm:w-28 sm:gap-1.5">
                     <div
@@ -112,7 +112,7 @@ export function ConnectionsList({ accounts }: { accounts: Account[] }) {
                       return (
                         <div
                           key={account.id}
-                          className={`flex min-w-0 shrink-0 flex-wrap items-center gap-1 rounded-md border px-1.5 py-0.5 ${
+                          className={`flex min-w-0 max-w-full flex-wrap items-center gap-1 rounded-md border px-1.5 py-0.5 ${
                             isExpired
                               ? "border-destructive/50 bg-destructive/10"
                               : "border-border bg-bg-elevated"
@@ -123,17 +123,19 @@ export function ConnectionsList({ accounts }: { accounts: Account[] }) {
                             username={account.platformUsername}
                             platform={account.platform}
                             size="sm"
+                            className="shrink-0"
                           />
-                          <span className="max-w-[100px] truncate text-xs font-medium text-text">
+                          <span className="min-w-0 max-w-[80px] truncate text-xs font-medium text-text sm:max-w-[100px]">
                             @{account.platformUsername || "user"}
                           </span>
                           {isExpired && (
                             <Link
                               href={`/api/connect/${account.platform}`}
                               className="shrink-0 inline-flex items-center gap-1 rounded border border-destructive/50 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive transition-colors hover:bg-destructive/20"
+                              title="Token expired — Reconnect"
                             >
-                              <AlertTriangle className="h-3 w-3" />
-                              Token expired — Reconnect
+                              <AlertTriangle className="h-3 w-3 shrink-0" />
+                              <span className="hidden sm:inline">Token expired — </span>Reconnect
                             </Link>
                           )}
                           {isExpiringSoon && account.expiresInDays != null && (

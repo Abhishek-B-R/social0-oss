@@ -42,6 +42,11 @@ export function ComposerClient() {
     right: false,
   });
   const mediaStripRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
 
   const updateScrollArrows = useCallback(() => {
     const el = mediaStripRef.current;
@@ -326,11 +331,19 @@ export function ComposerClient() {
 
       <div className="space-y-4 rounded-2xl border border-border bg-bg-elevated p-4 sm:p-5 shadow-sm">
         <textarea
+          ref={textareaRef}
           className="min-h-[140px] w-full resize-none border-none bg-transparent text-base text-text outline-none placeholder:text-text-muted"
           placeholder="Share what's on your mind..."
           value={text}
           onChange={(e) => setText(e.target.value)}
           onPaste={onPaste}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+              e.preventDefault();
+              handleSubmit();
+            }
+          }}
+          autoFocus
         />
 
         {media.length > 0 && (

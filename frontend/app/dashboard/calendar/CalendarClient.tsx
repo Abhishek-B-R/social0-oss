@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   format,
@@ -37,6 +37,19 @@ export type PostForCalendar = {
 };
 
 const MAX_VISIBLE_PER_DAY = 2;
+const MOBILE_BREAKPOINT_PX = 768;
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX}px)`);
+    setIsMobile(mq.matches);
+    const listener = () => setIsMobile(mq.matches);
+    mq.addEventListener("change", listener);
+    return () => mq.removeEventListener("change", listener);
+  }, []);
+  return isMobile;
+}
 
 function DayCell({
   date,
@@ -47,6 +60,7 @@ function DayCell({
   onDayClick,
   fillHeight,
   use24HourTimeFormat = false,
+  isMobile = false,
 }: {
   date: Date;
   posts: PostForCalendar[];
@@ -56,13 +70,22 @@ function DayCell({
   onDayClick?: (date: Date) => void;
   fillHeight?: boolean;
   use24HourTimeFormat?: boolean;
+  isMobile?: boolean;
 }) {
   const dateKey = format(date, "yyyy-MM-dd");
   const isExpanded = expandedDay === dateKey;
-  const limit = fillHeight ? posts.length : MAX_VISIBLE_PER_DAY;
+  const mobileLimit = 1;
+  const limit = isMobile
+    ? mobileLimit
+    : fillHeight
+      ? posts.length
+      : MAX_VISIBLE_PER_DAY;
   const visible = isExpanded ? posts : posts.slice(0, limit);
-  const moreCount = posts.length - MAX_VISIBLE_PER_DAY;
-  const hasMore = !fillHeight && !isExpanded && moreCount > 0;
+  const moreCount = isMobile
+    ? Math.max(0, posts.length - 1)
+    : posts.length - MAX_VISIBLE_PER_DAY;
+  const hasMore =
+    !fillHeight && !isExpanded && (isMobile ? posts.length > 1 : moreCount > 0);
 
   return (
     <div
@@ -91,50 +114,117 @@ function DayCell({
         {visible.length === 0 && (
           <p className="text-xs text-text-muted">No posts</p>
         )}
-        {visible.map((post) => (
-          <Link
-            key={post.id}
-            href="/dashboard/posts"
-            className="block rounded border border-border-subtle bg-bg p-1.5 shadow-sm hover:bg-bg-muted"
-          >
-            <div className="flex items-start gap-1.5">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-text line-clamp-1">
-                  {post.snippet || "(No caption)"}
-                </p>
-                <p className="text-[10px] text-text-muted">
-                  {format(
-                    parseISO(post.displayDate),
-                    use24HourTimeFormat ? "HH:mm" : "h:mm a",
-                  )}
-                </p>
-              </div>
-              <AccountAvatar
-                profileImageUrl={post.profileImageUrl}
-                username={post.platformUsername}
-                platform={post.platform ?? undefined}
-                size="sm"
-              />
-            </div>
-          </Link>
-        ))}
-        {hasMore && (
-          <button
-            type="button"
-            onClick={() => onToggleExpand(dateKey)}
-            className="w-full rounded border border-dashed border-border py-1 text-xs font-medium text-accent hover:bg-accent/10"
-          >
-            +{moreCount} more
-          </button>
-        )}
-        {isExpanded && moreCount > 0 && (
-          <button
-            type="button"
-            onClick={() => onToggleExpand(dateKey)}
-            className="w-full text-xs text-text-muted hover:text-text"
-          >
-            Show less
-          </button>
+        {isMobile && posts.length > 0 ? (
+          <>
+            {!isExpanded && (
+              <Link
+                href={`/dashboard/posts/${posts[0].id}`}
+                className="inline-flex items-center gap-1 rounded border border-border-subtle bg-bg px-1.5 py-0.5 text-[10px] font-medium text-text-muted shadow-sm hover:bg-bg-muted"
+              >
+                <span
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                    posts[0].status === "published"
+                      ? "bg-accent"
+                      : "bg-accent/70"
+                  }`}
+                  aria-hidden
+                />
+                {posts[0].status === "published" ? "Posted" : "Scheduled"}
+              </Link>
+            )}
+            {isExpanded &&
+              visible.map((post) => (
+                <Link
+                  key={post.id}
+                  href={`/dashboard/posts/${post.id}`}
+                  className="block rounded border border-border-subtle bg-bg p-1.5 shadow-sm hover:bg-bg-muted"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-text-muted tabular-nums">
+                      {format(
+                        parseISO(post.displayDate),
+                        use24HourTimeFormat ? "HH:mm" : "h:mm a",
+                      )}
+                    </span>
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                        post.status === "published"
+                          ? "bg-accent/20 text-accent"
+                          : "bg-bg-muted text-text-muted"
+                      }`}
+                    >
+                      {post.status === "published" ? "Posted" : "Scheduled"}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            {hasMore && (
+              <button
+                type="button"
+                onClick={() => onToggleExpand(dateKey)}
+                className="w-full rounded border border-dashed border-border py-1 text-xs font-medium text-accent hover:bg-accent/10"
+              >
+                +{moreCount} more
+              </button>
+            )}
+            {isExpanded && moreCount > 0 && (
+              <button
+                type="button"
+                onClick={() => onToggleExpand(dateKey)}
+                className="w-full text-xs text-text-muted hover:text-text"
+              >
+                Show less
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            {visible.map((post) => (
+              <Link
+                key={post.id}
+                href={`/dashboard/posts/${post.id}`}
+                className="block rounded border border-border-subtle bg-bg p-1.5 shadow-sm hover:bg-bg-muted"
+              >
+                <div className="flex items-start gap-1.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-text line-clamp-1">
+                      {post.snippet || "(No caption)"}
+                    </p>
+                    <p className="text-[10px] text-text-muted">
+                      {format(
+                        parseISO(post.displayDate),
+                        use24HourTimeFormat ? "HH:mm" : "h:mm a",
+                      )}
+                    </p>
+                  </div>
+                  <AccountAvatar
+                    profileImageUrl={post.profileImageUrl}
+                    username={post.platformUsername}
+                    platform={post.platform ?? undefined}
+                    size="sm"
+                  />
+                </div>
+              </Link>
+            ))}
+            {hasMore && (
+              <button
+                type="button"
+                onClick={() => onToggleExpand(dateKey)}
+                className="w-full rounded border border-dashed border-border py-1 text-xs font-medium text-accent hover:bg-accent/10"
+              >
+                +{moreCount} more
+              </button>
+            )}
+            {isExpanded && moreCount > 0 && (
+              <button
+                type="button"
+                onClick={() => onToggleExpand(dateKey)}
+                className="w-full text-xs text-text-muted hover:text-text"
+              >
+                Show less
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -152,6 +242,7 @@ export function CalendarClient({
   initialMonth: string;
   use24HourTimeFormat?: boolean;
 }) {
+  const isMobile = useIsMobile();
   const today = startOfDay(new Date());
   const [currentMonth, setCurrentMonth] = useState(() =>
     parseISO(initialMonth + "-01"),
@@ -365,6 +456,7 @@ export function CalendarClient({
                 }
                 onDayClick={selectDay}
                 use24HourTimeFormat={use24HourTimeFormat}
+                isMobile={isMobile}
               />
             ))}
           </div>
@@ -403,6 +495,7 @@ export function CalendarClient({
                   onDayClick={selectDay}
                   fillHeight
                   use24HourTimeFormat={use24HourTimeFormat}
+                  isMobile={isMobile}
                 />
               </div>
             ))}
@@ -433,7 +526,7 @@ export function CalendarClient({
                   {dayPosts.map((post) => (
                     <li key={post.id}>
                       <Link
-                        href="/dashboard/posts"
+                        href={`/dashboard/posts/${post.id}`}
                         className="flex items-center gap-4 rounded-xl border border-border bg-bg p-4 shadow-sm hover:bg-bg-muted"
                       >
                         <span className="shrink-0 text-sm font-medium text-text-muted tabular-nums">

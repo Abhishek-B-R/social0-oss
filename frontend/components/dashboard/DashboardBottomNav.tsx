@@ -3,19 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  FilePlus,
-  List,
-  Link2,
-  MoreHorizontal,
-  Calendar,
-} from "lucide-react";
+  IconFilePlus,
+  IconList,
+  IconLink,
+  IconDots,
+  IconCalendar,
+} from "@tabler/icons-react";
 
 const NAV_ITEMS = [
-  { href: "/dashboard/connections", label: "Connections", icon: Link2 },
-  { href: "/dashboard/posts", label: "Posts", icon: List },
-  { href: "/dashboard/composer", label: "Create", icon: FilePlus },
-  { href: "/dashboard/calendar", label: "Calendar", icon: Calendar },
-  { href: "/dashboard/more", label: "More", icon: MoreHorizontal },
+  { href: "/dashboard/connections", label: "Connections", icon: IconLink },
+  { href: "/dashboard/posts", label: "Posts", icon: IconList },
+  { href: "/dashboard/composer", label: "Create", icon: IconFilePlus },
+  { href: "/dashboard/calendar", label: "Calendar", icon: IconCalendar },
+  { href: "/dashboard/more", label: "More", icon: IconDots },
 ] as const;
 
 export function DashboardBottomNav() {

@@ -111,7 +111,7 @@ export function SettingsClient({
         </form>
       </section>
 
-      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
+      {/* <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-text">Account</h2>
         <p className="mt-2 text-sm text-text-muted">
           Account managed via Google. Sign-in and security are handled by your
@@ -123,7 +123,7 @@ export function SettingsClient({
             {email}
           </p>
         </div>
-      </section>
+      </section> */}
 
       <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-text">Security</h2>
