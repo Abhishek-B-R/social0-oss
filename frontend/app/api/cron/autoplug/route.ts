@@ -5,6 +5,8 @@ import { eq } from "drizzle-orm";
 import { TwitterApi } from "twitter-api-v2";
 import { decryptToken } from "@/lib/encryption";
 import { verifyCronAuth } from "@/lib/cron-auth";
+import { checkAutoPlugAllowed } from "@/lib/plan-limits";
+import { logCronSkipped } from "@/lib/plan-analytics";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -41,6 +43,7 @@ export async function GET(request: Request) {
 
     const [account] = await db
       .select({
+        userId: connectedAccounts.userId,
         encryptedAccessToken: connectedAccounts.encryptedAccessToken,
         encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
         platformUserId: connectedAccounts.platformUserId,
@@ -48,6 +51,13 @@ export async function GET(request: Request) {
       .from(connectedAccounts)
       .where(eq(connectedAccounts.id, plug.connectedAccountId))
       .limit(1);
+
+    if (!account?.userId || !(await checkAutoPlugAllowed(account.userId))) {
+      if (account?.userId) {
+        logCronSkipped("autoplug", account.userId, plug.id);
+      }
+      continue;
+    }
 
     if (
       !account?.encryptedAccessToken ||

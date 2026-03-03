@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 export function OAuthErrorHandler() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
+  const messageParam = searchParams.get("message");
   const platform = searchParams.get("platform");
   const connected = searchParams.get("connected");
   const [showError, setShowError] = useState(false);
@@ -17,6 +18,9 @@ export function OAuthErrorHandler() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowError(true);
       switch (error) {
+        case "limit":
+          setMessage(messageParam ? decodeURIComponent(messageParam) : "Account limit reached. Upgrade your plan to connect more.");
+          break;
         case "oauth_failed":
           setMessage(`Failed to connect ${platform || "account"}`);
           break;
@@ -51,7 +55,7 @@ export function OAuthErrorHandler() {
       // Auto-hide after 3 seconds
       setTimeout(() => setShowSuccess(false), 3000);
     }
-  }, [error, platform, connected]);
+  }, [error, messageParam, platform, connected]);
 
   if (!showError && !showSuccess) {
     return null;

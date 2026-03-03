@@ -52,10 +52,14 @@ export function TextPostForm({
   accounts,
   use24HourTimeFormat = false,
   draftId: initialDraftId,
+  allowAutoRepost = true,
+  allowAutoPlug = true,
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
   draftId?: string;
+  allowAutoRepost?: boolean;
+  allowAutoPlug?: boolean;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -679,6 +683,8 @@ export function TextPostForm({
                 }
               : null
           }
+          allowAutoRepost={allowAutoRepost}
+          allowAutoPlug={allowAutoPlug}
         >
           <div className="hidden lg:block rounded-xl border border-border bg-bg p-4 shadow-sm mt-16">
             <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-text">

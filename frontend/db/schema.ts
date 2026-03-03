@@ -233,8 +233,10 @@ export const userSettings = pgTable("user_settings", {
   useFilenameAsCaption: boolean("use_filename_as_caption").default(false),
   use24HourTimeFormat: boolean("use_24_hour_time_format").default(false),
   weeklyPostingGoal: integer("weekly_posting_goal").default(3),
-  subscriptionTier: text("subscription_tier").default("free"), // free, pro
+  subscriptionTier: text("subscription_tier").default("free"), // free | starter | growth
   subscriptionExpiresAt: timestamp("subscription_expires_at"),
+  polarSubscriptionId: text("polar_subscription_id"), // Polar subscription ID for portal/cancel
+  polarCustomerId: text("polar_customer_id"), // Polar customer ID
 });
 
 // ===== PLATFORM RATE LIMITS (optional) =====

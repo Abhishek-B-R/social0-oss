@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
+import { checkAutoPlugAllowed, checkResurfaceAllowed } from "@/lib/plan-limits";
 import {
   posts,
   postPublications,
@@ -35,6 +36,11 @@ export async function createAutoPlug(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return { success: false, error: "Unauthorized" };
+  }
+
+  const autoPlugAllowed = await checkAutoPlugAllowed(session.user.id);
+  if (!autoPlugAllowed) {
+    return { success: false, error: "Auto-plug is available on the Growth plan. Upgrade to use this feature." };
   }
 
   const [post] = await db
@@ -145,6 +151,11 @@ export async function createResurfaceSchedule(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return { success: false, error: "Unauthorized" };
+  }
+
+  const resurfaceAllowed = await checkResurfaceAllowed(session.user.id);
+  if (!resurfaceAllowed) {
+    return { success: false, error: "Resurface / auto-repost is available on the Growth plan. Upgrade to use this feature." };
   }
 
   if (platform !== PLATFORM_X) {

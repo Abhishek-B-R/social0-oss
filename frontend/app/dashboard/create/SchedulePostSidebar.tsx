@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import type { PublishMode } from "@/app/actions/posts";
 import { Settings } from "lucide-react";
 
@@ -45,6 +46,10 @@ type SchedulePostSidebarProps = {
   autoRepost?: SidebarAutoRepost | null;
   /** Auto-Plug: compact row with toggle + settings icon when enabled */
   autoPlug?: SidebarAutoPlug | null;
+  /** When false, Auto-Repost row is disabled and shows upgrade message (default true) */
+  allowAutoRepost?: boolean;
+  /** When false, Auto-Plug row is disabled and shows upgrade message (default true) */
+  allowAutoPlug?: boolean;
   /** TikTok Settings: compact row with settings icon (opens list modal) */
   tiktokSettings?: SidebarTikTokSettings | null;
   /** When editing a draft: show Delete draft button and call this on confirm */
@@ -68,6 +73,8 @@ export function SchedulePostSidebar({
   formRef,
   autoRepost,
   autoPlug,
+  allowAutoRepost = true,
+  allowAutoPlug = true,
   tiktokSettings,
   draftId,
   onDeleteDraft,
@@ -340,40 +347,61 @@ export function SchedulePostSidebar({
                 Auto-Repost
               </span>
               <span className="text-xs text-text-muted">(Twitter/X only)</span>
+              {!allowAutoRepost && (
+                <Link
+                  href="/dashboard/billing"
+                  className="text-xs text-accent hover:text-accent-hover mt-0.5"
+                >
+                  Upgrade to use
+                </Link>
+              )}
             </div>
             <div className="flex items-center gap-2">
-              {autoRepost.enabled && (
-                <button
-                  type="button"
-                  onClick={autoRepost.onOpenSettings}
-                  className="rounded-lg p-1.5 text-text-muted hover:bg-bg-muted hover:text-text transition-colors"
-                  aria-label="Auto-Repost settings"
-                >
-                  <Settings className="h-4 w-4" />
-                </button>
-              )}
-              <button
-                type="button"
-                role="switch"
-                aria-checked={autoRepost.enabled}
-                aria-label={
-                  autoRepost.enabled
-                    ? "Disable Auto-Repost"
-                    : "Enable Auto-Repost"
-                }
-                onClick={autoRepost.onToggle}
-                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
-                  autoRepost.enabled
-                    ? "bg-emerald-600"
-                    : "bg-gray-300 dark:bg-gray-600"
-                }`}
-              >
+              {allowAutoRepost ? (
+                <>
+                  {autoRepost.enabled && (
+                    <button
+                      type="button"
+                      onClick={autoRepost.onOpenSettings}
+                      className="rounded-lg p-1.5 text-text-muted hover:bg-bg-muted hover:text-text transition-colors"
+                      aria-label="Auto-Repost settings"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={autoRepost.enabled}
+                    aria-label={
+                      autoRepost.enabled
+                        ? "Disable Auto-Repost"
+                        : "Enable Auto-Repost"
+                    }
+                    onClick={autoRepost.onToggle}
+                    className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
+                      autoRepost.enabled
+                        ? "bg-emerald-600"
+                        : "bg-gray-300 dark:bg-gray-600"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-bg shadow transition-transform ${
+                        autoRepost.enabled ? "translate-x-4" : "translate-x-0.5"
+                      } mt-0.5`}
+                    />
+                  </button>
+                </>
+              ) : (
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-bg shadow transition-transform ${
-                    autoRepost.enabled ? "translate-x-4" : "translate-x-0.5"
-                  } mt-0.5`}
-                />
-              </button>
+                  role="switch"
+                  aria-checked={false}
+                  aria-disabled="true"
+                  className="relative inline-flex h-5 w-9 shrink-0 rounded-full bg-gray-300 dark:bg-gray-600 opacity-60 cursor-not-allowed"
+                >
+                  <span className="inline-block h-4 w-4 transform translate-x-0.5 rounded-full bg-bg shadow mt-0.5" />
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -384,38 +412,59 @@ export function SchedulePostSidebar({
                 Auto-Plug
               </span>
               <span className="text-xs text-text-muted">(Twitter/X only)</span>
+              {!allowAutoPlug && (
+                <Link
+                  href="/dashboard/billing"
+                  className="text-xs text-accent hover:text-accent-hover mt-0.5"
+                >
+                  Upgrade to use
+                </Link>
+              )}
             </div>
             <div className="flex items-center gap-2">
-              {autoPlug.enabled && (
-                <button
-                  type="button"
-                  onClick={autoPlug.onOpenSettings}
-                  className="rounded-lg p-1.5 text-text-muted hover:bg-bg-muted hover:text-text transition-colors"
-                  aria-label="Auto-Plug settings"
-                >
-                  <Settings className="h-4 w-4" />
-                </button>
-              )}
-              <button
-                type="button"
-                role="switch"
-                aria-checked={autoPlug.enabled}
-                aria-label={
-                  autoPlug.enabled ? "Disable Auto-Plug" : "Enable Auto-Plug"
-                }
-                onClick={autoPlug.onToggle}
-                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
-                  autoPlug.enabled
-                    ? "bg-emerald-600"
-                    : "bg-gray-300 dark:bg-gray-600"
-                }`}
-              >
+              {allowAutoPlug ? (
+                <>
+                  {autoPlug.enabled && (
+                    <button
+                      type="button"
+                      onClick={autoPlug.onOpenSettings}
+                      className="rounded-lg p-1.5 text-text-muted hover:bg-bg-muted hover:text-text transition-colors"
+                      aria-label="Auto-Plug settings"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={autoPlug.enabled}
+                    aria-label={
+                      autoPlug.enabled ? "Disable Auto-Plug" : "Enable Auto-Plug"
+                    }
+                    onClick={autoPlug.onToggle}
+                    className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
+                      autoPlug.enabled
+                        ? "bg-emerald-600"
+                        : "bg-gray-300 dark:bg-gray-600"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-bg shadow transition-transform ${
+                        autoPlug.enabled ? "translate-x-4" : "translate-x-0.5"
+                      } mt-0.5`}
+                    />
+                  </button>
+                </>
+              ) : (
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-bg shadow transition-transform ${
-                    autoPlug.enabled ? "translate-x-4" : "translate-x-0.5"
-                  } mt-0.5`}
-                />
-              </button>
+                  role="switch"
+                  aria-checked={false}
+                  aria-disabled="true"
+                  className="relative inline-flex h-5 w-9 shrink-0 rounded-full bg-gray-300 dark:bg-gray-600 opacity-60 cursor-not-allowed"
+                >
+                  <span className="inline-block h-4 w-4 transform translate-x-0.5 rounded-full bg-bg shadow mt-0.5" />
+                </span>
+              )}
             </div>
           </div>
         )}

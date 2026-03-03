@@ -8,7 +8,8 @@ import { PLATFORMS } from "@/lib/platforms";
 import { getContentTypeBySlug } from "@/lib/content-types";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
-import Link from "next/link";
+import { getSubscriptionForUser } from "@/lib/subscription";
+import { getPlanLimits } from "@/lib/plans";
 import { TextPostForm } from "../forms/TextPostForm";
 import { ImagePostForm } from "../forms/ImagePostForm";
 import { VideoPostForm } from "../forms/VideoPostForm";
@@ -94,6 +95,8 @@ export default async function NewPostByTypePage({
 
   const FormComponent = FORM_MAP[contentType.slug];
   const { use24HourTimeFormat } = await getUserSettingsSnapshot();
+  const subscription = await getSubscriptionForUser(session.user.id);
+  const planLimits = getPlanLimits(subscription.tier);
 
   return (
     <div>
@@ -104,6 +107,8 @@ export default async function NewPostByTypePage({
         accounts={filtered}
         use24HourTimeFormat={use24HourTimeFormat}
         draftId={draftId ?? undefined}
+        allowAutoRepost={planLimits.allowResurface}
+        allowAutoPlug={planLimits.allowAutoPlug}
       />
     </div>
   );

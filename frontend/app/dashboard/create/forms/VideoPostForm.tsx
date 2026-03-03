@@ -80,10 +80,14 @@ export function VideoPostForm({
   accounts,
   use24HourTimeFormat = false,
   draftId: initialDraftId,
+  allowAutoRepost = true,
+  allowAutoPlug = true,
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
   draftId?: string;
+  allowAutoRepost?: boolean;
+  allowAutoPlug?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1392,6 +1396,8 @@ export function VideoPostForm({
                 }
               : null
           }
+          allowAutoRepost={allowAutoRepost}
+          allowAutoPlug={allowAutoPlug}
         >
           <div className="hidden lg:block rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-2">
