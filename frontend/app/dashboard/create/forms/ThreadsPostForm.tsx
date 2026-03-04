@@ -3,7 +3,11 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
-import { publishPost } from "@/app/actions/publish";
+import {
+  publishPost,
+  getPostPublicationList,
+  publishSinglePublication,
+} from "@/app/actions/publish";
 import {
   createResurfaceSchedule,
   createAutoPlug,
@@ -19,7 +23,12 @@ import type {
 } from "@/components/autoplug/AutoPlugPanel";
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
-import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
+import {
+  UploadPublishOverlay,
+  type PlatformResult,
+  type PlatformStatus,
+} from "@/components/UploadPublishOverlay";
+import { PLATFORMS } from "@/lib/platforms";
 import { IoMdAddCircleOutline } from "react-icons/io";
 import { MdClose } from "react-icons/md";
 import { MdOutlinePhotoLibrary, MdOutlineVideocam } from "react-icons/md";
@@ -260,6 +269,7 @@ export function ThreadsPostForm({
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
+  const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>([]);
   const postsRef = useRef<ThreadPost[]>(posts);
   const [showFirstTextError, setShowFirstTextError] = useState(false);
   const [addMediaZoneHover, setAddMediaZoneHover] = useState<number | null>(
@@ -1031,20 +1041,66 @@ export function ThreadsPostForm({
       return;
     }
     if (effectiveMode === "now" && result.postId) {
-      const publishResult = await publishPost(result.postId);
-      const succeededCount =
-        publishResult?.results?.filter((r) => r.status === "published")
-          .length ?? 0;
-      if (succeededCount === 0) {
-        const msg =
-          publishResult?.error && publishResult.error.trim()
-            ? publishResult.error
-            : "Publish failed";
-        setError(msg);
-        setOverlayPhase("idle");
+      setPublishedPostId(result.postId);
+      const list = await getPostPublicationList(result.postId);
+      if (list.length === 0) {
+        const publishResult = await publishPost(result.postId);
+        const succeededCount =
+          publishResult?.results?.filter((r) => r.status === "published")
+            .length ?? 0;
+        if (succeededCount === 0) {
+          const msg =
+            publishResult?.error && publishResult.error.trim()
+              ? publishResult.error
+              : "Publish failed";
+          setError(msg);
+          setOverlayPhase("idle");
+          return;
+        }
+        setOverlayPhase("done");
+        router.push(`/dashboard/posts/${result.postId}`);
+        router.refresh();
         return;
       }
-      setPublishedPostId(result.postId);
+      const initial: PlatformResult[] = list.map((pub) => ({
+        platform: pub.platform,
+        accountId: pub.connectedAccountId,
+        accountName: pub.platformUsername
+          ? `@${pub.platformUsername}`
+          : PLATFORMS.find((p) => p.id === pub.platform)?.name ?? pub.platform,
+        status: "waiting" as PlatformStatus,
+      }));
+      setPlatformStatuses(initial);
+      setOverlayPhase("publishing");
+      for (let i = 0; i < list.length; i++) {
+        const pub = list[i];
+        setPlatformStatuses((prev) =>
+          prev.map((p) =>
+            p.accountId === pub.connectedAccountId
+              ? { ...p, status: "processing" as PlatformStatus }
+              : p,
+          ),
+        );
+        const singleResult = await publishSinglePublication(
+          result.postId,
+          pub.publicationId,
+        );
+        const res = singleResult.results[0];
+        setPlatformStatuses((prev) =>
+          prev.map((p) =>
+            p.accountId === pub.connectedAccountId
+              ? {
+                  ...p,
+                  status: (res?.status === "published"
+                    ? "published"
+                    : "failed") as PlatformStatus,
+                  error: res?.status === "failed" ? res?.error : undefined,
+                }
+              : p,
+          ),
+        );
+      }
+      await publishPost(result.postId);
       if (
         resurfaceConfig &&
         selectedAccounts.some((a) => a.platform === "twitter_x")
@@ -1065,7 +1121,6 @@ export function ThreadsPostForm({
           await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
         }
       }
-      setOverlayPhase("done");
       router.push(`/dashboard/posts/${result.postId}`);
       router.refresh();
       return;
@@ -1156,6 +1211,14 @@ export function ThreadsPostForm({
                 }
               : null
           }
+          platformStatuses={platformStatuses}
+          allDone={
+            platformStatuses.length > 0 &&
+            platformStatuses.every(
+              (p) => p.status === "published" || p.status === "failed",
+            )
+          }
+          onClose={() => setOverlayPhase("done")}
         />
       )}
       <form

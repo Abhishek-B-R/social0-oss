@@ -1,7 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { Loader2, Upload, Send, Image, Video, Layers } from "lucide-react";
+import {
+  Loader2,
+  Upload,
+  Send,
+  Image,
+  Video,
+  Layers,
+  Check,
+  X,
+  Clock,
+} from "lucide-react";
+import { PlatformIcon } from "@/components/PlatformIcon";
 
 export type OverlayPhase = "uploading" | "publishing" | "saving";
 
@@ -9,6 +20,16 @@ export type ResurfacePreFill = {
   intervalHours?: number;
   maxResurfaces?: number;
   plugComment?: string;
+};
+
+export type PlatformStatus = "waiting" | "processing" | "published" | "failed";
+
+export type PlatformResult = {
+  platform: string;
+  accountId: string;
+  accountName: string;
+  status: PlatformStatus;
+  error?: string;
 };
 
 type UploadPublishOverlayProps = {
@@ -29,6 +50,12 @@ type UploadPublishOverlayProps = {
   publishedPostId?: string | null;
   publishedToX?: boolean;
   resurfacePreFill?: ResurfacePreFill | null;
+  /** Per-platform status for publishing progress (real-time rows) */
+  platformStatuses?: PlatformResult[];
+  /** All platforms have resolved (published or failed); show summary and Close */
+  allDone?: boolean;
+  /** Called when user clicks Close after all done */
+  onClose?: () => void;
 };
 
 const DONT_KEEP_WAITING = (
@@ -57,6 +84,54 @@ function mediaTypeLabel(type: "image" | "video" | "mixed"): string {
   return "Media";
 }
 
+const PLEASE_DONT_CLOSE = (
+  <p className="mt-3 text-xs text-text-muted">
+    Please don&apos;t close this window.
+  </p>
+);
+
+function PlatformStatusLabel({
+  status,
+  error,
+}: {
+  status: PlatformStatus;
+  error?: string;
+}) {
+  if (status === "waiting") {
+    return (
+      <span className="flex items-center gap-1.5 text-text-muted text-sm">
+        <Clock className="h-3.5 w-3.5" />
+        Waiting…
+      </span>
+    );
+  }
+  if (status === "processing") {
+    return (
+      <span className="flex items-center gap-1.5 text-accent text-sm">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        Processing…
+      </span>
+    );
+  }
+  if (status === "published") {
+    return (
+      <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-sm font-medium">
+        <Check className="h-3.5 w-3.5" />
+        Published
+      </span>
+    );
+  }
+  return (
+    <span
+      className="flex items-center gap-1.5 text-red-600 dark:text-red-400 text-sm"
+      title={error}
+    >
+      <X className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate max-w-[180px]">{error ?? "Failed"}</span>
+    </span>
+  );
+}
+
 export function UploadPublishOverlay({
   phase,
   uploadProgress,
@@ -66,9 +141,14 @@ export function UploadPublishOverlay({
   isScheduling = false,
   showLinks = false,
   publishedPostId = null,
+  platformStatuses = [],
+  allDone = false,
+  onClose,
 }: UploadPublishOverlayProps) {
   const isUploading = phase === "uploading";
   const isSavingDraft = phase === "saving";
+  const showPlatformRows =
+    phase === "publishing" && platformStatuses.length > 0 && !isScheduling;
 
   return (
     <div
@@ -153,6 +233,53 @@ export function UploadPublishOverlay({
             </h2>
             <p className="mt-2 text-sm text-text-muted">Saving to drafts.</p>
             {DONT_KEEP_WAITING}
+          </>
+        ) : showPlatformRows ? (
+          <>
+            <div className="w-full max-w-sm rounded-xl border border-border bg-bg-elevated p-4 shadow-sm text-left">
+              <h2 className="text-lg font-semibold text-text">
+                {allDone
+                  ? "Publishing complete"
+                  : "Publishing to all platforms…"}
+              </h2>
+              {allDone && (
+                <p className="mt-1 text-sm text-text-muted">
+                  {platformStatuses.some((p) => p.status === "failed")
+                    ? "Published with errors"
+                    : "All done!"}
+                </p>
+              )}
+              <ul className="mt-4 space-y-3">
+                {platformStatuses.map((p) => (
+                  <li
+                    key={p.accountId}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <PlatformIcon
+                        platform={p.platform}
+                        className="h-5 w-5 shrink-0 text-text-muted"
+                        size={20}
+                      />
+                      <span className="truncate text-sm font-medium text-text">
+                        {p.accountName}
+                      </span>
+                    </div>
+                    <PlatformStatusLabel status={p.status} error={p.error} />
+                  </li>
+                ))}
+              </ul>
+              {!allDone && PLEASE_DONT_CLOSE}
+              {allDone && onClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="mt-4 w-full rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground hover:bg-accent-hover transition-colors"
+                >
+                  Close
+                </button>
+              )}
+            </div>
           </>
         ) : (
           <>

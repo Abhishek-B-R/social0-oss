@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import { Trash2, Video } from "lucide-react";
+import { Trash2, Video, Play } from "lucide-react";
 
 const MAX_CAPTION = 2200;
 
@@ -47,8 +47,10 @@ export function VideoCard({
   onDelete,
 }: VideoCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playerRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [thumbReady, setThumbReady] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [dateStr, setDateStr] = useState(formatDateForInput(item.scheduledAt));
   const [timeStr, setTimeStr] = useState(formatTimeForInput(item.scheduledAt));
 
@@ -132,7 +134,54 @@ export function VideoCard({
             <Video className="h-8 w-8" />
           </div>
         )}
+        <button
+          type="button"
+          onClick={() => setIsPlaying(true)}
+          className="absolute inset-0 flex items-center justify-center rounded-lg text-white hover:bg-black/20 transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-muted"
+          aria-label="Play video"
+        >
+          <span className="rounded-full bg-black/50 p-2 shadow-md ring-2 ring-white/30">
+            <Play className="h-6 w-6 fill-current ml-0.5" />
+          </span>
+        </button>
       </div>
+
+      {isPlaying && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              playerRef.current?.pause();
+              setIsPlaying(false);
+            }
+          }}
+        >
+          <div
+            className="relative w-full max-w-2xl rounded-xl overflow-hidden bg-black shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <video
+              ref={playerRef}
+              src={item.previewUrl}
+              className="w-full aspect-video object-contain"
+              controls
+              playsInline
+              autoPlay
+              onEnded={() => setIsPlaying(false)}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                playerRef.current?.pause();
+                setIsPlaying(false);
+              }}
+              className="absolute top-2 right-2 rounded-lg bg-black/60 px-3 py-1.5 text-sm font-medium text-white hover:bg-black/80"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="min-w-0 flex-1 space-y-2">
         <p className="truncate text-sm font-medium text-foreground">

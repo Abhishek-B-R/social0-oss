@@ -109,13 +109,66 @@ export type PublishResult = {
 };
 
 /**
- * Core publish logic: fetches post + publications, posts to LinkedIn, updates DB.
- * When userId is provided (e.g. from server action), verifies post belongs to that user.
- * When userId is omitted (e.g. from cron), runs without auth check.
+ * Returns the list of publications for a post (for progress UI).
+ * Caller must be authenticated and own the post.
+ */
+export async function getPostPublicationList(postId: string): Promise<
+  { publicationId: string; connectedAccountId: string; platform: string; platformUsername: string | null }[]
+> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user?.id) return [];
+  if (!postId || !isValidPostId(postId)) return [];
+  const [post] = await db
+    .select({ id: posts.id })
+    .from(posts)
+    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)))
+    .limit(1);
+  if (!post) return [];
+  const list = await db
+    .select({
+      publicationId: postPublications.id,
+      connectedAccountId: connectedAccounts.id,
+      platform: connectedAccounts.platform,
+      platformUsername: connectedAccounts.platformUsername,
+    })
+    .from(postPublications)
+    .innerJoin(
+      connectedAccounts,
+      eq(postPublications.connectedAccountId, connectedAccounts.id),
+    )
+    .where(eq(postPublications.postId, postId));
+  return list.map((r) => ({
+    publicationId: r.publicationId,
+    connectedAccountId: r.connectedAccountId,
+    platform: r.platform,
+    platformUsername: r.platformUsername,
+  }));
+}
+
+/**
+ * Publishes a post to a single publication (for per-platform progress).
+ * Returns the same shape as executePublish but with at most one result.
+ */
+export async function publishSinglePublication(
+  postId: string,
+  publicationId: string,
+): Promise<PublishResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return { success: false, error: "Unauthorized", results: [] };
+  }
+  return executePublish(postId, session.user.id, publicationId);
+}
+
+/**
+ * Core publish logic: fetches post + publications, posts to each platform, updates DB.
+ * When userId is provided, verifies post belongs to that user.
+ * When publicationIdFilter is provided, only that publication is processed (for per-platform progress).
  */
 export async function executePublish(
   postId: string,
   userId?: string,
+  publicationIdFilter?: string,
 ): Promise<PublishResult> {
   if (!postId || !isValidPostId(postId)) {
     return {
@@ -160,7 +213,7 @@ export async function executePublish(
     };
   }
 
-  const publicationsWithAccounts = await db
+  let publicationsWithAccounts = await db
     .select({
       publicationId: postPublications.id,
       publicationStatus: postPublications.status,
@@ -181,6 +234,15 @@ export async function executePublish(
       eq(postPublications.connectedAccountId, connectedAccounts.id),
     )
     .where(eq(postPublications.postId, postId));
+
+  if (publicationIdFilter) {
+    publicationsWithAccounts = publicationsWithAccounts.filter(
+      (p) => p.publicationId === publicationIdFilter,
+    );
+  }
+  if (publicationsWithAccounts.length === 0) {
+    return { success: true, results: [] };
+  }
 
   const hasPendingTwitter = publicationsWithAccounts.some(
     (p) => p.publicationStatus === "pending" && p.platform === "twitter_x",
@@ -1370,15 +1432,17 @@ export async function executePublish(
   const overallStatus =
     succeeded === 0 ? "failed" : failed === 0 ? "published" : "partial";
 
-  let newPostStatus = post.status;
-  if (results.length > 0) {
-    newPostStatus = overallStatus;
-  }
-  if (newPostStatus !== post.status) {
-    await db
-      .update(posts)
-      .set({ status: newPostStatus, updatedAt: new Date() })
-      .where(eq(posts.id, postId));
+  if (!publicationIdFilter) {
+    let newPostStatus = post.status;
+    if (results.length > 0) {
+      newPostStatus = overallStatus;
+    }
+    if (newPostStatus !== post.status) {
+      await db
+        .update(posts)
+        .set({ status: newPostStatus, updatedAt: new Date() })
+        .where(eq(posts.id, postId));
+    }
   }
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/posts");

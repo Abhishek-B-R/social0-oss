@@ -3,7 +3,11 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
-import { publishPost } from "@/app/actions/publish";
+import {
+  publishPost,
+  getPostPublicationList,
+  publishSinglePublication,
+} from "@/app/actions/publish";
 import {
   createResurfaceSchedule,
   createAutoPlug,
@@ -24,7 +28,11 @@ import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettings } from "@/components/TikTokSettings";
 import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
 import { PinterestConfigInline } from "@/components/PinterestConfigInline";
-import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
+import {
+  UploadPublishOverlay,
+  type PlatformResult,
+  type PlatformStatus,
+} from "@/components/UploadPublishOverlay";
 import { PLATFORMS } from "@/lib/platforms";
 import {
   validateVideoAspectRatio,
@@ -125,6 +133,7 @@ export function VideoPostForm({
     Record<string, TikTokPostSettings>
   >({});
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
+  const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>([]);
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
@@ -774,16 +783,62 @@ export function VideoPostForm({
       return;
     }
     if (effectiveMode === "now" && result.postId) {
-      const publishResult = await publishPost(result.postId);
-      const succeededCount =
-        publishResult?.results?.filter((r) => r.status === "published")
-          .length ?? 0;
-      if (succeededCount === 0) {
-        setError(publishResult?.error ?? "Publish failed");
-        setOverlayPhase("idle");
+      setPublishedPostId(result.postId);
+      const list = await getPostPublicationList(result.postId);
+      if (list.length === 0) {
+        const publishResult = await publishPost(result.postId);
+        const succeededCount =
+          publishResult?.results?.filter((r) => r.status === "published")
+            .length ?? 0;
+        if (succeededCount === 0) {
+          setError(publishResult?.error ?? "Publish failed");
+          setOverlayPhase("idle");
+          return;
+        }
+        setOverlayPhase("done");
+        router.push(`/dashboard/posts/${result.postId}`);
+        router.refresh();
         return;
       }
-      setPublishedPostId(result.postId);
+      const initial: PlatformResult[] = list.map((pub) => ({
+        platform: pub.platform,
+        accountId: pub.connectedAccountId,
+        accountName: pub.platformUsername
+          ? `@${pub.platformUsername}`
+          : PLATFORMS.find((p) => p.id === pub.platform)?.name ?? pub.platform,
+        status: "waiting" as PlatformStatus,
+      }));
+      setPlatformStatuses(initial);
+      setOverlayPhase("publishing");
+      for (let i = 0; i < list.length; i++) {
+        const pub = list[i];
+        setPlatformStatuses((prev) =>
+          prev.map((p) =>
+            p.accountId === pub.connectedAccountId
+              ? { ...p, status: "processing" as PlatformStatus }
+              : p,
+          ),
+        );
+        const singleResult = await publishSinglePublication(
+          result.postId,
+          pub.publicationId,
+        );
+        const res = singleResult.results[0];
+        setPlatformStatuses((prev) =>
+          prev.map((p) =>
+            p.accountId === pub.connectedAccountId
+              ? {
+                  ...p,
+                  status: (res?.status === "published"
+                    ? "published"
+                    : "failed") as PlatformStatus,
+                  error: res?.status === "failed" ? res?.error : undefined,
+                }
+              : p,
+          ),
+        );
+      }
+      await publishPost(result.postId);
       if (
         resurfaceConfig &&
         selectedAccounts.some((a) => a.platform === "twitter_x")
@@ -804,9 +859,6 @@ export function VideoPostForm({
           await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
         }
       }
-      setOverlayPhase("done");
-      router.push(`/dashboard/posts/${result.postId}`);
-      router.refresh();
       return;
     }
     if (effectiveMode === "draft") {
@@ -891,6 +943,14 @@ export function VideoPostForm({
                 }
               : null
           }
+          platformStatuses={platformStatuses}
+          allDone={
+            platformStatuses.length > 0 &&
+            platformStatuses.every(
+              (p) => p.status === "published" || p.status === "failed",
+            )
+          }
+          onClose={() => setOverlayPhase("done")}
         />
       )}
       <form

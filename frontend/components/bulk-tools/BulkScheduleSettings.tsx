@@ -65,7 +65,7 @@ export function BulkScheduleSettings({
   const captionCount = bulkCaption.length;
 
   return (
-    <div className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <div className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm -mt-14">
       <div className="flex items-center gap-2">
         <h3 className="text-lg font-semibold text-foreground">
           Bulk Schedule Settings
