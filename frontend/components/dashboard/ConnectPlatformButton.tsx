@@ -10,14 +10,28 @@ import { InstagramConnectionModal } from "@/components/InstagramConnectionModal"
 
 type Platform = (typeof PLATFORMS)[number];
 
+function connectUrl(platformId: string, returnTo?: string | null): string {
+  const base = `/api/connect/${platformId}`;
+  if (returnTo && returnTo.startsWith("/")) {
+    return `${base}?returnTo=${encodeURIComponent(returnTo)}`;
+  }
+  return base;
+}
+
 export function ConnectPlatformButton({
   platform,
   size = "default",
   className,
+  returnTo,
+  disabled = false,
 }: {
   platform: Platform;
   size?: "default" | "sm";
   className?: string;
+  /** After OAuth success, redirect here instead of dashboard (e.g. /onboarding/step3) */
+  returnTo?: string | null;
+  /** When true, button is disabled (e.g. plan account limit reached) */
+  disabled?: boolean;
 }) {
   const [showBlueskyModal, setShowBlueskyModal] = useState(false);
   const [showPreConnectModal, setShowPreConnectModal] = useState(false);
@@ -25,6 +39,7 @@ export function ConnectPlatformButton({
   const preConnect = PRE_CONNECT[platform.id];
 
   const handleConnect = () => {
+    if (disabled) return;
     if (platform.id === "bluesky") {
       setShowBlueskyModal(true);
       return;
@@ -37,7 +52,7 @@ export function ConnectPlatformButton({
       setShowPreConnectModal(true);
       return;
     }
-    window.location.href = `/api/connect/${platform.id}`;
+    window.location.href = connectUrl(platform.id, returnTo);
   };
 
   return (
@@ -45,8 +60,13 @@ export function ConnectPlatformButton({
       <button
         type="button"
         onClick={handleConnect}
+        disabled={disabled}
         aria-label={`Connect ${platform.name}`}
-        className={`shrink-0 rounded-lg border border-border bg-bg font-semibold text-text shadow-sm hover:bg-bg-subtle transition-colors ${
+        className={`shrink-0 rounded-lg border border-border bg-bg font-semibold text-text shadow-sm transition-colors ${
+          disabled
+            ? "cursor-not-allowed opacity-50"
+            : "hover:bg-bg-subtle"
+        } ${
           size === "sm" ? "flex h-8 w-8 items-center justify-center p-0 sm:h-auto sm:w-auto sm:px-2 sm:py-1 text-xs" : "rounded-xl px-4 py-2 text-sm"
         } ${className ?? ""}`}
       >
@@ -59,7 +79,7 @@ export function ConnectPlatformButton({
           onClose={() => setShowPreConnectModal(false)}
           onContinue={() => {
             setShowPreConnectModal(false);
-            window.location.href = `/api/connect/${platform.id}`;
+            window.location.href = connectUrl(platform.id, returnTo);
           }}
           title={preConnect.title}
           checkmark={preConnect.checkmark}
@@ -79,11 +99,13 @@ export function ConnectPlatformButton({
           onClose={() => setShowInstagramModal(false)}
           onSelectDirect={() => {
             setShowInstagramModal(false);
-            window.location.href = "/api/connect/instagram";
+            window.location.href = connectUrl("instagram", returnTo);
           }}
           onSelectFacebookPage={() => {
             setShowInstagramModal(false);
-            window.location.href = "/api/connect/instagram-facebook";
+            window.location.href = returnTo && returnTo.startsWith("/")
+              ? `/api/connect/instagram-facebook?returnTo=${encodeURIComponent(returnTo)}`
+              : "/api/connect/instagram-facebook";
           }}
         />
       )}

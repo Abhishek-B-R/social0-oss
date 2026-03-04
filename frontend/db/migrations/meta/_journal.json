@@ -127,6 +127,13 @@
       "when": 1772036257657,
       "tag": "0017_rename_subscription_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1772638155481,
+      "tag": "0018_flawless_shotgun",
+      "breakpoints": true
     }
   ]
 }

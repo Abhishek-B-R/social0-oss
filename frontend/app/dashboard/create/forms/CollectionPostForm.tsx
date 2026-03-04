@@ -76,12 +76,14 @@ export function CollectionPostForm({
   draftId: initialDraftId,
   allowAutoRepost = true,
   allowAutoPlug = true,
+  supportedPlatforms,
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
   draftId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
+  supportedPlatforms?: string[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1006,6 +1008,7 @@ export function CollectionPostForm({
             }
             remember={remember}
             onRememberChange={setRemember}
+            supportedPlatforms={supportedPlatforms}
           />
 
           {(() => {

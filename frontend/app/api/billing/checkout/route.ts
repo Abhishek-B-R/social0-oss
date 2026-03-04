@@ -16,6 +16,7 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const plan = body.plan as string | undefined;
+  const successUrl = typeof body.successUrl === "string" ? body.successUrl.trim() : null;
   if (!plan || (plan !== "starter" && plan !== "growth")) {
     return NextResponse.json(
       { error: "Invalid plan. Use 'starter' or 'growth'." },
@@ -32,7 +33,10 @@ export async function POST(request: Request) {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000";
-  const returnUrl = `${appUrl}/dashboard/billing?success=1`;
+  const returnUrl =
+    successUrl && successUrl.startsWith("/")
+      ? `${appUrl}${successUrl}`
+      : `${appUrl}/dashboard/billing?success=1`;
 
   try {
     const sessionResponse = await client.checkoutSessions.create({

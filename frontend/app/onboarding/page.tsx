@@ -1,0 +1,143 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+
+const STARTER_FEATURES = [
+  "Connect up to 5 accounts",
+  "Multiple accounts per platform",
+  "Unlimited posts",
+  "Schedule posts across platforms",
+  "Carousel posts",
+  "Threads & Collections support",
+  "300 tweets/month (Twitter/X)",
+  "Fair usage policy",
+  "Human support",
+];
+
+const GROWTH_FEATURES = [
+  "Up to 15 connected accounts",
+  "Multiple accounts per platform",
+  "Unlimited posts",
+  "Schedule posts across platforms",
+  "Carousel posts",
+  "Threads & Collections support",
+  "1,500 tweets/month (Twitter/X)",
+  "Auto-plug high performing tweets",
+  "Auto-repost on autopilot",
+  "Bulk scheduling tools",
+  "Fair usage policy",
+  "Human support",
+];
+
+export default function OnboardingPlanPage() {
+  const [loadingPlan, setLoadingPlan] = useState<"starter" | "growth" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSelectPlan(plan: "starter" | "growth") {
+    setError(null);
+    setLoadingPlan(plan);
+    try {
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          plan,
+          successUrl: "/onboarding/step2?paid=1",
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setError(data.error ?? "Failed to start checkout");
+    } finally {
+      setLoadingPlan(null);
+    }
+  }
+
+  return (
+    <div className="w-full max-w-3xl mx-auto">
+      <h1 className="text-2xl sm:text-3xl font-bold text-center text-foreground mb-2">
+        Choose your plan
+      </h1>
+      <p className="text-center text-muted-foreground mb-8">
+        Early adopter pricing. Lock in before price increases.
+      </p>
+
+      {error && (
+        <div className="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      <div className="grid gap-6 sm:grid-cols-2 mb-8">
+        <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-sm">
+          <h2 className="font-semibold text-foreground">
+            Starter (Lite) — <span className="line-through text-muted-foreground">$9</span>{" "}
+            <span className="text-foreground">$6</span>/month
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Early adopter pricing
+          </p>
+          <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">
+            {STARTER_FEATURES.map((f, i) => (
+              <li key={i} className="flex items-center gap-2">
+                <span className="text-emerald-500 shrink-0">✓</span>
+                {f}
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={() => handleSelectPlan("starter")}
+            disabled={loadingPlan !== null}
+            className="mt-6 w-full rounded-xl border-2 border-emerald-500 bg-transparent px-4 py-3 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 transition-colors"
+          >
+            {loadingPlan === "starter" ? "Redirecting…" : "Choose Starter"}
+          </button>
+        </div>
+
+        <div className="rounded-2xl border-2 border-emerald-500 bg-emerald-500/5 p-6 shadow-sm relative">
+          <span className="absolute top-4 right-4 rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+            Most popular
+          </span>
+          <h2 className="font-semibold text-foreground">
+            Growth — <span className="line-through text-muted-foreground">$29</span>{" "}
+            <span className="text-foreground">$19</span>/month
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Early adopter pricing
+          </p>
+          <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">
+            {GROWTH_FEATURES.map((f, i) => (
+              <li key={i} className="flex items-center gap-2">
+                <span className="text-emerald-500 shrink-0">✓</span>
+                {f}
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={() => handleSelectPlan("growth")}
+            disabled={loadingPlan !== null}
+            className="mt-6 w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+          >
+            {loadingPlan === "growth" ? "Redirecting…" : "Choose Growth"}
+          </button>
+        </div>
+      </div>
+
+      <p className="text-center text-sm text-muted-foreground">
+        <Link
+          href="/onboarding/step2"
+          className="font-medium text-foreground hover:underline"
+        >
+          I&apos;ll decide later →
+        </Link>
+      </p>
+    </div>
+  );
+}

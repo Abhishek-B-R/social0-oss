@@ -20,6 +20,7 @@ export function OAuthErrorHandler() {
       setShowError(true);
       switch (error) {
         case "limit":
+        case "limit_reached":
           setMessage(
             messageParam
               ? decodeURIComponent(messageParam)
@@ -71,7 +72,7 @@ export function OAuthErrorHandler() {
       {showError && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 font-medium dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
           {message}
-          {error === "limit" && (
+          {(error === "limit" || error === "limit_reached") && (
             <>
               {" "}
               Click{" "}

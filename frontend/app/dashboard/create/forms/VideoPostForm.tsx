@@ -95,12 +95,14 @@ export function VideoPostForm({
   draftId: initialDraftId,
   allowAutoRepost = true,
   allowAutoPlug = true,
+  supportedPlatforms,
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
   draftId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
+  supportedPlatforms?: string[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1010,6 +1012,7 @@ export function VideoPostForm({
             }
             remember={remember}
             onRememberChange={setRemember}
+            supportedPlatforms={supportedPlatforms}
           />
 
           <div className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm space-y-4">

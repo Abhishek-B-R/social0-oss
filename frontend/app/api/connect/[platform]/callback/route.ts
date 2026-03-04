@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { connectedAccounts, verification } from "@/db/schema";
 import { checkAccountLimits } from "@/lib/plan-limits";
 import { logConnectBlocked } from "@/lib/plan-analytics";
+import { syncSubscriptionForUserId } from "@/lib/billing-sync";
 import { eq, and } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { decrypt, encryptToken } from "@/lib/encryption";
@@ -220,7 +221,11 @@ export async function GET(
           })
           .where(eq(connectedAccounts.id, existing.id));
       } else {
-        const limitCheck = await checkAccountLimits(userId, "twitter_x");
+        let limitCheck = await checkAccountLimits(userId, "twitter_x");
+        if (!limitCheck.allowed && limitCheck.limitTotal === 0) {
+          await syncSubscriptionForUserId(userId);
+          limitCheck = await checkAccountLimits(userId, "twitter_x");
+        }
         if (!limitCheck.allowed) {
           logConnectBlocked(
             userId,
@@ -230,7 +235,7 @@ export async function GET(
             limitCheck.limitTotal,
           );
           return safeRedirect(
-            `/dashboard/connections?error=limit&message=${encodeURIComponent(limitCheck.reason ?? "Account limit reached")}`,
+            `/dashboard/connections?error=limit_reached&message=${encodeURIComponent(limitCheck.reason ?? "Account limit reached")}`,
             "/dashboard/connections",
           );
         }
@@ -247,10 +252,13 @@ export async function GET(
           isActive: true,
         });
       }
-      return safeRedirect(
-        "/dashboard/connections?connected=twitter_x",
-        "/dashboard/connections",
-      );
+      const twitterRedirect =
+        secretDecrypted.returnTo &&
+        typeof secretDecrypted.returnTo === "string" &&
+        secretDecrypted.returnTo.startsWith("/")
+          ? secretDecrypted.returnTo
+          : "/dashboard/connections?connected=twitter_x";
+      return safeRedirect(twitterRedirect, twitterRedirect);
     } catch (err) {
       rethrowNextRedirect(err);
       console.error("Twitter OAuth 1.0a callback error:", err);
@@ -279,9 +287,17 @@ export async function GET(
   // Decrypt state to get userId (and stateId for TikTok PKCE verifier lookup)
   let userId: string;
   let codeVerifier: string | undefined;
+  let successRedirect = "/dashboard/connections";
   try {
     const decrypted = decrypt(state);
     userId = decrypted.userId;
+    if (
+      decrypted.returnTo &&
+      typeof decrypted.returnTo === "string" &&
+      decrypted.returnTo.startsWith("/")
+    ) {
+      successRedirect = decrypted.returnTo;
+    }
 
     if (decrypted.platform !== platform) {
       return safeRedirect(
@@ -638,6 +654,20 @@ export async function GET(
           })
           .where(eq(connectedAccounts.id, existing.id));
       } else {
+        const pinterestLimitCheck = await checkAccountLimits(userId, "pinterest");
+        if (!pinterestLimitCheck.allowed) {
+          logConnectBlocked(
+            userId,
+            "pinterest",
+            pinterestLimitCheck.reason ?? "Account limit reached",
+            pinterestLimitCheck.currentTotal,
+            pinterestLimitCheck.limitTotal,
+          );
+          return safeRedirect(
+            `/dashboard/connections?error=limit_reached&message=${encodeURIComponent(pinterestLimitCheck.reason ?? "Account limit reached")}`,
+            "/dashboard/connections",
+          );
+        }
         await db.insert(connectedAccounts).values({
           id: accountId,
           userId,
@@ -655,10 +685,7 @@ export async function GET(
           platformMetadata: {},
         });
       }
-      return safeRedirect(
-        "/dashboard/connections?connected=pinterest",
-        "/dashboard/connections",
-      );
+      return safeRedirect(successRedirect, successRedirect);
     }
 
     // Facebook: fetch all Pages and insert/update each one (no redirect to select)
@@ -735,6 +762,20 @@ export async function GET(
             })
             .where(eq(connectedAccounts.id, existing.id));
         } else {
+          const fbLimitCheck = await checkAccountLimits(userId, "facebook");
+          if (!fbLimitCheck.allowed) {
+            logConnectBlocked(
+              userId,
+              "facebook",
+              fbLimitCheck.reason ?? "Account limit reached",
+              fbLimitCheck.currentTotal,
+              fbLimitCheck.limitTotal,
+            );
+            return safeRedirect(
+              `/dashboard/connections?error=limit_reached&message=${encodeURIComponent(fbLimitCheck.reason ?? "Account limit reached")}`,
+              "/dashboard/connections",
+            );
+          }
           await db.insert(connectedAccounts).values({
             id: accountId,
             userId,
@@ -749,10 +790,7 @@ export async function GET(
           });
         }
       }
-      return safeRedirect(
-        "/dashboard/connections?connected=facebook",
-        "/dashboard/connections",
-      );
+        return safeRedirect(successRedirect, successRedirect);
     }
 
     // Fetch platform user info (platform-specific)
@@ -854,10 +892,7 @@ export async function GET(
         .set(updateData)
         .where(eq(connectedAccounts.id, existing.id));
 
-      return safeRedirect(
-        `/dashboard/connections?connected=${platform}&updated=true`,
-        "/dashboard/connections",
-      );
+    return safeRedirect(successRedirect, successRedirect);
     }
 
     // Generate UUID for account ID (needed for encryption)
@@ -884,7 +919,11 @@ export async function GET(
       insertTokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
     }
 
-    const limitCheck = await checkAccountLimits(userId, platform);
+    let limitCheck = await checkAccountLimits(userId, platform);
+    if (!limitCheck.allowed && limitCheck.limitTotal === 0) {
+      await syncSubscriptionForUserId(userId);
+      limitCheck = await checkAccountLimits(userId, platform);
+    }
     if (!limitCheck.allowed) {
       logConnectBlocked(
         userId,
@@ -894,7 +933,7 @@ export async function GET(
         limitCheck.limitTotal,
       );
       return safeRedirect(
-        `/dashboard/connections?error=limit&message=${encodeURIComponent(limitCheck.reason ?? "Account limit reached")}`,
+        `/dashboard/connections?error=limit_reached&message=${encodeURIComponent(limitCheck.reason ?? "Account limit reached")}`,
         "/dashboard/connections",
       );
     }
@@ -916,16 +955,7 @@ export async function GET(
       platformMetadata,
     });
 
-    if (platform === "threads") {
-      return safeRedirect(
-        "/dashboard/connections?connected=threads",
-        "/dashboard/connections",
-      );
-    }
-    return safeRedirect(
-      `/dashboard/connections?connected=${platform}`,
-      "/dashboard/connections",
-    );
+    return safeRedirect(successRedirect, successRedirect);
   } catch (err) {
     rethrowNextRedirect(err);
     console.error("OAuth callback error:", err);

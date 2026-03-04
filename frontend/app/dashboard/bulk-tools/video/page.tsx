@@ -63,5 +63,10 @@ export default async function BulkToolsVideoPage() {
       })),
   );
 
-  return <BulkToolsVideoClient accounts={accounts} />;
+  return (
+    <BulkToolsVideoClient
+      accounts={accounts}
+      supportedPlatforms={Array.from(VIDEO_PLATFORMS)}
+    />
+  );
 }

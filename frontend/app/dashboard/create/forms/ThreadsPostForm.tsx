@@ -32,6 +32,7 @@ import { PLATFORMS } from "@/lib/platforms";
 import { IoMdAddCircleOutline } from "react-icons/io";
 import { MdClose } from "react-icons/md";
 import { MdOutlinePhotoLibrary, MdOutlineVideocam } from "react-icons/md";
+import { AlertTriangle } from "lucide-react";
 import { uploadFile } from "@/lib/upload-file";
 import {
   consumeComposerPayload,
@@ -225,12 +226,14 @@ export function ThreadsPostForm({
   draftId: initialDraftId,
   allowAutoRepost = true,
   allowAutoPlug = true,
+  supportedPlatforms,
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
   draftId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
+  supportedPlatforms?: string[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1276,6 +1279,7 @@ export function ThreadsPostForm({
             }
             remember={remember}
             onRememberChange={setRemember}
+            supportedPlatforms={supportedPlatforms}
           />
 
           {error && (
@@ -1291,6 +1295,24 @@ export function ThreadsPostForm({
             <p className="text-sm text-text-muted -mt-2">
               You can add images or a video to each post.
             </p>
+
+            {selectedAccounts.some((a) => a.platform === "bluesky") &&
+              posts.some(
+                (p) =>
+                  (p.images.length > 0 && p.videos.length > 0) ||
+                  p.videos.length > 1,
+              ) && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                <p>
+                  Bluesky supports only one video per post and doesn&apos;t
+                  allow mixing images and videos. For posts with multiple videos
+                  or both images and videos, only the first video will be
+                  published to Bluesky. Add images and videos to different
+                  posts in your thread to include both.
+                </p>
+              </div>
+            )}
 
             {posts.map((post, index) => (
               <div

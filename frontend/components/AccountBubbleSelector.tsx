@@ -25,6 +25,8 @@ type AccountBubbleSelectorProps = {
   compact?: boolean;
   /** When true, do not render the Select all button (parent renders it inline) */
   hideSelectAll?: boolean;
+  /** Platform IDs this form supports. Shown in empty state when no accounts match. */
+  supportedPlatforms?: string[];
 };
 
 function truncate(str: string, max: number): string {
@@ -40,6 +42,7 @@ export function AccountBubbleSelector({
   platformName,
   compact = false,
   hideSelectAll = false,
+  supportedPlatforms,
 }: AccountBubbleSelectorProps) {
   const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set());
 
@@ -48,9 +51,25 @@ export function AccountBubbleSelector({
   }, []);
 
   if (accounts.length === 0) {
+    const platformNames =
+      supportedPlatforms?.map((id) => platformName(id)).filter(Boolean) ?? [];
+    const platformList =
+      platformNames.length > 0 ? platformNames.join(", ") : null;
     return (
       <p className="rounded-xl border border-amber-100 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/40 p-4 text-sm text-amber-700 dark:text-amber-200">
-        Connect at least one account from the dashboard to post.
+        {platformList ? (
+          <>
+            Connect at least one account from the dashboard that supports this
+            form to post.
+            <br />
+            Supported platforms: {platformList}.
+          </>
+        ) : (
+          <>
+            Connect at least one account from the dashboard that supports this
+            form to post.
+          </>
+        )}
       </p>
     );
   }

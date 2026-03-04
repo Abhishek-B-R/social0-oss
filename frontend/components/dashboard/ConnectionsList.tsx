@@ -34,12 +34,21 @@ type Account = {
   expiresInDays: number | null;
 };
 
-export function ConnectionsList({ accounts }: { accounts: Account[] }) {
+type AccountLimit = { currentTotal: number; limitTotal: number };
+
+export function ConnectionsList({
+  accounts,
+  accountLimit,
+}: {
+  accounts: Account[];
+  accountLimit?: AccountLimit;
+}) {
   const [disconnectAccountId, setDisconnectAccountId] = useState<string | null>(
     null,
   );
   const [disconnectLabel, setDisconnectLabel] = useState("");
 
+  const atLimit = !!accountLimit && accountLimit.currentTotal >= accountLimit.limitTotal;
   const byPlatform = PLATFORMS.map((platform) => ({
     platform,
     accounts: accounts.filter((a) => a.platform === platform.id),
@@ -65,6 +74,17 @@ export function ConnectionsList({ accounts }: { accounts: Account[] }) {
           Link your social accounts to publish from one place. You can connect
           multiple accounts per platform.
         </p>
+        {atLimit && (
+          <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+            You&apos;ve reached your {accountLimit!.limitTotal} account limit.{" "}
+            <Link
+              href="/dashboard/billing"
+              className="font-medium underline underline-offset-2 hover:no-underline"
+            >
+              Upgrade →
+            </Link>
+          </div>
+        )}
         <div className="min-w-0 overflow-x-auto rounded-2xl border border-border bg-bg-elevated p-3 shadow-sm">
           <div className="flex min-w-0 flex-col gap-1.5">
             {byPlatform.map(({ platform, accounts: platformAccounts }) => {
@@ -103,6 +123,7 @@ export function ConnectionsList({ accounts }: { accounts: Account[] }) {
                       platform={platform}
                       size="sm"
                       className="w-full"
+                      disabled={atLimit}
                     />
                   </div>
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1.5">

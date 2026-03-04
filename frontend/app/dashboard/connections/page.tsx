@@ -12,6 +12,7 @@ import {
   runTokenHealthCheckForUser,
   NEVER_EXPIRES_PLATFORMS,
 } from "@/lib/token-health";
+import { checkAccountLimits } from "@/lib/plan-limits";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -48,21 +49,24 @@ async function ConnectionsContent() {
 
   await runTokenHealthCheckForUser(session.user.id);
 
-  const accounts = await db.query.connectedAccounts.findMany({
-    where: and(
-      eq(connectedAccounts.userId, session.user.id),
-      eq(connectedAccounts.isActive, true),
-    ),
-    columns: {
-      id: true,
-      platform: true,
-      platformUsername: true,
-      profileImageUrl: true,
-      isActive: true,
-      tokenExpiresAt: true,
-      tokenStatus: true,
-    },
-  });
+  const [accounts, accountLimit] = await Promise.all([
+    db.query.connectedAccounts.findMany({
+      where: and(
+        eq(connectedAccounts.userId, session.user.id),
+        eq(connectedAccounts.isActive, true),
+      ),
+      columns: {
+        id: true,
+        platform: true,
+        platformUsername: true,
+        profileImageUrl: true,
+        isActive: true,
+        tokenExpiresAt: true,
+        tokenStatus: true,
+      },
+    }),
+    checkAccountLimits(session.user.id, "linkedin"),
+  ]);
 
   return (
     <>
@@ -85,6 +89,11 @@ async function ConnectionsContent() {
             expiresInDays: status === "expiring_soon" ? expiresInDays : null,
           };
         })}
+        accountLimit={
+          accountLimit.currentTotal >= accountLimit.limitTotal
+            ? { currentTotal: accountLimit.currentTotal, limitTotal: accountLimit.limitTotal }
+            : undefined
+        }
       />
       <p className="mt-4 text-sm text-text-muted">
         Having trouble connecting your accounts?{" "}

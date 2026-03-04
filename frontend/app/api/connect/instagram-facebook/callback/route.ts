@@ -6,6 +6,7 @@ import { decrypt, encryptToken } from "@/lib/encryption";
 import crypto from "crypto";
 import { normalizeAppUrl } from "@/lib/url-utils";
 import { safeRedirect, rethrowNextRedirect } from "@/lib/redirect";
+import { checkAccountLimits } from "@/lib/plan-limits";
 import { NextRequest } from "next/server";
 
 export async function GET(
@@ -34,10 +35,18 @@ export async function GET(
 
   // Decrypt state to get userId
   let userId: string;
+  let successRedirect = "/dashboard/connections";
   try {
     const decrypted = decrypt(state);
     userId = decrypted.userId;
-    
+    if (
+      decrypted.returnTo &&
+      typeof decrypted.returnTo === "string" &&
+      decrypted.returnTo.startsWith("/")
+    ) {
+      successRedirect = decrypted.returnTo;
+    }
+
     if (decrypted.platform !== "instagram-facebook") {
       return safeRedirect(
         `/dashboard?error=state_mismatch&platform=instagram`,
@@ -259,8 +268,13 @@ export async function GET(
           })
           .where(eq(connectedAccounts.id, existing.id));
 
+        return safeRedirect(successRedirect, successRedirect);
+      }
+
+      const igLimitCheck = await checkAccountLimits(userId, "instagram");
+      if (!igLimitCheck.allowed) {
         return safeRedirect(
-          `/dashboard/connections?connected=instagram&updated=true`,
+          `/dashboard/connections?error=limit_reached&message=${encodeURIComponent(igLimitCheck.reason ?? "Account limit reached")}`,
           "/dashboard/connections",
         );
       }
@@ -284,10 +298,7 @@ export async function GET(
         },
       });
 
-      return safeRedirect(
-        `/dashboard/connections?connected=instagram`,
-        "/dashboard/connections",
-      );
+      return safeRedirect(successRedirect, successRedirect);
     }
 
     // Multiple Pages with Instagram: store in verification and redirect to selection
@@ -312,8 +323,8 @@ export async function GET(
     });
 
     return safeRedirect(
-      `/dashboard/connect/instagram-facebook/select?token=${stateId}`,
-      "/dashboard/connections",
+      `/dashboard/connect/instagram-facebook/select?token=${stateId}&returnTo=${encodeURIComponent(successRedirect)}`,
+      successRedirect,
     );
   } catch (err) {
     rethrowNextRedirect(err);

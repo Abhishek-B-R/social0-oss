@@ -38,6 +38,8 @@ type PostFormOptionsProps = {
   /** When true, show "Remember" checkbox; when checked, parent should persist selection to localStorage */
   remember?: boolean;
   onRememberChange?: (checked: boolean) => void;
+  /** Platform IDs this form supports. Shown in empty state when no accounts match. */
+  supportedPlatforms?: string[];
 };
 
 export function PostFormOptions({
@@ -59,6 +61,7 @@ export function PostFormOptions({
   searchSlot,
   remember = false,
   onRememberChange,
+  supportedPlatforms,
 }: PostFormOptionsProps) {
   const platformName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
@@ -107,6 +110,7 @@ export function PostFormOptions({
             platformName={platformName}
             compact
             hideSelectAll
+            supportedPlatforms={supportedPlatforms}
           />
         </div>
       </section>

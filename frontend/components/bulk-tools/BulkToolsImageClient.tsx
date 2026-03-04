@@ -55,7 +55,13 @@ function getNowTimeStr(): string {
 
 const REMEMBER_KEY_IMAGE = "bulk-image";
 
-export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
+export function BulkToolsImageClient({
+  accounts,
+  supportedPlatforms,
+}: {
+  accounts: Account[];
+  supportedPlatforms?: string[];
+}) {
   const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
   const validIds = useMemo(
     () => new Set(selectableAccounts.map((a) => a.id)),
@@ -372,6 +378,7 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
                   platformName={platformName}
                   compact
                   hideSelectAll
+                  supportedPlatforms={supportedPlatforms}
                 />
               </div>
             </div>

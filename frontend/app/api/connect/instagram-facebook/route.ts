@@ -36,10 +36,17 @@ export async function GET(req: NextRequest) {
   const scope =
     "pages_show_list,pages_read_engagement,pages_manage_posts,business_management";
 
+  const returnTo = req.nextUrl.searchParams.get("returnTo");
+  const validReturnTo =
+    typeof returnTo === "string" &&
+    returnTo.startsWith("/") &&
+    !returnTo.startsWith("//");
+
   // Encrypt state with userId and platform identifier
   const state = encrypt({
     userId: session.user.id,
     platform: "instagram-facebook", // Special identifier for this flow
+    ...(validReturnTo && { returnTo }),
   });
 
   const url = new URL(authUrl);

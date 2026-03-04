@@ -237,6 +237,8 @@ export const userSettings = pgTable("user_settings", {
   subscriptionExpiresAt: timestamp("subscription_expires_at"),
   subscriptionId: text("subscription_id"), // Payment provider subscription ID (portal/cancel)
   customerId: text("customer_id"), // Payment provider customer ID
+  onboardingCompleted: boolean("onboarding_completed").default(false),
+  onboardingGoal: text("onboarding_goal"),
 });
 
 // ===== PLATFORM RATE LIMITS (optional) =====

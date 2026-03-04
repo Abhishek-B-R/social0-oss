@@ -4,6 +4,7 @@ import { connectedAccounts } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { encryptToken } from "@/lib/encryption";
+import { checkAccountLimits } from "@/lib/plan-limits";
 import crypto from "crypto";
 import { z } from "zod";
 import { NextRequest } from "next/server";
@@ -175,6 +176,17 @@ export async function POST(req: NextRequest) {
         message: "Bluesky account updated successfully",
       });
     } else {
+      const limitCheck = await checkAccountLimits(session.user.id, "bluesky");
+      if (!limitCheck.allowed) {
+        return Response.json(
+          {
+            error: "limit_reached",
+            message:
+              limitCheck.reason ?? "Account limit reached. Upgrade to add more.",
+          },
+          { status: 403 },
+        );
+      }
       // Insert new account
       await db.insert(connectedAccounts).values({
         id: accountId,

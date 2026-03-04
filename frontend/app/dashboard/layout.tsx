@@ -6,6 +6,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardBottomNav } from "@/components/dashboard/DashboardBottomNav";
 import { SubscriptionSync } from "@/components/dashboard/SubscriptionSync";
 import { getSubscriptionForUser } from "@/lib/subscription";
+import { getOnboardingStatus } from "@/app/actions/onboarding";
 
 function getPlanLabel(tier: string): string {
   if (tier === "growth") return "Growth plan";
@@ -28,6 +29,15 @@ export default async function DashboardLayout({
 
   if (!session) {
     redirect("/");
+  }
+
+  const onboarding = await getOnboardingStatus();
+  // Allow connect flow (e.g. Instagram page selection) so users can complete OAuth and return to onboarding/step3 or connections
+  const pathname =
+    (await headers()).get("x-pathname") ?? "";
+  const isConnectFlow = pathname.startsWith("/dashboard/connect");
+  if (onboarding?.shouldOnboard && !isConnectFlow) {
+    redirect("/onboarding");
   }
 
   const subscription = await getSubscriptionForUser(session.user.id);

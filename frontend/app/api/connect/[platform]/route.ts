@@ -40,6 +40,12 @@ export async function GET(
     }
   }
 
+  const returnToForConnect = req.nextUrl.searchParams.get("returnTo");
+  const validReturnToConnect =
+    typeof returnToForConnect === "string" &&
+    returnToForConnect.startsWith("/") &&
+    !returnToForConnect.startsWith("//");
+
   // Twitter/X: OAuth 1.0a flow (separate from standard OAuth 2.0)
   if (platform === "twitter_x") {
     const consumerKey = env.TWITTER_CONSUMER_KEY;
@@ -62,6 +68,7 @@ export async function GET(
       userId: session.user.id,
       platform: "twitter_x",
       oauth_token_secret: oauth_token_secret,
+      ...(validReturnToConnect && { returnTo: returnToForConnect }),
     });
     cookieStore.set("twitter_oauth1_request_secret", state, {
       httpOnly: true,
@@ -135,6 +142,7 @@ export async function GET(
       userId: session.user.id,
       platform: platform,
       stateId: stateId, // Reference to verifier in DB
+      ...(validReturnToConnect && { returnTo: returnToForConnect }),
     });
 
     // TikTok-specific: use client_key (NOT client_id)
@@ -147,6 +155,7 @@ export async function GET(
     state = encrypt({
       userId: session.user.id,
       platform: platform,
+      ...(validReturnToConnect && { returnTo: returnToForConnect }),
     });
     url.searchParams.set("client_id", clientId);
   }

@@ -109,6 +109,7 @@ export default async function NewPostByTypePage({
         draftId={draftId ?? undefined}
         allowAutoRepost={planLimits.allowResurface}
         allowAutoPlug={planLimits.allowAutoPlug}
+        supportedPlatforms={[...contentType.platforms]}
       />
     </div>
   );

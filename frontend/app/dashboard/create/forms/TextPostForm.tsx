@@ -54,12 +54,14 @@ export function TextPostForm({
   draftId: initialDraftId,
   allowAutoRepost = true,
   allowAutoPlug = true,
+  supportedPlatforms,
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
   draftId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
+  supportedPlatforms?: string[];
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -444,6 +446,7 @@ export function TextPostForm({
             }
             remember={remember}
             onRememberChange={setRemember}
+            supportedPlatforms={supportedPlatforms}
           />
 
           {error && (

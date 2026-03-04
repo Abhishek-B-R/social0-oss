@@ -10,7 +10,11 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  return NextResponse.next();
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", path);
+  return NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 }
 
 export const config = {

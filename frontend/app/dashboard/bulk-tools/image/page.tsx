@@ -63,5 +63,10 @@ export default async function BulkToolsImagePage() {
       })),
   );
 
-  return <BulkToolsImageClient accounts={accounts} />;
+  return (
+    <BulkToolsImageClient
+      accounts={accounts}
+      supportedPlatforms={Array.from(IMAGE_PLATFORMS)}
+    />
+  );
 }

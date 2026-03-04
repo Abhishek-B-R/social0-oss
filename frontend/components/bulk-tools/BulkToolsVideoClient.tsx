@@ -64,7 +64,13 @@ function getNowTimeStr(): string {
 
 const REMEMBER_KEY_VIDEO = "bulk-video";
 
-export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
+export function BulkToolsVideoClient({
+  accounts,
+  supportedPlatforms,
+}: {
+  accounts: Account[];
+  supportedPlatforms?: string[];
+}) {
   const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
   const validIds = useMemo(
     () => new Set(selectableAccounts.map((a) => a.id)),
@@ -431,6 +437,7 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
                   platformName={platformName}
                   compact
                   hideSelectAll
+                  supportedPlatforms={supportedPlatforms}
                 />
               </div>
             </div>
