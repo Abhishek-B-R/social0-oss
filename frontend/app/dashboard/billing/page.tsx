@@ -30,7 +30,7 @@ export default async function BillingPage({
   return (
     <div>
       <h1 className="text-2xl font-extrabold text-text">Billing</h1>
-      <p className="mt-2 text-text-muted">
+      <p className="mt-1 text-text-muted">
         Manage your subscription and billing.
       </p>
       {showUpgradeBanner && (
@@ -38,7 +38,7 @@ export default async function BillingPage({
           Upgrade to the Growth plan to use bulk tools, auto-plug, and auto-repost.
         </div>
       )}
-      <div className="mt-8">
+      <div className="mt-5">
         <BillingClient
           subscription={subscription}
           accountLimit={accountLimit}
