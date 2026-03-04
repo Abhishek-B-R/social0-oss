@@ -330,13 +330,16 @@ export function CollectionPostForm({
       return;
     }
     setError(null);
-    Promise.all(newVideos.map((v) => getVideoDuration(v.file))).then(
+    const videosWithFile = newVideos.filter(
+      (v): v is VideoFile & { file: File } => v.file != null,
+    );
+    Promise.all(videosWithFile.map((v) => getVideoDuration(v.file))).then(
       (durations) => {
         const withinDuration: VideoFile[] = [];
         const overDuration = durations.some(
           (d) => d > MAX_VIDEO_DURATION_SECONDS,
         );
-        newVideos.forEach((v, i) => {
+        videosWithFile.forEach((v, i) => {
           if (durations[i] <= MAX_VIDEO_DURATION_SECONDS)
             withinDuration.push(v);
         });
@@ -377,13 +380,16 @@ export function CollectionPostForm({
     }
     if (newImages.length > 0) setImages((prev) => [...prev, ...newImages]);
     if (newVideos.length > 0) {
-      Promise.all(newVideos.map((v) => getVideoDuration(v.file))).then(
+      const videosWithFile = newVideos.filter(
+        (v): v is VideoFile & { file: File } => v.file != null,
+      );
+      Promise.all(videosWithFile.map((v) => getVideoDuration(v.file))).then(
         (durations) => {
           const withinDuration: VideoFile[] = [];
           const overDuration = durations.some(
             (d) => d > MAX_VIDEO_DURATION_SECONDS,
           );
-          newVideos.forEach((v, i) => {
+          videosWithFile.forEach((v, i) => {
             if (durations[i] <= MAX_VIDEO_DURATION_SECONDS)
               withinDuration.push(v);
           });

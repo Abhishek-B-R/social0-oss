@@ -608,13 +608,16 @@ export function ThreadsPostForm({
       });
     }
     if (newVideos.length === 0) return;
-    Promise.all(newVideos.map((v) => getVideoDuration(v.file))).then(
+    const videosWithFile = newVideos.filter(
+      (v): v is MediaVideo & { file: File } => v.file != null,
+    );
+    Promise.all(videosWithFile.map((v) => getVideoDuration(v.file))).then(
       (durations) => {
         const withinDuration: MediaVideo[] = [];
         const overDuration = durations.some(
           (d) => d > MAX_VIDEO_DURATION_SECONDS,
         );
-        newVideos.forEach((v, i) => {
+        videosWithFile.forEach((v, i) => {
           if (durations[i] <= MAX_VIDEO_DURATION_SECONDS)
             withinDuration.push(v);
         });
