@@ -21,8 +21,7 @@ export type TikTokPostSettings = {
 };
 
 const DEFAULT_SETTINGS: TikTokPostSettings = {
-  privacy_level: "SELF_ONLY", // Only me; user can change to Public/Friends
-  // TikTok requires interactions OFF by default; user must opt in.
+  privacy_level: "", // No default; user must select
   disable_comment: true,
   disable_duet: true,
   disable_stitch: true,
@@ -55,11 +54,20 @@ export function TikTokSettings({
     }));
   }, [value]);
 
+  const isPrivate = settings.privacy_level === "SELF_ONLY";
+
   const updateSetting = <K extends keyof TikTokPostSettings>(
     key: K,
     val: TikTokPostSettings[K],
   ) => {
-    const newSettings = { ...settings, [key]: val };
+    let newSettings = { ...settings, [key]: val };
+    if (key === "privacy_level" && val === "SELF_ONLY") {
+      newSettings = {
+        ...newSettings,
+        disable_duet: true,
+        disable_stitch: true,
+      };
+    }
     setSettings(newSettings);
     onChange(newSettings);
   };
@@ -122,25 +130,35 @@ export function TikTokSettings({
           </label>
           {!isPhotoOnly && (
             <>
-              <label className="flex items-center gap-3">
+              <label
+                className={`flex items-center gap-3 ${
+                  isPrivate ? "cursor-not-allowed opacity-50" : ""
+                }`}
+              >
                 <input
                   type="checkbox"
                   checked={!settings.disable_duet}
                   onChange={(e) =>
                     updateSetting("disable_duet", !e.target.checked)
                   }
-                  className="rounded border-border text-accent focus:ring-accent size-4"
+                  disabled={isPrivate}
+                  className="rounded border-border text-accent focus:ring-accent size-4 disabled:cursor-not-allowed"
                 />
                 <span className="text-sm text-text">Allow Duet</span>
               </label>
-              <label className="flex items-center gap-3">
+              <label
+                className={`flex items-center gap-3 ${
+                  isPrivate ? "cursor-not-allowed opacity-50" : ""
+                }`}
+              >
                 <input
                   type="checkbox"
                   checked={!settings.disable_stitch}
                   onChange={(e) =>
                     updateSetting("disable_stitch", !e.target.checked)
                   }
-                  className="rounded border-border text-accent focus:ring-accent size-4"
+                  disabled={isPrivate}
+                  className="rounded border-border text-accent focus:ring-accent size-4 disabled:cursor-not-allowed"
                 />
                 <span className="text-sm text-text">Allow Stitch</span>
               </label>

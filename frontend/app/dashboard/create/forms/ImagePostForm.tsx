@@ -207,7 +207,7 @@ export function ImagePostForm({
   const [fileProgresses, setFileProgresses] = useState<number[]>([]);
 
   const defaultTiktokSettings: TikTokPostSettings = {
-    privacy_level: "SELF_ONLY", // Default to Public
+    privacy_level: "",
     disable_comment: true,
     disable_duet: true,
     disable_stitch: true,
@@ -507,8 +507,7 @@ export function ImagePostForm({
       for (const tiktokAccount of tiktokAccounts) {
         const settings =
           tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
-        // Default settings have privacy_level: "PUBLIC_TO_EVERYONE", so this should always pass
-        if (!settings.privacy_level) {
+        if (!settings.privacy_level?.trim()) {
           setError(
             `TikTok: Privacy level is required. Please select a privacy level for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
           );
@@ -891,8 +890,8 @@ export function ImagePostForm({
   const tiktokMissingPrivacy =
     hasTikTokSelected &&
     tiktokAccounts.some((acc) => {
-      const s = tiktokSettings[acc.id];
-      return s !== undefined && (s.privacy_level ?? "").trim() === "";
+      const s = tiktokSettings[acc.id] ?? defaultTiktokSettings;
+      return (s.privacy_level ?? "").trim() === "";
     });
   const hasPinterestSelected = selectedAccounts.some(
     (a) => a.platform === "pinterest",

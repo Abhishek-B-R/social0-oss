@@ -137,10 +137,10 @@ export function CollectionPostForm({
   const [fileProgresses, setFileProgresses] = useState<number[]>([]);
 
   const defaultTiktokSettings: TikTokPostSettings = {
-    privacy_level: "PUBLIC_TO_EVERYONE", // Default to Public
-    disable_comment: false,
-    disable_duet: false,
-    disable_stitch: false,
+    privacy_level: "",
+    disable_comment: true,
+    disable_duet: true,
+    disable_stitch: true,
     brand_content_toggle: false,
     brand_organic: false,
     brand_content: false,
@@ -555,8 +555,7 @@ export function CollectionPostForm({
       for (const tiktokAccount of tiktokAccounts) {
         const settings =
           tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
-        // Default settings have privacy_level: "PUBLIC_TO_EVERYONE", so this should always pass
-        if (!settings.privacy_level) {
+        if (!settings.privacy_level?.trim()) {
           setError(
             `TikTok: Privacy level is required. Please select a privacy level for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
           );
