@@ -3,9 +3,21 @@
 import Link from "next/link";
 import { RevealSection } from "@/components/landing/RevealSection";
 
-const plans = [
+const plans: Array<{
+  name: string;
+  price: string;
+  period: string;
+  originalPrice?: string;
+  target: string;
+  features: string[];
+  cta: string;
+  href: string;
+  highlighted: boolean;
+  badge?: string;
+}> = [
   {
     name: "Starter",
+    originalPrice: "$9",
     price: "$6",
     period: "/month",
     target: "Best for testing cross-posting",
@@ -25,7 +37,8 @@ const plans = [
   },
   {
     name: "Growth",
-    price: "$20",
+    originalPrice: "$29",
+    price: "$19",
     period: "/month",
     target: "Best for serious creators",
     features: [
@@ -57,7 +70,7 @@ export function PricingSection() {
             Choose your plan
           </h2>
           <p className="text-base text-muted-foreground text-center max-w-xl mx-auto mb-12 font-medium">
-            Choose the plan that matches where you are.
+            Early adopter pricing. Lock in before price increases.
           </p>
         </RevealSection>
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
@@ -81,7 +94,12 @@ export function PricingSection() {
                 <p className="text-muted-foreground text-sm mb-3">
                   {plan.target}
                 </p>
-                <div className="flex items-baseline gap-1 mb-5">
+                <div className="flex items-baseline gap-2 mb-5">
+                  {plan.originalPrice && (
+                    <span className="text-lg text-muted-foreground line-through">
+                      {plan.originalPrice}
+                    </span>
+                  )}
                   <span className="text-3xl font-bold text-foreground">
                     {plan.price}
                   </span>

@@ -224,12 +224,13 @@ export function BillingClient({
       <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
         <h2 className="text-lg font-semibold text-text">Plans</h2>
         <p className="mt-0.5 text-sm text-text-muted">
-          Upgrade or change your plan. All features and limits are listed below.
+          Early adopter pricing. Lock in before price increases.
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border-2 border-border bg-bg p-4">
             <h3 className="font-semibold text-text">
-              Starter (Lite) — $6/month
+              Starter (Lite) — <span className="line-through text-muted-foreground">$9</span>{" "}
+              <span className="text-foreground">$6</span>/month
             </h3>
             <p className="mt-0.5 text-sm text-text-muted">
               Up to 5 accounts, 300 tweets/month
@@ -297,7 +298,8 @@ export function BillingClient({
               Most popular
             </span>
             <h3 className="mt-1.5 font-semibold text-text">
-              Growth — $20/month
+              Growth — <span className="line-through text-muted-foreground">$29</span>{" "}
+              <span className="text-foreground">$19</span>/month
             </h3>
             <p className="mt-0.5 text-sm text-text-muted">
               Up to 15 accounts, 1,500 tweets/month

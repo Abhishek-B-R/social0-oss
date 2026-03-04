@@ -1,6 +1,6 @@
 /**
  * Subscription plan limits and feature flags.
- * Starter (Lite): $6/mo. Growth: $20/mo.
+ * Starter (Lite): $9/mo (early adopter $6). Growth: $29/mo (early adopter $19).
  */
 
 export type SubscriptionTier = "free" | "starter" | "growth";
