@@ -1,17 +1,20 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { Polar } from "@polar-sh/sdk";
+import DodoPayments from "dodopayments";
 import { db } from "@/db";
 import { userSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
+const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
+const environment = (process.env.DODO_PAYMENTS_ENVIRONMENT as "test_mode" | "live_mode") ?? "test_mode";
+const client = new DodoPayments({ bearerToken: apiKey, environment });
+
 /**
- * Redirects the current user to their Polar customer portal.
- * Use this for plan changes (upgrade/downgrade), cancellation, payment method, invoices.
- * Polar handles proration when upgrading (e.g. Starter → Growth).
+ * Redirects the current user to their Dodo Payments customer portal
+ * for plan changes, cancellation, payment method, invoices.
  */
 export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -19,42 +22,62 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const token = process.env.POLAR_ACCESS_TOKEN;
-  if (!token) {
+  if (!apiKey) {
     return NextResponse.json(
       { error: "Billing is not configured" },
       { status: 503 },
     );
   }
 
-  const polar = new Polar({ accessToken: token });
-
   const row = await db.query.userSettings.findFirst({
     where: eq(userSettings.userId, session.user.id),
-    columns: { polarCustomerId: true },
+    columns: { customerId: true },
   });
 
-  if (!row?.polarCustomerId) {
+  if (!row?.customerId) {
     return NextResponse.json(
       { error: "No subscription found. Subscribe to a plan first." },
       { status: 404 },
     );
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000";
-  const returnUrl = `${appUrl}/dashboard/billing`;
-
-  const portalSession = await polar.customerSessions.create({
-    customerId: row.polarCustomerId,
-    returnUrl,
-  });
-
-  if (!portalSession.customerPortalUrl) {
+  try {
+    const portalSession = await client.customers.customerPortal.create(row.customerId);
+    const link = portalSession.link ?? null;
+    if (!link) {
+      return NextResponse.json(
+        { error: "Could not open customer portal" },
+        { status: 502 },
+      );
+    }
+    // Allowlist redirect: only Dodo customer portal domains (prevents open redirect)
+    let allowed = false;
+    try {
+      const u = new URL(link);
+      const host = u.hostname.toLowerCase();
+      if (
+        host === "customer.dodopayments.com" ||
+        host === "test.customer.dodopayments.com"
+      ) {
+        allowed = u.protocol === "https:";
+      }
+    } catch {
+      /* invalid URL */
+    }
+    if (!allowed) {
+      console.error("[billing/portal] Rejected non-Dodo redirect URL");
+      return NextResponse.json(
+        { error: "Could not open customer portal" },
+        { status: 502 },
+      );
+    }
+    return NextResponse.redirect(link);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Portal failed";
+    console.error("Dodo customer portal error:", msg);
     return NextResponse.json(
       { error: "Could not open customer portal" },
       { status: 502 },
     );
   }
-
-  return NextResponse.redirect(portalSession.customerPortalUrl);
 }

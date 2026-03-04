@@ -38,11 +38,12 @@ const envSchema = z.object({
   // Upstash Redis for rate limiting (optional — rate limiting is skipped if not set)
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
-  // Polar.sh billing
-  POLAR_ACCESS_TOKEN: z.string().optional(),
-  POLAR_WEBHOOK_SECRET: z.string().optional(),
-  POLAR_STARTER_PRODUCT_ID: z.string().uuid().optional(),
-  POLAR_GROWTH_PRODUCT_ID: z.string().uuid().optional(),
+  // Dodo Payments billing
+  DODO_PAYMENTS_API_KEY: z.string().optional(),
+  DODO_PAYMENTS_WEBHOOK_SECRET: z.string().optional(),
+  DODO_PAYMENTS_ENVIRONMENT: z.enum(["test_mode", "live_mode"]).optional(),
+  DODO_PAYMENTS_STARTER_PRODUCT_ID: z.string().optional(),
+  DODO_PAYMENTS_GROWTH_PRODUCT_ID: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

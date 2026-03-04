@@ -8,8 +8,8 @@ import type { SubscriptionTier } from "@/lib/plans";
 export type SubscriptionState = {
   tier: SubscriptionTier;
   expiresAt: Date | null;
-  polarSubscriptionId: string | null;
-  polarCustomerId: string | null;
+  subscriptionId: string | null;
+  customerId: string | null;
 };
 
 export async function getSubscriptionForUser(
@@ -20,8 +20,8 @@ export async function getSubscriptionForUser(
     columns: {
       subscriptionTier: true,
       subscriptionExpiresAt: true,
-      polarSubscriptionId: true,
-      polarCustomerId: true,
+      subscriptionId: true,
+      customerId: true,
     },
   });
 
@@ -31,26 +31,26 @@ export async function getSubscriptionForUser(
     return {
       tier: "free",
       expiresAt: null,
-      polarSubscriptionId: null,
-      polarCustomerId: row?.polarCustomerId ?? null,
+      subscriptionId: null,
+      customerId: row?.customerId ?? null,
     };
   }
 
   return {
     tier: tier === "starter" || tier === "growth" ? tier : "free",
     expiresAt,
-    polarSubscriptionId: row?.polarSubscriptionId ?? null,
-    polarCustomerId: row?.polarCustomerId ?? null,
+    subscriptionId: row?.subscriptionId ?? null,
+    customerId: row?.customerId ?? null,
   };
 }
 
-export async function setSubscriptionFromPolar(
+export async function setSubscription(
   userId: string,
   data: {
     tier: SubscriptionTier;
     expiresAt: Date | null;
-    polarSubscriptionId: string | null;
-    polarCustomerId: string | null;
+    subscriptionId: string | null;
+    customerId: string | null;
   },
 ): Promise<void> {
   await db
@@ -59,16 +59,16 @@ export async function setSubscriptionFromPolar(
       userId,
       subscriptionTier: data.tier,
       subscriptionExpiresAt: data.expiresAt,
-      polarSubscriptionId: data.polarSubscriptionId,
-      polarCustomerId: data.polarCustomerId,
+      subscriptionId: data.subscriptionId,
+      customerId: data.customerId,
     })
     .onConflictDoUpdate({
       target: userSettings.userId,
       set: {
         subscriptionTier: data.tier,
         subscriptionExpiresAt: data.expiresAt,
-        polarSubscriptionId: data.polarSubscriptionId,
-        polarCustomerId: data.polarCustomerId,
+        subscriptionId: data.subscriptionId,
+        customerId: data.customerId,
       },
     });
 }

@@ -235,8 +235,8 @@ export const userSettings = pgTable("user_settings", {
   weeklyPostingGoal: integer("weekly_posting_goal").default(3),
   subscriptionTier: text("subscription_tier").default("free"), // free | starter | growth
   subscriptionExpiresAt: timestamp("subscription_expires_at"),
-  polarSubscriptionId: text("polar_subscription_id"), // Polar subscription ID for portal/cancel
-  polarCustomerId: text("polar_customer_id"), // Polar customer ID
+  subscriptionId: text("subscription_id"), // Payment provider subscription ID (portal/cancel)
+  customerId: text("customer_id"), // Payment provider customer ID
 });
 
 // ===== PLATFORM RATE LIMITS (optional) =====

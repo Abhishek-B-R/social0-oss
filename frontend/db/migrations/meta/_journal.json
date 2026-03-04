@@ -120,6 +120,13 @@
       "when": 1772036257656,
       "tag": "0016_add_polar_subscription_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1772036257657,
+      "tag": "0017_rename_subscription_columns",
+      "breakpoints": true
     }
   ]
 }

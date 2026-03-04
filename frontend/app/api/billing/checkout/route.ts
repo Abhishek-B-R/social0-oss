@@ -1,12 +1,12 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { Polar } from "@polar-sh/sdk";
+import DodoPayments from "dodopayments";
 import { PLAN_IDS } from "@/lib/plans";
 
-const polar = new Polar({
-  accessToken: process.env.POLAR_ACCESS_TOKEN ?? "",
-});
+const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
+const environment = (process.env.DODO_PAYMENTS_ENVIRONMENT as "test_mode" | "live_mode") ?? "test_mode";
+const client = new DodoPayments({ bearerToken: apiKey, environment });
 
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -32,20 +32,20 @@ export async function POST(request: Request) {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000";
-  const successUrl = `${appUrl}/dashboard/billing?success=1`;
-  const returnUrl = `${appUrl}/dashboard/billing`;
+  const returnUrl = `${appUrl}/dashboard/billing?success=1`;
 
   try {
-    const checkout = await polar.checkouts.create({
-      products: [productId],
-      customerEmail: session.user.email ?? undefined,
-      customerName: session.user.name ?? undefined,
-      successUrl,
-      returnUrl,
-      metadata: { userId: session.user.id },
+    const sessionResponse = await client.checkoutSessions.create({
+      product_cart: [{ product_id: productId, quantity: 1 }],
+      customer: {
+        email: session.user.email ?? undefined,
+        name: session.user.name ?? undefined,
+      },
+      return_url: returnUrl,
+      metadata: session.user.id ? { userId: session.user.id } : undefined,
     });
 
-    const url = checkout.url;
+    const url = sessionResponse.checkout_url ?? null;
     if (!url) {
       return NextResponse.json(
         { error: "Checkout session has no URL." },
@@ -55,7 +55,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url });
   } catch (e) {
-    console.error("Polar checkout create error:", e);
+    const msg = e instanceof Error ? e.message : "Checkout failed";
+    console.error("Dodo checkout create error:", msg);
     return NextResponse.json(
       { error: "Failed to create checkout session." },
       { status: 500 },

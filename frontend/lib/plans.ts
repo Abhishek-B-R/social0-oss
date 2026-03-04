@@ -6,8 +6,8 @@
 export type SubscriptionTier = "free" | "starter" | "growth";
 
 export const PLAN_IDS = {
-  starter: process.env.POLAR_STARTER_PRODUCT_ID ?? "",
-  growth: process.env.POLAR_GROWTH_PRODUCT_ID ?? "",
+  starter: process.env.DODO_PAYMENTS_STARTER_PRODUCT_ID ?? "",
+  growth: process.env.DODO_PAYMENTS_GROWTH_PRODUCT_ID ?? "",
 } as const;
 
 export interface PlanLimits {
@@ -53,7 +53,7 @@ export function getPlanLimits(tier: SubscriptionTier | null | undefined): PlanLi
   return LIMITS_BY_TIER[tier] ?? FREE_LIMITS;
 }
 
-export function getTierFromPolarProductId(productId: string): SubscriptionTier {
+export function getTierFromProductId(productId: string): SubscriptionTier {
   if (productId === PLAN_IDS.starter) return "starter";
   if (productId === PLAN_IDS.growth) return "growth";
   return "free";

@@ -30,6 +30,9 @@ export function BillingClient({
   const [loadingPlan, setLoadingPlan] = useState<"starter" | "growth" | null>(
     null,
   );
+  const [loadingChangePlan, setLoadingChangePlan] = useState<
+    "starter" | "growth" | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [waitingForWebhook, setWaitingForWebhook] = useState(
     Boolean(justSubscribed && subscription.tier === "free"),
@@ -42,7 +45,7 @@ export function BillingClient({
 
     const trySyncAndCheck = async () => {
       try {
-        // Sync from Polar by email (works even when webhook didn't reach localhost)
+        // Sync from Dodo Payments by email (works even when webhook didn't reach localhost)
         const syncRes = await fetch("/api/billing/sync", {
           method: "POST",
           credentials: "include",
@@ -102,6 +105,31 @@ export function BillingClient({
       setError(data.error ?? "Failed to start checkout");
     } finally {
       setLoadingPlan(null);
+    }
+  }
+
+  async function handleChangePlan(plan: "starter" | "growth") {
+    setError(null);
+    setLoadingChangePlan(plan);
+    try {
+      const res = await fetch("/api/billing/change-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ plan }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        window.location.reload();
+        return;
+      }
+      if (data.error === "no_active_subscription" && data.plan) {
+        handleUpgrade(data.plan);
+        return;
+      }
+      setError(data.error ?? "Failed to change plan");
+    } finally {
+      setLoadingChangePlan(null);
     }
   }
 
@@ -233,12 +261,24 @@ export function BillingClient({
                 Current plan
               </button>
             ) : subscription.tier === "growth" ? (
-              <a
-                href="/api/billing/portal"
-                className="mt-4 flex w-full items-center justify-center rounded-lg border-2 border-accent bg-transparent px-4 py-1.5 text-sm font-medium text-accent hover:bg-accent/10 transition-colors"
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Downgrading takes effect immediately. You'll be credited the difference. Continue?",
+                    )
+                  ) {
+                    handleChangePlan("starter");
+                  }
+                }}
+                disabled={loadingChangePlan !== null}
+                className="mt-4 w-full rounded-lg border-2 border-accent bg-transparent px-4 py-1.5 text-sm font-medium text-accent hover:bg-accent/10 disabled:opacity-50 transition-colors"
               >
-                Downgrade
-              </a>
+                {loadingChangePlan === "starter"
+                  ? "Changing…"
+                  : "Downgrade to Starter"}
+              </button>
             ) : (
               <button
                 type="button"
@@ -292,12 +332,16 @@ export function BillingClient({
                 Current plan
               </button>
             ) : subscription.tier === "starter" ? (
-              <a
-                href="/api/billing/portal"
-                className="mt-4 flex w-full items-center justify-center rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent/90 transition-colors"
+              <button
+                type="button"
+                onClick={() => handleChangePlan("growth")}
+                disabled={loadingChangePlan !== null}
+                className="mt-4 w-full rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50 transition-colors"
               >
-                Upgrade to Growth
-              </a>
+                {loadingChangePlan === "growth"
+                  ? "Upgrading…"
+                  : "Upgrade to Growth"}
+              </button>
             ) : (
               <button
                 type="button"

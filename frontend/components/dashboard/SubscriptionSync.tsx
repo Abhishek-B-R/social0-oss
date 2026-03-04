@@ -10,7 +10,7 @@ type SubscriptionSyncProps = {
 };
 
 /**
- * When the user is on "free" tier, try once per session to sync subscription from Polar (by email).
+ * When the user is on "free" tier, try once per session to sync subscription from Dodo Payments (by email).
  * If we find an active subscription, DB is updated and we refresh so the UI shows the correct plan.
  * Uses sessionStorage so we don't bombard the API on every dashboard navigation.
  */
