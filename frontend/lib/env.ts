@@ -38,6 +38,9 @@ const envSchema = z.object({
   // Upstash Redis for rate limiting (optional — rate limiting is skipped if not set)
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+  // Cloudflare Turnstile (sign-up only)
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().optional(),
+  TURNSTILE_SECRET_KEY: z.string().optional(),
   // Dodo Payments billing
   DODO_PAYMENTS_API_KEY: z.string().optional(),
   DODO_PAYMENTS_WEBHOOK_SECRET: z.string().optional(),
