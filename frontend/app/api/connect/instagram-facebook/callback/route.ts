@@ -323,7 +323,7 @@ export async function GET(
     });
 
     return safeRedirect(
-      `/dashboard/connect/instagram-facebook/select?token=${stateId}&returnTo=${encodeURIComponent(successRedirect)}`,
+      `/dashboard/connections/instagram/select?token=${stateId}&returnTo=${encodeURIComponent(successRedirect)}`,
       successRedirect,
     );
   } catch (err) {

@@ -116,6 +116,8 @@ export function ConnectStepClient({
               const isConnected = platformAccounts.length > 0;
               const firstAccount = platformAccounts[0];
 
+              const isFacebookOnOnboarding = platform.id === "facebook";
+
               return (
                 <div
                   key={platform.id}
@@ -147,6 +149,13 @@ export function ConnectStepClient({
                   {isConnected ? (
                     <span className="shrink-0 text-xs font-medium text-green-600 bg-green-500/10 px-3 py-1 rounded-full">
                       ✓ Connected
+                    </span>
+                  ) : isFacebookOnOnboarding ? (
+                    <span
+                      className="shrink-0 rounded-xl border border-border bg-muted px-4 py-2 text-sm font-semibold text-muted-foreground cursor-not-allowed"
+                      title="You can connect Facebook Pages from your dashboard after you finish setup."
+                    >
+                      Connect
                     </span>
                   ) : (
                     <ConnectPlatformButton

@@ -688,7 +688,7 @@ export async function GET(
       return safeRedirect(successRedirect, successRedirect);
     }
 
-    // Facebook: fetch all Pages and insert/update each one (no redirect to select)
+    // Facebook: cache pages and redirect to single-page picker (do not save to DB yet)
     if (platform === "facebook") {
       const pagesRes = await fetch(
         "https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,picture",
@@ -718,6 +718,12 @@ export async function GET(
           "/dashboard",
         );
       }
+      const pagesWithPictures: Array<{
+        id: string;
+        name: string;
+        access_token: string;
+        pictureUrl: string | null;
+      }> = [];
       for (const page of pages) {
         let profileImageUrl: string | null = null;
         const fromList = page.picture?.data?.url;
@@ -739,58 +745,26 @@ export async function GET(
             console.error("Facebook page picture fetch failed:", err);
           }
         }
-        const existing = await db.query.connectedAccounts.findFirst({
-          where: and(
-            eq(connectedAccounts.userId, userId),
-            eq(connectedAccounts.platform, "facebook"),
-            eq(connectedAccounts.platformUserId, page.id),
-          ),
+        pagesWithPictures.push({
+          id: page.id,
+          name: page.name,
+          access_token: page.access_token,
+          pictureUrl: profileImageUrl,
         });
-        const accountId = existing?.id ?? crypto.randomUUID();
-        const encryptedAccess = encryptToken(page.access_token, accountId);
-        if (existing) {
-          await db
-            .update(connectedAccounts)
-            .set({
-              platformUsername: page.name,
-              profileImageUrl,
-              encryptedAccessToken: encryptedAccess,
-              encryptedRefreshToken: null,
-              tokenExpiresAt: null,
-              isActive: true,
-              updatedAt: new Date(),
-            })
-            .where(eq(connectedAccounts.id, existing.id));
-        } else {
-          const fbLimitCheck = await checkAccountLimits(userId, "facebook");
-          if (!fbLimitCheck.allowed) {
-            logConnectBlocked(
-              userId,
-              "facebook",
-              fbLimitCheck.reason ?? "Account limit reached",
-              fbLimitCheck.currentTotal,
-              fbLimitCheck.limitTotal,
-            );
-            return safeRedirect(
-              `/dashboard/connections?error=limit_reached&message=${encodeURIComponent(fbLimitCheck.reason ?? "Account limit reached")}`,
-              "/dashboard/connections",
-            );
-          }
-          await db.insert(connectedAccounts).values({
-            id: accountId,
-            userId,
-            platform: "facebook",
-            platformUserId: page.id,
-            platformUsername: page.name,
-            profileImageUrl,
-            encryptedAccessToken: encryptedAccess,
-            encryptedRefreshToken: null,
-            tokenExpiresAt: null,
-            isActive: true,
-          });
-        }
       }
-        return safeRedirect(successRedirect, successRedirect);
+      const stateId = crypto.randomBytes(16).toString("hex");
+      const payload = JSON.stringify({
+        userId,
+        pages: pagesWithPictures,
+      });
+      await db.insert(verification).values({
+        id: stateId,
+        identifier: "facebook_pages",
+        value: encryptToken(payload, stateId),
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+      });
+      const selectUrl = `/dashboard/connections/facebook/select?token=${stateId}&returnTo=${encodeURIComponent(successRedirect)}`;
+      return safeRedirect(selectUrl, successRedirect);
     }
 
     // Fetch platform user info (platform-specific)

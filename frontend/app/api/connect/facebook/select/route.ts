@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     where: eq(verification.id, token),
   });
 
-  if (!record || record.identifier !== "instagram_facebook_pages") {
+  if (!record || record.identifier !== "facebook_pages") {
     return Response.json({ error: "Invalid or expired token" }, { status: 400 });
   }
 
@@ -41,20 +41,17 @@ export async function GET(req: NextRequest) {
 
     const rawPages = Array.isArray(payload.pages) ? payload.pages : [];
     const pages = rawPages as Array<{
-      pageId: string;
-      pageName: string;
-      instagramAccountId: string;
-      instagramUsername: string | null;
-      instagramProfilePictureUrl: string | null;
+      id: string;
+      name: string;
+      access_token: string;
+      pictureUrl: string | null;
     }>;
 
     return Response.json({
       pages: pages.map((p) => ({
-        pageId: p.pageId,
-        pageName: p.pageName,
-        instagramAccountId: p.instagramAccountId,
-        instagramUsername: p.instagramUsername,
-        instagramProfilePictureUrl: p.instagramProfilePictureUrl,
+        id: p.id,
+        name: p.name,
+        pictureUrl: p.pictureUrl,
       })),
     });
   } catch {
@@ -89,14 +86,14 @@ export async function POST(req: NextRequest) {
     !returnTo.startsWith("//");
   const baseUrl = new URL(req.url).origin;
   const redirectTo = validReturnTo
-    ? `${baseUrl}${returnTo}${returnTo.includes("?") ? "&" : "?"}success=instagram`
-    : `${baseUrl}/dashboard/connections?success=instagram`;
+    ? `${baseUrl}${returnTo}${returnTo.includes("?") ? "&" : "?"}success=facebook`
+    : `${baseUrl}/dashboard/connections?success=facebook`;
 
   const record = await db.query.verification.findFirst({
     where: eq(verification.id, token),
   });
 
-  if (!record || record.identifier !== "instagram_facebook_pages") {
+  if (!record || record.identifier !== "facebook_pages") {
     return Response.json({ error: "Invalid or expired token" }, { status: 400 });
   }
 
@@ -107,12 +104,10 @@ export async function POST(req: NextRequest) {
   let payload: {
     userId: string;
     pages: Array<{
-      pageId: string;
-      pageName: string;
-      pageAccessToken: string;
-      instagramAccountId: string;
-      instagramUsername: string | null;
-      instagramProfilePictureUrl: string | null;
+      id: string;
+      name: string;
+      access_token: string;
+      pictureUrl: string | null;
     }>;
   };
   try {
@@ -125,38 +120,20 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const pageData = payload.pages.find((p) => p.pageId === pageId);
-  if (!pageData) {
+  const page = payload.pages.find((p) => p.id === pageId);
+  if (!page) {
     return Response.json({ error: "Page not found" }, { status: 400 });
   }
 
   const existing = await db.query.connectedAccounts.findFirst({
     where: and(
       eq(connectedAccounts.userId, session.user.id),
-      eq(connectedAccounts.platform, "instagram"),
-      eq(connectedAccounts.platformUserId, pageData.instagramAccountId),
+      eq(connectedAccounts.platform, "facebook"),
+      eq(connectedAccounts.platformUserId, page.id),
     ),
   });
 
-  if (existing) {
-    await db
-      .update(connectedAccounts)
-      .set({
-        encryptedAccessToken: encryptToken(pageData.pageAccessToken, existing.id),
-        encryptedRefreshToken: null,
-        tokenExpiresAt: null,
-        platformUsername: pageData.instagramUsername,
-        profileImageUrl: pageData.instagramProfilePictureUrl,
-        platformMetadata: {
-          facebookPageId: pageData.pageId,
-          instagramBusinessAccountId: pageData.instagramAccountId,
-          connectionMethod: "facebook-page",
-        },
-        isActive: true,
-        updatedAt: new Date(),
-      })
-      .where(eq(connectedAccounts.id, existing.id));
-  } else {
+  if (!existing) {
     const remaining = await getRemainingSlots(session.user.id);
     if (remaining <= 0) {
       return Response.json(
@@ -168,23 +145,36 @@ export async function POST(req: NextRequest) {
         { status: 403 },
       );
     }
-    const accountId = crypto.randomUUID();
+  }
+
+  const accountId = existing?.id ?? crypto.randomUUID();
+  const encryptedAccess = encryptToken(page.access_token, accountId);
+
+  if (existing) {
+    await db
+      .update(connectedAccounts)
+      .set({
+        encryptedAccessToken: encryptedAccess,
+        encryptedRefreshToken: null,
+        tokenExpiresAt: null,
+        platformUsername: page.name,
+        profileImageUrl: page.pictureUrl,
+        isActive: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(connectedAccounts.id, existing.id));
+  } else {
     await db.insert(connectedAccounts).values({
       id: accountId,
       userId: session.user.id,
-      platform: "instagram",
-      platformUserId: pageData.instagramAccountId,
-      platformUsername: pageData.instagramUsername,
-      profileImageUrl: pageData.instagramProfilePictureUrl,
-      encryptedAccessToken: encryptToken(pageData.pageAccessToken, accountId),
+      platform: "facebook",
+      platformUserId: page.id,
+      platformUsername: page.name,
+      profileImageUrl: page.pictureUrl,
+      encryptedAccessToken: encryptedAccess,
       encryptedRefreshToken: null,
       tokenExpiresAt: null,
       isActive: true,
-      platformMetadata: {
-        facebookPageId: pageData.pageId,
-        instagramBusinessAccountId: pageData.instagramAccountId,
-        connectionMethod: "facebook-page",
-      },
     });
   }
 
