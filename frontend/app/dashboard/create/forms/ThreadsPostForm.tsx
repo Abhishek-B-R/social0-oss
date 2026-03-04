@@ -37,6 +37,11 @@ import {
   consumeComposerPayload,
   clearComposerPayload,
 } from "@/lib/composer-bridge";
+import {
+  getVideoDuration,
+  MAX_VIDEO_DURATION_SECONDS,
+  VIDEO_DURATION_MESSAGE,
+} from "@/lib/video-duration";
 
 const PREVIEW_MEDIA_MAX_H = 200;
 const MAX_ATTACHMENTS_PER_POST = 4;
@@ -600,47 +605,61 @@ export function ThreadsPostForm({
       });
     }
     if (newVideos.length === 0) return;
-    const toAdd = newVideos.slice(
-      0,
-      MAX_ATTACHMENTS_PER_POST - totalAttachments,
-    );
-    if (toAdd.length === 0) {
-      setError("Max 4 attachments per post");
-      return;
-    }
-    setPosts((prev) => {
-      const current = prev.find((p) => p.id === postId);
-      if (!current) return prev;
-      const maxOrder = getMaxOrderForPost(current);
-      const videosWithOrder = toAdd.map((vid, idx) => ({
-        ...vid,
-        order: maxOrder + idx + 1,
-      }));
-      return prev.map((p) => {
-        if (p.id !== postId) return p;
-        const combined = [...p.videos, ...videosWithOrder].slice(
+    Promise.all(newVideos.map((v) => getVideoDuration(v.file))).then(
+      (durations) => {
+        const withinDuration: MediaVideo[] = [];
+        const overDuration = durations.some(
+          (d) => d > MAX_VIDEO_DURATION_SECONDS,
+        );
+        newVideos.forEach((v, i) => {
+          if (durations[i] <= MAX_VIDEO_DURATION_SECONDS)
+            withinDuration.push(v);
+        });
+        if (overDuration) setError(VIDEO_DURATION_MESSAGE);
+        if (withinDuration.length === 0) return;
+        const toAdd = withinDuration.slice(
           0,
-          MAX_ATTACHMENTS_PER_POST - p.images.length,
+          MAX_ATTACHMENTS_PER_POST - totalAttachments,
         );
-        return { ...p, videos: combined };
-      });
-    });
-    toAdd.forEach((vid) => {
-      if (!vid.file) return;
-      getVideoThumbnail(vid.file).then((thumbnailUrl) => {
-        setPosts((prev) =>
-          prev.map((p) => {
+        if (toAdd.length === 0) {
+          setError("Max 4 attachments per post");
+          return;
+        }
+        setPosts((prev) => {
+          const current = prev.find((p) => p.id === postId);
+          if (!current) return prev;
+          const maxOrder = getMaxOrderForPost(current);
+          const videosWithOrder = toAdd.map((vid, idx) => ({
+            ...vid,
+            order: maxOrder + idx + 1,
+          }));
+          return prev.map((p) => {
             if (p.id !== postId) return p;
-            return {
-              ...p,
-              videos: p.videos.map((v) =>
-                v.preview === vid.preview ? { ...v, thumbnailUrl } : v,
-              ),
-            };
-          }),
-        );
-      });
-    });
+            const combined = [...p.videos, ...videosWithOrder].slice(
+              0,
+              MAX_ATTACHMENTS_PER_POST - p.images.length,
+            );
+            return { ...p, videos: combined };
+          });
+        });
+        toAdd.forEach((vid) => {
+          if (!vid.file) return;
+          getVideoThumbnail(vid.file).then((thumbnailUrl) => {
+            setPosts((prev) =>
+              prev.map((p) => {
+                if (p.id !== postId) return p;
+                return {
+                  ...p,
+                  videos: p.videos.map((v) =>
+                    v.preview === vid.preview ? { ...v, thumbnailUrl } : v,
+                  ),
+                };
+              }),
+            );
+          });
+        });
+      },
+    );
   };
 
   const removeVideoFromPost = (postId: number, preview: string) => {

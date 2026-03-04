@@ -42,6 +42,11 @@ import {
 } from "@/lib/composer-bridge";
 import { ChevronDown, ChevronUp, Circle } from "lucide-react";
 import { uploadFile } from "@/lib/upload-file";
+import {
+  getVideoDuration,
+  MAX_VIDEO_DURATION_SECONDS,
+  VIDEO_DURATION_MESSAGE,
+} from "@/lib/video-duration";
 
 type Account = {
   id: string;
@@ -318,11 +323,28 @@ export function CollectionPostForm({
         order: maxOrder + i + 1,
       });
     }
-    if (newVideos.length > 0) {
-      setError(null);
-      setVideos((prev) => [...prev, ...newVideos]);
+    if (newVideos.length === 0) {
+      if (unifiedInputRef.current) unifiedInputRef.current.value = "";
+      return;
     }
-    if (unifiedInputRef.current) unifiedInputRef.current.value = "";
+    setError(null);
+    Promise.all(newVideos.map((v) => getVideoDuration(v.file))).then(
+      (durations) => {
+        const withinDuration: VideoFile[] = [];
+        const overDuration = durations.some(
+          (d) => d > MAX_VIDEO_DURATION_SECONDS,
+        );
+        newVideos.forEach((v, i) => {
+          if (durations[i] <= MAX_VIDEO_DURATION_SECONDS)
+            withinDuration.push(v);
+        });
+        if (overDuration) setError(VIDEO_DURATION_MESSAGE);
+        if (withinDuration.length > 0) {
+          setVideos((prev) => [...prev, ...withinDuration]);
+        }
+        if (unifiedInputRef.current) unifiedInputRef.current.value = "";
+      },
+    );
   };
 
   const onUnifiedFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -352,7 +374,24 @@ export function CollectionPostForm({
       }
     }
     if (newImages.length > 0) setImages((prev) => [...prev, ...newImages]);
-    if (newVideos.length > 0) setVideos((prev) => [...prev, ...newVideos]);
+    if (newVideos.length > 0) {
+      Promise.all(newVideos.map((v) => getVideoDuration(v.file))).then(
+        (durations) => {
+          const withinDuration: VideoFile[] = [];
+          const overDuration = durations.some(
+            (d) => d > MAX_VIDEO_DURATION_SECONDS,
+          );
+          newVideos.forEach((v, i) => {
+            if (durations[i] <= MAX_VIDEO_DURATION_SECONDS)
+              withinDuration.push(v);
+          });
+          if (overDuration) setError(VIDEO_DURATION_MESSAGE);
+          if (withinDuration.length > 0) {
+            setVideos((prev) => [...prev, ...withinDuration]);
+          }
+        },
+      );
+    }
     if (unifiedInputRef.current) unifiedInputRef.current.value = "";
   };
 
@@ -373,11 +412,17 @@ export function CollectionPostForm({
       } else if (file.type.startsWith("video/")) {
         e.preventDefault();
         setError(null);
-        const maxOrder = getMaxOrder();
-        setVideos((prev) => [
-          ...prev,
-          { file, preview: URL.createObjectURL(file), order: maxOrder + 1 },
-        ]);
+        getVideoDuration(file).then((duration) => {
+          if (duration > MAX_VIDEO_DURATION_SECONDS) {
+            setError(VIDEO_DURATION_MESSAGE);
+            return;
+          }
+          const maxOrder = getMaxOrder();
+          setVideos((prev) => [
+            ...prev,
+            { file, preview: URL.createObjectURL(file), order: maxOrder + 1 },
+          ]);
+        });
       }
     };
     window.addEventListener("paste", handlePaste);

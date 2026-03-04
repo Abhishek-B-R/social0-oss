@@ -71,32 +71,34 @@ export function PostFormOptions({
   return (
     <>
       <section className="border-b border-border pt-5 pb-5 -mt-16">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-between">
+          <div className="flex items-center gap-5">
+            <button
+              type="button"
+              onClick={selectAll}
+              className="shrink-0 rounded-full border border-border bg-bg-elevated px-2 py-0.5 text-xs font-medium text-text-muted transition-colors hover:bg-bg-muted"
+            >
+              {allSelected ? "Deselect all" : "Select all"}
+            </button>
+            {onRememberChange != null && (
+              <label className="flex shrink-0 items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => onRememberChange(e.target.checked)}
+                  className="rounded border-input bg-bg text-accent focus:ring-accent"
+                />
+                <span className="text-sm text-text">Remember</span>
+              </label>
+            )}
+          </div>
           {searchSlot && (
-            <div className="min-w-0 w-full sm:max-w-[340px] [&_input]:h-9">
+            <div className="min-w-0 flex-1 sm:max-w-[280px] [&_input]:h-9">
               {searchSlot}
             </div>
           )}
-          {onRememberChange != null && (
-            <label className="sm:ml-auto flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => onRememberChange(e.target.checked)}
-                className="rounded border-input bg-bg text-accent focus:ring-accent"
-              />
-              <span className="text-sm text-text">Remember</span>
-            </label>
-          )}
         </div>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={selectAll}
-            className="shrink-0 rounded-full border border-border bg-bg-elevated px-2 py-0.5 text-xs font-medium text-text-muted transition-colors hover:bg-bg-muted"
-          >
-            {allSelected ? "Deselect all" : "Select all"}
-          </button>
+        <div className="mt-4">
           <AccountBubbleSelector
             accounts={accounts}
             selectedIds={selectedIds}

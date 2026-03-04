@@ -41,6 +41,11 @@ import {
   ASPECT_RATIO_MESSAGE,
 } from "@/lib/video-aspect-ratio";
 import {
+  getVideoDuration,
+  MAX_VIDEO_DURATION_SECONDS,
+  VIDEO_DURATION_MESSAGE,
+} from "@/lib/video-duration";
+import {
   ChevronDown,
   ChevronUp,
   AlertTriangle,
@@ -374,16 +379,22 @@ export function VideoPostForm({
           );
           return;
         }
-        if (videoPreviewRef.current)
-          URL.revokeObjectURL(videoPreviewRef.current);
-        if (customThumbnailPreviewRef.current)
-          URL.revokeObjectURL(customThumbnailPreviewRef.current);
-        setVideoFile(file);
-        setVideoPreview(URL.createObjectURL(file));
-        setVideoDuration(0);
-        setCustomThumbnail(null);
-        setCustomThumbnailPreview(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
+        getVideoDuration(file).then((duration) => {
+          if (duration > MAX_VIDEO_DURATION_SECONDS) {
+            setError(VIDEO_DURATION_MESSAGE);
+            return;
+          }
+          if (videoPreviewRef.current)
+            URL.revokeObjectURL(videoPreviewRef.current);
+          if (customThumbnailPreviewRef.current)
+            URL.revokeObjectURL(customThumbnailPreviewRef.current);
+          setVideoFile(file);
+          setVideoPreview(URL.createObjectURL(file));
+          setVideoDuration(duration);
+          setCustomThumbnail(null);
+          setCustomThumbnailPreview(null);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        });
       });
     };
     window.addEventListener("paste", handlePaste);
@@ -416,13 +427,19 @@ export function VideoPostForm({
         );
         return;
       }
-      if (videoPreview) URL.revokeObjectURL(videoPreview);
-      if (customThumbnailPreview) URL.revokeObjectURL(customThumbnailPreview);
-      setVideoFile(file);
-      setVideoPreview(URL.createObjectURL(file));
-      setVideoDuration(0);
-      setCustomThumbnail(null);
-      setCustomThumbnailPreview(null);
+      getVideoDuration(file).then((duration) => {
+        if (duration > MAX_VIDEO_DURATION_SECONDS) {
+          setError(VIDEO_DURATION_MESSAGE);
+          return;
+        }
+        if (videoPreview) URL.revokeObjectURL(videoPreview);
+        if (customThumbnailPreview) URL.revokeObjectURL(customThumbnailPreview);
+        setVideoFile(file);
+        setVideoPreview(URL.createObjectURL(file));
+        setVideoDuration(duration);
+        setCustomThumbnail(null);
+        setCustomThumbnailPreview(null);
+      });
     });
   };
 
@@ -474,6 +491,7 @@ export function VideoPostForm({
     accounts.length === 0 ||
     !content.trim() ||
     !hasVideo ||
+    videoDuration > MAX_VIDEO_DURATION_SECONDS ||
     (mode === "scheduled" && !scheduledAt) ||
     isUploading;
 
@@ -486,6 +504,11 @@ export function VideoPostForm({
       return;
     }
     setShowCaptionError(false);
+
+    if (hasVideo && videoDuration > MAX_VIDEO_DURATION_SECONDS) {
+      setError(VIDEO_DURATION_MESSAGE);
+      return;
+    }
 
     if ((intendedModeRef.current ?? mode) === "scheduled") {
       if (!scheduledAt) {
@@ -892,9 +915,11 @@ export function VideoPostForm({
       ? "Add a caption"
       : !hasVideo
         ? "Add a video"
-        : mode === "scheduled" && !scheduledAt
-          ? "Pick a date and time to schedule"
-          : null;
+        : videoDuration > MAX_VIDEO_DURATION_SECONDS
+          ? VIDEO_DURATION_MESSAGE
+          : mode === "scheduled" && !scheduledAt
+            ? "Pick a date and time to schedule"
+            : null;
 
   const submitLabel =
     mode === "draft"

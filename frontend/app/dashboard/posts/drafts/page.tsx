@@ -13,7 +13,13 @@ export const dynamic = "force-dynamic";
 export default async function DraftsPostsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sort?: string; platform?: string; time?: string; account?: string; page?: string }>;
+  searchParams: Promise<{
+    sort?: string;
+    platform?: string;
+    time?: string;
+    account?: string;
+    page?: string;
+  }>;
 }) {
   const params = await searchParams;
   const session = await auth.api.getSession({ headers: await headers() });
@@ -49,9 +55,7 @@ export default async function DraftsPostsPage({
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-extrabold text-text">Drafts</h2>
-          <p className="text-text-muted mt-1 font-medium">
-            Saved drafts
-          </p>
+          <p className="text-text-muted mt-1 font-medium">Saved drafts</p>
         </div>
         <Link
           href="/dashboard/posts"
@@ -62,7 +66,11 @@ export default async function DraftsPostsPage({
       </div>
 
       <div className="mb-6">
-        <Suspense fallback={<div className="h-10 w-48 rounded-lg bg-bg-muted animate-pulse" />}>
+        <Suspense
+          fallback={
+            <div className="h-10 w-48 rounded-lg bg-bg-muted animate-pulse" />
+          }
+        >
           <AllPostsFilters
             platformOptions={platformOptions}
             accountOptions={accountOptions}

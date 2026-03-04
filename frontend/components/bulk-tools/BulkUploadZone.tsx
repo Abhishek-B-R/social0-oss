@@ -114,10 +114,21 @@ export function BulkUploadZone({
     [validateAndEmit],
   );
 
+  const hasItems = (currentCount ?? 0) > 0;
+  const totalBytes = currentTotalBytes ?? 0;
+  const totalLabel =
+    maxTotalBytes != null
+      ? `${formatBytes(totalBytes)} / ${formatBytes(maxTotalBytes)}`
+      : formatBytes(totalBytes);
+
   return (
     <div className="space-y-2">
       <label
-        className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed py-12 px-6 text-center transition-colors ${
+        className={`flex items-center gap-3 rounded-xl border-2 border-dashed transition-colors ${
+          hasItems
+            ? "py-5 px-4"
+            : "flex-col justify-center py-12 px-6 text-center"
+        } ${
           disabled
             ? "cursor-not-allowed border-border bg-muted"
             : dragActive
@@ -136,21 +147,43 @@ export function BulkUploadZone({
           disabled={disabled}
           className="hidden"
         />
-        <Upload className="h-12 w-12 text-muted-foreground mb-2" />
-        <p className="text-sm font-medium text-foreground">
-          Click to upload or drag and drop
-        </p>
-        {helperText ? (
-          <p className="mt-1 text-xs text-muted-foreground">{helperText}</p>
+        <Upload
+          className={`shrink-0 text-muted-foreground ${
+            hasItems ? "h-5 w-5" : "h-12 w-12 mb-2"
+          }`}
+        />
+        {hasItems ? (
+          <span className="min-w-0 flex-1 text-left text-sm text-foreground">
+            <span className="font-medium">
+              {currentCount} file{(currentCount ?? 0) === 1 ? "" : "s"} /{" "}
+              {maxFiles} files
+            </span>
+            {maxTotalBytes != null && (
+              <span className="text-muted-foreground"> · {totalLabel}</span>
+            )}
+            <span className="text-muted-foreground">
+              {" "}
+              · Click or drag to add more
+            </span>
+          </span>
         ) : (
-          <p className="mt-1 text-xs text-muted-foreground">
-            {maxSizeLabel}. Max {maxFiles} files.
-          </p>
-        )}
-        {maxTotalBytes != null && (
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {formatBytes(currentTotalBytes ?? 0)} / {formatBytes(maxTotalBytes)}
-          </p>
+          <>
+            <p className="text-sm font-medium text-foreground">
+              Click to upload or drag and drop
+            </p>
+            {helperText ? (
+              <p className="mt-1 text-xs text-muted-foreground">{helperText}</p>
+            ) : (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {maxSizeLabel}. Max {maxFiles} files.
+              </p>
+            )}
+            {maxTotalBytes != null && (
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {totalLabel}
+              </p>
+            )}
+          </>
         )}
       </label>
       {error && (

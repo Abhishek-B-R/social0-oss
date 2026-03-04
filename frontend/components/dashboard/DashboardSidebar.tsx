@@ -125,7 +125,7 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
           className="sidebar-create-post-cta flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm hover:bg-accent-hover transition-colors"
         >
           <IconFilePlus className="h-4 w-4 shrink-0" size={16} />
-          New post
+          Create post
         </Link>
 
         <nav className="flex flex-1 flex-col gap-6">
@@ -221,7 +221,10 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
               href="#"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-sidebar-text hover:bg-sidebar-active"
             >
-              <IconMessageCircle className="h-4 w-4 shrink-0 text-sidebar-text" size={16} />
+              <IconMessageCircle
+                className="h-4 w-4 shrink-0 text-sidebar-text"
+                size={16}
+              />
               Share feedback
             </a>
           </Section>
@@ -248,7 +251,10 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
             </p>
             <p className="truncate text-xs text-sidebar-text">{planLabel}</p>
           </div>
-          <IconChevronDown className="h-4 w-4 shrink-0 text-sidebar-text" size={16} />
+          <IconChevronDown
+            className="h-4 w-4 shrink-0 text-sidebar-text"
+            size={16}
+          />
         </div>
         <div className="mt-2">
           <SignOutButton />

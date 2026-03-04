@@ -180,7 +180,7 @@ export function BulkScheduleSettings({
             onClick={onApplyBulkSchedule}
             className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
           >
-            Apply Bulk Schedule
+            Apply This Schedule
           </button>
           {schedulePreview && (
             <div className="rounded-lg border border-border bg-muted px-3 py-2 text-xs text-foreground whitespace-pre-wrap">

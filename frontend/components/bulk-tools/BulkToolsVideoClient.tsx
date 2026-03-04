@@ -20,6 +20,11 @@ import {
   ASPECT_RATIO_MESSAGE,
   type VideoAspectResult,
 } from "@/lib/video-aspect-ratio";
+import {
+  getVideoDuration,
+  MAX_VIDEO_DURATION_SECONDS,
+  VIDEO_DURATION_MESSAGE,
+} from "@/lib/video-duration";
 import { uploadFile } from "@/lib/upload-file";
 
 const LIMITS = {
@@ -146,31 +151,43 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
             );
           }
           if (validFiles.length === 0) return;
-          setItems((prev) => {
-            const toAdd = validFiles.slice(
-              0,
-              Math.max(0, LIMITS.maxCount - prev.length),
-            );
-            if (toAdd.length === 0) return prev;
+          Promise.all(validFiles.map(getVideoDuration)).then((durations) => {
+            const withinDuration: File[] = [];
+            const overDuration = durations.some((d) => d > MAX_VIDEO_DURATION_SECONDS);
+            validFiles.forEach((file, i) => {
+              if (durations[i] <= MAX_VIDEO_DURATION_SECONDS)
+                withinDuration.push(file);
+            });
+            if (overDuration) {
+              setError(VIDEO_DURATION_MESSAGE);
+            }
+            if (withinDuration.length === 0) return;
+            setItems((prev) => {
+              const toAdd = withinDuration.slice(
+                0,
+                Math.max(0, LIMITS.maxCount - prev.length),
+              );
+              if (toAdd.length === 0) return prev;
 
-            const [h, m] = startTime.split(":").map(Number);
-            const start = new Date(startDate + "T00:00:00");
-            const dates = computeBulkSchedule(
-              prev.length + toAdd.length,
-              start,
-              h ?? 0,
-              m ?? 0,
-              videosPerDay,
-              effectiveGapHours,
-            );
-            const newItems: VideoItem[] = toAdd.map((file, i) => ({
-              id: crypto.randomUUID(),
-              file,
-              previewUrl: URL.createObjectURL(file),
-              caption: "",
-              scheduledAt: dates[prev.length + i] ?? new Date(),
-            }));
-            return [...prev, ...newItems];
+              const [h, m] = startTime.split(":").map(Number);
+              const start = new Date(startDate + "T00:00:00");
+              const dates = computeBulkSchedule(
+                prev.length + toAdd.length,
+                start,
+                h ?? 0,
+                m ?? 0,
+                videosPerDay,
+                effectiveGapHours,
+              );
+              const newItems: VideoItem[] = toAdd.map((file, i) => ({
+                id: crypto.randomUUID(),
+                file,
+                previewUrl: URL.createObjectURL(file),
+                caption: "",
+                scheduledAt: dates[prev.length + i] ?? new Date(),
+              }));
+              return [...prev, ...newItems];
+            });
           });
         },
       );
@@ -370,38 +387,52 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
           {/* Left column */}
           <div className="lg:col-span-2 space-y-6">
             <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <label className="text-sm font-semibold text-foreground">
-                  Post to
-                </label>
-                <div className="flex items-center gap-3 min-w-0">
-                  <input
-                    type="search"
-                    placeholder="Search accounts..."
-                    value={accountSearch}
-                    onChange={(e) => setAccountSearch(e.target.value)}
-                    className="h-9 flex-1 min-w-0 max-w-[220px] rounded border border-border bg-bg px-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
-                  />
-                  <label className="flex shrink-0 items-center gap-2 cursor-pointer">
+              <p className="block text-sm font-semibold text-foreground mb-3">
+                Post to
+              </p>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-between">
+                <div className="flex items-center gap-5">
+                  <button
+                    type="button"
+                    onClick={selectAll}
+                    className="shrink-0 rounded-full border border-border bg-bg-elevated px-2 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+                  >
+                    {selectableAccounts.length > 0 &&
+                    selectableAccounts.every((a) => selectedIds.has(a.id))
+                      ? "Deselect all"
+                      : "Select all"}
+                  </button>
+                  <label className="flex shrink-0 items-center gap-2">
                     <input
                       type="checkbox"
                       checked={remember}
                       onChange={(e) => setRemember(e.target.checked)}
                       className="rounded border-input bg-bg text-accent focus:ring-accent"
                     />
-                    <span className="text-sm text-muted-foreground">
-                      Remember
-                    </span>
+                    <span className="text-sm text-foreground">Remember</span>
                   </label>
                 </div>
+                <div className="min-w-0 flex-1 sm:max-w-[280px] [&_input]:h-9">
+                  <input
+                    type="search"
+                    placeholder="Search accounts..."
+                    value={accountSearch}
+                    onChange={(e) => setAccountSearch(e.target.value)}
+                    className="h-9 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
+                  />
+                </div>
               </div>
-              <AccountBubbleSelector
-                accounts={filteredAccounts}
-                selectedIds={selectedIds}
-                onToggleAccount={toggleAccount}
-                selectAll={selectAll}
-                platformName={platformName}
-              />
+              <div className="mt-4">
+                <AccountBubbleSelector
+                  accounts={filteredAccounts}
+                  selectedIds={selectedIds}
+                  onToggleAccount={toggleAccount}
+                  selectAll={selectAll}
+                  platformName={platformName}
+                  compact
+                  hideSelectAll
+                />
+              </div>
             </div>
 
             <BulkUploadZone
@@ -411,7 +442,7 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
               maxTotalBytes={LIMITS.totalSize}
               currentTotalBytes={totalSelectedBytes}
               currentCount={items.length}
-              maxSizeLabel="MP4, MOV, AVI. Max 500MB each."
+              maxSizeLabel="MP4, MOV, AVI. Max 250MB each."
               helperText="Up to 100 videos · 250MB total batch size"
               onFilesSelected={addFiles}
               disabled={items.length >= LIMITS.maxCount}
@@ -508,7 +539,9 @@ export function BulkToolsVideoClient({ accounts }: { accounts: Account[] }) {
       {scheduling && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-[360px] max-w-[90vw] rounded-2xl bg-card border border-border p-8 shadow-xl flex flex-col items-center gap-4">
-            <p className="font-medium text-foreground text-center">{progress}</p>
+            <p className="font-medium text-foreground text-center">
+              {progress}
+            </p>
             <div className="w-full">
               <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div

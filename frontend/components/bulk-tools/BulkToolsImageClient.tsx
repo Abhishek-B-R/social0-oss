@@ -17,9 +17,11 @@ import { uploadFile } from "@/lib/upload-file";
 
 const LIMITS = {
   totalSize: 250 * 1024 * 1024, // 250MB total batch
-  maxCount: 100, // 100 images max count
+  maxCount: 100, // 100 images max count (global)
+  maxPerSlot: 50, // 50 images per bulk slot/session
 };
 const MAX_IMAGES = LIMITS.maxCount;
+const MAX_IMAGES_PER_SLOT = LIMITS.maxPerSlot;
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024; // 50MB - API may limit to 10MB
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 
@@ -121,7 +123,10 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
   const addFiles = useCallback(
     (files: File[]) => {
       setItems((prev) => {
-        const toAdd = files.slice(0, Math.max(0, MAX_IMAGES - prev.length));
+        const toAdd = files.slice(
+          0,
+          Math.max(0, MAX_IMAGES_PER_SLOT - prev.length),
+        );
         if (toAdd.length === 0) return prev;
 
         const [h, m] = startTime.split(":").map(Number);
@@ -323,51 +328,65 @@ export function BulkToolsImageClient({ accounts }: { accounts: Account[] }) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <label className="text-sm font-semibold text-foreground">
-                  Post to
-                </label>
-                <div className="flex items-center gap-3 min-w-0">
-                  <input
-                    type="search"
-                    placeholder="Search accounts..."
-                    value={accountSearch}
-                    onChange={(e) => setAccountSearch(e.target.value)}
-                    className="h-9 flex-1 min-w-0 max-w-[220px] rounded border border-border bg-bg px-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
-                  />
-                  <label className="flex shrink-0 items-center gap-2 cursor-pointer">
+              <p className="block text-sm font-semibold text-foreground mb-3">
+                Post to
+              </p>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-between">
+                <div className="flex items-center gap-5">
+                  <button
+                    type="button"
+                    onClick={selectAll}
+                    className="shrink-0 rounded-full border border-border bg-bg-elevated px-2 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+                  >
+                    {selectableAccounts.length > 0 &&
+                    selectableAccounts.every((a) => selectedIds.has(a.id))
+                      ? "Deselect all"
+                      : "Select all"}
+                  </button>
+                  <label className="flex shrink-0 items-center gap-2">
                     <input
                       type="checkbox"
                       checked={remember}
                       onChange={(e) => setRemember(e.target.checked)}
                       className="rounded border-input bg-bg text-accent focus:ring-accent"
                     />
-                    <span className="text-sm text-muted-foreground">
-                      Remember
-                    </span>
+                    <span className="text-sm text-foreground">Remember</span>
                   </label>
                 </div>
+                <div className="min-w-0 flex-1 sm:max-w-[280px] [&_input]:h-9">
+                  <input
+                    type="search"
+                    placeholder="Search accounts..."
+                    value={accountSearch}
+                    onChange={(e) => setAccountSearch(e.target.value)}
+                    className="h-9 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
+                  />
+                </div>
               </div>
-              <AccountBubbleSelector
-                accounts={filteredAccounts}
-                selectedIds={selectedIds}
-                onToggleAccount={toggleAccount}
-                selectAll={selectAll}
-                platformName={platformName}
-              />
+              <div className="mt-4">
+                <AccountBubbleSelector
+                  accounts={filteredAccounts}
+                  selectedIds={selectedIds}
+                  onToggleAccount={toggleAccount}
+                  selectAll={selectAll}
+                  platformName={platformName}
+                  compact
+                  hideSelectAll
+                />
+              </div>
             </div>
 
             <BulkUploadZone
               accept={IMAGE_ACCEPT}
-              maxFiles={MAX_IMAGES}
+              maxFiles={MAX_IMAGES_PER_SLOT}
               maxSizeBytes={MAX_IMAGE_BYTES}
               maxSizeLabel="JPG, PNG, WEBP, GIF. Max 50MB each."
               maxTotalBytes={LIMITS.totalSize}
               currentTotalBytes={totalSelectedBytes}
               currentCount={items.length}
-              helperText="Up to 100 images · 250MB total batch size"
+              helperText={`Up to ${MAX_IMAGES_PER_SLOT} images per slot · 250MB total batch size`}
               onFilesSelected={addFiles}
-              disabled={items.length >= MAX_IMAGES}
+              disabled={items.length >= MAX_IMAGES_PER_SLOT}
             />
 
             <div>

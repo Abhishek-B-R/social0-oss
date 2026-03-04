@@ -89,7 +89,7 @@ export async function getPostsListData({
           .from(postPublications)
           .innerJoin(
             connectedAccounts,
-            eq(postPublications.connectedAccountId, connectedAccounts.id)
+            eq(postPublications.connectedAccountId, connectedAccounts.id),
           )
           .where(inArray(postPublications.postId, postIds))
       : [];
@@ -100,7 +100,7 @@ export async function getPostsListData({
       acc[p.postId].push(p);
       return acc;
     },
-    {} as Record<string, PublicationRow[]>
+    {} as Record<string, PublicationRow[]>,
   );
 
   // Fix posts stuck in "publishing" when publications have finished (all published or mixed)
@@ -110,8 +110,8 @@ export async function getPostsListData({
         p.status === "publishing" &&
         (publicationsByPostId[p.id] ?? []).length > 0 &&
         (publicationsByPostId[p.id] ?? []).every(
-          (pub) => pub.status === "published"
-        )
+          (pub) => pub.status === "published",
+        ),
     )
     .map((p) => p.id);
   if (toFixPublishedIds.length > 0) {
@@ -138,20 +138,22 @@ export async function getPostsListData({
   }
 
   const platforms = [...new Set(publications.map((p) => p.platform))];
-  const accountIds = [...new Set(publications.map((p) => p.connectedAccountId))];
+  const accountIds = [
+    ...new Set(publications.map((p) => p.connectedAccountId)),
+  ];
 
   if (platformFilter) {
     userPosts = userPosts.filter((p) =>
       (publicationsByPostId[p.id] ?? []).some(
-        (pub) => pub.platform === platformFilter
-      )
+        (pub) => pub.platform === platformFilter,
+      ),
     );
   }
   if (accountFilter) {
     userPosts = userPosts.filter((p) =>
       (publicationsByPostId[p.id] ?? []).some(
-        (pub) => pub.connectedAccountId === accountFilter
-      )
+        (pub) => pub.connectedAccountId === accountFilter,
+      ),
     );
   }
   if (timeFilter === "week") {
@@ -227,8 +229,8 @@ export async function getPostsListData({
           .where(
             and(
               eq(connectedAccounts.userId, userId),
-              inArray(connectedAccounts.id, accountIds)
-            )
+              inArray(connectedAccounts.id, accountIds),
+            ),
           )
       : [];
 
@@ -241,11 +243,13 @@ export async function getPostsListData({
     label: `@${a.platformUsername || a.platform} (${a.platform})`,
   }));
 
-  const postIdsWithXPublished = userPostsWithStatus.filter((p) =>
-    (publicationsByPostId[p.id] ?? []).some(
-      (pub) => pub.platform === "twitter_x" && pub.status === "published",
-    ),
-  ).map((p) => p.id);
+  const postIdsWithXPublished = userPostsWithStatus
+    .filter((p) =>
+      (publicationsByPostId[p.id] ?? []).some(
+        (pub) => pub.platform === "twitter_x" && pub.status === "published",
+      ),
+    )
+    .map((p) => p.id);
 
   type ResurfaceMap = Record<
     string,
@@ -288,7 +292,7 @@ export async function getPostsListData({
             }
             return out;
           })
-          .catch(() => ({} as ResurfaceMap));
+          .catch(() => ({}) as ResurfaceMap);
 
   type AutoPlugMap = Record<string, { status: string }>;
   const autoPlugByPostId: AutoPlugMap =
@@ -309,7 +313,7 @@ export async function getPostsListData({
             }
             return out;
           })
-          .catch(() => ({} as AutoPlugMap));
+          .catch(() => ({}) as AutoPlugMap);
 
   return {
     userPosts: userPostsWithStatus,
@@ -345,9 +349,7 @@ export async function getPostForEdit(
       mediaIds: posts.mediaIds,
     })
     .from(posts)
-    .where(
-      and(eq(posts.id, postId), eq(posts.userId, userId)),
-    );
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
 
   if (!post) return null;
 
@@ -389,10 +391,7 @@ export async function getPostMedia(
     })
     .from(mediaUploads)
     .where(
-      and(
-        eq(mediaUploads.userId, userId),
-        inArray(mediaUploads.id, mediaIds),
-      ),
+      and(eq(mediaUploads.userId, userId), inArray(mediaUploads.id, mediaIds)),
     );
   return rows.map((r) => ({
     id: r.id,
