@@ -768,7 +768,6 @@ export async function executePublish(
       })();
 
       if (twitterThreadMeta) {
-        const TWITTER_MAX_LENGTH = 280;
         const parts = twitterThreadMeta.parts;
 
         const emptyPart = parts.findIndex(
@@ -793,27 +792,8 @@ export async function executePublish(
           return;
         }
 
-        const overLimit = parts.findIndex((p) => p.text.length > TWITTER_MAX_LENGTH);
-        if (overLimit !== -1) {
-          const partNum = overLimit + 1;
-          const len = parts[overLimit].text.length;
-          const msg = `Twitter: Part ${partNum} is ${len} characters (max ${TWITTER_MAX_LENGTH}). Shorten it to publish.`;
-          await db
-            .update(postPublications)
-            .set({
-              status: "failed",
-              lastError: msg,
-              updatedAt: new Date(),
-            })
-            .where(eq(postPublications.id, pub.publicationId));
-          results.push({
-            platform: pub.platform,
-            connectedAccountId: pub.connectedAccountId,
-            status: "failed",
-            error: msg,
-          });
-          return;
-        }
+        // Skip 280 char validation — Premium users can post up to 25k chars.
+        // If Twitter rejects, the API error will be surfaced to the user.
 
         const uniqueDbMediaIds = [
           ...new Set(parts.flatMap((p) => p.mediaIds)),
@@ -1076,7 +1056,6 @@ export async function executePublish(
       }
 
       // Twitter thread: split by "---" for native thread (reply chain)
-      const TWITTER_MAX_LENGTH = 280;
       const rawContent = resolvedContent || "";
       const parts = rawContent
         .split("---")
@@ -1101,28 +1080,8 @@ export async function executePublish(
         return;
       }
 
-      // Validate each thread part ≤ 280 characters
-      const overLimit = parts.findIndex((p) => p.length > TWITTER_MAX_LENGTH);
-      if (overLimit !== -1) {
-        const partNum = overLimit + 1;
-        const len = parts[overLimit].length;
-        const msg = `Twitter: Part ${partNum} is ${len} characters (max ${TWITTER_MAX_LENGTH}). Shorten it to publish.`;
-        await db
-          .update(postPublications)
-          .set({
-            status: "failed",
-            lastError: msg,
-            updatedAt: new Date(),
-          })
-          .where(eq(postPublications.id, pub.publicationId));
-        results.push({
-          platform: pub.platform,
-          connectedAccountId: pub.connectedAccountId,
-          status: "failed",
-          error: msg,
-        });
-        return;
-      }
+      // Skip 280 char validation — Premium users can post up to 25k chars.
+      // If Twitter rejects, the API error will be surfaced to the user.
 
       type MediaIdsTuple =
         | [string]

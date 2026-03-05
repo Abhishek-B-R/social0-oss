@@ -17,6 +17,7 @@ import {
   createAutoPlug,
 } from "@/app/actions/resurface";
 import { useRememberedAccounts } from "@/lib/remembered-accounts";
+import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { PostFormOptions } from "../PostFormOptions";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
@@ -196,6 +197,14 @@ export function ImagePostForm({
     useState(0);
   const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
   const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
+  const hasRestoredAutoFeaturesRef = useRef(false);
+  const {
+    remember: rememberAutoFeatures,
+    setRemember: setRememberAutoFeatures,
+    getInitialState: getAutoFeaturesInitialState,
+    persistAutoRepost,
+    persistAutoPlug,
+  } = useRememberedAutoRepostAutoPlug();
   type PreviewCardMode = "post" | "media";
   const [previewCardMode, setPreviewCardMode] =
     useState<PreviewCardMode>("post");
@@ -383,6 +392,40 @@ export function ImagePostForm({
     getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
   const resurfaceVisible = hasXForResurface; // publishedAt undefined for new posts
   const autoPlugVisible = hasXForResurface; // publishedAt undefined for new posts
+
+  // Restore Auto-Repost & Auto-Plug from localStorage when Twitter is selected
+  useEffect(() => {
+    if (!hasXForResurface) {
+      hasRestoredAutoFeaturesRef.current = false;
+      return;
+    }
+    if (!rememberAutoFeatures) return;
+    if (hasRestoredAutoFeaturesRef.current) return;
+    const { autoRepostConfig, autoPlugConfig } =
+      getAutoFeaturesInitialState();
+    if (autoRepostConfig) setResurfaceConfig(autoRepostConfig);
+    if (autoPlugConfig) setAutoPlugConfig(autoPlugConfig);
+    hasRestoredAutoFeaturesRef.current = true;
+  }, [
+    hasXForResurface,
+    rememberAutoFeatures,
+    getAutoFeaturesInitialState,
+  ]);
+
+  // Persist Auto-Repost & Auto-Plug when remember is on
+  useEffect(() => {
+    if (!rememberAutoFeatures || !hasXForResurface) return;
+    persistAutoRepost(!!resurfaceConfig, resurfaceConfig);
+    persistAutoPlug(!!autoPlugConfig, autoPlugConfig);
+  }, [
+    rememberAutoFeatures,
+    hasXForResurface,
+    resurfaceConfig,
+    autoPlugConfig,
+    persistAutoRepost,
+    persistAutoPlug,
+  ]);
+
   const hasTikTokSelected = accounts.some(
     (a) => selectedIds.has(a.id) && a.platform === "tiktok",
   );
@@ -718,6 +761,11 @@ export function ImagePostForm({
           setOverlayPhase("idle");
           return;
         }
+        if (result.allPlatformsFailed && result.postId) {
+          router.push(`/dashboard/posts/${result.postId}`);
+          router.refresh();
+          return;
+        }
         setPublishedPostId(result.postId);
         setOverlayPhase("done");
         router.refresh();
@@ -789,8 +837,8 @@ export function ImagePostForm({
           publishResult?.results?.filter((r) => r.status === "published")
             .length ?? 0;
         if (succeededCount === 0) {
-          setError(publishResult?.error ?? "Publish failed");
-          setOverlayPhase("idle");
+          router.push(`/dashboard/posts/${result.postId}`);
+          router.refresh();
           return;
         }
         setOverlayPhase("done");
@@ -967,7 +1015,7 @@ export function ImagePostForm({
           mediaType="image"
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
-          publishedPostId={overlayPhase === "done" ? publishedPostId : null}
+          publishedPostId={publishedPostId}
           publishedToX={selectedAccounts.some(
             (a) => a.platform === "twitter_x",
           )}
@@ -987,7 +1035,17 @@ export function ImagePostForm({
               (p) => p.status === "published" || p.status === "failed",
             )
           }
-          onClose={() => setOverlayPhase("done")}
+          onClose={() => {
+            const allFailed =
+              platformStatuses.length > 0 &&
+              platformStatuses.every((p) => p.status === "failed");
+            if (allFailed && publishedPostId) {
+              router.push(`/dashboard/posts/${publishedPostId}`);
+              router.refresh();
+            } else {
+              setOverlayPhase("done");
+            }
+          }}
         />
       )}
       <form
@@ -1567,6 +1625,8 @@ export function ImagePostForm({
           }
           allowAutoRepost={allowAutoRepost}
           allowAutoPlug={allowAutoPlug}
+          rememberAutoFeatures={rememberAutoFeatures}
+          onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
           <div className="hidden lg:block">
             <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">

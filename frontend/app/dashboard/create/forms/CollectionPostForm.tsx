@@ -13,6 +13,7 @@ import {
   createAutoPlug,
 } from "@/app/actions/resurface";
 import { useRememberedAccounts } from "@/lib/remembered-accounts";
+import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
@@ -133,6 +134,14 @@ export function CollectionPostForm({
     useState(0);
   const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
   const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
+  const hasRestoredAutoFeaturesRef = useRef(false);
+  const {
+    remember: rememberAutoFeatures,
+    setRemember: setRememberAutoFeatures,
+    getInitialState: getAutoFeaturesInitialState,
+    persistAutoRepost,
+    persistAutoPlug,
+  } = useRememberedAutoRepostAutoPlug();
   const [showCaptionError, setShowCaptionError] = useState(false);
   const [fileProgresses, setFileProgresses] = useState<number[]>([]);
 
@@ -734,6 +743,11 @@ export function CollectionPostForm({
           setOverlayPhase("idle");
           return;
         }
+        if (result.allPlatformsFailed && result.postId) {
+          router.push(`/dashboard/posts/${result.postId}`);
+          router.refresh();
+          return;
+        }
         setPublishedPostId(result.postId);
         setOverlayPhase("done");
         router.refresh();
@@ -805,8 +819,8 @@ export function CollectionPostForm({
           publishResult?.results?.filter((r) => r.status === "published")
             .length ?? 0;
         if (succeededCount === 0) {
-          setError(publishResult?.error ?? "Publish failed");
-          setOverlayPhase("idle");
+          router.push(`/dashboard/posts/${result.postId}`);
+          router.refresh();
           return;
         }
         setOverlayPhase("done");
@@ -897,6 +911,39 @@ export function CollectionPostForm({
     getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
   const resurfaceVisible = hasXForResurface;
   const autoPlugVisible = hasXForResurface;
+
+  // Restore Auto-Repost & Auto-Plug from localStorage when Twitter is selected
+  useEffect(() => {
+    if (!hasXForResurface) {
+      hasRestoredAutoFeaturesRef.current = false;
+      return;
+    }
+    if (!rememberAutoFeatures) return;
+    if (hasRestoredAutoFeaturesRef.current) return;
+    const { autoRepostConfig, autoPlugConfig } =
+      getAutoFeaturesInitialState();
+    if (autoRepostConfig) setResurfaceConfig(autoRepostConfig);
+    if (autoPlugConfig) setAutoPlugConfig(autoPlugConfig);
+    hasRestoredAutoFeaturesRef.current = true;
+  }, [
+    hasXForResurface,
+    rememberAutoFeatures,
+    getAutoFeaturesInitialState,
+  ]);
+
+  // Persist Auto-Repost & Auto-Plug when remember is on
+  useEffect(() => {
+    if (!rememberAutoFeatures || !hasXForResurface) return;
+    persistAutoRepost(!!resurfaceConfig, resurfaceConfig);
+    persistAutoPlug(!!autoPlugConfig, autoPlugConfig);
+  }, [
+    rememberAutoFeatures,
+    hasXForResurface,
+    resurfaceConfig,
+    autoPlugConfig,
+    persistAutoRepost,
+    persistAutoPlug,
+  ]);
   const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
   const tiktokAccounts = selectedAccounts.filter(
     (a) => a.platform === "tiktok",
@@ -957,7 +1004,7 @@ export function CollectionPostForm({
           mediaType="mixed"
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
-          publishedPostId={overlayPhase === "done" ? publishedPostId : null}
+          publishedPostId={publishedPostId}
           publishedToX={selectedAccounts.some(
             (a) => a.platform === "twitter_x",
           )}
@@ -977,7 +1024,17 @@ export function CollectionPostForm({
               (p) => p.status === "published" || p.status === "failed",
             )
           }
-          onClose={() => setOverlayPhase("done")}
+          onClose={() => {
+            const allFailed =
+              platformStatuses.length > 0 &&
+              platformStatuses.every((p) => p.status === "failed");
+            if (allFailed && publishedPostId) {
+              router.push(`/dashboard/posts/${publishedPostId}`);
+              router.refresh();
+            } else {
+              setOverlayPhase("done");
+            }
+          }}
         />
       )}
       <form
@@ -1340,6 +1397,8 @@ export function CollectionPostForm({
           }
           allowAutoRepost={allowAutoRepost}
           allowAutoPlug={allowAutoPlug}
+          rememberAutoFeatures={rememberAutoFeatures}
+          onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
           <div className="hidden lg:block rounded-xl border border-border bg-bg p-4 shadow-sm -mt-3">
             <h3 className="mb-3 text-sm font-semibold text-text">

@@ -27,6 +27,9 @@ export function validateContentLength(
   platform: string,
   content: string | null | undefined,
 ): string | null {
+  // Twitter/X: Premium users can post up to 25k chars. Skip validation; let API surface errors.
+  if (platform === "twitter_x") return null;
+
   const trimmed = (content ?? "").trim();
   const limit = CONTENT_LIMITS[platform];
   if (!limit || limit.max === 0) return null;

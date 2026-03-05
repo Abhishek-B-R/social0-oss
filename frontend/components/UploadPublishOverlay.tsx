@@ -236,20 +236,20 @@ export function UploadPublishOverlay({
           </>
         ) : showPlatformRows ? (
           <>
-            <div className="w-full max-w-sm rounded-xl border border-border bg-bg-elevated p-4 shadow-sm text-left">
-              <h2 className="text-lg font-semibold text-text">
+            <div className="w-full max-w-md rounded-xl border border-border bg-bg-elevated p-6 sm:p-8 shadow-sm text-left">
+              <h2 className="text-xl font-semibold text-text">
                 {allDone
                   ? "Publishing complete"
                   : "Publishing to all platforms…"}
               </h2>
               {allDone && (
-                <p className="mt-1 text-sm text-text-muted">
+                <p className="mt-2 text-sm text-text-muted">
                   {platformStatuses.some((p) => p.status === "failed")
                     ? "Published with errors"
                     : "All done!"}
                 </p>
               )}
-              <ul className="mt-4 space-y-3">
+              <ul className="mt-6 space-y-4">
                 {platformStatuses.map((p) => (
                   <li
                     key={p.accountId}
@@ -271,13 +271,24 @@ export function UploadPublishOverlay({
               </ul>
               {!allDone && PLEASE_DONT_CLOSE}
               {allDone && onClose && (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="mt-4 w-full rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground hover:bg-accent-hover transition-colors"
-                >
-                  Close
-                </button>
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                  {publishedPostId &&
+                    platformStatuses.some((p) => p.status === "published") && (
+                      <Link
+                        href={`/dashboard/posts/${publishedPostId}`}
+                        className="order-2 sm:order-1 rounded-xl border border-border bg-bg px-5 py-3 text-sm font-semibold text-text hover:bg-bg-muted transition-colors text-center"
+                      >
+                        View post
+                      </Link>
+                    )}
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="order-1 sm:order-2 flex-1 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground hover:bg-accent-hover transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
               )}
             </div>
           </>

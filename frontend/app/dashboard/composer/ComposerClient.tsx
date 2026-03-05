@@ -48,6 +48,14 @@ export function ComposerClient() {
     textareaRef.current?.focus();
   }, []);
 
+  // Auto-resize textarea: min 20px, max 140px, then scroll
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "20px";
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+  }, [text]);
+
   const updateScrollArrows = useCallback(() => {
     const el = mediaStripRef.current;
     if (!el) {
@@ -332,7 +340,7 @@ export function ComposerClient() {
       <div className="space-y-4 rounded-2xl border border-border bg-bg-elevated p-4 sm:p-5 shadow-sm">
         <textarea
           ref={textareaRef}
-          className="min-h-[140px] w-full resize-none border-none bg-transparent text-base text-text outline-none placeholder:text-text-muted"
+          className="min-h-[50px] max-h-[140px] w-full resize-none overflow-y-auto border-none bg-transparent text-base text-text outline-none placeholder:text-text-muted"
           placeholder="Share what's on your mind..."
           value={text}
           onChange={(e) => setText(e.target.value)}

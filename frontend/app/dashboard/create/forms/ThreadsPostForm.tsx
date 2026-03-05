@@ -13,6 +13,7 @@ import {
   createAutoPlug,
 } from "@/app/actions/resurface";
 import { useRememberedAccounts } from "@/lib/remembered-accounts";
+import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
@@ -271,6 +272,14 @@ export function ThreadsPostForm({
   const [autoplugModalOpen, setAutoplugModalOpen] = useState(false);
   const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
   const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
+  const hasRestoredAutoFeaturesRef = useRef(false);
+  const {
+    remember: rememberAutoFeatures,
+    setRemember: setRememberAutoFeatures,
+    getInitialState: getAutoFeaturesInitialState,
+    persistAutoRepost,
+    persistAutoPlug,
+  } = useRememberedAutoRepostAutoPlug();
   const [draggedPostId, setDraggedPostId] = useState<number | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
@@ -788,6 +797,39 @@ export function ThreadsPostForm({
   const resurfaceVisible = hasXForResurface;
   const autoPlugVisible = hasXForResurface;
 
+  // Restore Auto-Repost & Auto-Plug from localStorage when Twitter is selected
+  useEffect(() => {
+    if (!hasXForResurface) {
+      hasRestoredAutoFeaturesRef.current = false;
+      return;
+    }
+    if (!rememberAutoFeatures) return;
+    if (hasRestoredAutoFeaturesRef.current) return;
+    const { autoRepostConfig, autoPlugConfig } =
+      getAutoFeaturesInitialState();
+    if (autoRepostConfig) setResurfaceConfig(autoRepostConfig);
+    if (autoPlugConfig) setAutoPlugConfig(autoPlugConfig);
+    hasRestoredAutoFeaturesRef.current = true;
+  }, [
+    hasXForResurface,
+    rememberAutoFeatures,
+    getAutoFeaturesInitialState,
+  ]);
+
+  // Persist Auto-Repost & Auto-Plug when remember is on
+  useEffect(() => {
+    if (!rememberAutoFeatures || !hasXForResurface) return;
+    persistAutoRepost(!!resurfaceConfig, resurfaceConfig);
+    persistAutoPlug(!!autoPlugConfig, autoPlugConfig);
+  }, [
+    rememberAutoFeatures,
+    hasXForResurface,
+    resurfaceConfig,
+    autoPlugConfig,
+    persistAutoRepost,
+    persistAutoPlug,
+  ]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -1003,6 +1045,11 @@ export function ThreadsPostForm({
           setOverlayPhase("idle");
           return;
         }
+        if (result.allPlatformsFailed && result.postId) {
+          router.push(`/dashboard/posts/${result.postId}`);
+          router.refresh();
+          return;
+        }
         setPublishedPostId(result.postId);
         setOverlayPhase("done");
         router.refresh();
@@ -1074,12 +1121,8 @@ export function ThreadsPostForm({
           publishResult?.results?.filter((r) => r.status === "published")
             .length ?? 0;
         if (succeededCount === 0) {
-          const msg =
-            publishResult?.error && publishResult.error.trim()
-              ? publishResult.error
-              : "Publish failed";
-          setError(msg);
-          setOverlayPhase("idle");
+          router.push(`/dashboard/posts/${result.postId}`);
+          router.refresh();
           return;
         }
         setOverlayPhase("done");
@@ -1223,7 +1266,7 @@ export function ThreadsPostForm({
           mediaType={overlayMediaType}
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
-          publishedPostId={overlayPhase === "done" ? publishedPostId : null}
+          publishedPostId={publishedPostId}
           publishedToX={selectedAccounts.some(
             (a) => a.platform === "twitter_x",
           )}
@@ -1243,7 +1286,17 @@ export function ThreadsPostForm({
               (p) => p.status === "published" || p.status === "failed",
             )
           }
-          onClose={() => setOverlayPhase("done")}
+          onClose={() => {
+            const allFailed =
+              platformStatuses.length > 0 &&
+              platformStatuses.every((p) => p.status === "failed");
+            if (allFailed && publishedPostId) {
+              router.push(`/dashboard/posts/${publishedPostId}`);
+              router.refresh();
+            } else {
+              setOverlayPhase("done");
+            }
+          }}
         />
       )}
       <form
@@ -1529,6 +1582,8 @@ export function ThreadsPostForm({
           }
           allowAutoRepost={allowAutoRepost}
           allowAutoPlug={allowAutoPlug}
+          rememberAutoFeatures={rememberAutoFeatures}
+          onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
           <div className="hidden lg:block rounded-xl border border-border bg-bg p-4 shadow-sm">
             <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-text">

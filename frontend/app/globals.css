@@ -238,7 +238,10 @@ html {
   stroke: var(--accent-foreground);
 }
 .dark .dashboard-sidebar[data-sidebar="dashboard"] a.sidebar-create-post-cta,
-.dark .dashboard-sidebar[data-sidebar="dashboard"] a.sidebar-create-post-cta svg {
+.dark
+  .dashboard-sidebar[data-sidebar="dashboard"]
+  a.sidebar-create-post-cta
+  svg {
   color: #fff !important;
   stroke: #fff;
 }

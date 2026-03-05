@@ -7,7 +7,6 @@ import { PLATFORMS } from "@/lib/platforms";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { ScheduleDateTimePicker } from "@/components/ui/ScheduleDateTimePicker";
 
-const TWITTER_MAX_LENGTH = 280;
 const TWITTER_THREAD_SEP = "---";
 
 type Account = {
@@ -43,15 +42,7 @@ export function NewPostForm({
         .map((p) => p.trim())
         .filter(Boolean)
     : [];
-  const twitterPartOverLimit =
-    hasTwitter && isThread
-      ? threadParts.findIndex((p) => p.length > TWITTER_MAX_LENGTH)
-      : -1;
   const twitterThreadWarning = hasTwitter && isThread && threadParts.length > 1;
-  const twitterValidationError =
-    twitterPartOverLimit !== -1
-      ? `Twitter: Part ${twitterPartOverLimit + 1} is ${threadParts[twitterPartOverLimit].length} characters (max ${TWITTER_MAX_LENGTH}). Shorten it to publish.`
-      : null;
 
   const platformName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
@@ -77,10 +68,6 @@ export function NewPostForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (twitterValidationError) {
-      setError(twitterValidationError);
-      return;
-    }
     if (mode === "scheduled") {
       if (!scheduledAt) {
         setError("Please select a date and time.");
@@ -129,7 +116,7 @@ export function NewPostForm({
           <p className="mt-3 text-sm text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg px-3 py-2">
             Twitter: This will post as a thread (each part between{" "}
             <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">---</code> is a separate
-            tweet). Max {TWITTER_MAX_LENGTH} characters per part. Media will
+            tweet). Standard accounts: 280 chars per part; Premium allows longer. Media will
             only appear on the first tweet.
           </p>
         )}
@@ -291,8 +278,7 @@ export function NewPostForm({
             loading ||
             accounts.length === 0 ||
             !content.trim() ||
-            (mode === "scheduled" && !scheduledAt) ||
-            !!twitterValidationError
+            (mode === "scheduled" && !scheduledAt)
           }
           className="rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 shadow-lg transition-colors"
         >

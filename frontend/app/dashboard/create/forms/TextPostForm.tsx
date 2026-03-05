@@ -32,7 +32,6 @@ import {
   clearComposerPayload,
 } from "@/lib/composer-bridge";
 
-const TWITTER_MAX_LENGTH = 280;
 const TWITTER_THREAD_SEP = "---";
 
 type AccountCaptionState = {
@@ -160,6 +159,16 @@ export function TextPostForm({
     if (remember) persistSelection(selectedIds);
   }, [remember, selectedIds, persistSelection]);
 
+  const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+  const selectedAccountIds = Array.from(selectedIds);
+  const showCustomCaptionsSection = selectedIds.size >= 2;
+  const platformDisplayName = (platformId: string) =>
+    PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
+  const hasXForResurface =
+    getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
+  const resurfaceVisible = hasXForResurface;
+  const autoPlugVisible = hasXForResurface;
+
   // Restore Auto-Repost & Auto-Plug from localStorage when Twitter is selected
   useEffect(() => {
     if (!hasXForResurface) {
@@ -193,15 +202,6 @@ export function TextPostForm({
     persistAutoPlug,
   ]);
 
-  const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
-  const selectedAccountIds = Array.from(selectedIds);
-  const showCustomCaptionsSection = selectedIds.size >= 2;
-  const platformDisplayName = (platformId: string) =>
-    PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
-  const hasXForResurface =
-    getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
-  const resurfaceVisible = hasXForResurface;
-  const autoPlugVisible = hasXForResurface;
   const hasTwitter = selectedAccounts.some((a) => a.platform === "twitter_x");
   const isThread = content.includes(TWITTER_THREAD_SEP);
   const threadParts = isThread
@@ -210,15 +210,7 @@ export function TextPostForm({
         .map((p) => p.trim())
         .filter(Boolean)
     : [];
-  const twitterPartOverLimit =
-    hasTwitter && isThread
-      ? threadParts.findIndex((p) => p.length > TWITTER_MAX_LENGTH)
-      : -1;
   const twitterThreadWarning = hasTwitter && isThread && threadParts.length > 1;
-  const twitterValidationError =
-    twitterPartOverLimit !== -1
-      ? `Twitter: Part ${twitterPartOverLimit + 1} is ${threadParts[twitterPartOverLimit].length} characters (max ${TWITTER_MAX_LENGTH}). Shorten it to publish.`
-      : null;
 
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
@@ -246,10 +238,6 @@ export function TextPostForm({
       return;
     }
     setShowContentError(false);
-    if (twitterValidationError) {
-      setError(twitterValidationError);
-      return;
-    }
     if ((intendedModeRef.current ?? mode) === "scheduled") {
       if (!scheduledAt) {
         setError("Please select a date and time.");
@@ -312,6 +300,11 @@ export function TextPostForm({
         );
         setLoading(false);
         if (result.success) {
+          if (result.allPlatformsFailed && result.postId) {
+            router.push(`/dashboard/posts/${result.postId}`);
+            router.refresh();
+            return;
+          }
           if (autoPlugConfig) {
             const xAccount = selectedAccounts.find(
               (a) => a.platform === "twitter_x",
@@ -370,6 +363,11 @@ export function TextPostForm({
         }
       }
       if (effectiveMode === "now") {
+        if (result.allPlatformsFailed && result.postId) {
+          router.push(`/dashboard/posts/${result.postId}`);
+          router.refresh();
+          return;
+        }
         setPublishedPostId(result.postId ?? null);
         setOverlayPhase("done");
       } else {
@@ -408,9 +406,7 @@ export function TextPostForm({
   const submitDisabledReason =
     !content.trim()
       ? "Add some text to post"
-      : twitterValidationError
-        ? "Fix thread format or character limit"
-        : mode === "scheduled" && !scheduledAt
+      : mode === "scheduled" && !scheduledAt
           ? "Pick a date and time to schedule"
           : null;
 
@@ -472,8 +468,7 @@ export function TextPostForm({
             submitDisabled={
               accounts.length === 0 ||
               !content.trim() ||
-              (mode === "scheduled" && !scheduledAt) ||
-              !!twitterValidationError
+              (mode === "scheduled" && !scheduledAt)
             }
             use24HourTimeFormat={use24HourTimeFormat}
             hideScheduleAndActions
@@ -522,8 +517,8 @@ export function TextPostForm({
                 <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">
                   ---
                 </code>{" "}
-                is a separate tweet). Max {TWITTER_MAX_LENGTH} characters per
-                part. Media will only appear on the first tweet.
+                is a separate tweet). Standard accounts: 280 chars per part;
+                Premium allows longer. Media will only appear on the first tweet.
               </p>
             )}
           </div>
@@ -679,8 +674,7 @@ export function TextPostForm({
           submitDisabled={
             accounts.length === 0 ||
             !content.trim() ||
-            (mode === "scheduled" && !scheduledAt) ||
-            !!twitterValidationError
+            (mode === "scheduled" && !scheduledAt)
           }
           hasAccountSelected={selectedIds.size > 0}
           submitDisabledReason={submitDisabledReason}

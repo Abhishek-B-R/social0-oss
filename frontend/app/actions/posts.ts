@@ -20,7 +20,7 @@ import {
 import { isValidUUID } from "@/lib/validation";
 
 export type CreatePostResult =
-  | { success: true; postId: string }
+  | { success: true; postId: string; allPlatformsFailed?: boolean }
   | { success: false; error: string };
 
 export type PublishMode = "draft" | "now" | "scheduled";
@@ -138,7 +138,22 @@ export async function createPost(
     );
 
     if (mode === "now") {
-      await executePublish(postRow.id, session.user.id);
+      const publishResult = await executePublish(postRow.id, session.user.id);
+      const succeededCount =
+        publishResult.results?.filter((r) => r.status === "published")
+          .length ?? 0;
+      const allPlatformsFailed =
+        (publishResult.results?.length ?? 0) > 0 && succeededCount === 0;
+
+      revalidatePath("/dashboard");
+      revalidatePath("/dashboard/posts");
+      revalidatePath("/dashboard/create");
+
+      return {
+        success: true,
+        postId: postRow.id,
+        allPlatformsFailed: allPlatformsFailed || undefined,
+      };
     }
 
     revalidatePath("/dashboard");
@@ -456,7 +471,7 @@ export async function updateDraft(
 }
 
 export type UpdateAndPublishResult =
-  | { success: true; postId: string }
+  | { success: true; postId: string; allPlatformsFailed?: boolean }
   | { success: false; error: string };
 
 /** Update draft content/accounts/media then publish now. */
@@ -483,12 +498,21 @@ export async function updateAndPublish(
     return result;
   }
   try {
-    await executePublish(draftId, session.user.id);
+    const publishResult = await executePublish(draftId, session.user.id);
+    const succeededCount =
+      publishResult.results?.filter((r) => r.status === "published")
+        .length ?? 0;
+    const allPlatformsFailed =
+      (publishResult.results?.length ?? 0) > 0 && succeededCount === 0;
+    return {
+      success: true,
+      postId: draftId,
+      allPlatformsFailed: allPlatformsFailed || undefined,
+    };
   } catch (err) {
     return {
       success: false,
       error: err instanceof Error ? err.message : "Publish failed after update",
     };
   }
-  return { success: true, postId: draftId };
 }
