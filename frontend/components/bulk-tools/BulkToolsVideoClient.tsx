@@ -30,7 +30,7 @@ import { uploadFile } from "@/lib/upload-file";
 const LIMITS = {
   totalSize: 250 * 1024 * 1024, // 250MB total batch
   perFile: 250 * 1024 * 1024, // 250MB per file
-  maxCount: 100, // 100 videos max count
+  maxCount: 40, // 40 videos max at a time
 };
 const VIDEO_ACCEPT = "video/mp4,video/quicktime,video/webm,video/x-msvideo";
 
@@ -450,7 +450,7 @@ export function BulkToolsVideoClient({
               currentTotalBytes={totalSelectedBytes}
               currentCount={items.length}
               maxSizeLabel="MP4, MOV, AVI. Max 250MB each."
-              helperText="Up to 100 videos · 250MB total batch size"
+              helperText="Up to 40 videos · 250MB total batch size"
               onFilesSelected={addFiles}
               disabled={items.length >= LIMITS.maxCount}
             />

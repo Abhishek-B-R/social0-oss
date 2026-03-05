@@ -67,6 +67,7 @@ export default async function NewPostByTypePage({
       tokenExpiresAt: true,
       tokenStatus: true,
       platformMetadata: true,
+      isTwitterPremium: true,
     },
   });
 
@@ -83,6 +84,7 @@ export default async function NewPostByTypePage({
         platformUsername: a.platformUsername,
         profileImageUrl: a.profileImageUrl,
         isActive: a.isActive,
+        isTwitterPremium: a.isTwitterPremium ?? false,
         tokenExpired: NEVER_EXPIRES_PLATFORMS.has(a.platform)
           ? false
           : a.tokenStatus === "expired" ||

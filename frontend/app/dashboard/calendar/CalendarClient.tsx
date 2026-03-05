@@ -34,6 +34,7 @@ export type PostForCalendar = {
   platform: string | null;
   profileImageUrl: string | null;
   platformUsername: string | null;
+  isTwitterPremium?: boolean | null;
 };
 
 const MAX_VISIBLE_PER_DAY = 2;
@@ -201,6 +202,7 @@ function DayCell({
                     profileImageUrl={post.profileImageUrl}
                     username={post.platformUsername}
                     platform={post.platform ?? undefined}
+                    isTwitterPremium={post.isTwitterPremium ?? false}
                     size="sm"
                   />
                 </div>
@@ -549,6 +551,7 @@ export function CalendarClient({
                           profileImageUrl={post.profileImageUrl}
                           username={post.platformUsername}
                           platform={post.platform ?? undefined}
+                          isTwitterPremium={post.isTwitterPremium ?? false}
                           size="md"
                         />
                       </Link>

@@ -18,6 +18,7 @@ export type ConnectedAccount = {
   platform: string;
   platformUsername?: string | null;
   profileImageUrl?: string | null;
+  isTwitterPremium?: boolean | null;
 };
 
 const MAX_PLUG_COMMENT_LENGTH = 280;
@@ -227,6 +228,7 @@ function AutoPlugPanelInner({
                     profileImageUrl={xAccount?.profileImageUrl}
                     username={xAccount?.platformUsername}
                     platform="twitter_x"
+                    isTwitterPremium={xAccount?.isTwitterPremium ?? false}
                     size="md"
                     className="h-10 w-10"
                   />

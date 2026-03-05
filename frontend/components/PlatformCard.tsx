@@ -14,6 +14,7 @@ type PlatformCardProps = {
     platformUsername: string | null;
     profileImageUrl: string | null;
     isActive: boolean;
+    isTwitterPremium?: boolean;
   };
 };
 
@@ -69,6 +70,7 @@ export function PlatformCard({ platform, account }: PlatformCardProps) {
                 profileImageUrl={account.profileImageUrl}
                 username={account.platformUsername}
                 platform={platform.id}
+                isTwitterPremium={account.isTwitterPremium ?? false}
                 size="lg"
               />
             </div>

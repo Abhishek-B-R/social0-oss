@@ -14,6 +14,13 @@ import {
   setComposerPayload,
   type ComposerMediaItem,
 } from "@/lib/composer-bridge";
+import {
+  validateVideoAspectRatio,
+  formatAspectRatioLabel,
+  getAspectRatioDescriptor,
+  ASPECT_RATIO_MESSAGE,
+  type VideoAspectResult,
+} from "@/lib/video-aspect-ratio";
 
 const THREAD_MAX_MEDIA_PER_POST = 4;
 
@@ -41,6 +48,7 @@ export function ComposerClient() {
     left: false,
     right: false,
   });
+  const [mediaError, setMediaError] = useState<string | null>(null);
   const mediaStripRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -144,34 +152,71 @@ export function ComposerClient() {
   const handleFiles = useCallback(
     (files: FileList | null) => {
       if (!files || files.length === 0) return;
+      setMediaError(null);
 
-      const items: (ComposerMediaItem & { id: string })[] = [];
+      const imageFiles: File[] = [];
+      const videoFiles: File[] = [];
       Array.from(files).forEach((file) => {
         const mime = file.type;
-        const isImage = mime.startsWith("image/");
-        const isVideo = mime.startsWith("video/");
-        if (!isImage && !isVideo) return;
-
-        items.push({
-          id: `${Date.now()}-${file.name}-${Math.random()
-            .toString(36)
-            .slice(2)}`,
-          type: isImage ? "image" : "video",
-          file,
-          previewUrl: URL.createObjectURL(file),
-        });
+        if (mime.startsWith("image/")) imageFiles.push(file);
+        else if (mime.startsWith("video/")) videoFiles.push(file);
       });
 
-      if (items.length > 0) {
+      const imageItems: (ComposerMediaItem & { id: string })[] = imageFiles.map(
+        (file) => ({
+          id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2)}`,
+          type: "image" as const,
+          file,
+          previewUrl: URL.createObjectURL(file),
+        }),
+      );
+
+      if (imageItems.length > 0) {
         setMedia((prev) => {
           const maxNew = isThread
             ? THREAD_MAX_MEDIA_PER_POST - prev.length
-            : items.length;
+            : imageItems.length;
           if (maxNew <= 0) return prev;
-          const toAdd = items.slice(0, maxNew);
+          const toAdd = imageItems.slice(0, maxNew);
           return [...prev, ...toAdd];
         });
       }
+
+      if (videoFiles.length === 0) return;
+
+      Promise.all(videoFiles.map(validateVideoAspectRatio)).then(
+        (results: VideoAspectResult[]) => {
+          const validItems: (ComposerMediaItem & { id: string })[] = [];
+          let firstInvalid: VideoAspectResult | null = null;
+          videoFiles.forEach((file, i) => {
+            const result = results[i];
+            if (result?.valid) {
+              validItems.push({
+                id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2)}`,
+                type: "video",
+                file,
+                previewUrl: URL.createObjectURL(file),
+              });
+            } else if (!firstInvalid && result) firstInvalid = result;
+          });
+          if (firstInvalid) {
+            const { ratio } = firstInvalid;
+            setMediaError(
+              `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(ratio)}${getAspectRatioDescriptor(ratio)}.`,
+            );
+          }
+          if (validItems.length > 0) {
+            setMedia((prev) => {
+              const maxNew = isThread
+                ? THREAD_MAX_MEDIA_PER_POST - prev.length
+                : validItems.length;
+              if (maxNew <= 0) return prev;
+              const toAdd = validItems.slice(0, maxNew);
+              return [...prev, ...toAdd];
+            });
+          }
+        },
+      );
     },
     [isThread],
   );
@@ -228,30 +273,73 @@ export function ComposerClient() {
   const handleThreadSlotFiles = useCallback(
     (slotId: string, files: FileList | null) => {
       if (!files || files.length === 0) return;
-      const items: (ComposerMediaItem & { id: string })[] = [];
+      setMediaError(null);
+
+      const imageFiles: File[] = [];
+      const videoFiles: File[] = [];
       Array.from(files).forEach((file) => {
         const mime = file.type;
-        const isImage = mime.startsWith("image/");
-        const isVideo = mime.startsWith("video/");
-        if (!isImage && !isVideo) return;
-        items.push({
+        if (mime.startsWith("image/")) imageFiles.push(file);
+        else if (mime.startsWith("video/")) videoFiles.push(file);
+      });
+
+      const imageItems: (ComposerMediaItem & { id: string })[] = imageFiles.map(
+        (file) => ({
           id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2)}`,
-          type: isImage ? "image" : "video",
+          type: "image" as const,
           file,
           previewUrl: URL.createObjectURL(file),
-        });
-      });
-      if (items.length > 0) {
+        }),
+      );
+
+      if (imageItems.length > 0) {
         setThreadSlots((prev) =>
           prev.map((s) => {
             if (s.id !== slotId) return s;
             const maxNew = THREAD_MAX_MEDIA_PER_POST - s.media.length;
             if (maxNew <= 0) return s;
-            const toAdd = items.slice(0, maxNew);
+            const toAdd = imageItems.slice(0, Math.min(maxNew, imageItems.length));
             return { ...s, media: [...s.media, ...toAdd] };
           }),
         );
       }
+
+      if (videoFiles.length === 0) return;
+
+      Promise.all(videoFiles.map(validateVideoAspectRatio)).then(
+        (results: VideoAspectResult[]) => {
+          const validItems: (ComposerMediaItem & { id: string })[] = [];
+          let firstInvalid: VideoAspectResult | null = null;
+          videoFiles.forEach((file, i) => {
+            const result = results[i];
+            if (result?.valid) {
+              validItems.push({
+                id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2)}`,
+                type: "video",
+                file,
+                previewUrl: URL.createObjectURL(file),
+              });
+            } else if (!firstInvalid && result) firstInvalid = result;
+          });
+          if (firstInvalid) {
+            const { ratio } = firstInvalid;
+            setMediaError(
+              `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(ratio)}${getAspectRatioDescriptor(ratio)}.`,
+            );
+          }
+          if (validItems.length > 0) {
+            setThreadSlots((prev) =>
+              prev.map((s) => {
+                if (s.id !== slotId) return s;
+                const maxNew = THREAD_MAX_MEDIA_PER_POST - s.media.length;
+                if (maxNew <= 0) return s;
+                const toAdd = validItems.slice(0, maxNew);
+                return { ...s, media: [...s.media, ...toAdd] };
+              }),
+            );
+          }
+        },
+      );
     },
     [],
   );
@@ -526,9 +614,14 @@ export function ComposerClient() {
             className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
           >
             <FileText className="h-4 w-4" />
-            <span>Continue</span>
-          </button>
+              <span>Continue</span>
+            </button>
         </div>
+        {mediaError && (
+          <p className="text-sm text-red-600 dark:text-red-400 pt-1">
+            {mediaError}
+          </p>
+        )}
       </div>
 
       {isThread && (

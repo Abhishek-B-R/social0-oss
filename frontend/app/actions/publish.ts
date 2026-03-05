@@ -19,6 +19,7 @@ import {
   isValidPostId,
   validateCollectionMedia,
 } from "@/lib/publish-validation";
+import { truncateCaptionForPlatform } from "@/lib/platform-limits";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import { checkTwitterTweetLimit } from "@/lib/plan-limits";
 import { getSubscriptionForUser } from "@/lib/subscription";
@@ -227,6 +228,7 @@ export async function executePublish(
       tokenExpiresAt: connectedAccounts.tokenExpiresAt,
       tokenStatus: connectedAccounts.tokenStatus,
       platformMetadata: connectedAccounts.platformMetadata,
+      isTwitterPremium: connectedAccounts.isTwitterPremium,
     })
     .from(postPublications)
     .innerJoin(
@@ -619,6 +621,11 @@ export async function executePublish(
         }
       }
 
+      const linkedInCaption = truncateCaptionForPlatform(
+        resolvedContent || "",
+        "linkedin",
+        false,
+      );
       const body: {
         author: string;
         lifecycleState: "PUBLISHED";
@@ -638,7 +645,7 @@ export async function executePublish(
         specificContent: {
           "com.linkedin.ugc.ShareContent": {
             shareCommentary: {
-              text: resolvedContent || "",
+              text: linkedInCaption,
             },
             shareMediaCategory,
             ...(mediaAssets.length > 0 && {
@@ -925,12 +932,17 @@ export async function executePublish(
               }
             }
 
+            const partText = truncateCaptionForPlatform(
+              part.text,
+              "twitter_x",
+              pub.isTwitterPremium ?? false,
+            );
             const mediaTuple = toMediaTuple(partTwitterMediaIds);
             const payload: {
               text: string;
               media?: { media_ids: MediaIdsTuple };
               reply?: { in_reply_to_tweet_id: string };
-            } = { text: part.text };
+            } = { text: partText };
 
             if (mediaTuple) payload.media = { media_ids: mediaTuple };
             if (!isFirst && previousTweetId) {
@@ -1109,11 +1121,16 @@ export async function executePublish(
 
         if (parts.length === 1) {
           // Single tweet
+          const tweetText = truncateCaptionForPlatform(
+            parts[0],
+            "twitter_x",
+            pub.isTwitterPremium ?? false,
+          );
           const payload: {
             text: string;
             media?: { media_ids: MediaIdsTuple };
           } = {
-            text: parts[0],
+            text: tweetText,
           };
           if (mediaTuple) payload.media = { media_ids: mediaTuple };
           const tweetData = await client.v2.tweet(
@@ -1124,7 +1141,11 @@ export async function executePublish(
           // Thread: first tweet, then each part as reply to the previous tweet
           let previousTweetId: string | undefined;
           for (let i = 0; i < parts.length; i++) {
-            const text = parts[i];
+            const text = truncateCaptionForPlatform(
+              parts[i],
+              "twitter_x",
+              pub.isTwitterPremium ?? false,
+            );
             const isFirst = i === 0;
             const payload: {
               text: string;
@@ -1292,6 +1313,11 @@ export async function executePublish(
       }
 
       try {
+        const truncatedContent = truncateCaptionForPlatform(
+          resolvedContent ?? "",
+          pub.platform,
+          pub.isTwitterPremium ?? false,
+        );
         const platformPostResult = await publishToPlatform(
           {
             publicationId: pub.publicationId,
@@ -1303,7 +1329,7 @@ export async function executePublish(
           },
           {
             id: post.id,
-            finalContent: resolvedContent,
+            finalContent: truncatedContent,
             mediaIds: post.mediaIds,
             metadata: post.metadata,
           },

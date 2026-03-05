@@ -407,6 +407,7 @@ export default async function PostDetailPage({
                           profileImageUrl={pub.profileImageUrl}
                           username={pub.platformUsername}
                           platform={pub.platform}
+                          isTwitterPremium={pub.isTwitterPremium ?? false}
                           size="md"
                         />
                         <div className="min-w-0">

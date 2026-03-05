@@ -57,6 +57,7 @@ export default async function CalendarPage() {
       platform: connectedAccounts.platform,
       profileImageUrl: connectedAccounts.profileImageUrl,
       platformUsername: connectedAccounts.platformUsername,
+      isTwitterPremium: connectedAccounts.isTwitterPremium,
     })
     .from(postPublications)
     .innerJoin(
@@ -72,6 +73,7 @@ export default async function CalendarPage() {
       platform: string;
       profileImageUrl: string | null;
       platformUsername: string | null;
+      isTwitterPremium: boolean | null;
     }
   >();
   for (const pub of publications) {
@@ -86,6 +88,7 @@ export default async function CalendarPage() {
         platform: pub.platform,
         profileImageUrl: pub.profileImageUrl,
         platformUsername: pub.platformUsername,
+        isTwitterPremium: pub.isTwitterPremium,
       });
     }
   }
@@ -110,6 +113,7 @@ export default async function CalendarPage() {
       platform: firstPub?.platform ?? null,
       profileImageUrl: firstPub?.profileImageUrl ?? null,
       platformUsername: firstPub?.platformUsername ?? null,
+      isTwitterPremium: firstPub?.isTwitterPremium ?? null,
     });
   }
 

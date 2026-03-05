@@ -125,6 +125,7 @@ export const connectedAccounts = pgTable(
     encryptedRefreshToken: text("encrypted_refresh_token"),
     tokenExpiresAt: timestamp("token_expires_at"),
     platformMetadata: jsonb("platform_metadata").$type<Record<string, unknown>>(),
+    isTwitterPremium: boolean("is_twitter_premium").default(false),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

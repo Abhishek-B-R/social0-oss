@@ -30,6 +30,7 @@ type Account = {
   platformUsername: string | null;
   profileImageUrl: string | null;
   isActive: boolean | null;
+  isTwitterPremium?: boolean;
   tokenStatus: "ok" | "expiring_soon" | "expired";
   expiresInDays: number | null;
 };
@@ -143,6 +144,7 @@ export function ConnectionsList({
                             profileImageUrl={account.profileImageUrl}
                             username={account.platformUsername}
                             platform={account.platform}
+                            isTwitterPremium={account.isTwitterPremium ?? false}
                             size="sm"
                             className="shrink-0"
                           />

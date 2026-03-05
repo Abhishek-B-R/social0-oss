@@ -30,6 +30,8 @@ export type PlatformResult = {
   accountName: string;
   status: PlatformStatus;
   error?: string;
+  /** When status is "published", link to the post on that platform */
+  postUrl?: string | null;
 };
 
 type UploadPublishOverlayProps = {
@@ -57,19 +59,6 @@ type UploadPublishOverlayProps = {
   /** Called when user clicks Close after all done */
   onClose?: () => void;
 };
-
-const DONT_KEEP_WAITING = (
-  <p className="mt-4 text-sm text-text-muted">
-    Don&apos;t keep waiting — if you have another post idea,{" "}
-    <Link
-      href="/dashboard/composer"
-      className="font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
-    >
-      post/schedule
-    </Link>{" "}
-    it as well :)
-  </p>
-);
 
 function MediaTypeIcon({ type }: { type: "image" | "video" | "mixed" }) {
   // eslint-disable-next-line jsx-a11y/alt-text
@@ -136,7 +125,6 @@ export function UploadPublishOverlay({
   phase,
   uploadProgress,
   uploadPercent = null,
-  showUploadWarning = false,
   mediaType = "image",
   isScheduling = false,
   showLinks = false,
@@ -145,6 +133,7 @@ export function UploadPublishOverlay({
   allDone = false,
   onClose,
 }: UploadPublishOverlayProps) {
+  void onClose; // kept for API compatibility; success screen uses Links only
   const isUploading = phase === "uploading";
   const isSavingDraft = phase === "saving";
   const showPlatformRows =
@@ -157,35 +146,31 @@ export function UploadPublishOverlay({
       aria-busy={!showLinks}
     >
       <div className="mx-4 flex max-w-md flex-col items-center text-center">
-        {showLinks ? (
+        {showLinks && !(showPlatformRows && allDone) ? (
           <>
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
               <Send className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
             </div>
             <h2 className="mt-4 text-xl font-semibold text-text">
-              Post published
+              Post published!
             </h2>
-            <p className="mt-2 text-sm text-text-muted">
-              Your post is being sent to all selected platforms. It can take a
-              few minutes to appear everywhere.
-            </p>
-            {DONT_KEEP_WAITING}
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-6 flex flex-col gap-3">
               <Link
                 href="/dashboard/composer"
-                className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+                className="w-full rounded-xl bg-emerald-500 px-4 py-3.5 text-sm font-semibold text-white text-center transition hover:bg-emerald-600"
               >
                 Create another post
               </Link>
+
               <Link
                 href={
                   publishedPostId
                     ? `/dashboard/posts/${publishedPostId}`
                     : "/dashboard/posts"
                 }
-                className="rounded-xl border border-border bg-bg px-5 py-2.5 text-sm font-semibold text-text hover:bg-bg-muted transition-colors"
+                className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm font-semibold text-zinc-200 text-center transition hover:bg-zinc-900"
               >
-                {publishedPostId ? "View post" : "View posts"}
+                View post
               </Link>
             </div>
           </>
@@ -232,63 +217,104 @@ export function UploadPublishOverlay({
               Saving this post…
             </h2>
             <p className="mt-2 text-sm text-text-muted">Saving to drafts.</p>
-            {DONT_KEEP_WAITING}
           </>
         ) : showPlatformRows ? (
           <>
             <div className="w-full max-w-md rounded-xl border border-border bg-bg-elevated p-6 sm:p-8 shadow-sm text-left">
-              <h2 className="text-xl font-semibold text-text">
-                {allDone
-                  ? "Publishing complete"
-                  : "Publishing to all platforms…"}
-              </h2>
-              {allDone && (
-                <p className="mt-2 text-sm text-text-muted">
-                  {platformStatuses.some((p) => p.status === "failed")
-                    ? "Published with errors"
-                    : "All done!"}
-                </p>
-              )}
-              <ul className="mt-6 space-y-4">
-                {platformStatuses.map((p) => (
-                  <li
-                    key={p.accountId}
-                    className="flex items-center justify-between gap-3"
-                  >
-                    <div className="flex min-w-0 items-center gap-2">
-                      <PlatformIcon
-                        platform={p.platform}
-                        className="h-5 w-5 shrink-0 text-text-muted"
-                        size={20}
-                      />
-                      <span className="truncate text-sm font-medium text-text">
-                        {p.accountName}
-                      </span>
+              {allDone ? (
+                <>
+                  <div className="flex flex-col items-center text-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
+                      <Send className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    <PlatformStatusLabel status={p.status} error={p.error} />
-                  </li>
-                ))}
-              </ul>
-              {!allDone && PLEASE_DONT_CLOSE}
-              {allDone && onClose && (
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  {publishedPostId &&
-                    platformStatuses.some((p) => p.status === "published") && (
-                      <Link
-                        href={`/dashboard/posts/${publishedPostId}`}
-                        className="order-2 sm:order-1 rounded-xl border border-border bg-bg px-5 py-3 text-sm font-semibold text-text hover:bg-bg-muted transition-colors text-center"
+                    <h2 className="mt-4 text-xl font-semibold text-text">
+                      Post published!
+                    </h2>
+                  </div>
+                  <ul className="mt-6 space-y-4">
+                    {platformStatuses.map((p) => (
+                      <li
+                        key={p.accountId}
+                        className="flex items-center justify-between gap-3"
                       >
-                        View post
-                      </Link>
-                    )}
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="order-1 sm:order-2 flex-1 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground hover:bg-accent-hover transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <PlatformIcon
+                            platform={p.platform}
+                            className="h-5 w-5 shrink-0 text-text-muted"
+                            size={20}
+                          />
+                          <span className="truncate text-sm font-medium text-text">
+                            {p.accountName}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {p.status === "published" && p.postUrl && (
+                            <a
+                              href={p.postUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-medium text-text hover:bg-bg-muted transition-colors"
+                            >
+                              View
+                            </a>
+                          )}
+                          <PlatformStatusLabel
+                            status={p.status}
+                            error={p.error}
+                          />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-6 flex flex-col gap-3">
+                    <Link
+                      href="/dashboard/composer"
+                      className="order-1 flex-1 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors text-center"
+                    >
+                      Create another post
+                    </Link>
+                    <Link
+                      href={
+                        publishedPostId
+                          ? `/dashboard/posts/${publishedPostId}`
+                          : "/dashboard/posts"
+                      }
+                      className="order-2 flex-1 rounded-xl border border-border bg-bg px-5 py-3 text-sm font-semibold text-text hover:bg-bg-muted transition-colors text-center"
+                    >
+                      View post
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-xl font-semibold text-text">
+                    Publishing to all platforms…
+                  </h2>
+                  <ul className="mt-6 space-y-4">
+                    {platformStatuses.map((p) => (
+                      <li
+                        key={p.accountId}
+                        className="flex items-center justify-between gap-3"
+                      >
+                        <div className="flex min-w-0 items-center gap-2">
+                          <PlatformIcon
+                            platform={p.platform}
+                            className="h-5 w-5 shrink-0 text-text-muted"
+                            size={20}
+                          />
+                          <span className="truncate text-sm font-medium text-text">
+                            {p.accountName}
+                          </span>
+                        </div>
+                        <PlatformStatusLabel
+                          status={p.status}
+                          error={p.error}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                  {PLEASE_DONT_CLOSE}
+                </>
               )}
             </div>
           </>
@@ -303,14 +329,13 @@ export function UploadPublishOverlay({
             <p className="mt-2 text-sm text-text-muted">
               {isScheduling
                 ? "Your post is being scheduled to all selected platforms."
-                : "Publishing your post to all the places."}
+                : "Hang tight while we publish your post."}
             </p>
             <p className="mt-3 rounded-lg bg-bg-muted/90 px-4 py-2 text-xs text-text-muted">
               {isScheduling
                 ? "Scheduled posts will go out at the times you set."
                 : "Posts can take up to a few minutes to show on all platforms."}
             </p>
-            {DONT_KEEP_WAITING}
           </>
         )}
       </div>

@@ -53,6 +53,7 @@ import {
   consumeComposerPayload,
   clearComposerPayload,
 } from "@/lib/composer-bridge";
+import { CaptionCounter } from "@/components/caption-counter";
 
 type PlatformCaptionState = {
   overridden: boolean;
@@ -65,6 +66,7 @@ type Account = {
   platformUsername: string | null;
   profileImageUrl: string | null;
   isActive: boolean | null;
+  isTwitterPremium?: boolean;
   tokenExpired?: boolean;
   platformMetadata?: Record<string, unknown>;
 };
@@ -95,6 +97,7 @@ export function ImagePostForm({
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const captionTextareaRef = useRef<HTMLTextAreaElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
   const [content, setContent] = useState("");
   const [images, setImages] = useState<ImageFile[]>([]);
@@ -187,6 +190,19 @@ export function ImagePostForm({
       setTimeout(clearComposerPayload, 100);
     };
   }, [initialDraftId, searchParams]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || (!e.ctrlKey && !e.metaKey)) return;
+      const form = formRef.current;
+      if (!form || !form.contains(e.target as Node)) return;
+      e.preventDefault();
+      form.requestSubmit();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
+
   const [pinterestError, setPinterestError] = useState<string | null>(null);
   const pinterestSectionRef = useRef<HTMLDivElement>(null);
   type ConfigPanel = "platform-captions" | "pinterest" | "tiktok" | null;
@@ -347,11 +363,19 @@ export function ImagePostForm({
   };
 
   const [isUploadZoneHovered, setIsUploadZoneHovered] = useState(false);
+  const [isCaptionFocused, setIsCaptionFocused] = useState(false);
   useEffect(() => {
-    if (!isUploadZoneHovered) return;
+    if (!isUploadZoneHovered && !isCaptionFocused) return;
     const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items) return;
+      // When pasting into the caption textarea, only handle image paste; let text paste use default behavior
+      if (e.target === captionTextareaRef.current) {
+        const hasImage = Array.from(items).some((item) =>
+          item.type.startsWith("image/"),
+        );
+        if (!hasImage) return;
+      }
       for (const item of items) {
         if (item.type.startsWith("image/")) {
           const file = item.getAsFile();
@@ -365,7 +389,7 @@ export function ImagePostForm({
     };
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
-  }, [isUploadZoneHovered]);
+  }, [isUploadZoneHovered, isCaptionFocused]);
 
   const handleDeleteDraft = async () => {
     if (!initialDraftId) return;
@@ -492,6 +516,34 @@ export function ImagePostForm({
     }
     setError(null);
     setImages((prev) => [...prev, ...newImages]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const [isDragOverZone, setIsDragOverZone] = useState(false);
+  const handleDropImages = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOverZone(false);
+    const files = e.dataTransfer.files;
+    if (!files?.length) return;
+    const imageFiles = Array.from(files).filter((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (imageFiles.length < files.length) {
+      setError("Please use only image files (JPEG, PNG, GIF, WebP).");
+    }
+    if (imageFiles.length === 0) return;
+    setError(null);
+    setImages((prev) => {
+      const maxOrder =
+        prev.length > 0 ? Math.max(...prev.map((i) => i.order)) : 0;
+      const newImages: ImageFile[] = imageFiles.map((file, i) => ({
+        file,
+        preview: URL.createObjectURL(file),
+        order: maxOrder + i + 1,
+      }));
+      return [...prev, ...newImages];
+    });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -880,6 +932,10 @@ export function ImagePostForm({
                     ? "published"
                     : "failed") as PlatformStatus,
                   error: res?.status === "failed" ? res?.error : undefined,
+                  postUrl:
+                    res?.status === "published"
+                      ? (res?.platformPostUrl ?? null)
+                      : undefined,
                 }
               : p,
           ),
@@ -1106,15 +1162,22 @@ export function ImagePostForm({
                 onClick={() => fileInputRef.current?.click()}
                 onMouseEnter={() => setIsUploadZoneHovered(true)}
                 onMouseLeave={() => setIsUploadZoneHovered(false)}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onDragEnter={() => setIsDragOverZone(true)}
+                onDragLeave={() => setIsDragOverZone(false)}
+                onDrop={handleDropImages}
                 className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed py-4 text-text-muted transition-colors ${
-                  isUploadZoneHovered
+                  isUploadZoneHovered || isDragOverZone
                     ? "border-accent bg-accent/5"
                     : "border-border bg-bg-subtle"
                 }`}
               >
                 <ImagePlus className="mb-2 h-6 w-6" />
                 <span className="text-sm font-medium">
-                  Click to add image(s)
+                  Click to add image(s) or drag and drop
                 </span>
                 <span className="text-xs text-text-muted mt-1">
                   Select multiple to add all at once · Hover & paste from
@@ -1190,12 +1253,19 @@ export function ImagePostForm({
                     onClick={() => fileInputRef.current?.click()}
                     onMouseEnter={() => setIsUploadZoneHovered(true)}
                     onMouseLeave={() => setIsUploadZoneHovered(false)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onDragEnter={() => setIsDragOverZone(true)}
+                    onDragLeave={() => setIsDragOverZone(false)}
+                    onDrop={handleDropImages}
                     className={`flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed text-text-muted transition-colors ${
-                      isUploadZoneHovered
+                      isUploadZoneHovered || isDragOverZone
                         ? "border-accent bg-accent/5"
                         : "border-border bg-bg-subtle"
                     }`}
-                    title="Add more · Hover & paste (Ctrl+V)"
+                    title="Add more · Drag and drop or paste (Ctrl+V)"
                   >
                     <ImagePlus className="h-6 w-6" />
                     <span className="text-xs mt-0.5">Add more</span>
@@ -1204,11 +1274,23 @@ export function ImagePostForm({
               </div>
             )}
             <textarea
+              ref={captionTextareaRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Add a caption..."
               rows={3}
               className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+              autoFocus
+              onFocus={() => setIsCaptionFocused(true)}
+              onBlur={() => setIsCaptionFocused(false)}
+            />
+            <CaptionCounter
+              caption={content}
+              selectedAccounts={selectedAccounts.map((a) => ({
+                platform: a.platform,
+                isTwitterPremium: a.isTwitterPremium ?? false,
+                platformUsername: a.platformUsername ?? null,
+              }))}
             />
             {showCaptionError && !content.trim() && (
               <p className="mt-2 text-xs text-destructive">

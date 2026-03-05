@@ -12,6 +12,7 @@ export type SettingsConnection = {
   platform: string;
   platformUsername: string | null;
   profileImageUrl: string | null;
+  isTwitterPremium?: boolean;
 };
 
 export default async function SettingsPage() {
@@ -33,6 +34,7 @@ export default async function SettingsPage() {
         platform: true,
         platformUsername: true,
         profileImageUrl: true,
+        isTwitterPremium: true,
       },
     }),
   ]);
@@ -42,6 +44,7 @@ export default async function SettingsPage() {
     platform: c.platform,
     platformUsername: c.platformUsername,
     profileImageUrl: c.profileImageUrl,
+    isTwitterPremium: c.isTwitterPremium ?? false,
   }));
 
   return (
