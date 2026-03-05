@@ -12,19 +12,28 @@ This document describes **architecture rules**, **known mistakes** (what the AI 
 - **Runtime:** Node (server) + React 19 (client).
 - **Database:** PostgreSQL via Drizzle ORM; schema in `db/schema.ts`, migrations in `db/migrations/`.
 - **Auth:** Better Auth (Google OAuth); tables `user`, `session`, `account`, `verification` are owned by Better Auth — do not create app migrations that alter these; reference them for FKs and adapter only.
-- **Storage:** Cloudflare R2 (S3-compatible) for media; optional — use `isR2Configured()` / `getR2Client()` from `lib/r2.ts`.
-- **Rate limiting:** Upstash Redis via `lib/ratelimit.ts` (optional; used for API, OAuth, and upload routes).
+- **Storage:** Cloudflare R2 (S3-compatible) for media; optional — use `isR2Configured()` / `getR2Client()` / `getPresignedUploadUrl()` from `lib/r2.ts`. Media upload uses presign → client PUT → confirm flow; see §1.6.
+- **Rate limiting:** Upstash Redis via `lib/ratelimit.ts` (optional; used for API, OAuth, and upload/presign routes).
 - **Styling:** Tailwind CSS v4; UI primitives from Radix/shadcn in `components/ui/`.
 - **Validation:** Zod for env (`lib/env.ts`); shared validation in `lib/validation.ts` and `lib/publish-validation.ts`.
+- **Billing:** Dodo Payments (optional); subscription tier stored in `user_settings`; plans and limits in `lib/plans.ts`, `lib/plan-limits.ts`, `lib/subscription.ts`, `lib/billing-sync.ts`.
+- **Sign-up:** Cloudflare Turnstile optional for sign-up (`app/api/auth/sign-up-with-turnstile/route.ts`).
 
 ### 1.2 Directory layout
 
 - **`app/`** — App Router: routes, layouts, server components, server actions.
   - **`app/api/`** — API routes only (REST-style or cron). No page components here.
-  - **`app/actions/`** — Server actions (`"use server"`): `publish.ts`, `posts.ts`, `resurface.ts`, `settings.ts`.
-  - **`app/dashboard/`** — Dashboard layout and all dashboard pages; layout enforces auth and wraps content with sidebar + bottom nav.
-- **`components/`** — Reusable React components; `components/ui/` for design system primitives; `components/dashboard/` for dashboard-specific UI; `components/autoplug/`, `components/repost/`, `components/bulk-tools/`, `components/landing/` for feature-specific UI.
-- **`lib/`** — Pure or mostly pure logic: auth, encryption, platforms config, publish, validation, R2, token refresh, URL utils. No React components.
+    - **`app/api/billing/`** — Checkout, portal, sync, change-plan (Dodo Payments).
+    - **`app/api/media/`** — `presign/` (get presigned PUT URL), `confirm/` (record upload after client PUT), `upload/` (deprecated; prefer presign + confirm).
+    - **`app/api/cron/`** — `publish-scheduled`, `repost`, `autoplug`, `token-health`, `twitter-premium` (daily X Premium status recheck).
+    - **`app/api/auth/`** — Better Auth catch-all, subscription-check, sign-up-with-turnstile.
+    - **`app/api/connect/`** — OAuth and BYOK (Bluesky); Instagram-Facebook, Facebook select.
+    - **`app/api/webhooks/dodo/`** — Dodo Payments webhook for subscription events.
+  - **`app/actions/`** — Server actions (`"use server"`): `publish.ts`, `posts.ts`, `resurface.ts`, `settings.ts`, `onboarding.ts`.
+  - **`app/dashboard/`** — Dashboard layout and all dashboard pages; layout enforces auth, onboarding redirect when needed, and wraps content with sidebar + bottom nav; `SubscriptionSync` in layout.
+  - **`app/onboarding/`** — Onboarding flow: plan selection (page) → goal (step2) → connect accounts (step3) → completion (step4). Layout redirects to dashboard if already completed.
+- **`components/`** — Reusable React components: `components/ui/` (design system); `components/dashboard/` (sidebar, bottom nav, connections, disconnect modal, SubscriptionSync); `components/autoplug/`, `components/repost/`, `components/bulk-tools/`, `components/landing/`, `components/onboarding/` for feature-specific UI; `AccountPicker`, `AccountBubbleSelector`, `AccountAvatar`, `CaptionCounter` (uses `lib/platform-limits.ts` for per-account limits including Twitter Premium), `UploadPublishOverlay` (upload/publish phases and per-platform results).
+- **`lib/`** — Pure or mostly pure logic: auth, encryption, platforms, publish, validation, R2, token refresh, URL utils; **`lib/plans.ts`** (tiers, plan IDs, limits); **`lib/subscription.ts`** (get/set subscription for user); **`lib/plan-limits.ts`** (checkAccountLimits, checkBulkToolsAllowed, checkAutoPlugAllowed, checkResurfaceAllowed, checkTwitterTweetLimit); **`lib/platform-limits.ts`** (character limits per platform, Twitter Premium 25k, getLimitForAccount, getMostRestrictiveLimit, truncateCaptionForPlatform); **`lib/billing-sync.ts`** (sync subscription from Dodo by user); **`lib/upload-file.ts`** (presign → PUT → confirm with progress); **`lib/video-aspect-ratio.ts`** (validate 16:9, 9:16, 4:3, 3:4, 1:1); **`lib/video-duration.ts`** (max 5 min); **`lib/composer-bridge.ts`** (payload from landing composer to create flow). No React components in `lib/`.
 - **`db/`** — Drizzle schema (`schema.ts`), migrations, and `db/README.md` (migration commands and important notes).
 
 ### 1.3 Conventions
@@ -35,6 +44,9 @@ This document describes **architecture rules**, **known mistakes** (what the AI 
 - **Env:** All env is validated at startup via `lib/env.ts` (Zod). Use `env` from `@/lib/env`; do not read `process.env` directly for keys that are in the schema (so missing/invalid env fails fast).
 - **Platform IDs:** Use the canonical list and types from `lib/platforms.ts` (`Platform`, `PLATFORMS`, `PLATFORM_OAUTH_CONFIG`). OAuth-only platforms are in `PLATFORM_OAUTH_CONFIG`; Bluesky is BYOK (null in `PLATFORM_OAUTH_CONFIG`) with a separate connect flow (`app/api/connect/bluesky/byok/route.ts`). Twitter/X is null (OAuth 1.0a, handled separately).
 - **Content types:** Post types (text, image, video, threads, collection) and their allowed platforms are defined in `lib/content-types.ts`; keep platform IDs in sync with `lib/platforms.ts`.
+- **Plan limits and gating:** Before connecting a new account, call `checkAccountLimits(userId, platform)` from `lib/plan-limits.ts`; before bulk tools / auto-plug / resurface, use `checkBulkToolsAllowed`, `checkAutoPlugAllowed`, `checkResurfaceAllowed`. For Twitter publish, use `checkTwitterTweetLimit(userId)`. Subscription state comes from `getSubscriptionForUser(userId)` and limits from `getPlanLimits(subscription.tier)` in `lib/plans.ts`.
+- **Caption length (UI):** Use `lib/platform-limits.ts`: `getLimitForAccount(account)` (280 vs 25k for Twitter when `isTwitterPremium`), `getMostRestrictiveLimit(accounts)`, `truncateCaptionForPlatform`. Use `CaptionCounter` component for consistent UX.
+- **Video validation (client):** Validate aspect ratio at file-select with `validateVideoAspectRatio(file)` from `lib/video-aspect-ratio.ts` (allowed: 16:9, 9:16, 4:3, 3:4, 1:1). Enforce max duration with `MAX_VIDEO_DURATION_SECONDS` (300) and `getVideoDuration(file)` from `lib/video-duration.ts`.
 - **Redirects in route handlers:** Use `safeRedirect(url, fallback)` from `lib/redirect.ts` so we never pass an object or non-URL to `redirect()` (see Known mistakes).
 - **Cron:** Cron handlers live under `app/api/cron/*`. They are invoked by Vercel Cron (see `vercel.json`). In development, `DevScheduledPostPoller` in the dashboard layout polls these endpoints; do not rely on polling in production.
 - **Cron auth:** All cron routes use `lib/cron-auth.ts` to validate `Authorization: Bearer <CRON_SECRET>` with constant-time comparison; the check can be skipped in development.
@@ -42,7 +54,7 @@ This document describes **architecture rules**, **known mistakes** (what the AI 
 
 ### 1.4 Database
 
-- **Schema:** Single source of truth is `db/schema.ts`. Enums: `platform`, `post_status`, `publication_status`. Key tables: `user`, `session`, `account`, `verification` (Better Auth); `connected_accounts`, `media_uploads`, `posts`, `post_publications`, `user_settings`, `platform_rate_limits`, `resurface_schedules`, `resurface_events`, `auto_plugs`.
+- **Schema:** Single source of truth is `db/schema.ts`. Enums: `platform`, `post_status`, `publication_status`. Key tables: `user`, `session`, `account`, `verification` (Better Auth); `connected_accounts` (includes `is_twitter_premium` for X character limit), `media_uploads`, `posts`, `post_publications`, `user_settings` (includes `subscriptionTier`, `subscriptionExpiresAt`, `subscriptionId`, `customerId`, `onboardingCompleted`, `onboardingGoal`), `platform_rate_limits`, `resurface_schedules`, `resurface_events`, `auto_plugs`.
 - **Posts:** `posts` has a CHECK constraint: either `trim(final_content) != ''` or `array_length(media_ids, 1) > 0`. App-level validation must enforce the same before insert/update.
 - **Migrations:** Generate with `npm run db:generate`; run with `npm run db:migrate`. Better Auth migrations must run before app migrations. See `db/README.md` for media cleanup index and encryption notes.
 - **Encryption:** OAuth state and tokens are encrypted only in the backend. Token format: AES-256-GCM, HKDF per-account salt; storage format `version:salt:iv:ciphertext:authTag`. See `lib/encryption.ts` and `db/README.md`.
@@ -60,7 +72,8 @@ This document describes **architecture rules**, **known mistakes** (what the AI 
 ### 1.6 Publishing and media
 
 - **Publish pipeline:** `executePublish(postId)` in `app/actions/publish.ts` loads post + publications, marks post/publications as publishing, then calls platform-specific logic in `lib/publish-platform.ts` (with token refresh where applicable), then updates `post_publications` and post status. Always update post status so it is never left stuck in `publishing`.
-- **Media:** Upload via `app/api/media/upload/route.ts` (auth required, R2 required). Allowed types and size limits are defined there (e.g. images up to 50MB, videos up to 500MB). Media is validated by magic bytes in `lib/validation.ts`. Stored under `uploads/{userId}/{uuid}.{ext}`.
+- **Media upload (preferred):** Use presign → client PUT → confirm. Client calls `POST /api/media/presign` with `filename`, `contentType`, `fileSize`; backend returns `presignedUrl`, `key`, `storageFilename`. Client uploads file with `PUT` to `presignedUrl`, then calls `POST /api/media/confirm` with `key`, `storageFilename`, `originalFilename`, `contentType`, `fileSize`; backend creates `media_uploads` row and returns `id`, `url`. Use `uploadFile()` from `lib/upload-file.ts` for progress and confirm. Rate limiting applies to presign. Legacy `POST /api/media/upload` is deprecated (same size/type rules; do not use for new code).
+- **Media rules:** Allowed types and size limits (e.g. images up to 50MB, videos up to 500MB) are enforced in presign and confirm; media type validated by magic bytes in `lib/validation.ts`. Stored under `uploads/{userId}/{uuid}.{ext}`.
 - **TikTok images:** TikTok has min size/aspect rules. `lib/tiktok-photo-process.ts` downloads from R2, resizes (e.g. shortest side ≥ 640px, longest ≤ 4096px), converts to JPEG, re-uploads to R2 with a `-tiktok-processed` suffix. Use this for TikTok photo posts when required.
 - **Thread/Bluesky containers:** Do not create all containers upfront; each step waits for the previous publish (see comment in `lib/publish-platform.ts`).
 
@@ -68,6 +81,23 @@ This document describes **architecture rules**, **known mistakes** (what the AI 
 
 - **Proactive refresh:** `app/api/cron/token-health/route.ts` runs daily at 6 AM. It calls `lib/token-health.ts` to identify tokens nearing expiry and refreshes them before they fail at publish time.
 - **On-demand refresh:** `lib/token-refresh.ts` exports `getValidToken()` — used in the publish pipeline to refresh expired tokens inline before each platform publish call.
+
+### 1.8 Subscription and billing
+
+- **Tiers:** `free`, `starter`, `growth` (see `lib/plans.ts`). Limits: max connected accounts, tweets per month (Twitter), and feature flags (bulk tools, auto-plug, resurface) come from `getPlanLimits(tier)`.
+- **Storage:** Subscription state in `user_settings`: `subscriptionTier`, `subscriptionExpiresAt`, `subscriptionId`, `customerId`. Expired subscription is treated as `free`.
+- **Dodo Payments:** Checkout via `POST /api/billing/checkout`; portal/cancel via `POST /api/billing/portal`; sync by email via `syncSubscriptionForUserId()` (used after checkout redirect and in `POST /api/billing/sync`). Webhook `POST /api/webhooks/dodo` updates subscription (verify signature; use `lib/billing-sync.ts` or set subscription directly).
+- **Gating:** Use `lib/plan-limits.ts`: `checkAccountLimits` before connect, `checkBulkToolsAllowed` / `checkAutoPlugAllowed` / `checkResurfaceAllowed` for feature access, `checkTwitterTweetLimit` before publishing to Twitter.
+
+### 1.9 Onboarding
+
+- **Flow:** New users (no subscription and no connected accounts) are redirected to `/onboarding`. Steps: plan selection (optional pay) → goal (step2) → connect accounts (step3) → done (step4). `getOnboardingStatus()` in `app/actions/onboarding.ts` defines `shouldOnboard`; dashboard layout redirects when `shouldOnboard && !isConnectFlow`.
+- **Completion:** `setOnboardingCompleted()` sets `user_settings.onboardingCompleted`; layout then allows access to dashboard.
+
+### 1.10 Twitter (X) Premium
+
+- **Character limit:** Connected Twitter accounts have `is_twitter_premium`; Premium allows up to 25,000 characters (non-Premium 280). Use `getLimitForAccount(account)` from `lib/platform-limits.ts` in UI and validation.
+- **Cron:** `app/api/cron/twitter-premium/route.ts` runs daily at 5 AM; rechecks Premium status via Twitter API and updates `connected_accounts.is_twitter_premium`.
 
 ---
 
@@ -153,7 +183,7 @@ Keep using `safeRedirect` (or an equivalent) whenever the redirect target can co
 
 ### 3.1 Security
 
-- **Env:** Never commit `.env` or `.env.local`. All runtime env is validated through `lib/env.ts` (Zod). `ENCRYPTION_KEY` must be 32 bytes (64 hex chars). `BETTER_AUTH_SECRET` must be at least 32 characters.
+- **Env:** Never commit `.env` or `.env.local`. All runtime env is validated through `lib/env.ts` (Zod). `ENCRYPTION_KEY` must be 32 bytes (64 hex chars). `BETTER_AUTH_SECRET` must be at least 32 characters. Billing uses `DODO_PAYMENTS_*` and webhook secret; Turnstile uses `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`.
 - **Auth:** All dashboard and API routes that touch user data must check session (e.g. `auth.api.getSession({ headers: await headers() })`). Cron routes must be protected by `lib/cron-auth.ts` (constant-time Bearer token check); in development the cron auth check can be skipped for convenience.
 - **OAuth state:** State must be encrypted and include `userId` and `platform` (and optionally `stateId` for PKCE). Callback must verify state, decrypt it, and ensure `platform` matches and the user is authorized.
 - **Tokens:** Access/refresh tokens are stored only in the DB, encrypted (see `lib/encryption.ts`). Never log or send tokens to the client. Use `getValidToken()` (or equivalent) so expired tokens are refreshed when the platform supports it (e.g. YouTube, LinkedIn).
@@ -170,10 +200,11 @@ Keep using `safeRedirect` (or an equivalent) whenever the redirect target can co
 
 ### 3.3 Cost and limits
 
-- **R2:** Optional. If not configured, media upload and any flow that depends on R2 (e.g. TikTok processed images) should fail gracefully with a clear message (e.g. 503 "Media storage (R2) is not configured").
-- **Platform limits:** Respect platform-specific content length and media limits (e.g. Twitter 280, TikTok/Instagram caption 2200, Bluesky 3000). These are in `lib/publish-validation.ts` (`CONTENT_LIMITS`, `MAX_MEDIA_IDS`, etc.). Validate before publish and ideally in the UI.
-- **Rate limits:** `lib/ratelimit.ts` uses Upstash Redis for optional rate limiting on API, OAuth, and upload routes. Prefer not to burst large numbers of requests to a single platform.
-- **Cron:** Vercel Cron has limits on frequency and duration. Our crons — `publish-scheduled`, `repost`, `autoplug` (daily at midnight), `token-health` (daily at 6 AM) — must stay idempotent and within the configured `maxDuration` (e.g. 60s for publish-scheduled).
+- **R2:** Optional. If not configured, media upload (presign) and any flow that depends on R2 (e.g. TikTok processed images) should fail gracefully with a clear message (e.g. 503 "Media storage (R2) is not configured").
+- **Platform limits:** Respect platform-specific content length and media limits (e.g. Twitter 280 or 25k if Premium, TikTok/Instagram caption 2200, Bluesky 3000). Use `lib/platform-limits.ts` for UI and `lib/publish-validation.ts` for server (`CONTENT_LIMITS`, `MAX_MEDIA_IDS`, etc.). Validate before publish and in the UI.
+- **Plan limits:** Enforce `checkAccountLimits` before allowing new account connections; enforce `checkTwitterTweetLimit` before publishing to Twitter; gate bulk tools, auto-plug, and resurface by plan via `lib/plan-limits.ts`.
+- **Rate limits:** `lib/ratelimit.ts` uses Upstash Redis for optional rate limiting on API, OAuth, and presign routes. Prefer not to burst large numbers of requests to a single platform.
+- **Cron:** Vercel Cron has limits on frequency and duration. Crons (see `frontend/vercel.json`): `publish-scheduled`, `repost`, `autoplug` (daily midnight), `token-health` (daily 6 AM), `twitter-premium` (daily 5 AM). Keep them idempotent and within `maxDuration` (e.g. 60s for publish-scheduled).
 
 ### 3.4 Token management rules
 
@@ -200,16 +231,24 @@ Never hard-delete `connected_accounts` rows. On disconnect, set `isActive = fals
 | Safe redirect     | Use `safeRedirect(url, fallback)` from `lib/redirect.ts`; never pass object to `redirect()`. |
 | PKCE (TikTok)     | Verifier in DB; state holds only `stateId` + `userId` + `platform`. |
 | Publish status    | Set "publishing" at start; always set terminal status in `finally`. |
+| Media upload      | Prefer `lib/upload-file.ts`: presign → PUT → confirm. Presign: `POST /api/media/presign`; confirm: `POST /api/media/confirm`. Legacy `POST /api/media/upload` deprecated. |
 | Media SSRF        | Only allow app origin + R2 public URL via `isAllowedMediaUrl` / `getAllowedMediaOrigins`. |
+| Video (client)    | Aspect: `lib/video-aspect-ratio.ts` (16:9, 9:16, 4:3, 3:4, 1:1). Duration: `lib/video-duration.ts` (max 300s). |
+| Caption limits (UI) | `lib/platform-limits.ts`: `getLimitForAccount(account)` (Twitter Premium 25k), `getMostRestrictiveLimit(accounts)`. |
+| Plan limits       | `lib/plan-limits.ts`: `checkAccountLimits`, `checkBulkToolsAllowed`, `checkAutoPlugAllowed`, `checkResurfaceAllowed`, `checkTwitterTweetLimit`. Subscription: `getSubscriptionForUser()`, `getPlanLimits(tier)` from `lib/plans.ts`. |
 | Token storage     | Encrypted in DB only; never log or send to client. |
 | Cron auth         | `lib/cron-auth.ts` — Bearer token + constant-time compare; skip only in development. |
+| Crons             | `vercel.json`: publish-scheduled, repost, autoplug (0 0 * * *); token-health (0 6 * * *); twitter-premium (0 5 * * *). |
 | Token refresh     | `getValidToken()` in `lib/token-refresh.ts`; YouTube/TikTok auto-refresh before publish. |
 | Token health cron | `app/api/cron/token-health` runs daily at 6 AM via `lib/token-health.ts`. |
-| Rate limiting     | `lib/ratelimit.ts` (Upstash Redis); optional. |
+| Rate limiting     | `lib/ratelimit.ts` (Upstash Redis); optional; presign uses upload limiter. |
 | Disconnect        | Set `isActive=false` only; never DELETE `connected_accounts` rows. |
 | Facebook pages    | Save ALL pages in loop in callback; no select UI. |
 | Instagram-Facebook select | POST to `/api/connect/instagram-facebook/select`. |
 | BYOK              | Only Bluesky: `app/api/connect/bluesky/byok/route.ts`. |
+| Onboarding        | `app/actions/onboarding.ts`: `getOnboardingStatus()`, `setOnboardingCompleted()`. Dashboard layout redirects when `shouldOnboard` and not in connect flow. |
+| Billing           | Dodo: checkout, portal, sync, change-plan under `app/api/billing/`; webhook `app/api/webhooks/dodo`; `lib/billing-sync.ts`, `lib/subscription.ts`, `lib/plans.ts`. |
+| Twitter Premium   | `connected_accounts.is_twitter_premium`; cron `api/cron/twitter-premium`; char limit in `lib/platform-limits.ts`. |
 | Migration safety  | Never edit existing `.sql` files; always `db:generate` for new migrations. |
 
 If you add new routes that call `redirect()` inside try/catch, add the NEXT_REDIRECT rethrow in every catch block. If you add new platforms or content types, update `lib/platforms.ts` and/or `lib/content-types.ts` and keep validation and publish logic in sync.

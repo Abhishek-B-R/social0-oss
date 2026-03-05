@@ -32,6 +32,7 @@ import {
   clearComposerPayload,
 } from "@/lib/composer-bridge";
 import { CaptionCounter } from "@/components/caption-counter";
+import { MdClose } from "react-icons/md";
 
 const TWITTER_THREAD_SEP = "---";
 
@@ -501,8 +502,16 @@ export function TextPostForm({
           />
 
           {error && (
-            <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+            <div className="relative rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 pr-10 text-sm font-medium text-destructive">
               {error}
+              <button
+                type="button"
+                onClick={() => setError(null)}
+                className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-destructive/70 hover:bg-destructive/20 transition-colors"
+                aria-label="Dismiss error"
+              >
+                <MdClose className="w-4 h-4" />
+              </button>
             </div>
           )}
 
