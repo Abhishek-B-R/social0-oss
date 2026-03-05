@@ -15,6 +15,7 @@ type Account = {
   platformUsername: string | null;
   profileImageUrl: string | null;
   isActive: boolean | null;
+  isTwitterPremium?: boolean;
   tokenExpired?: boolean;
 };
 
@@ -169,6 +170,7 @@ export function NewPostForm({
                     profileImageUrl={acc.profileImageUrl}
                     username={acc.platformUsername}
                     platform={acc.platform}
+                    isTwitterPremium={acc.isTwitterPremium ?? false}
                     size="sm"
                   />
                   <span className="text-sm font-medium text-text">

@@ -63,6 +63,7 @@ async function ConnectionsContent() {
         isActive: true,
         tokenExpiresAt: true,
         tokenStatus: true,
+        isTwitterPremium: true,
       },
     }),
     checkAccountLimits(session.user.id, "linkedin"),
@@ -85,6 +86,7 @@ async function ConnectionsContent() {
             platformUsername: a.platformUsername,
             profileImageUrl: a.profileImageUrl,
             isActive: a.isActive,
+            isTwitterPremium: a.isTwitterPremium ?? false,
             tokenStatus: status,
             expiresInDays: status === "expiring_soon" ? expiresInDays : null,
           };

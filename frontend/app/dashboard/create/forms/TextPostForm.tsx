@@ -31,6 +31,7 @@ import {
   consumeComposerPayload,
   clearComposerPayload,
 } from "@/lib/composer-bridge";
+import { CaptionCounter } from "@/components/caption-counter";
 
 const TWITTER_THREAD_SEP = "---";
 
@@ -45,6 +46,7 @@ type Account = {
   platformUsername: string | null;
   profileImageUrl: string | null;
   isActive: boolean | null;
+  isTwitterPremium?: boolean;
   tokenExpired?: boolean;
 };
 
@@ -507,6 +509,14 @@ export function TextPostForm({
               rows={6}
               className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
               required
+            />
+            <CaptionCounter
+              caption={content}
+              selectedAccounts={selectedAccounts.map((a) => ({
+                platform: a.platform,
+                isTwitterPremium: a.isTwitterPremium ?? false,
+                platformUsername: a.platformUsername ?? null,
+              }))}
             />
             {showContentError && !content.trim() && (
               <p className="mt-2 text-xs text-destructive">Text is required</p>

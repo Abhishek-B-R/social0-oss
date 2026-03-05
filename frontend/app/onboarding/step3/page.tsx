@@ -19,6 +19,7 @@ export default async function OnboardingStep3Page() {
       platformUsername: connectedAccounts.platformUsername,
       profileImageUrl: connectedAccounts.profileImageUrl,
       isActive: connectedAccounts.isActive,
+      isTwitterPremium: connectedAccounts.isTwitterPremium,
     })
     .from(connectedAccounts)
     .where(
@@ -40,6 +41,7 @@ export default async function OnboardingStep3Page() {
         platformUsername: a.platformUsername,
         profileImageUrl: a.profileImageUrl,
         isActive: a.isActive,
+        isTwitterPremium: a.isTwitterPremium ?? false,
       }))}
       limitTotal={accountLimit.limitTotal}
     />

@@ -36,6 +36,7 @@ export type PublicationRow = {
   lastError: string | null;
   profileImageUrl: string | null;
   platformUsername: string | null;
+  isTwitterPremium: boolean | null;
   publishedAt: Date | null;
 };
 
@@ -84,6 +85,7 @@ export async function getPostsListData({
             lastError: postPublications.lastError,
             profileImageUrl: connectedAccounts.profileImageUrl,
             platformUsername: connectedAccounts.platformUsername,
+            isTwitterPremium: connectedAccounts.isTwitterPremium,
             publishedAt: postPublications.publishedAt,
           })
           .from(postPublications)
@@ -443,6 +445,7 @@ export async function getPostDetail(
         lastError: postPublications.lastError,
         profileImageUrl: connectedAccounts.profileImageUrl,
         platformUsername: connectedAccounts.platformUsername,
+        isTwitterPremium: connectedAccounts.isTwitterPremium,
         publishedAt: postPublications.publishedAt,
       })
       .from(postPublications)

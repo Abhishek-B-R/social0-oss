@@ -6,27 +6,26 @@ import { cn } from "@/lib/utils";
 type AccountAvatarProps = {
   profileImageUrl: string | null | undefined;
   username?: string | null;
-  /** Platform id for placeholder initial (e.g. "pinterest" -> "P") */
+  /** Platform id for placeholder initial and Premium badge (e.g. "twitter_x") */
   platform?: string;
+  /** When true and platform is twitter_x, shows blue checkmark badge */
+  isTwitterPremium?: boolean;
   size?: "sm" | "md" | "lg";
   className?: string;
 };
 
-const sizeClasses = {
-  sm: "h-8 w-8 text-xs",
-  md: "h-9 w-9 text-sm",
-  lg: "h-12 w-12 text-base",
-};
+const sizeMap = { sm: 32, md: 36, lg: 48 };
 
 export function AccountAvatar({
   profileImageUrl,
   username,
   platform,
+  isTwitterPremium = false,
   size = "md",
   className,
 }: AccountAvatarProps) {
   const [failed, setFailed] = useState(false);
-  const sizeClass = sizeClasses[size];
+  const px = sizeMap[size];
 
   const initial =
     username?.charAt(0)?.toUpperCase() ||
@@ -37,34 +36,38 @@ export function AccountAvatar({
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setFailed(false), [profileImageUrl]);
 
-  if (profileImageUrl?.trim() && !failed) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={profileImageUrl}
-        alt={username || platform || "Account"}
-        referrerPolicy="no-referrer"
-        draggable={false}
-        className={cn(
-          "rounded-full object-cover shrink-0",
-          sizeClass,
-          className,
-        )}
-        onError={() => setFailed(true)}
-      />
-    );
-  }
+  const showPremiumBadge = platform === "twitter_x" && isTwitterPremium;
 
   return (
     <div
-      className={cn(
-        "flex items-center justify-center rounded-full bg-bg-muted text-text-muted font-semibold shrink-0",
-        sizeClass,
-        className,
-      )}
-      title={username || platform || "Account"}
+      className={cn("relative shrink-0", className)}
+      style={{ width: px, height: px }}
     >
-      {initial}
+      {profileImageUrl?.trim() && !failed ? (
+        <img
+          src={profileImageUrl}
+          alt={username || platform || "Account"}
+          referrerPolicy="no-referrer"
+          draggable={false}
+          className="h-full w-full rounded-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <div
+          className="flex h-full w-full items-center justify-center rounded-full bg-bg-muted text-text-muted font-semibold text-xs"
+          title={username || platform || "Account"}
+        >
+          {initial}
+        </div>
+      )}
+      {showPremiumBadge && (
+        <img
+          src="/icons/twitter-premium.svg"
+          alt="X Premium"
+          className="absolute top-7 -right-[12px] z-10"
+          style={{ width: px * 0.3, height: px * 0.3 }}
+        />
+      )}
     </div>
   );
 }

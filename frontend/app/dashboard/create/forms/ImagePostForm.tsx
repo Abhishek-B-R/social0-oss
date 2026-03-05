@@ -53,6 +53,7 @@ import {
   consumeComposerPayload,
   clearComposerPayload,
 } from "@/lib/composer-bridge";
+import { CaptionCounter } from "@/components/caption-counter";
 
 type PlatformCaptionState = {
   overridden: boolean;
@@ -65,6 +66,7 @@ type Account = {
   platformUsername: string | null;
   profileImageUrl: string | null;
   isActive: boolean | null;
+  isTwitterPremium?: boolean;
   tokenExpired?: boolean;
   platformMetadata?: Record<string, unknown>;
 };
@@ -1209,6 +1211,14 @@ export function ImagePostForm({
               placeholder="Add a caption..."
               rows={3}
               className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+            />
+            <CaptionCounter
+              caption={content}
+              selectedAccounts={selectedAccounts.map((a) => ({
+                platform: a.platform,
+                isTwitterPremium: a.isTwitterPremium ?? false,
+                platformUsername: a.platformUsername ?? null,
+              }))}
             />
             {showCaptionError && !content.trim() && (
               <p className="mt-2 text-xs text-destructive">

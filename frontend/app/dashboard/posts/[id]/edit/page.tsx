@@ -46,6 +46,7 @@ export default async function EditPostPage({
       isActive: true,
       tokenExpiresAt: true,
       tokenStatus: true,
+      isTwitterPremium: true,
     },
   });
 
@@ -60,6 +61,7 @@ export default async function EditPostPage({
         platformUsername: a.platformUsername,
         profileImageUrl: a.profileImageUrl,
         isActive: a.isActive,
+        isTwitterPremium: a.isTwitterPremium ?? false,
         tokenExpired: NEVER_EXPIRES_PLATFORMS.has(a.platform)
           ? false
           : a.tokenStatus === "expired" ||

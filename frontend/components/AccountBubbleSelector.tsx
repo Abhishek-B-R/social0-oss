@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
 import { PlatformIcon } from "@/components/PlatformIcon";
+import { AccountAvatar } from "@/components/AccountAvatar";
 import { cn } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
 
@@ -11,6 +11,7 @@ type Account = {
   platformUsername: string | null;
   profileImageUrl: string | null;
   isActive?: boolean | null;
+  isTwitterPremium?: boolean;
   /** When true, bubble is disabled with red overlay and tooltip to reconnect on Connections page */
   tokenExpired?: boolean;
 };
@@ -44,12 +45,6 @@ export function AccountBubbleSelector({
   hideSelectAll = false,
   supportedPlatforms,
 }: AccountBubbleSelectorProps) {
-  const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set());
-
-  const markImageFailed = useCallback((accountId: string) => {
-    setFailedImageIds((prev) => new Set(prev).add(accountId));
-  }, []);
-
   if (accounts.length === 0) {
     const platformNames =
       supportedPlatforms?.map((id) => platformName(id)).filter(Boolean) ?? [];
@@ -134,29 +129,22 @@ export function AccountBubbleSelector({
                 onClick={() => !expired && onToggleAccount(acc.id)}
                 disabled={expired}
                 className={cn(
-                  "relative h-full w-full rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:pointer-events-none",
+                  "relative h-full w-full  rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:pointer-events-none",
                   expired && "cursor-not-allowed",
                 )}
                 aria-pressed={selected}
                 aria-disabled={expired}
               >
-                {acc.profileImageUrl?.trim() && !failedImageIds.has(acc.id) ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={acc.profileImageUrl}
-                    alt={acc.platformUsername || acc.platform}
-                    referrerPolicy="no-referrer"
-                    draggable={false}
-                    className="h-full w-full rounded-full object-cover"
-                    onError={() => markImageFailed(acc.id)}
+                <div className="h-full w-full flex items-center justify-center">
+                  <AccountAvatar
+                    profileImageUrl={acc.profileImageUrl}
+                    username={acc.platformUsername}
+                    platform={acc.platform}
+                    isTwitterPremium={acc.isTwitterPremium ?? false}
+                    size="lg"
+                    className="h-full w-full border-2 border-emerald-400 rounded-full"
                   />
-                ) : (
-                  <span className={initialClass}>
-                    {(acc.platformUsername || acc.platform)
-                      .charAt(0)
-                      .toUpperCase()}
-                  </span>
-                )}
+                </div>
                 <span
                   className={cn(
                     "absolute bottom-0 right-0 flex items-center justify-center rounded-full border-2 border-card bg-card",

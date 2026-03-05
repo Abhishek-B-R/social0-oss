@@ -39,6 +39,7 @@ import {
   consumeComposerPayload,
   clearComposerPayload,
 } from "@/lib/composer-bridge";
+import { CaptionCounter } from "@/components/caption-counter";
 import {
   getVideoDuration,
   MAX_VIDEO_DURATION_SECONDS,
@@ -197,6 +198,7 @@ type Account = {
   platformUsername: string | null;
   profileImageUrl: string | null;
   isActive: boolean | null;
+  isTwitterPremium?: boolean;
   tokenExpired?: boolean;
 };
 
@@ -1396,6 +1398,14 @@ export function ThreadsPostForm({
                   placeholder="What's happening?"
                   rows={3}
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+                />
+                <CaptionCounter
+                  caption={post.text}
+                  selectedAccounts={selectedAccounts.map((a) => ({
+                    platform: a.platform,
+                    isTwitterPremium: a.isTwitterPremium ?? false,
+                    platformUsername: a.platformUsername ?? null,
+                  }))}
                 />
                 {index === 0 && showFirstTextError && !firstPostText && (
                   <p className="mt-1 text-xs text-destructive">

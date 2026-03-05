@@ -19,6 +19,7 @@ export async function GET() {
       platformUsername: true,
       profileImageUrl: true,
       isActive: true,
+      isTwitterPremium: true,
     },
   });
 
