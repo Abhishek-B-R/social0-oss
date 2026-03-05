@@ -112,6 +112,7 @@ export function VideoPostForm({
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const captionTextareaRef = useRef<HTMLTextAreaElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
   const [content, setContent] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -205,6 +206,18 @@ export function VideoPostForm({
     getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
   const resurfaceVisible = hasXForResurface;
   const autoPlugVisible = hasXForResurface;
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || (!e.ctrlKey && !e.metaKey)) return;
+      const form = formRef.current;
+      if (!form || !form.contains(e.target as Node)) return;
+      e.preventDefault();
+      form.requestSubmit();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   // Restore Auto-Repost & Auto-Plug from localStorage when Twitter is selected
   useEffect(() => {
@@ -409,13 +422,20 @@ export function VideoPostForm({
   };
 
   const [isUploadZoneHovered, setIsUploadZoneHovered] = useState(false);
+  const [isCaptionFocused, setIsCaptionFocused] = useState(false);
   const videoPreviewRef = useRef<string | null>(null);
   const customThumbnailPreviewRef = useRef<string | null>(null);
   videoPreviewRef.current = videoPreview;
   customThumbnailPreviewRef.current = customThumbnailPreview;
   useEffect(() => {
-    if (!isUploadZoneHovered) return;
+    if (!isUploadZoneHovered && !isCaptionFocused) return;
     const handlePaste = (e: ClipboardEvent) => {
+      if (e.target === captionTextareaRef.current) {
+        const hasVideo = Array.from(e.clipboardData?.files ?? []).some((f) =>
+          f.type.startsWith("video/"),
+        );
+        if (!hasVideo) return;
+      }
       const file = e.clipboardData?.files?.[0];
       if (!file || !file.type.startsWith("video/")) return;
       e.preventDefault();
@@ -447,7 +467,7 @@ export function VideoPostForm({
     };
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
-  }, [isUploadZoneHovered]);
+  }, [isUploadZoneHovered, isCaptionFocused]);
 
   useEffect(() => {
     if (!isUploading) return;
@@ -501,6 +521,46 @@ export function VideoPostForm({
     setCustomThumbnail(null);
     setCustomThumbnailPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const [isDragOverZone, setIsDragOverZone] = useState(false);
+  const handleDropVideo = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOverZone(false);
+    const file = Array.from(e.dataTransfer.files).find((f) =>
+      f.type.startsWith("video/"),
+    );
+    if (!file) {
+      setError("Please drop a video file (MP4, WebM, etc.).");
+      return;
+    }
+    setError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    validateVideoAspectRatio(file).then((result) => {
+      if (!result.valid) {
+        setError(
+          `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(result.ratio)}${getAspectRatioDescriptor(result.ratio)}.`,
+        );
+        return;
+      }
+      getVideoDuration(file).then((duration) => {
+        if (duration > MAX_VIDEO_DURATION_SECONDS) {
+          setError(VIDEO_DURATION_MESSAGE);
+          return;
+        }
+        if (videoPreviewRef.current)
+          URL.revokeObjectURL(videoPreviewRef.current);
+        if (customThumbnailPreviewRef.current)
+          URL.revokeObjectURL(customThumbnailPreviewRef.current);
+        setVideoFile(file);
+        setVideoPreview(URL.createObjectURL(file));
+        setVideoDuration(duration);
+        setCustomThumbnail(null);
+        setCustomThumbnailPreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      });
+    });
   };
 
   // const onCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -851,6 +911,10 @@ export function VideoPostForm({
                     ? "published"
                     : "failed") as PlatformStatus,
                   error: res?.status === "failed" ? res?.error : undefined,
+                  postUrl:
+                    res?.status === "published"
+                      ? (res?.platformPostUrl ?? null)
+                      : undefined,
                 }
               : p,
           ),
@@ -1035,14 +1099,23 @@ export function VideoPostForm({
                 onClick={() => fileInputRef.current?.click()}
                 onMouseEnter={() => setIsUploadZoneHovered(true)}
                 onMouseLeave={() => setIsUploadZoneHovered(false)}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onDragEnter={() => setIsDragOverZone(true)}
+                onDragLeave={() => setIsDragOverZone(false)}
+                onDrop={handleDropVideo}
                 className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed py-6 text-text-muted transition-colors ${
-                  isUploadZoneHovered
+                  isUploadZoneHovered || isDragOverZone
                     ? "border-accent bg-accent/5"
                     : "border-border bg-bg-subtle"
                 }`}
               >
                 <Clapperboard className="mb-2 h-6 w-6" />
-                <span className="text-sm font-medium">Click to add video</span>
+                <span className="text-sm font-medium">
+                  Click to add video or drag and drop
+                </span>
                 <span className="text-xs text-text-muted mt-1">
                   Hover & paste from clipboard (Ctrl+V)
                 </span>
@@ -1070,11 +1143,15 @@ export function VideoPostForm({
               </div>
             )}
             <textarea
+              ref={captionTextareaRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Add a caption..."
               rows={3}
               className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+              autoFocus
+              onFocus={() => setIsCaptionFocused(true)}
+              onBlur={() => setIsCaptionFocused(false)}
             />
             <CaptionCounter
               caption={content}

@@ -294,6 +294,8 @@ export function ThreadsPostForm({
   const [addMediaZoneHover, setAddMediaZoneHover] = useState<number | null>(
     null,
   );
+  const [dragOverPostId, setDragOverPostId] = useState<number | null>(null);
+  const [focusedPostId, setFocusedPostId] = useState<number | null>(null);
   const [fileProgresses, setFileProgresses] = useState<number[]>([]);
 
   useEffect(() => {
@@ -454,6 +456,18 @@ export function ThreadsPostForm({
   useEffect(() => {
     if (remember) persistSelection(selectedIds);
   }, [remember, selectedIds, persistSelection]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || (!e.ctrlKey && !e.metaKey)) return;
+      const form = formRef.current;
+      if (!form || !form.contains(e.target as Node)) return;
+      e.preventDefault();
+      form.requestSubmit();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   const handleDeleteDraft = async () => {
     if (!initialDraftId) return;
@@ -715,22 +729,36 @@ export function ThreadsPostForm({
   };
 
   useEffect(() => {
-    if (addMediaZoneHover === null) return;
+    const targetPostId = addMediaZoneHover ?? focusedPostId;
+    if (targetPostId === null) return;
     const handlePaste = (e: ClipboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el?.getAttribute?.("data-caption-textarea") === "true") {
+        const files = e.clipboardData?.files;
+        const hasMedia =
+          files &&
+          Array.from(files).some(
+            (f) =>
+              f.type.startsWith("image/") || f.type.startsWith("video/"),
+          );
+        if (!hasMedia) return;
+      }
       const file = e.clipboardData?.files?.[0];
       if (!file) return;
+      const postId = addMediaZoneHover ?? focusedPostId;
+      if (postId === null) return;
       if (file.type.startsWith("image/")) {
         e.preventDefault();
-        addImagesToPost(addMediaZoneHover, [file]);
+        addImagesToPost(postId, [file]);
       } else if (file.type.startsWith("video/")) {
         e.preventDefault();
-        addVideoToPost(addMediaZoneHover, [file]);
+        addVideoToPost(postId, [file]);
       }
     };
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addMediaZoneHover]);
+  }, [addMediaZoneHover, focusedPostId]);
 
   const handleDragStart = (postId: number, index: number) => {
     setDraggedPostId(postId);
@@ -1165,6 +1193,10 @@ export function ThreadsPostForm({
                     ? "published"
                     : "failed") as PlatformStatus,
                   error: res?.status === "failed" ? res?.error : undefined,
+                  postUrl:
+                    res?.status === "published"
+                      ? (res?.platformPostUrl ?? null)
+                      : undefined,
                 }
               : p,
           ),
@@ -1393,11 +1425,15 @@ export function ThreadsPostForm({
                   )}
                 </div>
                 <textarea
+                  data-caption-textarea="true"
                   value={post.text}
                   onChange={(e) => updatePost(post.id, e.target.value)}
                   placeholder="What's happening?"
                   rows={3}
                   className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+                  autoFocus={index === 0}
+                  onFocus={() => setFocusedPostId(post.id)}
+                  onBlur={() => setFocusedPostId(null)}
                 />
                 <CaptionCounter
                   caption={post.text}
@@ -1483,8 +1519,31 @@ export function ThreadsPostForm({
                   <label
                     onMouseEnter={() => setAddMediaZoneHover(post.id)}
                     onMouseLeave={() => setAddMediaZoneHover(null)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onDragEnter={() => setDragOverPostId(post.id)}
+                    onDragLeave={() => setDragOverPostId(null)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDragOverPostId(null);
+                      const files = e.dataTransfer.files;
+                      if (!files?.length) return;
+                      const imageFiles = Array.from(files).filter((f) =>
+                        f.type.startsWith("image/"),
+                      );
+                      const videoFiles = Array.from(files).filter((f) =>
+                        f.type.startsWith("video/"),
+                      );
+                      if (imageFiles.length > 0)
+                        addImagesToPost(post.id, imageFiles);
+                      if (videoFiles.length > 0)
+                        addVideoToPost(post.id, videoFiles);
+                    }}
                     className={`flex items-center justify-center gap-2 w-full rounded-xl border px-4 py-2 cursor-pointer transition-colors text-sm text-text-muted ${
-                      addMediaZoneHover === post.id
+                      addMediaZoneHover === post.id || dragOverPostId === post.id
                         ? "border-accent bg-accent/5"
                         : "border-border bg-bg-subtle hover:border-accent hover:bg-accent/5"
                     }`}
@@ -1493,8 +1552,8 @@ export function ThreadsPostForm({
                     <MdOutlineVideocam className="h-4 w-4" />
                     <span>
                       Add media ({post.images.length + post.videos.length}/
-                      {MAX_ATTACHMENTS_PER_POST}) · Hover and paste from
-                      clipboard (Ctrl+V)
+                      {MAX_ATTACHMENTS_PER_POST}) · Drag and drop or paste
+                      (Ctrl+V)
                     </span>
                     <input
                       type="file"

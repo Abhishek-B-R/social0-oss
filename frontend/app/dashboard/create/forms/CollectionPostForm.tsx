@@ -92,6 +92,7 @@ export function CollectionPostForm({
   const searchParams = useSearchParams();
   const unifiedInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const captionTextareaRef = useRef<HTMLTextAreaElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
   const [content, setContent] = useState("");
   const [images, setImages] = useState<ImageFile[]>([]);
@@ -255,6 +256,18 @@ export function CollectionPostForm({
     if (remember) persistSelection(selectedIds);
   }, [remember, selectedIds, persistSelection]);
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || (!e.ctrlKey && !e.metaKey)) return;
+      const form = formRef.current;
+      if (!form || !form.contains(e.target as Node)) return;
+      e.preventDefault();
+      form.requestSubmit();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
+
   const handleDeleteDraft = async () => {
     if (!initialDraftId) return;
     const { deleteDraft } = await import("@/app/actions/posts");
@@ -415,9 +428,75 @@ export function CollectionPostForm({
   };
 
   const [isUploadZoneHovered, setIsUploadZoneHovered] = useState(false);
+  const [isCaptionFocused, setIsCaptionFocused] = useState(false);
+  const [isDragOverZone, setIsDragOverZone] = useState(false);
+  const handleDropUnified = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOverZone(false);
+    const files = e.dataTransfer.files;
+    if (!files?.length) return;
+    setError(null);
+    const maxOrder = getMaxOrder();
+    let orderOffset = 0;
+    const newImages: ImageFile[] = [];
+    const newVideos: VideoFile[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type.startsWith("image/")) {
+        newImages.push({
+          file,
+          preview: URL.createObjectURL(file),
+          order: maxOrder + orderOffset + 1,
+        });
+        orderOffset++;
+      } else if (file.type.startsWith("video/")) {
+        newVideos.push({
+          file,
+          preview: URL.createObjectURL(file),
+          order: maxOrder + orderOffset + 1,
+        });
+        orderOffset++;
+      }
+    }
+    if (newImages.length > 0) setImages((prev) => [...prev, ...newImages]);
+    if (newVideos.length > 0) {
+      const videosWithFile = newVideos.filter(
+        (v): v is VideoFile & { file: File } => v.file != null,
+      );
+      Promise.all(videosWithFile.map((v) => getVideoDuration(v.file))).then(
+        (durations) => {
+          const withinDuration: VideoFile[] = [];
+          const overDuration = durations.some(
+            (d) => d > MAX_VIDEO_DURATION_SECONDS,
+          );
+          videosWithFile.forEach((v, i) => {
+            if (durations[i] <= MAX_VIDEO_DURATION_SECONDS)
+              withinDuration.push(v);
+          });
+          if (overDuration) setError(VIDEO_DURATION_MESSAGE);
+          if (withinDuration.length > 0) {
+            setVideos((prev) => [...prev, ...withinDuration]);
+          }
+        },
+      );
+    }
+    if (unifiedInputRef.current) unifiedInputRef.current.value = "";
+  };
+
   useEffect(() => {
-    if (!isUploadZoneHovered) return;
+    if (!isUploadZoneHovered && !isCaptionFocused) return;
     const handlePaste = (e: ClipboardEvent) => {
+      if (e.target === captionTextareaRef.current) {
+        const files = e.clipboardData?.files;
+        const hasMedia =
+          files &&
+          Array.from(files).some(
+            (f) =>
+              f.type.startsWith("image/") || f.type.startsWith("video/"),
+          );
+        if (!hasMedia) return;
+      }
       const file = e.clipboardData?.files?.[0];
       if (!file) return;
       if (file.type.startsWith("image/")) {
@@ -446,7 +525,7 @@ export function CollectionPostForm({
     };
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
-  }, [isUploadZoneHovered]);
+  }, [isUploadZoneHovered, isCaptionFocused]);
 
   const getAllItems = () => {
     return [
@@ -861,6 +940,10 @@ export function CollectionPostForm({
                     ? "published"
                     : "failed") as PlatformStatus,
                   error: res?.status === "failed" ? res?.error : undefined,
+                  postUrl:
+                    res?.status === "published"
+                      ? (res?.platformPostUrl ?? null)
+                      : undefined,
                 }
               : p,
           ),
@@ -1131,11 +1214,15 @@ export function CollectionPostForm({
             </p>
 
             <textarea
+              ref={captionTextareaRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Write your caption..."
               rows={3}
               className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+              autoFocus
+              onFocus={() => setIsCaptionFocused(true)}
+              onBlur={() => setIsCaptionFocused(false)}
             />
             <CaptionCounter
               caption={content}
@@ -1164,8 +1251,15 @@ export function CollectionPostForm({
               onClick={() => unifiedInputRef.current?.click()}
               onMouseEnter={() => setIsUploadZoneHovered(true)}
               onMouseLeave={() => setIsUploadZoneHovered(false)}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onDragEnter={() => setIsDragOverZone(true)}
+              onDragLeave={() => setIsDragOverZone(false)}
+              onDrop={handleDropUnified}
               className={`flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed py-8 text-text-muted transition-colors ${
-                isUploadZoneHovered
+                isUploadZoneHovered || isDragOverZone
                   ? "border-accent bg-accent/5"
                   : "border-border bg-bg-subtle"
               }`}
@@ -1175,7 +1269,7 @@ export function CollectionPostForm({
                 <MdOutlineVideocam className="mb-2 h-8 w-8 text-text-muted" />
               </div>
               <span className="text-sm font-medium">
-                Click to add images or videos
+                Click to add images or videos, or drag and drop
               </span>
               <span className="text-xs text-text-muted mt-1">
                 JPG, PNG, GIF, MP4, MOV · Hover & paste from clipboard (Ctrl+V)

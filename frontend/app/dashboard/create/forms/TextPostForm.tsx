@@ -112,6 +112,18 @@ export function TextPostForm({
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || (!e.ctrlKey && !e.metaKey)) return;
+      const form = formRef.current;
+      if (!form || !form.contains(e.target as Node)) return;
+      e.preventDefault();
+      form.requestSubmit();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
+
+  useEffect(() => {
     if (!initialDraftId) return;
     let cancelled = false;
     (async () => {
@@ -509,6 +521,7 @@ export function TextPostForm({
               rows={6}
               className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
               required
+              autoFocus
             />
             <CaptionCounter
               caption={content}
