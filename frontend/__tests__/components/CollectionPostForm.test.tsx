@@ -49,6 +49,11 @@ jest.mock("@/app/actions/resurface", () => ({
   createAutoPlug: (...args: unknown[]) => mockCreateAutoPlug(...args),
 }));
 
+const mockUploadFile = jest.fn();
+jest.mock("@/lib/upload-file", () => ({
+  uploadFile: (...args: unknown[]) => mockUploadFile(...args),
+}));
+
 /** Create a minimal File for tests (jsdom may not have File in older envs). */
 function createImageFile(name = "test.png"): File {
   if (typeof File !== "undefined") {
@@ -428,9 +433,9 @@ describe("CollectionPostForm", () => {
   describe("submit flow", () => {
     it("Post now with caption + account + image: uploads media, creates post, publishes", async () => {
       const user = userEvent.setup();
-      (globalThis.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: async () => ({ id: "media-1" }),
+      mockUploadFile.mockResolvedValue({
+        id: "media-1",
+        url: "https://example.com/media-1",
       });
       mockCreatePost.mockResolvedValue({ success: true, postId: "post-1" });
       mockPublishPost.mockResolvedValue({ success: true });
@@ -455,12 +460,10 @@ describe("CollectionPostForm", () => {
 
       await new Promise((r) => setTimeout(r, 100));
 
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        "/api/media/upload",
-        expect.objectContaining({
-          method: "POST",
-          body: expect.any(FormData),
-        }),
+      expect(mockUploadFile).toHaveBeenCalledWith(
+        expect.any(File),
+        expect.any(Number),
+        expect.any(Function),
       );
       expect(mockCreatePost).toHaveBeenCalledWith(
         "Test caption",
@@ -476,9 +479,9 @@ describe("CollectionPostForm", () => {
 
     it("createPost failure shows error and does not call publishPost", async () => {
       const user = userEvent.setup();
-      (globalThis.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: async () => ({ id: "media-1" }),
+      mockUploadFile.mockResolvedValue({
+        id: "media-1",
+        url: "https://example.com/media-1",
       });
       mockCreatePost.mockResolvedValue({
         success: false,
@@ -503,7 +506,7 @@ describe("CollectionPostForm", () => {
 
     it("upload failure shows error and does not call createPost", async () => {
       const user = userEvent.setup();
-      (globalThis.fetch as jest.Mock).mockRejectedValue(new Error("Network error"));
+      mockUploadFile.mockRejectedValue(new Error("Network error"));
 
       render(<CollectionPostForm accounts={defaultAccounts} />);
       await user.type(
@@ -517,7 +520,7 @@ describe("CollectionPostForm", () => {
       await user.click(screen.getByRole("button", { name: "Post now" }));
 
       await new Promise((r) => setTimeout(r, 200));
-      expect(screen.getByText("Failed to upload media.")).toBeInTheDocument();
+      expect(screen.getByText("Network error")).toBeInTheDocument();
       expect(mockCreatePost).not.toHaveBeenCalled();
     });
 

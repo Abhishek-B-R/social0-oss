@@ -55,6 +55,9 @@ type SchedulePostSidebarProps = {
   /** When editing a draft: show Delete draft button and call this on confirm */
   draftId?: string | null;
   onDeleteDraft?: () => void;
+  /** Remember Auto-Repost & Auto-Plug: when checked, persist settings to localStorage */
+  rememberAutoFeatures?: boolean;
+  onRememberAutoFeaturesChange?: (checked: boolean) => void;
 };
 
 export function SchedulePostSidebar({
@@ -78,6 +81,8 @@ export function SchedulePostSidebar({
   tiktokSettings,
   draftId,
   onDeleteDraft,
+  rememberAutoFeatures = false,
+  onRememberAutoFeaturesChange,
 }: SchedulePostSidebarProps) {
   const isScheduled = mode === "scheduled";
 
@@ -340,6 +345,18 @@ export function SchedulePostSidebar({
       )}
 
       <div className="space-y-2 shrink-0 min-h-0">
+        {(autoRepost?.visible || autoPlug?.visible) &&
+          onRememberAutoFeaturesChange != null && (
+            <label className="flex items-center gap-2 cursor-pointer rounded-xl border border-border bg-bg-elevated px-3 py-2 -mt-3 min-w-0">
+              <input
+                type="checkbox"
+                checked={rememberAutoFeatures}
+                onChange={(e) => onRememberAutoFeaturesChange(e.target.checked)}
+                className="rounded border-input bg-bg text-accent focus:ring-accent"
+              />
+              <span className="text-sm text-text">Remember</span>
+            </label>
+          )}
         {autoRepost?.visible && (
           <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated px-3 py-2 -mt-3 min-w-0">
             <div className="flex flex-col gap-0.5 shrink-0 min-w-0">

@@ -19,13 +19,19 @@ describe("API auth protection", () => {
     jest.clearAllMocks();
   });
 
-  it("POST /api/media/upload returns 401 when unauthenticated", async () => {
-    const { POST } = await import("@/app/api/media/upload/route");
-    const formData = new FormData();
-    const res = await POST(new Request("http://localhost/api/media/upload", {
-      method: "POST",
-      body: formData,
-    }));
+  it("POST /api/media/presign returns 401 when unauthenticated", async () => {
+    const { POST } = await import("@/app/api/media/presign/route");
+    const res = await POST(
+      new Request("http://localhost/api/media/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "test.png",
+          contentType: "image/png",
+          fileSize: 1024,
+        }),
+      }),
+    );
     expect(res.status).toBe(401);
   });
 

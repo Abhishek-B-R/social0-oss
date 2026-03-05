@@ -6,6 +6,7 @@ import Link from "next/link";
 import { X, Upload } from "lucide-react";
 import { updatePost } from "@/app/actions/posts";
 import { PLATFORMS } from "@/lib/platforms";
+import { uploadFile } from "@/lib/upload-file";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { ScheduleDateTimePicker } from "@/components/ui/ScheduleDateTimePicker";
 import type { PostForEdit, PostMediaRow } from "./posts-list-data";
@@ -149,20 +150,10 @@ export function EditPostForm({
     setLoading(true);
     try {
       const newMediaIds: string[] = [];
-      for (const { file } of newFiles) {
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await fetch("/api/media/upload", {
-          method: "POST",
-          body: formData,
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error ?? "Upload failed");
-        }
-        const data = (await res.json()) as { id: string };
-        newMediaIds.push(data.id);
-      }
+      const uploadResults = await Promise.all(
+        newFiles.map((item, i) => uploadFile(item.file, i)),
+      );
+      newMediaIds.push(...uploadResults.map((r) => r.id));
       const keptExistingIds = (post.mediaIds ?? []).filter(
         (id) => !idsToRemove.has(id),
       );

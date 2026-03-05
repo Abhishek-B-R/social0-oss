@@ -391,7 +391,7 @@ export function ComposerClient() {
                           className="h-full w-full object-cover pointer-events-none"
                           muted
                           playsInline
-                          preload="metadata"
+                          preload="auto"
                           draggable={false}
                         />
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -585,7 +585,7 @@ export function ComposerClient() {
                               className="h-full w-full object-cover pointer-events-none"
                               muted
                               playsInline
-                              preload="metadata"
+                              preload="auto"
                               draggable={false}
                             />
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

@@ -15,6 +15,7 @@ import {
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SidebarCollapsibleCard } from "@/app/dashboard/create/SidebarCollapsibleCard";
 import { PLATFORMS } from "@/lib/platforms";
+import { uploadFile } from "@/lib/upload-file";
 import { PlatformIcon } from "@/components/PlatformIcon";
 
 export type SettingsConnection = {
@@ -106,18 +107,7 @@ function AvatarEditor({
     }
     setLoading(true);
     try {
-      const formData = new FormData();
-      formData.set("file", file);
-      const res = await fetch("/api/media/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Upload failed");
-        return;
-      }
-      const imageUrl = data.url;
+      const { url: imageUrl } = await uploadFile(file, 0);
       if (!imageUrl) {
         setError("Upload failed");
         return;

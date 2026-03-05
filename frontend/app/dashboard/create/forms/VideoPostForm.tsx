@@ -34,6 +34,7 @@ import {
   type PlatformStatus,
 } from "@/components/UploadPublishOverlay";
 import { PLATFORMS } from "@/lib/platforms";
+import { uploadFile } from "@/lib/upload-file";
 import {
   validateVideoAspectRatio,
   formatAspectRatioLabel,
@@ -583,67 +584,10 @@ export function VideoPostForm({
     } else if (videoFile) {
       setIsUploading(true);
       try {
-        const uploadResult = await new Promise<{
-          ok: boolean;
-          data: { id?: string; error?: string };
-        }>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          const fd = new FormData();
-          fd.set("file", videoFile);
-
-          xhr.open("POST", "/api/media/upload");
-          xhr.responseType = "json";
-
-          xhr.upload.onprogress = (event) => {
-            if (!event.lengthComputable) return;
-            const percent = Math.round((event.loaded / event.total) * 100);
-            setUploadPercent(percent);
-          };
-
-          xhr.onerror = () => {
-            reject(new Error("Network error during video upload."));
-          };
-          xhr.onabort = () => {
-            reject(new Error("Video upload was aborted."));
-          };
-
-          xhr.onload = () => {
-            const status = xhr.status;
-            let body: { id?: string; error?: string } = {};
-            try {
-              body =
-                (xhr.response as { id?: string; error?: string }) ??
-                (xhr.responseText
-                  ? (JSON.parse(xhr.responseText) as {
-                      id?: string;
-                      error?: string;
-                    })
-                  : {});
-            } catch {
-              body = {};
-            }
-            resolve({ ok: status >= 200 && status < 300, data: body });
-          };
-
-          xhr.send(fd);
-        });
-
-        if (!uploadResult.ok) {
-          setError(
-            uploadResult.data.error ??
-              "Video upload failed. The file may be unsupported or too large.",
-          );
-          setLoading(false);
-          setOverlayPhase("idle");
-          return;
-        }
-        if (uploadResult.data.id) mediaIds.push(uploadResult.data.id);
-        if (mediaIds.length === 0) {
-          setError("Video upload did not return an ID. Please try again.");
-          setLoading(false);
-          setOverlayPhase("idle");
-          return;
-        }
+        const { id } = await uploadFile(videoFile, 0, (_, percent) =>
+          setUploadPercent(percent),
+        );
+        mediaIds.push(id);
       } catch (err) {
         setError(
           err instanceof Error

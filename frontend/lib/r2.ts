@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 function getR2Config() {
   const endpoint = process.env.R2_ENDPOINT;
@@ -77,4 +78,31 @@ export async function uploadToR2(
   );
   const base = config.publicUrl.replace(/\/$/, "");
   return `${base}/${key}`;
+}
+
+/**
+ * Generate a presigned PUT URL for direct client-to-R2 upload.
+ * @param key - Object key (e.g. "uploads/userId/filename.ext")
+ * @param contentType - MIME type
+ * @param contentLength - File size in bytes
+ * @param expiresIn - URL expiry in seconds (default 5 minutes)
+ */
+export async function getPresignedUploadUrl(
+  key: string,
+  contentType: string,
+  contentLength: number,
+  expiresIn = 300,
+): Promise<string> {
+  const client = getR2Client();
+  const config = getR2Config();
+  if (!config) {
+    throw new Error("R2 is not configured");
+  }
+  const command = new PutObjectCommand({
+    Bucket: config.bucketName,
+    Key: key,
+    ContentType: contentType,
+    ContentLength: contentLength,
+  });
+  return getSignedUrl(client, command, { expiresIn });
 }

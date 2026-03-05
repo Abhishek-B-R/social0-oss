@@ -655,7 +655,10 @@ export function CollectionPostForm({
       }
 
       uploadTargets.forEach((target, i) => {
-        const result = uploadResults[i] as PromiseFulfilledResult<{ id: string }>;
+        const result = uploadResults[i] as PromiseFulfilledResult<{
+          id: string;
+          url: string;
+        }>;
         mediaIds[target.mediaIndex] = result.value.id;
       });
     }

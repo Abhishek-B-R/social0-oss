@@ -13,6 +13,7 @@ import {
 } from "@/app/actions/posts";
 import { createAutoPlug } from "@/app/actions/resurface";
 import { useRememberedAccounts } from "@/lib/remembered-accounts";
+import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
@@ -94,6 +95,14 @@ export function TextPostForm({
   const [autoplugModalOpen, setAutoplugModalOpen] = useState(false);
   const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
   const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
+  const hasRestoredAutoFeaturesRef = useRef(false);
+  const {
+    remember: rememberAutoFeatures,
+    setRemember: setRememberAutoFeatures,
+    getInitialState: getAutoFeaturesInitialState,
+    persistAutoRepost,
+    persistAutoPlug,
+  } = useRememberedAutoRepostAutoPlug();
   const [showContentError, setShowContentError] = useState(false);
   const [customCaptionsExpanded, setCustomCaptionsExpanded] = useState(false);
   const [accountCaptionsState, setAccountCaptionsState] = useState<
@@ -150,6 +159,39 @@ export function TextPostForm({
   useEffect(() => {
     if (remember) persistSelection(selectedIds);
   }, [remember, selectedIds, persistSelection]);
+
+  // Restore Auto-Repost & Auto-Plug from localStorage when Twitter is selected
+  useEffect(() => {
+    if (!hasXForResurface) {
+      hasRestoredAutoFeaturesRef.current = false;
+      return;
+    }
+    if (!rememberAutoFeatures) return;
+    if (hasRestoredAutoFeaturesRef.current) return;
+    const { autoRepostConfig, autoPlugConfig } =
+      getAutoFeaturesInitialState();
+    if (autoRepostConfig) setResurfaceConfig(autoRepostConfig);
+    if (autoPlugConfig) setAutoPlugConfig(autoPlugConfig);
+    hasRestoredAutoFeaturesRef.current = true;
+  }, [
+    hasXForResurface,
+    rememberAutoFeatures,
+    getAutoFeaturesInitialState,
+  ]);
+
+  // Persist Auto-Repost & Auto-Plug when remember is on
+  useEffect(() => {
+    if (!rememberAutoFeatures || !hasXForResurface) return;
+    persistAutoRepost(!!resurfaceConfig, resurfaceConfig);
+    persistAutoPlug(!!autoPlugConfig, autoPlugConfig);
+  }, [
+    rememberAutoFeatures,
+    hasXForResurface,
+    resurfaceConfig,
+    autoPlugConfig,
+    persistAutoRepost,
+    persistAutoPlug,
+  ]);
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
   const selectedAccountIds = Array.from(selectedIds);
@@ -688,6 +730,8 @@ export function TextPostForm({
           }
           allowAutoRepost={allowAutoRepost}
           allowAutoPlug={allowAutoPlug}
+          rememberAutoFeatures={rememberAutoFeatures}
+          onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
           <div className="hidden lg:block rounded-xl border border-border bg-bg p-4 shadow-sm mt-16">
             <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-text">
@@ -699,7 +743,7 @@ export function TextPostForm({
               </p>
             ) : (
               <div className="flex gap-3">
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center shrink-0">
                   <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-muted text-sm font-semibold text-text-muted">
                     {selectedAccounts[0]?.profileImageUrl?.trim() ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
@@ -720,8 +764,8 @@ export function TextPostForm({
                     )}
                   </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-text">
+                <div className="min-w-0 flex-1 max-h-[320px] overflow-y-auto">
+                  <p className="text-sm font-semibold text-text shrink-0">
                     {selectedAccounts[0]?.platformUsername
                       ? `@${selectedAccounts[0].platformUsername}`
                       : (selectedAccounts[0]?.platform ?? "Account")}

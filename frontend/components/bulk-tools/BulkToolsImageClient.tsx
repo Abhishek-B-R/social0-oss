@@ -264,7 +264,7 @@ export function BulkToolsImageClient({
           (
             entry,
           ): entry is {
-            result: PromiseFulfilledResult<{ id: string }>;
+            result: PromiseFulfilledResult<{ id: string; url: string }>;
             index: number;
           } => entry.result.status === "fulfilled",
         );
