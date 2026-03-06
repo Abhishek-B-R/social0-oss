@@ -18,10 +18,10 @@ import {
   IconUsers,
   IconSettings,
   IconCreditCard,
-  IconMessageCircle,
   IconChevronDown,
   IconPencil,
 } from "@tabler/icons-react";
+import { Lightbulb } from "lucide-react";
 import { SignOutButton } from "@/components/SignOutButton";
 
 type NavItem = {
@@ -217,16 +217,12 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
           </Section>
 
           <Section title="Support">
-            <a
-              href="#"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-sidebar-text hover:bg-sidebar-active"
-            >
-              <IconMessageCircle
-                className="h-4 w-4 shrink-0 text-sidebar-text"
-                size={16}
-              />
-              Share feedback
-            </a>
+            <NavLink
+              href="/dashboard/feedback"
+              label="Feedback"
+              icon={Lightbulb}
+              isActive={isActive("/dashboard/feedback")}
+            />
           </Section>
         </nav>
       </div>

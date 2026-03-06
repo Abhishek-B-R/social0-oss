@@ -47,6 +47,9 @@ const envSchema = z.object({
   DODO_PAYMENTS_ENVIRONMENT: z.enum(["test_mode", "live_mode"]).optional(),
   DODO_PAYMENTS_STARTER_PRODUCT_ID: z.string().optional(),
   DODO_PAYMENTS_GROWTH_PRODUCT_ID: z.string().optional(),
+  // Canny feedback
+  CANNY_PRIVATE_KEY: z.string(),
+  NEXT_PUBLIC_CANNY_BOARD_TOKEN: z.string(),
 });
 
 export const env = envSchema.parse(process.env);

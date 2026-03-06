@@ -53,6 +53,13 @@ export async function syncSubscriptionForUserId(
         return { ok: true, tier };
       }
     }
+    // No active subscription found — downgrade to free
+    await setSubscription(userId, {
+      tier: "free",
+      expiresAt: null,
+      subscriptionId: null,
+      customerId: null,
+    });
     return { ok: false };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Sync failed";
