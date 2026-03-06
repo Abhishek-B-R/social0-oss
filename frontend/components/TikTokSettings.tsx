@@ -31,7 +31,6 @@ const DEFAULT_SETTINGS: TikTokPostSettings = {
 };
 
 export function TikTokSettings({
-  accountId,
   value,
   onChange,
   mediaType,
@@ -55,12 +54,17 @@ export function TikTokSettings({
   }, [value]);
 
   const isPrivate = settings.privacy_level === "SELF_ONLY";
+  // "Only me" must be disabled when branded content is selected
+  const brandedContentActive =
+    settings.brand_content_toggle && settings.brand_content;
 
   const updateSetting = <K extends keyof TikTokPostSettings>(
     key: K,
     val: TikTokPostSettings[K],
   ) => {
     let newSettings = { ...settings, [key]: val };
+
+    // When privacy set to SELF_ONLY, disable duet + stitch
     if (key === "privacy_level" && val === "SELF_ONLY") {
       newSettings = {
         ...newSettings,
@@ -68,19 +72,113 @@ export function TikTokSettings({
         disable_stitch: true,
       };
     }
+
+    // When branded content is toggled off, reset both sub-options
+    if (key === "brand_content_toggle" && val === false) {
+      newSettings = {
+        ...newSettings,
+        brand_organic: false,
+        brand_content: false,
+      };
+    }
+
+    // When branded content is selected and privacy is SELF_ONLY, switch to PUBLIC
+    if (
+      key === "brand_content" &&
+      val === true &&
+      settings.privacy_level === "SELF_ONLY"
+    ) {
+      newSettings = {
+        ...newSettings,
+        privacy_level: "PUBLIC_TO_EVERYONE",
+        disable_duet: settings.disable_duet,
+        disable_stitch: settings.disable_stitch,
+      };
+    }
+
     setSettings(newSettings);
     onChange(newSettings);
   };
 
+  // Per TikTok guidelines:
+  // - No commercial toggle OR only "Your Brand" checked → Music Usage Confirmation only
+  // - "Branded Content" checked (alone or with "Your Brand") → Branded Content Policy + Music Usage Confirmation
   const getDeclarationText = () => {
-    if (!settings.brand_content_toggle || settings.brand_organic) {
-      return "By posting, you agree to TikTok's Music Usage Confirmation";
+    if (!settings.brand_content_toggle) {
+      return (
+        <>
+          By posting, you agree to TikTok&apos;s{" "}
+          <a
+            href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-text"
+          >
+            Music Usage Confirmation
+          </a>
+        </>
+      );
     }
     if (settings.brand_content) {
-      return "By posting, you agree to TikTok's Branded Content Policy and Music Usage Confirmation";
+      // brand_content checked (alone or with brand_organic)
+      return (
+        <>
+          By posting, you agree to TikTok&apos;s{" "}
+          <a
+            href="https://www.tiktok.com/legal/page/global/bc-policy/en"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-text"
+          >
+            Branded Content Policy
+          </a>{" "}
+          and{" "}
+          <a
+            href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-text"
+          >
+            Music Usage Confirmation
+          </a>
+        </>
+      );
     }
-    return "By posting, you agree to TikTok's Music Usage Confirmation";
+    // Toggle on, only brand_organic checked (or nothing checked yet)
+    return (
+      <>
+        By posting, you agree to TikTok&apos;s{" "}
+        <a
+          href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-text"
+        >
+          Music Usage Confirmation
+        </a>
+      </>
+    );
   };
+
+  // Label shown under brand sub-options
+  const getBrandLabel = () => {
+    if (settings.brand_organic && settings.brand_content) {
+      return "Your photo/video will be labeled as 'Paid partnership'";
+    }
+    if (settings.brand_organic) {
+      return "Your photo/video will be labeled as 'Promotional content'";
+    }
+    if (settings.brand_content) {
+      return "Your photo/video will be labeled as 'Paid partnership'";
+    }
+    return null;
+  };
+
+  const brandLabel = getBrandLabel();
+  const noBrandOptionSelected =
+    settings.brand_content_toggle &&
+    !settings.brand_organic &&
+    !settings.brand_content;
 
   return (
     <div className="rounded-xl border border-border bg-bg-elevated p-6 space-y-6">
@@ -93,6 +191,7 @@ export function TikTokSettings({
         </p>
       </div>
 
+      {/* Privacy Level */}
       <div>
         <label className="block text-sm font-medium text-text mb-2">
           Privacy Level <span className="text-destructive">*</span>
@@ -105,7 +204,18 @@ export function TikTokSettings({
           <option value="">Select privacy level</option>
           <option value="PUBLIC_TO_EVERYONE">Public</option>
           <option value="MUTUAL_FOLLOW_FRIENDS">Friends</option>
-          <option value="SELF_ONLY">Only me</option>
+          <option
+            value="SELF_ONLY"
+            disabled={brandedContentActive}
+            title={
+              brandedContentActive
+                ? "Branded content visibility cannot be set to private."
+                : undefined
+            }
+          >
+            Only me
+            {brandedContentActive ? " (unavailable for branded content)" : ""}
+          </option>
         </select>
         <p className="mt-2 text-xs text-text-muted">
           Videos post as private until TikTok approves our app. Change to public
@@ -113,7 +223,7 @@ export function TikTokSettings({
         </p>
       </div>
 
-      {/* Interaction toggles. For photo posts only Allow Comments applies (Duet/Stitch are video-only). */}
+      {/* Interaction toggles */}
       <div className="space-y-3">
         <p className="text-sm font-medium text-text">Allow Interactions</p>
         <div className="space-y-2">
@@ -167,90 +277,87 @@ export function TikTokSettings({
         </div>
       </div>
 
-      {/* Brand disclosure - off by default */}
+      {/* Content Disclosure - off by default */}
       <div className="space-y-3 border-t border-border pt-4">
         <label className="flex items-center gap-3">
           <input
             type="checkbox"
             checked={settings.brand_content_toggle}
-            onChange={(e) => {
-              const enabled = e.target.checked;
-              updateSetting("brand_content_toggle", enabled);
-              if (!enabled) {
-                updateSetting("brand_organic", false);
-                updateSetting("brand_content", false);
-              }
-            }}
+            onChange={(e) =>
+              updateSetting("brand_content_toggle", e.target.checked)
+            }
             className="rounded border-border text-accent focus:ring-accent size-4"
           />
           <span className="text-sm font-medium text-text">
-            Does this promote a brand, product or service?
+            Content Disclosure
           </span>
         </label>
+        <p className="text-xs text-text-muted ml-7">
+          Indicate whether this content promotes yourself, a brand, product or
+          service.
+        </p>
+
         {settings.brand_content_toggle && (
           <div className="ml-7 space-y-3">
-            <p className="text-xs text-text-muted mb-2">Select one:</p>
+            {/* YOUR BRAND — checkbox, not radio */}
             <label className="flex items-start gap-3">
               <input
-                type="radio"
-                name={`brand-type-${accountId}`}
-                checked={settings.brand_organic && !settings.brand_content}
-                onChange={() => {
-                  const next = {
-                    ...settings,
-                    brand_organic: true,
-                    brand_content: false,
-                  };
-                  setSettings(next);
-                  onChange(next);
-                }}
-                className="mt-0.5 border-border text-accent focus:ring-accent size-4"
+                type="checkbox"
+                checked={settings.brand_organic}
+                onChange={(e) =>
+                  updateSetting("brand_organic", e.target.checked)
+                }
+                className="mt-0.5 rounded border-border text-accent focus:ring-accent size-4"
               />
               <div className="flex-1">
-                <span className="text-sm text-text">Your brand</span>
-                {settings.brand_organic && !settings.brand_content && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 italic">
-                    Your video will be labeled as &quot;Promotional
-                    content&quot;
-                  </p>
-                )}
+                <span className="text-sm font-medium text-text">
+                  Your brand
+                </span>
+                <p className="text-xs text-text-muted">
+                  You are promoting yourself or your own business.
+                </p>
               </div>
             </label>
+
+            {/* BRANDED CONTENT — checkbox, not radio */}
             <label className="flex items-start gap-3">
               <input
-                type="radio"
-                name={`brand-type-${accountId}`}
-                checked={!settings.brand_organic && settings.brand_content}
-                onChange={() => {
-                  const next = {
-                    ...settings,
-                    brand_organic: false,
-                    brand_content: true,
-                  };
-                  setSettings(next);
-                  onChange(next);
-                }}
-                className="mt-0.5 border-border text-accent focus:ring-accent size-4"
+                type="checkbox"
+                checked={settings.brand_content}
+                onChange={(e) =>
+                  updateSetting("brand_content", e.target.checked)
+                }
+                className="mt-0.5 rounded border-border text-accent focus:ring-accent size-4"
               />
               <div className="flex-1">
-                <span className="text-sm text-text">Branded content</span>
-                {!settings.brand_organic && settings.brand_content && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 italic">
-                    Your video will be labeled as &quot;Paid partnership&quot;
-                  </p>
-                )}
+                <span className="text-sm font-medium text-text">
+                  Branded content
+                </span>
+                <p className="text-xs text-text-muted">
+                  You are promoting another brand or a third party.
+                </p>
               </div>
             </label>
-            {!settings.brand_organic && !settings.brand_content && (
-              <p className="text-xs text-destructive ml-7">
-                Please select whether your content promotes your brand or
-                branded content.
+
+            {/* Label prompt — shown when any option is selected */}
+            {brandLabel && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 italic">
+                {brandLabel}
+              </p>
+            )}
+
+            {/* Error when nothing selected */}
+            {noBrandOptionSelected && (
+              <p className="text-xs text-destructive">
+                You need to indicate if your content promotes yourself, a third
+                party, or both.
               </p>
             )}
           </div>
         )}
       </div>
 
+      {/* Declaration */}
       <div className="border-t border-border pt-4">
         <p className="text-xs text-text-muted italic">{getDeclarationText()}</p>
       </div>
