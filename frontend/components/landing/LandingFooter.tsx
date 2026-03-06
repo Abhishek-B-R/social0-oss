@@ -75,6 +75,43 @@ export function LandingFooter() {
               </li>
             </ul>
           </div>
+          <div>
+            <h4 className="font-semibold text-foreground text-sm mb-3">
+              Resources
+            </h4>
+            <ul className="space-y-2">
+              <li>
+                <a
+                  href="https://developers.google.com/search/docs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Google Search Central
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://business.instagram.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Instagram for Business
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://www.linkedin.com/help/linkedin"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  LinkedIn Help
+                </a>
+              </li>
+            </ul>
+          </div>
         </div>
         <div className="mt-10 pt-8 border-t border-border text-center text-muted-foreground text-sm">
           © {currentYear} Social0. All rights reserved. Social0 is operated by B
