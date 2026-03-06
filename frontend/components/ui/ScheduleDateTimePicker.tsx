@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { DayPicker } from "react-day-picker";
 import { format, setHours, setMinutes, isBefore, startOfDay, startOfToday } from "date-fns";
+import { formatDateTimeAt } from "@/lib/date-format";
 import "react-day-picker/style.css";
 
 type ScheduleDateTimePickerProps = {
@@ -12,6 +13,8 @@ type ScheduleDateTimePickerProps = {
   minDate?: Date;
   /** When true, show times in 24h (e.g. 09:00); when false, 12h with AM/PM */
   use24HourTimeFormat?: boolean;
+  /** User's date format preference (dd/MM/yyyy, MM/dd/yyyy, yyyy-MM-dd) */
+  dateFormat?: string | null;
 };
 
 // Helper to get current time in HH:mm format
@@ -37,6 +40,7 @@ export function ScheduleDateTimePicker({
   placeholder = "Pick date & time",
   minDate = new Date(),
   use24HourTimeFormat = false,
+  dateFormat = "dd/MM/yyyy",
 }: ScheduleDateTimePickerProps) {
   // Compute initial date and time
   const initialDate = useMemo(() => {
@@ -215,9 +219,9 @@ export function ScheduleDateTimePicker({
         )}
         {selectedDate && timeValue && (
           <p className="mt-2 text-xs text-text-muted">
-            {format(
+            {formatDateTimeAt(
               setMinutes(setHours(selectedDate, parseInt(timeValue.split(":")[0]) || 0), parseInt(timeValue.split(":")[1]) || 0),
-              use24HourTimeFormat ? "MMM d, yyyy 'at' HH:mm" : "MMM d, yyyy 'at' h:mm a"
+              { use24HourTimeFormat, dateFormat }
             )}
           </p>
         )}

@@ -42,7 +42,7 @@ export default async function ScheduledPostsPage({
   });
 
   const hasActiveFilters = !!(params.platform || params.time || params.account);
-  const { use24HourTimeFormat } = await getUserSettingsSnapshot();
+  const { use24HourTimeFormat, dateFormat } = await getUserSettingsSnapshot();
 
   return (
     <div>
@@ -81,6 +81,7 @@ export default async function ScheduledPostsPage({
         filterMessage="No scheduled posts match your filters."
         hasActiveFilters={hasActiveFilters}
         use24HourTimeFormat={use24HourTimeFormat}
+        dateFormat={dateFormat}
       />
 
       <Pagination

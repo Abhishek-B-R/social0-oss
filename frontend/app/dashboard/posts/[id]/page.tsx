@@ -22,6 +22,7 @@ import {
   FileQuestion,
 } from "lucide-react";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
+import { formatDateTime } from "@/lib/date-format";
 
 const TYPE_ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
   Thread: Layers,
@@ -138,12 +139,7 @@ export default async function PostDetailPage({
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/dashboard/posts");
 
-  const { use24HourTimeFormat } = await getUserSettingsSnapshot();
-  const dateOpts: Intl.DateTimeFormatOptions = {
-    dateStyle: "medium",
-    timeStyle: "short",
-    hour12: !use24HourTimeFormat,
-  };
+  const { use24HourTimeFormat, dateFormat } = await getUserSettingsSnapshot();
 
   const { id } = await params;
   const data = await getPostDetail(id, session.user.id);
@@ -350,22 +346,28 @@ export default async function PostDetailPage({
               {post.createdAt && (
                 <p>
                   <span className="font-medium text-text">Created:</span>{" "}
-                  {new Date(post.createdAt).toLocaleString(undefined, dateOpts)}
+                  {formatDateTime(new Date(post.createdAt), {
+                    dateFormat,
+                    use24HourTimeFormat,
+                  })}
                 </p>
               )}
               {post.status === "scheduled" && post.scheduledAt && (
                 <p>
                   <span className="font-medium text-text">Scheduled for:</span>{" "}
-                  {new Date(post.scheduledAt).toLocaleString(
-                    undefined,
-                    dateOpts,
-                  )}
+                  {formatDateTime(new Date(post.scheduledAt), {
+                    dateFormat,
+                    use24HourTimeFormat,
+                  })}
                 </p>
               )}
               {publishedAt && (
                 <p>
                   <span className="font-medium text-text">Posted:</span>{" "}
-                  {publishedAt.toLocaleString(undefined, dateOpts)}
+                  {formatDateTime(publishedAt, {
+                    dateFormat,
+                    use24HourTimeFormat,
+                  })}
                 </p>
               )}
             </div>

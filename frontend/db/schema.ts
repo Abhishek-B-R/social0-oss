@@ -233,6 +233,7 @@ export const userSettings = pgTable("user_settings", {
   automationEmails: boolean("automation_emails").default(true),
   useFilenameAsCaption: boolean("use_filename_as_caption").default(false),
   use24HourTimeFormat: boolean("use_24_hour_time_format").default(false),
+  dateFormat: text("date_format").default("dd/MM/yyyy"), // dd/MM/yyyy | MM/dd/yyyy | yyyy-MM-dd
   weeklyPostingGoal: integer("weekly_posting_goal").default(3),
   subscriptionTier: text("subscription_tier").default("free"), // free | starter | growth
   subscriptionExpiresAt: timestamp("subscription_expires_at"),

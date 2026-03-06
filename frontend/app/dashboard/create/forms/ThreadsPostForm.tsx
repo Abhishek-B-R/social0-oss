@@ -226,6 +226,7 @@ type ThreadPost = {
 export function ThreadsPostForm({
   accounts,
   use24HourTimeFormat = false,
+  dateFormat = "dd/MM/yyyy",
   draftId: initialDraftId,
   allowAutoRepost = true,
   allowAutoPlug = true,
@@ -233,6 +234,7 @@ export function ThreadsPostForm({
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
+  dateFormat?: string | null;
   draftId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
@@ -1357,6 +1359,7 @@ export function ThreadsPostForm({
               !hasContent
             }
             use24HourTimeFormat={use24HourTimeFormat}
+            dateFormat={dateFormat}
             hideScheduleAndActions
             searchSlot={
               <input
@@ -1615,6 +1618,7 @@ export function ThreadsPostForm({
           submitDisabledReason={submitDisabledReason}
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
+          dateFormat={dateFormat}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
           draftId={initialDraftId ?? null}

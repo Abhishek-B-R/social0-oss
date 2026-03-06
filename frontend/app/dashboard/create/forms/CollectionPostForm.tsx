@@ -76,6 +76,7 @@ type VideoFile = {
 export function CollectionPostForm({
   accounts,
   use24HourTimeFormat = false,
+  dateFormat = "dd/MM/yyyy",
   draftId: initialDraftId,
   allowAutoRepost = true,
   allowAutoPlug = true,
@@ -83,6 +84,7 @@ export function CollectionPostForm({
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
+  dateFormat?: string | null;
   draftId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
@@ -1146,6 +1148,7 @@ export function CollectionPostForm({
               !hasContent
             }
             use24HourTimeFormat={use24HourTimeFormat}
+            dateFormat={dateFormat}
             hideScheduleAndActions
             searchSlot={
               <input
@@ -1465,6 +1468,7 @@ export function CollectionPostForm({
           submitDisabledReason={submitDisabledReason}
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
+          dateFormat={dateFormat}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
           draftId={initialDraftId ?? null}

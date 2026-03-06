@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { PublishMode } from "@/app/actions/posts";
+import { formatDateTime } from "@/lib/date-format";
 import { Settings } from "lucide-react";
 
 export type SidebarAutoRepost = {
@@ -39,6 +40,8 @@ type SchedulePostSidebarProps = {
   error: string | null;
   /** When true, show times in 24h format */
   use24HourTimeFormat?: boolean;
+  /** User's date format (dd/MM/yyyy, MM/dd/yyyy, yyyy-MM-dd) */
+  dateFormat?: string | null;
   /** Set this ref before calling requestSubmit so handleSubmit uses the correct mode */
   intendedModeRef: React.MutableRefObject<PublishMode | null>;
   formRef: React.RefObject<HTMLFormElement | null>;
@@ -72,6 +75,7 @@ export function SchedulePostSidebar({
   submitDisabledReason,
   error,
   use24HourTimeFormat = false,
+  dateFormat = "dd/MM/yyyy",
   intendedModeRef,
   formRef,
   autoRepost,
@@ -128,18 +132,8 @@ export function SchedulePostSidebar({
 
   const scheduledReadable = useMemo(() => {
     if (!combinedDateTime) return null;
-    const datePart = new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }).format(combinedDateTime);
-    const timePart = new Intl.DateTimeFormat("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: !use24HourTimeFormat,
-    }).format(combinedDateTime);
-    return `Scheduled for ${datePart} at ${timePart}`;
-  }, [combinedDateTime, use24HourTimeFormat]);
+    return `Scheduled for ${formatDateTime(combinedDateTime, { dateFormat, use24HourTimeFormat })}`;
+  }, [combinedDateTime, use24HourTimeFormat, dateFormat]);
 
   // Keep the parent `scheduledAt` in sync with our inputs while scheduled mode is on.
   useEffect(() => {

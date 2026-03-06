@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { formatDateTime } from "@/lib/date-format";
 import { PlatformIcon } from "./PlatformIcon";
 import type { PublicationRow } from "./posts-list-data";
 
@@ -90,16 +91,16 @@ function getUiStatus(post: PostRow): string {
 function getTimestampLabel(
   post: PostRow,
   publications: { publishedAt: Date | null }[],
-  use24HourTimeFormat: boolean,
+  options: { use24HourTimeFormat: boolean; dateFormat?: string | null },
 ): string {
   const effectiveStatus = getUiStatus(post);
-  const dateOpts: Intl.DateTimeFormatOptions = {
-    dateStyle: "short",
-    timeStyle: "short",
-    hour12: !use24HourTimeFormat,
-  };
+  const fmt = (d: Date) =>
+    formatDateTime(d, {
+      use24HourTimeFormat: options.use24HourTimeFormat,
+      dateFormat: options.dateFormat,
+    });
   if (effectiveStatus === "scheduled" && post.scheduledAt) {
-    return `Scheduled for ${new Date(post.scheduledAt).toLocaleString(undefined, dateOpts)}`;
+    return `Scheduled for ${fmt(new Date(post.scheduledAt))}`;
   }
   if (effectiveStatus === "published") {
     const publishedAts = publications
@@ -109,13 +110,9 @@ function getTimestampLabel(
       publishedAts.length > 0
         ? new Date(Math.min(...publishedAts.map((d) => new Date(d).getTime())))
         : null;
-    return publishedAt
-      ? `Posted at ${publishedAt.toLocaleString(undefined, dateOpts)}`
-      : "Posted";
+    return publishedAt ? `Posted at ${fmt(publishedAt)}` : "Posted";
   }
-  return post.createdAt
-    ? `Created ${new Date(post.createdAt).toLocaleString(undefined, dateOpts)}`
-    : "—";
+  return post.createdAt ? `Created ${fmt(new Date(post.createdAt))}` : "—";
 }
 
 /** Status pill: label + optional prefix character. */
@@ -163,6 +160,7 @@ export function PostListCards({
   filterMessage = "No posts match your filters.",
   hasActiveFilters,
   use24HourTimeFormat = false,
+  dateFormat = "dd/MM/yyyy",
 }: {
   userPosts: PostRow[];
   publicationsByPostId: Record<string, PublicationRow[]>;
@@ -172,7 +170,8 @@ export function PostListCards({
   emptyMessage?: string;
   filterMessage?: string;
   hasActiveFilters?: boolean;
-   use24HourTimeFormat?: boolean;
+  use24HourTimeFormat?: boolean;
+  dateFormat?: string | null;
 }) {
   if (userPosts.length === 0) {
     return (
@@ -209,7 +208,7 @@ export function PostListCards({
         const timestampLabel = getTimestampLabel(
           post,
           publicationsByPostId[post.id] ?? [],
-          use24HourTimeFormat,
+          { use24HourTimeFormat, dateFormat },
         );
 
         const PREVIEW_LEN = 120;

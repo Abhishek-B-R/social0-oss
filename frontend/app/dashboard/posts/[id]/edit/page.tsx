@@ -76,7 +76,7 @@ export default async function EditPostPage({
       ? await getPostMedia(session.user.id, post.mediaIds)
       : [];
 
-  const { use24HourTimeFormat } = await getUserSettingsSnapshot();
+  const { use24HourTimeFormat, dateFormat } = await getUserSettingsSnapshot();
 
   return (
     <div>
@@ -101,6 +101,7 @@ export default async function EditPostPage({
         accounts={activeAccounts}
         existingMedia={existingMedia}
         use24HourTimeFormat={use24HourTimeFormat}
+        dateFormat={dateFormat}
       />
     </div>
   );

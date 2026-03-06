@@ -6,6 +6,7 @@ import {
   checkAccountLimits,
   checkTwitterTweetLimit,
 } from "@/lib/plan-limits";
+import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { BillingClient } from "./BillingClient";
 
 export default async function BillingPage({
@@ -20,6 +21,7 @@ export default async function BillingPage({
   const showUpgradeBanner = params.upgrade === "1";
   const justSubscribed = params.success === "1";
 
+  const { dateFormat } = await getUserSettingsSnapshot();
   const subscription = await getSubscriptionForUser(session.user.id);
   const accountLimit = await checkAccountLimits(
     session.user.id,
@@ -44,6 +46,7 @@ export default async function BillingPage({
           accountLimit={accountLimit}
           twitterTweetLimit={twitterTweetLimit}
           justSubscribed={justSubscribed}
+          dateFormat={dateFormat}
         />
       </div>
     </div>

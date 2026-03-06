@@ -29,6 +29,8 @@ type PostFormOptionsProps = {
   submitDisabled?: boolean;
   /** When true, show times in 24h format across schedule/time displays */
   use24HourTimeFormat?: boolean;
+  /** User's date format (dd/MM/yyyy, MM/dd/yyyy, yyyy-MM-dd) */
+  dateFormat?: string | null;
   /** Rendered just above "When do you want to publish?" (e.g. Auto-Repost & Auto-Plug) */
   betweenScheduleAndActions?: React.ReactNode;
   /** When true, only render "Post to" + account selector and betweenScheduleAndActions (schedule/actions move to sidebar) */
@@ -56,6 +58,7 @@ export function PostFormOptions({
   submitLabel,
   submitDisabled = false,
   use24HourTimeFormat = false,
+  dateFormat = "dd/MM/yyyy",
   betweenScheduleAndActions,
   hideScheduleAndActions = false,
   searchSlot,
@@ -164,6 +167,7 @@ export function PostFormOptions({
                 minDate={new Date()}
                 placeholder="Pick date & time"
                 use24HourTimeFormat={use24HourTimeFormat}
+                dateFormat={dateFormat}
               />
             </div>
           )}

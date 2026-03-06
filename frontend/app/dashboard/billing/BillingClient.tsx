@@ -6,6 +6,7 @@ import type {
   AccountLimitResult,
   TwitterTweetLimitResult,
 } from "@/lib/plan-limits";
+import { formatDate } from "@/lib/date-format";
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_MAX_ATTEMPTS = 45; // ~1.5 min
@@ -15,6 +16,7 @@ type BillingClientProps = {
   accountLimit: AccountLimitResult;
   twitterTweetLimit: TwitterTweetLimitResult;
   justSubscribed?: boolean;
+  dateFormat?: string | null;
 };
 
 function redirectToComposer() {
@@ -26,6 +28,7 @@ export function BillingClient({
   accountLimit,
   twitterTweetLimit,
   justSubscribed = false,
+  dateFormat = "dd/MM/yyyy",
 }: BillingClientProps) {
   const [loadingPlan, setLoadingPlan] = useState<"starter" | "growth" | null>(
     null,
@@ -176,7 +179,7 @@ export function BillingClient({
         </h2>
         {subscription.expiresAt && (
           <p className="mt-0.5 text-sm text-text-muted">
-            Renews {subscription.expiresAt.toLocaleDateString()}
+            Renews {formatDate(new Date(subscription.expiresAt), dateFormat)}
           </p>
         )}
         <div className="mt-3 grid gap-3 sm:grid-cols-2">

@@ -54,6 +54,7 @@ type Account = {
 export function TextPostForm({
   accounts,
   use24HourTimeFormat = false,
+  dateFormat = "dd/MM/yyyy",
   draftId: initialDraftId,
   allowAutoRepost = true,
   allowAutoPlug = true,
@@ -61,6 +62,7 @@ export function TextPostForm({
 }: {
   accounts: Account[];
   use24HourTimeFormat?: boolean;
+  dateFormat?: string | null;
   draftId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
@@ -486,6 +488,7 @@ export function TextPostForm({
               (mode === "scheduled" && !scheduledAt)
             }
             use24HourTimeFormat={use24HourTimeFormat}
+            dateFormat={dateFormat}
             hideScheduleAndActions
             searchSlot={
               <input
@@ -712,6 +715,7 @@ export function TextPostForm({
           submitDisabledReason={submitDisabledReason}
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
+          dateFormat={dateFormat}
           intendedModeRef={intendedModeRef}
           formRef={formRef}
           draftId={initialDraftId ?? null}

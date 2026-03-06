@@ -17,6 +17,7 @@ import {
   parseISO,
   startOfDay,
 } from "date-fns";
+import { formatDate } from "@/lib/date-format";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import {
   ChevronLeft,
@@ -239,10 +240,12 @@ export function CalendarClient({
   posts,
   initialMonth,
   use24HourTimeFormat = false,
+  dateFormat = "dd/MM/yyyy",
 }: {
   posts: PostForCalendar[];
   initialMonth: string;
   use24HourTimeFormat?: boolean;
+  dateFormat?: string | null;
 }) {
   const isMobile = useIsMobile();
   const today = startOfDay(new Date());
@@ -341,9 +344,9 @@ export function CalendarClient({
 
   const headerTitle =
     view === "week"
-      ? `Week of ${format(weekStart, "MMM d")} – ${format(addDays(weekStart, 6), "MMM d, yyyy")}`
+      ? `Week of ${formatDate(weekStart, dateFormat)} – ${formatDate(addDays(weekStart, 6), dateFormat)}`
       : view === "day"
-        ? format(selectedDate, "EEEE, MMM d, yyyy")
+        ? `${format(selectedDate, "EEEE")}, ${formatDate(selectedDate, dateFormat)}`
         : format(currentMonth, "MMMM yyyy");
 
   const isFullPageView = view === "week" || view === "day";

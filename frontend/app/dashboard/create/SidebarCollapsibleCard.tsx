@@ -24,7 +24,7 @@ export function SidebarCollapsibleCard({
         id={triggerId}
         type="button"
         onClick={() => setCollapsed((c) => !c)}
-        className="flex h-10 w-full items-center justify-between gap-2 px-4 text-left transition-colors hover:bg-bg-muted/50"
+        className="flex h-16 w-full items-center justify-between gap-2 px-4 text-left transition-colors hover:bg-bg-muted/50"
         aria-expanded={!collapsed}
         aria-controls={panelId}
       >

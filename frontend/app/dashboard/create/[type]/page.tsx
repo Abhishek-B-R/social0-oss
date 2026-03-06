@@ -96,7 +96,7 @@ export default async function NewPostByTypePage({
   );
 
   const FormComponent = FORM_MAP[contentType.slug];
-  const { use24HourTimeFormat } = await getUserSettingsSnapshot();
+  const { use24HourTimeFormat, dateFormat } = await getUserSettingsSnapshot();
   const subscription = await getSubscriptionForUser(session.user.id);
   const planLimits = getPlanLimits(subscription.tier);
 
@@ -108,6 +108,7 @@ export default async function NewPostByTypePage({
       <FormComponent
         accounts={filtered}
         use24HourTimeFormat={use24HourTimeFormat}
+        dateFormat={dateFormat}
         draftId={draftId ?? undefined}
         allowAutoRepost={planLimits.allowResurface}
         allowAutoPlug={planLimits.allowAutoPlug}

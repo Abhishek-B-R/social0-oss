@@ -33,11 +33,13 @@ export function EditPostForm({
   accounts,
   existingMedia = [],
   use24HourTimeFormat = false,
+  dateFormat = "dd/MM/yyyy",
 }: {
   post: PostForEdit;
   accounts: Account[];
   existingMedia?: PostMediaRow[];
   use24HourTimeFormat?: boolean;
+  dateFormat?: string | null;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -417,6 +419,7 @@ export function EditPostForm({
               minDate={new Date()}
               placeholder="Pick date & time"
               use24HourTimeFormat={use24HourTimeFormat}
+              dateFormat={dateFormat}
             />
             <button
               type="button"

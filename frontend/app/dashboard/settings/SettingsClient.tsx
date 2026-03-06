@@ -15,6 +15,7 @@ import {
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SidebarCollapsibleCard } from "@/app/dashboard/create/SidebarCollapsibleCard";
 import { PLATFORMS } from "@/lib/platforms";
+import { DATE_FORMAT_OPTIONS } from "@/lib/date-format";
 import { uploadFile } from "@/lib/upload-file";
 import { PlatformIcon } from "@/components/PlatformIcon";
 
@@ -71,7 +72,12 @@ function Toggle({
   );
 }
 
-const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+const ALLOWED_AVATAR_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+];
 const MAX_AVATAR_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
 
 function AvatarEditor({
@@ -243,7 +249,9 @@ export function SettingsClient({
         </p>
         <div className="mt-4 space-y-6">
           <div>
-            <p className="text-sm font-medium text-text mb-2">Profile picture</p>
+            <p className="text-sm font-medium text-text mb-2">
+              Profile picture
+            </p>
             <AvatarEditor
               currentUrl={image}
               displayLabel={displayName || email || "User"}
@@ -279,7 +287,7 @@ export function SettingsClient({
 
       <SidebarCollapsibleCard
         title="Connections settings"
-        defaultCollapsed={false}
+        defaultCollapsed={true}
       >
         <p className="text-sm text-text-muted mb-4">
           Connected social accounts. Edit an avatar to use a custom profile
@@ -300,7 +308,8 @@ export function SettingsClient({
           <ul className="space-y-4">
             {connections.map((conn) => {
               const platformName =
-                PLATFORMS.find((p) => p.id === conn.platform)?.name ?? conn.platform;
+                PLATFORMS.find((p) => p.id === conn.platform)?.name ??
+                conn.platform;
               return (
                 <li
                   key={conn.id}
@@ -313,9 +322,7 @@ export function SettingsClient({
                         ? `@${conn.platformUsername}`
                         : platformName
                     }
-                    onSave={async (url) =>
-                      updateConnectionAvatar(conn.id, url)
-                    }
+                    onSave={async (url) => updateConnectionAvatar(conn.id, url)}
                     size="md"
                   />
                   <div className="min-w-0 flex-1">
@@ -389,6 +396,26 @@ export function SettingsClient({
           Platform Preferences
         </h2>
         <form action={updatePlatformPreferences} className="mt-4 space-y-4">
+          <div>
+            <label
+              htmlFor="dateFormat"
+              className="block text-sm font-semibold text-text mb-2"
+            >
+              Date format
+            </label>
+            <select
+              id="dateFormat"
+              name="dateFormat"
+              defaultValue={settings.dateFormat}
+              className="w-full rounded-xl border border-input bg-bg px-4 py-2.5 text-sm font-medium text-text shadow-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1"
+            >
+              {DATE_FORMAT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
           <Toggle
             id="use24HourTimeFormat"
             name="use24HourTimeFormat"

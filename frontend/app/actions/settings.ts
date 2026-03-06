@@ -7,15 +7,18 @@ import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { DateFormatKey } from "@/lib/date-format";
 
 export type SettingsSnapshot = {
   automationEmails: boolean;
   use24HourTimeFormat: boolean;
+  dateFormat: DateFormatKey;
 };
 
 const DEFAULT_SETTINGS: SettingsSnapshot = {
   automationEmails: true,
   use24HourTimeFormat: false,
+  dateFormat: "dd/MM/yyyy",
 };
 
 async function getCurrentUserId() {
@@ -34,6 +37,7 @@ export async function getUserSettingsSnapshot(): Promise<SettingsSnapshot> {
     columns: {
       automationEmails: true,
       use24HourTimeFormat: true,
+      dateFormat: true,
     },
   });
 
@@ -41,10 +45,19 @@ export async function getUserSettingsSnapshot(): Promise<SettingsSnapshot> {
     return DEFAULT_SETTINGS;
   }
 
+  const dateFormat = row.dateFormat as DateFormatKey | null | undefined;
+  const validDateFormat =
+    dateFormat === "dd/MM/yyyy" ||
+    dateFormat === "MM/dd/yyyy" ||
+    dateFormat === "yyyy-MM-dd"
+      ? dateFormat
+      : DEFAULT_SETTINGS.dateFormat;
+
   return {
     automationEmails: row.automationEmails ?? DEFAULT_SETTINGS.automationEmails,
     use24HourTimeFormat:
       row.use24HourTimeFormat ?? DEFAULT_SETTINGS.use24HourTimeFormat,
+    dateFormat: validDateFormat,
   };
 }
 
@@ -157,8 +170,16 @@ export async function updateAutomationEmails(formData: FormData): Promise<void> 
 }
 
 export async function updatePlatformPreferences(formData: FormData): Promise<void> {
+  const dateFormatRaw = formData.get("dateFormat");
+  const dateFormat =
+    dateFormatRaw === "dd/MM/yyyy" ||
+    dateFormatRaw === "MM/dd/yyyy" ||
+    dateFormatRaw === "yyyy-MM-dd"
+      ? dateFormatRaw
+      : undefined;
   await upsertSettings({
     use24HourTimeFormat: formData.get("use24HourTimeFormat") === "on",
+    ...(dateFormat !== undefined && { dateFormat }),
   });
 }
 
