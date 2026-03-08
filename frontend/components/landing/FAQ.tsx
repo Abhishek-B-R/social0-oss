@@ -1,88 +1,80 @@
 "use client";
 
 import { useState } from "react";
-import { RevealSection } from "@/components/landing/RevealSection";
 
 const faqs = [
   {
-    question: "What platforms do you support?",
+    question: "What platforms does Social0 support?",
     answer:
-      "Social0 supports LinkedIn, Instagram, Facebook, YouTube, Pinterest, TikTok, X (Twitter), Threads, and Bluesky. Connect any combination of these and publish to all of them from one place.",
+      "Social0 supports 9 platforms: Twitter/X, Instagram, LinkedIn, YouTube, TikTok, Facebook, Threads, Bluesky, and Pinterest. We're actively adding more.",
   },
   {
-    question: "What content types can I post?",
+    question: "Is there a free trial?",
     answer:
-      "You can create text posts, image posts, video posts, threaded posts, and collection posts. We format your content appropriately for each platform so it looks right everywhere.",
+      "Yes! Both Starter and Growth plans include a 7-day free trial. No credit card required to start.",
   },
   {
-    question: "How does scheduling work?",
+    question: "Can I cancel anytime?",
     answer:
-      "When you create a post, you can either publish it immediately or choose a date and time. We'll publish it for you at that time across all connected platforms. You don't need to be online when it goes out.",
+      "Absolutely. No contracts, no cancellation fees. You can cancel your subscription at any time from your dashboard.",
+  },
+  {
+    question: "How does parallel publishing work?",
+    answer:
+      "When you hit publish, Social0 sends your post to all selected platforms simultaneously. If one platform fails (API error, rate limit), the others still go through. You'll see exactly which succeeded and which failed.",
   },
   {
     question: "Is my data secure?",
     answer:
-      "Yes. We use OAuth to connect your accounts. Your access tokens are encrypted with AES-256-GCM and stored securely. We only request the minimum permissions needed to publish on your behalf. You can disconnect any platform or delete your account and data at any time.",
+      "Yes. All OAuth tokens are encrypted with AES-256-GCM at rest. We never store your social media passwords. Your data is hosted on secure infrastructure with regular security audits.",
   },
   {
-    question: "Do I need a business account on each platform?",
+    question: "Who built Social0?",
     answer:
-      "It depends on the platform. Instagram requires an Instagram Business or Creator account. LinkedIn, X, TikTok, Threads, YouTube, Pinterest, and Bluesky work with standard personal or creator accounts where posting is allowed. We'll guide you during connection if a specific account type is required.",
-  },
-  {
-    question: "Can I try it for free?",
-    answer:
-      "Yes. Sign in and you’ll get a 7-day free trial so you can try everything with no commitment. After the trial, we’ll charge only if you choose to stay. If it’s not for you, you can disconnect your accounts anytime, no hard feelings.",
+      "Social0 is built by a solo founder who was tired of copy-pasting the same content across multiple browser tabs every day. This is a real product solving a real problem.",
   },
 ];
 
 export function FAQ() {
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section className="py-16 sm:py-20 bg-background">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <RevealSection>
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-center mb-10">
-            Frequently asked questions
+    <section id="faq" className="px-6 py-24 lg:px-8">
+      <div className="mx-auto max-w-[1100px]">
+        {/* Section header */}
+        <div className="mb-14">
+          <div className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
+            FAQ
+          </div>
+          <h2 className="max-w-md font-serif text-[clamp(28px,4vw,44px)] leading-tight tracking-tight text-foreground">
+            Questions & answers.
           </h2>
-        </RevealSection>
-        <div className="space-y-3">
+        </div>
+
+        {/* FAQ accordion */}
+        <div className="divide-y divide-border rounded-2xl border border-border bg-background dark:bg-background/50">
           {faqs.map((faq, i) => (
-            <RevealSection key={i} delay={i < 4 ? (i as 0 | 1 | 2 | 3) : 0}>
-              <div className="bg-card rounded-xl border border-border overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                  className="w-full flex items-center justify-between gap-4 py-5 px-6 text-left hover:bg-muted/60 transition-colors duration-200"
+            <div key={faq.question} className="px-6 py-5 md:px-8">
+              <button
+                type="button"
+                onClick={() => setOpenIndex(openIndex === i ? null : i)}
+                className="flex w-full items-start justify-between gap-4 text-left"
+              >
+                <span className="text-[15px] font-medium text-foreground">
+                  {faq.question}
+                </span>
+                <span
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-lg text-muted-foreground transition-transform duration-200 dark:bg-muted/60 ${openIndex === i ? "rotate-45" : ""}`}
                 >
-                  <span className="text-lg font-semibold text-foreground">
-                    {faq.question}
-                  </span>
-                  <span
-                    className={`shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xl leading-none transition-transform duration-300 ease-out ${
-                      openIndex === i ? "rotate-45" : ""
-                    }`}
-                  >
-                    +
-                  </span>
-                </button>
-                <div
-                  className="grid transition-[grid-template-rows] duration-300 ease-out"
-                  style={{
-                    gridTemplateRows: openIndex === i ? "1fr" : "0fr",
-                  }}
-                >
-                  <div className="overflow-hidden">
-                    <div className="px-6 pb-5 pt-0">
-                      <p className="text-muted-foreground text-base leading-relaxed">
-                        {faq.answer}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </RevealSection>
+                  +
+                </span>
+              </button>
+              {openIndex === i && (
+                <p className="mt-4 pr-10 text-[14px] leading-relaxed text-muted-foreground">
+                  {faq.answer}
+                </p>
+              )}
+            </div>
           ))}
         </div>
       </div>

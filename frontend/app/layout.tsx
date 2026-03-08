@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -16,14 +16,25 @@ const geistMono = Geist_Mono({
 
 const baseUrl =
   process.env.NEXT_PUBLIC_APP_URL ?? "https://social0.app";
-const title = "Social0 – Schedule & post to all social accounts in one place";
+const title = "Social0 — Write once. Publish everywhere.";
 const description =
-  "One post, eight platforms, zero hassle. Plan, schedule and publish to LinkedIn, X, Instagram, Threads, and more from one dashboard. Start free today—no credit card required.";
+  "One composer. 12 platforms. No copy-paste, no tab-switching. Schedule and publish to Twitter, Instagram, LinkedIn, YouTube, and more.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title,
   description,
+  generator: "Social0",
+  keywords: [
+    "social media",
+    "scheduler",
+    "publishing",
+    "twitter",
+    "instagram",
+    "linkedin",
+    "saas",
+  ],
+  authors: [{ name: "Social0" }],
   alternates: { canonical: baseUrl },
   openGraph: {
     type: "website",
@@ -50,6 +61,13 @@ export const metadata: Metadata = {
     icon: "/logo-circular.png",
     apple: "/logo-dark.png",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FAFAF8" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A0A0A" },
+  ],
 };
 
 const jsonLd = {
@@ -80,18 +98,45 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <link rel="icon" href="/logo-circular.png" />
         <link rel="apple-touch-icon" href="/logo-dark.png" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
+          rel="stylesheet"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('theme');
+                  var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  if (theme === 'dark' || (!theme && systemDark)) {
+                    document.documentElement.classList.add('dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className="font-sans antialiased">
         <ThemeProvider>
           <NextTopLoader
             color="#10b981"

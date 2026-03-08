@@ -1,115 +1,136 @@
-"use client";
-
-import { RevealSection } from "@/components/landing/RevealSection";
 import {
-  SiLinkedin,
-  SiInstagram,
-  SiYoutube,
-  SiPinterest,
-  SiTiktok,
-  SiX,
-  SiThreads,
-  SiBluesky,
-  SiFacebook,
-} from "react-icons/si";
+  XIcon,
+  InstagramIcon,
+  LinkedInIcon,
+  YouTubeIcon,
+  TikTokIcon,
+  FacebookIcon,
+  ThreadsIcon,
+  BlueskyIcon,
+  PinterestIcon,
+} from "./PlatformIcons";
 
-// Same order as lib/platforms.ts: blues → reds → gradient → blacks
-const PLATFORMS = [
+const platforms = [
   {
-    name: "LinkedIn",
-    icon: SiLinkedin,
-    color: "bg-[#0A66C2]",
-    textColor: "text-white",
-    capabilities: "Text, Images, Video",
-  },
-  {
-    name: "Facebook",
-    icon: SiFacebook,
-    color: "bg-[#1877F2]",
-    textColor: "text-white",
-    capabilities: "Pages, Posts",
-  },
-  {
-    name: "Bluesky",
-    icon: SiBluesky,
-    color: "bg-[#0085FF]",
-    textColor: "text-white",
-    capabilities: "Text, Images",
-  },
-  {
-    name: "YouTube",
-    icon: SiYoutube,
-    color: "bg-[#FF0000]",
-    textColor: "text-white",
-    capabilities: "Videos, Shorts",
-  },
-  {
-    name: "Pinterest",
-    icon: SiPinterest,
-    color: "bg-[#E60023]",
-    textColor: "text-white",
-    capabilities: "Images, Pins",
+    name: "Twitter / X",
+    type: "Microblogging",
+    icon: XIcon,
+    iconBg: "#000000",
+    darkIconBg: "#ffffff",
   },
   {
     name: "Instagram",
-    icon: SiInstagram,
-    color: "bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF]",
-    textColor: "text-white",
-    capabilities: "Images, Video, Reels",
+    type: "Photo & Video",
+    icon: InstagramIcon,
+    iconBg: "#E1306C",
+    darkIconBg: "#E1306C",
+  },
+  {
+    name: "LinkedIn",
+    type: "Professional",
+    icon: LinkedInIcon,
+    iconBg: "#0077B5",
+    darkIconBg: "#0077B5",
+  },
+  {
+    name: "YouTube",
+    type: "Video",
+    icon: YouTubeIcon,
+    iconBg: "#FF0000",
+    darkIconBg: "#FF0000",
   },
   {
     name: "TikTok",
-    icon: SiTiktok,
-    color: "bg-[#000000]",
-    textColor: "text-white",
-    capabilities: "Videos, Shorts",
+    type: "Short Video",
+    icon: TikTokIcon,
+    iconBg: "#010101",
+    darkIconBg: "#ffffff",
   },
   {
-    name: "X",
-    icon: SiX,
-    color: "bg-[#000000]",
-    textColor: "text-white",
-    capabilities: "Text, Images, Video",
+    name: "Facebook",
+    type: "Social Network",
+    icon: FacebookIcon,
+    iconBg: "#1877F2",
+    darkIconBg: "#1877F2",
   },
   {
     name: "Threads",
-    icon: SiThreads,
-    color: "bg-[#000000]",
-    textColor: "text-white",
-    capabilities: "Text, Images",
+    type: "Microblogging",
+    icon: ThreadsIcon,
+    iconBg: "#000000",
+    darkIconBg: "#ffffff",
+  },
+  {
+    name: "Bluesky",
+    type: "Microblogging",
+    icon: BlueskyIcon,
+    iconBg: "#0560FF",
+    darkIconBg: "#0560FF",
+  },
+  {
+    name: "Pinterest",
+    type: "Visual Discovery",
+    icon: PinterestIcon,
+    iconBg: "#E60023",
+    darkIconBg: "#E60023",
   },
 ];
 
 export function SupportedPlatforms() {
   return (
-    <section className="py-16 sm:py-20 bg-background">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <RevealSection>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground text-center mb-3">
-            Supported platforms
-          </h2>
-          <p className="text-base text-muted-foreground text-center max-w-xl mx-auto mb-10 font-medium">
-            Connect the networks you use. We add more over time.
-          </p>
-        </RevealSection>
-        <RevealSection delay={1}>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-            {PLATFORMS.map((p) => (
-              <div
-                key={p.name}
-                className={`rounded-xl ${p.color} ${p.textColor} p-4 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer border dark:border-white border-black`}
-              >
-                <div className="flex flex-col items-center text-center">
-                  <div className="w-12 h-12 rounded-lg bg-white/20 flex items-center justify-center mb-2">
-                    <p.icon className="w-6 h-6" />
-                  </div>
-                  <div className="font-bold text-sm mb-1">{p.name}</div>
-                  <div className="text-xs opacity-90">{p.capabilities}</div>
-                </div>
-              </div>
-            ))}
+    <section
+      id="platforms"
+      className="bg-foreground py-24 text-background dark:bg-[#0A0A0A] dark:text-white"
+    >
+      <div className="mx-auto max-w-[1100px] px-6 lg:px-8">
+        {/* Header row */}
+        <div className="mb-14 flex flex-wrap items-end justify-between gap-8">
+          <div>
+            <div className="mb-3 text-[11px] uppercase tracking-widest text-background/30 dark:text-white/30">
+              Supported platforms
+            </div>
+            <h2 className="font-serif text-[clamp(28px,4vw,44px)] leading-tight tracking-tight text-background dark:text-white">
+              9 platforms.
+              <br />
+              More coming.
+            </h2>
           </div>
-        </RevealSection>
+          <p className="max-w-[220px] text-right text-[14px] leading-relaxed text-background/40 dark:text-white/40">
+            Including ones your current tool probably doesn&apos;t support —
+            Bluesky, Threads, Pinterest.
+          </p>
+        </div>
+
+        {/* 3-column platform grid */}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          {platforms.map((p) => (
+            <div
+              key={p.name}
+              className="rounded-xl border border-background/[0.08] bg-background/[0.04] p-6 transition-all hover:-translate-y-0.5 hover:bg-background/[0.07] dark:border-white/[0.08] dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
+            >
+              <div
+                className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg"
+                style={{ background: p.iconBg }}
+              >
+                <p.icon
+                  className="h-5 w-5 text-white"
+                  style={{
+                    color:
+                      p.iconBg === "#000000" || p.iconBg === "#010101"
+                        ? "#fff"
+                        : "#fff",
+                  }}
+                />
+              </div>
+              <div className="text-[14px] font-medium text-background/85 dark:text-white/85">
+                {p.name}
+              </div>
+              <div className="mt-0.5 text-[12px] text-background/30 dark:text-white/30">
+                {p.type}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

@@ -1,60 +1,61 @@
-"use client";
-
-import { RevealSection } from "@/components/landing/RevealSection";
+import { Link2, PenLine, Send } from "lucide-react";
 
 const steps = [
   {
-    number: "1",
+    icon: Link2,
     title: "Connect your accounts",
-    description:
-      "Sign in with Google, then connect the social platforms you use. We use secure OAuth—you stay in control and can disconnect anytime.",
+    desc: "OAuth for every platform. Tokens encrypted at rest. We never store passwords.",
   },
   {
-    number: "2",
-    title: "Create your content",
-    description:
-      "Write your post once. Add images or video if you like. We support text, images, video, threads, and more.",
+    icon: PenLine,
+    title: "Write your post",
+    desc: "One composer. Per-platform captions if you need them. Character limits shown live.",
   },
   {
-    number: "3",
+    icon: Send,
     title: "Publish or schedule",
-    description:
-      "Send now or pick a time. One click publishes to all connected platforms, or schedule for later.",
+    desc: "Hit publish now, or pick a time. All platforms receive the post in parallel.",
   },
 ];
 
 export function HowItWorks() {
   return (
-    <section className="py-16 sm:py-20 bg-background">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <RevealSection>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground text-center mb-4">
+    <section className="px-6 py-24 lg:px-8">
+      <div className="mx-auto max-w-[1100px]">
+        {/* Section header */}
+        <div className="mb-14">
+          <div className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
+            How it works
+          </div>
+          <h2 className="max-w-md font-serif text-[clamp(28px,4vw,44px)] leading-tight tracking-tight text-foreground">
             How it works
           </h2>
-          <p className="text-base text-muted-foreground text-center max-w-xl mx-auto mb-12 font-medium">
-            Three simple steps to get your content everywhere.
-          </p>
-        </RevealSection>
-        <div className="grid md:grid-cols-3 gap-8 md:gap-6 relative">
-          {/* Connecting line on desktop */}
-          <div className="hidden md:block absolute top-7 left-[calc(16.666%+1.5rem)] right-[calc(16.666%+1.5rem)] h-0.5 bg-border">
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-muted border-2 border-background shadow-sm" />
-          </div>
+        </div>
 
+        {/* 3-column bordered grid */}
+        <div className="grid gap-px overflow-hidden rounded-2xl bg-border md:grid-cols-3">
           {steps.map((step, i) => (
-            <RevealSection key={step.number} delay={i as 0 | 1 | 2}>
-              <div className="relative text-center md:text-left">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-600 text-white font-bold text-xl mb-5 shadow-lg relative z-10">
-                  {step.number}
-                </div>
-                <h3 className="text-xl font-bold text-foreground mb-3">
-                  {step.title}
-                </h3>
-                <p className="text-base text-muted-foreground leading-relaxed">
-                  {step.description}
-                </p>
+            <div
+              key={step.title}
+              className="bg-background p-8 transition-colors hover:bg-muted/40 dark:hover:bg-muted/20 md:p-10"
+            >
+              <div className="mb-6 flex items-center gap-3 font-mono text-[11px] tracking-widest text-muted-foreground">
+                0{i + 1}
+                <div className="h-px flex-1 bg-border" />
               </div>
-            </RevealSection>
+              <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/50 dark:bg-muted/30">
+                <step.icon
+                  className="h-5 w-5 text-foreground"
+                  strokeWidth={1.5}
+                />
+              </div>
+              <h3 className="mb-3 font-serif text-xl tracking-tight text-foreground">
+                {step.title}
+              </h3>
+              <p className="text-[14px] leading-relaxed text-muted-foreground">
+                {step.desc}
+              </p>
+            </div>
           ))}
         </div>
       </div>

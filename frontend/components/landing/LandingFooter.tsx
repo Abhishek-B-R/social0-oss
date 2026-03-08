@@ -1,122 +1,47 @@
 import Link from "next/link";
-import Image from "next/image";
+
+const footerLinks = [
+  { href: "#features", label: "Features" },
+  { href: "#pricing", label: "Pricing" },
+  { href: "/changelog", label: "Changelog" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/terms", label: "Terms" },
+];
 
 export function LandingFooter() {
-  const currentYear = new Date().getFullYear();
-
   return (
-    <footer className="border-t border-border bg-muted/30">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="relative h-8 w-8 block">
-                <Image
-                  src="/logo.png"
-                  alt="Social0"
-                  width={32}
-                  height={32}
-                  className="rounded-lg dark:hidden"
-                />
-                <Image
-                  src="/logo-dark.png"
-                  alt="Social0"
-                  width={32}
-                  height={32}
-                  className="rounded-lg hidden dark:block absolute inset-0"
-                />
-              </span>
-              <span className="font-semibold text-foreground">Social0</span>
+    <footer className="border-t border-border bg-background py-12 dark:bg-background/50">
+      <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-6 px-6 lg:px-8">
+        <Link
+          href="/"
+          className="font-serif text-xl tracking-tight text-foreground"
+        >
+          Social0
+        </Link>
+
+        <nav className="flex flex-wrap gap-6 md:gap-8">
+          {footerLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {link.label}
             </Link>
-          </div>
-          <div>
-            <h4 className="font-semibold text-foreground text-sm mb-3">
-              Product
-            </h4>
-            <ul className="space-y-2">
-              <li>
-                <Link
-                  href="/#features"
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  Features
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/#pricing"
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  Pricing
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-semibold text-foreground text-sm mb-3">
-              Legal
-            </h4>
-            <ul className="space-y-2">
-              <li>
-                <Link
-                  href="/terms"
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  Terms & Conditions
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/privacy"
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  Privacy Policy
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-semibold text-foreground text-sm mb-3">
-              Resources
-            </h4>
-            <ul className="space-y-2">
-              <li>
-                <a
-                  href="https://developers.google.com/search/docs"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  Google Search Central
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://business.instagram.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  Instagram for Business
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://www.linkedin.com/help/linkedin"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  LinkedIn Help
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-        <div className="mt-10 pt-8 border-t border-border text-center text-muted-foreground text-sm">
-          © {currentYear} Social0. All rights reserved. Social0 is operated by B
-          R Abhishek.
-        </div>
+          ))}
+        </nav>
+
+        <span className="text-[12px] text-muted-foreground">
+          © 2026 Social0 · Built by{" "}
+          <a
+            href="https://x.com/abhitwt"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-colors hover:text-foreground"
+          >
+            @abhitwt
+          </a>
+        </span>
       </div>
     </footer>
   );

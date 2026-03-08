@@ -1,88 +1,48 @@
-"use client";
-
-import Link from "next/link";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import { LandingHeader } from "@/components/landing/LandingHeader";
-import { LandingFooter } from "@/components/landing/LandingFooter";
+import { Hero } from "@/components/landing/Hero";
+import { PlatformStrip } from "@/components/landing/PlatformStrip";
+import { DashboardMockup } from "@/components/landing/DashboardMockup";
+import { WhoIsItFor } from "@/components/landing/WhoIsItFor";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
-import { SecuritySection } from "@/components/landing/SecuritySection";
 import { SupportedPlatforms } from "@/components/landing/SupportedPlatforms";
+import { FounderSection } from "@/components/landing/FounderSection";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { FAQ } from "@/components/landing/FAQ";
-import { PlatformMarquee } from "@/components/landing/PlatformMarquee";
-import { HeroMockup } from "@/components/landing/HeroMockup";
-import { RevealSection } from "@/components/landing/RevealSection";
+import { FinalCTA } from "@/components/landing/FinalCTA";
+import { LandingFooter } from "@/components/landing/LandingFooter";
 
-export default function Home() {
+export default async function LandingPage() {
+  let user: { name: string | null; image: string | null } | null = null;
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (session?.user) {
+      user = {
+        name: session.user.name ?? null,
+        image: session.user.image ?? null,
+      };
+    }
+  } catch {
+    // unauthenticated
+  }
+
   return (
-    <div
-      className="min-h-screen flex flex-col bg-background font-sans text-foreground"
-      suppressHydrationWarning
-    >
-      <LandingHeader />
-      <main className="bg-background">
-        {/* Hero */}
-        <section
-          className="relative py-16 sm:py-20 px-4 sm:px-6 lg:px-8 overflow-hidden"
-          style={{ animation: "bannerSlideUp 0.6s ease-out" }}
-        >
-          {/* Subtle emerald radial gradient background */}
-          <div className="absolute inset-0 bg-gradient-radial from-emerald-100/60 via-emerald-50/40 to-transparent pointer-events-none dark:from-emerald-950/40 dark:via-emerald-950/20" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(5,150,105,0.15),transparent_50%)] pointer-events-none dark:bg-[radial-gradient(circle_at_50%_0%,rgba(5,150,105,0.18),transparent_55%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(5,150,105,0.12),transparent_50%)] pointer-events-none dark:bg-[radial-gradient(circle_at_80%_20%,rgba(5,150,105,0.16),transparent_55%)]" />
-          <div className="relative z-10">
-            <div className="max-w-4xl mx-auto text-center">
-              <div className="mb-8">
-                <PlatformMarquee />
-              </div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground tracking-tight mb-6">
-                One post. All your social accounts. Zero hassle.
-              </h1>
-              <p className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto font-medium">
-                Plan, schedule and publish your content with ease. Write once
-                and hit every network from one dashboard.
-              </p>
-              <Link
-                href="/auth"
-                className="inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-4 px-10 rounded-xl transition-colors text-base shadow-lg"
-              >
-                Try it free
-              </Link>
-              <HeroMockup />
-            </div>
-          </div>
-        </section>
-
+    <div className="min-h-screen bg-background">
+      <LandingHeader user={user} />
+      <main>
+        <Hero />
+        <PlatformStrip />
+        <DashboardMockup />
+        <WhoIsItFor />
         <HowItWorks />
         <FeaturesSection />
-        <SecuritySection />
         <SupportedPlatforms />
+        <FounderSection />
         <PricingSection />
         <FAQ />
-
-        {/* Final CTA */}
-        <section className="py-16 sm:py-20 bg-emerald-50 dark:bg-emerald-950/30 relative overflow-hidden">
-          <div className="relative">
-            <RevealSection>
-              <div className="max-w-2xl mx-auto px-4 text-center">
-                <div className="rounded-2xl border border-border bg-card shadow-xl p-8 sm:p-10">
-                  <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground mb-4">
-                    Ready to grow your presence?
-                  </h2>
-                  <p className="text-base text-muted-foreground mb-8 font-medium">
-                    Join Social0 and publish everywhere from one place.
-                  </p>
-                  <Link
-                    href="/auth"
-                    className="inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-4 px-10 rounded-xl transition-all shadow-lg hover:scale-105"
-                  >
-                    Get started
-                  </Link>
-                </div>
-              </div>
-            </RevealSection>
-          </div>
-        </section>
+        <FinalCTA />
       </main>
       <LandingFooter />
     </div>

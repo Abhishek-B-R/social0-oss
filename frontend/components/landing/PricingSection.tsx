@@ -1,136 +1,173 @@
-"use client";
-
 import Link from "next/link";
-import { RevealSection } from "@/components/landing/RevealSection";
 
-const plans: Array<{
-  name: string;
-  price: string;
-  period: string;
-  originalPrice?: string;
-  target: string;
-  features: string[];
-  cta: string;
-  href: string;
-  highlighted: boolean;
-  badge?: string;
-}> = [
-  {
-    name: "Starter",
-    originalPrice: "$9",
-    price: "$6",
-    period: "/month",
-    target: "Best for testing cross-posting",
-    features: [
-      "Connect up to 5 accounts",
-      "Multiple accounts per platform",
-      "Unlimited posts",
-      "Schedule posts across platforms",
-      "Carousel posts",
-      "Threads & Collections support",
-      "Fair usage policy",
-      "Human support",
-    ],
-    cta: "Get started for 7-day free trial",
-    href: "/auth",
-    highlighted: false,
-  },
-  {
-    name: "Growth",
-    originalPrice: "$29",
-    price: "$19",
-    period: "/month",
-    target: "Best for serious creators",
-    features: [
-      "Up to 15 connected accounts",
-      "Multiple accounts per platform",
-      "Unlimited posts",
-      "Schedule posts across platforms",
-      "Carousel posts",
-      "Threads & Collections support",
-      "Fair usage policy",
-      "Auto-plug high performing tweets",
-      "Auto-repost on autopilot",
-      "Bulk scheduling tools",
-      "Human support",
-    ],
-    cta: "Get started for 7-day free trial",
-    href: "/auth",
-    highlighted: true,
-    badge: "Most popular",
-  },
+const starterFeatures = [
+  "Connect up to 5 accounts",
+  "Multiple accounts per platform",
+  "Unlimited posts",
+  "Schedule posts across platforms",
+  "Carousel posts",
+  "Threads & Collections support",
+  "Human support",
+];
+
+const growthFeatures = [
+  { text: "Everything in Starter", highlight: true },
+  { text: "Up to 15 connected accounts", highlight: false },
+  { text: "Auto-plug high performing tweets", highlight: false },
+  { text: "Auto-repost on autopilot", highlight: false },
+  { text: "Bulk scheduling tools", highlight: false },
+  { text: "Human support", highlight: false },
 ];
 
 export function PricingSection() {
   return (
-    <section id="pricing" className="py-16 sm:py-20 bg-muted/30">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <RevealSection>
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-center mb-4">
-            Choose your plan
-          </h2>
-          <p className="text-base text-muted-foreground text-center max-w-xl mx-auto mb-12 font-medium">
-            Early adopter pricing. Lock in before price increases.
-          </p>
-        </RevealSection>
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {plans.map((plan, i) => (
-            <RevealSection key={plan.name} delay={i as 0 | 1}>
-              <div
-                className={`relative rounded-2xl border-2 p-8 flex flex-col h-full ${
-                  plan.highlighted
-                    ? "border-emerald-600 bg-card shadow-lg dark:border-emerald-500"
-                    : "border-border bg-card"
-                }`}
-              >
-                {plan.badge && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-emerald-600 dark:bg-emerald-500 text-white text-xs font-semibold">
-                    {plan.badge}
-                  </div>
-                )}
-                <h3 className="text-lg font-semibold text-foreground mb-1">
-                  {plan.name}
-                </h3>
-                <p className="text-muted-foreground text-sm mb-3">
-                  {plan.target}
-                </p>
-                <div className="flex items-baseline gap-2 mb-5">
-                  {plan.originalPrice && (
-                    <span className="text-lg text-muted-foreground line-through">
-                      {plan.originalPrice}
-                    </span>
-                  )}
-                  <span className="text-3xl font-bold text-foreground">
-                    {plan.price}
-                  </span>
-                  <span className="text-muted-foreground">{plan.period}</span>
-                </div>
-                <ul className="space-y-2.5 mb-4 flex-1">
-                  {plan.features.map((f, idx) => (
-                    <li
-                      key={idx}
-                      className="flex items-center gap-2 text-sm text-muted-foreground"
-                    >
-                      <span className="text-emerald-600 dark:text-emerald-400 shrink-0">
-                        ✓
-                      </span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href={plan.href ?? "/auth"}
-                  className={`mt-auto w-full inline-flex items-center justify-center py-4 px-4 rounded-xl font-semibold transition-colors ${
-                    plan.highlighted
-                      ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white shadow-md hover:shadow-lg"
-                      : "border-2 border-emerald-600 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                  }`}
-                >
-                  {plan.cta}
-                </Link>
+    <section id="pricing" className="px-6 py-24 lg:px-8">
+      <div className="mx-auto max-w-[1100px]">
+        {/* Section header */}
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="mb-3 text-[11px] uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+              Pricing
+            </div>
+            <h2 className="font-serif text-[clamp(32px,4vw,48px)] leading-tight tracking-tight text-foreground">
+              Simple pricing.
+              <br />
+              No gotchas.
+            </h2>
+          </div>
+          <div className="text-right">
+            <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-[13px] text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              Early adopter pricing — rates will increase
+            </div>
+          </div>
+        </div>
+        <p className="mb-12 text-[15px] text-muted-foreground">
+          Both plans include a 7-day free trial. Cancel anytime.
+        </p>
+
+        {/* Two-card grid */}
+        <div className="grid gap-px overflow-hidden rounded-2xl bg-border shadow-sm md:grid-cols-2">
+          {/* STARTER */}
+          <div className="flex flex-col bg-background p-8 md:p-10">
+            <div className="mb-6 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              Starter
+            </div>
+
+            <div className="mb-2 flex items-baseline gap-3">
+              <div className="font-serif text-[64px] leading-none tracking-tight text-foreground">
+                $6
               </div>
-            </RevealSection>
-          ))}
+              <div>
+                <div className="text-[18px] font-medium text-muted-foreground line-through decoration-red-500 decoration-2">
+                  $9
+                </div>
+                <div className="text-[13px] text-muted-foreground">/month</div>
+              </div>
+              <span className="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                Save 33%
+              </span>
+            </div>
+
+            <p className="mb-8 text-[14px] leading-relaxed text-muted-foreground">
+              For creators who want to stop copy-pasting between tabs.
+            </p>
+
+            <hr className="mb-8 border-border" />
+
+            <ul className="mb-10 flex-1 space-y-4">
+              {starterFeatures.map((text) => (
+                <li key={text} className="flex items-start gap-3">
+                  <span className="mt-0.5 shrink-0 text-[14px] text-emerald-600 dark:text-emerald-400">
+                    ✓
+                  </span>
+                  <span className="text-[14px] leading-snug text-muted-foreground">
+                    {text}
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <Link
+              href="/auth"
+              className="block w-full rounded-[10px] border-2 border-foreground/10 bg-background py-3.5 text-center text-[14px] font-medium text-foreground transition-all hover:border-foreground/25 hover:bg-muted dark:border-white/10 dark:hover:border-white/20 dark:hover:bg-muted/50"
+            >
+              Get started — 7-day free trial
+            </Link>
+
+            <p className="mt-3 text-center text-[12px] text-muted-foreground">
+              No credit card required
+            </p>
+          </div>
+
+          {/* GROWTH */}
+          <div className="relative flex flex-col overflow-hidden bg-[#0C0C0C] p-8 dark:bg-[#FAFAF8] md:p-10">
+            {/* Background texture */}
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(26,107,74,0.15),transparent_60%)] dark:bg-[radial-gradient(circle_at_70%_0%,rgba(26,107,74,0.08),transparent_60%)]" />
+
+            {/* Most popular badge */}
+            <div className="relative z-10 mb-6">
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-800/60 bg-emerald-950/70 px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-emerald-400 dark:border-emerald-200 dark:bg-emerald-50 dark:text-emerald-700">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 dark:bg-emerald-500" />
+                Most popular
+              </span>
+            </div>
+
+            <div className="relative z-10 mb-6 text-[11px] font-medium uppercase tracking-widest text-white/30 dark:text-[#0A0A0A]/40">
+              Growth
+            </div>
+
+            <div className="relative z-10 mb-2 flex items-baseline gap-3">
+              <div className="font-serif text-[64px] leading-none tracking-tight text-white dark:text-[#0A0A0A]">
+                $19
+              </div>
+              <div>
+                <div className="text-[18px] font-medium text-white/50 line-through decoration-red-500 decoration-2 dark:text-[#0A0A0A]/50">
+                  $29
+                </div>
+                <div className="text-[13px] text-white/40 dark:text-[#0A0A0A]/40">
+                  /month
+                </div>
+              </div>
+              <span className="ml-2 rounded bg-emerald-900/50 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-400 dark:bg-emerald-100 dark:text-emerald-700">
+                Save 34%
+              </span>
+            </div>
+
+            <p className="relative z-10 mb-8 text-[14px] leading-relaxed text-white/50 dark:text-[#0A0A0A]/60">
+              For serious creators who want to grow on autopilot.
+            </p>
+
+            <hr className="relative z-10 mb-8 border-white/[0.08] dark:border-[#0A0A0A]/10" />
+
+            <ul className="relative z-10 mb-10 flex-1 space-y-4">
+              {growthFeatures.map((item) => (
+                <li key={item.text} className="flex items-start gap-3">
+                  <span
+                    className={`mt-0.5 shrink-0 text-[14px] ${item.highlight ? "font-semibold text-emerald-400 dark:text-emerald-600" : "text-emerald-500/70 dark:text-emerald-600/70"}`}
+                  >
+                    ✓
+                  </span>
+                  <span
+                    className={`text-[14px] leading-snug ${item.highlight ? "font-medium text-white/90 dark:text-[#0A0A0A]/90" : "text-white/50 dark:text-[#0A0A0A]/60"}`}
+                  >
+                    {item.text}
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <Link
+              href="/auth"
+              className="relative z-10 block w-full rounded-[10px] bg-emerald-600 py-3.5 text-center text-[14px] font-medium text-white transition-all hover:-translate-y-px hover:bg-emerald-500 hover:shadow-[0_6px_20px_rgba(34,145,79,0.35)]"
+            >
+              Get started — 7-day free trial
+            </Link>
+
+            <p className="relative z-10 mt-3 text-center text-[12px] text-white/25 dark:text-[#0A0A0A]/40">
+              No credit card required
+            </p>
+          </div>
         </div>
       </div>
     </section>
