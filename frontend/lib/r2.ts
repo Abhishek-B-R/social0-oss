@@ -104,5 +104,7 @@ export async function getPresignedUploadUrl(
     ContentType: contentType,
     ContentLength: contentLength,
   });
-  return getSignedUrl(client, command, { expiresIn });
+  // Type assertion: client-s3 and s3-request-presigner bundle different @smithy/types, so Client/Command types are incompatible at compile time. Runtime is correct.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return getSignedUrl(client as any, command as any, { expiresIn });
 }
