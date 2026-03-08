@@ -11,7 +11,15 @@ import {
   updatePost,
   type PublishMode,
 } from "@/app/actions/posts";
-import { createAutoPlug } from "@/app/actions/resurface";
+import {
+  publishPost,
+  getPostPublicationList,
+  publishSinglePublication,
+} from "@/app/actions/publish";
+import {
+  createAutoPlug,
+  createResurfaceSchedule,
+} from "@/app/actions/resurface";
 import { useRememberedAccounts } from "@/lib/remembered-accounts";
 import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { PostFormOptions } from "../PostFormOptions";
@@ -26,7 +34,11 @@ import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSet
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
 import { PLATFORMS } from "@/lib/platforms";
 import { PlatformIcon } from "@/components/PlatformIcon";
-import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
+import {
+  UploadPublishOverlay,
+  type PlatformResult,
+  type PlatformStatus,
+} from "@/components/UploadPublishOverlay";
 import {
   consumeComposerPayload,
   clearComposerPayload,
@@ -88,6 +100,7 @@ export function TextPostForm({
   const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
   type OverlayPhase = "idle" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
+  const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>([]);
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resurfaceConfig, setResurfaceConfig] =
@@ -316,11 +329,44 @@ export function TextPostForm({
           metadata,
         );
         setLoading(false);
-        if (result.success) {
-          if (result.allPlatformsFailed && result.postId) {
+        if (!result.success) {
+          setOverlayPhase("idle");
+          setError(result.error);
+          return;
+        }
+        if (result.allPlatformsFailed && result.postId) {
+          router.push(`/dashboard/posts/${result.postId}`);
+          router.refresh();
+          return;
+        }
+        if (!result.postId) {
+          setOverlayPhase("idle");
+          return;
+        }
+        setPublishedPostId(result.postId);
+        const list = await getPostPublicationList(result.postId);
+        if (list.length === 0) {
+          const publishResult = await publishPost(result.postId);
+          const succeededCount =
+            publishResult?.results?.filter((r) => r.status === "published")
+              .length ?? 0;
+          if (succeededCount === 0) {
             router.push(`/dashboard/posts/${result.postId}`);
             router.refresh();
             return;
+          }
+          setOverlayPhase("done");
+          if (
+            resurfaceConfig &&
+            selectedAccounts.some((a) => a.platform === "twitter_x")
+          ) {
+            createResurfaceSchedule(
+              result.postId,
+              "x",
+              resurfaceConfig.intervalHours,
+              resurfaceConfig.maxResurfaces,
+              resurfaceConfig.plugComment?.trim() || null,
+            ).catch(() => {});
           }
           if (autoPlugConfig) {
             const xAccount = selectedAccounts.find(
@@ -332,11 +378,75 @@ export function TextPostForm({
               );
             }
           }
-          setPublishedPostId(result.postId ?? null);
-          setOverlayPhase("done");
-        } else {
-          setOverlayPhase("idle");
-          setError(result.error);
+          return;
+        }
+        const initial: PlatformResult[] = list.map((pub) => ({
+          platform: pub.platform,
+          accountId: pub.connectedAccountId,
+          accountName: pub.platformUsername
+            ? `@${pub.platformUsername}`
+            : PLATFORMS.find((p) => p.id === pub.platform)?.name ?? pub.platform,
+          status: "waiting" as PlatformStatus,
+        }));
+        setPlatformStatuses(initial);
+        setOverlayPhase("publishing");
+        for (let i = 0; i < list.length; i++) {
+          const pub = list[i];
+          setPlatformStatuses((prev) =>
+            prev.map((p) =>
+              p.accountId === pub.connectedAccountId
+                ? { ...p, status: "processing" as PlatformStatus }
+                : p,
+            ),
+          );
+          const singleResult = await publishSinglePublication(
+            result.postId,
+            pub.publicationId,
+          );
+          const res = singleResult.results?.[0];
+          setPlatformStatuses((prev) =>
+            prev.map((p) =>
+              p.accountId === pub.connectedAccountId
+                ? {
+                    ...p,
+                    status: (res?.status === "published"
+                      ? "published"
+                      : "failed") as PlatformStatus,
+                    error:
+                      res?.status === "failed" ? res?.error : undefined,
+                    postUrl:
+                      res?.status === "published"
+                        ? (res?.platformPostUrl ?? null)
+                        : undefined,
+                  }
+                : p,
+            ),
+          );
+        }
+        await publishPost(result.postId);
+        if (
+          resurfaceConfig &&
+          selectedAccounts.some((a) => a.platform === "twitter_x")
+        ) {
+          await createResurfaceSchedule(
+            result.postId,
+            "x",
+            resurfaceConfig.intervalHours,
+            resurfaceConfig.maxResurfaces,
+            resurfaceConfig.plugComment?.trim() || null,
+          );
+        }
+        if (autoPlugConfig) {
+          const xAccount = selectedAccounts.find(
+            (a) => a.platform === "twitter_x",
+          );
+          if (xAccount) {
+            await createAutoPlug(
+              result.postId,
+              xAccount.id,
+              autoPlugConfig,
+            );
+          }
         }
         return;
       }
@@ -371,28 +481,118 @@ export function TextPostForm({
     );
     setLoading(false);
     if (result.success) {
-      if (effectiveMode === "now" && result.postId && autoPlugConfig) {
-        const xAccount = selectedAccounts.find(
-          (a) => a.platform === "twitter_x",
-        );
-        if (xAccount) {
-          await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
-        }
-      }
-      if (effectiveMode === "now") {
-        if (result.allPlatformsFailed && result.postId) {
-          router.push(`/dashboard/posts/${result.postId}`);
-          router.refresh();
+      if (effectiveMode === "now" && result.postId) {
+        setPublishedPostId(result.postId);
+        const list = await getPostPublicationList(result.postId);
+        if (list.length === 0) {
+          const publishResult = await publishPost(result.postId);
+          const succeededCount =
+            publishResult?.results?.filter((r) => r.status === "published")
+              .length ?? 0;
+          if (succeededCount === 0) {
+            router.push(`/dashboard/posts/${result.postId}`);
+            router.refresh();
+            return;
+          }
+          setOverlayPhase("done");
+          if (
+            resurfaceConfig &&
+            selectedAccounts.some((a) => a.platform === "twitter_x")
+          ) {
+            createResurfaceSchedule(
+              result.postId,
+              "x",
+              resurfaceConfig.intervalHours,
+              resurfaceConfig.maxResurfaces,
+              resurfaceConfig.plugComment?.trim() || null,
+            ).catch(() => {});
+          }
+          if (autoPlugConfig) {
+            const xAccount = selectedAccounts.find(
+              (a) => a.platform === "twitter_x",
+            );
+            if (xAccount) {
+              createAutoPlug(result.postId, xAccount.id, autoPlugConfig).catch(
+                () => {},
+              );
+            }
+          }
           return;
         }
-        setPublishedPostId(result.postId ?? null);
-        setOverlayPhase("done");
-      } else {
-        if (effectiveMode === "draft") router.push("/dashboard/posts/drafts");
-        if (effectiveMode === "scheduled")
-          router.push("/dashboard/posts/scheduled");
-        router.refresh();
+        const initial: PlatformResult[] = list.map((pub) => ({
+          platform: pub.platform,
+          accountId: pub.connectedAccountId,
+          accountName: pub.platformUsername
+            ? `@${pub.platformUsername}`
+            : PLATFORMS.find((p) => p.id === pub.platform)?.name ?? pub.platform,
+          status: "waiting" as PlatformStatus,
+        }));
+        setPlatformStatuses(initial);
+        setOverlayPhase("publishing");
+        for (let i = 0; i < list.length; i++) {
+          const pub = list[i];
+          setPlatformStatuses((prev) =>
+            prev.map((p) =>
+              p.accountId === pub.connectedAccountId
+                ? { ...p, status: "processing" as PlatformStatus }
+                : p,
+            ),
+          );
+          const singleResult = await publishSinglePublication(
+            result.postId,
+            pub.publicationId,
+          );
+          const res = singleResult.results?.[0];
+          setPlatformStatuses((prev) =>
+            prev.map((p) =>
+              p.accountId === pub.connectedAccountId
+                ? {
+                    ...p,
+                    status: (res?.status === "published"
+                      ? "published"
+                      : "failed") as PlatformStatus,
+                    error:
+                      res?.status === "failed" ? res?.error : undefined,
+                    postUrl:
+                      res?.status === "published"
+                        ? (res?.platformPostUrl ?? null)
+                        : undefined,
+                  }
+                : p,
+            ),
+          );
+        }
+        await publishPost(result.postId);
+        if (
+          resurfaceConfig &&
+          selectedAccounts.some((a) => a.platform === "twitter_x")
+        ) {
+          await createResurfaceSchedule(
+            result.postId,
+            "x",
+            resurfaceConfig.intervalHours,
+            resurfaceConfig.maxResurfaces,
+            resurfaceConfig.plugComment?.trim() || null,
+          );
+        }
+        if (autoPlugConfig) {
+          const xAccount = selectedAccounts.find(
+            (a) => a.platform === "twitter_x",
+          );
+          if (xAccount) {
+            await createAutoPlug(
+              result.postId,
+              xAccount.id,
+              autoPlugConfig,
+            );
+          }
+        }
+        return;
       }
+      if (effectiveMode === "draft") router.push("/dashboard/posts/drafts");
+      if (effectiveMode === "scheduled")
+        router.push("/dashboard/posts/scheduled");
+      router.refresh();
     } else {
       setOverlayPhase("idle");
       setError(result.error);
@@ -449,7 +649,7 @@ export function TextPostForm({
           phase={overlayPhase === "saving" ? "saving" : "publishing"}
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
-          publishedPostId={overlayPhase === "done" ? publishedPostId : null}
+          publishedPostId={publishedPostId}
           publishedToX={selectedAccounts.some(
             (a) => a.platform === "twitter_x",
           )}
@@ -462,6 +662,24 @@ export function TextPostForm({
                 }
               : null
           }
+          platformStatuses={platformStatuses}
+          allDone={
+            platformStatuses.length > 0 &&
+            platformStatuses.every(
+              (p) => p.status === "published" || p.status === "failed",
+            )
+          }
+          onClose={() => {
+            const allFailed =
+              platformStatuses.length > 0 &&
+              platformStatuses.every((p) => p.status === "failed");
+            if (allFailed && publishedPostId) {
+              router.push(`/dashboard/posts/${publishedPostId}`);
+              router.refresh();
+            } else {
+              setOverlayPhase("idle");
+            }
+          }}
         />
       )}
       <form

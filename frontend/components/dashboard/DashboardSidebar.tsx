@@ -7,21 +7,24 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   IconFilePlus,
-  IconTool,
+  IconPencil,
+  IconHexagon,
+  IconStack,
   IconStack2,
-  IconCalendar,
-  IconList,
+  IconClockCheck,
   IconClock,
-  IconCircleCheck,
   IconFileText,
+  IconCalendar,
   IconLink,
   IconUsers,
   IconSettings,
-  IconCreditCard,
+  IconWallet,
+  IconMessageCircle,
   IconChevronDown,
-  IconPencil,
+  IconTool,
+  IconList,
+  IconCircleCheck,
 } from "@tabler/icons-react";
-import { Lightbulb } from "lucide-react";
 import { SignOutButton } from "@/components/SignOutButton";
 
 type NavItem = {
@@ -111,7 +114,9 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
             height={40}
             className="h-10 w-10 shrink-0 rounded-full object-contain border border-white"
           />
-          <span>Social0</span>
+          <span className="font-serif text-[22px] tracking-tight text-foreground landing">
+            Social0
+          </span>
         </Link>
 
         {/* <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
@@ -211,7 +216,7 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
             <NavLink
               href="/dashboard/billing"
               label="Billing"
-              icon={IconCreditCard}
+              icon={IconWallet}
               isActive={isActive("/dashboard/billing")}
             />
           </Section>
@@ -220,7 +225,7 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
             <NavLink
               href="/dashboard/feedback"
               label="Feedback"
-              icon={Lightbulb}
+              icon={IconMessageCircle}
               isActive={isActive("/dashboard/feedback")}
             />
           </Section>
