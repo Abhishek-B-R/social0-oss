@@ -33,7 +33,7 @@ function SaveButton({ label = "Save" }: { label?: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? "Saving..." : label}
     </button>
@@ -370,7 +370,7 @@ export function SettingsClient({
         <form action={signOutAllDevices} className="mt-4">
           <button
             type="submit"
-            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-accent-hover"
+            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             Sign Out All Devices
           </button>
@@ -396,6 +396,12 @@ export function SettingsClient({
           Platform Preferences
         </h2>
         <form action={updatePlatformPreferences} className="mt-4 space-y-4">
+          <Toggle
+            id="use24HourTimeFormat"
+            name="use24HourTimeFormat"
+            defaultChecked={settings.use24HourTimeFormat}
+            label="24-hour time format"
+          />
           <div>
             <label
               htmlFor="dateFormat"
@@ -416,12 +422,6 @@ export function SettingsClient({
               ))}
             </select>
           </div>
-          <Toggle
-            id="use24HourTimeFormat"
-            name="use24HourTimeFormat"
-            defaultChecked={settings.use24HourTimeFormat}
-            label="24-hour time format"
-          />
           <SaveButton />
         </form>
       </section>

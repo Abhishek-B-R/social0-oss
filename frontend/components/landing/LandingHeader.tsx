@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Menu, X, Moon, Sun } from "lucide-react";
+import { useSession } from "@/lib/auth-client";
 
 const navLinks = [
   { href: "#features", label: "Features" },
@@ -14,6 +15,8 @@ const navLinks = [
 export function LandingHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const { data: session } = useSession();
+  const user = session?.user;
 
   useEffect(() => {
     // Check for saved preference or system preference
@@ -79,13 +82,37 @@ export function LandingHeader() {
               <Moon className="h-4 w-4" />
             )}
           </button>
-          <Link
-            href="/auth"
-            className="inline-flex items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-[14px] font-medium text-background transition-all hover:-translate-y-px hover:bg-emerald-700 dark:hover:bg-emerald-600 hover:shadow-[0_8px_24px_rgba(26,107,74,0.25)]"
-          >
-            Get started
-            <span aria-hidden="true">→</span>
-          </Link>
+          {user ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex rounded-full items-center gap-2.5 border border-border bg-background px-3 py-2 text-[14px] font-semibold text-foreground transition-colors hover:bg-muted"
+            >
+              {user.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.image}
+                  alt=""
+                  className="h-7 w-7 rounded-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                  {(user.name || user.email || "U").charAt(0).toUpperCase()}
+                </span>
+              )}
+              <span className="truncate max-w-[140px]">
+                {user.name || user.email || "Account"}
+              </span>
+            </Link>
+          ) : (
+            <Link
+              href="/auth"
+              className="inline-flex items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-[14px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
+            >
+              Get started
+              <span aria-hidden="true">→</span>
+            </Link>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -133,14 +160,39 @@ export function LandingHeader() {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/auth"
-              className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-[14px] font-medium text-background transition-all hover:bg-emerald-700 dark:hover:bg-emerald-600"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Get started
-              <span aria-hidden="true">→</span>
-            </Link>
+            {user ? (
+              <Link
+                href="/dashboard"
+                className="mt-2 inline-flex items-center justify-center gap-2.5 rounded-lg border border-border bg-background px-4 py-2.5 text-[14px] font-semibold text-foreground"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {user.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={user.image}
+                    alt=""
+                    className="h-7 w-7 rounded-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                    {(user.name || user.email || "U").charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span className="truncate">
+                  {user.name || user.email || "Account"}
+                </span>
+              </Link>
+            ) : (
+              <Link
+                href="/auth"
+                className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-[14px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Get started
+                <span aria-hidden="true">→</span>
+              </Link>
+            )}
           </nav>
         </div>
       )}

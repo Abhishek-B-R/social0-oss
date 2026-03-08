@@ -50,7 +50,7 @@ export function Hero() {
             <div className="flex flex-wrap items-center gap-4">
               <Link
                 href="/auth"
-                className="inline-flex items-center gap-2 rounded-[10px] bg-foreground px-7 py-3.5 text-[15px] font-medium text-background transition-all hover:-translate-y-px hover:bg-emerald-700 dark:hover:bg-emerald-600 hover:shadow-[0_8px_24px_rgba(26,107,74,0.25)]"
+                className="inline-flex items-center gap-2 rounded-[10px] bg-foreground px-7 py-3.5 text-[15px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
               >
                 Start for free
                 <span aria-hidden="true">→</span>
