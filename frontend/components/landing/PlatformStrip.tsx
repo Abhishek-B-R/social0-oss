@@ -25,7 +25,7 @@ const PLATFORMS = [
 export function PlatformStrip() {
   return (
     <div className="border-y border-border bg-muted/50 px-6 py-5 dark:bg-muted/30 lg:px-8">
-      <div className="mx-auto flex max-w-[1100px] flex-wrap items-center gap-3">
+      <div className="mx-auto  max-w-[1100px] flex-wrap items-center gap-3">
         <span className="mr-2 shrink-0 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           Publishes to
         </span>

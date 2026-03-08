@@ -25,15 +25,19 @@ export function Hero() {
               Now in beta
             </div>
 
-            {/* Headline */}
-            <h1 className="mb-6 font-serif text-[clamp(44px,6vw,72px)] leading-[1.05] tracking-tight text-foreground">
-              Write once.
+            {/* Headline: "everywhere" in Instrument Serif italic, teal in dark mode */}
+            <h1 className="mb-6 text-[clamp(44px,6vw,72px)] leading-[1.05] tracking-tight text-foreground">
+              <span className="font-serif text-[clamp(44px,6vw,72px)] leading-[1.05] tracking-tight text-foreground">
+                Write once.
+              </span>
               <br />
-              Publish{" "}
-              <em className="italic" style={{ color: "var(--hero-accent)" }}>
+              <span className="font-serif text-[clamp(44px,6vw,72px)] leading-[1.05] tracking-tight text-foreground">
+                Publish{" "}
+              </span>
+              <em className="font-serif italic text-[#1a6b4a] dark:text-[#00ff77]">
                 everywhere
               </em>
-              .
+              <span className="font-sans font-semibold">.</span>
             </h1>
 
             {/* Subtitle */}

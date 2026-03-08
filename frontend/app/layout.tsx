@@ -14,8 +14,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const baseUrl =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://social0.app";
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://social0.app";
 const title = "Social0 — Write once. Publish everywhere.";
 const description =
   "One composer. 12 platforms. No copy-paste, no tab-switching. Schedule and publish to Twitter, Instagram, LinkedIn, YouTube, and more.";
