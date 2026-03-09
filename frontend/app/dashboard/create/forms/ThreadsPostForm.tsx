@@ -229,6 +229,7 @@ export function ThreadsPostForm({
   dateFormat = "dd/MM/yyyy",
   timezone = null,
   draftId: initialDraftId,
+  scheduledId: initialScheduledId,
   allowAutoRepost = true,
   allowAutoPlug = true,
   supportedPlatforms,
@@ -238,6 +239,7 @@ export function ThreadsPostForm({
   dateFormat?: string | null;
   timezone?: string | null;
   draftId?: string;
+  scheduledId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
@@ -263,12 +265,14 @@ export function ThreadsPostForm({
     { id: 1, text: "", images: [], videos: [] },
   ]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
-    initialDraftId ? new Set() : getInitialSelectedIds(validIds),
+    initialDraftId || initialScheduledId ? new Set() : getInitialSelectedIds(validIds),
   );
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
-  const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
+  const [draftLoading, setDraftLoading] = useState(
+    !!(initialDraftId || initialScheduledId),
+  );
   const [error, setError] = useState<string | null>(null);
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
@@ -371,6 +375,68 @@ export function ThreadsPostForm({
       setTimeout(clearComposerPayload, 100);
     };
   }, [initialDraftId, searchParams]);
+
+  useEffect(() => {
+    if (!initialScheduledId || initialDraftId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getScheduledPost } = await import("@/app/actions/posts");
+        const result = await getScheduledPost(initialScheduledId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          setDraftLoading(false);
+          return;
+        }
+        const { post: scheduled } = result;
+        const validAccountIds = new Set(
+          accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
+        );
+        const restoredIds = scheduled.connectedAccountIds.filter((id) =>
+          validAccountIds.has(id),
+        );
+        setSelectedIds(new Set(restoredIds));
+        setScheduledAt(scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null);
+        setMode("scheduled");
+        if (scheduled.queueSlotId)
+          intendedQueueSlotIdRef.current = scheduled.queueSlotId;
+        const meta = scheduled.metadata as Record<string, unknown> | null;
+        const twitterThread = meta?.twitterThread as
+          | { parts?: Array<{ text?: string }> }
+          | undefined;
+        const parts = twitterThread?.parts ?? [];
+        if (parts.length > 0) {
+          setPosts(
+            parts.map((p, i) => ({
+              id: i + 1,
+              text: typeof p?.text === "string" ? p.text : "",
+              images: [],
+              videos: [],
+            })),
+          );
+          nextIdRef.current = parts.length + 1;
+        } else {
+          setPosts([
+            {
+              id: 1,
+              text: scheduled.originalContent ?? "",
+              images: [],
+              videos: [],
+            },
+          ]);
+          nextIdRef.current = 2;
+        }
+      } catch {
+        if (!cancelled) setError("Failed to load post");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialScheduledId, initialDraftId, accounts]);
 
   useEffect(() => {
     if (!initialDraftId) return;
@@ -1045,6 +1111,29 @@ export function ThreadsPostForm({
       },
     };
 
+    if (initialScheduledId && effectiveMode === "scheduled") {
+      const { updatePost } = await import("@/app/actions/posts");
+      const result = await updatePost(
+        initialScheduledId,
+        content,
+        accountIds,
+        scheduledAt,
+        mediaIds,
+        metadata,
+        scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+      );
+      if (scheduledAt) intendedQueueSlotIdRef.current = null;
+      setLoading(false);
+      setOverlayPhase("idle");
+      if (result.success) {
+        router.push("/dashboard/posts/scheduled");
+        router.refresh();
+      } else {
+        setError(result.error);
+      }
+      return;
+    }
+
     if (initialDraftId) {
       const { updateDraft, updateAndPublish, updatePost } =
         await import("@/app/actions/posts");
@@ -1266,7 +1355,9 @@ export function ThreadsPostForm({
     mode === "draft"
       ? "Save draft"
       : mode === "scheduled"
-        ? "Schedule post"
+        ? initialDraftId || initialScheduledId
+          ? "Update"
+          : "Schedule post"
         : "Post";
 
   const hasImages = posts.some((p) => p.images.length > 0);

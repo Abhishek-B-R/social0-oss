@@ -435,11 +435,48 @@ export type PostDetailRow = {
   metadata: Record<string, unknown> | null;
 };
 
+/** Queued slot info when a post is in the queue (scheduled + has queued_posts row). */
+export type QueuedSlotInfo = {
+  slotId: string;
+  scheduledFor: Date;
+};
+
+export async function getQueuedSlotForPost(
+  postId: string,
+  userId: string,
+): Promise<QueuedSlotInfo | null> {
+  const [row] = await db
+    .select({
+      slotId: queuedPosts.slotId,
+      scheduledFor: queuedPosts.scheduledFor,
+    })
+    .from(queuedPosts)
+    .where(
+      and(
+        eq(queuedPosts.postId, postId),
+        eq(queuedPosts.userId, userId),
+        eq(queuedPosts.status, "pending"),
+      ),
+    );
+  if (!row?.slotId) return null;
+  return {
+    slotId: row.slotId,
+    scheduledFor: row.scheduledFor,
+  };
+}
+
+export type PostDetailResult = {
+  post: PostDetailRow;
+  publications: PublicationRow[];
+  /** Set when post is scheduled and has a pending queued_posts entry */
+  queuedSlot: QueuedSlotInfo | null;
+};
+
 /** Fetch a single post by id; verifies userId. Returns null if not found, not owner, or invalid id. */
 export async function getPostDetail(
   postId: string,
   userId: string,
-): Promise<{ post: PostDetailRow; publications: PublicationRow[] } | null> {
+): Promise<PostDetailResult | null> {
   try {
     const [post] = await db
       .select({
@@ -476,6 +513,11 @@ export async function getPostDetail(
       )
       .where(eq(postPublications.postId, postId));
 
+    let queuedSlot: QueuedSlotInfo | null = null;
+    if (post.status === "scheduled") {
+      queuedSlot = await getQueuedSlotForPost(postId, userId);
+    }
+
     return {
       post: {
         id: post.id,
@@ -487,6 +529,7 @@ export async function getPostDetail(
         metadata: post.metadata ?? null,
       },
       publications: pubs,
+      queuedSlot,
     };
   } catch {
     return null;

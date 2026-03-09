@@ -39,7 +39,7 @@ export default async function NewPostByTypePage({
   searchParams,
 }: {
   params: Promise<{ type: string }>;
-  searchParams: Promise<{ draft?: string }>;
+  searchParams: Promise<{ draft?: string; scheduled?: string }>;
 }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/");
@@ -52,6 +52,13 @@ export default async function NewPostByTypePage({
       ? draftParam
       : Array.isArray(draftParam) && draftParam[0]
         ? draftParam[0]
+        : undefined;
+  const scheduledParam = rawSearchParams.scheduled;
+  const scheduledId =
+    typeof scheduledParam === "string"
+      ? scheduledParam
+      : Array.isArray(scheduledParam) && scheduledParam[0]
+        ? scheduledParam[0]
         : undefined;
   const contentType = getContentTypeBySlug(typeSlug);
   if (!contentType) notFound();
@@ -111,6 +118,7 @@ export default async function NewPostByTypePage({
         dateFormat={dateFormat}
         timezone={timezone}
         draftId={draftId ?? undefined}
+        scheduledId={scheduledId ?? undefined}
         allowAutoRepost={planLimits.allowResurface}
         allowAutoPlug={planLimits.allowAutoPlug}
         supportedPlatforms={[...contentType.platforms]}

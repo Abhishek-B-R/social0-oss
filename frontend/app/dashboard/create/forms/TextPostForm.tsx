@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   createPost,
   getDraft,
+  getScheduledPost,
   deleteDraft,
   updateDraft,
   updateAndPublish,
@@ -69,6 +70,7 @@ export function TextPostForm({
   dateFormat = "dd/MM/yyyy",
   timezone = null,
   draftId: initialDraftId,
+  scheduledId: initialScheduledId,
   allowAutoRepost = true,
   allowAutoPlug = true,
   supportedPlatforms,
@@ -78,6 +80,7 @@ export function TextPostForm({
   dateFormat?: string | null;
   timezone?: string | null;
   draftId?: string;
+  scheduledId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
@@ -91,7 +94,7 @@ export function TextPostForm({
     useRememberedAccounts("post-form");
   const [accountSearch, setAccountSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
-    if (initialDraftId) return new Set();
+    if (initialDraftId || initialScheduledId) return new Set();
     const validIds = new Set(
       accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
     );
@@ -100,7 +103,9 @@ export function TextPostForm({
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
-  const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
+  const [draftLoading, setDraftLoading] = useState(
+    !!(initialDraftId || initialScheduledId),
+  );
   type OverlayPhase = "idle" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>([]);
@@ -176,7 +181,43 @@ export function TextPostForm({
   }, [initialDraftId, accounts]);
 
   useEffect(() => {
-    if (initialDraftId) return;
+    if (!initialScheduledId || initialDraftId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await getScheduledPost(initialScheduledId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          setDraftLoading(false);
+          return;
+        }
+        const { post: scheduled } = result;
+        const validAccountIds = new Set(
+          accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
+        );
+        const restoredIds = scheduled.connectedAccountIds.filter((id) =>
+          validAccountIds.has(id),
+        );
+        setContent(scheduled.originalContent ?? "");
+        setSelectedIds(new Set(restoredIds));
+        setScheduledAt(scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null);
+        setMode("scheduled");
+        if (scheduled.queueSlotId)
+          intendedQueueSlotIdRef.current = scheduled.queueSlotId;
+      } catch {
+        if (!cancelled) setError("Failed to load post");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialScheduledId, initialDraftId, accounts]);
+
+  useEffect(() => {
+    if (initialDraftId || initialScheduledId) return;
     if (searchParams.get("fromComposer") !== "1") return;
     const payload = consumeComposerPayload();
     if (!payload) return;
@@ -302,6 +343,28 @@ export function TextPostForm({
     };
     if (Object.keys(accountCaptions).length > 0) {
       metadata.accountCaptions = accountCaptions;
+    }
+
+    if (initialScheduledId && effectiveMode === "scheduled") {
+      const result = await updatePost(
+        initialScheduledId,
+        content.trim(),
+        accountIds,
+        scheduledAt,
+        undefined,
+        metadata,
+        scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+      );
+      if (scheduledAt) intendedQueueSlotIdRef.current = null;
+      setLoading(false);
+      if (result.success) {
+        router.push("/dashboard/posts/scheduled");
+        router.refresh();
+      } else {
+        setOverlayPhase("idle");
+        setError(result.error);
+      }
+      return;
     }
 
     if (initialDraftId) {
@@ -638,7 +701,9 @@ export function TextPostForm({
     mode === "draft"
       ? "Save draft"
       : mode === "scheduled"
-        ? "Schedule post"
+        ? initialDraftId || initialScheduledId
+          ? "Update"
+          : "Schedule post"
         : "Post now";
 
   if (draftLoading) {

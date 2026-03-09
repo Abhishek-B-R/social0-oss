@@ -99,6 +99,7 @@ export function VideoPostForm({
   dateFormat = "dd/MM/yyyy",
   timezone = null,
   draftId: initialDraftId,
+  scheduledId: initialScheduledId,
   allowAutoRepost = true,
   allowAutoPlug = true,
   supportedPlatforms,
@@ -108,6 +109,7 @@ export function VideoPostForm({
   dateFormat?: string | null;
   timezone?: string | null;
   draftId?: string;
+  scheduledId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
@@ -137,12 +139,14 @@ export function VideoPostForm({
     useRememberedAccounts("post-form");
   const [accountSearch, setAccountSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
-    initialDraftId ? new Set() : getInitialSelectedIds(validIds),
+    initialDraftId || initialScheduledId ? new Set() : getInitialSelectedIds(validIds),
   );
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
-  const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
+  const [draftLoading, setDraftLoading] = useState(
+    !!(initialDraftId || initialScheduledId),
+  );
   const [error, setError] = useState<string | null>(null);
   type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
@@ -316,6 +320,43 @@ export function VideoPostForm({
       return next;
     });
   }, [accounts, initialDraftId]);
+
+  useEffect(() => {
+    if (!initialScheduledId || initialDraftId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getScheduledPost } = await import("@/app/actions/posts");
+        const result = await getScheduledPost(initialScheduledId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          setDraftLoading(false);
+          return;
+        }
+        const { post: scheduled } = result;
+        const validAccountIds = new Set(
+          accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
+        );
+        const restoredIds = scheduled.connectedAccountIds.filter((id) =>
+          validAccountIds.has(id),
+        );
+        setContent(scheduled.originalContent ?? "");
+        setSelectedIds(new Set(restoredIds));
+        setScheduledAt(scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null);
+        setMode("scheduled");
+        if (scheduled.queueSlotId)
+          intendedQueueSlotIdRef.current = scheduled.queueSlotId;
+      } catch {
+        if (!cancelled) setError("Failed to load post");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialScheduledId, initialDraftId, accounts]);
 
   useEffect(() => {
     if (!initialDraftId) return;
@@ -763,6 +804,29 @@ export function VideoPostForm({
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
 
+    if (initialScheduledId && effectiveMode === "scheduled") {
+      const { updatePost } = await import("@/app/actions/posts");
+      const result = await updatePost(
+        initialScheduledId,
+        text,
+        accountIds,
+        scheduledAt,
+        mediaIds,
+        meta,
+        scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+      );
+      if (scheduledAt) intendedQueueSlotIdRef.current = null;
+      setLoading(false);
+      setOverlayPhase("idle");
+      if (result.success) {
+        router.push("/dashboard/posts/scheduled");
+        router.refresh();
+      } else {
+        setError(result.error);
+      }
+      return;
+    }
+
     if (initialDraftId) {
       const { updateDraft, updateAndPublish, updatePost } =
         await import("@/app/actions/posts");
@@ -993,7 +1057,9 @@ export function VideoPostForm({
     mode === "draft"
       ? "Save draft"
       : mode === "scheduled"
-        ? "Schedule post"
+        ? initialDraftId || initialScheduledId
+          ? "Update"
+          : "Schedule post"
         : "Post now";
 
   if (draftLoading) {

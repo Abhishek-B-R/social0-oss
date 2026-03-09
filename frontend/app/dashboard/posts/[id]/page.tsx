@@ -19,7 +19,6 @@ import {
   FileText,
   Layers,
   LayoutGrid,
-  FileQuestion,
 } from "lucide-react";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { formatDateTime } from "@/lib/date-format";
@@ -143,34 +142,9 @@ export default async function PostDetailPage({
 
   const { id } = await params;
   const data = await getPostDetail(id, session.user.id);
-  if (!data) {
-    return (
-      <div className="space-y-6">
-        <Link
-          href="/dashboard/posts"
-          className="inline-flex items-center gap-2 text-sm font-medium text-text-muted hover:text-emerald-600 dark:hover:text-emerald-400 mb-6 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to posts
-        </Link>
-        <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-8 text-center border-l-4 border-l-emerald-500 dark:border-l-emerald-400">
-          <FileQuestion className="mx-auto h-12 w-12 text-emerald-600 dark:text-emerald-400" aria-hidden />
-          <p className="mt-4 text-base font-medium text-text">No such post.</p>
-          <p className="mt-2 text-sm text-text-muted">
-            This post may not exist or you don’t have access to it.
-          </p>
-          <Link
-            href="/dashboard/posts"
-            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium transition-colors"
-          >
-            View all posts
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  if (!data) redirect("/dashboard/posts");
 
-  const { post, publications } = data;
+  const { post, publications, queuedSlot } = data;
 
   if (post.status === "draft") {
     const media =
@@ -192,6 +166,7 @@ export default async function PostDetailPage({
   const isThread = parts.length > 1;
   const displayType = getDisplayType(post, parts.length, media);
   const TypeIcon = TYPE_ICON_MAP[displayType] ?? FileText;
+  const slug = DISPLAY_TYPE_TO_SLUG[displayType] ?? "text";
 
   const publishedAts = publications
     .map((p) => p.publishedAt)
@@ -315,31 +290,47 @@ export default async function PostDetailPage({
                         : post.status === "publishing"
                           ? "bg-amber-500 text-white"
                           : post.status === "scheduled"
-                            ? "bg-blue-600 text-white"
+                            ? queuedSlot
+                              ? "bg-orange-600 text-white"
+                              : "bg-blue-600 text-white"
                             : post.status === "failed"
                               ? "bg-red-600 text-white"
                               : "bg-gray-500 text-gray-100"
                   }`}
                 >
-                  {STATUS_LABEL[post.status ?? "draft"] ??
-                    post.status ??
-                    "Draft"}
+                  {post.status === "scheduled"
+                    ? queuedSlot
+                      ? "Queued"
+                      : "Scheduled"
+                    : STATUS_LABEL[post.status ?? "draft"] ??
+                        post.status ??
+                        "Draft"}
                 </span>
               </div>
 
-              {(post.status === "draft" ||
-                post.status === "scheduled" ||
-                post.status === "failed" ||
-                post.status === "partial") && (
-                <PublishButton
-                  postId={post.id}
-                  label={
-                    post.status === "failed" || post.status === "partial"
-                      ? "Retry publish"
-                      : "Publish now"
-                  }
-                />
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {post.status === "scheduled" && (
+                  <Link
+                    href={`/dashboard/create/${slug}?scheduled=${post.id}`}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
+                  >
+                    Edit post
+                  </Link>
+                )}
+                {(post.status === "draft" ||
+                  post.status === "scheduled" ||
+                  post.status === "failed" ||
+                  post.status === "partial") && (
+                  <PublishButton
+                    postId={post.id}
+                    label={
+                      post.status === "failed" || post.status === "partial"
+                        ? "Retry publish"
+                        : "Publish now"
+                    }
+                  />
+                )}
+              </div>
             </div>
 
             <div className="text-xs text-text-muted space-y-1">
