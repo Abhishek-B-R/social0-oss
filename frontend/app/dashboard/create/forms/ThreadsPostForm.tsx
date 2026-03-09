@@ -403,19 +403,45 @@ export function ThreadsPostForm({
           intendedQueueSlotIdRef.current = scheduled.queueSlotId;
         const meta = scheduled.metadata as Record<string, unknown> | null;
         const twitterThread = meta?.twitterThread as
-          | { parts?: Array<{ text?: string }> }
+          | { parts?: Array<{ text?: string; mediaIds?: string[] }> }
           | undefined;
-        const parts = twitterThread?.parts ?? [];
-        if (parts.length > 0) {
-          setPosts(
-            parts.map((p, i) => ({
-              id: i + 1,
-              text: typeof p?.text === "string" ? p.text : "",
-              images: [],
-              videos: [],
-            })),
+        const partsFromMeta = twitterThread?.parts ?? [];
+        if (partsFromMeta.length > 0) {
+          const mediaById = new Map(
+            (scheduled.media ?? []).map((m) => [m.id, m]),
           );
-          nextIdRef.current = parts.length + 1;
+          const restoredPosts: ThreadPost[] = partsFromMeta.map((part, i) => {
+            const text = typeof part.text === "string" ? part.text : "";
+            const partMediaIds = Array.isArray(part.mediaIds)
+              ? part.mediaIds
+              : [];
+            const images: MediaImage[] = [];
+            const videos: MediaVideo[] = [];
+            partMediaIds.forEach((mid, idx) => {
+              const row = mediaById.get(mid);
+              const preview = row?.url ?? row?.thumbnailUrl ?? "";
+              if (!preview || !row) return;
+              const order = idx + 1;
+              if (row.mimeType.startsWith("video/")) {
+                videos.push({
+                  preview: row.thumbnailUrl || preview,
+                  order,
+                  mediaId: row.id,
+                  thumbnailUrl: row.thumbnailUrl ?? undefined,
+                });
+              } else {
+                images.push({ preview, order, mediaId: row.id });
+              }
+            });
+            return {
+              id: i + 1,
+              text,
+              images,
+              videos,
+            };
+          });
+          setPosts(restoredPosts);
+          nextIdRef.current = restoredPosts.length + 1;
         } else {
           setPosts([
             {

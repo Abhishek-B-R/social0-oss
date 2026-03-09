@@ -376,6 +376,63 @@ export function ImagePostForm({
         setMode("scheduled");
         if (scheduled.queueSlotId)
           intendedQueueSlotIdRef.current = scheduled.queueSlotId;
+        const imageMedia = (scheduled.media ?? []).filter((m) =>
+          m.mimeType.startsWith("image/"),
+        );
+        if (imageMedia.length > 0) {
+          const mapped = imageMedia.map((m, i) => ({
+            preview: m.thumbnailUrl ?? m.url ?? "",
+            order: i + 1,
+            existingId: m.id,
+          }));
+          setImages(mapped);
+          imagesRef.current = mapped;
+        }
+        const meta = scheduled.metadata as Record<string, unknown> | null;
+        if (meta?.pinterest && typeof meta.pinterest === "object") {
+          const pinterest = meta.pinterest as Record<
+            string,
+            { boardId?: string; title?: string; link?: string }
+          >;
+          const next: Record<string, PinterestPostSettings> = {};
+          for (const id of restoredIds) {
+            const acc = accounts.find((a) => a.id === id);
+            if (acc?.platform !== "pinterest") continue;
+            const p = pinterest[id];
+            if (p) {
+              next[id] = {
+                boardId: p.boardId ?? "",
+                title: p.title ?? "",
+                link: p.link ?? "",
+                rememberBoard: false,
+                rememberLink: false,
+              };
+            }
+          }
+          if (Object.keys(next).length > 0) setPinterestSettingsByAccount(next);
+        }
+        if (meta?.tiktok && typeof meta.tiktok === "object") {
+          const tiktok = meta.tiktok as Record<string, TikTokPostSettings>;
+          const next: Record<string, TikTokPostSettings> = {};
+          for (const id of restoredIds) {
+            const acc = accounts.find((a) => a.id === id);
+            if (acc?.platform !== "tiktok") continue;
+            const t = tiktok[id];
+            if (t && typeof t === "object") {
+              next[id] = {
+                privacy_level:
+                  typeof t.privacy_level === "string" ? t.privacy_level : "",
+                disable_comment: !!t.disable_comment,
+                disable_duet: !!t.disable_duet,
+                disable_stitch: !!t.disable_stitch,
+                brand_content_toggle: !!t.brand_content_toggle,
+                brand_organic: !!t.brand_organic,
+                brand_content: !!t.brand_content,
+              };
+            }
+          }
+          if (Object.keys(next).length > 0) setTiktokSettings(next);
+        }
       } catch {
         if (!cancelled) setError("Failed to load post");
       } finally {

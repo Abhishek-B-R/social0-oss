@@ -239,6 +239,32 @@ export function CollectionPostForm({
         setMode("scheduled");
         if (scheduled.queueSlotId)
           intendedQueueSlotIdRef.current = scheduled.queueSlotId;
+        const orderedMedia = (scheduled.media ?? []).map((m, i) => ({
+          ...m,
+          order: i + 1,
+        }));
+        const scheduledImages = orderedMedia
+          .filter((m) => m.mimeType.startsWith("image/"))
+          .map((m) => ({
+            preview: m.thumbnailUrl ?? m.url ?? "",
+            order: m.order,
+            existingId: m.id,
+          }));
+        const scheduledVideos = orderedMedia
+          .filter((m) => m.mimeType.startsWith("video/"))
+          .map((m) => ({
+            preview: m.thumbnailUrl ?? m.url ?? "",
+            order: m.order,
+            existingId: m.id,
+          }));
+        if (scheduledImages.length > 0) {
+          setImages(scheduledImages);
+          imagesRef.current = scheduledImages;
+        }
+        if (scheduledVideos.length > 0) {
+          setVideos(scheduledVideos);
+          videosRef.current = scheduledVideos;
+        }
       } catch {
         if (!cancelled) setError("Failed to load post");
       } finally {
