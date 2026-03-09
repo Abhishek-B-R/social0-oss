@@ -296,6 +296,7 @@ export function ThreadsPostForm({
   type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const threadUploadAbortRef = useRef<AbortController | null>(null);
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>([]);
   const postsRef = useRef<ThreadPost[]>(posts);
@@ -1063,21 +1064,31 @@ export function ThreadsPostForm({
 
     if (mediaTargets.length > 0) {
       setFileProgresses(new Array(mediaTargets.length).fill(0));
+      const uploadAbortController = new AbortController();
+      threadUploadAbortRef.current = uploadAbortController;
       const uploadResults = await Promise.allSettled(
         mediaTargets.map((target, fileIndex) =>
-          uploadFile(target.file, fileIndex, (idx, percent) => {
-            setFileProgresses((prev) => {
-              const next = [...prev];
-              next[idx] = percent;
-              const sum = next.reduce((a, b) => a + b, 0);
-              const avg =
-                next.length > 0 ? Math.round(sum / next.length) : percent;
-              setUploadProgress(`${avg}%`);
-              return next;
-            });
-          }),
+          uploadFile(
+            target.file,
+            fileIndex,
+            (idx, percent) => {
+              setFileProgresses((prev) => {
+                const next = [...prev];
+                next[idx] = percent;
+                const sum = next.reduce((a, b) => a + b, 0);
+                const avg =
+                  next.length > 0 ? Math.round(sum / next.length) : percent;
+                setUploadProgress(
+                  avg >= 95 ? "Finalizing upload..." : `${avg}%`,
+                );
+                return next;
+              });
+            },
+            { signal: uploadAbortController.signal },
+          ),
         ),
       );
+      threadUploadAbortRef.current = null;
 
       const failed = uploadResults
         .map((result, i) => ({ result, target: mediaTargets[i] }))
@@ -1423,6 +1434,19 @@ export function ThreadsPostForm({
                   : "publishing"
           }
           uploadProgress={uploadProgress}
+          uploadPercent={
+            fileProgresses.length > 0
+              ? Math.round(
+                  fileProgresses.reduce((a, b) => a + b, 0) /
+                    fileProgresses.length,
+                )
+              : null
+          }
+          onCancelUpload={
+            overlayPhase === "uploading"
+              ? () => threadUploadAbortRef.current?.abort()
+              : undefined
+          }
           mediaType={overlayMediaType}
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
@@ -1502,6 +1526,15 @@ export function ThreadsPostForm({
           {error && (
             <div className="relative rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 pr-10 text-sm font-medium text-destructive">
               {error}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="rounded-lg border border-border bg-bg-elevated px-3 py-1.5 text-xs font-medium text-text hover:bg-bg-muted transition-colors"
+                >
+                  Try again
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setError(null)}

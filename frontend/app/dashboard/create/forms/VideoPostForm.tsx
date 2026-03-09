@@ -193,6 +193,7 @@ export function VideoPostForm({
   >({});
   const [isUploading, setIsUploading] = useState(false);
   const [uploadPercent, setUploadPercent] = useState<number | null>(null);
+  const uploadAbortRef = useRef<AbortController | null>(null);
 
   const selectedAccounts = useMemo(
     () => accounts.filter((a) => selectedIds.has(a.id)),
@@ -764,9 +765,13 @@ export function VideoPostForm({
       mediaIds.push(existingVideoId);
     } else if (videoFile) {
       setIsUploading(true);
+      uploadAbortRef.current = new AbortController();
       try {
-        const { id } = await uploadFile(videoFile, 0, (_, percent) =>
-          setUploadPercent(percent),
+        const { id } = await uploadFile(
+          videoFile,
+          0,
+          (_, percent) => setUploadPercent(percent),
+          { signal: uploadAbortRef.current.signal },
         );
         mediaIds.push(id);
       } catch (err) {
@@ -781,6 +786,7 @@ export function VideoPostForm({
       } finally {
         setIsUploading(false);
         setUploadPercent(null);
+        uploadAbortRef.current = null;
       }
     }
     setOverlayPhase(
@@ -1116,6 +1122,11 @@ export function VideoPostForm({
           uploadProgress={videoFile ? "1 of 1" : null}
           uploadPercent={uploadPercent}
           showUploadWarning={isUploading}
+          onCancelUpload={
+            overlayPhase === "uploading" && videoFile
+              ? () => uploadAbortRef.current?.abort()
+              : undefined
+          }
           mediaType="video"
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
@@ -1277,6 +1288,15 @@ export function VideoPostForm({
           {error && (
             <div className="relative rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 pr-10 text-sm font-medium text-destructive">
               {error}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="rounded-lg border border-border bg-bg-elevated px-3 py-1.5 text-xs font-medium text-text hover:bg-bg-muted transition-colors"
+                >
+                  Try again
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setError(null)}

@@ -36,9 +36,9 @@ export type PlatformResult = {
 
 type UploadPublishOverlayProps = {
   phase: OverlayPhase;
-  /** e.g. "2 of 5" – we show "Uploading 2 of 5" and media type */
+  /** e.g. "2 of 5" or "Finalizing upload..." when at 95%+ */
   uploadProgress?: string | null;
-  /** 0–100 upload percentage for granular progress bar */
+  /** 0–100 upload percentage for granular progress bar; at 95+ we show indeterminate + "Finalizing upload..." */
   uploadPercent?: number | null;
   /** When true, show a tab-close warning under the progress bar */
   showUploadWarning?: boolean;
@@ -58,6 +58,8 @@ type UploadPublishOverlayProps = {
   allDone?: boolean;
   /** Called when user clicks Close after all done */
   onClose?: () => void;
+  /** When uploading: called when user clicks cancel (X). Optional. */
+  onCancelUpload?: () => void;
 };
 
 function MediaTypeIcon({ type }: { type: "image" | "video" | "mixed" }) {
@@ -132,12 +134,15 @@ export function UploadPublishOverlay({
   platformStatuses = [],
   allDone = false,
   onClose,
+  onCancelUpload,
 }: UploadPublishOverlayProps) {
   void onClose; // kept for API compatibility; success screen uses Links only
   const isUploading = phase === "uploading";
   const isSavingDraft = phase === "saving";
   const showPlatformRows =
     phase === "publishing" && platformStatuses.length > 0 && !isScheduling;
+  const isFinalizing =
+    typeof uploadPercent === "number" && uploadPercent >= 95;
 
   return (
     <div
@@ -145,7 +150,7 @@ export function UploadPublishOverlay({
       aria-live="polite"
       aria-busy={!showLinks}
     >
-      <div className="mx-4 flex max-w-md flex-col items-center text-center">
+      <div className="relative mx-4 flex max-w-md flex-col items-center text-center">
         {showLinks && !(showPlatformRows && allDone) ? (
           <>
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
@@ -176,33 +181,52 @@ export function UploadPublishOverlay({
           </>
         ) : isUploading ? (
           <>
+            {onCancelUpload && (
+              <button
+                type="button"
+                onClick={onCancelUpload}
+                className="absolute -top-2 -right-2 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-bg-elevated text-text-muted shadow-sm hover:bg-bg-muted hover:text-text transition-colors"
+                aria-label="Cancel upload"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
               <Upload className="h-7 w-7 animate-pulse text-emerald-600 dark:text-emerald-400" />
             </div>
             <h2 className="mt-4 text-xl font-semibold text-text">
-              Uploading {mediaTypeLabel(mediaType).toLowerCase()}
-              {uploadProgress ? ` · ${uploadProgress}` : ""}…
+              {isFinalizing
+                ? "Finalizing upload…"
+                : `Uploading ${mediaTypeLabel(mediaType).toLowerCase()}${uploadProgress ? ` · ${uploadProgress}` : ""}…`}
             </h2>
             {(uploadProgress || mediaType) && (
               <p className="mt-1 flex items-center justify-center gap-1.5 text-sm text-text-muted">
                 <MediaTypeIcon type={mediaType} />
                 {mediaTypeLabel(mediaType)}
-                {uploadProgress ? ` ${uploadProgress}` : ""}
+                {isFinalizing
+                  ? " Finalizing upload…"
+                  : uploadProgress
+                    ? ` ${uploadProgress}`
+                    : ""}
               </p>
             )}
             {typeof uploadPercent === "number" && (
               <div className="mt-4 w-full max-w-sm space-y-1">
                 <div className="flex items-center gap-2">
                   <div className="h-2 flex-1 overflow-hidden rounded-full bg-bg-muted">
-                    <div
-                      className="h-full bg-emerald-500 transition-all duration-200"
-                      style={{ width: `${uploadPercent}%` }}
-                    />
+                    {isFinalizing ? (
+                      <div className="h-full w-full bg-emerald-500 animate-pulse" />
+                    ) : (
+                      <div
+                        className="h-full bg-emerald-500 transition-all duration-200"
+                        style={{ width: `${uploadPercent}%` }}
+                      />
+                    )}
                   </div>
-                  <span className="text-xs font-medium text-text-muted">
-                    Uploading {mediaTypeLabel(mediaType).toLowerCase()}
-                    {uploadProgress ? ` ${uploadProgress}` : ""}…{" "}
-                    {uploadPercent}%
+                  <span className="text-xs font-medium text-text-muted shrink-0">
+                    {isFinalizing
+                      ? "Finalizing…"
+                      : `${uploadPercent}%`}
                   </span>
                 </div>
               </div>

@@ -130,6 +130,7 @@ export function ImagePostForm({
   type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const imageUploadAbortRef = useRef<AbortController | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [tiktokSettings, setTiktokSettings] = useState<
     Record<string, TikTokPostSettings>
@@ -775,21 +776,31 @@ export function ImagePostForm({
 
     if (uploadTargets.length > 0) {
       setFileProgresses(new Array(uploadTargets.length).fill(0));
+      const uploadAbortController = new AbortController();
+      imageUploadAbortRef.current = uploadAbortController;
       const uploadResults = await Promise.allSettled(
         uploadTargets.map((target, fileIndex) =>
-          uploadFile(target.file, fileIndex, (idx, percent) => {
-            setFileProgresses((prev) => {
-              const next = [...prev];
-              next[idx] = percent;
-              const sum = next.reduce((a, b) => a + b, 0);
-              const avg =
-                next.length > 0 ? Math.round(sum / next.length) : percent;
-              setUploadProgress(`${avg}%`);
-              return next;
-            });
-          }),
+          uploadFile(
+            target.file,
+            fileIndex,
+            (idx, percent) => {
+              setFileProgresses((prev) => {
+                const next = [...prev];
+                next[idx] = percent;
+                const sum = next.reduce((a, b) => a + b, 0);
+                const avg =
+                  next.length > 0 ? Math.round(sum / next.length) : percent;
+                setUploadProgress(
+                  avg >= 95 ? "Finalizing upload..." : `${avg}%`,
+                );
+                return next;
+              });
+            },
+            { signal: uploadAbortController.signal },
+          ),
         ),
       );
+      imageUploadAbortRef.current = null;
 
       const failed = uploadResults.filter(
         (r): r is PromiseRejectedResult => r.status === "rejected",
@@ -1200,6 +1211,18 @@ export function ImagePostForm({
                   : "publishing"
           }
           uploadProgress={uploadProgress}
+          uploadPercent={
+            fileProgresses.length > 0
+              ? Math.round(
+                  fileProgresses.reduce((a, b) => a + b, 0) / fileProgresses.length,
+                )
+              : null
+          }
+          onCancelUpload={
+            overlayPhase === "uploading"
+              ? () => imageUploadAbortRef.current?.abort()
+              : undefined
+          }
           mediaType="image"
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
@@ -1435,6 +1458,15 @@ export function ImagePostForm({
           {error && (
             <div className="relative rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 pr-10 text-sm font-medium text-destructive">
               {error}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="rounded-lg border border-border bg-bg-elevated px-3 py-1.5 text-xs font-medium text-text hover:bg-bg-muted transition-colors"
+                >
+                  Try again
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setError(null)}
