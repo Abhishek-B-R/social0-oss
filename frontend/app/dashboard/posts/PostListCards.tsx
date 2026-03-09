@@ -91,13 +91,18 @@ function getUiStatus(post: PostRow): string {
 function getTimestampLabel(
   post: PostRow,
   publications: { publishedAt: Date | null }[],
-  options: { use24HourTimeFormat: boolean; dateFormat?: string | null },
+  options: {
+    use24HourTimeFormat: boolean;
+    dateFormat?: string | null;
+    timezone?: string | null;
+  },
 ): string {
   const effectiveStatus = getUiStatus(post);
   const fmt = (d: Date) =>
     formatDateTime(d, {
       use24HourTimeFormat: options.use24HourTimeFormat,
       dateFormat: options.dateFormat,
+      timezone: options.timezone,
     });
   if (effectiveStatus === "scheduled" && post.scheduledAt) {
     return `Scheduled for ${fmt(new Date(post.scheduledAt))}`;
@@ -161,6 +166,7 @@ export function PostListCards({
   hasActiveFilters,
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
+  timezone,
 }: {
   userPosts: PostRow[];
   publicationsByPostId: Record<string, PublicationRow[]>;
@@ -172,6 +178,7 @@ export function PostListCards({
   hasActiveFilters?: boolean;
   use24HourTimeFormat?: boolean;
   dateFormat?: string | null;
+  timezone?: string | null;
 }) {
   if (userPosts.length === 0) {
     return (
@@ -208,7 +215,7 @@ export function PostListCards({
         const timestampLabel = getTimestampLabel(
           post,
           publicationsByPostId[post.id] ?? [],
-          { use24HourTimeFormat, dateFormat },
+          { use24HourTimeFormat, dateFormat, timezone },
         );
 
         const PREVIEW_LEN = 120;

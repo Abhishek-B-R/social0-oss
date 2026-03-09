@@ -8,6 +8,7 @@ import {
   updateAutomationEmails,
   updateDisplayName,
   updatePlatformPreferences,
+  updateTimezone,
   updateUserImage,
   updateConnectionAvatar,
   type SettingsSnapshot,
@@ -209,18 +210,68 @@ function AvatarEditor({
   );
 }
 
+function getTimezoneLabel(tz: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en", {
+      timeZone: tz,
+      timeZoneName: "longOffset",
+    }).formatToParts(new Date());
+    const offsetPart = parts.find((p) => p.type === "timeZoneName")?.value;
+    if (offsetPart) return `${tz} (${offsetPart})`;
+  } catch {
+    // ignore invalid timezone
+  }
+  return tz;
+}
+
+function DetectTimezoneButton({ selectId }: { selectId: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        try {
+          const tz =
+            typeof Intl !== "undefined" &&
+            "resolvedOptions" in Intl.DateTimeFormat.prototype
+              ? new Intl.DateTimeFormat().resolvedOptions().timeZone
+              : "UTC";
+          const select = document.getElementById(selectId) as HTMLSelectElement | null;
+          if (select && tz) {
+            if ([...select.options].some((o) => o.value === tz)) {
+              select.value = tz;
+            } else {
+              const opt = document.createElement("option");
+              opt.value = tz;
+              opt.textContent = tz;
+              select.appendChild(opt);
+              select.value = tz;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }}
+      className="rounded-xl border border-border bg-bg px-3 py-2.5 text-sm font-medium text-text hover:bg-muted transition-colors"
+    >
+      Use my location
+    </button>
+  );
+}
+
 export function SettingsClient({
   displayName,
   email,
   image,
   settings,
   connections,
+  timeZones,
 }: {
   displayName: string;
   email: string;
   image: string | null;
   settings: SettingsSnapshot;
   connections: SettingsConnection[];
+  timeZones: string[];
 }) {
   return (
     <div className="space-y-6">
@@ -423,6 +474,39 @@ export function SettingsClient({
             </select>
           </div>
           <SaveButton />
+        </form>
+      </section>
+
+      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-text">Timezone</h2>
+        <p className="mt-2 text-sm text-text-muted">
+          Schedules, post times, and calendar are shown in this timezone.
+        </p>
+        <form action={updateTimezone} className="mt-4 space-y-4">
+          <div>
+            <label
+              htmlFor="timezone"
+              className="block text-sm font-semibold text-text mb-2"
+            >
+              Your timezone
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                id="timezone"
+                name="timezone"
+                defaultValue={settings.timezone}
+                className="min-w-[320px] rounded-xl border border-input bg-bg px-4 py-2.5 text-sm font-medium text-text shadow-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1"
+              >
+                {timeZones.map((tz) => (
+                  <option key={tz} value={tz}>
+                    {getTimezoneLabel(tz)}
+                  </option>
+                ))}
+              </select>
+              <DetectTimezoneButton selectId="timezone" />
+            </div>
+          </div>
+          <SaveButton label="Save timezone" />
         </form>
       </section>
     </div>

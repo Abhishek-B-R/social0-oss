@@ -13,12 +13,14 @@ export type SettingsSnapshot = {
   automationEmails: boolean;
   use24HourTimeFormat: boolean;
   dateFormat: DateFormatKey;
+  timezone: string;
 };
 
 const DEFAULT_SETTINGS: SettingsSnapshot = {
   automationEmails: true,
   use24HourTimeFormat: false,
   dateFormat: "dd/MM/yyyy",
+  timezone: "UTC",
 };
 
 async function getCurrentUserId() {
@@ -38,6 +40,7 @@ export async function getUserSettingsSnapshot(): Promise<SettingsSnapshot> {
       automationEmails: true,
       use24HourTimeFormat: true,
       dateFormat: true,
+      timezone: true,
     },
   });
 
@@ -53,11 +56,17 @@ export async function getUserSettingsSnapshot(): Promise<SettingsSnapshot> {
       ? dateFormat
       : DEFAULT_SETTINGS.dateFormat;
 
+  const timezone =
+    typeof row.timezone === "string" && row.timezone.trim().length > 0
+      ? row.timezone.trim()
+      : DEFAULT_SETTINGS.timezone;
+
   return {
     automationEmails: row.automationEmails ?? DEFAULT_SETTINGS.automationEmails,
     use24HourTimeFormat:
       row.use24HourTimeFormat ?? DEFAULT_SETTINGS.use24HourTimeFormat,
     dateFormat: validDateFormat,
+    timezone,
   };
 }
 
@@ -181,6 +190,13 @@ export async function updatePlatformPreferences(formData: FormData): Promise<voi
     use24HourTimeFormat: formData.get("use24HourTimeFormat") === "on",
     ...(dateFormat !== undefined && { dateFormat }),
   });
+}
+
+export async function updateTimezone(formData: FormData): Promise<void> {
+  const tz = formData.get("timezone");
+  const timezone =
+    typeof tz === "string" && tz.trim().length > 0 ? tz.trim() : "UTC";
+  await upsertSettings({ timezone });
 }
 
 export async function signOutAllDevices(): Promise<void> {

@@ -22,6 +22,11 @@ export default async function SettingsPage() {
     redirect("/");
   }
 
+  const timeZones =
+    typeof Intl !== "undefined" && "supportedValuesOf" in Intl
+      ? (Intl as Intl & { supportedValuesOf?(key: "timeZone"): string[] }).supportedValuesOf("timeZone")
+      : ["UTC", "America/New_York", "America/Los_Angeles", "Europe/London", "Europe/Paris", "Asia/Kolkata", "Asia/Tokyo", "Australia/Sydney"];
+
   const [settings, connections] = await Promise.all([
     getUserSettingsSnapshot(),
     db.query.connectedAccounts.findMany({
@@ -54,6 +59,7 @@ export default async function SettingsPage() {
       image={session.user.image ?? null}
       settings={settings}
       connections={connectionsForClient}
+      timeZones={timeZones}
     />
   );
 }

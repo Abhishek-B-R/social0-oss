@@ -24,25 +24,93 @@ export function normalizeDateFormat(
   return DEFAULT_DATE_FORMAT;
 }
 
-/** Format date only using the user's date format preference. */
+/** Format date in a given IANA timezone (e.g. "America/New_York") using Intl. */
+function formatDateInZone(
+  date: Date,
+  timezone: string,
+  dateFormat: DateFormatKey,
+): string {
+  const key = normalizeDateFormat(dateFormat);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const y = parts.find((p) => p.type === "year")?.value ?? "";
+  const m = parts.find((p) => p.type === "month")?.value ?? "";
+  const d = parts.find((p) => p.type === "day")?.value ?? "";
+  if (key === "dd/MM/yyyy") return `${d}/${m}/${y}`;
+  if (key === "MM/dd/yyyy") return `${m}/${d}/${y}`;
+  return `${y}-${m}-${d}`;
+}
+
+/** Format date and time in a given IANA timezone using Intl. */
+function formatDateTimeInZone(
+  date: Date,
+  timezone: string,
+  options: {
+    dateFormat: DateFormatKey;
+    use24HourTimeFormat?: boolean;
+  },
+): string {
+  const dateStr = formatDateInZone(date, timezone, options.dateFormat);
+  const timeParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: !options.use24HourTimeFormat,
+  }).formatToParts(date);
+  const hour = timeParts.find((p) => p.type === "hour")?.value ?? "";
+  const minute = timeParts.find((p) => p.type === "minute")?.value ?? "";
+  const dayPeriod = timeParts.find((p) => p.type === "dayPeriod")?.value ?? "";
+  const timeStr =
+    options.use24HourTimeFormat ? `${hour}:${minute}` : `${hour}:${minute} ${dayPeriod}`;
+  return `${dateStr} ${timeStr}`;
+}
+
+/** Format date only using the user's date format preference. Pass timezone to show in user's region. */
 export function formatDate(
   date: Date,
   dateFormat: DateFormatKey | string | null | undefined,
+  timezone?: string | null,
 ): string {
   const pattern = normalizeDateFormat(dateFormat ?? undefined);
+  if (timezone && timezone.trim() && timezone !== "UTC") {
+    try {
+      return formatDateInZone(date, timezone.trim(), pattern);
+    } catch {
+      return format(date, pattern);
+    }
+  }
   return format(date, pattern);
 }
 
-/** Format date and time using user's date format and 24h preference. */
+/** Format date and time using user's date format and 24h preference. Pass timezone to show in user's region. */
 export function formatDateTime(
   date: Date,
   options: {
     dateFormat?: DateFormatKey | string | null;
     use24HourTimeFormat?: boolean;
+    timezone?: string | null;
   },
 ): string {
   const pattern = normalizeDateFormat(options.dateFormat ?? undefined);
   const timePattern = options.use24HourTimeFormat ? "HH:mm" : "h:mm a";
+  if (
+    options.timezone &&
+    options.timezone.trim() &&
+    options.timezone.trim() !== "UTC"
+  ) {
+    try {
+      return formatDateTimeInZone(date, options.timezone.trim(), {
+        dateFormat: pattern,
+        use24HourTimeFormat: options.use24HourTimeFormat,
+      });
+    } catch {
+      return format(date, `${pattern} ${timePattern}`);
+    }
+  }
   return format(date, `${pattern} ${timePattern}`);
 }
 
@@ -69,9 +137,35 @@ export function formatDateTimeAt(
   options: {
     dateFormat?: DateFormatKey | string | null;
     use24HourTimeFormat?: boolean;
+    timezone?: string | null;
   },
 ): string {
   const key = normalizeDateFormat(options.dateFormat ?? undefined);
+  if (
+    options.timezone &&
+    options.timezone.trim() &&
+    options.timezone.trim() !== "UTC"
+  ) {
+    try {
+      const dateStr = formatDateInZone(date, options.timezone.trim(), key);
+      const timeParts = new Intl.DateTimeFormat("en-US", {
+        timeZone: options.timezone.trim(),
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: !options.use24HourTimeFormat,
+      }).formatToParts(date);
+      const hour = timeParts.find((p) => p.type === "hour")?.value ?? "";
+      const minute = timeParts.find((p) => p.type === "minute")?.value ?? "";
+      const dayPeriod =
+        timeParts.find((p) => p.type === "dayPeriod")?.value ?? "";
+      const timeStr = options.use24HourTimeFormat
+        ? `${hour}:${minute}`
+        : `${hour}:${minute} ${dayPeriod}`;
+      return `${dateStr} at ${timeStr}`;
+    } catch {
+      // fallback below
+    }
+  }
   const timePart = options.use24HourTimeFormat ? "HH:mm" : "h:mm a";
   const datePart = format(date, key);
   return `${datePart} at ${format(date, timePart)}`;

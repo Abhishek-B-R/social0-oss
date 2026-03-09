@@ -17,6 +17,7 @@ type BillingClientProps = {
   twitterTweetLimit: TwitterTweetLimitResult;
   justSubscribed?: boolean;
   dateFormat?: string | null;
+  timezone?: string | null;
 };
 
 function redirectToComposer() {
@@ -29,6 +30,7 @@ export function BillingClient({
   twitterTweetLimit,
   justSubscribed = false,
   dateFormat = "dd/MM/yyyy",
+  timezone,
 }: BillingClientProps) {
   const [loadingPlan, setLoadingPlan] = useState<"starter" | "growth" | null>(
     null,
@@ -179,7 +181,7 @@ export function BillingClient({
         </h2>
         {subscription.expiresAt && (
           <p className="mt-0.5 text-sm text-text-muted">
-            Renews {formatDate(new Date(subscription.expiresAt), dateFormat)}
+            Renews {formatDate(new Date(subscription.expiresAt), dateFormat, timezone)}
           </p>
         )}
         <div className="mt-3 grid gap-3 sm:grid-cols-2">

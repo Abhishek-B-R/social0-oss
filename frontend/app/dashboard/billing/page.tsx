@@ -21,7 +21,7 @@ export default async function BillingPage({
   const showUpgradeBanner = params.upgrade === "1";
   const justSubscribed = params.success === "1";
 
-  const { dateFormat } = await getUserSettingsSnapshot();
+  const { dateFormat, timezone } = await getUserSettingsSnapshot();
   const subscription = await getSubscriptionForUser(session.user.id);
   const accountLimit = await checkAccountLimits(
     session.user.id,
@@ -47,6 +47,7 @@ export default async function BillingPage({
           twitterTweetLimit={twitterTweetLimit}
           justSubscribed={justSubscribed}
           dateFormat={dateFormat}
+          timezone={timezone}
         />
       </div>
     </div>

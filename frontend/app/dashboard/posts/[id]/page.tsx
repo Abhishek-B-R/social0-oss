@@ -139,7 +139,7 @@ export default async function PostDetailPage({
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/dashboard/posts");
 
-  const { use24HourTimeFormat, dateFormat } = await getUserSettingsSnapshot();
+  const { use24HourTimeFormat, dateFormat, timezone } = await getUserSettingsSnapshot();
 
   const { id } = await params;
   const data = await getPostDetail(id, session.user.id);
@@ -347,6 +347,7 @@ export default async function PostDetailPage({
                 <p>
                   <span className="font-medium text-text">Created:</span>{" "}
                   {formatDateTime(new Date(post.createdAt), {
+                    timezone,
                     dateFormat,
                     use24HourTimeFormat,
                   })}
@@ -356,6 +357,7 @@ export default async function PostDetailPage({
                 <p>
                   <span className="font-medium text-text">Scheduled for:</span>{" "}
                   {formatDateTime(new Date(post.scheduledAt), {
+                    timezone,
                     dateFormat,
                     use24HourTimeFormat,
                   })}
@@ -365,6 +367,7 @@ export default async function PostDetailPage({
                 <p>
                   <span className="font-medium text-text">Posted:</span>{" "}
                   {formatDateTime(publishedAt, {
+                    timezone,
                     dateFormat,
                     use24HourTimeFormat,
                   })}

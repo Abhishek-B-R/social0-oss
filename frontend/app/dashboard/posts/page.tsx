@@ -47,7 +47,7 @@ export default async function PostsPage({
     limit: POSTS_PAGE_SIZE,
   });
 
-  const { use24HourTimeFormat, dateFormat } = await getUserSettingsSnapshot();
+  const { use24HourTimeFormat, dateFormat, timezone } = await getUserSettingsSnapshot();
 
   const hasActiveFilters = !!(params.platform || params.time || params.account);
   const showTikTokMessage = params?.tiktok_published === "true";
@@ -120,6 +120,7 @@ export default async function PostsPage({
         hasActiveFilters={hasActiveFilters}
         use24HourTimeFormat={use24HourTimeFormat}
         dateFormat={dateFormat}
+        timezone={timezone}
       />
 
       <Pagination
