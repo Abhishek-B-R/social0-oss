@@ -91,7 +91,7 @@ export function TextPostForm({
   const intendedQueueSlotIdRef = useRef<string | null>(null);
   const [content, setContent] = useState("");
   const { remember, setRemember, getInitialSelectedIds, persistSelection } =
-    useRememberedAccounts("post-form");
+    useRememberedAccounts("post-form-text");
   const [accountSearch, setAccountSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
     if (initialDraftId || initialScheduledId) return new Set();

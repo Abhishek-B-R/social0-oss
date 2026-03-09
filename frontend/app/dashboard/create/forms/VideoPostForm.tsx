@@ -136,7 +136,7 @@ export function VideoPostForm({
     [accounts],
   );
   const { remember, setRemember, getInitialSelectedIds, persistSelection } =
-    useRememberedAccounts("post-form");
+    useRememberedAccounts("post-form-video");
   const [accountSearch, setAccountSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
     initialDraftId || initialScheduledId ? new Set() : getInitialSelectedIds(validIds),

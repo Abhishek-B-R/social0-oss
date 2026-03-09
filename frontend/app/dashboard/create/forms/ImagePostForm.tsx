@@ -114,7 +114,7 @@ export function ImagePostForm({
     [accounts],
   );
   const { remember, setRemember, getInitialSelectedIds, persistSelection } =
-    useRememberedAccounts("post-form");
+    useRememberedAccounts("post-form-image");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
     initialDraftId || initialScheduledId ? new Set() : getInitialSelectedIds(validIds),
   );

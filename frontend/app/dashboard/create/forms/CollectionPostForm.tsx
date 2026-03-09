@@ -110,7 +110,7 @@ export function CollectionPostForm({
     [accounts],
   );
   const { remember, setRemember, getInitialSelectedIds, persistSelection } =
-    useRememberedAccounts("post-form");
+    useRememberedAccounts("post-form-collection");
   const [accountSearch, setAccountSearch] = useState("");
   const imagesRef = useRef<ImageFile[]>([]);
   const videosRef = useRef<VideoFile[]>([]);

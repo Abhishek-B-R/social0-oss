@@ -259,7 +259,7 @@ export function ThreadsPostForm({
     [accounts],
   );
   const { remember, setRemember, getInitialSelectedIds, persistSelection } =
-    useRememberedAccounts("post-form");
+    useRememberedAccounts("post-form-threads");
   const [accountSearch, setAccountSearch] = useState("");
   const [posts, setPosts] = useState<ThreadPost[]>(() => [
     { id: 1, text: "", images: [], videos: [] },
