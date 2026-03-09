@@ -77,6 +77,7 @@ export function CollectionPostForm({
   accounts,
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
+  timezone = null,
   draftId: initialDraftId,
   allowAutoRepost = true,
   allowAutoPlug = true,
@@ -85,6 +86,7 @@ export function CollectionPostForm({
   accounts: Account[];
   use24HourTimeFormat?: boolean;
   dateFormat?: string | null;
+  timezone?: string | null;
   draftId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
@@ -96,6 +98,7 @@ export function CollectionPostForm({
   const formRef = useRef<HTMLFormElement>(null);
   const captionTextareaRef = useRef<HTMLTextAreaElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
+  const intendedQueueSlotIdRef = useRef<string | null>(null);
   const [content, setContent] = useState("");
   const [images, setImages] = useState<ImageFile[]>([]);
   const [videos, setVideos] = useState<VideoFile[]>([]);
@@ -866,7 +869,9 @@ export function CollectionPostForm({
           scheduledAt,
           finalMediaIds,
           meta,
+          scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
         );
+        if (scheduledAt) intendedQueueSlotIdRef.current = null;
         setLoading(false);
         setOverlayPhase("idle");
         if (result.success) {
@@ -886,7 +891,9 @@ export function CollectionPostForm({
       scheduledAt,
       finalMediaIds,
       meta,
+      effectiveMode === "scheduled" ? intendedQueueSlotIdRef.current ?? undefined : undefined,
     );
+    if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
     if (!result.success) {
       setError(result.error);
@@ -1469,7 +1476,9 @@ export function CollectionPostForm({
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
+          timezone={timezone}
           intendedModeRef={intendedModeRef}
+          intendedQueueSlotIdRef={intendedQueueSlotIdRef}
           formRef={formRef}
           draftId={initialDraftId ?? null}
           onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}

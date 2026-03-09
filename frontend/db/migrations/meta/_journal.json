@@ -141,6 +141,27 @@
       "when": 1772800000000,
       "tag": "0020_add_date_format",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1772900000000,
+      "tag": "0021_queue_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1773000000000,
+      "tag": "0022_queue_slots_days_of_week",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1773100000000,
+      "tag": "0023_queue_slots_unique_user_time",
+      "breakpoints": true
     }
   ]
 }

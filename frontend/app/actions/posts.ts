@@ -7,6 +7,7 @@ import {
   postPublications,
   connectedAccounts,
   mediaUploads,
+  queuedPosts,
 } from "@/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
 import { headers } from "next/headers";
@@ -32,6 +33,7 @@ export async function createPost(
   scheduledAt: Date | null,
   mediaIds: string[] = [],
   metadata?: Record<string, unknown>,
+  queueSlotId?: string | null,
 ): Promise<CreatePostResult> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
@@ -156,8 +158,19 @@ export async function createPost(
       };
     }
 
+    if (mode === "scheduled" && scheduledAt && queueSlotId?.trim()) {
+      await db.insert(queuedPosts).values({
+        userId: session.user.id,
+        postId: postRow.id,
+        slotId: queueSlotId.trim(),
+        scheduledFor: scheduledAt,
+        status: "pending",
+      });
+    }
+
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/posts");
+    revalidatePath("/dashboard/posts/scheduled");
     revalidatePath("/dashboard/create");
 
     return { success: true, postId: postRow.id };
@@ -223,6 +236,7 @@ export async function updatePost(
   scheduledAt: Date | null,
   mediaIds?: string[],
   metadata?: Record<string, unknown>,
+  queueSlotId?: string | null,
 ): Promise<UpdatePostResult> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
@@ -347,6 +361,33 @@ export async function updatePost(
         status: "pending" as const,
       })),
     );
+
+    if (scheduledAt && queueSlotId?.trim()) {
+      await db
+        .delete(queuedPosts)
+        .where(
+          and(
+            eq(queuedPosts.postId, postId),
+            eq(queuedPosts.userId, session.user.id),
+          ),
+        );
+      await db.insert(queuedPosts).values({
+        userId: session.user.id,
+        postId,
+        slotId: queueSlotId.trim(),
+        scheduledFor: scheduledAt,
+        status: "pending",
+      });
+    } else if (!scheduledAt) {
+      await db
+        .delete(queuedPosts)
+        .where(
+          and(
+            eq(queuedPosts.postId, postId),
+            eq(queuedPosts.userId, session.user.id),
+          ),
+        );
+    }
 
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/posts");

@@ -6,6 +6,7 @@ import {
   mediaUploads,
   resurfaceSchedules,
   autoPlugs,
+  queuedPosts,
 } from "@/db/schema";
 import { eq, desc, asc, inArray, and } from "drizzle-orm";
 import { startOfWeek, startOfMonth } from "date-fns";
@@ -317,6 +318,25 @@ export async function getPostsListData({
           })
           .catch(() => ({}) as AutoPlugMap);
 
+  const pagePostIds = userPostsWithStatus.map((p) => p.id);
+  const queuedPostIds =
+    statusFilter === "scheduled" && pagePostIds.length > 0
+      ? new Set(
+          (
+            await db
+              .select({ postId: queuedPosts.postId })
+              .from(queuedPosts)
+              .where(
+                and(
+                  eq(queuedPosts.userId, userId),
+                  eq(queuedPosts.status, "pending"),
+                  inArray(queuedPosts.postId, pagePostIds),
+                ),
+              )
+          ).map((r) => r.postId),
+        )
+      : new Set<string>();
+
   return {
     userPosts: userPostsWithStatus,
     publicationsByPostId,
@@ -326,6 +346,7 @@ export async function getPostsListData({
     resurfaceByPostId,
     autoPlugByPostId,
     totalCount,
+    queuedPostIds,
   };
 }
 

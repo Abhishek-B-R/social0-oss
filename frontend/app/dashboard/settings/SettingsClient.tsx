@@ -19,6 +19,7 @@ import { PLATFORMS } from "@/lib/platforms";
 import { DATE_FORMAT_OPTIONS } from "@/lib/date-format";
 import { uploadFile } from "@/lib/upload-file";
 import { PlatformIcon } from "@/components/PlatformIcon";
+import { QueueScheduleSection } from "./QueueScheduleSection";
 
 export type SettingsConnection = {
   id: string;
@@ -235,7 +236,9 @@ function DetectTimezoneButton({ selectId }: { selectId: string }) {
             "resolvedOptions" in Intl.DateTimeFormat.prototype
               ? new Intl.DateTimeFormat().resolvedOptions().timeZone
               : "UTC";
-          const select = document.getElementById(selectId) as HTMLSelectElement | null;
+          const select = document.getElementById(
+            selectId,
+          ) as HTMLSelectElement | null;
           if (select && tz) {
             if ([...select.options].some((o) => o.value === tz)) {
               select.value = tz;
@@ -476,6 +479,11 @@ export function SettingsClient({
           <SaveButton />
         </form>
       </section>
+
+      <QueueScheduleSection
+        timezone={settings.timezone ?? "UTC"}
+        use24HourTimeFormat={settings.use24HourTimeFormat ?? false}
+      />
 
       <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-text">Timezone</h2>

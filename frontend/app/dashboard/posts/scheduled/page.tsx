@@ -7,6 +7,7 @@ import { getPostsListData, POSTS_PAGE_SIZE } from "../posts-list-data";
 import { AllPostsFilters } from "../AllPostsFilters";
 import { PostListCards } from "../PostListCards";
 import { Pagination } from "@/components/ui/Pagination";
+import { QueueSuccessBanner } from "./QueueSuccessBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,7 @@ export default async function ScheduledPostsPage({
     resurfaceByPostId,
     autoPlugByPostId,
     totalCount,
+    queuedPostIds,
   } = await getPostsListData({
     userId: session.user.id,
     statusFilter: "scheduled",
@@ -46,6 +48,7 @@ export default async function ScheduledPostsPage({
 
   return (
     <div>
+      <QueueSuccessBanner />
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-extrabold text-text">Scheduled</h2>
@@ -77,6 +80,7 @@ export default async function ScheduledPostsPage({
         firstMediaByPost={firstMediaByPost}
         resurfaceByPostId={resurfaceByPostId}
         autoPlugByPostId={autoPlugByPostId}
+        queuedPostIds={queuedPostIds}
         emptyMessage="You have no scheduled posts."
         filterMessage="No scheduled posts match your filters."
         hasActiveFilters={hasActiveFilters}

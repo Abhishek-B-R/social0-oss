@@ -67,6 +67,7 @@ export function TextPostForm({
   accounts,
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
+  timezone = null,
   draftId: initialDraftId,
   allowAutoRepost = true,
   allowAutoPlug = true,
@@ -75,6 +76,7 @@ export function TextPostForm({
   accounts: Account[];
   use24HourTimeFormat?: boolean;
   dateFormat?: string | null;
+  timezone?: string | null;
   draftId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
@@ -83,6 +85,7 @@ export function TextPostForm({
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
+  const intendedQueueSlotIdRef = useRef<string | null>(null);
   const [content, setContent] = useState("");
   const { remember, setRemember, getInitialSelectedIds, persistSelection } =
     useRememberedAccounts("post-form");
@@ -458,7 +461,9 @@ export function TextPostForm({
           scheduledAt,
           undefined,
           metadata,
+          scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
         );
+        if (scheduledAt) intendedQueueSlotIdRef.current = null;
         setLoading(false);
         if (result.success) {
           router.push("/dashboard/posts/scheduled");
@@ -478,7 +483,9 @@ export function TextPostForm({
       scheduledAt,
       [],
       metadata,
+      effectiveMode === "scheduled" ? intendedQueueSlotIdRef.current ?? undefined : undefined,
     );
+    if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
     if (result.success) {
       if (effectiveMode === "now" && result.postId) {
@@ -934,7 +941,9 @@ export function TextPostForm({
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
+          timezone={timezone}
           intendedModeRef={intendedModeRef}
+          intendedQueueSlotIdRef={intendedQueueSlotIdRef}
           formRef={formRef}
           draftId={initialDraftId ?? null}
           onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}

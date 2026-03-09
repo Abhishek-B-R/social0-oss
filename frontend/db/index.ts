@@ -14,6 +14,8 @@ import {
   postPublications,
   userSettings,
   platformRateLimits,
+  queueSlots,
+  queuedPosts,
 } from "./schema";
 
 dotenv.config({ path: ".env.local" });
@@ -43,5 +45,7 @@ export const db = drizzle(pool, {
     postPublications,
     userSettings,
     platformRateLimits,
+    queueSlots,
+    queuedPosts,
   },
 });

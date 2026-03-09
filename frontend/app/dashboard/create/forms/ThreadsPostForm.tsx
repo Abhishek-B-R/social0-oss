@@ -227,6 +227,7 @@ export function ThreadsPostForm({
   accounts,
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
+  timezone = null,
   draftId: initialDraftId,
   allowAutoRepost = true,
   allowAutoPlug = true,
@@ -235,6 +236,7 @@ export function ThreadsPostForm({
   accounts: Account[];
   use24HourTimeFormat?: boolean;
   dateFormat?: string | null;
+  timezone?: string | null;
   draftId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
@@ -249,6 +251,7 @@ export function ThreadsPostForm({
   };
   const formRef = useRef<HTMLFormElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
+  const intendedQueueSlotIdRef = useRef<string | null>(null);
   const validIds = useMemo(
     () => new Set(accounts.filter((a) => !a.tokenExpired).map((a) => a.id)),
     [accounts],
@@ -1117,7 +1120,9 @@ export function ThreadsPostForm({
           scheduledAt,
           mediaIds,
           metadata,
+          scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
         );
+        if (scheduledAt) intendedQueueSlotIdRef.current = null;
         setLoading(false);
         setOverlayPhase("idle");
         if (result.success) {
@@ -1137,7 +1142,9 @@ export function ThreadsPostForm({
       scheduledAt,
       mediaIds,
       metadata,
+      effectiveMode === "scheduled" ? intendedQueueSlotIdRef.current ?? undefined : undefined,
     );
+    if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
     if (!result.success) {
       setError(result.error);
@@ -1619,7 +1626,9 @@ export function ThreadsPostForm({
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
+          timezone={timezone}
           intendedModeRef={intendedModeRef}
+          intendedQueueSlotIdRef={intendedQueueSlotIdRef}
           formRef={formRef}
           draftId={initialDraftId ?? null}
           onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}
