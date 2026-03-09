@@ -19,7 +19,7 @@ import {
   FileText,
   Layers,
   LayoutGrid,
-  FileQuestion,
+  Play,
 } from "lucide-react";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { formatDateTime } from "@/lib/date-format";
@@ -77,18 +77,28 @@ function getPublicationStatusBadge(
   }
 }
 
+export type ThreadPartWithMedia = { text: string; mediaIds: string[] };
+
 function getThreadParts(post: PostDetailRow): string[] {
+  const withMedia = getThreadPartsWithMedia(post);
+  return withMedia.map((p) => p.text);
+}
+
+function getThreadPartsWithMedia(post: PostDetailRow): ThreadPartWithMedia[] {
   const meta = post.metadata as
-    | { twitterThread?: { parts?: { text: string }[] } }
+    | { twitterThread?: { parts?: { text?: string; mediaIds?: string[] }[] } }
     | undefined;
   const partsArr = meta?.twitterThread?.parts;
   if (Array.isArray(partsArr) && partsArr.length > 0) {
     return partsArr.map((p) => {
       const t =
         typeof p === "object" && p && "text" in p
-          ? String((p as { text: string }).text).trim()
+          ? String((p as { text?: string }).text ?? "").trim()
           : "";
-      return t || "(No caption)";
+      const mediaIds = Array.isArray((p as { mediaIds?: string[] }).mediaIds)
+        ? ((p as { mediaIds: string[] }).mediaIds)
+        : [];
+      return { text: t || "(No caption)", mediaIds };
     });
   }
   const raw = post.originalContent ?? "";
@@ -96,7 +106,10 @@ function getThreadParts(post: PostDetailRow): string[] {
     .split(/\n\s*---\s*\n|\s+---\s+/)
     .map((s) => s.trim())
     .filter(Boolean);
-  return segments.length > 1 ? segments : [raw || "(No caption)"];
+  if (segments.length > 1) {
+    return segments.map((text) => ({ text: text || "(No caption)", mediaIds: [] as string[] }));
+  }
+  return [{ text: raw || "(No caption)", mediaIds: [] }];
 }
 
 function getDisplayType(
@@ -143,34 +156,9 @@ export default async function PostDetailPage({
 
   const { id } = await params;
   const data = await getPostDetail(id, session.user.id);
-  if (!data) {
-    return (
-      <div className="space-y-6">
-        <Link
-          href="/dashboard/posts"
-          className="inline-flex items-center gap-2 text-sm font-medium text-text-muted hover:text-emerald-600 dark:hover:text-emerald-400 mb-6 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to posts
-        </Link>
-        <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-8 text-center border-l-4 border-l-emerald-500 dark:border-l-emerald-400">
-          <FileQuestion className="mx-auto h-12 w-12 text-emerald-600 dark:text-emerald-400" aria-hidden />
-          <p className="mt-4 text-base font-medium text-text">No such post.</p>
-          <p className="mt-2 text-sm text-text-muted">
-            This post may not exist or you don’t have access to it.
-          </p>
-          <Link
-            href="/dashboard/posts"
-            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium transition-colors"
-          >
-            View all posts
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  if (!data) redirect("/dashboard/posts");
 
-  const { post, publications } = data;
+  const { post, publications, queuedSlot } = data;
 
   if (post.status === "draft") {
     const media =
@@ -188,10 +176,13 @@ export default async function PostDetailPage({
       ? await getPostMedia(session.user.id, post.mediaIds)
       : [];
 
-  const parts = getThreadParts(post);
-  const isThread = parts.length > 1;
-  const displayType = getDisplayType(post, parts.length, media);
+  const partsWithMedia = getThreadPartsWithMedia(post);
+  const parts = partsWithMedia.map((p) => p.text);
+  const isThread = partsWithMedia.length > 1;
+  const displayType = getDisplayType(post, partsWithMedia.length, media);
+  const mediaById = new Map(media.map((m) => [m.id, m]));
   const TypeIcon = TYPE_ICON_MAP[displayType] ?? FileText;
+  const slug = DISPLAY_TYPE_TO_SLUG[displayType] ?? "text";
 
   const publishedAts = publications
     .map((p) => p.publishedAt)
@@ -230,23 +221,71 @@ export default async function PostDetailPage({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-semibold text-text">
-                    Thread ({parts.length} parts)
+                    Thread ({partsWithMedia.length} parts)
                   </h2>
                 </div>
                 <div className="space-y-3">
-                  {parts.map((text, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-xl border border-border bg-bg-subtle p-4"
-                    >
-                      <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">
-                        Part {idx + 1}
-                      </span>
-                      <p className="mt-2 text-sm text-text whitespace-pre-wrap wrap-break-word">
-                        {text || "(No caption)"}
-                      </p>
-                    </div>
-                  ))}
+                  {partsWithMedia.map((part, idx) => {
+                    const partMedia = part.mediaIds
+                      .map((mid) => mediaById.get(mid))
+                      .filter((m): m is PostMediaRow => m != null);
+                    return (
+                      <div
+                        key={idx}
+                        className="rounded-xl border border-border bg-bg-subtle p-4"
+                      >
+                        <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">
+                          Part {idx + 1}
+                        </span>
+                        <p className="mt-2 text-sm text-text whitespace-pre-wrap wrap-break-word">
+                          {part.text || "(No caption)"}
+                        </p>
+                        {partMedia.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {partMedia.map((m) => {
+                              const isVideo = m.mimeType.startsWith("video/");
+                              return (
+                                <div
+                                  key={m.id}
+                                  className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-bg-muted"
+                                >
+                                  {isVideo ? (
+                                    <video
+                                      src={m.url ?? undefined}
+                                      className="h-full w-full object-cover"
+                                      muted
+                                      playsInline
+                                      preload="metadata"
+                                    />
+                                  ) : (
+                                    <NextImage
+                                      src={m.thumbnailUrl ?? m.url ?? ""}
+                                      alt={m.originalFilename}
+                                      fill
+                                      sizes="80px"
+                                      className="object-cover"
+                                      unoptimized
+                                    />
+                                  )}
+                                  {isVideo && (
+                                    <span
+                                      className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-lg"
+                                      aria-hidden
+                                    >
+                                      <Play
+                                        className="h-8 w-8 text-white drop-shadow-sm fill-white"
+                                        strokeWidth={2}
+                                      />
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ) : (
@@ -315,31 +354,47 @@ export default async function PostDetailPage({
                         : post.status === "publishing"
                           ? "bg-amber-500 text-white"
                           : post.status === "scheduled"
-                            ? "bg-blue-600 text-white"
+                            ? queuedSlot
+                              ? "bg-orange-600 text-white"
+                              : "bg-blue-600 text-white"
                             : post.status === "failed"
                               ? "bg-red-600 text-white"
                               : "bg-gray-500 text-gray-100"
                   }`}
                 >
-                  {STATUS_LABEL[post.status ?? "draft"] ??
-                    post.status ??
-                    "Draft"}
+                  {post.status === "scheduled"
+                    ? queuedSlot
+                      ? "Queued"
+                      : "Scheduled"
+                    : STATUS_LABEL[post.status ?? "draft"] ??
+                        post.status ??
+                        "Draft"}
                 </span>
               </div>
 
-              {(post.status === "draft" ||
-                post.status === "scheduled" ||
-                post.status === "failed" ||
-                post.status === "partial") && (
-                <PublishButton
-                  postId={post.id}
-                  label={
-                    post.status === "failed" || post.status === "partial"
-                      ? "Retry publish"
-                      : "Publish now"
-                  }
-                />
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {post.status === "scheduled" && (
+                  <Link
+                    href={`/dashboard/create/${slug}?scheduled=${post.id}`}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
+                  >
+                    Edit post
+                  </Link>
+                )}
+                {(post.status === "draft" ||
+                  post.status === "scheduled" ||
+                  post.status === "failed" ||
+                  post.status === "partial") && (
+                  <PublishButton
+                    postId={post.id}
+                    label={
+                      post.status === "failed" || post.status === "partial"
+                        ? "Retry publish"
+                        : "Publish now"
+                    }
+                  />
+                )}
+              </div>
             </div>
 
             <div className="text-xs text-text-muted space-y-1">

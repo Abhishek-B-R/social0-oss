@@ -227,7 +227,9 @@ export function ThreadsPostForm({
   accounts,
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
+  timezone = null,
   draftId: initialDraftId,
+  scheduledId: initialScheduledId,
   allowAutoRepost = true,
   allowAutoPlug = true,
   supportedPlatforms,
@@ -235,7 +237,9 @@ export function ThreadsPostForm({
   accounts: Account[];
   use24HourTimeFormat?: boolean;
   dateFormat?: string | null;
+  timezone?: string | null;
   draftId?: string;
+  scheduledId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
@@ -249,6 +253,7 @@ export function ThreadsPostForm({
   };
   const formRef = useRef<HTMLFormElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
+  const intendedQueueSlotIdRef = useRef<string | null>(null);
   const validIds = useMemo(
     () => new Set(accounts.filter((a) => !a.tokenExpired).map((a) => a.id)),
     [accounts],
@@ -260,12 +265,14 @@ export function ThreadsPostForm({
     { id: 1, text: "", images: [], videos: [] },
   ]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
-    initialDraftId ? new Set() : getInitialSelectedIds(validIds),
+    initialDraftId || initialScheduledId ? new Set() : getInitialSelectedIds(validIds),
   );
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
-  const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
+  const [draftLoading, setDraftLoading] = useState(
+    !!(initialDraftId || initialScheduledId),
+  );
   const [error, setError] = useState<string | null>(null);
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
@@ -289,6 +296,7 @@ export function ThreadsPostForm({
   type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const threadUploadAbortRef = useRef<AbortController | null>(null);
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>([]);
   const postsRef = useRef<ThreadPost[]>(posts);
@@ -368,6 +376,94 @@ export function ThreadsPostForm({
       setTimeout(clearComposerPayload, 100);
     };
   }, [initialDraftId, searchParams]);
+
+  useEffect(() => {
+    if (!initialScheduledId || initialDraftId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getScheduledPost } = await import("@/app/actions/posts");
+        const result = await getScheduledPost(initialScheduledId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          setDraftLoading(false);
+          return;
+        }
+        const { post: scheduled } = result;
+        const validAccountIds = new Set(
+          accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
+        );
+        const restoredIds = scheduled.connectedAccountIds.filter((id) =>
+          validAccountIds.has(id),
+        );
+        setSelectedIds(new Set(restoredIds));
+        setScheduledAt(scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null);
+        setMode("scheduled");
+        if (scheduled.queueSlotId)
+          intendedQueueSlotIdRef.current = scheduled.queueSlotId;
+        const meta = scheduled.metadata as Record<string, unknown> | null;
+        const twitterThread = meta?.twitterThread as
+          | { parts?: Array<{ text?: string; mediaIds?: string[] }> }
+          | undefined;
+        const partsFromMeta = twitterThread?.parts ?? [];
+        if (partsFromMeta.length > 0) {
+          const mediaById = new Map(
+            (scheduled.media ?? []).map((m) => [m.id, m]),
+          );
+          const restoredPosts: ThreadPost[] = partsFromMeta.map((part, i) => {
+            const text = typeof part.text === "string" ? part.text : "";
+            const partMediaIds = Array.isArray(part.mediaIds)
+              ? part.mediaIds
+              : [];
+            const images: MediaImage[] = [];
+            const videos: MediaVideo[] = [];
+            partMediaIds.forEach((mid, idx) => {
+              const row = mediaById.get(mid);
+              const preview = row?.url ?? row?.thumbnailUrl ?? "";
+              if (!preview || !row) return;
+              const order = idx + 1;
+              if (row.mimeType.startsWith("video/")) {
+                videos.push({
+                  preview: row.thumbnailUrl || preview,
+                  order,
+                  mediaId: row.id,
+                  thumbnailUrl: row.thumbnailUrl ?? undefined,
+                });
+              } else {
+                images.push({ preview, order, mediaId: row.id });
+              }
+            });
+            return {
+              id: i + 1,
+              text,
+              images,
+              videos,
+            };
+          });
+          setPosts(restoredPosts);
+          nextIdRef.current = restoredPosts.length + 1;
+        } else {
+          setPosts([
+            {
+              id: 1,
+              text: scheduled.originalContent ?? "",
+              images: [],
+              videos: [],
+            },
+          ]);
+          nextIdRef.current = 2;
+        }
+      } catch {
+        if (!cancelled) setError("Failed to load post");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialScheduledId, initialDraftId, accounts]);
 
   useEffect(() => {
     if (!initialDraftId) return;
@@ -968,21 +1064,31 @@ export function ThreadsPostForm({
 
     if (mediaTargets.length > 0) {
       setFileProgresses(new Array(mediaTargets.length).fill(0));
+      const uploadAbortController = new AbortController();
+      threadUploadAbortRef.current = uploadAbortController;
       const uploadResults = await Promise.allSettled(
         mediaTargets.map((target, fileIndex) =>
-          uploadFile(target.file, fileIndex, (idx, percent) => {
-            setFileProgresses((prev) => {
-              const next = [...prev];
-              next[idx] = percent;
-              const sum = next.reduce((a, b) => a + b, 0);
-              const avg =
-                next.length > 0 ? Math.round(sum / next.length) : percent;
-              setUploadProgress(`${avg}%`);
-              return next;
-            });
-          }),
+          uploadFile(
+            target.file,
+            fileIndex,
+            (idx, percent) => {
+              setFileProgresses((prev) => {
+                const next = [...prev];
+                next[idx] = percent;
+                const sum = next.reduce((a, b) => a + b, 0);
+                const avg =
+                  next.length > 0 ? Math.round(sum / next.length) : percent;
+                setUploadProgress(
+                  avg >= 95 ? "Finalizing upload..." : `${avg}%`,
+                );
+                return next;
+              });
+            },
+            { signal: uploadAbortController.signal },
+          ),
         ),
       );
+      threadUploadAbortRef.current = null;
 
       const failed = uploadResults
         .map((result, i) => ({ result, target: mediaTargets[i] }))
@@ -1041,6 +1147,29 @@ export function ThreadsPostForm({
         })),
       },
     };
+
+    if (initialScheduledId && effectiveMode === "scheduled") {
+      const { updatePost } = await import("@/app/actions/posts");
+      const result = await updatePost(
+        initialScheduledId,
+        content,
+        accountIds,
+        scheduledAt,
+        mediaIds,
+        metadata,
+        scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+      );
+      if (scheduledAt) intendedQueueSlotIdRef.current = null;
+      setLoading(false);
+      setOverlayPhase("idle");
+      if (result.success) {
+        router.push("/dashboard/posts/scheduled");
+        router.refresh();
+      } else {
+        setError(result.error);
+      }
+      return;
+    }
 
     if (initialDraftId) {
       const { updateDraft, updateAndPublish, updatePost } =
@@ -1117,7 +1246,9 @@ export function ThreadsPostForm({
           scheduledAt,
           mediaIds,
           metadata,
+          scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
         );
+        if (scheduledAt) intendedQueueSlotIdRef.current = null;
         setLoading(false);
         setOverlayPhase("idle");
         if (result.success) {
@@ -1137,7 +1268,9 @@ export function ThreadsPostForm({
       scheduledAt,
       mediaIds,
       metadata,
+      effectiveMode === "scheduled" ? intendedQueueSlotIdRef.current ?? undefined : undefined,
     );
+    if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
     if (!result.success) {
       setError(result.error);
@@ -1259,7 +1392,9 @@ export function ThreadsPostForm({
     mode === "draft"
       ? "Save draft"
       : mode === "scheduled"
-        ? "Schedule post"
+        ? initialDraftId || initialScheduledId
+          ? "Update"
+          : "Schedule post"
         : "Post";
 
   const hasImages = posts.some((p) => p.images.length > 0);
@@ -1299,6 +1434,19 @@ export function ThreadsPostForm({
                   : "publishing"
           }
           uploadProgress={uploadProgress}
+          uploadPercent={
+            fileProgresses.length > 0
+              ? Math.round(
+                  fileProgresses.reduce((a, b) => a + b, 0) /
+                    fileProgresses.length,
+                )
+              : null
+          }
+          onCancelUpload={
+            overlayPhase === "uploading"
+              ? () => threadUploadAbortRef.current?.abort()
+              : undefined
+          }
           mediaType={overlayMediaType}
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
@@ -1378,6 +1526,15 @@ export function ThreadsPostForm({
           {error && (
             <div className="relative rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 pr-10 text-sm font-medium text-destructive">
               {error}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="rounded-lg border border-border bg-bg-elevated px-3 py-1.5 text-xs font-medium text-text hover:bg-bg-muted transition-colors"
+                >
+                  Try again
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setError(null)}
@@ -1619,7 +1776,9 @@ export function ThreadsPostForm({
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
+          timezone={timezone}
           intendedModeRef={intendedModeRef}
+          intendedQueueSlotIdRef={intendedQueueSlotIdRef}
           formRef={formRef}
           draftId={initialDraftId ?? null}
           onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}

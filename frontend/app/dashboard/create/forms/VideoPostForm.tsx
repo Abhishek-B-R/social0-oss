@@ -97,7 +97,9 @@ export function VideoPostForm({
   accounts,
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
+  timezone = null,
   draftId: initialDraftId,
+  scheduledId: initialScheduledId,
   allowAutoRepost = true,
   allowAutoPlug = true,
   supportedPlatforms,
@@ -105,7 +107,9 @@ export function VideoPostForm({
   accounts: Account[];
   use24HourTimeFormat?: boolean;
   dateFormat?: string | null;
+  timezone?: string | null;
   draftId?: string;
+  scheduledId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
@@ -116,6 +120,7 @@ export function VideoPostForm({
   const formRef = useRef<HTMLFormElement>(null);
   const captionTextareaRef = useRef<HTMLTextAreaElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
+  const intendedQueueSlotIdRef = useRef<string | null>(null);
   const [content, setContent] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
@@ -134,12 +139,14 @@ export function VideoPostForm({
     useRememberedAccounts("post-form");
   const [accountSearch, setAccountSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
-    initialDraftId ? new Set() : getInitialSelectedIds(validIds),
+    initialDraftId || initialScheduledId ? new Set() : getInitialSelectedIds(validIds),
   );
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
-  const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
+  const [draftLoading, setDraftLoading] = useState(
+    !!(initialDraftId || initialScheduledId),
+  );
   const [error, setError] = useState<string | null>(null);
   type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
@@ -186,6 +193,7 @@ export function VideoPostForm({
   >({});
   const [isUploading, setIsUploading] = useState(false);
   const [uploadPercent, setUploadPercent] = useState<number | null>(null);
+  const uploadAbortRef = useRef<AbortController | null>(null);
 
   const selectedAccounts = useMemo(
     () => accounts.filter((a) => selectedIds.has(a.id)),
@@ -313,6 +321,73 @@ export function VideoPostForm({
       return next;
     });
   }, [accounts, initialDraftId]);
+
+  useEffect(() => {
+    if (!initialScheduledId || initialDraftId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getScheduledPost } = await import("@/app/actions/posts");
+        const result = await getScheduledPost(initialScheduledId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          setDraftLoading(false);
+          return;
+        }
+        const { post: scheduled } = result;
+        const validAccountIds = new Set(
+          accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
+        );
+        const restoredIds = scheduled.connectedAccountIds.filter((id) =>
+          validAccountIds.has(id),
+        );
+        setContent(scheduled.originalContent ?? "");
+        setSelectedIds(new Set(restoredIds));
+        setScheduledAt(scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null);
+        setMode("scheduled");
+        if (scheduled.queueSlotId)
+          intendedQueueSlotIdRef.current = scheduled.queueSlotId;
+        const videoMedia = scheduled.media?.find((m) =>
+          m.mimeType.startsWith("video/"),
+        );
+        if (videoMedia) {
+          setExistingVideoId(videoMedia.id);
+          setVideoPreview(videoMedia.url ?? videoMedia.thumbnailUrl ?? null);
+        }
+        const meta = scheduled.metadata as Record<string, unknown> | null;
+        if (meta?.tiktok && typeof meta.tiktok === "object") {
+          const tiktok = meta.tiktok as Record<string, TikTokPostSettings>;
+          const next: Record<string, TikTokPostSettings> = {};
+          for (const id of restoredIds) {
+            const acc = accounts.find((a) => a.id === id);
+            if (acc?.platform !== "tiktok") continue;
+            const t = tiktok[id];
+            if (t && typeof t === "object") {
+              next[id] = {
+                privacy_level:
+                  typeof t.privacy_level === "string" ? t.privacy_level : "",
+                disable_comment: !!t.disable_comment,
+                disable_duet: !!t.disable_duet,
+                disable_stitch: !!t.disable_stitch,
+                brand_content_toggle: !!t.brand_content_toggle,
+                brand_organic: !!t.brand_organic,
+                brand_content: !!t.brand_content,
+              };
+            }
+          }
+          if (Object.keys(next).length > 0) setTiktokSettings(next);
+        }
+      } catch {
+        if (!cancelled) setError("Failed to load post");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialScheduledId, initialDraftId, accounts]);
 
   useEffect(() => {
     if (!initialDraftId) return;
@@ -690,9 +765,13 @@ export function VideoPostForm({
       mediaIds.push(existingVideoId);
     } else if (videoFile) {
       setIsUploading(true);
+      uploadAbortRef.current = new AbortController();
       try {
-        const { id } = await uploadFile(videoFile, 0, (_, percent) =>
-          setUploadPercent(percent),
+        const { id } = await uploadFile(
+          videoFile,
+          0,
+          (_, percent) => setUploadPercent(percent),
+          { signal: uploadAbortRef.current.signal },
         );
         mediaIds.push(id);
       } catch (err) {
@@ -707,6 +786,7 @@ export function VideoPostForm({
       } finally {
         setIsUploading(false);
         setUploadPercent(null);
+        uploadAbortRef.current = null;
       }
     }
     setOverlayPhase(
@@ -759,6 +839,29 @@ export function VideoPostForm({
 
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
+
+    if (initialScheduledId && effectiveMode === "scheduled") {
+      const { updatePost } = await import("@/app/actions/posts");
+      const result = await updatePost(
+        initialScheduledId,
+        text,
+        accountIds,
+        scheduledAt,
+        mediaIds,
+        meta,
+        scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+      );
+      if (scheduledAt) intendedQueueSlotIdRef.current = null;
+      setLoading(false);
+      setOverlayPhase("idle");
+      if (result.success) {
+        router.push("/dashboard/posts/scheduled");
+        router.refresh();
+      } else {
+        setError(result.error);
+      }
+      return;
+    }
 
     if (initialDraftId) {
       const { updateDraft, updateAndPublish, updatePost } =
@@ -835,7 +938,9 @@ export function VideoPostForm({
           scheduledAt,
           mediaIds,
           meta,
+          scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
         );
+        if (scheduledAt) intendedQueueSlotIdRef.current = null;
         setLoading(false);
         setOverlayPhase("idle");
         if (result.success) {
@@ -855,7 +960,9 @@ export function VideoPostForm({
       scheduledAt,
       mediaIds,
       meta,
+      effectiveMode === "scheduled" ? intendedQueueSlotIdRef.current ?? undefined : undefined,
     );
+    if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
     if (!result.success) {
       setError(result.error);
@@ -986,7 +1093,9 @@ export function VideoPostForm({
     mode === "draft"
       ? "Save draft"
       : mode === "scheduled"
-        ? "Schedule post"
+        ? initialDraftId || initialScheduledId
+          ? "Update"
+          : "Schedule post"
         : "Post now";
 
   if (draftLoading) {
@@ -1013,6 +1122,11 @@ export function VideoPostForm({
           uploadProgress={videoFile ? "1 of 1" : null}
           uploadPercent={uploadPercent}
           showUploadWarning={isUploading}
+          onCancelUpload={
+            overlayPhase === "uploading" && videoFile
+              ? () => uploadAbortRef.current?.abort()
+              : undefined
+          }
           mediaType="video"
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
@@ -1174,6 +1288,15 @@ export function VideoPostForm({
           {error && (
             <div className="relative rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 pr-10 text-sm font-medium text-destructive">
               {error}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="rounded-lg border border-border bg-bg-elevated px-3 py-1.5 text-xs font-medium text-text hover:bg-bg-muted transition-colors"
+                >
+                  Try again
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setError(null)}
@@ -1550,7 +1673,9 @@ export function VideoPostForm({
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
+          timezone={timezone}
           intendedModeRef={intendedModeRef}
+          intendedQueueSlotIdRef={intendedQueueSlotIdRef}
           formRef={formRef}
           draftId={initialDraftId ?? null}
           onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}

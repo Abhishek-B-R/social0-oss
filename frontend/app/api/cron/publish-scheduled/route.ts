@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { posts } from "@/db/schema";
+import { posts, queuedPosts } from "@/db/schema";
 import { and, eq, lt, lte } from "drizzle-orm";
 import { executePublish } from "@/app/actions/publish";
 import { verifyCronAuth } from "@/lib/cron-auth";
@@ -22,15 +22,12 @@ export async function GET(request: Request) {
     );
 
   const now = new Date();
+
+  // Scheduled posts (manual schedule)
   const due = await db
     .select({ id: posts.id })
     .from(posts)
-    .where(
-      and(
-        eq(posts.status, "scheduled"),
-        lte(posts.scheduledAt, now),
-      ),
-    );
+    .where(and(eq(posts.status, "scheduled"), lte(posts.scheduledAt, now)));
 
   const processed: string[] = [];
   for (const post of due) {
@@ -38,5 +35,31 @@ export async function GET(request: Request) {
     processed.push(post.id);
   }
 
-  return NextResponse.json({ processed: processed.length, ids: processed });
+  // Queued posts (Buffer-style queue): publish when scheduledFor <= now
+  const dueQueued = await db
+    .select({ id: queuedPosts.id, postId: queuedPosts.postId })
+    .from(queuedPosts)
+    .where(
+      and(
+        eq(queuedPosts.status, "pending"),
+        lte(queuedPosts.scheduledFor, now),
+      ),
+    );
+
+  const queuedProcessed: string[] = [];
+  for (const q of dueQueued) {
+    const result = await executePublish(q.postId);
+    await db
+      .update(queuedPosts)
+      .set({ status: result.success ? "done" : "failed" })
+      .where(eq(queuedPosts.id, q.id));
+    queuedProcessed.push(q.postId);
+  }
+
+  return NextResponse.json({
+    processed: processed.length,
+    ids: processed,
+    queuedProcessed: queuedProcessed.length,
+    queuedIds: queuedProcessed,
+  });
 }

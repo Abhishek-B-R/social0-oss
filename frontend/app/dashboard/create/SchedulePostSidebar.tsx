@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { format } from "date-fns";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import type { PublishMode } from "@/app/actions/posts";
 import { formatDateTime } from "@/lib/date-format";
-import { Settings } from "lucide-react";
+import { Settings, ListOrdered } from "lucide-react";
 
 export type SidebarAutoRepost = {
   visible: boolean;
@@ -42,8 +44,12 @@ type SchedulePostSidebarProps = {
   use24HourTimeFormat?: boolean;
   /** User's date format (dd/MM/yyyy, MM/dd/yyyy, yyyy-MM-dd) */
   dateFormat?: string | null;
+  /** User's IANA timezone (e.g. Asia/Kolkata) for schedule picker and next-slot */
+  timezone?: string | null;
   /** Set this ref before calling requestSubmit so handleSubmit uses the correct mode */
   intendedModeRef: React.MutableRefObject<PublishMode | null>;
+  /** When user clicks "Next Queue Slot", set to slotId; clear when they change date/time manually. Read on Schedule submit. */
+  intendedQueueSlotIdRef?: React.MutableRefObject<string | null>;
   formRef: React.RefObject<HTMLFormElement | null>;
   /** Auto-Repost: compact row with toggle + settings icon when enabled */
   autoRepost?: SidebarAutoRepost | null;
@@ -76,7 +82,9 @@ export function SchedulePostSidebar({
   error,
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
+  timezone = null,
   intendedModeRef,
+  intendedQueueSlotIdRef,
   formRef,
   autoRepost,
   autoPlug,
@@ -99,6 +107,10 @@ export function SchedulePostSidebar({
 
   const [dateValue, setDateValue] = useState<string>(() => {
     const base = scheduledAt ?? defaultScheduledAt;
+    if (timezone?.trim() && scheduledAt) {
+      const inTz = toZonedTime(scheduledAt, timezone.trim());
+      return format(inTz, "yyyy-MM-dd");
+    }
     const yyyy = base.getFullYear();
     const mm = String(base.getMonth() + 1).padStart(2, "0");
     const dd = String(base.getDate()).padStart(2, "0");
@@ -106,6 +118,10 @@ export function SchedulePostSidebar({
   });
   const [timeValue, setTimeValue] = useState<string>(() => {
     const base = scheduledAt ?? defaultScheduledAt;
+    if (timezone?.trim() && scheduledAt) {
+      const inTz = toZonedTime(scheduledAt, timezone.trim());
+      return format(inTz, "HH:mm");
+    }
     const hh = String(base.getHours()).padStart(2, "0");
     const mi = String(base.getMinutes()).padStart(2, "0");
     return `${hh}:${mi}`;
@@ -127,8 +143,11 @@ export function SchedulePostSidebar({
     ) {
       return null;
     }
-    return new Date(yyyy, mm - 1, dd, hh, mi, 0, 0);
-  }, [dateValue, timeValue]);
+    const localDate = new Date(yyyy, mm - 1, dd, hh, mi, 0, 0);
+    return timezone?.trim()
+      ? fromZonedTime(localDate, timezone.trim())
+      : localDate;
+  }, [dateValue, timeValue, timezone]);
 
   const scheduledReadable = useMemo(() => {
     if (!combinedDateTime) return null;
@@ -173,6 +192,60 @@ export function SchedulePostSidebar({
     intendedModeRef.current = "scheduled";
     setMode("scheduled");
     formRef.current?.requestSubmit();
+  };
+
+  const [nextSlot, setNextSlot] = useState<{
+    slotId: string;
+    scheduledAt: string;
+    displayLabel: string;
+    timezone: string;
+    timezoneLabel: string;
+  } | null>(null);
+  const [nextSlotLoading, setNextSlotLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isScheduled) {
+      setNextSlot(null);
+      setNextSlotLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setNextSlotLoading(true);
+    setNextSlot(null);
+    fetch("/api/queue/next-slot")
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        setNextSlotLoading(false);
+        if (!data?.available || !data?.slotId) return;
+        setNextSlot({
+          slotId: data.slotId,
+          scheduledAt: data.scheduledAt ?? data.scheduledFor ?? "",
+          displayLabel: data.displayLabel ?? data.displayTime ?? "",
+          timezone: data.timezone ?? "UTC",
+          timezoneLabel: data.timezoneLabel ?? data.timezone ?? "UTC",
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setNextSlotLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isScheduled]);
+
+  const fillNextSlot = () => {
+    if (!nextSlot) return;
+    const utc = new Date(nextSlot.scheduledAt);
+    const inTz = toZonedTime(utc, nextSlot.timezone);
+    setDateValue(format(inTz, "yyyy-MM-dd"));
+    setTimeValue(format(inTz, "HH:mm"));
+    setScheduledAt(utc);
+    if (intendedQueueSlotIdRef) intendedQueueSlotIdRef.current = nextSlot.slotId;
+  };
+
+  const clearQueueSlotRef = () => {
+    if (intendedQueueSlotIdRef) intendedQueueSlotIdRef.current = null;
   };
 
   const toggleScheduled = () => {
@@ -257,6 +330,41 @@ export function SchedulePostSidebar({
           </div>
         ) : (
           <div className="space-y-4">
+            {nextSlotLoading ? (
+              <div
+                className="flex w-full items-center gap-2 rounded-xl border border-border bg-bg-muted/30 px-3 py-2.5"
+                aria-busy="true"
+                aria-live="polite"
+              >
+                <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-accent/30 border-t-accent" aria-hidden />
+                <span className="text-sm text-text-muted">
+                  Loading queue…
+                </span>
+              </div>
+            ) : nextSlot ? (
+              <>
+                <button
+                  type="button"
+                  onClick={fillNextSlot}
+                  className="flex w-full items-center gap-2 rounded-xl border border-border bg-bg-muted/50 px-3 py-2.5 text-left text-sm font-medium text-text transition-colors hover:bg-bg-muted hover:border-accent/40 focus:outline-none focus:ring-2 focus:ring-accent/20"
+                >
+                  <ListOrdered className="h-4 w-4 shrink-0 text-accent" aria-hidden />
+                  <span>
+                    Next Queue Slot: {nextSlot.displayLabel}
+                  </span>
+                </button>
+                <p className="text-xs text-text-muted">
+                  Timezone: {nextSlot.timezoneLabel}
+                </p>
+              </>
+            ) : (
+              <Link
+                href="/dashboard/settings#queue"
+                className="text-sm text-accent hover:text-accent-hover hover:underline"
+              >
+                Set up queue in Settings →
+              </Link>
+            )}
             <div className="flex gap-3">
               <div className="min-w-0 flex-1">
                 <label
@@ -269,7 +377,10 @@ export function SchedulePostSidebar({
                   id="schedule-date"
                   type="date"
                   value={dateValue}
-                  onChange={(e) => setDateValue(e.target.value)}
+                  onChange={(e) => {
+                    setDateValue(e.target.value);
+                    clearQueueSlotRef();
+                  }}
                   className="w-full rounded-xl border border-input bg-bg px-3 py-3 text-sm font-medium text-text shadow-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
                 />
               </div>
@@ -284,7 +395,10 @@ export function SchedulePostSidebar({
                   id="schedule-time"
                   type="time"
                   value={timeValue}
-                  onChange={(e) => setTimeValue(e.target.value)}
+                  onChange={(e) => {
+                    setTimeValue(e.target.value);
+                    clearQueueSlotRef();
+                  }}
                   className="w-full rounded-xl border border-input bg-bg px-3 py-3 text-sm font-medium text-text shadow-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
                 />
               </div>

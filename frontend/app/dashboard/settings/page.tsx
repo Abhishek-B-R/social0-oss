@@ -24,7 +24,7 @@ export default async function SettingsPage() {
 
   const timeZones =
     typeof Intl !== "undefined" && "supportedValuesOf" in Intl
-      ? (Intl as Intl & { supportedValuesOf?(key: "timeZone"): string[] }).supportedValuesOf("timeZone")
+      ? (Intl as unknown as { supportedValuesOf(key: "timeZone"): string[] }).supportedValuesOf("timeZone")
       : ["UTC", "America/New_York", "America/Los_Angeles", "Europe/London", "Europe/Paris", "Asia/Kolkata", "Asia/Tokyo", "Australia/Sydney"];
 
   const [settings, connections] = await Promise.all([

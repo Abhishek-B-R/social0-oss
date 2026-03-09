@@ -77,7 +77,9 @@ export function CollectionPostForm({
   accounts,
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
+  timezone = null,
   draftId: initialDraftId,
+  scheduledId: initialScheduledId,
   allowAutoRepost = true,
   allowAutoPlug = true,
   supportedPlatforms,
@@ -85,7 +87,9 @@ export function CollectionPostForm({
   accounts: Account[];
   use24HourTimeFormat?: boolean;
   dateFormat?: string | null;
+  timezone?: string | null;
   draftId?: string;
+  scheduledId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
@@ -96,6 +100,7 @@ export function CollectionPostForm({
   const formRef = useRef<HTMLFormElement>(null);
   const captionTextareaRef = useRef<HTMLTextAreaElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
+  const intendedQueueSlotIdRef = useRef<string | null>(null);
   const [content, setContent] = useState("");
   const [images, setImages] = useState<ImageFile[]>([]);
   const [videos, setVideos] = useState<VideoFile[]>([]);
@@ -110,16 +115,19 @@ export function CollectionPostForm({
   const imagesRef = useRef<ImageFile[]>([]);
   const videosRef = useRef<VideoFile[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
-    initialDraftId ? new Set() : getInitialSelectedIds(validIds),
+    initialDraftId || initialScheduledId ? new Set() : getInitialSelectedIds(validIds),
   );
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
-  const [draftLoading, setDraftLoading] = useState(!!initialDraftId);
+  const [draftLoading, setDraftLoading] = useState(
+    !!(initialDraftId || initialScheduledId),
+  );
   const [error, setError] = useState<string | null>(null);
   type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const collectionUploadAbortRef = useRef<AbortController | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [tiktokSettings, setTiktokSettings] = useState<
     Record<string, TikTokPostSettings>
@@ -205,6 +213,69 @@ export function CollectionPostForm({
       setTimeout(clearComposerPayload, 100);
     };
   }, [initialDraftId, searchParams]);
+
+  useEffect(() => {
+    if (!initialScheduledId || initialDraftId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getScheduledPost } = await import("@/app/actions/posts");
+        const result = await getScheduledPost(initialScheduledId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          setDraftLoading(false);
+          return;
+        }
+        const { post: scheduled } = result;
+        const validAccountIds = new Set(
+          accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
+        );
+        const restoredIds = scheduled.connectedAccountIds.filter((id) =>
+          validAccountIds.has(id),
+        );
+        setContent(scheduled.originalContent ?? "");
+        setSelectedIds(new Set(restoredIds));
+        setScheduledAt(scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null);
+        setMode("scheduled");
+        if (scheduled.queueSlotId)
+          intendedQueueSlotIdRef.current = scheduled.queueSlotId;
+        const orderedMedia = (scheduled.media ?? []).map((m, i) => ({
+          ...m,
+          order: i + 1,
+        }));
+        const scheduledImages = orderedMedia
+          .filter((m) => m.mimeType.startsWith("image/"))
+          .map((m) => ({
+            preview: m.thumbnailUrl ?? m.url ?? "",
+            order: m.order,
+            existingId: m.id,
+          }));
+        const scheduledVideos = orderedMedia
+          .filter((m) => m.mimeType.startsWith("video/"))
+          .map((m) => ({
+            preview: m.thumbnailUrl ?? m.url ?? "",
+            order: m.order,
+            existingId: m.id,
+          }));
+        if (scheduledImages.length > 0) {
+          setImages(scheduledImages);
+          imagesRef.current = scheduledImages;
+        }
+        if (scheduledVideos.length > 0) {
+          setVideos(scheduledVideos);
+          videosRef.current = scheduledVideos;
+        }
+      } catch {
+        if (!cancelled) setError("Failed to load post");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialScheduledId, initialDraftId, accounts]);
 
   useEffect(() => {
     if (!initialDraftId) return;
@@ -706,21 +777,31 @@ export function CollectionPostForm({
 
     if (uploadTargets.length > 0) {
       setFileProgresses(new Array(uploadTargets.length).fill(0));
+      const uploadAbortController = new AbortController();
+      collectionUploadAbortRef.current = uploadAbortController;
       const uploadResults = await Promise.allSettled(
         uploadTargets.map((target, fileIndex) =>
-          uploadFile(target.file, fileIndex, (idx, percent) => {
-            setFileProgresses((prev) => {
-              const next = [...prev];
-              next[idx] = percent;
-              const sum = next.reduce((a, b) => a + b, 0);
-              const avg =
-                next.length > 0 ? Math.round(sum / next.length) : percent;
-              setUploadProgress(`${avg}%`);
-              return next;
-            });
-          }),
+          uploadFile(
+            target.file,
+            fileIndex,
+            (idx, percent) => {
+              setFileProgresses((prev) => {
+                const next = [...prev];
+                next[idx] = percent;
+                const sum = next.reduce((a, b) => a + b, 0);
+                const avg =
+                  next.length > 0 ? Math.round(sum / next.length) : percent;
+                setUploadProgress(
+                  avg >= 95 ? "Finalizing upload..." : `${avg}%`,
+                );
+                return next;
+              });
+            },
+            { signal: uploadAbortController.signal },
+          ),
         ),
       );
+      collectionUploadAbortRef.current = null;
 
       const failed = uploadResults
         .map((result, i) => ({ result, target: uploadTargets[i] }))
@@ -790,6 +871,29 @@ export function CollectionPostForm({
 
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
+
+    if (initialScheduledId && effectiveMode === "scheduled") {
+      const { updatePost } = await import("@/app/actions/posts");
+      const result = await updatePost(
+        initialScheduledId,
+        text,
+        accountIds,
+        scheduledAt,
+        finalMediaIds,
+        meta,
+        scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+      );
+      if (scheduledAt) intendedQueueSlotIdRef.current = null;
+      setLoading(false);
+      setOverlayPhase("idle");
+      if (result.success) {
+        router.push("/dashboard/posts/scheduled");
+        router.refresh();
+      } else {
+        setError(result.error);
+      }
+      return;
+    }
 
     if (initialDraftId) {
       const { updateDraft, updateAndPublish, updatePost } =
@@ -866,7 +970,9 @@ export function CollectionPostForm({
           scheduledAt,
           finalMediaIds,
           meta,
+          scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
         );
+        if (scheduledAt) intendedQueueSlotIdRef.current = null;
         setLoading(false);
         setOverlayPhase("idle");
         if (result.success) {
@@ -886,7 +992,9 @@ export function CollectionPostForm({
       scheduledAt,
       finalMediaIds,
       meta,
+      effectiveMode === "scheduled" ? intendedQueueSlotIdRef.current ?? undefined : undefined,
     );
+    if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
     if (!result.success) {
       setError(result.error);
@@ -1050,7 +1158,9 @@ export function CollectionPostForm({
     mode === "draft"
       ? "Save draft"
       : mode === "scheduled"
-        ? "Schedule post"
+        ? initialDraftId || initialScheduledId
+          ? "Update"
+          : "Schedule post"
         : "Post now";
 
   const filteredAccounts = useMemo(() => {
@@ -1088,6 +1198,19 @@ export function CollectionPostForm({
                   : "publishing"
           }
           uploadProgress={uploadProgress}
+          uploadPercent={
+            fileProgresses.length > 0
+              ? Math.round(
+                  fileProgresses.reduce((a, b) => a + b, 0) /
+                    fileProgresses.length,
+                )
+              : null
+          }
+          onCancelUpload={
+            overlayPhase === "uploading"
+              ? () => collectionUploadAbortRef.current?.abort()
+              : undefined
+          }
           mediaType="mixed"
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
@@ -1352,6 +1475,15 @@ export function CollectionPostForm({
           {error && (
             <div className="relative rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 pr-10 text-sm font-medium text-destructive">
               {error}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="rounded-lg border border-border bg-bg-elevated px-3 py-1.5 text-xs font-medium text-text hover:bg-bg-muted transition-colors"
+                >
+                  Try again
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setError(null)}
@@ -1469,7 +1601,9 @@ export function CollectionPostForm({
           error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
+          timezone={timezone}
           intendedModeRef={intendedModeRef}
+          intendedQueueSlotIdRef={intendedQueueSlotIdRef}
           formRef={formRef}
           draftId={initialDraftId ?? null}
           onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}

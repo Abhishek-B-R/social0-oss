@@ -7,6 +7,7 @@ import {
   postPublications,
   connectedAccounts,
   mediaUploads,
+  queuedPosts,
 } from "@/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
 import { headers } from "next/headers";
@@ -15,6 +16,7 @@ import { executePublish } from "@/app/actions/publish";
 import {
   getPostForEdit,
   getPostMedia,
+  getQueuedSlotForPost,
   type PostMediaRow,
 } from "@/app/dashboard/posts/posts-list-data";
 import { isValidUUID } from "@/lib/validation";
@@ -32,6 +34,7 @@ export async function createPost(
   scheduledAt: Date | null,
   mediaIds: string[] = [],
   metadata?: Record<string, unknown>,
+  queueSlotId?: string | null,
 ): Promise<CreatePostResult> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
@@ -156,8 +159,19 @@ export async function createPost(
       };
     }
 
+    if (mode === "scheduled" && scheduledAt && queueSlotId?.trim()) {
+      await db.insert(queuedPosts).values({
+        userId: session.user.id,
+        postId: postRow.id,
+        slotId: queueSlotId.trim(),
+        scheduledFor: scheduledAt,
+        status: "pending",
+      });
+    }
+
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/posts");
+    revalidatePath("/dashboard/posts/scheduled");
     revalidatePath("/dashboard/create");
 
     return { success: true, postId: postRow.id };
@@ -223,6 +237,7 @@ export async function updatePost(
   scheduledAt: Date | null,
   mediaIds?: string[],
   metadata?: Record<string, unknown>,
+  queueSlotId?: string | null,
 ): Promise<UpdatePostResult> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
@@ -348,6 +363,33 @@ export async function updatePost(
       })),
     );
 
+    if (scheduledAt && queueSlotId?.trim()) {
+      await db
+        .delete(queuedPosts)
+        .where(
+          and(
+            eq(queuedPosts.postId, postId),
+            eq(queuedPosts.userId, session.user.id),
+          ),
+        );
+      await db.insert(queuedPosts).values({
+        userId: session.user.id,
+        postId,
+        slotId: queueSlotId.trim(),
+        scheduledFor: scheduledAt,
+        status: "pending",
+      });
+    } else if (!scheduledAt) {
+      await db
+        .delete(queuedPosts)
+        .where(
+          and(
+            eq(queuedPosts.postId, postId),
+            eq(queuedPosts.userId, session.user.id),
+          ),
+        );
+    }
+
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/posts");
     revalidatePath("/dashboard/posts/scheduled");
@@ -408,6 +450,66 @@ export async function getDraft(postId: string): Promise<GetDraftResult> {
       connectedAccountIds: post.connectedAccountIds,
       media,
       metadata: (row?.metadata as Record<string, unknown>) ?? null,
+    },
+  };
+}
+
+export type GetScheduledPostResult =
+  | {
+      success: true;
+      post: {
+        id: string;
+        originalContent: string | null;
+        scheduledAt: Date | null;
+        connectedAccountIds: string[];
+        media: PostMediaRow[];
+        metadata: Record<string, unknown> | null;
+        /** When post is in the queue, pass to updatePost to preserve the link */
+        queueSlotId: string | null;
+      };
+    }
+  | { success: false; error: string };
+
+/** Load a scheduled (or draft) post for editing in the composer. Use for ?scheduled=[id]. */
+export async function getScheduledPost(
+  postId: string,
+): Promise<GetScheduledPostResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return { success: false, error: "Unauthorized" };
+  }
+  if (!isValidUUID(postId)) {
+    return { success: false, error: "Invalid post ID" };
+  }
+  const post = await getPostForEdit(postId, session.user.id);
+  if (!post) {
+    return { success: false, error: "Post not found" };
+  }
+  if (post.status !== "scheduled" && post.status !== "draft") {
+    return { success: false, error: "Only scheduled or draft posts can be edited" };
+  }
+  const mediaIds = post.mediaIds ?? [];
+  const media =
+    mediaIds.length > 0 ? await getPostMedia(session.user.id, mediaIds) : [];
+  const [row] = await db
+    .select({ metadata: posts.metadata })
+    .from(posts)
+    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
+  let queueSlotId: string | null = null;
+  if (post.status === "scheduled") {
+    const slot = await getQueuedSlotForPost(postId, session.user.id);
+    if (slot) queueSlotId = slot.slotId;
+  }
+  return {
+    success: true,
+    post: {
+      id: post.id,
+      originalContent: post.originalContent,
+      scheduledAt: post.scheduledAt,
+      connectedAccountIds: post.connectedAccountIds,
+      media,
+      metadata: (row?.metadata as Record<string, unknown>) ?? null,
+      queueSlotId,
     },
   };
 }

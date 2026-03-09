@@ -161,6 +161,7 @@ export function PostListCards({
   firstMediaByPost,
   resurfaceByPostId = {},
   autoPlugByPostId = {},
+  queuedPostIds,
   emptyMessage = "You haven't created any posts yet.",
   filterMessage = "No posts match your filters.",
   hasActiveFilters,
@@ -173,6 +174,8 @@ export function PostListCards({
   firstMediaByPost: Map<string, { mimeType: string; originalFilename: string | null }>;
   resurfaceByPostId?: Record<string, ResurfaceForPost>;
   autoPlugByPostId?: Record<string, AutoPlugForPost>;
+  /** When provided, posts in this set show a "Queued" badge instead of "Scheduled" */
+  queuedPostIds?: Set<string>;
   emptyMessage?: string;
   filterMessage?: string;
   hasActiveFilters?: boolean;
@@ -228,7 +231,10 @@ export function PostListCards({
           : "No caption";
 
         const publicationsList = publicationsByPostId[post.id] ?? [];
-        const statusBadge = getStatusBadge(uiStatus);
+        const isQueued = queuedPostIds?.has(post.id);
+        const statusBadge = isQueued
+          ? { label: "Queued", prefix: "▸", className: "bg-orange-600 text-white" }
+          : getStatusBadge(uiStatus);
         const showIcons = publicationsList.slice(0, MAX_PLATFORM_ICONS);
         const extraCount = publicationsList.length > MAX_PLATFORM_ICONS ? publicationsList.length - MAX_PLATFORM_ICONS : 0;
 

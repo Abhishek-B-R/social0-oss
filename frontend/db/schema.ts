@@ -222,6 +222,40 @@ export const postPublications = pgTable(
   }),
 );
 
+// ===== QUEUE SLOTS (recurring weekly schedule) =====
+export const queueSlots = pgTable(
+  "queue_slots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .references(() => user.id, { onDelete: "cascade" })
+      .notNull(),
+    daysOfWeek: integer("days_of_week").array().notNull(), // 0=Sun, 1=Mon ... 6=Sat; e.g. [1,2,3,4,5] = Mon–Fri
+    hour: integer("hour").notNull(), // 0-23, in user's local timezone
+    minute: integer("minute").notNull(), // 0-59
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    userHourMinuteUnique: unique().on(table.userId, table.hour, table.minute),
+  }),
+);
+
+// ===== QUEUED POSTS (posts waiting in queue) =====
+export const queuedPosts = pgTable("queued_posts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id")
+    .references(() => user.id, { onDelete: "cascade" })
+    .notNull(),
+  postId: uuid("post_id")
+    .references(() => posts.id, { onDelete: "cascade" })
+    .notNull(),
+  slotId: uuid("slot_id").references(() => queueSlots.id, { onDelete: "set null" }),
+  scheduledFor: timestamp("scheduled_for").notNull(),
+  status: text("status").default("pending").notNull(), // pending | processing | done | failed
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // ===== USER SETTINGS =====
 export const userSettings = pgTable("user_settings", {
   userId: text("user_id")
@@ -311,6 +345,8 @@ export const userRelations = relations(user, ({ one, many }) => ({
   connectedAccounts: many(connectedAccounts),
   posts: many(posts),
   mediaUploads: many(mediaUploads),
+  queueSlots: many(queueSlots),
+  queuedPosts: many(queuedPosts),
   settings: one(userSettings, {
     fields: [user.id],
     references: [userSettings.userId],
@@ -370,6 +406,7 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
   publications: many(postPublications),
   resurfaceSchedules: many(resurfaceSchedules),
   autoPlugs: many(autoPlugs),
+  queuedPost: one(queuedPosts),
 }));
 
 export const postPublicationsRelations = relations(
@@ -409,3 +446,25 @@ export const platformRateLimitsRelations = relations(
     }),
   }),
 );
+
+export const queueSlotsRelations = relations(queueSlots, ({ one }) => ({
+  user: one(user, {
+    fields: [queueSlots.userId],
+    references: [user.id],
+  }),
+}));
+
+export const queuedPostsRelations = relations(queuedPosts, ({ one }) => ({
+  user: one(user, {
+    fields: [queuedPosts.userId],
+    references: [user.id],
+  }),
+  post: one(posts, {
+    fields: [queuedPosts.postId],
+    references: [posts.id],
+  }),
+  slot: one(queueSlots, {
+    fields: [queuedPosts.slotId],
+    references: [queueSlots.id],
+  }),
+}));
