@@ -79,6 +79,9 @@
     "tsx": "^4.21.0",
     "typescript": "^5"
   },
+  "overrides": {
+    "zod": "$zod"
+  },
   "ignoreScripts": [
     "sharp",
     "unrs-resolver"

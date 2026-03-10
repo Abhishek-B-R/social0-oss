@@ -368,6 +368,7 @@ export function VideoPostForm({
               next[id] = {
                 privacy_level:
                   typeof t.privacy_level === "string" ? t.privacy_level : "",
+                video_title: typeof t.video_title === "string" ? t.video_title : "",
                 disable_comment: !!t.disable_comment,
                 disable_duet: !!t.disable_duet,
                 disable_stitch: !!t.disable_stitch,
@@ -426,6 +427,7 @@ export function VideoPostForm({
               next[id] = {
                 privacy_level:
                   typeof t.privacy_level === "string" ? t.privacy_level : "",
+                video_title: typeof t.video_title === "string" ? t.video_title : "",
                 disable_comment: !!t.disable_comment,
                 disable_duet: !!t.disable_duet,
                 disable_stitch: !!t.disable_stitch,
