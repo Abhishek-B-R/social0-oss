@@ -267,7 +267,7 @@ export function SchedulePostSidebar({
 
   return (
     <aside
-      className="flex w-full flex-col gap-6 pb-24 lg:sticky lg:top-[60px] lg:w-[35%] lg:pb-0 -mt-20"
+      className="flex w-full flex-col gap-6 pb-24 lg:sticky lg:top-[60px] lg:w-[35%] lg:pb-0 lg:-mt-20"
       style={{ minWidth: 0 }}
     >
       {children}

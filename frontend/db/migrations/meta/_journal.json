@@ -162,6 +162,13 @@
       "when": 1773100000000,
       "tag": "0023_queue_slots_unique_user_time",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1773200000000,
+      "tag": "0024_add_posts_failure_reason",
+      "breakpoints": true
     }
   ]
 }

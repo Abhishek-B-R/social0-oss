@@ -115,7 +115,9 @@ export function CollectionPostForm({
   const imagesRef = useRef<ImageFile[]>([]);
   const videosRef = useRef<VideoFile[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
-    initialDraftId || initialScheduledId ? new Set() : getInitialSelectedIds(validIds),
+    initialDraftId || initialScheduledId
+      ? new Set()
+      : getInitialSelectedIds(validIds),
   );
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
@@ -133,7 +135,9 @@ export function CollectionPostForm({
     Record<string, TikTokPostSettings>
   >({});
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
-  const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>([]);
+  const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>(
+    [],
+  );
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
@@ -237,7 +241,9 @@ export function CollectionPostForm({
         );
         setContent(scheduled.originalContent ?? "");
         setSelectedIds(new Set(restoredIds));
-        setScheduledAt(scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null);
+        setScheduledAt(
+          scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null,
+        );
         setMode("scheduled");
         if (scheduled.queueSlotId)
           intendedQueueSlotIdRef.current = scheduled.queueSlotId;
@@ -566,8 +572,7 @@ export function CollectionPostForm({
         const hasMedia =
           files &&
           Array.from(files).some(
-            (f) =>
-              f.type.startsWith("image/") || f.type.startsWith("video/"),
+            (f) => f.type.startsWith("image/") || f.type.startsWith("video/"),
           );
         if (!hasMedia) return;
       }
@@ -843,9 +848,7 @@ export function CollectionPostForm({
       });
     }
 
-    const finalMediaIds = mediaIds.filter(
-      (id): id is string => id !== null,
-    );
+    const finalMediaIds = mediaIds.filter((id): id is string => id !== null);
     if (finalMediaIds.length !== mediaIds.length) {
       setError("One or more media items failed to upload. Please try again.");
       setLoading(false);
@@ -888,7 +891,7 @@ export function CollectionPostForm({
         scheduledAt,
         finalMediaIds,
         meta,
-        scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+        scheduledAt ? (intendedQueueSlotIdRef.current ?? undefined) : undefined,
       );
       if (scheduledAt) intendedQueueSlotIdRef.current = null;
       setLoading(false);
@@ -977,7 +980,9 @@ export function CollectionPostForm({
           scheduledAt,
           finalMediaIds,
           meta,
-          scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+          scheduledAt
+            ? (intendedQueueSlotIdRef.current ?? undefined)
+            : undefined,
         );
         if (scheduledAt) intendedQueueSlotIdRef.current = null;
         setLoading(false);
@@ -999,7 +1004,9 @@ export function CollectionPostForm({
       scheduledAt,
       finalMediaIds,
       meta,
-      effectiveMode === "scheduled" ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+      effectiveMode === "scheduled"
+        ? (intendedQueueSlotIdRef.current ?? undefined)
+        : undefined,
     );
     if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
@@ -1029,7 +1036,8 @@ export function CollectionPostForm({
         accountId: pub.connectedAccountId,
         accountName: pub.platformUsername
           ? `@${pub.platformUsername}`
-          : PLATFORMS.find((p) => p.id === pub.platform)?.name ?? pub.platform,
+          : (PLATFORMS.find((p) => p.id === pub.platform)?.name ??
+            pub.platform),
         status: "waiting" as PlatformStatus,
       }));
       setPlatformStatuses(initial);
@@ -1122,16 +1130,11 @@ export function CollectionPostForm({
     }
     if (!rememberAutoFeatures) return;
     if (hasRestoredAutoFeaturesRef.current) return;
-    const { autoRepostConfig, autoPlugConfig } =
-      getAutoFeaturesInitialState();
+    const { autoRepostConfig, autoPlugConfig } = getAutoFeaturesInitialState();
     if (autoRepostConfig) setResurfaceConfig(autoRepostConfig);
     if (autoPlugConfig) setAutoPlugConfig(autoPlugConfig);
     hasRestoredAutoFeaturesRef.current = true;
-  }, [
-    hasXForResurface,
-    rememberAutoFeatures,
-    getAutoFeaturesInitialState,
-  ]);
+  }, [hasXForResurface, rememberAutoFeatures, getAutoFeaturesInitialState]);
 
   // Persist Auto-Repost & Auto-Plug when remember is on
   useEffect(() => {
@@ -1153,14 +1156,13 @@ export function CollectionPostForm({
 
   const hasContent = content.trim().length > 0;
   const hasMedia = images.length > 0 || videos.length > 0;
-  const submitDisabledReason =
-    !hasContent
-      ? "Add a caption"
-      : !hasMedia
-        ? "Add at least one image or video"
-        : mode === "scheduled" && !scheduledAt
-          ? "Pick a date and time to schedule"
-          : null;
+  const submitDisabledReason = !hasContent
+    ? "Add a caption"
+    : !hasMedia
+      ? "Add at least one image or video"
+      : mode === "scheduled" && !scheduledAt
+        ? "Pick a date and time to schedule"
+        : null;
   const submitLabel =
     mode === "draft"
       ? "Save draft"
@@ -1315,16 +1317,16 @@ export function CollectionPostForm({
                     : "";
             const showMax4Warning =
               totalAttachments > 4 && (hasTwitterX || hasBluesky);
-            const showPinterestWarning =
-              totalAttachments > 1 && hasPinterest;
+            const showPinterestWarning = totalAttachments > 1 && hasPinterest;
             if (!showMax4Warning && !showPinterestWarning) return null;
             return (
               <div className="space-y-1">
                 {showMax4Warning && (
                   <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                    ⚠ {platformsLabel} support up to 4 media attachments per post.
-                    You&apos;ve added more than 4, so only the first 4 will be
-                    published on those platforms; extra media will be ignored there.
+                    ⚠ {platformsLabel} support up to 4 media attachments per
+                    post. You&apos;ve added more than 4, so only the first 4
+                    will be published on those platforms; extra media will be
+                    ignored there.
                   </div>
                 )}
                 {showPinterestWarning && (
@@ -1507,7 +1509,7 @@ export function CollectionPostForm({
               <p className="text-xs text-text-muted mb-3">
                 Post configurations & tools
               </p>
-              <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
+              <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1 min-h-[44px] sm:min-h-0 -mx-1 px-1 scrollbar-thin">
                 <button
                   type="button"
                   onClick={() =>
@@ -1515,13 +1517,13 @@ export function CollectionPostForm({
                       p === "tiktok" ? null : "tiktok",
                     )
                   }
-                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
+                  className={`flex items-center gap-2 rounded-full border px-3 py-2 sm:py-1.5 text-sm font-medium transition-colors shrink-0 min-h-[44px] sm:min-h-0 touch-manipulation ${
                     activeConfigPanel === "tiktok"
                       ? "border-accent bg-accent/10 text-accent"
                       : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
                   }`}
                 >
-                  <Circle className="h-3.5 w-3.5 text-text-muted" />
+                  <Circle className="h-3.5 w-3.5 text-text-muted shrink-0" />
                   <span>TikTok Config</span>
                   {activeConfigPanel === "tiktok" ? (
                     <ChevronUp className="h-3.5 w-3.5" />

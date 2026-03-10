@@ -207,6 +207,16 @@ export async function executePublish(
   const subscription = await getSubscriptionForUser(post.userId);
   if (!isActiveTier(subscription.tier)) {
     logPublishBlocked("subscription", post.userId, post.id);
+    const failureReason =
+      "Payment required — your free trial has ended. Upgrade to publish scheduled posts.";
+    await db
+      .update(posts)
+      .set({
+        status: "failed",
+        failureReason,
+        updatedAt: new Date(),
+      })
+      .where(eq(posts.id, postId));
     return {
       success: false,
       error: "An active subscription is required to publish. Upgrade in Billing.",
@@ -256,6 +266,16 @@ export async function executePublish(
         used: tweetLimit.used,
         limit: tweetLimit.limit,
       });
+      const failureReason =
+        tweetLimit.reason ?? "Twitter monthly limit reached. Resets next month or upgrade for more.";
+      await db
+        .update(posts)
+        .set({
+          status: "failed",
+          failureReason,
+          updatedAt: new Date(),
+        })
+        .where(eq(posts.id, postId));
       return {
         success: false,
         error: tweetLimit.reason ?? "Twitter monthly limit reached",

@@ -177,6 +177,7 @@ export const posts = pgTable(
     mediaIds: uuid("media_ids").array().default([]), // References media_uploads.id
     status: postStatusEnum("status").default("draft"),
     scheduledAt: timestamp("scheduled_at"),
+    failureReason: text("failure_reason"), // When status is failed: e.g. payment required, Twitter limit
     metadata: jsonb("metadata").$type<Record<string, unknown>>(), // Platform-specific settings (e.g. TikTok privacy, toggles)
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),

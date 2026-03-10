@@ -1513,7 +1513,7 @@ export function ImagePostForm({
               <p className="text-xs text-text-muted mb-3">
                 Post configurations & tools
               </p>
-              <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
+              <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1 min-h-[44px] sm:min-h-0 -mx-1 px-1 scrollbar-thin">
                 {showPlatformCaptionsSection && (
                   <button
                     type="button"
@@ -1575,16 +1575,16 @@ export function ImagePostForm({
                         p === "tiktok" ? null : "tiktok",
                       )
                     }
-                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
+                    className={`flex items-center gap-2 rounded-full border px-3 py-2 sm:py-1.5 text-sm font-medium transition-colors shrink-0 min-h-[44px] sm:min-h-0 touch-manipulation ${
                       activeConfigPanel === "tiktok"
                         ? "border-accent bg-accent/10 text-accent"
                         : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
                     }`}
                   >
                     {tiktokMissingPrivacy ? (
-                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                     ) : (
-                      <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                      <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />
                     )}
                     <span>TikTok Config</span>
                     {activeConfigPanel === "tiktok" ? (

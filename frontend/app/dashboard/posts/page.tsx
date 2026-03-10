@@ -2,7 +2,8 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
-import { getPostsListData, POSTS_PAGE_SIZE } from "./posts-list-data";
+import { AlertTriangle } from "lucide-react";
+import { getPostsListData, hasPaymentFailedPosts, POSTS_PAGE_SIZE } from "./posts-list-data";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { AllPostsFilters } from "./AllPostsFilters";
 import { PostListCards } from "./PostListCards";
@@ -51,9 +52,22 @@ export default async function PostsPage({
 
   const hasActiveFilters = !!(params.platform || params.time || params.account);
   const showTikTokMessage = params?.tiktok_published === "true";
+  const showPaymentFailedBanner = await hasPaymentFailedPosts(session.user.id);
 
   return (
     <div>
+      {showPaymentFailedBanner && (
+        <div className="mb-6 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+          <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+          <span>Some posts failed to publish because your trial ended.</span>
+          <Link
+            href="/dashboard/billing"
+            className="ml-auto font-medium underline underline-offset-2"
+          >
+            Upgrade now →
+          </Link>
+        </div>
+      )}
       {showTikTokMessage && (
         <div className="mb-6 rounded-xl bg-blue-50 border border-blue-200 p-4 dark:bg-blue-950/40 dark:border-blue-900/60">
           <p className="text-sm text-blue-800 font-medium dark:text-blue-200">

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AlertCircle } from "lucide-react";
 import { formatDateTime } from "@/lib/date-format";
 import { PlatformIcon } from "./PlatformIcon";
 import type { PublicationRow } from "./posts-list-data";
@@ -10,6 +11,7 @@ type PostRow = {
   originalContent: string | null;
   status: string | null;
   scheduledAt: Date | null;
+  failureReason: string | null;
   createdAt: Date | null;
   mediaIds: string[] | null;
   metadata?: Record<string, unknown> | null;
@@ -136,7 +138,11 @@ function getStatusBadge(status: string | null): { label: string; className: stri
     case "scheduled":
       return { label: "Scheduled", prefix: "◷", className: "bg-blue-600 text-white" };
     case "failed":
-      return { label: "Failed", prefix: "✕", className: "bg-red-600 text-white" };
+      return {
+        label: "Failed",
+        prefix: "✕",
+        className: "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800",
+      };
     default:
       return { label: "Draft", prefix: "○", className: "bg-muted text-foreground" };
   }
@@ -258,7 +264,7 @@ export function PostListCards({
                   {displayType}
                 </span>
                 <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadge.className}`}
+                  className={`rounded-md px-2 py-0.5 text-[11px] font-mono font-medium ${statusBadge.className}`}
                 >
                   {statusBadge.prefix} {statusBadge.label}
                 </span>
@@ -273,6 +279,12 @@ export function PostListCards({
               >
                 {preview}
               </p>
+              {uiStatus === "failed" && post.failureReason && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-2 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" strokeWidth={1.5} />
+                  {post.failureReason}
+                </p>
+              )}
               {/* BOTTOM ROW: [Platform icons left] [Date right muted] */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1">

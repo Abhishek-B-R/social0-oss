@@ -8,10 +8,26 @@ import {
   autoPlugs,
   queuedPosts,
 } from "@/db/schema";
-import { eq, desc, asc, inArray, and } from "drizzle-orm";
+import { eq, desc, asc, inArray, and, sql } from "drizzle-orm";
 import { startOfWeek, startOfMonth } from "date-fns";
 
 export const POSTS_PAGE_SIZE = 18;
+
+/** True if the user has any post that failed due to payment (trial ended). */
+export async function hasPaymentFailedPosts(userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: posts.id })
+    .from(posts)
+    .where(
+      and(
+        eq(posts.userId, userId),
+        eq(posts.status, "failed"),
+        sql`${posts.failureReason} LIKE '%Payment required%'`,
+      ),
+    )
+    .limit(1);
+  return !!row?.id;
+}
 
 export type StatusFilter = "draft" | "scheduled" | "published" | null;
 
@@ -64,6 +80,7 @@ export async function getPostsListData({
       originalContent: posts.originalContent,
       status: posts.status,
       scheduledAt: posts.scheduledAt,
+      failureReason: posts.failureReason,
       createdAt: posts.createdAt,
       mediaIds: posts.mediaIds,
       metadata: posts.metadata,
