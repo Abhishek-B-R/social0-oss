@@ -1536,7 +1536,7 @@ export function VideoPostForm({
                           if (id)
                             setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                         }}
-                        mediaType="video"
+                        onError={(err) => setError(err)}
                       />
                     </>
                   ) : (
@@ -1551,7 +1551,7 @@ export function VideoPostForm({
                         if (id)
                           setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                       }}
-                      mediaType="video"
+                      onError={(err) => setError(err)}
                     />
                   )}
                 </div>

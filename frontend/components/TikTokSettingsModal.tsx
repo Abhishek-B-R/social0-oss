@@ -116,7 +116,7 @@ export function TikTokSettingsModal({
               setLocalValidation(null);
               onChange(s);
             }}
-            mediaType={mediaType}
+            onError={(err) => setLocalValidation(err)}
           />
         </div>
 

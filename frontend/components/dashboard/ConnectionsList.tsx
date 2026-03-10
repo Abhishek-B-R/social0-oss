@@ -28,6 +28,8 @@ type Account = {
   id: string;
   platform: string;
   platformUsername: string | null;
+  /** Display name (e.g. TikTok nickname); when set, list shows "displayName (@handle)" */
+  platformDisplayName?: string | null;
   profileImageUrl: string | null;
   isActive: boolean | null;
   isTwitterPremium?: boolean;
@@ -59,9 +61,11 @@ export function ConnectionsList({
     const platformName =
       PLATFORMS.find((p) => p.id === account.platform)?.name ??
       account.platform;
-    setDisconnectLabel(
-      `@${account.platformUsername || "account"} (${platformName})`,
-    );
+    const label =
+      account.platformDisplayName && account.platformUsername
+        ? `${account.platformDisplayName} (@${account.platformUsername})`
+        : `@${account.platformUsername || "account"}`;
+    setDisconnectLabel(`${label} (${platformName})`);
     setDisconnectAccountId(account.id);
   };
 
@@ -148,9 +152,22 @@ export function ConnectionsList({
                             size="sm"
                             className="shrink-0"
                           />
-                          <span className="min-w-0 max-w-[80px] truncate text-xs font-medium text-text sm:max-w-[100px]">
-                            @{account.platformUsername || "user"}
-                          </span>
+                          <div className="min-w-0 flex flex-col justify-center">
+                            {account.platformDisplayName && account.platformUsername ? (
+                              <>
+                                <span className="truncate text-xs font-medium text-text" title={account.platformDisplayName}>
+                                  {account.platformDisplayName}
+                                </span>
+                                <span className="truncate text-[10px] text-text-muted" title={account.platformUsername}>
+                                  @{account.platformUsername}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="truncate text-xs font-medium text-text max-w-[120px] sm:max-w-[160px]" title={account.platformUsername ? `@${account.platformUsername}` : undefined}>
+                                @{account.platformUsername || "user"}
+                              </span>
+                            )}
+                          </div>
                           {isExpired && (
                             <Link
                               href={`/api/connect/${account.platform}`}
@@ -175,7 +192,7 @@ export function ConnectionsList({
                             type="button"
                             onClick={() => handleOpenDisconnect(account)}
                             className="shrink-0 rounded p-0.5 text-destructive transition-colors hover:bg-destructive/10"
-                            aria-label={`Disconnect ${account.platformUsername || account.platform}`}
+                            aria-label={`Disconnect ${account.platformDisplayName && account.platformUsername ? `${account.platformDisplayName} (@${account.platformUsername})` : account.platformUsername || account.platform}`}
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>

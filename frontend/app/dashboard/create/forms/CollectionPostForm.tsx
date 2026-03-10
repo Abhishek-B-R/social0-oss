@@ -1560,7 +1560,7 @@ export function CollectionPostForm({
                           if (id)
                             setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                         }}
-                        mediaType={videos.length > 0 ? "video" : "photo"}
+                        onError={(err) => setError(err)}
                       />
                     </>
                   ) : (
@@ -1575,7 +1575,7 @@ export function CollectionPostForm({
                         if (id)
                           setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                       }}
-                      mediaType={videos.length > 0 ? "video" : "photo"}
+                      onError={(err) => setError(err)}
                     />
                   )}
                 </div>

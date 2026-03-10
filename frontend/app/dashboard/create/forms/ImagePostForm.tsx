@@ -1706,7 +1706,7 @@ export function ImagePostForm({
                           if (id)
                             setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                         }}
-                        mediaType="photo"
+                        onError={(err) => setError(err)}
                       />
                     </>
                   ) : (
@@ -1721,7 +1721,7 @@ export function ImagePostForm({
                         if (id)
                           setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                       }}
-                      mediaType="photo"
+                      onError={(err) => setError(err)}
                     />
                   )}
                 </div>

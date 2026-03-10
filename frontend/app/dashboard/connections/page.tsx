@@ -13,6 +13,7 @@ import {
   NEVER_EXPIRES_PLATFORMS,
 } from "@/lib/token-health";
 import { checkAccountLimits } from "@/lib/plan-limits";
+import { getTikTokCreatorInfo } from "@/lib/tiktok-creator-info";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -69,6 +70,14 @@ async function ConnectionsContent() {
     checkAccountLimits(session.user.id, "linkedin"),
   ]);
 
+  const tiktokIds = accounts.filter((a) => a.platform === "tiktok").map((a) => a.id);
+  const tiktokCreatorInfo = await Promise.all(
+    tiktokIds.map((id) => getTikTokCreatorInfo(id, session.user.id)),
+  );
+  const creatorInfoByAccountId = new Map(
+    tiktokIds.map((id, i) => [id, tiktokCreatorInfo[i] ?? null]),
+  );
+
   return (
     <>
       <OAuthErrorHandler />
@@ -80,10 +89,20 @@ async function ConnectionsContent() {
             a.platform,
           );
           const expiresInDays = getExpiresInDays(a.tokenExpiresAt ?? null);
+          const creatorInfo = a.platform === "tiktok" ? creatorInfoByAccountId.get(a.id) : null;
+          const platformUsername =
+            creatorInfo?.creator_username != null
+              ? creatorInfo.creator_username
+              : a.platformUsername;
+          const platformDisplayName =
+            a.platform === "tiktok" && creatorInfo?.creator_nickname != null
+              ? creatorInfo.creator_nickname
+              : undefined;
           return {
             id: a.id,
             platform: a.platform,
-            platformUsername: a.platformUsername,
+            platformUsername,
+            platformDisplayName,
             profileImageUrl: a.profileImageUrl,
             isActive: a.isActive,
             isTwitterPremium: a.isTwitterPremium ?? false,

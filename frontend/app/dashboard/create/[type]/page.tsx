@@ -1,15 +1,15 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { connectedAccounts } from "@/db/schema";
+import { connectedAccounts, userSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import { PLATFORMS } from "@/lib/platforms";
 import { getContentTypeBySlug } from "@/lib/content-types";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
-import { getUserSettingsSnapshot } from "@/app/actions/settings";
-import { getSubscriptionForUser } from "@/lib/subscription";
 import { getPlanLimits } from "@/lib/plans";
+import type { SubscriptionTier } from "@/lib/plans";
+import type { DateFormatKey } from "@/lib/date-format";
 import { TextPostForm } from "../forms/TextPostForm";
 import { ImagePostForm } from "../forms/ImagePostForm";
 import { VideoPostForm } from "../forms/VideoPostForm";
@@ -63,20 +63,32 @@ export default async function NewPostByTypePage({
   const contentType = getContentTypeBySlug(typeSlug);
   if (!contentType) notFound();
 
-  const accounts = await db.query.connectedAccounts.findMany({
-    where: eq(connectedAccounts.userId, session.user.id),
-    columns: {
-      id: true,
-      platform: true,
-      platformUsername: true,
-      profileImageUrl: true,
-      isActive: true,
-      tokenExpiresAt: true,
-      tokenStatus: true,
-      platformMetadata: true,
-      isTwitterPremium: true,
-    },
-  });
+  const [accounts, settingsRow] = await Promise.all([
+    db.query.connectedAccounts.findMany({
+      where: eq(connectedAccounts.userId, session.user.id),
+      columns: {
+        id: true,
+        platform: true,
+        platformUsername: true,
+        profileImageUrl: true,
+        isActive: true,
+        tokenExpiresAt: true,
+        tokenStatus: true,
+        platformMetadata: true,
+        isTwitterPremium: true,
+      },
+    }),
+    db.query.userSettings.findFirst({
+      where: eq(userSettings.userId, session.user.id),
+      columns: {
+        use24HourTimeFormat: true,
+        dateFormat: true,
+        timezone: true,
+        subscriptionTier: true,
+        subscriptionExpiresAt: true,
+      },
+    }),
+  ]);
 
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
@@ -102,10 +114,30 @@ export default async function NewPostByTypePage({
       })),
   );
 
+  const rawDateFormat = settingsRow?.dateFormat as DateFormatKey | null | undefined;
+  const use24HourTimeFormat = settingsRow?.use24HourTimeFormat ?? false;
+  const dateFormat: DateFormatKey =
+    rawDateFormat === "dd/MM/yyyy" ||
+    rawDateFormat === "MM/dd/yyyy" ||
+    rawDateFormat === "yyyy-MM-dd"
+      ? rawDateFormat
+      : "dd/MM/yyyy";
+  const timezone =
+    typeof settingsRow?.timezone === "string" && settingsRow.timezone.trim().length > 0
+      ? settingsRow.timezone.trim()
+      : "UTC";
+
+  const rawTier = (settingsRow?.subscriptionTier as SubscriptionTier) ?? "free";
+  const subExpiresAt = settingsRow?.subscriptionExpiresAt ?? null;
+  const effectiveTier: SubscriptionTier =
+    subExpiresAt && new Date(subExpiresAt) < new Date()
+      ? "free"
+      : rawTier === "starter" || rawTier === "growth"
+        ? rawTier
+        : "free";
+  const planLimits = getPlanLimits(effectiveTier);
+
   const FormComponent = FORM_MAP[contentType.slug];
-  const { use24HourTimeFormat, dateFormat, timezone } = await getUserSettingsSnapshot();
-  const subscription = await getSubscriptionForUser(session.user.id);
-  const planLimits = getPlanLimits(subscription.tier);
 
   return (
     <div>
