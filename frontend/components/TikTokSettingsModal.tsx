@@ -38,6 +38,10 @@ export function TikTokSettingsModal({
   const displayError = localValidation ?? validationError ?? null;
 
   const handleSave = () => {
+    if (!value.video_title?.trim()) {
+      setLocalValidation("Please enter a video title.");
+      return;
+    }
     if (!value.privacy_level?.trim()) {
       setLocalValidation("Please select a privacy level.");
       return;

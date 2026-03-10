@@ -243,6 +243,7 @@ export function ImagePostForm({
 
   const defaultTiktokSettings: TikTokPostSettings = {
     privacy_level: "",
+    video_title: "",
     disable_comment: true,
     disable_duet: true,
     disable_stitch: true,
@@ -706,6 +707,12 @@ export function ImagePostForm({
       for (const tiktokAccount of tiktokAccounts) {
         const settings =
           tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
+        if (!settings.video_title?.trim()) {
+          setError(
+            `TikTok: A video title is required for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
+          );
+          return;
+        }
         if (!settings.privacy_level?.trim()) {
           setError(
             `TikTok: Privacy level is required. Please select a privacy level for @${tiktokAccount.platformUsername ?? "TikTok"}.`,

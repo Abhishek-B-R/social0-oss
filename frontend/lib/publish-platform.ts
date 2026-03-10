@@ -2201,7 +2201,13 @@ async function publishToTikTok(
     privacy_level: accountSettings.privacy_level,
   };
 
-  if (captionTruncated) {
+  const userTitle = (accountSettings as any).video_title?.trim();
+  if (userTitle) {
+    basePostInfo.title = userTitle.slice(0, 150);
+    if (captionTruncated) {
+      basePostInfo.description = captionTruncated;
+    }
+  } else if (captionTruncated) {
     basePostInfo.title = captionTruncated;
   }
 
@@ -2283,9 +2289,13 @@ async function publishToTikTok(
       privacy_level: accountSettings.privacy_level,
     };
 
-    if (caption) {
-      photoPostInfo.title = truncate(caption, 90); // Photo title max 90 UTF-16 runes
-      photoPostInfo.description = truncate(caption, 4000); // Photo description max 4000
+    const userPhotoTitle = (accountSettings as any).video_title?.trim();
+    if (userPhotoTitle) {
+      photoPostInfo.title = userPhotoTitle.slice(0, 90);
+      if (caption) photoPostInfo.description = truncate(caption, 4000);
+    } else if (caption) {
+      photoPostInfo.title = truncate(caption, 90);
+      photoPostInfo.description = truncate(caption, 4000);
     }
 
     if (accountSettings.disable_comment) {

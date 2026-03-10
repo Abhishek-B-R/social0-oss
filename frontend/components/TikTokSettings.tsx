@@ -29,6 +29,7 @@ type TikTokSettingsProps = {
 
 export type TikTokPostSettings = {
   privacy_level: string;
+  video_title: string;
   disable_comment: boolean;
   disable_duet: boolean;
   disable_stitch: boolean;
@@ -39,6 +40,7 @@ export type TikTokPostSettings = {
 
 const DEFAULT_SETTINGS: TikTokPostSettings = {
   privacy_level: "",
+  video_title: "",
   disable_comment: false,
   disable_duet: false,
   disable_stitch: false,
@@ -62,6 +64,7 @@ export function TikTokSettings({
     value.privacy_level !== undefined
       ? {
           ...value,
+          video_title: value.video_title ?? "",
           brand_organic:
             (value as any).brand_organic_toggle === true
               ? true
@@ -74,6 +77,7 @@ export function TikTokSettings({
         }
       : {
           privacy_level: "",
+          video_title: "",
           disable_comment: false,
           disable_duet: false,
           disable_stitch: false,
@@ -86,6 +90,7 @@ export function TikTokSettings({
   useEffect(() => {
     if (
       value.privacy_level !== settings.privacy_level ||
+      value.video_title !== settings.video_title ||
       value.disable_comment !== settings.disable_comment ||
       value.disable_duet !== settings.disable_duet ||
       value.disable_stitch !== settings.disable_stitch ||
@@ -95,6 +100,7 @@ export function TikTokSettings({
     ) {
       setSettings({
         ...value,
+        video_title: value.video_title ?? "",
         brand_organic: value.brand_organic ?? false,
         brand_content: value.brand_content ?? false,
       });
@@ -102,6 +108,7 @@ export function TikTokSettings({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     value.privacy_level,
+    value.video_title,
     value.disable_comment,
     value.disable_duet,
     value.disable_stitch,
@@ -236,6 +243,31 @@ export function TikTokSettings({
         <p className="text-xs text-gray-500 mt-1">
           Required settings for TikTok posts
         </p>
+      </div>
+
+      {/* Video Title */}
+      <div>
+        <label className="block text-sm font-medium text-gray-900 mb-2">
+          Video Title <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          value={settings.video_title}
+          onChange={(e) =>
+            updateSetting("video_title", e.target.value.slice(0, 150))
+          }
+          placeholder="Enter a title for your video"
+          maxLength={150}
+          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+        />
+        <div className="flex justify-between mt-1">
+          {!settings.video_title.trim() && (
+            <p className="text-xs text-red-600">A video title is required</p>
+          )}
+          <p className="text-xs text-gray-400 ml-auto">
+            {settings.video_title.length}/150
+          </p>
+        </div>
       </div>
 
       {/* Privacy Level */}
