@@ -48,12 +48,17 @@ import {
   VIDEO_DURATION_MESSAGE,
 } from "@/lib/video-duration";
 import {
+  getAccountsOverVideoLimit,
+  type VideoLimitWarning,
+} from "@/lib/platform-limits";
+import {
   ChevronDown,
   ChevronUp,
   AlertTriangle,
   Check,
   Circle,
   Clapperboard,
+  Info,
 } from "lucide-react";
 import {
   consumeComposerPayload,
@@ -172,12 +177,18 @@ export function VideoPostForm({
   >({});
   const [pinterestError, setPinterestError] = useState<string | null>(null);
   const pinterestSectionRef = useRef<HTMLDivElement>(null);
-  type ConfigPanel = "platform-captions" | "pinterest" | "tiktok" | null;
+  type ConfigPanel =
+    | "platform-captions"
+    | "pinterest"
+    | "tiktok"
+    | "youtube"
+    | null;
   const [activeConfigPanel, setActiveConfigPanel] = useState<ConfigPanel>(null);
   const [selectedPinterestAccountIndex, setSelectedPinterestAccountIndex] =
     useState(0);
   const [selectedTiktokAccountIndex, setSelectedTiktokAccountIndex] =
     useState(0);
+  const [youtubeTitle, setYoutubeTitle] = useState("");
   const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
   const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   const hasRestoredAutoFeaturesRef = useRef(false);
@@ -386,6 +397,20 @@ export function VideoPostForm({
           }
           if (Object.keys(next).length > 0) setTiktokSettings(next);
         }
+        const youtube = meta?.youtube as { title?: string } | undefined;
+        if (youtube && typeof youtube.title === "string") {
+          setYoutubeTitle(youtube.title.slice(0, 100));
+        }
+        const videoMeta = meta?.video as {
+          durationSeconds?: number;
+          isVertical?: boolean;
+        } | undefined;
+        if (videoMedia && videoMeta && typeof videoMeta.durationSeconds === "number") {
+          setVideoDuration(videoMeta.durationSeconds);
+          if (typeof videoMeta.isVertical === "boolean") {
+            setIsVertical(videoMeta.isVertical);
+          }
+        }
       } catch {
         if (!cancelled) setError("Failed to load post");
       } finally {
@@ -446,6 +471,20 @@ export function VideoPostForm({
             }
           }
           if (Object.keys(next).length > 0) setTiktokSettings(next);
+        }
+        const youtube = meta?.youtube as { title?: string } | undefined;
+        if (youtube && typeof youtube.title === "string") {
+          setYoutubeTitle(youtube.title.slice(0, 100));
+        }
+        const videoMeta = meta?.video as {
+          durationSeconds?: number;
+          isVertical?: boolean;
+        } | undefined;
+        if (videoMedia && videoMeta && typeof videoMeta.durationSeconds === "number") {
+          setVideoDuration(videoMeta.durationSeconds);
+          if (typeof videoMeta.isVertical === "boolean") {
+            setIsVertical(videoMeta.isVertical);
+          }
         }
       } catch {
         if (!cancelled) setError("Failed to load draft");
@@ -513,6 +552,20 @@ export function VideoPostForm({
           }
           if (Object.keys(next).length > 0) setTiktokSettings(next);
         }
+        const youtube = meta?.youtube as { title?: string } | undefined;
+        if (youtube && typeof youtube.title === "string") {
+          setYoutubeTitle(youtube.title.slice(0, 100));
+        }
+        const videoMeta = meta?.video as {
+          durationSeconds?: number;
+          isVertical?: boolean;
+        } | undefined;
+        if (videoMedia && videoMeta && typeof videoMeta.durationSeconds === "number") {
+          setVideoDuration(videoMeta.durationSeconds);
+          if (typeof videoMeta.isVertical === "boolean") {
+            setIsVertical(videoMeta.isVertical);
+          }
+        }
       } catch {
         if (!cancelled) setError("Failed to load post");
       } finally {
@@ -566,7 +619,42 @@ export function VideoPostForm({
     });
   };
 
-  const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
+  const videoLimitState = useMemo(() => {
+    if (videoDuration <= 0)
+      return {
+        accountIds: new Set<string>(),
+        warnings: [] as VideoLimitWarning[],
+        softAccountIds: new Set<string>(),
+        softWarnings: [] as VideoLimitWarning[],
+      };
+    return getAccountsOverVideoLimit(accounts, videoDuration);
+  }, [accounts, videoDuration]);
+
+  const videoLimitDisabledReasons = useMemo(() => {
+    const reasons: Record<string, string> = {};
+    for (const acc of accounts) {
+      if (videoLimitState.accountIds.has(acc.id)) {
+        const w = videoLimitState.warnings.find((x) => x.platform === acc.platform);
+        reasons[acc.id] = w?.message ?? `Video exceeds ${acc.platform} limit`;
+      }
+    }
+    return reasons;
+  }, [accounts, videoLimitState]);
+
+  const videoLimitWarningReasons = useMemo(() => {
+    const reasons: Record<string, string> = {};
+    for (const acc of accounts) {
+      if (videoLimitState.softAccountIds.has(acc.id)) {
+        const w = videoLimitState.softWarnings.find((x) => x.platform === acc.platform);
+        reasons[acc.id] = w?.message ?? "May limit reach to new audiences.";
+      }
+    }
+    return reasons;
+  }, [accounts, videoLimitState]);
+
+  const selectableAccounts = accounts.filter(
+    (a) => !a.tokenExpired && !videoLimitState.accountIds.has(a.id)
+  );
   const selectAll = () => {
     if (selectableAccounts.every((a) => selectedIds.has(a.id))) {
       setSelectedIds(new Set());
@@ -601,6 +689,7 @@ export function VideoPostForm({
           );
           return;
         }
+        setIsVertical(result.height > result.width);
         getVideoDuration(file).then((duration) => {
           if (duration > MAX_VIDEO_DURATION_SECONDS) {
             setError(VIDEO_DURATION_MESSAGE);
@@ -649,6 +738,7 @@ export function VideoPostForm({
         );
         return;
       }
+      setIsVertical(result.height > result.width);
       getVideoDuration(file).then((duration) => {
         if (duration > MAX_VIDEO_DURATION_SECONDS) {
           setError(VIDEO_DURATION_MESSAGE);
@@ -698,6 +788,7 @@ export function VideoPostForm({
         );
         return;
       }
+      setIsVertical(result.height > result.width);
       getVideoDuration(file).then((duration) => {
         if (duration > MAX_VIDEO_DURATION_SECONDS) {
           setError(VIDEO_DURATION_MESSAGE);
@@ -747,6 +838,12 @@ export function VideoPostForm({
   );
   const pinterestAccounts = selectedAccounts.filter(
     (a) => a.platform === "pinterest",
+  );
+  const hasYouTubeSelected = selectedAccounts.some(
+    (a) => a.platform === "youtube",
+  );
+  const youtubeAccounts = selectedAccounts.filter(
+    (a) => a.platform === "youtube",
   );
   const hasVideo = !!videoFile || !!existingVideoId;
   const submitDisabled =
@@ -917,6 +1014,17 @@ export function VideoPostForm({
     }
     if (Object.keys(accountCaptions).length > 0) {
       metadata.accountCaptions = accountCaptions;
+    }
+    if (hasYouTubeSelected && youtubeTitle.trim()) {
+      metadata.youtube = {
+        title: youtubeTitle.trim().slice(0, 100),
+      };
+    }
+    if (hasVideo && videoDuration > 0) {
+      metadata.video = {
+        durationSeconds: videoDuration,
+        isVertical,
+      };
     }
     const meta = metadata;
 
@@ -1161,6 +1269,23 @@ export function VideoPostForm({
     );
   }, [accounts, accountSearch]);
 
+  useEffect(() => {
+    if (videoDuration <= 0) return;
+    const { accountIds } = getAccountsOverVideoLimit(accounts, videoDuration);
+    if (accountIds.size === 0) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      prev.forEach((id) => {
+        if (accountIds.has(id)) {
+          next.delete(id);
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [videoDuration, accounts]);
+
   const submitDisabledReason =
     !content.trim()
       ? "Add a caption"
@@ -1280,7 +1405,62 @@ export function VideoPostForm({
             remember={remember}
             onRememberChange={setRemember}
             supportedPlatforms={supportedPlatforms}
+            disabledAccountIds={videoLimitState.accountIds}
+            disabledReasons={videoLimitDisabledReasons}
+            disabledAccountDefaultReason="Video exceeds this platform's length limit"
+            warningAccountIds={videoLimitState.softAccountIds}
+            warningReasons={videoLimitWarningReasons}
+            warningLabel="May limit reach"
           />
+
+          {hasVideo &&
+            videoDuration > 0 &&
+            (videoLimitState.warnings.length > 0 ||
+              videoLimitState.softWarnings.length > 0) && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/50 p-4 text-black dark:text-amber-100">
+                <p className="font-semibold text-amber-900 dark:text-amber-200 mb-2">
+                  Video length limits
+                </p>
+                <p className="text-sm mb-2">
+                  Your video is{" "}
+                  <span className="font-medium">
+                    {(() => {
+                      const minutes = Math.floor(videoDuration / 60);
+                      const seconds = videoDuration - minutes * 60;
+                      const secondsStr = seconds.toFixed(2).padStart(5, "0");
+                      return `${minutes}:${secondsStr}`;
+                    })()}
+                  </span>{" "}
+                  long.
+                </p>
+                {videoLimitState.warnings.length > 0 && (
+                  <>
+                    <p className="text-sm mb-1">
+                      The following exceed platform limits. Affected accounts are
+                      disabled for this post:
+                    </p>
+                    <ul className="list-disc list-inside text-sm space-y-1 mb-2">
+                      {videoLimitState.warnings.map((w) => (
+                        <li key={w.platform}>{w.message}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {videoLimitState.softWarnings.length > 0 && (
+                  <>
+                    <p className="text-sm mb-1">
+                      The following will accept this video but may limit its
+                      reach to new audiences:
+                    </p>
+                    <ul className="list-disc list-inside text-sm space-y-1">
+                      {videoLimitState.softWarnings.map((w) => (
+                        <li key={w.platform}>{w.message}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
 
           <div className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm space-y-4">
             <label className="block text-sm font-semibold text-text">
@@ -1393,7 +1573,8 @@ export function VideoPostForm({
 
           {(showPlatformCaptionsSection ||
             hasPinterestSelected ||
-            hasTikTokSelected) && (
+            hasTikTokSelected ||
+            hasYouTubeSelected) && (
             <div
               ref={pinterestSectionRef}
               className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm"
@@ -1476,6 +1657,33 @@ export function VideoPostForm({
                     )}
                     <span>TikTok Config</span>
                     {activeConfigPanel === "tiktok" ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                )}
+                {hasYouTubeSelected && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveConfigPanel((p) =>
+                        p === "youtube" ? null : "youtube",
+                      )
+                    }
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
+                      activeConfigPanel === "youtube"
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
+                    }`}
+                  >
+                    {!youtubeTitle.trim() ? (
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                    ) : (
+                      <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                    )}
+                    <span>YouTube Title</span>
+                    {activeConfigPanel === "youtube" ? (
                       <ChevronUp className="h-3.5 w-3.5" />
                     ) : (
                       <ChevronDown className="h-3.5 w-3.5" />
@@ -1637,6 +1845,45 @@ export function VideoPostForm({
                       onError={(err) => setError(err)}
                     />
                   )}
+                </div>
+              )}
+
+              {activeConfigPanel === "youtube" && (
+                <div className="mt-2 border-t border-border pt-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <label
+                        htmlFor="youtube-title-input"
+                        className="text-sm font-medium text-text"
+                      >
+                        YouTube Title
+                      </label>
+                      <Info
+                        className="h-3.5 w-3.5 text-text-muted"
+                        aria-hidden
+                      />
+                      <span className="text-xs text-text-muted">
+                        Generated title
+                      </span>
+                    </div>
+                    <input
+                      id="youtube-title-input"
+                      type="text"
+                      value={youtubeTitle}
+                      onChange={(e) =>
+                        setYoutubeTitle(e.target.value.slice(0, 100))
+                      }
+                      placeholder="Enter your title here"
+                      className={`w-full rounded-lg border px-3 py-2 text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/20 ${
+                        activeConfigPanel === "youtube"
+                          ? "border-accent bg-accent/5"
+                          : "border-border bg-bg"
+                      }`}
+                    />
+                    <p className="text-xs text-text-muted text-right">
+                      {100 - youtubeTitle.length}/100 characters remaining
+                    </p>
+                  </div>
                 </div>
               )}
 

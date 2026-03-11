@@ -28,6 +28,18 @@ type AccountBubbleSelectorProps = {
   hideSelectAll?: boolean;
   /** Platform IDs this form supports. Shown in empty state when no accounts match. */
   supportedPlatforms?: string[];
+  /** Account IDs that are disabled (e.g. video exceeds platform limit). Shown with amber overlay and tooltip. */
+  disabledAccountIds?: Set<string>;
+  /** Tooltip/reason per disabled account id. Falls back to disabledAccountDefaultReason. */
+  disabledReasons?: Record<string, string>;
+  /** Default tooltip when an account is in disabledAccountIds and no disabledReasons[id]. */
+  disabledAccountDefaultReason?: string;
+  /** Account IDs that show a soft warning (e.g. Instagram 3–20 min). Selectable; yellow badge and tooltip. */
+  warningAccountIds?: Set<string>;
+  /** Tooltip per warning account id. */
+  warningReasons?: Record<string, string>;
+  /** Short label under bubble when account is in warningAccountIds (e.g. "May limit reach"). */
+  warningLabel?: string;
 };
 
 function truncate(str: string, max: number): string {
@@ -44,6 +56,12 @@ export function AccountBubbleSelector({
   compact = false,
   hideSelectAll = false,
   supportedPlatforms,
+  disabledAccountIds,
+  disabledReasons,
+  disabledAccountDefaultReason = "This account cannot be used for this post",
+  warningAccountIds,
+  warningReasons,
+  warningLabel = "May limit reach",
 }: AccountBubbleSelectorProps) {
   if (accounts.length === 0) {
     const platformNames =
@@ -69,7 +87,10 @@ export function AccountBubbleSelector({
     );
   }
 
-  const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
+  const selectableAccounts = accounts.filter(
+    (a) => !a.tokenExpired && !disabledAccountIds?.has(a.id),
+  );
+  const hasWarning = (id: string) => !!warningAccountIds?.has(id);
   const allSelected =
     selectableAccounts.length > 0 &&
     selectableAccounts.every((a) => selectedIds.has(a.id));
@@ -105,6 +126,17 @@ export function AccountBubbleSelector({
       {accounts.map((acc) => {
         const selected = selectedIds.has(acc.id);
         const expired = !!acc.tokenExpired;
+        const disabledByLimit = !!disabledAccountIds?.has(acc.id);
+        const disabled = expired || disabledByLimit;
+        const softWarn = hasWarning(acc.id);
+        const disabledTitle = expired
+          ? "Token expired — reconnect in Connections page"
+          : disabledByLimit
+            ? disabledReasons?.[acc.id] ?? disabledAccountDefaultReason
+            : undefined;
+        const warningTitle = softWarn
+          ? warningReasons?.[acc.id] ?? warningLabel
+          : undefined;
 
         return (
           <div key={acc.id} className="flex flex-col items-center">
@@ -114,26 +146,26 @@ export function AccountBubbleSelector({
                 avatarSize,
                 expired
                   ? "cursor-not-allowed border-red-300 opacity-50 grayscale"
-                  : selected
-                    ? "border-emerald-500 opacity-100 grayscale-0"
-                    : "border-transparent opacity-60 grayscale hover:opacity-80",
+                  : disabledByLimit
+                    ? "cursor-not-allowed border-amber-400 opacity-60 grayscale"
+                    : selected
+                      ? "border-emerald-500 opacity-100 grayscale-0"
+                      : softWarn
+                        ? "border-amber-400/80 opacity-100 grayscale-0"
+                        : "border-transparent opacity-60 grayscale hover:opacity-80",
               )}
-              title={
-                expired
-                  ? "Token expired — reconnect in Connections page"
-                  : undefined
-              }
+              title={disabledTitle ?? warningTitle}
             >
               <button
                 type="button"
-                onClick={() => !expired && onToggleAccount(acc.id)}
-                disabled={expired}
+                onClick={() => !disabled && onToggleAccount(acc.id)}
+                disabled={disabled}
                 className={cn(
                   "relative h-full w-full  rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:pointer-events-none",
-                  expired && "cursor-not-allowed",
+                  disabled && "cursor-not-allowed",
                 )}
                 aria-pressed={selected}
-                aria-disabled={expired}
+                aria-disabled={disabled}
               >
                 <div className="h-full w-full flex items-center justify-center">
                   <AccountAvatar
@@ -163,7 +195,7 @@ export function AccountBubbleSelector({
                     />
                   </span>
                 </span>
-                {selected && !expired && (
+                {selected && !disabled && (
                   <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-white">
                     <svg
                       className="h-2.5 w-2.5"
@@ -188,6 +220,23 @@ export function AccountBubbleSelector({
                     <AlertTriangle className="h-6 w-6 text-white drop-shadow-md" />
                   </span>
                 )}
+                {disabledByLimit && !expired && (
+                  <span
+                    className="absolute inset-0 flex items-center justify-center rounded-full bg-amber-500/50"
+                    aria-hidden
+                  >
+                    <AlertTriangle className="h-6 w-6 text-amber-950 drop-shadow-md" />
+                  </span>
+                )}
+                {softWarn && !disabled && (
+                  <span
+                    className="absolute -top-0.5 -left-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-amber-950"
+                    aria-hidden
+                    title={warningTitle}
+                  >
+                    <AlertTriangle className="h-2.5 w-2.5" />
+                  </span>
+                )}
               </button>
             </div>
             <span className={usernameClass}>
@@ -203,6 +252,22 @@ export function AccountBubbleSelector({
                 title="Token expired — reconnect in Connections page"
               >
                 Token expired
+              </span>
+            )}
+            {disabledByLimit && !expired && (
+              <span
+                className="mt-0.5 inline-block rounded bg-amber-100 dark:bg-amber-950/50 px-1.5 py-0.5 text-[9px] font-medium text-amber-800 dark:text-amber-200"
+                title={disabledTitle}
+              >
+                Video too long
+              </span>
+            )}
+            {softWarn && !disabled && (
+              <span
+                className="mt-0.5 inline-block rounded bg-amber-100 dark:bg-amber-950/50 px-1.5 py-0.5 text-[9px] font-medium text-amber-800 dark:text-amber-200"
+                title={warningTitle}
+              >
+                {warningLabel}
               </span>
             )}
           </div>

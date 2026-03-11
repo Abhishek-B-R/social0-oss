@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Platform-specific publish logic for Facebook, Bluesky, YouTube,
  * Pinterest, Instagram, TikTok, and Threads.
@@ -1235,8 +1236,10 @@ async function publishToBluesky(
   }
 }
 
-/** Max size for YouTube Shorts (Shorts only; long videos not supported). ~60s is typically under 50MB. */
-const YOUTUBE_SHORTS_MAX_BYTES = 512 * 1024 * 1024;
+/** Max size for YouTube uploads (Shorts and regular, up to 5 min). */
+const YOUTUBE_MAX_VIDEO_BYTES = 512 * 1024 * 1024;
+/** Duration threshold (seconds) for classifying as Short: ≤3 min vertical → Short, else regular. */
+const YOUTUBE_SHORT_MAX_DURATION = 180;
 
 async function publishToYouTube(
   pub: Pub,
@@ -1266,9 +1269,14 @@ async function publishToYouTube(
     const hint =
       post.mediaIds?.length && media.length === 0
         ? "Upload video through this app; external URLs are not allowed."
-        : "YouTube Shorts requires a video. Upload a short video (under 60 seconds).";
+        : "YouTube requires a video (up to 5 minutes).";
     return { status: "failed", lastError: hint, error: "No video" };
   }
+
+  const videoMeta = (post.metadata as { video?: { durationSeconds?: number; isVertical?: boolean } })?.video;
+  const durationSeconds = typeof videoMeta?.durationSeconds === "number" ? videoMeta.durationSeconds : 0;
+  const isVertical = videoMeta?.isVertical === true;
+  const isShort = durationSeconds <= YOUTUBE_SHORT_MAX_DURATION && isVertical;
 
   let videoBuffer: Buffer;
   try {
@@ -1277,10 +1285,10 @@ async function publishToYouTube(
     const contentLength = res.headers.get("content-length");
     if (contentLength) {
       const size = parseInt(contentLength, 10);
-      if (size > YOUTUBE_SHORTS_MAX_BYTES) {
+      if (size > YOUTUBE_MAX_VIDEO_BYTES) {
         return {
           status: "failed",
-          lastError: `Video is too large for YouTube Shorts (max ${YOUTUBE_SHORTS_MAX_BYTES / 1024 / 1024}MB). Only short videos under 60 seconds are supported.`,
+          lastError: `Video is too large for YouTube (max ${YOUTUBE_MAX_VIDEO_BYTES / 1024 / 1024}MB).`,
           error: "Video too large",
         };
       }
@@ -1291,21 +1299,26 @@ async function publishToYouTube(
     return { status: "failed", lastError: err, error: err };
   }
 
-  if (videoBuffer.length > YOUTUBE_SHORTS_MAX_BYTES) {
+  if (videoBuffer.length > YOUTUBE_MAX_VIDEO_BYTES) {
     return {
       status: "failed",
-      lastError: `Video is too large for YouTube Shorts (max ${YOUTUBE_SHORTS_MAX_BYTES / 1024 / 1024}MB). Only short videos under 60 seconds are supported.`,
+      lastError: `Video is too large for YouTube (max ${YOUTUBE_MAX_VIDEO_BYTES / 1024 / 1024}MB).`,
       error: "Video too large",
     };
   }
 
-  const title = truncate(post.finalContent?.trim() ?? "Short", 95);
-  const description = truncate(post.finalContent?.trim() ?? "", 450);
+  const meta = post.metadata as { youtube?: { title?: string }; video?: { durationSeconds?: number; isVertical?: boolean } } | undefined;
+  const userTitle = meta?.youtube?.title?.trim();
+  const fallbackTitle = truncate(post.finalContent?.trim() ?? "Short", 95);
+  const title = isShort
+    ? (userTitle ? truncate(`${userTitle} #Shorts`, 100) : truncate(`${fallbackTitle} #Shorts`, 100))
+    : (userTitle ? truncate(userTitle, 100) : truncate(fallbackTitle, 100));
+  const description = truncate(post.finalContent?.trim() ?? "", 5000);
   const snippet = {
-    title: title.includes("#Shorts") ? title : `${title} #Shorts`,
-    description: description.includes("#Shorts")
-      ? description
-      : `${description}\n\n#Shorts`,
+    title,
+    description: isShort
+      ? (description.includes("#Shorts") ? description : `${description}\n\n#Shorts`)
+      : description,
   };
   const metadata = {
     snippet,
@@ -1374,7 +1387,9 @@ async function publishToYouTube(
   };
   const videoId = uploadData.id;
   const platformPostUrl = videoId
-    ? `https://www.youtube.com/shorts/${videoId}`
+    ? isShort
+      ? `https://www.youtube.com/shorts/${videoId}`
+      : `https://www.youtube.com/watch?v=${videoId}`
     : null;
 
   return {

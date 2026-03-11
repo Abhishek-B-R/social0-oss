@@ -42,6 +42,15 @@ type PostFormOptionsProps = {
   onRememberChange?: (checked: boolean) => void;
   /** Platform IDs this form supports. Shown in empty state when no accounts match. */
   supportedPlatforms?: string[];
+  /** Account IDs disabled for this post (e.g. video exceeds platform limit). */
+  disabledAccountIds?: Set<string>;
+  /** Reason per disabled account id. */
+  disabledReasons?: Record<string, string>;
+  disabledAccountDefaultReason?: string;
+  /** Account IDs with soft warning (e.g. Instagram 3–20 min). Selectable; yellow badge. */
+  warningAccountIds?: Set<string>;
+  warningReasons?: Record<string, string>;
+  warningLabel?: string;
 };
 
 export function PostFormOptions({
@@ -65,11 +74,19 @@ export function PostFormOptions({
   remember = false,
   onRememberChange,
   supportedPlatforms,
+  disabledAccountIds,
+  disabledReasons,
+  disabledAccountDefaultReason,
+  warningAccountIds,
+  warningReasons,
+  warningLabel,
 }: PostFormOptionsProps) {
   const platformName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
 
-  const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
+  const selectableAccounts = accounts.filter(
+    (a) => !a.tokenExpired && !disabledAccountIds?.has(a.id),
+  );
   const allSelected =
     selectableAccounts.length > 0 &&
     selectableAccounts.every((a) => selectedIds.has(a.id));
@@ -114,6 +131,12 @@ export function PostFormOptions({
             compact
             hideSelectAll
             supportedPlatforms={supportedPlatforms}
+            disabledAccountIds={disabledAccountIds}
+            disabledReasons={disabledReasons}
+            disabledAccountDefaultReason={disabledAccountDefaultReason}
+            warningAccountIds={warningAccountIds}
+            warningReasons={warningReasons}
+            warningLabel={warningLabel}
           />
         </div>
       </section>
