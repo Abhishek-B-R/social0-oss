@@ -1262,6 +1262,18 @@ export function ImagePostForm({
   const hasBlueskySelected = selectedAccounts.some(
     (a) => a.platform === "bluesky",
   );
+  const hasThreadsSelected = selectedAccounts.some(
+    (a) => a.platform === "threads",
+  );
+  const hasInstagramSelected = selectedAccounts.some(
+    (a) => a.platform === "instagram",
+  );
+  const hasLinkedInSelected = selectedAccounts.some(
+    (a) => a.platform === "linkedin",
+  );
+  const hasFacebookSelected = selectedAccounts.some(
+    (a) => a.platform === "facebook",
+  );
 
   const filteredAccounts = useMemo(() => {
     if (!accountSearch.trim()) return accounts;
@@ -1453,18 +1465,21 @@ export function ImagePostForm({
                 <p className="text-xs text-text-muted">
                   Carousel post: Drag to reorder (mainly for Instagram)
                 </p>
-                {images.length > 4 && (hasTwitterXSelected || hasBlueskySelected) && (
+                {images.length > 4 &&
+                  (hasTwitterXSelected || hasBlueskySelected || hasThreadsSelected) && (
                   <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
                     <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-300" />
                     <p>
-                      {hasTwitterXSelected && hasBlueskySelected
-                        ? "X (Twitter) and Bluesky"
-                        : hasTwitterXSelected
-                          ? "X (Twitter)"
-                          : "Bluesky"}{" "}
-                      support up to 4 media attachments per post. You&apos;ve added
-                      more than 4, so only the first 4 will be published on those
-                      platforms; extra media will be ignored there.
+                      {[
+                        hasTwitterXSelected ? "X (Twitter)" : null,
+                        hasBlueskySelected ? "Bluesky" : null,
+                        hasThreadsSelected ? "Threads" : null,
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}{" "}
+                      support up to 4 media attachments per post. You&apos;ve added more
+                      than 4, so only the first 4 will be published on those platforms;
+                      extra media will be ignored there.
                     </p>
                   </div>
                 )}
@@ -1475,6 +1490,41 @@ export function ImagePostForm({
                       Pinterest supports only 1 media attachment per post. You&apos;ve
                       added more than 1, so only the first image will be used on
                       Pinterest; the rest will be ignored there.
+                    </p>
+                  </div>
+                )}
+                {images.length > 10 && hasInstagramSelected && (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-300" />
+                    <p>
+                      Only the first 10 image(s) will be posted to Instagram. You&apos;ve
+                      added more than 10, so only the first 10 will be published on
+                      Instagram; extra images will be ignored there.
+                    </p>
+                  </div>
+                )}
+                {images.length > 35 && hasTikTok && (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-300" />
+                    <p>
+                      Only the first 35 image(s) will be posted to TikTok. You&apos;ve
+                      added more than 35, so only the first 35 will be published on TikTok;
+                      extra images will be ignored there.
+                    </p>
+                  </div>
+                )}
+                {images.length > 20 && (hasLinkedInSelected || hasFacebookSelected) && (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-300" />
+                    <p>
+                      {hasLinkedInSelected && hasFacebookSelected
+                        ? "LinkedIn and Facebook"
+                        : hasLinkedInSelected
+                          ? "LinkedIn"
+                          : "Facebook"}{" "}
+                      support up to 20 image attachments per post. You&apos;ve added
+                      more than 20, so only the first 20 will be published on those
+                      platforms; extra images will be ignored there.
                     </p>
                   </div>
                 )}

@@ -144,13 +144,18 @@ export function PinterestSettingsModal({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Failed to create board");
-      await fetchBoards();
-      if (data.board?.id) {
-        handleBoardChange(data.board.id);
-        if (value.rememberBoard) setRememberedBoard(accountId, data.board.id);
-      }
-      setCreateBoardInline(false);
+
+      const newBoard = {
+        id: data.board.id,
+        name: data.board.name ?? createName.trim(),
+      };
+
+      setBoards((prev) => [...prev, newBoard]);
+      handleBoardChange(newBoard.id);
+      if (value.rememberBoard) setRememberedBoard(accountId, newBoard.id);
+
       setCreateName("");
+      setCreateBoardInline(false);
     } catch (err) {
       setBoardsError(err instanceof Error ? err.message : "Failed to create board");
     } finally {
