@@ -36,6 +36,8 @@ export type TikTokPostSettings = {
   brand_content_toggle: boolean;
   brand_organic: boolean;
   brand_content: boolean;
+  post_as_draft: boolean;
+  mark_ai_generated: boolean;
 };
 
 const DEFAULT_SETTINGS: TikTokPostSettings = {
@@ -47,6 +49,8 @@ const DEFAULT_SETTINGS: TikTokPostSettings = {
   brand_content_toggle: false,
   brand_organic: false,
   brand_content: false,
+  post_as_draft: false,
+  mark_ai_generated: false,
 };
 
 export function TikTokSettings({
@@ -74,6 +78,8 @@ export function TikTokSettings({
             value.brand_content_toggle
               ? true
               : (value.brand_content ?? false),
+          post_as_draft: (value as any).post_as_draft ?? false,
+          mark_ai_generated: (value as any).mark_ai_generated ?? false,
         }
       : {
           privacy_level: "",
@@ -84,6 +90,8 @@ export function TikTokSettings({
           brand_content_toggle: false,
           brand_organic: false,
           brand_content: false,
+          post_as_draft: false,
+          mark_ai_generated: false,
         },
   );
 
@@ -96,13 +104,17 @@ export function TikTokSettings({
       value.disable_stitch !== settings.disable_stitch ||
       value.brand_content_toggle !== settings.brand_content_toggle ||
       value.brand_organic !== settings.brand_organic ||
-      value.brand_content !== settings.brand_content
+      value.brand_content !== settings.brand_content ||
+      (value as any).post_as_draft !== settings.post_as_draft ||
+      (value as any).mark_ai_generated !== settings.mark_ai_generated
     ) {
       setSettings({
         ...value,
         video_title: value.video_title ?? "",
         brand_organic: value.brand_organic ?? false,
         brand_content: value.brand_content ?? false,
+        post_as_draft: (value as any).post_as_draft ?? false,
+        mark_ai_generated: (value as any).mark_ai_generated ?? false,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -115,6 +127,8 @@ export function TikTokSettings({
     value.brand_content_toggle,
     value.brand_organic,
     value.brand_content,
+    (value as any).post_as_draft,
+    (value as any).mark_ai_generated,
   ]);
 
   const hasPushedInitial = useRef(false);
@@ -488,6 +502,71 @@ export function TikTokSettings({
             )}
           </div>
         )}
+      </div>
+
+      {/* Send to TikTok as Draft */}
+      <div className="space-y-3 border-t border-gray-100 pt-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-gray-900">
+              Send to TikTok as Draft
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Post will be saved as draft inside of TikTok instead of publishing
+              immediately. Check your TikTok inbox notifications to continue
+              editing and publish.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings.post_as_draft}
+            onClick={() =>
+              updateSetting("post_as_draft", !settings.post_as_draft)
+            }
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+              settings.post_as_draft ? "bg-emerald-600" : "bg-gray-200"
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                settings.post_as_draft ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* Mark as AI-Generated Content */}
+      <div className="space-y-3 border-t border-gray-100 pt-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-gray-900">
+              Mark as AI-Generated Content
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              If enabled, the video will be labeled with &quot;Creator labeled
+              as AI-generated&quot; tag in video&apos;s description.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings.mark_ai_generated}
+            onClick={() =>
+              updateSetting("mark_ai_generated", !settings.mark_ai_generated)
+            }
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+              settings.mark_ai_generated ? "bg-emerald-600" : "bg-gray-200"
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                settings.mark_ai_generated ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
       </div>
 
       {/* Declaration Text */}

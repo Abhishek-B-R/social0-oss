@@ -171,6 +171,8 @@ export function CollectionPostForm({
     brand_content_toggle: false,
     brand_organic: false,
     brand_content: false,
+    post_as_draft: false,
+    mark_ai_generated: false,
   };
 
   useEffect(() => {

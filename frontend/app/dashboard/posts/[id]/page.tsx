@@ -40,39 +40,46 @@ const STATUS_LABEL: Record<string, string> = {
   failed: "Failed",
 };
 
-function getPublicationStatusBadge(
-  status: string | null,
-): { label: string; className: string } {
+function getPublicationStatusBadge(status: string | null): {
+  label: string;
+  className: string;
+} {
   switch (status) {
     case "published":
       return {
         label: "Posted",
-        className: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60",
+        className:
+          "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60",
       };
     case "partial":
       return {
         label: "Partial",
-        className: "bg-purple-500/15 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/20 dark:border-purple-500/30",
+        className:
+          "bg-purple-500/15 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/20 dark:border-purple-500/30",
       };
     case "publishing":
       return {
         label: "Publishing",
-        className: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60",
+        className:
+          "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60",
       };
     case "scheduled":
       return {
         label: "Scheduled",
-        className: "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/60",
+        className:
+          "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/60",
       };
     case "failed":
       return {
         label: "Failed",
-        className: "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/60",
+        className:
+          "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/60",
       };
     default:
       return {
         label: "Pending",
-        className: "bg-gray-50 dark:bg-bg-muted text-gray-700 dark:text-text-muted border-gray-200 dark:border-border",
+        className:
+          "bg-gray-50 dark:bg-bg-muted text-gray-700 dark:text-text-muted border-gray-200 dark:border-border",
       };
   }
 }
@@ -96,7 +103,7 @@ function getThreadPartsWithMedia(post: PostDetailRow): ThreadPartWithMedia[] {
           ? String((p as { text?: string }).text ?? "").trim()
           : "";
       const mediaIds = Array.isArray((p as { mediaIds?: string[] }).mediaIds)
-        ? ((p as { mediaIds: string[] }).mediaIds)
+        ? (p as { mediaIds: string[] }).mediaIds
         : [];
       return { text: t || "(No caption)", mediaIds };
     });
@@ -107,7 +114,10 @@ function getThreadPartsWithMedia(post: PostDetailRow): ThreadPartWithMedia[] {
     .map((s) => s.trim())
     .filter(Boolean);
   if (segments.length > 1) {
-    return segments.map((text) => ({ text: text || "(No caption)", mediaIds: [] as string[] }));
+    return segments.map((text) => ({
+      text: text || "(No caption)",
+      mediaIds: [] as string[],
+    }));
   }
   return [{ text: raw || "(No caption)", mediaIds: [] }];
 }
@@ -152,7 +162,8 @@ export default async function PostDetailPage({
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/dashboard/posts");
 
-  const { use24HourTimeFormat, dateFormat, timezone } = await getUserSettingsSnapshot();
+  const { use24HourTimeFormat, dateFormat, timezone } =
+    await getUserSettingsSnapshot();
 
   const { id } = await params;
   const data = await getPostDetail(id, session.user.id);
@@ -366,9 +377,9 @@ export default async function PostDetailPage({
                     ? queuedSlot
                       ? "Queued"
                       : "Scheduled"
-                    : STATUS_LABEL[post.status ?? "draft"] ??
-                        post.status ??
-                        "Draft"}
+                    : (STATUS_LABEL[post.status ?? "draft"] ??
+                      post.status ??
+                      "Draft")}
                 </span>
               </div>
 
@@ -505,10 +516,7 @@ export default async function PostDetailPage({
                           </a>
                         )}
                         {pub.status === "failed" && (
-                          <PublishButton
-                            postId={post.id}
-                            label="Retry"
-                          />
+                          <PublishButton postId={post.id} label="Retry" />
                         )}
                       </div>
                     </li>

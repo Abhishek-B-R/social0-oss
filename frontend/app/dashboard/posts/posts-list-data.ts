@@ -10,11 +10,16 @@ import {
 } from "@/db/schema";
 import { eq, desc, asc, inArray, and, sql } from "drizzle-orm";
 import { startOfWeek, startOfMonth } from "date-fns";
+import { getSubscriptionForUser } from "@/lib/subscription";
+import { isActiveTier } from "@/lib/plans";
 
 export const POSTS_PAGE_SIZE = 18;
 
-/** True if the user has any post that failed due to payment (trial ended). */
+/** True if the user has payment-failed posts and no active subscription (so banner should show). */
 export async function hasPaymentFailedPosts(userId: string): Promise<boolean> {
+  const subscription = await getSubscriptionForUser(userId);
+  if (isActiveTier(subscription.tier)) return false;
+
   const [row] = await db
     .select({ id: posts.id })
     .from(posts)

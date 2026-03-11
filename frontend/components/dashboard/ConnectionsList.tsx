@@ -51,7 +51,8 @@ export function ConnectionsList({
   );
   const [disconnectLabel, setDisconnectLabel] = useState("");
 
-  const atLimit = !!accountLimit && accountLimit.currentTotal >= accountLimit.limitTotal;
+  const atLimit =
+    !!accountLimit && accountLimit.currentTotal >= accountLimit.limitTotal;
   const byPlatform = PLATFORMS.map((platform) => ({
     platform,
     accounts: accounts.filter((a) => a.platform === platform.id),
@@ -134,7 +135,8 @@ export function ConnectionsList({
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1.5">
                     {platformAccounts.map((account) => {
                       const isExpired = account.tokenStatus === "expired";
-                      const isExpiringSoon = account.tokenStatus === "expiring_soon";
+                      const isExpiringSoon =
+                        account.tokenStatus === "expiring_soon";
                       return (
                         <div
                           key={account.id}
@@ -153,17 +155,31 @@ export function ConnectionsList({
                             className="shrink-0"
                           />
                           <div className="min-w-0 flex flex-col justify-center">
-                            {account.platformDisplayName && account.platformUsername ? (
+                            {account.platformDisplayName &&
+                            account.platformUsername ? (
                               <>
-                                <span className="truncate text-xs font-medium text-text" title={account.platformDisplayName}>
+                                <span
+                                  className="truncate text-xs font-medium text-text"
+                                  title={account.platformDisplayName}
+                                >
                                   {account.platformDisplayName}
                                 </span>
-                                <span className="truncate text-[10px] text-text-muted" title={account.platformUsername}>
+                                <span
+                                  className="truncate text-[10px] text-text-muted"
+                                  title={account.platformUsername}
+                                >
                                   @{account.platformUsername}
                                 </span>
                               </>
                             ) : (
-                              <span className="truncate text-xs font-medium text-text max-w-[120px] sm:max-w-[160px]" title={account.platformUsername ? `@${account.platformUsername}` : undefined}>
+                              <span
+                                className="truncate text-xs font-medium text-text max-w-[120px] sm:max-w-[160px]"
+                                title={
+                                  account.platformUsername
+                                    ? `@${account.platformUsername}`
+                                    : undefined
+                                }
+                              >
                                 @{account.platformUsername || "user"}
                               </span>
                             )}
@@ -175,7 +191,10 @@ export function ConnectionsList({
                               title="Token expired — Reconnect"
                             >
                               <AlertTriangle className="h-3 w-3 shrink-0" />
-                              <span className="hidden sm:inline">Token expired — </span>Reconnect
+                              <span className="hidden sm:inline">
+                                Token expired —{" "}
+                              </span>
+                              Reconnect
                             </Link>
                           )}
                           {isExpiringSoon && account.expiresInDays != null && (

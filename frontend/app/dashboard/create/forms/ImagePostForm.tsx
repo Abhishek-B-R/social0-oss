@@ -250,6 +250,8 @@ export function ImagePostForm({
     brand_content_toggle: false,
     brand_organic: false,
     brand_content: false,
+    post_as_draft: false,
+    mark_ai_generated: false,
   };
 
   useEffect(() => {
@@ -337,6 +339,8 @@ export function ImagePostForm({
                 brand_content_toggle: !!t.brand_content_toggle,
                 brand_organic: !!t.brand_organic,
                 brand_content: !!t.brand_content,
+                post_as_draft: !!(t as any).post_as_draft,
+                mark_ai_generated: !!(t as any).mark_ai_generated,
               };
             }
           }
@@ -432,6 +436,8 @@ export function ImagePostForm({
                 brand_content_toggle: !!t.brand_content_toggle,
                 brand_organic: !!t.brand_organic,
                 brand_content: !!t.brand_content,
+                post_as_draft: !!(t as any).post_as_draft,
+                mark_ai_generated: !!(t as any).mark_ai_generated,
               };
             }
           }

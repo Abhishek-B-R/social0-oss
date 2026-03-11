@@ -2187,7 +2187,10 @@ async function publishToTikTok(
   const caption = post.finalContent?.trim() ?? "";
   const captionTruncated = truncate(caption, 2200);
 
-  // Base post_info shared by video and photo
+  const postAsDraft = !!(accountSettings as any).post_as_draft;
+  const markAiGenerated = !!(accountSettings as any).mark_ai_generated;
+
+  // Base post_info shared by video and photo (only used when not posting as draft)
   const basePostInfo: {
     privacy_level: string;
     title?: string;
@@ -2197,6 +2200,7 @@ async function publishToTikTok(
     disable_stitch?: boolean;
     brand_content_toggle?: boolean;
     brand_organic_toggle?: boolean;
+    is_aigc?: boolean;
   } = {
     privacy_level: accountSettings.privacy_level,
   };
@@ -2233,6 +2237,10 @@ async function publishToTikTok(
     } else if (hasBranded) {
       basePostInfo.brand_organic_toggle = false;
     }
+  }
+
+  if (markAiGenerated) {
+    basePostInfo.is_aigc = true;
   }
 
   let initRes: Response;
@@ -2285,6 +2293,7 @@ async function publishToTikTok(
       disable_comment?: boolean;
       brand_content_toggle?: boolean;
       brand_organic_toggle?: boolean;
+      is_aigc?: boolean;
     } = {
       privacy_level: accountSettings.privacy_level,
     };
@@ -2325,9 +2334,13 @@ async function publishToTikTok(
       }
     }
 
+    if (markAiGenerated) {
+      photoPostInfo.is_aigc = true;
+    }
+
     const requestBody = {
       media_type: "PHOTO",
-      post_mode: "MEDIA_UPLOAD",
+      post_mode: postAsDraft ? "MEDIA_UPLOAD" : "DIRECT_POST",
       post_info: photoPostInfo,
       source_info: {
         source: "PULL_FROM_URL",
@@ -2353,24 +2366,34 @@ async function publishToTikTok(
       },
     );
   } else {
-    // Video: existing video/init flow
-    initRes = await fetch(
-      "https://open.tiktokapis.com/v2/post/publish/video/init/",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json; charset=UTF-8",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
+    // Video: use inbox/init when post_as_draft (saves to TikTok drafts), else direct publish
+    const videoInitUrl = postAsDraft
+      ? "https://open.tiktokapis.com/v2/post/publish/inbox/video/init/"
+      : "https://open.tiktokapis.com/v2/post/publish/video/init/";
+
+    const videoBody = postAsDraft
+      ? {
+          source_info: {
+            source: "PULL_FROM_URL",
+            video_url: videoEntry!.url,
+          },
+        }
+      : {
           post_info: basePostInfo,
           source_info: {
             source: "PULL_FROM_URL",
             video_url: videoEntry!.url,
           },
-        }),
+        };
+
+    initRes = await fetch(videoInitUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=UTF-8",
+        Authorization: `Bearer ${accessToken}`,
       },
-    );
+      body: JSON.stringify(videoBody),
+    });
   }
 
   const initData = (await initRes.json().catch((e) => {

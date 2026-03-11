@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import Link from "next/link";
 import {
   setComposerPayload,
   type ComposerMediaItem,
@@ -298,7 +299,10 @@ export function ComposerClient() {
             if (s.id !== slotId) return s;
             const maxNew = THREAD_MAX_MEDIA_PER_POST - s.media.length;
             if (maxNew <= 0) return s;
-            const toAdd = imageItems.slice(0, Math.min(maxNew, imageItems.length));
+            const toAdd = imageItems.slice(
+              0,
+              Math.min(maxNew, imageItems.length),
+            );
             return { ...s, media: [...s.media, ...toAdd] };
           }),
         );
@@ -420,8 +424,8 @@ export function ComposerClient() {
       <div className="space-y-2">
         <h1 className="text-2xl font-extrabold text-text">Composer</h1>
         <p className="text-sm text-text-muted">
-          Type anything, paste media, and we&apos;ll route you to the right post
-          flow. You can always adjust details on the next screen.
+          Type anything, paste/upload media, and we&apos;ll route you to the
+          right post flow. You can always adjust details on the next screen.
         </p>
       </div>
 
@@ -614,8 +618,8 @@ export function ComposerClient() {
             className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
           >
             <FileText className="h-4 w-4" />
-              <span>Continue</span>
-            </button>
+            <span>Continue</span>
+          </button>
         </div>
         {mediaError && (
           <p className="text-sm text-red-600 dark:text-red-400 pt-1">
@@ -760,6 +764,20 @@ export function ComposerClient() {
         Paste or drop almost anything here. We&apos;ll detect whether it&apos;s
         text, images, video, or a combination and start you in the best-fitting
         post builder.
+      </p>
+
+      <p className="flex items-center gap-2 text-sm text-text-muted">
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-accent">
+          ✓
+        </span>
+        You can connect your accounts from{" "}
+        <Link
+          href="/dashboard/connections"
+          className="font-medium text-accent hover:text-accent-hover hover:underline"
+        >
+          here
+        </Link>
+        .
       </p>
     </div>
   );

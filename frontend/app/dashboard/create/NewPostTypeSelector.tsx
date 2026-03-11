@@ -110,9 +110,9 @@ export function NewPostTypeSelector() {
         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-accent">
           ✓
         </span>
-        You can connect your accounts from here{" "}
+        You can connect your accounts from{" "}
         <Link
-          href="/dashboard"
+          href="/dashboard/connections"
           className="font-medium text-accent hover:text-accent-hover hover:underline"
         >
           here
