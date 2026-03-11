@@ -2,7 +2,14 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useFormStatus } from "react-dom";
+import {
+  IconUser,
+  IconLink,
+  IconCalendar,
+  IconAdjustments,
+} from "@tabler/icons-react";
 import {
   signOutAllDevices,
   updateAutomationEmails,
@@ -14,12 +21,12 @@ import {
   type SettingsSnapshot,
 } from "@/app/actions/settings";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { SidebarCollapsibleCard } from "@/app/dashboard/create/SidebarCollapsibleCard";
 import { PLATFORMS } from "@/lib/platforms";
 import { DATE_FORMAT_OPTIONS } from "@/lib/date-format";
 import { uploadFile } from "@/lib/upload-file";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import { QueueScheduleSection } from "./QueueScheduleSection";
+import { cn } from "@/lib/utils";
 
 export type SettingsConnection = {
   id: string;
@@ -28,6 +35,13 @@ export type SettingsConnection = {
   profileImageUrl: string | null;
 };
 
+const SETTINGS_TABS = [
+  { id: "profile", label: "Profile", icon: IconUser },
+  { id: "preferences", label: "Preferences", icon: IconAdjustments },
+  { id: "queue", label: "Queue", icon: IconCalendar },
+  { id: "connections", label: "Connections", icon: IconLink },
+] as const;
+
 function SaveButton({ label = "Save" }: { label?: string }) {
   const { pending } = useFormStatus();
 
@@ -35,7 +49,7 @@ function SaveButton({ label = "Save" }: { label?: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? "Saving..." : label}
     </button>
@@ -276,247 +290,283 @@ export function SettingsClient({
   connections: SettingsConnection[];
   timeZones: string[];
 }) {
+  const [activeTab, setActiveTab] =
+    useState<(typeof SETTINGS_TABS)[number]["id"]>("profile");
+
   return (
-    <div className="space-y-6">
-      <div>
+    <div>
+      <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-text">Settings</h1>
-        <p className="mt-2 text-text-muted">
+        <p className="mt-1 text-sm text-text-muted">
           Manage your account, security, and posting preferences.
         </p>
       </div>
 
-      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-text">Appearance</h2>
-        <p className="mt-2 text-sm text-text-muted">
-          Choose light, dark, or follow your system setting.
-        </p>
-        <div className="mt-4">
-          <ThemeToggle />
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-text">Profile</h2>
-        <p className="mt-2 text-sm text-text-muted">
-          Your Google account profile. You can change your display name and
-          avatar below.
-        </p>
-        <div className="mt-4 space-y-6">
-          <div>
-            <p className="text-sm font-medium text-text mb-2">
-              Profile picture
-            </p>
-            <AvatarEditor
-              currentUrl={image}
-              displayLabel={displayName || email || "User"}
-              onSave={updateUserImage}
-              size="lg"
-            />
-          </div>
-          <form action={updateDisplayName} className="space-y-4">
-            <div>
-              <label
-                htmlFor="displayName"
-                className="text-sm font-medium text-text"
-              >
-                Display Name
-              </label>
-              <input
-                id="displayName"
-                name="displayName"
-                defaultValue={displayName}
-                className="mt-1 w-full rounded-xl border border-input bg-bg px-4 py-2.5 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-              />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-text">Email Address</p>
-              <p className="mt-1 rounded-xl border border-border bg-bg-muted px-4 py-2.5 text-sm text-text-muted">
-                {email}
-              </p>
-            </div>
-            <SaveButton />
-          </form>
-        </div>
-      </section>
-
-      <SidebarCollapsibleCard
-        title="Connections settings"
-        defaultCollapsed={true}
-      >
-        <p className="text-sm text-text-muted mb-4">
-          Connected social accounts. Edit an avatar to use a custom profile
-          image for that connection.
-        </p>
-        {connections.length === 0 ? (
-          <p className="text-sm text-text-muted">
-            No connections yet. Connect accounts from the{" "}
-            <a
-              href="/dashboard/connections"
-              className="font-medium text-accent hover:underline"
-            >
-              Connections
-            </a>{" "}
-            page.
-          </p>
-        ) : (
-          <ul className="space-y-4">
-            {connections.map((conn) => {
-              const platformName =
-                PLATFORMS.find((p) => p.id === conn.platform)?.name ??
-                conn.platform;
-              return (
-                <li
-                  key={conn.id}
-                  className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-bg p-4"
-                >
-                  <AvatarEditor
-                    currentUrl={conn.profileImageUrl}
-                    displayLabel={
-                      conn.platformUsername
-                        ? `@${conn.platformUsername}`
-                        : platformName
-                    }
-                    onSave={async (url) => updateConnectionAvatar(conn.id, url)}
-                    size="md"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <PlatformIcon
-                        platform={conn.platform}
-                        className="h-4 w-4 shrink-0 text-text-muted"
-                      />
-                      <span className="font-medium text-text">
-                        {platformName}
-                      </span>
-                    </div>
-                    {conn.platformUsername && (
-                      <p className="text-sm text-text-muted">
-                        @{conn.platformUsername}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </SidebarCollapsibleCard>
-
-      {/* <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-text">Account</h2>
-        <p className="mt-2 text-sm text-text-muted">
-          Account managed via Google. Sign-in and security are handled by your
-          Google account.
-        </p>
-        <div className="mt-4">
-          <p className="text-sm font-medium text-text">Email</p>
-          <p className="mt-1 rounded-xl border border-border bg-bg-muted px-4 py-2.5 text-sm text-text-muted">
-            {email}
-          </p>
-        </div>
-      </section> */}
-
-      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-text">Security</h2>
-        <p className="mt-2 text-sm text-text-muted">
-          Sign out from all active sessions across devices.
-        </p>
-        <form action={signOutAllDevices} className="mt-4">
+      <div className="flex gap-1 border-b border-border mb-8">
+        {SETTINGS_TABS.map((tab) => (
           <button
-            type="submit"
-            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2.5 text-sm transition-colors border-b-2 -mb-px",
+              activeTab === tab.id
+                ? "border-accent text-foreground font-medium"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
           >
-            Sign Out All Devices
+            <tab.icon className="w-4 h-4" strokeWidth={1.5} />
+            {tab.label}
           </button>
-        </form>
-      </section>
+        ))}
+      </div>
 
-      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-text">Email Preferences</h2>
-        <form action={updateAutomationEmails} className="mt-4 space-y-4">
-          <Toggle
-            id="automationEmails"
-            name="automationEmails"
-            defaultChecked={settings.automationEmails}
-            label="Automation Emails"
-            description="Helpful reminders when you haven't posted or connected accounts"
-          />
-          <SaveButton />
-        </form>
-      </section>
-
-      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-text">
-          Platform Preferences
-        </h2>
-        <form action={updatePlatformPreferences} className="mt-4 space-y-4">
-          <Toggle
-            id="use24HourTimeFormat"
-            name="use24HourTimeFormat"
-            defaultChecked={settings.use24HourTimeFormat}
-            label="24-hour time format"
-          />
-          <div>
-            <label
-              htmlFor="dateFormat"
-              className="block text-sm font-semibold text-text mb-2"
-            >
-              Date format
-            </label>
-            <select
-              id="dateFormat"
-              name="dateFormat"
-              defaultValue={settings.dateFormat}
-              className="w-full rounded-xl border border-input bg-bg px-4 py-2.5 text-sm font-medium text-text shadow-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1"
-            >
-              {DATE_FORMAT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <SaveButton />
-        </form>
-      </section>
-
-      <QueueScheduleSection
-        timezone={settings.timezone ?? "UTC"}
-        use24HourTimeFormat={settings.use24HourTimeFormat ?? false}
-      />
-
-      <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-text">Timezone</h2>
-        <p className="mt-2 text-sm text-text-muted">
-          Schedules, post times, and calendar are shown in this timezone.
-        </p>
-        <form action={updateTimezone} className="mt-4 space-y-4">
-          <div>
-            <label
-              htmlFor="timezone"
-              className="block text-sm font-semibold text-text mb-2"
-            >
-              Your timezone
-            </label>
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                id="timezone"
-                name="timezone"
-                defaultValue={settings.timezone}
-                className="min-w-[320px] rounded-xl border border-input bg-bg px-4 py-2.5 text-sm font-medium text-text shadow-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1"
-              >
-                {timeZones.map((tz) => (
-                  <option key={tz} value={tz}>
-                    {getTimezoneLabel(tz)}
-                  </option>
-                ))}
-              </select>
-              <DetectTimezoneButton selectId="timezone" />
+      <div className="pb-12">
+        {activeTab === "profile" && (
+          <section>
+            <div>
+              <h2 className="text-lg font-semibold text-text">Profile</h2>
+              <p className="mt-2 text-sm text-text-muted">
+                Your Google account profile. You can change your display name
+                and avatar below.
+              </p>
+              <div className="mt-4 space-y-6">
+                <div>
+                  <p className="text-sm font-medium text-text mb-2">
+                    Profile picture
+                  </p>
+                  <AvatarEditor
+                    currentUrl={image}
+                    displayLabel={displayName || email || "User"}
+                    onSave={updateUserImage}
+                    size="lg"
+                  />
+                </div>
+                <form action={updateDisplayName} className="space-y-4">
+                  <div>
+                    <label
+                      htmlFor="displayName"
+                      className="text-sm font-medium text-text"
+                    >
+                      Display Name
+                    </label>
+                    <input
+                      id="displayName"
+                      name="displayName"
+                      defaultValue={displayName}
+                      className="mt-1 w-full rounded-xl border border-input bg-bg px-4 py-2.5 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-text">
+                      Email Address
+                    </p>
+                    <p className="mt-1 rounded-xl border border-border bg-bg-muted px-4 py-2.5 text-sm text-text-muted">
+                      {email}
+                    </p>
+                  </div>
+                  <SaveButton />
+                </form>
+              </div>
             </div>
-          </div>
-          <SaveButton label="Save timezone" />
-        </form>
-      </section>
+            <div>
+              <h2 className="text-lg font-semibold text-text">Appearance</h2>
+              <p className="mt-2 text-sm text-text-muted">
+                Choose light, dark, or follow your system setting.
+              </p>
+              <div className="mt-4">
+                <ThemeToggle />
+              </div>
+            </div>
+            <div className="border-t border-border my-8" />
+            <div>
+              <h2 className="text-lg font-semibold text-text">Security</h2>
+              <p className="mt-1 text-sm text-text-muted">
+                Sign out from all active sessions across devices.
+              </p>
+              <form action={signOutAllDevices} className="mt-4">
+                <button
+                  type="submit"
+                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Sign Out All Devices
+                </button>
+              </form>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "preferences" && (
+          <section>
+            <div>
+              <h2 className="text-lg font-semibold text-text">
+                Platform preferences
+              </h2>
+              <p className="mt-1 text-sm text-text-muted">
+                24-hour time and date format for the app.
+              </p>
+              <form
+                action={updatePlatformPreferences}
+                className="mt-4 space-y-4"
+              >
+                <Toggle
+                  id="use24HourTimeFormat"
+                  name="use24HourTimeFormat"
+                  defaultChecked={settings.use24HourTimeFormat}
+                  label="24-hour time format"
+                />
+                <div>
+                  <label
+                    htmlFor="dateFormat"
+                    className="block text-sm font-semibold text-text mb-2"
+                  >
+                    Date format
+                  </label>
+                  <select
+                    id="dateFormat"
+                    name="dateFormat"
+                    defaultValue={settings.dateFormat}
+                    className="w-full rounded-xl border border-input bg-bg px-4 py-2.5 text-sm font-medium text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1"
+                  >
+                    {DATE_FORMAT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <SaveButton />
+              </form>
+            </div>
+            <div className="border-t border-border my-8" />
+            <div>
+              <h2 className="text-lg font-semibold text-text">Timezone</h2>
+              <p className="mt-1 text-sm text-text-muted">
+                Schedules, post times, and calendar are shown in this timezone.
+              </p>
+              <form action={updateTimezone} className="mt-4 space-y-4">
+                <div>
+                  <label
+                    htmlFor="timezone"
+                    className="block text-sm font-semibold text-text mb-2"
+                  >
+                    Your timezone
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      id="timezone"
+                      name="timezone"
+                      defaultValue={settings.timezone}
+                      className="min-w-[320px] rounded-xl border border-input bg-bg px-4 py-2.5 text-sm font-medium text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1"
+                    >
+                      {timeZones.map((tz) => (
+                        <option key={tz} value={tz}>
+                          {getTimezoneLabel(tz)}
+                        </option>
+                      ))}
+                    </select>
+                    <DetectTimezoneButton selectId="timezone" />
+                  </div>
+                </div>
+                <SaveButton label="Save timezone" />
+              </form>
+            </div>
+            <div className="border-t border-border my-8" />
+            <div>
+              <h2 className="text-lg font-semibold text-text">
+                Email preferences
+              </h2>
+              <p className="mt-1 text-sm text-text-muted">
+                Notifications and reminders from the app.
+              </p>
+              <form action={updateAutomationEmails} className="mt-4 space-y-4">
+                <Toggle
+                  id="automationEmails"
+                  name="automationEmails"
+                  defaultChecked={settings.automationEmails}
+                  label="Automation Emails"
+                  description="Helpful reminders when you haven't posted or connected accounts"
+                />
+                <SaveButton />
+              </form>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "queue" && (
+          <section>
+            <QueueScheduleSection
+              timezone={settings.timezone ?? "UTC"}
+              use24HourTimeFormat={settings.use24HourTimeFormat ?? false}
+            />
+          </section>
+        )}
+
+        {activeTab === "connections" && (
+          <section>
+            <h2 className="text-lg font-semibold text-text">Connections</h2>
+            <p className="mt-2 text-sm text-text-muted mb-4">
+              Connected social accounts. Edit an avatar to use a custom profile
+              image for that connection.
+            </p>
+            {connections.length === 0 ? (
+              <p className="text-sm text-text-muted">
+                No connections yet. Connect accounts from the{" "}
+                <Link
+                  href="/dashboard/connections"
+                  className="font-medium text-accent hover:underline"
+                >
+                  Connections
+                </Link>{" "}
+                page.
+              </p>
+            ) : (
+              <ul className="space-y-4">
+                {connections.map((conn) => {
+                  const platformName =
+                    PLATFORMS.find((p) => p.id === conn.platform)?.name ??
+                    conn.platform;
+                  return (
+                    <li
+                      key={conn.id}
+                      className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-bg p-4"
+                    >
+                      <AvatarEditor
+                        currentUrl={conn.profileImageUrl}
+                        displayLabel={
+                          conn.platformUsername
+                            ? `@${conn.platformUsername}`
+                            : platformName
+                        }
+                        onSave={async (url) =>
+                          updateConnectionAvatar(conn.id, url)
+                        }
+                        size="md"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <PlatformIcon
+                            platform={conn.platform}
+                            className="h-4 w-4 shrink-0 text-text-muted"
+                          />
+                          <span className="font-medium text-text">
+                            {platformName}
+                          </span>
+                        </div>
+                        {conn.platformUsername && (
+                          <p className="text-sm text-text-muted">
+                            @{conn.platformUsername}
+                          </p>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        )}
+      </div>
     </div>
   );
 }

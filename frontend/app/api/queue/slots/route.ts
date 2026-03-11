@@ -63,7 +63,7 @@ export async function POST(request: Request) {
   }
 
   const existing = await db
-    .select({ id: queueSlots.id })
+    .select({ id: queueSlots.id, isActive: queueSlots.isActive })
     .from(queueSlots)
     .where(
       and(
@@ -75,6 +75,16 @@ export async function POST(request: Request) {
     .limit(1);
 
   if (existing.length > 0) {
+    const [row] = existing;
+    if (!row.isActive) {
+      // Reactivate the soft-deleted slot and update days
+      const [reactivated] = await db
+        .update(queueSlots)
+        .set({ isActive: true, daysOfWeek })
+        .where(eq(queueSlots.id, row.id))
+        .returning();
+      return NextResponse.json(reactivated);
+    }
     return NextResponse.json(
       { error: "A queue slot at this time already exists" },
       { status: 409 },

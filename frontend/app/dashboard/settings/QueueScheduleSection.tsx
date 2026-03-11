@@ -134,7 +134,12 @@ export function QueueScheduleSection({
         throw new Error(data.error || "Failed to add slot");
       }
       const newSlot = await res.json();
-      setSlots((prev) => [...prev, newSlot].sort((a, b) => a.hour - b.hour || a.minute - b.minute));
+      setSlots((prev) => {
+        const merged = prev.some((s) => s.id === newSlot.id)
+          ? prev.map((s) => (s.id === newSlot.id ? newSlot : s))
+          : [...prev, newSlot];
+        return merged.sort((a, b) => a.hour - b.hour || a.minute - b.minute);
+      });
       setShowAddRow(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to add slot");
@@ -210,7 +215,7 @@ export function QueueScheduleSection({
     }
   };
 
-  const activeSlots = slots.filter((s) => s.isActive);
+  const activeSlots = slots.filter((s) => s.isActive !== false);
 
   return (
     <section
