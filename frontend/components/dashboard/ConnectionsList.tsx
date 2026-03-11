@@ -9,7 +9,7 @@ import { AccountAvatar } from "@/components/AccountAvatar";
 import { ConnectPlatformButton } from "./ConnectPlatformButton";
 import { DisconnectAccountModal } from "./DisconnectAccountModal";
 import { AlertTriangle, X } from "lucide-react";
-import { IconRefresh, IconCrown } from "@tabler/icons-react";
+import { IconCrown } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 
 const PLATFORM_UI: Record<string, { name: string; color: string }> = {
@@ -53,23 +53,43 @@ export function ConnectionsList({
     null,
   );
   const [disconnectLabel, setDisconnectLabel] = useState("");
-  const [isRefreshingPremium, setIsRefreshingPremium] = useState<string | null>(
-    null,
-  );
+  const [tokenRefreshPlatform, setTokenRefreshPlatform] = useState<
+    string | null
+  >(null);
+  const [refreshingAllPremium, setRefreshingAllPremium] = useState(false);
   const router = useRouter();
 
-  const handleRefreshPremium = async (accountId: string) => {
-    setIsRefreshingPremium(accountId);
+  const handleRefreshTokens = async (platformId: string) => {
+    setTokenRefreshPlatform(platformId);
     try {
-      const res = await fetch("/api/accounts/refresh-premium", {
+      const res = await fetch("/api/connect/refresh-tokens", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accountId }),
+        body: JSON.stringify({ platform: platformId }),
       });
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Failed to refresh tokens");
+      }
       router.refresh();
     } finally {
-      setIsRefreshingPremium(null);
+      setTokenRefreshPlatform(null);
+    }
+  };
+
+  const handleRefreshAllPremium = async () => {
+    setRefreshingAllPremium(true);
+    try {
+      const res = await fetch("/api/connect/refresh-twitter-premium", {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Failed to refresh premium status");
+      }
+      router.refresh();
+    } finally {
+      setRefreshingAllPremium(false);
     }
   };
 
@@ -206,48 +226,6 @@ export function ConnectionsList({
                               </span>
                             )}
                           </div>
-                          {account.platform === "twitter_x" && (
-                            <div className="flex shrink-0 items-center gap-1">
-                              {account.isTwitterPremium && (
-                                <span
-                                  className="flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400"
-                                  title="X Premium"
-                                >
-                                  <IconCrown
-                                    className="h-3 w-3"
-                                    strokeWidth={1.5}
-                                  />
-                                  <span className="hidden sm:inline">
-                                    Premium
-                                  </span>
-                                </span>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleRefreshPremium(account.id)
-                                }
-                                disabled={
-                                  isRefreshingPremium === account.id
-                                }
-                                className={cn(
-                                  "flex items-center gap-0.5 rounded p-0.5 text-[10px] text-text-muted transition-colors hover:text-text hover:bg-bg-muted disabled:opacity-50",
-                                  isRefreshingPremium === account.id &&
-                                    "cursor-wait",
-                                )}
-                                title="Refresh Premium status"
-                              >
-                                <IconRefresh
-                                  className={cn(
-                                    "h-3 w-3",
-                                    isRefreshingPremium === account.id &&
-                                      "animate-spin",
-                                  )}
-                                  strokeWidth={1.5}
-                                />
-                              </button>
-                            </div>
-                          )}
                           {isExpired && (
                             <Link
                               href={`/api/connect/${account.platform}`}
@@ -288,6 +266,93 @@ export function ConnectionsList({
             })}
           </div>
         </div>
+
+        {/* Token management */}
+        {(accounts.some((a) => a.platform === "twitter_x") ||
+          accounts.some((a) =>
+            [
+              "instagram",
+              "threads",
+              "tiktok",
+              "linkedin",
+              "facebook",
+              "pinterest",
+              "youtube",
+            ].includes(a.platform),
+          )) && (
+          <div className="rounded-2xl border border-border bg-bg-elevated p-3">
+            <p className="mb-2 text-xs font-medium text-text-muted">
+              Token management
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                "linkedin",
+                "instagram",
+                "facebook",
+                "youtube",
+                "pinterest",
+                "tiktok",
+                "threads",
+              ]
+                .filter((platformId) =>
+                  accounts.some((a) => a.platform === platformId),
+                )
+                .map((platformId) => {
+                  const platform = PLATFORMS.find((p) => p.id === platformId);
+                  const ui = platform
+                    ? PLATFORM_UI[platform.id]
+                    : { name: platformId, color: "bg-gray-500" };
+                  const Icon = platform ? getPlatformIcon(platform.id) : null;
+                  const isRefreshing = tokenRefreshPlatform === platformId;
+                  return (
+                    <button
+                      key={platformId}
+                      type="button"
+                      onClick={() => handleRefreshTokens(platformId)}
+                      disabled={isRefreshing}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-medium text-text transition-colors hover:bg-bg-muted disabled:opacity-60",
+                      )}
+                      title={`Refresh ${ui?.name ?? platformId} token(s)`}
+                    >
+                      {Icon && (
+                        <span
+                          className={`flex h-5 w-5 items-center justify-center rounded ${ui?.color ?? "bg-gray-500"} text-white`}
+                        >
+                          <Icon className="h-3 w-3" />
+                        </span>
+                      )}
+                      <span className={cn(isRefreshing && "animate-pulse")}>
+                        Refresh {ui?.name ?? platformId}
+                      </span>
+                    </button>
+                  );
+                })}
+              {accounts.some((a) => a.platform === "twitter_x") && (
+                <button
+                  type="button"
+                  onClick={handleRefreshAllPremium}
+                  disabled={refreshingAllPremium}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-medium text-text transition-colors hover:bg-bg-muted disabled:opacity-60",
+                  )}
+                  title="Recheck X Premium status for all connected Twitter accounts"
+                >
+                  <IconCrown
+                    className={cn(
+                      "h-4 w-4 text-amber-500",
+                      refreshingAllPremium && "animate-spin",
+                    )}
+                    strokeWidth={1.5}
+                  />
+                  <span className={refreshingAllPremium ? "animate-pulse" : ""}>
+                    Refresh Twitter Premium Status
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
       <DisconnectAccountModal
         isOpen={!!disconnectAccountId}
