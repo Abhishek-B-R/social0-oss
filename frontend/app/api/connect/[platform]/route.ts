@@ -7,7 +7,8 @@ import { encrypt } from "@/lib/encryption";
 import { normalizeAppUrl } from "@/lib/url-utils";
 import crypto from "crypto";
 import { db } from "@/db";
-import { verification } from "@/db/schema";
+import { verification, connectedAccounts } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { TwitterApi } from "twitter-api-v2";
 import { oauthLimiter } from "@/lib/ratelimit";
@@ -46,6 +47,23 @@ export async function GET(
     returnToForConnect.startsWith("/") &&
     !returnToForConnect.startsWith("//");
 
+  const reauthParam = req.nextUrl.searchParams.get("reauth");
+  const accountIdParam = req.nextUrl.searchParams.get("accountId");
+  let isReauth = false;
+  if (reauthParam === "1" && accountIdParam) {
+    const [account] = await db
+      .select({ id: connectedAccounts.id })
+      .from(connectedAccounts)
+      .where(
+        and(
+          eq(connectedAccounts.id, accountIdParam),
+          eq(connectedAccounts.userId, session.user.id),
+        ),
+      )
+      .limit(1);
+    if (account) isReauth = true;
+  }
+
   // Twitter/X: OAuth 1.0a flow (separate from standard OAuth 2.0)
   if (platform === "twitter_x") {
     const consumerKey = env.TWITTER_CONSUMER_KEY;
@@ -69,6 +87,7 @@ export async function GET(
       platform: "twitter_x",
       oauth_token_secret: oauth_token_secret,
       ...(validReturnToConnect && { returnTo: returnToForConnect }),
+      ...(isReauth && { reauth: true }),
     });
     cookieStore.set("twitter_oauth1_request_secret", state, {
       httpOnly: true,
@@ -143,6 +162,7 @@ export async function GET(
       platform: platform,
       stateId: stateId, // Reference to verifier in DB
       ...(validReturnToConnect && { returnTo: returnToForConnect }),
+      ...(isReauth && { reauth: true }),
     });
 
     // TikTok-specific: use client_key (NOT client_id)
@@ -156,6 +176,7 @@ export async function GET(
       userId: session.user.id,
       platform: platform,
       ...(validReturnToConnect && { returnTo: returnToForConnect }),
+      ...(isReauth && { reauth: true }),
     });
     url.searchParams.set("client_id", clientId);
   }

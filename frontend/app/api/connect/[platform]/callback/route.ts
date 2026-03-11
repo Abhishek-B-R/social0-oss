@@ -260,12 +260,17 @@ export async function GET(
       } catch {
         // Best effort — don't block redirect
       }
-      const twitterRedirect =
+      let twitterRedirect =
         secretDecrypted.returnTo &&
         typeof secretDecrypted.returnTo === "string" &&
         secretDecrypted.returnTo.startsWith("/")
           ? secretDecrypted.returnTo
           : "/dashboard/connections?connected=twitter_x";
+      if (secretDecrypted.reauth) {
+        twitterRedirect = twitterRedirect.includes("?")
+          ? `${twitterRedirect}&reauth=success`
+          : `${twitterRedirect}?reauth=success`;
+      }
       return safeRedirect(twitterRedirect, twitterRedirect);
     } catch (err) {
       rethrowNextRedirect(err);
@@ -296,9 +301,11 @@ export async function GET(
   let userId: string;
   let codeVerifier: string | undefined;
   let successRedirect = "/dashboard/connections";
+  let isReauth = false;
   try {
     const decrypted = decrypt(state);
     userId = decrypted.userId;
+    isReauth = decrypted.reauth === true;
     if (
       decrypted.returnTo &&
       typeof decrypted.returnTo === "string" &&
@@ -947,7 +954,12 @@ export async function GET(
         .set(updateData)
         .where(eq(connectedAccounts.id, existing.id));
 
-    return safeRedirect(successRedirect, successRedirect);
+      const redirectUrl = isReauth
+        ? (successRedirect.includes("?")
+            ? `${successRedirect}&reauth=success`
+            : `${successRedirect}?reauth=success`)
+        : successRedirect;
+      return safeRedirect(redirectUrl, redirectUrl);
     }
 
     // Generate UUID for account ID (needed for encryption)
@@ -1010,7 +1022,12 @@ export async function GET(
       platformMetadata,
     });
 
-    return safeRedirect(successRedirect, successRedirect);
+    const insertRedirectUrl = isReauth
+      ? (successRedirect.includes("?")
+          ? `${successRedirect}&reauth=warning`
+          : `${successRedirect}?reauth=warning`)
+      : successRedirect;
+    return safeRedirect(insertRedirectUrl, insertRedirectUrl);
   } catch (err) {
     rethrowNextRedirect(err);
     console.error("OAuth callback error:", err);

@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getPlatformIcon } from "@/lib/platform-icons";
 import { PLATFORMS } from "@/lib/platforms";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { ConnectPlatformButton } from "./ConnectPlatformButton";
 import { DisconnectAccountModal } from "./DisconnectAccountModal";
-import { AlertTriangle, X } from "lucide-react";
+import { AlertTriangle, X, RefreshCw, Cross } from "lucide-react";
 import { IconCrown } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 
@@ -53,29 +53,23 @@ export function ConnectionsList({
     null,
   );
   const [disconnectLabel, setDisconnectLabel] = useState("");
-  const [tokenRefreshPlatform, setTokenRefreshPlatform] = useState<
-    string | null
-  >(null);
   const [refreshingAllPremium, setRefreshingAllPremium] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const handleRefreshTokens = async (platformId: string) => {
-    setTokenRefreshPlatform(platformId);
-    try {
-      const res = await fetch("/api/connect/refresh-tokens", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform: platformId }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Failed to refresh tokens");
-      }
-      router.refresh();
-    } finally {
-      setTokenRefreshPlatform(null);
+  useEffect(() => {
+    const reauth = searchParams.get("reauth");
+    if (reauth === "success" || reauth === "warning") {
+      const t = setTimeout(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("reauth");
+        router.replace(url.pathname + url.search);
+      }, 4000);
+      return () => clearTimeout(t);
     }
-  };
+  }, [searchParams, router]);
+
+  const reauthStatus = searchParams.get("reauth");
 
   const handleRefreshAllPremium = async () => {
     setRefreshingAllPremium(true);
@@ -115,6 +109,17 @@ export function ConnectionsList({
   return (
     <>
       <div className="space-y-3">
+        {reauthStatus === "success" && (
+          <p className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200">
+            Account reconnected successfully.
+          </p>
+        )}
+        {reauthStatus === "warning" && (
+          <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+            You signed in with a different account; it was added as a new
+            connection.
+          </p>
+        )}
         <h2 className="text-2xl font-extrabold text-text">
           Connected Accounts
         </h2>
@@ -226,6 +231,15 @@ export function ConnectionsList({
                               </span>
                             )}
                           </div>
+                          {!isExpired && account.platform !== "bluesky" && (
+                            <Link
+                              href={`/api/connect/${account.platform}/reauth?accountId=${encodeURIComponent(account.id)}`}
+                              className="shrink-0 rounded p-0.5 text-text-muted transition-colors hover:bg-bg-muted hover:text-text cursor-auto"
+                              title="Refresh account tokens"
+                            >
+                              <RefreshCw className="h-3 w-3" strokeWidth={2} />
+                            </Link>
+                          )}
                           {isExpired && (
                             <Link
                               href={`/api/connect/${account.platform}`}
@@ -253,6 +267,7 @@ export function ConnectionsList({
                             type="button"
                             onClick={() => handleOpenDisconnect(account)}
                             className="shrink-0 rounded p-0.5 text-destructive transition-colors hover:bg-destructive/10"
+                            title="Remove account"
                             aria-label={`Disconnect ${account.platformDisplayName && account.platformUsername ? `${account.platformDisplayName} (@${account.platformUsername})` : account.platformUsername || account.platform}`}
                           >
                             <X className="h-3.5 w-3.5" />
@@ -267,89 +282,49 @@ export function ConnectionsList({
           </div>
         </div>
 
-        {/* Token management */}
-        {(accounts.some((a) => a.platform === "twitter_x") ||
-          accounts.some((a) =>
-            [
-              "instagram",
-              "threads",
-              "tiktok",
-              "linkedin",
-              "facebook",
-              "pinterest",
-              "youtube",
-            ].includes(a.platform),
-          )) && (
+        {/* Twitter Premium status refresh */}
+        {accounts.some((a) => a.platform === "twitter_x") && (
           <div className="rounded-2xl border border-border bg-bg-elevated p-3">
             <p className="mb-2 text-xs font-medium text-text-muted">
               Token management
             </p>
-            <div className="flex flex-wrap items-center gap-2">
-              {[
-                "linkedin",
-                "instagram",
-                "facebook",
-                "youtube",
-                "pinterest",
-                "tiktok",
-                "threads",
-              ]
-                .filter((platformId) =>
-                  accounts.some((a) => a.platform === platformId),
-                )
-                .map((platformId) => {
-                  const platform = PLATFORMS.find((p) => p.id === platformId);
-                  const ui = platform
-                    ? PLATFORM_UI[platform.id]
-                    : { name: platformId, color: "bg-gray-500" };
-                  const Icon = platform ? getPlatformIcon(platform.id) : null;
-                  const isRefreshing = tokenRefreshPlatform === platformId;
-                  return (
-                    <button
-                      key={platformId}
-                      type="button"
-                      onClick={() => handleRefreshTokens(platformId)}
-                      disabled={isRefreshing}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-medium text-text transition-colors hover:bg-bg-muted disabled:opacity-60",
-                      )}
-                      title={`Refresh ${ui?.name ?? platformId} token(s)`}
-                    >
-                      {Icon && (
-                        <span
-                          className={`flex h-5 w-5 items-center justify-center rounded ${ui?.color ?? "bg-gray-500"} text-white`}
-                        >
-                          <Icon className="h-3 w-3" />
-                        </span>
-                      )}
-                      <span className={cn(isRefreshing && "animate-pulse")}>
-                        Refresh {ui?.name ?? platformId}
-                      </span>
-                    </button>
-                  );
-                })}
-              {accounts.some((a) => a.platform === "twitter_x") && (
-                <button
-                  type="button"
-                  onClick={handleRefreshAllPremium}
-                  disabled={refreshingAllPremium}
+            <div className="flex flex-wrap items-center gap-2 justify-between">
+              <button
+                type="button"
+                onClick={handleRefreshAllPremium}
+                disabled={refreshingAllPremium}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-medium text-text transition-colors hover:bg-bg-muted disabled:opacity-60",
+                )}
+                title="Recheck X Premium status for all connected Twitter accounts"
+              >
+                <IconCrown
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-medium text-text transition-colors hover:bg-bg-muted disabled:opacity-60",
+                    "h-4 w-4 text-amber-500",
+                    refreshingAllPremium && "animate-spin",
                   )}
-                  title="Recheck X Premium status for all connected Twitter accounts"
+                  strokeWidth={1.5}
+                />
+                <span className={refreshingAllPremium ? "animate-pulse" : ""}>
+                  Refresh Twitter Premium Status
+                </span>
+              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-muted"
+                  aria-hidden
                 >
-                  <IconCrown
-                    className={cn(
-                      "h-4 w-4 text-amber-500",
-                      refreshingAllPremium && "animate-spin",
-                    )}
-                    strokeWidth={1.5}
-                  />
-                  <span className={refreshingAllPremium ? "animate-pulse" : ""}>
-                    Refresh Twitter Premium Status
-                  </span>
-                </button>
-              )}
+                  <RefreshCw className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+                  Refresh account tokens
+                </span>
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-muted"
+                  aria-hidden
+                >
+                  <X className="h-3.5 w-3.5 shrink-0 text-destructive" strokeWidth={2} />
+                  Remove account
+                </span>
+              </div>
             </div>
           </div>
         )}

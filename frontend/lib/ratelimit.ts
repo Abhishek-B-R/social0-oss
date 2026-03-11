@@ -36,3 +36,12 @@ export const oauthLimiter = redis
       prefix: "rl:oauth",
     })
   : null;
+
+// 1 Twitter Premium refresh per user per 5 minutes (user-triggered, calls Twitter API)
+export const twitterPremiumRefreshLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(1, "5 m"),
+      prefix: "rl:twitter_premium_refresh",
+    })
+  : null;
