@@ -80,6 +80,7 @@ export function CollectionPostForm({
   timezone = null,
   draftId: initialDraftId,
   scheduledId: initialScheduledId,
+  editId: initialEditId,
   allowAutoRepost = true,
   allowAutoPlug = true,
   supportedPlatforms,
@@ -90,6 +91,7 @@ export function CollectionPostForm({
   timezone?: string | null;
   draftId?: string;
   scheduledId?: string;
+  editId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
@@ -115,7 +117,7 @@ export function CollectionPostForm({
   const imagesRef = useRef<ImageFile[]>([]);
   const videosRef = useRef<VideoFile[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
-    initialDraftId || initialScheduledId
+    initialDraftId || initialScheduledId || initialEditId
       ? new Set()
       : getInitialSelectedIds(validIds),
   );
@@ -123,7 +125,7 @@ export function CollectionPostForm({
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(
-    !!(initialDraftId || initialScheduledId),
+    !!(initialDraftId || initialScheduledId || initialEditId),
   );
   const [error, setError] = useState<string | null>(null);
   type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
@@ -333,6 +335,53 @@ export function CollectionPostForm({
       cancelled = true;
     };
   }, [initialDraftId]);
+
+  useEffect(() => {
+    if (!initialEditId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getPostToEdit } = await import("@/app/actions/posts");
+        const result = await getPostToEdit(initialEditId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          setDraftLoading(false);
+          return;
+        }
+        const { post: toEdit } = result;
+        setContent(toEdit.originalContent ?? "");
+        setSelectedIds(new Set(toEdit.connectedAccountIds));
+        const orderedMedia = toEdit.media.map((m, i) => ({
+          ...m,
+          order: i + 1,
+        }));
+        const editImages = orderedMedia
+          .filter((m) => m.mimeType.startsWith("image/"))
+          .map((m) => ({
+            preview: m.thumbnailUrl ?? m.url ?? "",
+            order: m.order,
+            existingId: m.id,
+          }));
+        const editVideos = orderedMedia
+          .filter((m) => m.mimeType.startsWith("video/"))
+          .map((m) => ({
+            preview: m.thumbnailUrl ?? m.url ?? "",
+            order: m.order,
+            existingId: m.id,
+          }));
+        if (editImages.length > 0) setImages(editImages);
+        if (editVideos.length > 0) setVideos(editVideos);
+      } catch {
+        if (!cancelled) setError("Failed to load post");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialEditId]);
 
   useEffect(() => {
     if (remember) persistSelection(selectedIds);
@@ -1169,7 +1218,7 @@ export function CollectionPostForm({
     mode === "draft"
       ? "Save draft"
       : mode === "scheduled"
-        ? initialDraftId || initialScheduledId
+        ? initialDraftId || initialScheduledId || initialEditId
           ? "Update"
           : "Schedule post"
         : "Post now";

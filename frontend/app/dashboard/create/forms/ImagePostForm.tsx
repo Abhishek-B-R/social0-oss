@@ -85,6 +85,7 @@ export function ImagePostForm({
   timezone = null,
   draftId: initialDraftId,
   scheduledId: initialScheduledId,
+  editId: initialEditId,
   allowAutoRepost = true,
   allowAutoPlug = true,
   supportedPlatforms,
@@ -95,6 +96,7 @@ export function ImagePostForm({
   timezone?: string | null;
   draftId?: string;
   scheduledId?: string;
+  editId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
@@ -116,7 +118,7 @@ export function ImagePostForm({
   const { remember, setRemember, getInitialSelectedIds, persistSelection } =
     useRememberedAccounts("post-form-image");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
-    initialDraftId || initialScheduledId ? new Set() : getInitialSelectedIds(validIds),
+    initialDraftId || initialScheduledId || initialEditId ? new Set() : getInitialSelectedIds(validIds),
   );
   const [accountSearch, setAccountSearch] = useState("");
   const [previewIndex, setPreviewIndex] = useState(0);
@@ -124,7 +126,7 @@ export function ImagePostForm({
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(
-    !!(initialDraftId || initialScheduledId),
+    !!(initialDraftId || initialScheduledId || initialEditId),
   );
   const [error, setError] = useState<string | null>(null);
   type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
@@ -179,7 +181,7 @@ export function ImagePostForm({
   }, [accounts, initialDraftId]);
 
   useEffect(() => {
-    if (initialDraftId) return;
+    if (initialDraftId || initialEditId) return;
     if (searchParams.get("fromComposer") !== "1") return;
     const payload = consumeComposerPayload();
     if (!payload) return;
@@ -199,7 +201,7 @@ export function ImagePostForm({
     return () => {
       setTimeout(clearComposerPayload, 100);
     };
-  }, [initialDraftId, searchParams]);
+  }, [initialDraftId, initialEditId, searchParams]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -356,6 +358,97 @@ export function ImagePostForm({
       cancelled = true;
     };
   }, [initialDraftId, accounts]);
+
+  useEffect(() => {
+    if (!initialEditId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getPostToEdit } = await import("@/app/actions/posts");
+        const result = await getPostToEdit(initialEditId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          setDraftLoading(false);
+          return;
+        }
+        const { post: toEdit } = result;
+        const validAccountIds = new Set(
+          accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
+        );
+        const restoredIds = toEdit.connectedAccountIds.filter((id) =>
+          validAccountIds.has(id),
+        );
+        setContent(toEdit.originalContent ?? "");
+        setSelectedIds(new Set(restoredIds));
+        const imageMedia = toEdit.media.filter((m) =>
+          m.mimeType.startsWith("image/"),
+        );
+        setImages(
+          imageMedia.map((m, i) => ({
+            preview: m.thumbnailUrl ?? m.url ?? "",
+            order: i + 1,
+            existingId: m.id,
+          })),
+        );
+        const meta = toEdit.metadata as Record<string, unknown> | null;
+        if (meta?.pinterest && typeof meta.pinterest === "object") {
+          const pinterest = meta.pinterest as Record<
+            string,
+            { boardId?: string; title?: string; link?: string }
+          >;
+          const next: Record<string, PinterestPostSettings> = {};
+          for (const id of restoredIds) {
+            const acc = accounts.find((a) => a.id === id);
+            if (acc?.platform !== "pinterest") continue;
+            const p = pinterest[id];
+            if (p) {
+              next[id] = {
+                boardId: p.boardId ?? "",
+                title: p.title ?? "",
+                link: p.link ?? "",
+                rememberBoard: false,
+                rememberLink: false,
+              };
+            }
+          }
+          if (Object.keys(next).length > 0) setPinterestSettingsByAccount(next);
+        }
+        if (meta?.tiktok && typeof meta.tiktok === "object") {
+          const tiktok = meta.tiktok as Record<string, TikTokPostSettings>;
+          const next: Record<string, TikTokPostSettings> = {};
+          for (const id of restoredIds) {
+            const acc = accounts.find((a) => a.id === id);
+            if (acc?.platform !== "tiktok") continue;
+            const t = tiktok[id];
+            if (t && typeof t === "object") {
+              next[id] = {
+                privacy_level:
+                  typeof t.privacy_level === "string" ? t.privacy_level : "",
+                video_title: typeof t.video_title === "string" ? t.video_title : "",
+                disable_comment: !!t.disable_comment,
+                disable_duet: !!t.disable_duet,
+                disable_stitch: !!t.disable_stitch,
+                brand_content_toggle: !!t.brand_content_toggle,
+                brand_organic: !!t.brand_organic,
+                brand_content: !!t.brand_content,
+                post_as_draft: !!(t as any).post_as_draft,
+                mark_ai_generated: !!(t as any).mark_ai_generated,
+              };
+            }
+          }
+          if (Object.keys(next).length > 0) setTiktokSettings(next);
+        }
+      } catch {
+        if (!cancelled) setError("Failed to load post");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialEditId, accounts]);
 
   useEffect(() => {
     if (!initialScheduledId || initialDraftId) return;

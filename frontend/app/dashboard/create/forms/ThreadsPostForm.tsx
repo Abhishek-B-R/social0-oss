@@ -230,6 +230,7 @@ export function ThreadsPostForm({
   timezone = null,
   draftId: initialDraftId,
   scheduledId: initialScheduledId,
+  editId: initialEditId,
   allowAutoRepost = true,
   allowAutoPlug = true,
   supportedPlatforms,
@@ -240,6 +241,7 @@ export function ThreadsPostForm({
   timezone?: string | null;
   draftId?: string;
   scheduledId?: string;
+  editId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
@@ -265,13 +267,13 @@ export function ThreadsPostForm({
     { id: 1, text: "", images: [], videos: [] },
   ]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
-    initialDraftId || initialScheduledId ? new Set() : getInitialSelectedIds(validIds),
+    initialDraftId || initialScheduledId || initialEditId ? new Set() : getInitialSelectedIds(validIds),
   );
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(
-    !!(initialDraftId || initialScheduledId),
+    !!(initialDraftId || initialScheduledId || initialEditId),
   );
   const [error, setError] = useState<string | null>(null);
   const [resurfaceConfig, setResurfaceConfig] =
@@ -322,7 +324,7 @@ export function ThreadsPostForm({
   }, []);
 
   useEffect(() => {
-    if (initialDraftId) return;
+    if (initialDraftId || initialEditId) return;
     if (searchParams.get("fromComposer") !== "1") return;
     const payload = consumeComposerPayload();
     if (!payload) return;
@@ -375,7 +377,7 @@ export function ThreadsPostForm({
     return () => {
       setTimeout(clearComposerPayload, 100);
     };
-  }, [initialDraftId, searchParams]);
+  }, [initialDraftId, initialEditId, searchParams]);
 
   useEffect(() => {
     if (!initialScheduledId || initialDraftId) return;
@@ -550,6 +552,90 @@ export function ThreadsPostForm({
       cancelled = true;
     };
   }, [initialDraftId]);
+
+  useEffect(() => {
+    if (!initialEditId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getPostToEdit } = await import("@/app/actions/posts");
+        const result = await getPostToEdit(initialEditId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          setDraftLoading(false);
+          return;
+        }
+        const { post: toEdit } = result;
+        const metadata = toEdit.metadata as Record<string, unknown> | null;
+        const twitterThread = metadata?.twitterThread as
+          | { parts?: Array<{ text?: string; mediaIds?: string[] }> }
+          | undefined;
+        const partsFromMeta = twitterThread?.parts;
+        if (
+          partsFromMeta &&
+          Array.isArray(partsFromMeta) &&
+          partsFromMeta.length > 0
+        ) {
+          const mediaById = new Map(toEdit.media.map((m) => [m.id, m]));
+          const restoredPosts: ThreadPost[] = partsFromMeta.map((part, i) => {
+            const text = typeof part.text === "string" ? part.text : "";
+            const partMediaIds = Array.isArray(part.mediaIds)
+              ? part.mediaIds
+              : [];
+            const images: MediaImage[] = [];
+            const videos: MediaVideo[] = [];
+            partMediaIds.forEach((mid, idx) => {
+              const row = mediaById.get(mid);
+              if (!row?.url) return;
+              const order = idx + 1;
+              const preview = row.url;
+              if (row.mimeType.startsWith("video/")) {
+                videos.push({
+                  preview: row.thumbnailUrl || preview,
+                  order,
+                  mediaId: row.id,
+                  thumbnailUrl: row.thumbnailUrl ?? undefined,
+                });
+              } else {
+                images.push({ preview, order, mediaId: row.id });
+              }
+            });
+            return {
+              id: i + 1,
+              text,
+              images,
+              videos,
+            };
+          });
+          setPosts(restoredPosts);
+          nextIdRef.current = restoredPosts.length + 1;
+        } else {
+          const raw = toEdit.originalContent ?? "";
+          const parts = raw.split(THREAD_SEPARATOR).map((s) => s.trim());
+          if (parts.length > 0) {
+            setPosts(
+              parts.map((text, i) => ({
+                id: i + 1,
+                text,
+                images: [],
+                videos: [],
+              })),
+            );
+            nextIdRef.current = parts.length + 1;
+          }
+        }
+        setSelectedIds(new Set(toEdit.connectedAccountIds));
+      } catch {
+        if (!cancelled) setError("Failed to load post");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialEditId]);
 
   useEffect(() => {
     if (remember) persistSelection(selectedIds);
@@ -1392,7 +1478,7 @@ export function ThreadsPostForm({
     mode === "draft"
       ? "Save draft"
       : mode === "scheduled"
-        ? initialDraftId || initialScheduledId
+        ? initialDraftId || initialScheduledId || initialEditId
           ? "Update"
           : "Schedule post"
         : "Post";

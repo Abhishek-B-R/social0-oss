@@ -633,6 +633,67 @@ export async function getScheduledPost(
   };
 }
 
+/** Same shape as GetScheduledPostResult for loading a posted/partial/failed post to edit and re-publish. */
+export type GetPostToEditResult =
+  | {
+      success: true;
+      post: {
+        id: string;
+        originalContent: string | null;
+        scheduledAt: Date | null;
+        connectedAccountIds: string[];
+        media: PostMediaRow[];
+        metadata: Record<string, unknown> | null;
+        queueSlotId: string | null;
+      };
+    }
+  | { success: false; error: string };
+
+/** Load a published, partial, or failed post for editing in the composer. Use for ?edit=[id]. */
+export async function getPostToEdit(
+  postId: string,
+): Promise<GetPostToEditResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return { success: false, error: "Unauthorized" };
+  }
+  if (!isValidUUID(postId)) {
+    return { success: false, error: "Invalid post ID" };
+  }
+  const post = await getPostForEdit(postId, session.user.id);
+  if (!post) {
+    return { success: false, error: "Post not found" };
+  }
+  const allowed = ["published", "partial", "failed"].includes(
+    post.status ?? "",
+  );
+  if (!allowed) {
+    return {
+      success: false,
+      error: "Only posted, partial, or failed posts can be edited for republish",
+    };
+  }
+  const mediaIds = post.mediaIds ?? [];
+  const media =
+    mediaIds.length > 0 ? await getPostMedia(session.user.id, mediaIds) : [];
+  const [row] = await db
+    .select({ metadata: posts.metadata })
+    .from(posts)
+    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
+  return {
+    success: true,
+    post: {
+      id: post.id,
+      originalContent: post.originalContent,
+      scheduledAt: post.scheduledAt,
+      connectedAccountIds: post.connectedAccountIds,
+      media,
+      metadata: (row?.metadata as Record<string, unknown>) ?? null,
+      queueSlotId: null,
+    },
+  };
+}
+
 export type DeleteDraftResult =
   | { success: true }
   | { success: false; error: string };

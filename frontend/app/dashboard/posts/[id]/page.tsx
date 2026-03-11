@@ -409,6 +409,16 @@ export default async function PostDetailPage({
                 {(post.status === "published" || post.status === "partial") && (
                   <PostAgainButton postId={post.id} />
                 )}
+                {(post.status === "published" ||
+                  post.status === "partial" ||
+                  post.status === "failed") && (
+                  <Link
+                    href={`/dashboard/create/${slug}?edit=${post.id}`}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
+                  >
+                    Edit and post
+                  </Link>
+                )}
               </div>
             </div>
 

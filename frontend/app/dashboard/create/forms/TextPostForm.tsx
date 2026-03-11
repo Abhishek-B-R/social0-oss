@@ -6,6 +6,7 @@ import {
   createPost,
   getDraft,
   getScheduledPost,
+  getPostToEdit,
   deleteDraft,
   updateDraft,
   updateAndPublish,
@@ -71,6 +72,7 @@ export function TextPostForm({
   timezone = null,
   draftId: initialDraftId,
   scheduledId: initialScheduledId,
+  editId: initialEditId,
   allowAutoRepost = true,
   allowAutoPlug = true,
   supportedPlatforms,
@@ -81,6 +83,7 @@ export function TextPostForm({
   timezone?: string | null;
   draftId?: string;
   scheduledId?: string;
+  editId?: string;
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
@@ -94,7 +97,7 @@ export function TextPostForm({
     useRememberedAccounts("post-form-text");
   const [accountSearch, setAccountSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
-    if (initialDraftId || initialScheduledId) return new Set();
+    if (initialDraftId || initialScheduledId || initialEditId) return new Set();
     const validIds = new Set(
       accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
     );
@@ -104,7 +107,7 @@ export function TextPostForm({
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(
-    !!(initialDraftId || initialScheduledId),
+    !!(initialDraftId || initialScheduledId || initialEditId),
   );
   type OverlayPhase = "idle" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
@@ -217,7 +220,39 @@ export function TextPostForm({
   }, [initialScheduledId, initialDraftId, accounts]);
 
   useEffect(() => {
-    if (initialDraftId || initialScheduledId) return;
+    if (!initialEditId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await getPostToEdit(initialEditId);
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          setDraftLoading(false);
+          return;
+        }
+        const { post: toEdit } = result;
+        const validAccountIds = new Set(
+          accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
+        );
+        const restoredIds = toEdit.connectedAccountIds.filter((id) =>
+          validAccountIds.has(id),
+        );
+        setContent(toEdit.originalContent ?? "");
+        setSelectedIds(new Set(restoredIds));
+      } catch {
+        if (!cancelled) setError("Failed to load post");
+      } finally {
+        if (!cancelled) setDraftLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialEditId, accounts]);
+
+  useEffect(() => {
+    if (initialDraftId || initialScheduledId || initialEditId) return;
     if (searchParams.get("fromComposer") !== "1") return;
     const payload = consumeComposerPayload();
     if (!payload) return;
@@ -227,7 +262,7 @@ export function TextPostForm({
     return () => {
       setTimeout(clearComposerPayload, 100);
     };
-  }, [initialDraftId, searchParams]);
+  }, [initialDraftId, initialEditId, searchParams]);
 
   useEffect(() => {
     if (remember) persistSelection(selectedIds);
@@ -701,7 +736,7 @@ export function TextPostForm({
     mode === "draft"
       ? "Save draft"
       : mode === "scheduled"
-        ? initialDraftId || initialScheduledId
+        ? initialDraftId || initialScheduledId || initialEditId
           ? "Update"
           : "Schedule post"
         : "Post now";
