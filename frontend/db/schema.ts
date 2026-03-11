@@ -201,9 +201,10 @@ export const postPublications = pgTable(
     postId: uuid("post_id")
       .references(() => posts.id)
       .notNull(),
-    connectedAccountId: uuid("connected_account_id")
-      .references(() => connectedAccounts.id)
-      .notNull(),
+    connectedAccountId: uuid("connected_account_id").references(
+      () => connectedAccounts.id,
+      { onDelete: "set null" },
+    ),
     status: publicationStatusEnum("status").default("pending"),
     publishedAt: timestamp("published_at"),
     platformPostId: text("platform_post_id"), // e.g. LinkedIn post ID
@@ -283,7 +284,7 @@ export const userSettings = pgTable("user_settings", {
 export const platformRateLimits = pgTable("platform_rate_limits", {
   id: uuid("id").defaultRandom().primaryKey(),
   connectedAccountId: uuid("connected_account_id")
-    .references(() => connectedAccounts.id)
+    .references(() => connectedAccounts.id, { onDelete: "cascade" })
     .notNull(),
   requestCount: integer("request_count").default(0),
   windowStart: timestamp("window_start").notNull(),

@@ -18,6 +18,7 @@ This document describes **architecture rules**, **known mistakes** (what the AI 
 - **Validation:** Zod for env (`lib/env.ts`); shared validation in `lib/validation.ts` and `lib/publish-validation.ts`.
 - **Billing:** Dodo Payments (optional); subscription tier stored in `user_settings`; plans and limits in `lib/plans.ts`, `lib/plan-limits.ts`, `lib/subscription.ts`, `lib/billing-sync.ts`.
 - **Sign-up:** Cloudflare Turnstile optional for sign-up (`app/api/auth/sign-up-with-turnstile/route.ts`).
+- **Feedback:** Canny (embedded board); SSO via `GET /api/canny/sso` (JWT signed with `env.CANNY_PRIVATE_KEY`); client loads SDK and renders with `NEXT_PUBLIC_CANNY_BOARD_TOKEN`; theme `auto`. See §1.11.
 
 ### 1.2 Directory layout
 
@@ -29,6 +30,8 @@ This document describes **architecture rules**, **known mistakes** (what the AI 
     - **`app/api/auth/`** — Better Auth catch-all, subscription-check, sign-up-with-turnstile.
     - **`app/api/connect/`** — OAuth and BYOK (Bluesky); Instagram-Facebook, Facebook select.
     - **`app/api/webhooks/dodo/`** — Dodo Payments webhook for subscription events.
+    - **`app/api/canny/sso/`** — GET returns JWT for Canny SSO (auth required); use `env.CANNY_PRIVATE_KEY`, never `process.env` for server keys.
+  - **`app/dashboard/feedback/`** — Client page that fetches SSO token, loads Canny SDK, renders board into `<div data-canny />`; fallback link to https://social0.canny.io on error.
   - **`app/actions/`** — Server actions (`"use server"`): `publish.ts`, `posts.ts`, `resurface.ts`, `settings.ts`, `onboarding.ts`.
   - **`app/dashboard/`** — Dashboard layout and all dashboard pages; layout enforces auth, onboarding redirect when needed, and wraps content with sidebar + bottom nav; `SubscriptionSync` in layout.
   - **`app/onboarding/`** — Onboarding flow: plan selection (page) → goal (step2) → connect accounts (step3) → completion (step4). Layout redirects to dashboard if already completed.
@@ -54,7 +57,7 @@ This document describes **architecture rules**, **known mistakes** (what the AI 
 
 ### 1.4 Database
 
-- **Schema:** Single source of truth is `db/schema.ts`. Enums: `platform`, `post_status`, `publication_status`. Key tables: `user`, `session`, `account`, `verification` (Better Auth); `connected_accounts` (includes `is_twitter_premium` for X character limit), `media_uploads`, `posts`, `post_publications`, `user_settings` (includes `subscriptionTier`, `subscriptionExpiresAt`, `subscriptionId`, `customerId`, `onboardingCompleted`, `onboardingGoal`), `platform_rate_limits`, `resurface_schedules`, `resurface_events`, `auto_plugs`.
+- **Schema:** Single source of truth is `db/schema.ts`. Enums: `platform`, `post_status`, `publication_status`. Key tables: `user`, `session`, `account`, `verification` (Better Auth); `connected_accounts` (includes `is_twitter_premium` for X character limit), `media_uploads`, `posts`, `post_publications`, `user_settings` (includes `subscriptionTier`, `subscriptionExpiresAt`, `subscriptionId`, `customerId`, `onboardingCompleted`, `onboardingGoal`, `use24HourTimeFormat`, `dateFormat`), `platform_rate_limits`, `resurface_schedules`, `resurface_events`, `auto_plugs`.
 - **Posts:** `posts` has a CHECK constraint: either `trim(final_content) != ''` or `array_length(media_ids, 1) > 0`. App-level validation must enforce the same before insert/update.
 - **Migrations:** Generate with `npm run db:generate`; run with `npm run db:migrate`. Better Auth migrations must run before app migrations. See `db/README.md` for media cleanup index and encryption notes.
 - **Encryption:** OAuth state and tokens are encrypted only in the backend. Token format: AES-256-GCM, HKDF per-account salt; storage format `version:salt:iv:ciphertext:authTag`. See `lib/encryption.ts` and `db/README.md`.
@@ -86,7 +89,7 @@ This document describes **architecture rules**, **known mistakes** (what the AI 
 
 - **Tiers:** `free`, `starter`, `growth` (see `lib/plans.ts`). Limits: max connected accounts, tweets per month (Twitter), and feature flags (bulk tools, auto-plug, resurface) come from `getPlanLimits(tier)`.
 - **Storage:** Subscription state in `user_settings`: `subscriptionTier`, `subscriptionExpiresAt`, `subscriptionId`, `customerId`. Expired subscription is treated as `free`.
-- **Dodo Payments:** Checkout via `POST /api/billing/checkout`; portal/cancel via `POST /api/billing/portal`; sync by email via `syncSubscriptionForUserId()` (used after checkout redirect and in `POST /api/billing/sync`). Webhook `POST /api/webhooks/dodo` updates subscription (verify signature; use `lib/billing-sync.ts` or set subscription directly).
+- **Dodo Payments:** Checkout via `POST /api/billing/checkout`; portal/cancel via `POST /api/billing/portal`; sync by email via `syncSubscriptionForUserId()` — invoked from `POST /api/billing/sync` (called by SubscriptionSync on dashboard load when user is free, once per session; by onboarding step2 after payment redirect; by BillingClient when waiting for webhook; and from OAuth connect callbacks). When sync finds **no** active subscription for the user, it **downgrades them to free** (so cancelled users are cleaned up when sync runs). Webhook `POST /api/webhooks/dodo` handles subscription.active/updated/renewed/plan_changed (set tier) and subscription.cancelled/expired (downgrade to free); it does not call `syncSubscriptionForUserId`.
 - **Gating:** Use `lib/plan-limits.ts`: `checkAccountLimits` before connect, `checkBulkToolsAllowed` / `checkAutoPlugAllowed` / `checkResurfaceAllowed` for feature access, `checkTwitterTweetLimit` before publishing to Twitter.
 
 ### 1.9 Onboarding
@@ -98,6 +101,13 @@ This document describes **architecture rules**, **known mistakes** (what the AI 
 
 - **Character limit:** Connected Twitter accounts have `is_twitter_premium`; Premium allows up to 25,000 characters (non-Premium 280). Use `getLimitForAccount(account)` from `lib/platform-limits.ts` in UI and validation.
 - **Cron:** `app/api/cron/twitter-premium/route.ts` runs daily at 5 AM; rechecks Premium status via Twitter API and updates `connected_accounts.is_twitter_premium`.
+
+### 1.11 Canny feedback
+
+- **SSO:** `GET /api/canny/sso` requires session; returns `{ token }` where token is a JWT signed with `env.CANNY_PRIVATE_KEY` (HS256), payload `{ id, email, name }` from session. Use `env` from `@/lib/env`; do not read `process.env` for server-side keys.
+- **Client:** `app/dashboard/feedback/page.tsx` is a client component: fetches `/api/canny/sso`, injects `https://sdk.canny.io/sdk.js`, then `window.Canny("render", { boardToken: process.env.NEXT_PUBLIC_CANNY_BOARD_TOKEN, basePath: "/dashboard/feedback", ssoToken, theme: "auto" })`. Mount target: `<div data-canny />`. On error, show fallback with link to https://social0.canny.io. Do not use `Canny("identify", ...)`; SSO token in render is sufficient.
+- **Env:** `lib/env.ts`: `CANNY_PRIVATE_KEY`, `NEXT_PUBLIC_CANNY_BOARD_TOKEN` (both required in schema if Canny is used).
+- **Nav:** Sidebar has a "Feedback" item (Support section) linking to `/dashboard/feedback` (e.g. Lightbulb icon from lucide-react).
 
 ---
 
@@ -183,7 +193,7 @@ Keep using `safeRedirect` (or an equivalent) whenever the redirect target can co
 
 ### 3.1 Security
 
-- **Env:** Never commit `.env` or `.env.local`. All runtime env is validated through `lib/env.ts` (Zod). `ENCRYPTION_KEY` must be 32 bytes (64 hex chars). `BETTER_AUTH_SECRET` must be at least 32 characters. Billing uses `DODO_PAYMENTS_*` and webhook secret; Turnstile uses `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`.
+- **Env:** Never commit `.env` or `.env.local`. All runtime env is validated through `lib/env.ts` (Zod). `ENCRYPTION_KEY` must be 32 bytes (64 hex chars). `BETTER_AUTH_SECRET` must be at least 32 characters. Billing uses `DODO_PAYMENTS_*` and webhook secret; Turnstile uses `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`; Canny uses `CANNY_PRIVATE_KEY` (server) and `NEXT_PUBLIC_CANNY_BOARD_TOKEN` (client).
 - **Auth:** All dashboard and API routes that touch user data must check session (e.g. `auth.api.getSession({ headers: await headers() })`). Cron routes must be protected by `lib/cron-auth.ts` (constant-time Bearer token check); in development the cron auth check can be skipped for convenience.
 - **OAuth state:** State must be encrypted and include `userId` and `platform` (and optionally `stateId` for PKCE). Callback must verify state, decrypt it, and ensure `platform` matches and the user is authorized.
 - **Tokens:** Access/refresh tokens are stored only in the DB, encrypted (see `lib/encryption.ts`). Never log or send tokens to the client. Use `getValidToken()` (or equivalent) so expired tokens are refreshed when the platform supports it (e.g. YouTube, LinkedIn).
@@ -215,7 +225,7 @@ Keep using `safeRedirect` (or an equivalent) whenever the redirect target can co
 
 ### 3.5 Soft delete only
 
-Never hard-delete `connected_accounts` rows. On disconnect, set `isActive = false`. Post history (`post_publications`) is preserved. Queries must filter `WHERE isActive = true`. If the user reconnects the same `platformUserId`, history comes back automatically.
+On disconnect: revoke token on the platform (best effort), then hard-delete the `connected_accounts` row. Post history is preserved: `post_publications.connected_account_id` uses `ON DELETE SET NULL`, so publication rows remain with `connected_account_id = NULL`. Queries that join to connected_accounts naturally exclude disconnected publications.
 
 ---
 
@@ -242,13 +252,14 @@ Never hard-delete `connected_accounts` rows. On disconnect, set `isActive = fals
 | Token refresh     | `getValidToken()` in `lib/token-refresh.ts`; YouTube/TikTok auto-refresh before publish. |
 | Token health cron | `app/api/cron/token-health` runs daily at 6 AM via `lib/token-health.ts`. |
 | Rate limiting     | `lib/ratelimit.ts` (Upstash Redis); optional; presign uses upload limiter. |
-| Disconnect        | Set `isActive=false` only; never DELETE `connected_accounts` rows. |
+| Disconnect        | Revoke token on platform (best effort), then DELETE `connected_accounts` row. Publications FK `ON DELETE SET NULL`. |
 | Facebook pages    | Save ALL pages in loop in callback; no select UI. |
 | Instagram-Facebook select | POST to `/api/connect/instagram-facebook/select`. |
 | BYOK              | Only Bluesky: `app/api/connect/bluesky/byok/route.ts`. |
 | Onboarding        | `app/actions/onboarding.ts`: `getOnboardingStatus()`, `setOnboardingCompleted()`. Dashboard layout redirects when `shouldOnboard` and not in connect flow. |
-| Billing           | Dodo: checkout, portal, sync, change-plan under `app/api/billing/`; webhook `app/api/webhooks/dodo`; `lib/billing-sync.ts`, `lib/subscription.ts`, `lib/plans.ts`. |
+| Billing           | Dodo: checkout, portal, sync, change-plan under `app/api/billing/`; webhook `app/api/webhooks/dodo` (sets/downgrades tier; does not call sync). `lib/billing-sync.ts`: `syncSubscriptionForUserId()` — when no active sub found, downgrades user to free. |
 | Twitter Premium   | `connected_accounts.is_twitter_premium`; cron `api/cron/twitter-premium`; char limit in `lib/platform-limits.ts`. |
+| Canny feedback    | SSO: `GET /api/canny/sso` (JWT with `env.CANNY_PRIVATE_KEY`). Page: `app/dashboard/feedback`; client uses `NEXT_PUBLIC_CANNY_BOARD_TOKEN`, Canny("render", { …, theme: "auto" }). Sidebar: Feedback → `/dashboard/feedback`. |
 | Migration safety  | Never edit existing `.sql` files; always `db:generate` for new migrations. |
 
 If you add new routes that call `redirect()` inside try/catch, add the NEXT_REDIRECT rethrow in every catch block. If you add new platforms or content types, update `lib/platforms.ts` and/or `lib/content-types.ts` and keep validation and publish logic in sync.

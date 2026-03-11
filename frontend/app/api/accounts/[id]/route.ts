@@ -3,6 +3,9 @@ import { db } from "@/db";
 import { connectedAccounts, postPublications } from "@/db/schema";
 import { eq, and, count } from "drizzle-orm";
 import { headers } from "next/headers";
+import { decryptToken } from "@/lib/encryption";
+import { revokeTokenOnPlatform } from "@/lib/revoke-token";
+import type { Platform } from "@/lib/platforms";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -70,10 +73,17 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     return Response.json({ error: "Account not found" }, { status: 404 });
   }
 
-  // Soft delete: set isActive = false. Post history is preserved.
+  // 1. Revoke token on the platform (best effort — don't block on failure)
+  try {
+    const accessToken = decryptToken(account.encryptedAccessToken, account.id);
+    await revokeTokenOnPlatform(account.platform as Platform, accessToken);
+  } catch {
+    // Log but continue — we still want to delete locally
+  }
+
+  // 2. Hard delete the account. Publications keep rows with connected_account_id = NULL (FK ON DELETE SET NULL).
   await db
-    .update(connectedAccounts)
-    .set({ isActive: false, updatedAt: new Date() })
+    .delete(connectedAccounts)
     .where(eq(connectedAccounts.id, accountId));
 
   return Response.json({ success: true });

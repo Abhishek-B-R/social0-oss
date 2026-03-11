@@ -176,6 +176,13 @@
       "when": 1773300000000,
       "tag": "0025_add_platform_account_type",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1773400000000,
+      "tag": "0026_publications_set_null_on_account_delete",
+      "breakpoints": true
     }
   ]
 }
