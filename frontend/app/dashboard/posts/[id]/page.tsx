@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { ArrowLeft } from "lucide-react";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { PublishButton } from "../PublishButton";
+import { PostAgainButton } from "../PostAgainButton";
 import {
   getPostDetail,
   getPostMedia,
@@ -404,6 +405,9 @@ export default async function PostDetailPage({
                         : "Publish now"
                     }
                   />
+                )}
+                {(post.status === "published" || post.status === "partial") && (
+                  <PostAgainButton postId={post.id} />
                 )}
               </div>
             </div>

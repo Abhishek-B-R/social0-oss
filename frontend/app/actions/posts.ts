@@ -21,6 +21,10 @@ import {
 } from "@/app/dashboard/posts/posts-list-data";
 import { isValidUUID } from "@/lib/validation";
 
+export type PostAgainResult =
+  | { success: true; newPostId: string }
+  | { success: false; error: string };
+
 export type CreatePostResult =
   | { success: true; postId: string; allPlatformsFailed?: boolean }
   | { success: false; error: string };
@@ -222,6 +226,121 @@ export async function deletePost(postId: string): Promise<DeletePostResult> {
     return {
       success: false,
       error: e instanceof Error ? e.message : "Failed to delete post",
+    };
+  }
+}
+
+/**
+ * Clone a posted or partially posted post and publish it again (same content, same accounts).
+ * Returns the new post id on success.
+ */
+export async function postAgain(postId: string): Promise<PostAgainResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return { success: false, error: "Unauthorized" };
+  }
+  if (!isValidUUID(postId)) {
+    return { success: false, error: "Invalid post ID" };
+  }
+
+  const [post] = await db
+    .select({
+      id: posts.id,
+      userId: posts.userId,
+      originalContent: posts.originalContent,
+      finalContent: posts.finalContent,
+      mediaIds: posts.mediaIds,
+      metadata: posts.metadata,
+      status: posts.status,
+    })
+    .from(posts)
+    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)))
+    .limit(1);
+
+  if (!post) {
+    return { success: false, error: "Post not found" };
+  }
+
+  if (post.status !== "published" && post.status !== "partial") {
+    return {
+      success: false,
+      error: "Only posted or partially posted posts can be posted again",
+    };
+  }
+
+  const publications = await db
+    .select({ connectedAccountId: postPublications.connectedAccountId })
+    .from(postPublications)
+    .where(eq(postPublications.postId, postId));
+
+  const accountIds = [...new Set(publications.map((p) => p.connectedAccountId))];
+  if (accountIds.length === 0) {
+    return { success: false, error: "No accounts to post to" };
+  }
+
+  const ownedAccounts = await db
+    .select({ id: connectedAccounts.id })
+    .from(connectedAccounts)
+    .where(
+      and(
+        eq(connectedAccounts.userId, session.user.id),
+        inArray(connectedAccounts.id, accountIds),
+      ),
+    );
+  const ownedIds = new Set(ownedAccounts.map((a) => a.id));
+  const validAccountIds = accountIds.filter((id) => ownedIds.has(id));
+  if (validAccountIds.length === 0) {
+    return { success: false, error: "No valid accounts to post to" };
+  }
+
+  const mediaIds = post.mediaIds ?? [];
+
+  try {
+    const [newPost] = await db
+      .insert(posts)
+      .values({
+        userId: session.user.id,
+        originalContent: post.originalContent,
+        finalContent: post.finalContent,
+        status: "scheduled",
+        scheduledAt: new Date(),
+        mediaIds: mediaIds.length > 0 ? mediaIds : [],
+        metadata: post.metadata ?? undefined,
+      })
+      .returning({ id: posts.id });
+
+    if (!newPost) {
+      return { success: false, error: "Failed to create post" };
+    }
+
+    await db.insert(postPublications).values(
+      validAccountIds.map((connectedAccountId) => ({
+        postId: newPost.id,
+        connectedAccountId,
+        status: "pending" as const,
+      })),
+    );
+
+    const publishResult = await executePublish(newPost.id, session.user.id);
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/posts");
+    revalidatePath("/dashboard/posts/posted");
+    revalidatePath(`/dashboard/posts/${postId}`);
+    revalidatePath(`/dashboard/posts/${newPost.id}`);
+
+    if (publishResult.error) {
+      return {
+        success: true,
+        newPostId: newPost.id,
+      };
+    }
+    return { success: true, newPostId: newPost.id };
+  } catch (e) {
+    console.error("postAgain error:", e);
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Failed to post again",
     };
   }
 }

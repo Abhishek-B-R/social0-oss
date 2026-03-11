@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { AlertCircle } from "lucide-react";
+import { PostAgainButton } from "./PostAgainButton";
 import { formatDateTime } from "@/lib/date-format";
 import { PlatformIcon } from "./PlatformIcon";
 import type { PublicationRow } from "./posts-list-data";
@@ -249,6 +250,9 @@ export function PostListCards({
           ? "border-l-4 border-l-amber-400 border border-border"
           : "border border-border";
 
+        const showPostAgain =
+          post.status === "published" || post.status === "partial";
+
         return (
           <li
             key={post.id}
@@ -256,7 +260,7 @@ export function PostListCards({
           >
             <Link
               href={`/dashboard/posts/${post.id}`}
-              className="block p-4"
+              className={`block ${showPostAgain ? "p-4 pb-2" : "p-4"}`}
             >
               {/* TOP ROW: [Post type badge] left, [Status badge] right */}
               <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -307,6 +311,11 @@ export function PostListCards({
                 </span>
               </div>
             </Link>
+            {showPostAgain && (
+              <div className="px-4 pb-3 pt-0 flex justify-end">
+                <PostAgainButton postId={post.id} label="Post again" compact />
+              </div>
+            )}
           </li>
         );
       })}
