@@ -126,6 +126,7 @@ export const connectedAccounts = pgTable(
     tokenExpiresAt: timestamp("token_expires_at"),
     platformMetadata: jsonb("platform_metadata").$type<Record<string, unknown>>(),
     isTwitterPremium: boolean("is_twitter_premium").default(false),
+    platformAccountType: text("platform_account_type").default("personal"), // 'personal' | 'company' (e.g. LinkedIn company pages)
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

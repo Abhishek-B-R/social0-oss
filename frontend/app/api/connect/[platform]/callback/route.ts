@@ -810,6 +810,75 @@ export async function GET(
       }
     }
 
+    // LinkedIn: if user has company pages, redirect to select modal instead of connecting immediately
+    if (platform === "linkedin") {
+      try {
+        const orgResponse = await fetch(
+          "https://api.linkedin.com/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED",
+          {
+            headers: {
+              Authorization: `Bearer ${tokens.access_token}`,
+              "LinkedIn-Version": "202304",
+            },
+          },
+        );
+        const orgData = await orgResponse.json().catch(() => ({}));
+        const elements = Array.isArray(orgData.elements) ? orgData.elements : [];
+        if (elements.length > 0) {
+          const orgDetails = await Promise.all(
+            elements.map(async (element: { organization?: string }) => {
+              const orgUrn = element.organization;
+              if (!orgUrn || typeof orgUrn !== "string") return null;
+              const orgId = orgUrn.split(":").pop();
+              if (!orgId) return null;
+              const detailRes = await fetch(
+                `https://api.linkedin.com/v2/organizations/${orgId}?fields=id,localizedName,logoV2`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${tokens.access_token}`,
+                    "LinkedIn-Version": "202304",
+                  },
+                },
+              );
+              const detail = await detailRes.json().catch(() => ({}));
+              return {
+                id: orgId,
+                urn: orgUrn,
+                name: detail.localizedName ?? `Company ${orgId}`,
+              };
+            }),
+          );
+          const companyPages = orgDetails.filter(
+            (o): o is { id: string; urn: string; name: string } => o !== null,
+          );
+          if (companyPages.length > 0) {
+            const stateId = crypto.randomBytes(16).toString("hex");
+            const payload = JSON.stringify({
+              userId,
+              accessToken: tokens.access_token,
+              personalProfile: {
+                id: userInfo.id,
+                name: userInfo.username ?? "Personal Profile",
+                picture: userInfo.profileImageUrl,
+              },
+              companyPages,
+            });
+            await db.insert(verification).values({
+              id: stateId,
+              identifier: "linkedin_accounts",
+              value: encryptToken(payload, stateId),
+              expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+            });
+            const selectUrl = `/dashboard/connections/linkedin/select?token=${stateId}&returnTo=${encodeURIComponent(successRedirect)}`;
+            return safeRedirect(selectUrl, successRedirect);
+          }
+        }
+      } catch (err) {
+        rethrowNextRedirect(err);
+        // Skip silently: connect personal only (fall through)
+      }
+    }
+
     // Check if this exact account (userId + platform + platformUserId) already connected
     const existing = await db.query.connectedAccounts.findFirst({
       where: and(

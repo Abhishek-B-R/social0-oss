@@ -169,6 +169,13 @@
       "when": 1773200000000,
       "tag": "0024_add_posts_failure_reason",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1773300000000,
+      "tag": "0025_add_platform_account_type",
+      "breakpoints": true
     }
   ]
 }

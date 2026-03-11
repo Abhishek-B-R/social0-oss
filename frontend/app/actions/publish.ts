@@ -233,6 +233,7 @@ export async function executePublish(
       platform: connectedAccounts.platform,
       platformUserId: connectedAccounts.platformUserId,
       platformUsername: connectedAccounts.platformUsername,
+      platformAccountType: connectedAccounts.platformAccountType,
       encryptedAccessToken: connectedAccounts.encryptedAccessToken,
       encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
       tokenExpiresAt: connectedAccounts.tokenExpiresAt,
@@ -533,7 +534,10 @@ export async function executePublish(
         return;
       }
 
-      const authorUrn = `urn:li:person:${pub.platformUserId}`;
+      const authorUrn =
+        pub.platformAccountType === "company"
+          ? pub.platformUserId
+          : `urn:li:person:${pub.platformUserId}`;
 
       // Fetch media if post has mediaIds (regular LinkedIn UGC post)
       const mediaAssets: string[] = [];

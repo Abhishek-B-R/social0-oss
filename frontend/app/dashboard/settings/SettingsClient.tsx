@@ -369,7 +369,7 @@ export function SettingsClient({
                 </form>
               </div>
             </div>
-            <div>
+            <div className="mt-10">
               <h2 className="text-lg font-semibold text-text">Appearance</h2>
               <p className="mt-2 text-sm text-text-muted">
                 Choose light, dark, or follow your system setting.
