@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { connectedAccounts } from "@/db/schema";
+import { connectedAccounts, account } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { SettingsClient } from "./SettingsClient";
@@ -27,7 +27,7 @@ export default async function SettingsPage() {
       ? (Intl as unknown as { supportedValuesOf(key: "timeZone"): string[] }).supportedValuesOf("timeZone")
       : ["UTC", "America/New_York", "America/Los_Angeles", "Europe/London", "Europe/Paris", "Asia/Kolkata", "Asia/Tokyo", "Australia/Sydney"];
 
-  const [settings, connections] = await Promise.all([
+  const [settings, connections, credentialAccount] = await Promise.all([
     getUserSettingsSnapshot(),
     db.query.connectedAccounts.findMany({
       where: and(
@@ -42,7 +42,16 @@ export default async function SettingsPage() {
         isTwitterPremium: true,
       },
     }),
+    db.query.account.findFirst({
+      where: and(
+        eq(account.userId, session.user.id),
+        eq(account.providerId, "credential"),
+      ),
+      columns: { id: true },
+    }),
   ]);
+
+  const isCredentialUser = !!credentialAccount;
 
   const connectionsForClient: SettingsConnection[] = connections.map((c) => ({
     id: c.id,
@@ -60,6 +69,7 @@ export default async function SettingsPage() {
       settings={settings}
       connections={connectionsForClient}
       timeZones={timeZones}
+      isCredentialUser={isCredentialUser}
     />
   );
 }

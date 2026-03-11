@@ -3,47 +3,22 @@ import { env } from "@/lib/env";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
-
 /**
- * Sign-up with Cloudflare Turnstile verification.
- * After signup, send OTP and redirect to verify-email (email/password only).
+ * Email/password sign-up. Sends OTP and redirects to verify-email (no Turnstile).
  */
 export async function POST(request: Request) {
-  const secret = env.TURNSTILE_SECRET_KEY;
-  if (!secret) {
-    return NextResponse.json(
-      { error: "Turnstile not configured" },
-      { status: 503 },
-    );
-  }
-
   const body = await request.json().catch(() => ({}));
-  const { name, email, password, turnstileToken }
-    = body as { name?: string; email?: string; password?: string; turnstileToken?: string };
+  const { name, email, password } = body as {
+    name?: string;
+    email?: string;
+    password?: string;
+  };
 
   const normalizedEmail = email ? String(email).trim().toLowerCase() : "";
-  if (!name || !normalizedEmail || !password || !turnstileToken) {
+  if (!name || !normalizedEmail || !password) {
     return NextResponse.json(
-      { error: "Missing name, email, password, or turnstile token" },
+      { error: "Missing name, email, or password" },
       { status: 400 },
-    );
-  }
-
-  const formData = new FormData();
-  formData.append("secret", secret);
-  formData.append("response", turnstileToken);
-
-  const verifyRes = await fetch(TURNSTILE_VERIFY_URL, {
-    method: "POST",
-    body: formData,
-  });
-  const verifyData = (await verifyRes.json()) as { success?: boolean };
-
-  if (!verifyData.success) {
-    return NextResponse.json(
-      { error: "Bot detected" },
-      { status: 403 },
     );
   }
 
@@ -88,9 +63,10 @@ export async function POST(request: Request) {
     return res;
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Sign up failed";
-    const status = e && typeof (e as { status?: number }).status === "number"
-      ? (e as { status: number }).status
-      : 500;
+    const status =
+      e && typeof (e as { status?: number }).status === "number"
+        ? (e as { status: number }).status
+        : 500;
     return NextResponse.json({ error: msg }, { status });
   }
 }

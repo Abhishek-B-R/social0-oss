@@ -14,6 +14,12 @@ export default async function OnboardingLayout({
     redirect("/");
   }
 
+  if (session.user.emailVerified === false) {
+    redirect(
+      `/auth/verify-email?email=${encodeURIComponent(session.user.email ?? "")}`,
+    );
+  }
+
   const status = await getOnboardingStatus();
   if (status?.onboardingCompleted) {
     redirect("/dashboard");

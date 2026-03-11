@@ -31,6 +31,12 @@ export default async function DashboardLayout({
     redirect("/");
   }
 
+  if (session.user.emailVerified === false) {
+    redirect(
+      `/auth/verify-email?email=${encodeURIComponent(session.user.email ?? "")}`,
+    );
+  }
+
   const onboarding = await getOnboardingStatus();
   // Allow connect flow (e.g. Instagram page selection) so users can complete OAuth and return to onboarding/step3 or connections
   const pathname =

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { signIn, signUp } from "@/lib/auth-client";
@@ -11,7 +12,12 @@ const CALLBACK_URL = "/dashboard/composer";
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
 export default function AuthPage() {
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [resetSuccess, setResetSuccess] = useState(false);
+  useEffect(() => {
+    if (searchParams.get("reset") === "success") setResetSuccess(true);
+  }, [searchParams]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -57,36 +63,36 @@ export default function AuthPage() {
     }
     setLoading(true);
     try {
-      if (TURNSTILE_SITE_KEY) {
-        const res = await fetch("/api/auth/sign-up-with-turnstile", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            name: name.trim(),
-            email: email.trim().toLowerCase(),
-            password,
-            turnstileToken,
-          }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          setError(data.error ?? "Sign up failed");
-          return;
-        }
-        window.location.href = CALLBACK_URL;
+      const signUpUrl = TURNSTILE_SITE_KEY
+        ? "/api/auth/sign-up-with-turnstile"
+        : "/api/auth/sign-up";
+      const body = TURNSTILE_SITE_KEY
+        ? { name: name.trim(), email: email.trim().toLowerCase(), password, turnstileToken }
+        : { name: name.trim(), email: email.trim().toLowerCase(), password };
+      const res = await fetch(signUpUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (res.redirected && res.url) {
+        window.location.href = res.url;
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string | { message?: string }; message?: string };
+        const msg =
+          typeof data.error === "string"
+            ? data.error
+            : data.error?.message ?? data.message ?? "Sign up failed";
+        setError(msg);
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (data.url) {
+        window.location.href = data.url;
       } else {
-        const { error: err } = await signUp.email({
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-          password,
-          callbackURL: CALLBACK_URL,
-        });
-        if (err) {
-          setError(err.message ?? "Sign up failed");
-          return;
-        }
-        window.location.href = CALLBACK_URL;
+        window.location.href = `/auth/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`;
       }
     } catch {
       setError("Sign up failed");
@@ -195,6 +201,11 @@ export default function AuthPage() {
               </button>
             </div>
 
+            {resetSuccess && (
+              <p className="rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-sm py-2 px-3 mb-4">
+                Password reset successfully. You can sign in with your new password.
+              </p>
+            )}
             {mode === "signin" ? (
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div>
@@ -216,12 +227,20 @@ export default function AuthPage() {
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="signin-password"
-                    className="block text-sm font-medium text-foreground mb-1"
-                  >
-                    Password
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label
+                      htmlFor="signin-password"
+                      className="block text-sm font-medium text-foreground"
+                    >
+                      Password
+                    </label>
+                    <Link
+                      href="/auth/forgot-password"
+                      className="text-sm text-emerald-600 hover:text-emerald-700"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
                   <input
                     id="signin-password"
                     type="password"
