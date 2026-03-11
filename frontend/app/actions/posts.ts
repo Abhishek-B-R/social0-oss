@@ -145,12 +145,29 @@ export async function createPost(
     );
 
     if (mode === "now") {
-      const publishResult = await executePublish(postRow.id, session.user.id);
-      const succeededCount =
-        publishResult.results?.filter((r) => r.status === "published")
-          .length ?? 0;
-      const allPlatformsFailed =
-        (publishResult.results?.length ?? 0) > 0 && succeededCount === 0;
+      const skipPublish =
+        metadata &&
+        typeof metadata === "object" &&
+        (metadata as Record<string, unknown>).__skipAutoPublish === true;
+
+      if (!skipPublish) {
+        const publishResult = await executePublish(postRow.id, session.user.id);
+        const succeededCount =
+          publishResult.results?.filter((r) => r.status === "published")
+            .length ?? 0;
+        const allPlatformsFailed =
+          (publishResult.results?.length ?? 0) > 0 && succeededCount === 0;
+
+        revalidatePath("/dashboard");
+        revalidatePath("/dashboard/posts");
+        revalidatePath("/dashboard/create");
+
+        return {
+          success: true,
+          postId: postRow.id,
+          allPlatformsFailed: allPlatformsFailed || undefined,
+        };
+      }
 
       revalidatePath("/dashboard");
       revalidatePath("/dashboard/posts");
@@ -159,7 +176,6 @@ export async function createPost(
       return {
         success: true,
         postId: postRow.id,
-        allPlatformsFailed: allPlatformsFailed || undefined,
       };
     }
 

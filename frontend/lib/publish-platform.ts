@@ -46,6 +46,14 @@ type Post = {
   metadata?: Record<string, unknown> | null;
 };
 
+/** Runtime options per platform (not persisted). */
+export type PlatformPublishOptions = {
+  instagram?: {
+    coverImageUrl?: string;
+    isTrialReel: boolean;
+  };
+};
+
 export type ThreadPart = { text: string; mediaIds: string[] };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -153,6 +161,7 @@ export async function publishToPlatform(
   post: Post,
   accessToken: string,
   accessSecret: string | null,
+  platformOptions?: PlatformPublishOptions,
 ): Promise<PublishPlatformResult> {
   const mediaCountErr = validateMediaCount(post.mediaIds ?? null);
   if (mediaCountErr) {
@@ -181,7 +190,12 @@ export async function publishToPlatform(
       result = await publishToPinterest(pub, post, accessToken);
       break;
     case "instagram":
-      result = await publishToInstagram(pub, post, accessToken);
+      result = await publishToInstagram(
+        pub,
+        post,
+        accessToken,
+        platformOptions?.instagram,
+      );
       break;
     case "tiktok":
       result = await publishToTikTok(pub, post, accessToken);
@@ -1627,6 +1641,7 @@ async function publishToInstagram(
   pub: Pub,
   post: Post,
   accessToken: string,
+  instagramOptions?: { coverImageUrl?: string; isTrialReel: boolean },
 ): Promise<PublishPlatformResult> {
   const igUserId = pub.platformUserId;
   console.log("🔍 Instagram publish attempt:", {
@@ -1849,16 +1864,31 @@ async function publishToInstagram(
       mediaType: "image",
     });
   } else if (orderedMedia.length === 1 && videoUrl) {
-    // Single video
+    // Single video (Reels)
     const containerBody: {
       caption?: string;
       video_url?: string;
       media_type?: string;
+      cover_url?: string;
+      share_to_feed?: boolean;
     } = {
       video_url: videoUrl,
       media_type: "REELS", // Videos must be posted as Reels
       caption: caption || undefined,
     };
+    if (instagramOptions?.coverImageUrl) {
+      containerBody.cover_url = instagramOptions.coverImageUrl;
+    }
+    if (instagramOptions?.isTrialReel === true) {
+      containerBody.share_to_feed = false; // Trial reel: test with non-followers first
+    }
+
+    console.log("[Instagram Reels] Container creation request body:", {
+      ...containerBody,
+      cover_url: containerBody.cover_url
+        ? `${containerBody.cover_url.slice(0, 60)}...`
+        : undefined,
+    });
 
     const containerRes = await fetch(
       `https://graph.instagram.com/v21.0/${igUserId}/media`,
@@ -1872,7 +1902,8 @@ async function publishToInstagram(
       },
     );
 
-    containerData = (await containerRes.json().catch(() => ({}))) as {
+    const rawContainerJson = await containerRes.json().catch(() => ({}));
+    containerData = rawContainerJson as {
       id?: string;
       error?: { message?: string; type?: string; code?: number };
     };
@@ -1888,9 +1919,14 @@ async function publishToInstagram(
       return { status: "failed", lastError: err, error: err };
     }
 
+    if (containerData.error) {
+      console.warn("[Instagram Reels] Container response included error/warning:", containerData.error);
+    }
     console.log("✅ Instagram container created:", {
       containerId: containerData.id,
       mediaType: "video",
+      hadCoverUrl: !!containerBody.cover_url,
+      responseKeys: Object.keys(rawContainerJson),
     });
   } else {
     return {

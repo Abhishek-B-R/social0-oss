@@ -288,7 +288,7 @@ export function ConnectionsList({
             <p className="mb-2 text-xs font-medium text-text-muted">
               Token management
             </p>
-            <div className="flex flex-wrap items-center gap-2 justify-between">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={handleRefreshAllPremium}
@@ -309,22 +309,6 @@ export function ConnectionsList({
                   Refresh Twitter Premium Status
                 </span>
               </button>
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-muted"
-                  aria-hidden
-                >
-                  <RefreshCw className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-                  Refresh account tokens
-                </span>
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-muted"
-                  aria-hidden
-                >
-                  <X className="h-3.5 w-3.5 shrink-0 text-destructive" strokeWidth={2} />
-                  Remove account
-                </span>
-              </div>
             </div>
           </div>
         )}

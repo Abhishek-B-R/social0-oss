@@ -109,6 +109,14 @@ export type PublishResult = {
   }[];
 };
 
+/** Runtime-only options at publish time (not persisted to DB). */
+export type PublishOptions = {
+  instagramConfig?: {
+    coverImageUrl?: string;
+    isTrialReel: boolean;
+  };
+};
+
 /**
  * Returns the list of publications for a post (for progress UI).
  * Caller must be authenticated and own the post.
@@ -153,24 +161,28 @@ export async function getPostPublicationList(postId: string): Promise<
 export async function publishSinglePublication(
   postId: string,
   publicationId: string,
+  options?: PublishOptions,
 ): Promise<PublishResult> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return { success: false, error: "Unauthorized", results: [] };
   }
-  return executePublish(postId, session.user.id, publicationId);
+  return executePublish(postId, session.user.id, publicationId, options);
 }
 
 /**
  * Core publish logic: fetches post + publications, posts to each platform, updates DB.
  * When userId is provided, verifies post belongs to that user.
  * When publicationIdFilter is provided, only that publication is processed (for per-platform progress).
+ * options: runtime-only (e.g. instagramConfig) — not persisted.
  */
 export async function executePublish(
   postId: string,
   userId?: string,
   publicationIdFilter?: string,
+  options?: PublishOptions,
 ): Promise<PublishResult> {
+  console.log("[executePublish] called — options:", JSON.stringify(options ?? null));
   if (!postId || !isValidPostId(postId)) {
     return {
       success: false,
@@ -1342,6 +1354,29 @@ export async function executePublish(
           pub.platform,
           pub.isTwitterPremium ?? false,
         );
+        let platformOptions: { instagram?: { coverImageUrl?: string; isTrialReel: boolean } } | undefined;
+        if (pub.platform === "instagram" && options?.instagramConfig) {
+          // coverImageUrl comes from our own uploadFile() flow — not user-supplied.
+          // Instagram fetches the URL (not our server), so SSRF doesn't apply here.
+          // We do a basic sanity check: must be a valid https URL.
+          let coverImageUrl: string | undefined;
+          const rawUrl = options.instagramConfig.coverImageUrl?.trim();
+          if (rawUrl) {
+            try {
+              const parsed = new URL(rawUrl);
+              if (parsed.protocol === "https:") coverImageUrl = rawUrl;
+            } catch {
+              // invalid URL — leave undefined
+            }
+          }
+          console.log("[Instagram cover] coverImageUrl from options:", rawUrl, "→ accepted:", !!coverImageUrl);
+          platformOptions = {
+            instagram: {
+              coverImageUrl,
+              isTrialReel: options.instagramConfig.isTrialReel === true,
+            },
+          };
+        }
         const platformPostResult = await publishToPlatform(
           {
             publicationId: pub.publicationId,
@@ -1359,6 +1394,7 @@ export async function executePublish(
           },
           tokenForPublish,
           platformAccessSecret,
+          platformOptions,
         );
         console.log(
           `[${pub.platform}] publishToPlatform result:`,
@@ -1479,7 +1515,10 @@ export async function executePublish(
  * Server action: publishes a post to selected LinkedIn accounts.
  * Verifies the current user owns the post.
  */
-export async function publishPost(postId: string): Promise<PublishResult> {
+export async function publishPost(
+  postId: string,
+  options?: PublishOptions,
+): Promise<PublishResult> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return {
@@ -1508,5 +1547,5 @@ export async function publishPost(postId: string): Promise<PublishResult> {
     };
   }
 
-  return executePublish(postId, session.user.id);
+  return executePublish(postId, session.user.id, undefined, options);
 }

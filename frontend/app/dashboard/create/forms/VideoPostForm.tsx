@@ -58,6 +58,7 @@ import {
   Check,
   Circle,
   Clapperboard,
+  ImagePlus,
   Info,
 } from "lucide-react";
 import {
@@ -182,6 +183,7 @@ export function VideoPostForm({
     | "pinterest"
     | "tiktok"
     | "youtube"
+    | "instagram"
     | null;
   const [activeConfigPanel, setActiveConfigPanel] = useState<ConfigPanel>(null);
   const [selectedPinterestAccountIndex, setSelectedPinterestAccountIndex] =
@@ -189,6 +191,18 @@ export function VideoPostForm({
   const [selectedTiktokAccountIndex, setSelectedTiktokAccountIndex] =
     useState(0);
   const [youtubeTitle, setYoutubeTitle] = useState("");
+  const [instagramConfig, setInstagramConfig] = useState<{
+    coverImageUrl?: string;
+    isTrialReel: boolean;
+  }>({ isTrialReel: false });
+  const [instagramCoverUploading, setInstagramCoverUploading] =
+    useState(false);
+  const [instagramCoverError, setInstagramCoverError] = useState<string | null>(
+    null,
+  );
+  const [instagramCoverWarning, setInstagramCoverWarning] = useState<
+    string | null
+  >(null);
   const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
   const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   const hasRestoredAutoFeaturesRef = useRef(false);
@@ -845,6 +859,9 @@ export function VideoPostForm({
   const youtubeAccounts = selectedAccounts.filter(
     (a) => a.platform === "youtube",
   );
+  const hasInstagramSelected = selectedAccounts.some(
+    (a) => a.platform === "instagram",
+  );
   const hasVideo = !!videoFile || !!existingVideoId;
   const submitDisabled =
     accounts.length === 0 ||
@@ -1026,6 +1043,9 @@ export function VideoPostForm({
         isVertical,
       };
     }
+    if (hasInstagramSelected) {
+      metadata.__skipAutoPublish = true;
+    }
     const meta = metadata;
 
     const effectiveMode = intendedModeRef.current ?? mode;
@@ -1162,9 +1182,19 @@ export function VideoPostForm({
     }
     if (effectiveMode === "now" && result.postId) {
       setPublishedPostId(result.postId);
+      console.log("[cover] hasInstagramSelected:", hasInstagramSelected, "instagramConfig:", JSON.stringify(instagramConfig));
+      const publishOptions = hasInstagramSelected
+        ? {
+            instagramConfig: {
+              coverImageUrl: instagramConfig.coverImageUrl,
+              isTrialReel: instagramConfig.isTrialReel,
+            },
+          }
+        : undefined;
+      console.log("[cover] publishOptions being sent:", JSON.stringify(publishOptions));
       const list = await getPostPublicationList(result.postId);
       if (list.length === 0) {
-        const publishResult = await publishPost(result.postId);
+        const publishResult = await publishPost(result.postId, publishOptions);
         const succeededCount =
           publishResult?.results?.filter((r) => r.status === "published")
             .length ?? 0;
@@ -1200,6 +1230,7 @@ export function VideoPostForm({
         const singleResult = await publishSinglePublication(
           result.postId,
           pub.publicationId,
+          publishOptions,
         );
         const res = singleResult.results[0];
         setPlatformStatuses((prev) =>
@@ -1220,7 +1251,7 @@ export function VideoPostForm({
           ),
         );
       }
-      await publishPost(result.postId);
+      await publishPost(result.postId, publishOptions);
       if (
         resurfaceConfig &&
         selectedAccounts.some((a) => a.platform === "twitter_x")
@@ -1574,7 +1605,8 @@ export function VideoPostForm({
           {(showPlatformCaptionsSection ||
             hasPinterestSelected ||
             hasTikTokSelected ||
-            hasYouTubeSelected) && (
+            hasYouTubeSelected ||
+            hasInstagramSelected) && (
             <div
               ref={pinterestSectionRef}
               className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm"
@@ -1684,6 +1716,34 @@ export function VideoPostForm({
                     )}
                     <span>YouTube Title</span>
                     {activeConfigPanel === "youtube" ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                )}
+                {hasInstagramSelected && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveConfigPanel((p) =>
+                        p === "instagram" ? null : "instagram",
+                      )
+                    }
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
+                      activeConfigPanel === "instagram"
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
+                    }`}
+                  >
+                    {instagramConfig.coverImageUrl ||
+                    instagramConfig.isTrialReel ? (
+                      <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                    ) : (
+                      <Circle className="h-3.5 w-3.5 text-text-muted" />
+                    )}
+                    <span>Instagram Config</span>
+                    {activeConfigPanel === "instagram" ? (
                       <ChevronUp className="h-3.5 w-3.5" />
                     ) : (
                       <ChevronDown className="h-3.5 w-3.5" />
@@ -1883,6 +1943,155 @@ export function VideoPostForm({
                     <p className="text-xs text-text-muted text-right">
                       {100 - youtubeTitle.length}/100 characters remaining
                     </p>
+                  </div>
+                </div>
+              )}
+
+              {activeConfigPanel === "instagram" && (
+                <div className="mt-2 border-t border-border pt-4 space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-text mb-1">
+                      Custom Cover Image
+                    </h4>
+                    <p className="text-xs text-text-muted mb-2">
+                      Upload an image to use as the reel cover instead of a video
+                      frame. For best results use 9:16 (1080×1920), JPEG, under
+                      8MB.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text transition-colors hover:bg-bg-muted disabled:pointer-events-none disabled:opacity-60">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png"
+                          className="sr-only"
+                          disabled={instagramCoverUploading}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            e.target.value = "";
+                            if (!file) return;
+                            setInstagramCoverError(null);
+                            setInstagramCoverWarning(null);
+                            const isJpeg = file.type.includes("jpeg") || file.type.includes("jpg");
+                            if (!isJpeg) {
+                              setInstagramCoverWarning(
+                                "Instagram recommends JPEG for reel covers.",
+                              );
+                            }
+                            setInstagramCoverUploading(true);
+                            try {
+                              const { url } = await uploadFile(file, 0);
+                              console.log("[cover] url:", url);
+                              setInstagramConfig((prev) => ({
+                                ...prev,
+                                coverImageUrl: url,
+                              }));
+                            } catch (err) {
+                              setInstagramCoverError(
+                                err instanceof Error
+                                  ? err.message
+                                  : "Upload failed",
+                              );
+                              setInstagramConfig((prev) => ({
+                                ...prev,
+                                coverImageUrl: undefined,
+                              }));
+                              setInstagramCoverWarning(null);
+                            } finally {
+                              setInstagramCoverUploading(false);
+                            }
+                          }}
+                        />
+                        <ImagePlus className="h-4 w-4" />
+                        Upload Cover
+                      </label>
+                      {instagramConfig.coverImageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInstagramConfig((prev) => ({
+                              ...prev,
+                              coverImageUrl: undefined,
+                            }));
+                            setInstagramCoverWarning(null);
+                          }}
+                          className="text-xs font-medium text-text-muted hover:text-text"
+                        >
+                          Remove cover
+                        </button>
+                      )}
+                    </div>
+                    {instagramCoverError && (
+                      <p className="mt-1 text-xs text-destructive">
+                        {instagramCoverError}
+                      </p>
+                    )}
+                    {instagramCoverWarning && (
+                      <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                        {instagramCoverWarning}
+                      </p>
+                    )}
+                    {instagramConfig.coverImageUrl && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <img
+                          src={instagramConfig.coverImageUrl}
+                          alt="Reel cover"
+                          className="h-12 w-12 rounded border border-border object-cover"
+                          onLoad={(e) => {
+                            const img = e.currentTarget;
+                            const w = img.naturalWidth;
+                            const h = img.naturalHeight;
+                            if (!w || !h) return;
+                            const ratio = w / h;
+                            const targetRatio = 9 / 16;
+                            if (Math.abs(ratio - targetRatio) > 0.05) {
+                              setInstagramCoverWarning((prev) =>
+                                prev
+                                  ? `${prev} For best results use 9:16 (1080×1920).`
+                                  : "For best results use 9:16 (1080×1920).",
+                              );
+                            }
+                          }}
+                        />
+                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                          Cover image set
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-bg p-3">
+                    <div>
+                      <h4 className="text-sm font-medium text-text">
+                        Trial Reel
+                      </h4>
+                      <p className="text-xs text-text-muted">
+                        Test your reel with non-followers first before sharing
+                        with everyone.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={instagramConfig.isTrialReel}
+                      onClick={() =>
+                        setInstagramConfig((prev) => ({
+                          ...prev,
+                          isTrialReel: !prev.isTrialReel,
+                        }))
+                      }
+                      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-accent/20 ${
+                        instagramConfig.isTrialReel
+                          ? "border-accent bg-accent"
+                          : "border-border bg-bg-muted"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                          instagramConfig.isTrialReel
+                            ? "translate-x-6"
+                            : "translate-x-1"
+                        }`}
+                      />
+                    </button>
                   </div>
                 </div>
               )}
