@@ -120,7 +120,8 @@ export async function GET(request: Request) {
       if (
         xPub.length === 0 ||
         !xPub[0].platformPostId ||
-        !xPub[0].encryptedAccessToken
+        !xPub[0].encryptedAccessToken ||
+        !xPub[0].connectedAccountId
       ) {
         await db
           .update(resurfaceEvents)

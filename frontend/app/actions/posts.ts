@@ -273,7 +273,13 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
     .from(postPublications)
     .where(eq(postPublications.postId, postId));
 
-  const accountIds = [...new Set(publications.map((p) => p.connectedAccountId))];
+  const accountIds = [
+    ...new Set(
+      publications
+        .map((p) => p.connectedAccountId)
+        .filter((id): id is string => id != null),
+    ),
+  ];
   if (accountIds.length === 0) {
     return { success: false, error: "No accounts to post to" };
   }

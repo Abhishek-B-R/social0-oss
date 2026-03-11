@@ -28,7 +28,8 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "LINKEDIN_CLIENT_SECRET",
     authUrl: "https://www.linkedin.com/oauth/v2/authorization",
     tokenUrl: "https://www.linkedin.com/oauth/v2/accessToken",
-    // OpenID Connect + w_member_social for profile and future posting
+    // OpenID Connect + w_member_social for profile and posting.
+    // When LinkedIn MDP approves org access, add: r_organization_social w_organization_social r_organization_admin
     scope: "openid profile email w_member_social",
   },
   instagram: {

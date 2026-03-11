@@ -823,6 +823,8 @@ export async function GET(
           },
         );
         const orgData = await orgResponse.json().catch(() => ({}));
+        console.log("[LinkedIn] orgResponse status:", orgResponse.status);
+        console.log("[LinkedIn] orgData:", JSON.stringify(orgData, null, 2));
         const elements = Array.isArray(orgData.elements) ? orgData.elements : [];
         if (elements.length > 0) {
           const orgDetails = await Promise.all(
@@ -851,6 +853,8 @@ export async function GET(
           const companyPages = orgDetails.filter(
             (o): o is { id: string; urn: string; name: string } => o !== null,
           );
+          console.log("[LinkedIn] orgDetails count:", orgDetails.length);
+          console.log("[LinkedIn] redirecting to select:", companyPages.length > 0);
           if (companyPages.length > 0) {
             const stateId = crypto.randomBytes(16).toString("hex");
             const payload = JSON.stringify({

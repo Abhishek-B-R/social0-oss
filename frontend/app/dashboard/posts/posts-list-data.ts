@@ -50,7 +50,7 @@ export type PostsListParams = {
 };
 
 export type PublicationRow = {
-  connectedAccountId: string;
+  connectedAccountId: string | null;
   status: string | null;
   platformPostUrl: string | null;
   platformPostId: string | null;
@@ -164,7 +164,11 @@ export async function getPostsListData({
 
   const platforms = [...new Set(publications.map((p) => p.platform))];
   const accountIds = [
-    ...new Set(publications.map((p) => p.connectedAccountId)),
+    ...new Set(
+      publications
+        .map((p) => p.connectedAccountId)
+        .filter((id): id is string => id != null),
+    ),
   ];
 
   if (platformFilter) {
@@ -409,7 +413,9 @@ export async function getPostForEdit(
     status: post.status,
     scheduledAt: post.scheduledAt,
     mediaIds: post.mediaIds ?? [],
-    connectedAccountIds: pubs.map((p) => p.connectedAccountId),
+    connectedAccountIds: pubs
+      .map((p) => p.connectedAccountId)
+      .filter((id): id is string => id != null),
   };
 }
 
