@@ -48,10 +48,21 @@ export async function POST(request: Request) {
       }
     }
 
-    await auth.api.sendVerificationOTP({
-      body: { email: normalizedEmail, type: "email-verification" },
-      headers: h,
-    });
+    try {
+      await auth.api.sendVerificationOTP({
+        body: { email: normalizedEmail, type: "email-verification" },
+        headers: h,
+      });
+    } catch (otpError) {
+      const code = otpError && typeof (otpError as { code?: string }).code === "string"
+        ? (otpError as { code: string }).code
+        : "";
+      const benignCodes = ["USER_ALREADY_EXISTS", "EMAIL_ALREADY_VERIFIED"];
+      if (!benignCodes.includes(code)) {
+        throw otpError;
+      }
+      // Account already created; redirect so user can use Resend on verify-email page
+    }
 
     const redirectUrl = new URL("/auth/verify-email", request.url);
     redirectUrl.searchParams.set("email", normalizedEmail);

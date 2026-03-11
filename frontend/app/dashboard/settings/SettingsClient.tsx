@@ -948,14 +948,14 @@ export function SettingsClient({
                 <ThemeToggle />
               </div>
             </div>
-            {isCredentialUser && (
-              <>
-                <div className="border-t border-border my-8" />
-                <div>
-                  <h2 className="text-lg font-semibold text-text">Security</h2>
-                  <p className="mt-1 text-sm text-text-muted">
-                    Sign out from all active sessions across devices.
-                  </p>
+            <div className="border-t border-border my-8" />
+            <div>
+              <h2 className="text-lg font-semibold text-text">Security</h2>
+              <p className="mt-1 text-sm text-text-muted">
+                Sign out from all active sessions across devices.
+              </p>
+              {isCredentialUser && (
+                <>
                   <div className="mt-4 flex flex-wrap gap-3">
                     <ChangePasswordModal
                       onError={() => {}}
@@ -976,17 +976,17 @@ export function SettingsClient({
                       Email updated successfully.
                     </p>
                   )}
-                  <form action={signOutAllDevices} className="mt-6">
-                    <button
-                      type="submit"
-                      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Sign Out All Devices
-                    </button>
-                  </form>
-                </div>
-              </>
-            )}
+                </>
+              )}
+              <form action={signOutAllDevices} className={isCredentialUser ? "mt-6" : "mt-4"}>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Sign Out All Devices
+                </button>
+              </form>
+            </div>
           </section>
         )}
 

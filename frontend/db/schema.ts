@@ -48,7 +48,7 @@ export const publicationStatusEnum = pgEnum("publication_status", [
 // We reference them here for foreign key relationships and to pass to Better Auth adapter.
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
-  email: text("email").notNull(),
+  email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified"),
   name: text("name"),
   image: text("image"),

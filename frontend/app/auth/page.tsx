@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
@@ -11,7 +11,7 @@ import { signIn, signUp } from "@/lib/auth-client";
 const CALLBACK_URL = "/dashboard/composer";
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
-export default function AuthPage() {
+function AuthPageContent() {
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [resetSuccess, setResetSuccess] = useState(false);
@@ -401,5 +401,23 @@ export default function AuthPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+function AuthPageFallback() {
+  return (
+    <div className="min-h-screen flex flex-col bg-background font-sans text-foreground">
+      <main className="flex-1 flex items-center justify-center px-4 py-12">
+        <p className="text-muted-foreground">Loading…</p>
+      </main>
+    </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<AuthPageFallback />}>
+      <AuthPageContent />
+    </Suspense>
   );
 }

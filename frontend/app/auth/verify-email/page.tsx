@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
@@ -9,7 +9,7 @@ import { authClient } from "@/lib/auth-client";
 const RESEND_COOLDOWN_SEC = 30;
 const OTP_LENGTH = 6;
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const emailParam = searchParams.get("email") ?? "";
   const [email] = useState(decodeURIComponent(emailParam));
@@ -212,5 +212,23 @@ export default function VerifyEmailPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+function VerifyEmailFallback() {
+  return (
+    <div className="min-h-screen flex flex-col bg-background font-sans text-foreground">
+      <main className="flex-1 flex items-center justify-center px-4 py-12">
+        <p className="text-muted-foreground">Loading…</p>
+      </main>
+    </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<VerifyEmailFallback />}>
+      <VerifyEmailContent />
+    </Suspense>
   );
 }

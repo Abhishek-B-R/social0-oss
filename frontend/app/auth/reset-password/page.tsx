@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -8,7 +8,7 @@ import { authClient } from "@/lib/auth-client";
 
 const OTP_LENGTH = 6;
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const emailParam = searchParams.get("email") ?? "";
@@ -247,5 +247,23 @@ export default function ResetPasswordPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+function ResetPasswordFallback() {
+  return (
+    <div className="min-h-screen flex flex-col bg-background font-sans text-foreground">
+      <main className="flex-1 flex items-center justify-center px-4 py-12">
+        <p className="text-muted-foreground">Loading…</p>
+      </main>
+    </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<ResetPasswordFallback />}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

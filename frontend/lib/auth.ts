@@ -42,7 +42,6 @@ export const auth = betterAuth({
       },
       otpLength: 6,
       expiresIn: 600,
-      changeEmail: { enabled: true },
     }),
   ],
   emailAndPassword: {
