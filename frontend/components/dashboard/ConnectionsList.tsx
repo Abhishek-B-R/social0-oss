@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { getPlatformIcon } from "@/lib/platform-icons";
 import { PLATFORMS } from "@/lib/platforms";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { ConnectPlatformButton } from "./ConnectPlatformButton";
 import { DisconnectAccountModal } from "./DisconnectAccountModal";
 import { AlertTriangle, X } from "lucide-react";
+import { IconRefresh, IconCrown } from "@tabler/icons-react";
+import { cn } from "@/lib/utils";
 
 const PLATFORM_UI: Record<string, { name: string; color: string }> = {
   linkedin: { name: "LinkedIn", color: "bg-[#0A66C2]" },
@@ -50,6 +53,25 @@ export function ConnectionsList({
     null,
   );
   const [disconnectLabel, setDisconnectLabel] = useState("");
+  const [isRefreshingPremium, setIsRefreshingPremium] = useState<string | null>(
+    null,
+  );
+  const router = useRouter();
+
+  const handleRefreshPremium = async (accountId: string) => {
+    setIsRefreshingPremium(accountId);
+    try {
+      const res = await fetch("/api/accounts/refresh-premium", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      router.refresh();
+    } finally {
+      setIsRefreshingPremium(null);
+    }
+  };
 
   const atLimit =
     !!accountLimit && accountLimit.currentTotal >= accountLimit.limitTotal;
@@ -184,6 +206,48 @@ export function ConnectionsList({
                               </span>
                             )}
                           </div>
+                          {account.platform === "twitter_x" && (
+                            <div className="flex shrink-0 items-center gap-1">
+                              {account.isTwitterPremium && (
+                                <span
+                                  className="flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400"
+                                  title="X Premium"
+                                >
+                                  <IconCrown
+                                    className="h-3 w-3"
+                                    strokeWidth={1.5}
+                                  />
+                                  <span className="hidden sm:inline">
+                                    Premium
+                                  </span>
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleRefreshPremium(account.id)
+                                }
+                                disabled={
+                                  isRefreshingPremium === account.id
+                                }
+                                className={cn(
+                                  "flex items-center gap-0.5 rounded p-0.5 text-[10px] text-text-muted transition-colors hover:text-text hover:bg-bg-muted disabled:opacity-50",
+                                  isRefreshingPremium === account.id &&
+                                    "cursor-wait",
+                                )}
+                                title="Refresh Premium status"
+                              >
+                                <IconRefresh
+                                  className={cn(
+                                    "h-3 w-3",
+                                    isRefreshingPremium === account.id &&
+                                      "animate-spin",
+                                  )}
+                                  strokeWidth={1.5}
+                                />
+                              </button>
+                            </div>
+                          )}
                           {isExpired && (
                             <Link
                               href={`/api/connect/${account.platform}`}

@@ -252,6 +252,14 @@ export async function GET(
           isActive: true,
         });
       }
+      try {
+        const { refreshTwitterPremiumStatus } = await import(
+          "@/lib/twitter-premium"
+        );
+        await refreshTwitterPremiumStatus(accountId);
+      } catch {
+        // Best effort — don't block redirect
+      }
       const twitterRedirect =
         secretDecrypted.returnTo &&
         typeof secretDecrypted.returnTo === "string" &&
