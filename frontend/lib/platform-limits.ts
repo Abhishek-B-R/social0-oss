@@ -32,7 +32,6 @@ export const VIDEO_LIMITS: Record<
   },
   youtube: {
     maxDuration: 300, // 5min — platform cap; ≤3min vertical → Shorts, 3–5min → regular
-    shortMaxDuration: 180, // 3min threshold for Shorts classification
     maxSize: 256 * MB,
     formats: ["mp4", "mov"],
   },
@@ -165,7 +164,9 @@ export function getAccountsOverVideoLimit(
     const limitMin = Math.floor(v.limitSeconds / 60);
     const limitSec = v.limitSeconds % 60;
     const limitStr =
-      limitSec > 0 ? `${limitMin}:${limitSec.toString().padStart(2, "0")}` : `${limitMin} min`;
+      limitSec > 0
+        ? `${limitMin}:${limitSec.toString().padStart(2, "0")}`
+        : `${limitMin} min`;
     const isTwitter = platform === "twitter_x";
     const displayName =
       platform === "youtube" ? "YouTube Shorts" : v.platformDisplayName;

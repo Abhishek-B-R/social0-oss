@@ -45,6 +45,10 @@ import {
   MAX_VIDEO_DURATION_SECONDS,
   VIDEO_DURATION_MESSAGE,
 } from "@/lib/video-duration";
+import {
+  getAccountsOverVideoLimit,
+  type VideoLimitWarning,
+} from "@/lib/platform-limits";
 
 const PREVIEW_MEDIA_MAX_H = 200;
 const MAX_ATTACHMENTS_PER_POST = 4;
@@ -214,6 +218,8 @@ type MediaVideo = {
   order: number;
   thumbnailUrl?: string;
   mediaId?: string;
+  /** Duration in seconds; set when file is added for limit warnings. */
+  durationSeconds?: number;
 };
 
 type ThreadPost = {
@@ -674,7 +680,70 @@ export function ThreadsPostForm({
     });
   };
 
-  const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
+  const maxVideoDurationSeconds = useMemo(() => {
+    let max = 0;
+    posts.forEach((p) =>
+      p.videos.forEach((v) => {
+        const d = v.durationSeconds ?? 0;
+        if (d > max) max = d;
+      }),
+    );
+    return max;
+  }, [posts]);
+
+  const videoLimitState = useMemo(() => {
+    if (maxVideoDurationSeconds <= 0)
+      return {
+        accountIds: new Set<string>(),
+        warnings: [] as VideoLimitWarning[],
+        softAccountIds: new Set<string>(),
+        softWarnings: [] as VideoLimitWarning[],
+      };
+    return getAccountsOverVideoLimit(accounts, maxVideoDurationSeconds);
+  }, [accounts, maxVideoDurationSeconds]);
+
+  const videoLimitDisabledReasons = useMemo(() => {
+    const reasons: Record<string, string> = {};
+    for (const acc of accounts) {
+      if (videoLimitState.accountIds.has(acc.id)) {
+        const w = videoLimitState.warnings.find((x) => x.platform === acc.platform);
+        reasons[acc.id] = w?.message ?? `Video exceeds ${acc.platform} limit`;
+      }
+    }
+    return reasons;
+  }, [accounts, videoLimitState]);
+
+  const videoLimitWarningReasons = useMemo(() => {
+    const reasons: Record<string, string> = {};
+    for (const acc of accounts) {
+      if (videoLimitState.softAccountIds.has(acc.id)) {
+        const w = videoLimitState.softWarnings.find((x) => x.platform === acc.platform);
+        reasons[acc.id] = w?.message ?? "May limit reach to new audiences.";
+      }
+    }
+    return reasons;
+  }, [accounts, videoLimitState]);
+
+  useEffect(() => {
+    if (maxVideoDurationSeconds <= 0) return;
+    const { accountIds } = getAccountsOverVideoLimit(accounts, maxVideoDurationSeconds);
+    if (accountIds.size === 0) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      prev.forEach((id) => {
+        if (accountIds.has(id)) {
+          next.delete(id);
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [maxVideoDurationSeconds, accounts]);
+
+  const selectableAccounts = accounts.filter(
+    (a) => !a.tokenExpired && !videoLimitState.accountIds.has(a.id),
+  );
   const selectAll = () => {
     if (selectableAccounts.every((a) => selectedIds.has(a.id))) {
       setSelectedIds(new Set());
@@ -828,7 +897,7 @@ export function ThreadsPostForm({
         );
         videosWithFile.forEach((v, i) => {
           if (durations[i] <= MAX_VIDEO_DURATION_SECONDS)
-            withinDuration.push(v);
+            withinDuration.push({ ...v, durationSeconds: durations[i] });
         });
         if (overDuration) setError(VIDEO_DURATION_MESSAGE);
         if (withinDuration.length === 0) return;
@@ -1607,7 +1676,62 @@ export function ThreadsPostForm({
             remember={remember}
             onRememberChange={setRemember}
             supportedPlatforms={supportedPlatforms}
+            disabledAccountIds={videoLimitState.accountIds}
+            disabledReasons={videoLimitDisabledReasons}
+            disabledAccountDefaultReason="Video exceeds this platform's length limit"
+            warningAccountIds={videoLimitState.softAccountIds}
+            warningReasons={videoLimitWarningReasons}
+            warningLabel="May limit reach"
           />
+
+          {posts.some((p) => p.videos.length > 0) &&
+            maxVideoDurationSeconds > 0 &&
+            (videoLimitState.warnings.length > 0 ||
+              videoLimitState.softWarnings.length > 0) && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/50 p-4 text-black dark:text-amber-100">
+                <p className="font-semibold text-amber-900 dark:text-amber-200 mb-2">
+                  Video length limits
+                </p>
+                <p className="text-sm mb-2">
+                  Your longest video in this thread is{" "}
+                  <span className="font-medium">
+                    {(() => {
+                      const minutes = Math.floor(maxVideoDurationSeconds / 60);
+                      const seconds = maxVideoDurationSeconds - minutes * 60;
+                      const secondsStr = seconds.toFixed(2).padStart(5, "0");
+                      return `${minutes}:${secondsStr}`;
+                    })()}
+                  </span>{" "}
+                  long.
+                </p>
+                {videoLimitState.warnings.length > 0 && (
+                  <>
+                    <p className="text-sm mb-1">
+                      The following exceed platform limits. Affected accounts are
+                      disabled for this post:
+                    </p>
+                    <ul className="list-disc list-inside text-sm space-y-1 mb-2">
+                      {videoLimitState.warnings.map((w) => (
+                        <li key={w.platform}>{w.message}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {videoLimitState.softWarnings.length > 0 && (
+                  <>
+                    <p className="text-sm mb-1">
+                      The following will accept this video but may limit its
+                      reach to new audiences:
+                    </p>
+                    <ul className="list-disc list-inside text-sm space-y-1">
+                      {videoLimitState.softWarnings.map((w) => (
+                        <li key={w.platform}>{w.message}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
 
           {error && (
             <div className="relative rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 pr-10 text-sm font-medium text-destructive">
