@@ -115,6 +115,10 @@ export type PublishOptions = {
     coverImageUrl?: string;
     isTrialReel: boolean;
   };
+  tiktokConfig?: {
+    /** When true, let TikTok auto-add recommended music for photo posts. */
+    autoAddMusic?: boolean;
+  };
 };
 
 /**
@@ -124,34 +128,39 @@ export type PublishOptions = {
 export async function getPostPublicationList(postId: string): Promise<
   { publicationId: string; connectedAccountId: string; platform: string; platformUsername: string | null }[]
 > {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user?.id) return [];
-  if (!postId || !isValidPostId(postId)) return [];
-  const [post] = await db
-    .select({ id: posts.id })
-    .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)))
-    .limit(1);
-  if (!post) return [];
-  const list = await db
-    .select({
-      publicationId: postPublications.id,
-      connectedAccountId: connectedAccounts.id,
-      platform: connectedAccounts.platform,
-      platformUsername: connectedAccounts.platformUsername,
-    })
-    .from(postPublications)
-    .innerJoin(
-      connectedAccounts,
-      eq(postPublications.connectedAccountId, connectedAccounts.id),
-    )
-    .where(eq(postPublications.postId, postId));
-  return list.map((r) => ({
-    publicationId: r.publicationId,
-    connectedAccountId: r.connectedAccountId,
-    platform: r.platform,
-    platformUsername: r.platformUsername,
-  }));
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user?.id) return [];
+    if (!postId || !isValidPostId(postId)) return [];
+    const [post] = await db
+      .select({ id: posts.id })
+      .from(posts)
+      .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)))
+      .limit(1);
+    if (!post) return [];
+    const list = await db
+      .select({
+        publicationId: postPublications.id,
+        connectedAccountId: connectedAccounts.id,
+        platform: connectedAccounts.platform,
+        platformUsername: connectedAccounts.platformUsername,
+      })
+      .from(postPublications)
+      .innerJoin(
+        connectedAccounts,
+        eq(postPublications.connectedAccountId, connectedAccounts.id),
+      )
+      .where(eq(postPublications.postId, postId));
+    return list.map((r) => ({
+      publicationId: r.publicationId,
+      connectedAccountId: r.connectedAccountId,
+      platform: r.platform,
+      platformUsername: r.platformUsername,
+    }));
+  } catch (err) {
+    console.error("[getPostPublicationList] failed, returning empty:", err);
+    return [];
+  }
 }
 
 /**

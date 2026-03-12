@@ -750,7 +750,7 @@ export function ThreadsPostForm({
     const out: { file: File }[] = [];
     for (const p of posts) {
       for (const img of p.images) {
-        out.push({ file: img.file });
+        if (img.file) out.push({ file: img.file });
       }
       for (const v of p.videos) {
         if (v.file) out.push({ file: v.file });
@@ -1510,7 +1510,12 @@ export function ThreadsPostForm({
     }
     if (effectiveMode === "now" && result.postId) {
       setPublishedPostId(result.postId);
-      const list = await getPostPublicationList(result.postId);
+      let list: Awaited<ReturnType<typeof getPostPublicationList>> = [];
+      try {
+        list = await getPostPublicationList(result.postId);
+      } catch (_) {
+        // Proceed with empty list so publish still runs (e.g. after ETIMEDOUT)
+      }
       if (list.length === 0) {
         const publishResult = await publishPost(result.postId);
         const succeededCount =
@@ -1589,6 +1594,7 @@ export function ThreadsPostForm({
           await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
         }
       }
+      setOverlayPhase("done");
       router.push(`/dashboard/posts/${result.postId}`);
       router.refresh();
       return;

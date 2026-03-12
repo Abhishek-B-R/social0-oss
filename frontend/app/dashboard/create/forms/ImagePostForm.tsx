@@ -145,6 +145,9 @@ export function ImagePostForm({
   const [tiktokSettings, setTiktokSettings] = useState<
     Record<string, TikTokPostSettings>
   >({});
+  const [tiktokConfig, setTiktokConfig] = useState<{
+    autoAddMusic: boolean;
+  }>({ autoAddMusic: true });
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>(
     [],
@@ -1195,9 +1198,18 @@ export function ImagePostForm({
     }
     if (effectiveMode === "now" && result.postId) {
       setPublishedPostId(result.postId);
-      const list = await getPostPublicationList(result.postId);
+      let list: Awaited<ReturnType<typeof getPostPublicationList>> = [];
+      try {
+        list = await getPostPublicationList(result.postId);
+      } catch (_) {
+        // Proceed with empty list so publish still runs (e.g. after ETIMEDOUT)
+      }
+      const publishOptions =
+        hasTikTokSelected
+          ? { tiktokConfig: { autoAddMusic: tiktokConfig.autoAddMusic } }
+          : undefined;
       if (list.length === 0) {
-        const publishResult = await publishPost(result.postId);
+        const publishResult = await publishPost(result.postId, publishOptions);
         const succeededCount =
           publishResult?.results?.filter((r) => r.status === "published")
             .length ?? 0;
@@ -1235,6 +1247,7 @@ export function ImagePostForm({
         const singleResult = await publishSinglePublication(
           result.postId,
           pub.publicationId,
+          publishOptions,
         );
         const res = singleResult.results[0];
         setPlatformStatuses((prev) =>
@@ -1256,7 +1269,7 @@ export function ImagePostForm({
         );
       }
 
-      await publishPost(result.postId);
+      await publishPost(result.postId, publishOptions);
 
       if (
         resurfaceConfig &&
@@ -1278,6 +1291,9 @@ export function ImagePostForm({
           await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
         }
       }
+      setOverlayPhase("done");
+      router.push(`/dashboard/posts/${result.postId}`);
+      router.refresh();
       return;
     }
     if (effectiveMode === "draft") {
@@ -1902,8 +1918,8 @@ export function ImagePostForm({
                 </div>
               )}
 
-              {activeConfigPanel === "tiktok" && (
-                <div className="mt-2 border-t border-border pt-4">
+      {activeConfigPanel === "tiktok" && (
+                <div className="mt-2 border-t border-border pt-4 space-y-4">
                   {tiktokAccounts.length > 1 ? (
                     <>
                       <div className="flex rounded-lg border border-border bg-bg-muted/30 p-0.5 mb-4">
@@ -1957,6 +1973,37 @@ export function ImagePostForm({
                       onError={(err) => setError(err)}
                     />
                   )}
+                  {/* Auto Add Music — TikTok photos only */}
+                  <div className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-border bg-bg p-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-text">
+                        Auto Add Music
+                      </p>
+                      <p className="text-xs text-text-muted mt-0.5">
+                        TikTok will automatically add recommended music to your photos.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={tiktokConfig.autoAddMusic}
+                      onClick={() =>
+                        setTiktokConfig((prev) => ({
+                          ...prev,
+                          autoAddMusic: !prev.autoAddMusic,
+                        }))
+                      }
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                        tiktokConfig.autoAddMusic ? "bg-emerald-600" : "bg-gray-200"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          tiktokConfig.autoAddMusic ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
               )}
 

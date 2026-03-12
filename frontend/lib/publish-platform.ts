@@ -53,6 +53,7 @@ export type PlatformPublishOptions = {
     coverImageUrl?: string;
     isTrialReel: boolean;
   };
+  tiktok?: TikTokPlatformOptions;
 };
 
 export type ThreadPart = { text: string; mediaIds: string[] };
@@ -229,7 +230,12 @@ export async function publishToPlatform(
       );
       break;
     case "tiktok":
-      result = await publishToTikTok(pub, post, accessToken);
+      result = await publishToTikTok(
+        pub,
+        post,
+        accessToken,
+        platformOptions?.tiktok,
+      );
       break;
     case "threads":
       result = await publishToThreads(pub, post, accessToken);
@@ -342,7 +348,7 @@ async function publishBlueskyThread(
               "Content-Type": contentType,
               Authorization: `Bearer ${jwt}`,
             },
-            body: buffer,
+            body: new Uint8Array(buffer),
           },
         );
         if (uploadRes.ok) {
@@ -987,7 +993,7 @@ async function publishToBluesky(
               "Content-Type": contentType,
               Authorization: `Bearer ${jwt}`,
             },
-            body: buffer,
+            body: new Uint8Array(buffer),
           },
         );
 
@@ -2255,10 +2261,15 @@ async function publishToInstagram(
   };
 }
 
+type TikTokPlatformOptions = {
+  autoAddMusic?: boolean;
+};
+
 async function publishToTikTok(
   pub: Pub,
   post: Post,
   accessToken: string,
+  tiktokOptions?: TikTokPlatformOptions,
 ): Promise<PublishPlatformResult> {
   const media = post.mediaIds?.length
     ? await getMediaWithUrls(post.mediaIds)
@@ -2450,9 +2461,15 @@ async function publishToTikTok(
       brand_content_toggle?: boolean;
       brand_organic_toggle?: boolean;
       is_aigc?: boolean;
+      auto_add_music?: boolean;
     } = {
       privacy_level: accountSettings.privacy_level,
     };
+
+    if (!postAsDraft) {
+      photoPostInfo.auto_add_music =
+        tiktokOptions?.autoAddMusic ?? true;
+    }
 
     const userPhotoTitle = (accountSettings as any).video_title?.trim();
     if (userPhotoTitle) {

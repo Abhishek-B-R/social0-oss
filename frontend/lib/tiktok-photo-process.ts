@@ -1,8 +1,9 @@
 /**
  * Process images for TikTok photo posts: download from R2, resize with sharp,
  * convert to JPEG, re-upload to R2 with -tiktok-processed suffix.
- * Resize: scale up if shortest side < 640px (to 640); scale down if any side > 4096px.
- * Output: JPEG quality 85. TikTok also requires min 360x360, max 20MB, aspect 1:3–3:1.
+ * TikTok requires exactly 1080×1920. We output 1080×1920 with source image
+ * centered on a black background; unique key per attempt so TikTok does not
+ * serve cached stale images.
  */
 
 import sharp from "sharp";
@@ -13,11 +14,10 @@ import {
   getR2PublicBaseUrl,
 } from "@/lib/r2";
 
-const MIN_SIDE_TIKTOK = 360;
-const TARGET_MIN_SIDE = 640; // scale up if shorter side under this
-const MAX_SIDE = 4096;
+const TIKTOK_PHOTO_W = 1080;
+const TIKTOK_PHOTO_H = 1920;
 const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20MB
-const JPEG_QUALITY = 85;
+const JPEG_QUALITY = 90;
 const MIN_ASPECT = 1 / 3; // 1:3
 const MAX_ASPECT = 3; // 3:1
 
@@ -37,20 +37,24 @@ export class TikTokImageError extends Error {
 }
 
 /**
- * Derive the R2 object key for the processed image (original key + -tiktok-processed suffix).
- * If URL is not from our R2, returns a new key under uploads/tiktok-processed/.
+ * Derive a unique R2 object key for the processed image (original key + -tiktok- + cache buster).
+ * Unique per processing attempt so TikTok fetches fresh images instead of cached ones.
+ * Always .jpeg since we always output JPEG.
  */
 function getProcessedKey(originalUrl: string): string {
   const key = getR2KeyFromUrl(originalUrl);
+  const cacheBust = Date.now().toString(36);
   if (key) {
-    return key.replace(/(\.[^.]+)$/, "-tiktok-processed$1");
+    const baseKey = key.replace(/(\.[^.]+)$/, "-tiktok");
+    return `${baseKey}-${cacheBust}.jpeg`;
   }
-  return `uploads/tiktok-processed/${crypto.randomUUID()}.jpg`;
+  return `uploads/tiktok-processed/${crypto.randomUUID()}-${cacheBust}.jpeg`;
 }
 
 /**
- * Process a single image for TikTok: download from R2 URL, resize (scale up if shortest side < 640px to 640; scale down if any side > 4096px), convert to JPEG quality 85, re-upload to R2 with -tiktok-processed suffix.
- * Returns the public URL of the processed image.
+ * Process a single image for TikTok: download from R2, produce exactly 1080×1920
+ * (source centered on black background), convert to JPEG, re-upload to R2 with
+ * a unique key per attempt. Returns the public URL.
  */
 export async function processImageForTikTok(
   imageUrl: string,
@@ -77,64 +81,53 @@ export async function processImageForTikTok(
   const width = metadata.width ?? 0;
   const height = metadata.height ?? 0;
 
-  if (width < MIN_SIDE_TIKTOK || height < MIN_SIDE_TIKTOK) {
+  const aspectRatio = width / height;
+  if (aspectRatio > MAX_ASPECT || aspectRatio < MIN_ASPECT) {
     throw new TikTokImageError(
-      `TikTok requires images to be at least ${MIN_SIDE_TIKTOK}x${MIN_SIDE_TIKTOK}px. This image is ${width}x${height}px.`,
-      "min_dimensions",
-    );
-  }
-
-  const aspect = width / height;
-  if (aspect < MIN_ASPECT || aspect > MAX_ASPECT) {
-    throw new TikTokImageError(
-      `TikTok requires aspect ratio between 1:3 and 3:1. This image is ${width}x${height} (ratio ${aspect.toFixed(2)}).`,
+      `TikTok requires aspect ratio between 1:3 and 3:1. This image is ${width}x${height} (ratio ${aspectRatio.toFixed(2)}).`,
       "aspect_ratio",
     );
   }
 
-  // Resize: if shortest side < 640px, scale up so shortest side = 640; if any side > 4096px, scale down
-  const minSide = Math.min(width, height);
-  const maxSide = Math.max(width, height);
-  let scale = 1;
-
-  if (minSide < TARGET_MIN_SIDE) {
-    scale = TARGET_MIN_SIDE / minSide;
-  }
-  if (maxSide * scale > MAX_SIDE) {
-    scale = Math.min(scale, MAX_SIDE / maxSide);
-  }
-
-  const targetWidth = Math.round(width * scale);
-  const targetHeight = Math.round(height * scale);
-
-  let workBuffer: Buffer;
-  if (scale !== 1) {
-    workBuffer = await image
-      .resize(targetWidth, targetHeight, { fit: "inside" })
-      .toBuffer();
-  } else {
-    workBuffer = inputBuffer;
-  }
-
-  // Convert to JPEG quality 85
-  const contentType = "image/jpeg";
-  let outputBuffer = await sharp(workBuffer)
-    .jpeg({ quality: JPEG_QUALITY, mozjpeg: true })
+  // Foreground — source scaled to fit inside 1080×1920 (preserve aspect, allow upscale)
+  const fgBuffer = await sharp(inputBuffer)
+    .resize(TIKTOK_PHOTO_W, TIKTOK_PHOTO_H, {
+      fit: "inside",
+      withoutEnlargement: false,
+    })
     .toBuffer();
 
-  // TikTok max 20MB per image: if still over, resize down and re-encode
-  if (outputBuffer.length > MAX_FILE_BYTES) {
-    const scaleDown = Math.sqrt(MAX_FILE_BYTES / outputBuffer.length);
-    const newW = Math.max(MIN_SIDE_TIKTOK, Math.round(targetWidth * scaleDown));
-    const newH = Math.max(
-      MIN_SIDE_TIKTOK,
-      Math.round(targetHeight * scaleDown),
-    );
-    outputBuffer = await sharp(workBuffer)
-      .resize(newW, newH, { fit: "inside" })
-      .jpeg({ quality: JPEG_QUALITY, mozjpeg: true })
-      .toBuffer();
+  const fgMeta = await sharp(fgBuffer).metadata();
+  const fgW = fgMeta.width ?? TIKTOK_PHOTO_W;
+  const fgH = fgMeta.height ?? TIKTOK_PHOTO_H;
+  const offsetX = Math.round((TIKTOK_PHOTO_W - fgW) / 2);
+  const offsetY = Math.round((TIKTOK_PHOTO_H - fgH) / 2);
 
+  // Black canvas 1080×1920, composite foreground centered
+  const blackCanvas = await sharp({
+    create: {
+      width: TIKTOK_PHOTO_W,
+      height: TIKTOK_PHOTO_H,
+      channels: 3,
+      background: { r: 0, g: 0, b: 0 },
+    },
+  })
+    .jpeg()
+    .toBuffer();
+
+  let outputBuffer = await sharp(blackCanvas)
+    .composite([
+      { input: fgBuffer, left: offsetX, top: offsetY },
+    ])
+    .jpeg({ quality: JPEG_QUALITY })
+    .toBuffer();
+
+  // 20MB check: re-encode at lower quality if over
+  if (outputBuffer.length > MAX_FILE_BYTES) {
+    outputBuffer = await sharp(blackCanvas)
+      .composite([{ input: fgBuffer, left: offsetX, top: offsetY }])
+      .jpeg({ quality: 70 })
+      .toBuffer();
     if (outputBuffer.length > MAX_FILE_BYTES) {
       throw new TikTokImageError(
         "Image could not be compressed under 20MB while meeting TikTok size requirements.",
@@ -143,16 +136,7 @@ export async function processImageForTikTok(
     }
   }
 
-  const finalMeta = await sharp(outputBuffer).metadata();
-  const finalWidth = finalMeta.width ?? 0;
-  const finalHeight = finalMeta.height ?? 0;
-  const finalSizeBytes = outputBuffer.length;
-  console.log("[TikTok photo process] Final image before R2 upload:", {
-    width: finalWidth,
-    height: finalHeight,
-    sizeBytes: finalSizeBytes,
-  });
-
+  const contentType = "image/jpeg";
   const newKey = getProcessedKey(imageUrl);
   const base = getR2PublicBaseUrl();
   if (!base) {
@@ -160,5 +144,8 @@ export async function processImageForTikTok(
   }
 
   const processedUrl = await uploadToR2(newKey, outputBuffer, contentType);
+  console.log(
+    `[TikTok photo process] Original: ${width}x${height}, Output: ${TIKTOK_PHOTO_W}x${TIKTOK_PHOTO_H}, Size: ${outputBuffer.length} bytes, URL: ${processedUrl}`,
+  );
   return processedUrl;
 }

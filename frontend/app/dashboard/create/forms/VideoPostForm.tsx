@@ -1278,7 +1278,12 @@ export function VideoPostForm({
         "[cover] publishOptions being sent:",
         JSON.stringify(publishOptions),
       );
-      const list = await getPostPublicationList(result.postId);
+      let list: Awaited<ReturnType<typeof getPostPublicationList>> = [];
+      try {
+        list = await getPostPublicationList(result.postId);
+      } catch (_) {
+        // Proceed with empty list so publish still runs (e.g. after ETIMEDOUT)
+      }
       if (list.length === 0) {
         const publishResult = await publishPost(result.postId, publishOptions);
         const succeededCount =
@@ -1359,6 +1364,9 @@ export function VideoPostForm({
           await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
         }
       }
+      setOverlayPhase("done");
+      router.push(`/dashboard/posts/${result.postId}`);
+      router.refresh();
       return;
     }
     if (effectiveMode === "draft") {

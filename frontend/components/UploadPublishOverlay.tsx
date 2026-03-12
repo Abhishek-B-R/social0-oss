@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   Loader2,
@@ -13,6 +14,8 @@ import {
   Clock,
 } from "lucide-react";
 import { PlatformIcon } from "@/components/PlatformIcon";
+
+const PUBLISH_ESCAPE_MS = 4 * 60 * 1000; // 4 minutes
 
 export type OverlayPhase = "uploading" | "publishing" | "saving";
 
@@ -137,12 +140,36 @@ export function UploadPublishOverlay({
   onCancelUpload,
 }: UploadPublishOverlayProps) {
   void onClose; // kept for API compatibility; success screen uses Links only
+  const [showLongRunningEscape, setShowLongRunningEscape] = useState(false);
+  const escapeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const isUploading = phase === "uploading";
   const isSavingDraft = phase === "saving";
   const showPlatformRows =
     phase === "publishing" && platformStatuses.length > 0 && !isScheduling;
   const isFinalizing =
     typeof uploadPercent === "number" && uploadPercent >= 95;
+
+  useEffect(() => {
+    if (phase !== "publishing" || allDone) {
+      setShowLongRunningEscape(false);
+      if (escapeTimerRef.current) {
+        clearTimeout(escapeTimerRef.current);
+        escapeTimerRef.current = null;
+      }
+      return;
+    }
+    escapeTimerRef.current = setTimeout(() => {
+      setShowLongRunningEscape(true);
+      escapeTimerRef.current = null;
+    }, PUBLISH_ESCAPE_MS);
+    return () => {
+      if (escapeTimerRef.current) {
+        clearTimeout(escapeTimerRef.current);
+        escapeTimerRef.current = null;
+      }
+    };
+  }, [phase, allDone]);
 
   return (
     <div
@@ -241,6 +268,25 @@ export function UploadPublishOverlay({
               Saving this post…
             </h2>
             <p className="mt-2 text-sm text-text-muted">Saving to drafts.</p>
+          </>
+        ) : phase === "publishing" && showLongRunningEscape ? (
+          <>
+            <div className="w-full max-w-md rounded-xl border border-border bg-bg-elevated p-6 sm:p-8 shadow-sm text-center">
+              <p className="text-text">
+                Your post is being processed. This can take a few minutes — you
+                can check your post status in your posts list.
+              </p>
+              <Link
+                href={
+                  publishedPostId
+                    ? `/dashboard/posts/${publishedPostId}`
+                    : "/dashboard/posts"
+                }
+                className="mt-6 inline-block rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+              >
+                Go to Posts
+              </Link>
+            </div>
           </>
         ) : showPlatformRows ? (
           <>
