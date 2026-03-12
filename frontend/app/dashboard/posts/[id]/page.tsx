@@ -8,6 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { PublishButton } from "../PublishButton";
 import { PostAgainButton } from "../PostAgainButton";
+import { PostCardDeleteButton } from "../PostCardDeleteButton";
 import {
   getPostDetail,
   getPostMedia,
@@ -404,6 +405,12 @@ export default async function PostDetailPage({
                         ? "Retry publish"
                         : "Publish now"
                     }
+                  />
+                )}
+                {(post.status === "draft" || post.status === "scheduled") && (
+                  <PostCardDeleteButton
+                    postId={post.id}
+                    status={post.status}
                   />
                 )}
                 {(post.status === "published" || post.status === "partial") && (
