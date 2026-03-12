@@ -6,13 +6,12 @@ import Link from "next/link";
 import { X, Upload } from "lucide-react";
 import { updatePost } from "@/app/actions/posts";
 import { PLATFORMS } from "@/lib/platforms";
+import { validateMediaFile } from "@/lib/media-limits";
 import { uploadFile } from "@/lib/upload-file";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { ScheduleDateTimePicker } from "@/components/ui/ScheduleDateTimePicker";
 import type { PostForEdit, PostMediaRow } from "./posts-list-data";
 
-const MAX_IMAGE_SIZE_BYTES = 50 * 1024 * 1024;
-const MAX_VIDEO_SIZE_BYTES = 500 * 1024 * 1024;
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/gif,image/webp";
 const VIDEO_ACCEPT = "video/mp4,video/quicktime,video/webm,video/x-msvideo";
 
@@ -91,35 +90,30 @@ export function EditPostForm({
     setIdsToRemove((prev) => new Set(prev).add(id));
   };
 
-  // const isImage = (mime: string) => mime.startsWith("image/");
   const isVideo = (mime: string) => mime.startsWith("video/");
-  const validateFile = (file: File): string | null => {
-    const img = file.type.startsWith("image/");
-    const vid = file.type.startsWith("video/");
-    if (!img && !vid) return "Unsupported file type.";
-    const max = img ? MAX_IMAGE_SIZE_BYTES : MAX_VIDEO_SIZE_BYTES;
-    if (file.size > max)
-      return `File too large (max ${img ? "50MB" : "500MB"}).`;
-    return null;
-  };
+  const selectedPlatforms = accounts
+    .filter((a) => selectedIds.has(a.id))
+    .map((a) => a.platform);
 
-  const addFiles = useCallback((files: FileList | File[]) => {
-    const list = Array.isArray(files) ? files : Array.from(files);
-    const toAdd: NewFileItem[] = [];
-    for (const file of list) {
-      const err = validateFile(file);
-      if (err) {
-        setError(err);
-        continue;
+  const addFiles = useCallback(
+    (files: FileList | File[]) => {
+      const list = Array.isArray(files) ? files : Array.from(files);
+      for (const file of list) {
+        const validation = validateMediaFile(file, selectedPlatforms);
+        if (!validation.allowed) {
+          setError(validation.error ?? "File too large for selected platforms.");
+          return;
+        }
       }
-      const previewUrl = file.type.startsWith("video/")
-        ? URL.createObjectURL(file)
-        : URL.createObjectURL(file);
-      toAdd.push({ file, previewUrl });
-    }
-    if (toAdd.length) setError(null);
-    setNewFiles((prev) => [...prev, ...toAdd]);
-  }, []);
+      const toAdd: NewFileItem[] = list.map((file) => ({
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }));
+      setError(null);
+      setNewFiles((prev) => [...prev, ...toAdd]);
+    },
+    [selectedPlatforms],
+  );
 
   const removeNewFile = (previewUrl: string) => {
     setNewFiles((prev) => {

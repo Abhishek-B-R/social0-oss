@@ -36,6 +36,10 @@ import {
   type PlatformStatus,
 } from "@/components/UploadPublishOverlay";
 import { PLATFORMS } from "@/lib/platforms";
+import {
+  validateMediaFile,
+  getAccountsExceededByAttachments,
+} from "@/lib/media-limits";
 import { uploadFile } from "@/lib/upload-file";
 import {
   validateVideoAspectRatio,
@@ -693,8 +697,29 @@ export function VideoPostForm({
     return reasons;
   }, [accounts, videoLimitState]);
 
+  const mediaSizeExceeded = useMemo(
+    () =>
+      getAccountsExceededByAttachments(
+        accounts,
+        videoFile ? [{ file: videoFile }] : [],
+      ),
+    [accounts, videoFile],
+  );
+  const disabledAccountIds = useMemo(() => {
+    const set = new Set(videoLimitState.accountIds);
+    mediaSizeExceeded.accountIds.forEach((id) => set.add(id));
+    return set;
+  }, [videoLimitState.accountIds, mediaSizeExceeded.accountIds]);
+  const disabledReasons = useMemo(() => ({
+    ...videoLimitDisabledReasons,
+    ...mediaSizeExceeded.reasons,
+  }), [videoLimitDisabledReasons, mediaSizeExceeded.reasons]);
+
   const selectableAccounts = accounts.filter(
-    (a) => !a.tokenExpired && !videoLimitState.accountIds.has(a.id),
+    (a) =>
+      !a.tokenExpired &&
+      !videoLimitState.accountIds.has(a.id) &&
+      !mediaSizeExceeded.accountIds.has(a.id),
   );
   const selectAll = () => {
     if (selectableAccounts.every((a) => selectedIds.has(a.id))) {
@@ -722,6 +747,12 @@ export function VideoPostForm({
       const file = e.clipboardData?.files?.[0];
       if (!file || !file.type.startsWith("video/")) return;
       e.preventDefault();
+      const platforms = accounts.filter((a) => selectedIds.has(a.id)).map((a) => a.platform);
+      const validation = validateMediaFile(file, platforms);
+      if (!validation.allowed) {
+        setError(validation.error ?? "File too large for selected platforms.");
+        return;
+      }
       setError(null);
       validateVideoAspectRatio(file).then((result) => {
         if (!result.valid) {
@@ -763,11 +794,22 @@ export function VideoPostForm({
     return () => window.removeEventListener("beforeunload", handler);
   }, [isUploading]);
 
+  const selectedPlatforms = useMemo(
+    () => accounts.filter((a) => selectedIds.has(a.id)).map((a) => a.platform),
+    [accounts, selectedIds],
+  );
+
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("video/")) {
       setError("Please select a video file (MP4, WebM, etc.).");
+      return;
+    }
+    const validation = validateMediaFile(file, selectedPlatforms);
+    if (!validation.allowed) {
+      setError(validation.error ?? "File too large for selected platforms.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     setError(null);
@@ -818,6 +860,11 @@ export function VideoPostForm({
     );
     if (!file) {
       setError("Please drop a video file (MP4, WebM, etc.).");
+      return;
+    }
+    const validation = validateMediaFile(file, selectedPlatforms);
+    if (!validation.allowed) {
+      setError(validation.error ?? "File too large for selected platforms.");
       return;
     }
     setError(null);
@@ -1475,9 +1522,9 @@ export function VideoPostForm({
             remember={remember}
             onRememberChange={setRemember}
             supportedPlatforms={supportedPlatforms}
-            disabledAccountIds={videoLimitState.accountIds}
-            disabledReasons={videoLimitDisabledReasons}
-            disabledAccountDefaultReason="Video exceeds this platform's length limit"
+            disabledAccountIds={disabledAccountIds}
+            disabledReasons={disabledReasons}
+            disabledAccountDefaultReason="Video exceeds this platform's limit"
             warningAccountIds={videoLimitState.softAccountIds}
             warningReasons={videoLimitWarningReasons}
             warningLabel="May limit reach"

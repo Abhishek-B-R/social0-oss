@@ -41,6 +41,10 @@ import {
   type PlatformStatus,
 } from "@/components/UploadPublishOverlay";
 import { PLATFORMS } from "@/lib/platforms";
+import {
+  validateMediaFile,
+  getAccountsExceededByAttachments,
+} from "@/lib/media-limits";
 import { uploadFile } from "@/lib/upload-file";
 import {
   ChevronDown,
@@ -699,7 +703,37 @@ export function ImagePostForm({
     });
   };
 
-  const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
+  const mediaSizeExceeded = useMemo(
+    () =>
+      getAccountsExceededByAttachments(
+        accounts,
+        images
+          .filter((i): i is ImageFile & { file: File } => i.file != null)
+          .map((i) => ({ file: i.file })),
+      ),
+    [accounts, images],
+  );
+  const mediaSizeExceededKey = useMemo(
+    () => [...mediaSizeExceeded.accountIds].sort().join(","),
+    [mediaSizeExceeded],
+  );
+  useEffect(() => {
+    if (mediaSizeExceeded.accountIds.size === 0) return;
+    setSelectedIds((prev) => {
+      let next: Set<string> = prev;
+      for (const id of mediaSizeExceeded.accountIds) {
+        if (prev.has(id)) {
+          if (next === prev) next = new Set(prev);
+          next.delete(id);
+        }
+      }
+      return next;
+    });
+  }, [mediaSizeExceededKey, mediaSizeExceeded]);
+
+  const selectableAccounts = accounts.filter(
+    (a) => !a.tokenExpired && !mediaSizeExceeded.accountIds.has(a.id),
+  );
   const selectAll = () => {
     if (selectableAccounts.every((a) => selectedIds.has(a.id))) {
       setSelectedIds(new Set());
@@ -707,6 +741,14 @@ export function ImagePostForm({
       setSelectedIds(new Set(selectableAccounts.map((a) => a.id)));
     }
   };
+
+  const selectedPlatforms = useMemo(
+    () =>
+      accounts
+        .filter((a) => selectedIds.has(a.id))
+        .map((a) => a.platform),
+    [accounts, selectedIds],
+  );
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -719,6 +761,12 @@ export function ImagePostForm({
       if (!file.type.startsWith("image/")) {
         setError("Please select only image files (JPEG, PNG, GIF, WebP).");
         continue;
+      }
+      const validation = validateMediaFile(file, selectedPlatforms);
+      if (!validation.allowed) {
+        setError(validation.error);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
       }
       newImages.push({
         file,
@@ -745,6 +793,14 @@ export function ImagePostForm({
       setError("Please use only image files (JPEG, PNG, GIF, WebP).");
     }
     if (imageFiles.length === 0) return;
+    const platforms = accounts.filter((a) => selectedIds.has(a.id)).map((a) => a.platform);
+    for (const file of imageFiles) {
+      const validation = validateMediaFile(file, platforms);
+      if (!validation.allowed) {
+        setError(validation.error ?? "File too large for selected platforms.");
+        return;
+      }
+    }
     setError(null);
     setImages((prev) => {
       const maxOrder =
@@ -1427,6 +1483,9 @@ export function ImagePostForm({
             remember={remember}
             onRememberChange={setRemember}
             supportedPlatforms={supportedPlatforms}
+            disabledAccountIds={mediaSizeExceeded.accountIds}
+            disabledReasons={mediaSizeExceeded.reasons}
+            disabledAccountDefaultReason="Image exceeds this platform's size limit"
           />
 
           <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm space-y-4">

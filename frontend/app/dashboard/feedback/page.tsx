@@ -16,6 +16,8 @@ export default function FeedbackPage() {
   const [error, setError] = useState<string | null>(null);
   const [ssoToken, setSsoToken] = useState<string | null>(null);
   const [sdkLoaded, setSdkLoaded] = useState(false);
+  const cannyReady = sdkLoaded && !!ssoToken && !error;
+  const isLoading = !cannyReady && !error;
 
   // Fetch SSO token on mount
   useEffect(() => {
@@ -82,35 +84,58 @@ export default function FeedbackPage() {
     });
   }, [sdkLoaded, ssoToken, error]);
 
-  if (error) {
-    return (
-      <div className="flex min-h-full flex-col items-center justify-center gap-4 p-8 text-center">
-        <h1 className="text-2xl font-semibold text-foreground">Feedback</h1>
-        <p className="text-muted-foreground">
-          We couldn’t load the feedback board. You can share feedback directly
-          on Canny.
-        </p>
-        <a
-          href={CANNY_FALLBACK_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground hover:bg-accent-hover"
-        >
-          Open feedback board
-        </a>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex h-full flex-col">
-      <header className="shrink-0 border-b border-border bg-bg-elevated px-4 py-4 sm:px-6">
-        <h1 className="text-2xl font-extrabold text-foreground">Feedback</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Vote on features, report bugs, and suggest improvements.
-        </p>
-      </header>
-      <div ref={mountRef} data-canny className="min-h-0 flex-1 mt-10" />
-    </div>
+    <>
+      {/* Loading bar: fixed at top until Canny is ready */}
+      {isLoading && (
+        <>
+          <div
+            className="fixed left-0 right-0 top-0 z-50 h-1 bg-accent/20 overflow-hidden"
+            role="progressbar"
+            aria-label="Loading feedback board"
+          >
+            <div
+              className="h-full w-1/3 bg-accent"
+              style={{
+                animation: "feedback-page-load 1.2s ease-in-out infinite",
+              }}
+            />
+          </div>
+          <style
+            dangerouslySetInnerHTML={{
+              __html: `@keyframes feedback-page-load{0%{transform:translateX(-100%)}50%{transform:translateX(200%)}100%{transform:translateX(-100%)}}`,
+            }}
+          />
+        </>
+      )}
+
+      {error ? (
+        <div className="flex min-h-full flex-col items-center justify-center gap-4 p-8 text-center">
+          <h1 className="text-2xl font-semibold text-foreground">Feedback</h1>
+          <p className="text-muted-foreground">
+            We couldn’t load the feedback board. You can share feedback directly
+            on Canny.
+          </p>
+          <a
+            href={CANNY_FALLBACK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground hover:bg-accent-hover"
+          >
+            Open feedback board
+          </a>
+        </div>
+      ) : (
+        <div className="flex h-full flex-col">
+          <header className="shrink-0 border-b border-border bg-bg-elevated px-4 py-4 sm:px-6">
+            <h1 className="text-2xl font-extrabold text-foreground">Feedback</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Vote on features, report bugs, and suggest improvements.
+            </p>
+          </header>
+          <div ref={mountRef} data-canny className="min-h-0 flex-1 mt-10" />
+        </div>
+      )}
+    </>
   );
 }

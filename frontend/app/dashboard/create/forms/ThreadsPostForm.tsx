@@ -34,6 +34,10 @@ import { IoMdAddCircleOutline } from "react-icons/io";
 import { MdClose } from "react-icons/md";
 import { MdOutlinePhotoLibrary, MdOutlineVideocam } from "react-icons/md";
 import { AlertTriangle } from "lucide-react";
+import {
+  validateMediaFile,
+  getAccountsExceededByAttachments,
+} from "@/lib/media-limits";
 import { uploadFile } from "@/lib/upload-file";
 import {
   consumeComposerPayload,
@@ -742,8 +746,58 @@ export function ThreadsPostForm({
     });
   }, [maxVideoDurationSeconds, accounts]);
 
+  const threadAttachmentFiles = useMemo(() => {
+    const out: { file: File }[] = [];
+    for (const p of posts) {
+      for (const img of p.images) {
+        out.push({ file: img.file });
+      }
+      for (const v of p.videos) {
+        if (v.file) out.push({ file: v.file });
+      }
+    }
+    return out;
+  }, [posts]);
+  const mediaSizeExceeded = useMemo(
+    () => getAccountsExceededByAttachments(accounts, threadAttachmentFiles),
+    [accounts, threadAttachmentFiles],
+  );
+  const disabledAccountIds = useMemo(() => {
+    const set = new Set(videoLimitState.accountIds);
+    mediaSizeExceeded.accountIds.forEach((id) => set.add(id));
+    return set;
+  }, [videoLimitState.accountIds, mediaSizeExceeded.accountIds]);
+  const disabledReasons = useMemo(
+    () => ({
+      ...videoLimitDisabledReasons,
+      ...mediaSizeExceeded.reasons,
+    }),
+    [videoLimitDisabledReasons, mediaSizeExceeded.reasons],
+  );
+
+  const mediaSizeExceededKey = useMemo(
+    () => [...mediaSizeExceeded.accountIds].sort().join(","),
+    [mediaSizeExceeded],
+  );
+  useEffect(() => {
+    if (mediaSizeExceeded.accountIds.size === 0) return;
+    setSelectedIds((prev) => {
+      let next: Set<string> = prev;
+      for (const id of mediaSizeExceeded.accountIds) {
+        if (prev.has(id)) {
+          if (next === prev) next = new Set(prev);
+          next.delete(id);
+        }
+      }
+      return next;
+    });
+  }, [mediaSizeExceededKey, mediaSizeExceeded]);
+
   const selectableAccounts = accounts.filter(
-    (a) => !a.tokenExpired && !videoLimitState.accountIds.has(a.id),
+    (a) =>
+      !a.tokenExpired &&
+      !videoLimitState.accountIds.has(a.id) &&
+      !mediaSizeExceeded.accountIds.has(a.id),
   );
   const selectAll = () => {
     if (selectableAccounts.every((a) => selectedIds.has(a.id))) {
@@ -787,8 +841,22 @@ export function ThreadsPostForm({
     return Math.max(0, ...imageOrders, ...videoOrders);
   };
 
+  const selectedPlatforms = useMemo(
+    () => accounts.filter((a) => selectedIds.has(a.id)).map((a) => a.platform),
+    [accounts, selectedIds],
+  );
+
   const addImagesToPost = (postId: number, files: FileList | File[] | null) => {
     if (!files || files.length === 0) return;
+    const fileArray = Array.from(files);
+    for (const file of fileArray) {
+      if (!file.type.startsWith("image/")) continue;
+      const validation = validateMediaFile(file, selectedPlatforms);
+      if (!validation.allowed) {
+        setError(validation.error ?? "File too large for selected platforms.");
+        return;
+      }
+    }
     setError(null);
     const post = posts.find((p) => p.id === postId);
     if (!post) return;
@@ -798,7 +866,6 @@ export function ThreadsPostForm({
       return;
     }
     const newImages: MediaImage[] = [];
-    const fileArray = Array.from(files);
     for (const file of fileArray) {
       if (!file.type.startsWith("image/")) continue;
       const preview = URL.createObjectURL(file);
@@ -866,6 +933,15 @@ export function ThreadsPostForm({
 
   const addVideoToPost = (postId: number, files: FileList | File[] | null) => {
     if (!files || files.length === 0) return;
+    const fileArray = Array.from(files);
+    for (const file of fileArray) {
+      if (!file.type.startsWith("video/")) continue;
+      const validation = validateMediaFile(file, selectedPlatforms);
+      if (!validation.allowed) {
+        setError(validation.error ?? "File too large for selected platforms.");
+        return;
+      }
+    }
     setError(null);
     const post = posts.find((p) => p.id === postId);
     if (!post) return;
@@ -875,7 +951,6 @@ export function ThreadsPostForm({
       return;
     }
     const newVideos: MediaVideo[] = [];
-    const fileArray = Array.from(files);
     for (const file of fileArray) {
       if (!file.type.startsWith("video/")) continue;
       const preview = URL.createObjectURL(file);
@@ -1677,9 +1752,9 @@ export function ThreadsPostForm({
             remember={remember}
             onRememberChange={setRemember}
             supportedPlatforms={supportedPlatforms}
-            disabledAccountIds={videoLimitState.accountIds}
-            disabledReasons={videoLimitDisabledReasons}
-            disabledAccountDefaultReason="Video exceeds this platform's length limit"
+            disabledAccountIds={disabledAccountIds}
+            disabledReasons={disabledReasons}
+            disabledAccountDefaultReason="Media exceeds this platform's limit"
             warningAccountIds={videoLimitState.softAccountIds}
             warningReasons={videoLimitWarningReasons}
             warningLabel="May limit reach"

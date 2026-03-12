@@ -51,6 +51,7 @@
     "react-dom": "19.2.3",
     "react-icons": "^5.5.0",
     "resend": "^6.9.3",
+    "sharp": "^0.33.5",
     "standardwebhooks": "^1.0.0",
     "tailwind-merge": "^3.4.1",
     "twitter-api-v2": "^1.29.0",

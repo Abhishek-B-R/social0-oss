@@ -154,10 +154,11 @@ export function ComposerClient() {
     (files: FileList | null) => {
       if (!files || files.length === 0) return;
       setMediaError(null);
+      const fileList = Array.from(files);
 
       const imageFiles: File[] = [];
       const videoFiles: File[] = [];
-      Array.from(files).forEach((file) => {
+      fileList.forEach((file) => {
         const mime = file.type;
         if (mime.startsWith("image/")) imageFiles.push(file);
         else if (mime.startsWith("video/")) videoFiles.push(file);
@@ -275,10 +276,11 @@ export function ComposerClient() {
     (slotId: string, files: FileList | null) => {
       if (!files || files.length === 0) return;
       setMediaError(null);
+      const fileList = Array.from(files);
 
       const imageFiles: File[] = [];
       const videoFiles: File[] = [];
-      Array.from(files).forEach((file) => {
+      fileList.forEach((file) => {
         const mime = file.type;
         if (mime.startsWith("image/")) imageFiles.push(file);
         else if (mime.startsWith("video/")) videoFiles.push(file);

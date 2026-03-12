@@ -20,6 +20,7 @@ import {
   processImageForTikTok,
   TikTokImageError,
 } from "@/lib/tiktok-photo-process";
+import sharp from "sharp";
 
 export type PublishPlatformResult = {
   status: "published" | "failed";
@@ -57,6 +58,36 @@ export type PlatformPublishOptions = {
 export type ThreadPart = { text: string; mediaIds: string[] };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Retry fetch on network errors (e.g. ECONNRESET). Does not retry on HTTP 4xx/5xx. */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  opts: { retries?: number; delayMs?: number } = {},
+): Promise<Response> {
+  const retries = opts.retries ?? 2;
+  const delayMs = opts.delayMs ?? 1000;
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      return res;
+    } catch (e) {
+      lastError = e;
+      const err = e as Error & { cause?: { code?: string } };
+      const isNetwork =
+        err.message?.includes("fetch failed") ||
+        err.cause?.code === "ECONNRESET" ||
+        err.cause?.code === "ECONNREFUSED";
+      if (attempt < retries && isNetwork) {
+        await sleep(delayMs);
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastError;
+}
 
 /** Build application/x-www-form-urlencoded body. Threads API expects form data, not JSON. */
 function threadsFormBody(
@@ -298,15 +329,20 @@ async function publishBlueskyThread(
     for (const img of images) {
       try {
         const imageBuffer = await fetchMediaBytes(img.url);
+        const { buffer, contentType } = await prepareImageForPlatform(
+          imageBuffer,
+          "bluesky",
+          img.mimeType,
+        );
         const uploadRes = await fetch(
           "https://bsky.social/xrpc/com.atproto.repo.uploadBlob",
           {
             method: "POST",
             headers: {
-              "Content-Type": img.mimeType,
+              "Content-Type": contentType,
               Authorization: `Bearer ${jwt}`,
             },
-            body: imageBuffer,
+            body: buffer,
           },
         );
         if (uploadRes.ok) {
@@ -535,6 +571,62 @@ async function getOrderedMediaWithUrls(
 const MEDIA_FETCH_TIMEOUT_MS = 60_000;
 const MEDIA_FETCH_RETRIES = 2;
 
+/** Platform image size limits (bytes) for server-side compression before upload. Keys match platform ids. */
+const PLATFORM_IMAGE_LIMITS: Record<string, number> = {
+  twitter_x: 5 * 1024 * 1024,
+  instagram: 8 * 1024 * 1024,
+  facebook: 30 * 1024 * 1024,
+  linkedin: 8 * 1024 * 1024,
+  tiktok: 8 * 1024 * 1024,
+  pinterest: 20 * 1024 * 1024,
+  bluesky: 976 * 1024, // API blob limit ~976.56KB
+  threads: 8 * 1024 * 1024,
+  youtube: 2 * 1024 * 1024,
+};
+
+const DEFAULT_IMAGE_LIMIT = 8 * 1024 * 1024;
+
+/**
+ * Prepare image for platform API upload: return as-is if under platform limit,
+ * else compress (and resize if needed) to fit. Use when uploading raw bytes to the API.
+ */
+async function prepareImageForPlatform(
+  imageBuffer: ArrayBuffer,
+  platform: string,
+  mimeType?: string,
+): Promise<{ buffer: Buffer; contentType: string }> {
+  const limit = PLATFORM_IMAGE_LIMITS[platform] ?? DEFAULT_IMAGE_LIMIT;
+  const buf = Buffer.from(imageBuffer);
+
+  if (buf.length <= limit) {
+    return {
+      buffer: buf,
+      contentType: mimeType?.startsWith("image/") ? mimeType : "image/jpeg",
+    };
+  }
+
+  let quality = 85;
+  let output = await sharp(buf)
+    .jpeg({ quality, mozjpeg: true })
+    .toBuffer();
+
+  while (output.length > limit && quality >= 30) {
+    quality -= 10;
+    output = await sharp(buf)
+      .jpeg({ quality, mozjpeg: true })
+      .toBuffer();
+  }
+
+  if (output.length > limit) {
+    output = await sharp(buf)
+      .resize({ width: 1200, withoutEnlargement: true })
+      .jpeg({ quality: 70, mozjpeg: true })
+      .toBuffer();
+  }
+
+  return { buffer: output, contentType: "image/jpeg" };
+}
+
 /** Fetch media URL with long timeout and retries so scheduled publish can reach our media server. */
 async function fetchMediaBytes(
   url: string,
@@ -600,7 +692,7 @@ async function publishToFacebook(
     const photoIds: Array<{ media_fbid: string }> = [];
 
     for (const img of images.slice(0, 10)) {
-      const photoRes = await fetch(
+      const photoRes = await fetchWithRetry(
         `https://graph.facebook.com/v21.0/${pageId}/photos`,
         {
           method: "POST",
@@ -613,6 +705,7 @@ async function publishToFacebook(
             published: false,
           }),
         },
+        { retries: 2, delayMs: 1000 },
       );
 
       const photoData = (await photoRes.json().catch(() => ({}))) as {
@@ -637,7 +730,7 @@ async function publishToFacebook(
     }
 
     // Create multi-photo post
-    const postRes = await fetch(
+    const postRes = await fetchWithRetry(
       `https://graph.facebook.com/v21.0/${pageId}/feed`,
       {
         method: "POST",
@@ -650,6 +743,7 @@ async function publishToFacebook(
           attached_media: photoIds,
         }),
       },
+      { retries: 2, delayMs: 1000 },
     );
 
     data = (await postRes.json().catch(() => ({}))) as {
@@ -680,13 +774,14 @@ async function publishToFacebook(
       caption: message,
     });
 
-    const res = await fetch(
+    const res = await fetchWithRetry(
       `https://graph.facebook.com/v21.0/${pageId}/photos`,
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: params.toString(),
       },
+      { retries: 2, delayMs: 1000 },
     );
 
     data = (await res.json().catch(() => ({}))) as {
@@ -713,13 +808,14 @@ async function publishToFacebook(
       description: message,
     });
 
-    const res = await fetch(
+    const res = await fetchWithRetry(
       `https://graph-video.facebook.com/v21.0/${pageId}/videos`,
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: params.toString(),
       },
+      { retries: 2, delayMs: 1000 },
     );
 
     data = (await res.json().catch(() => ({}))) as {
@@ -746,11 +842,15 @@ async function publishToFacebook(
       message: message,
     });
 
-    const res = await fetch(`https://graph.facebook.com/v21.0/${pageId}/feed`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: params.toString(),
-    });
+    const res = await fetchWithRetry(
+      `https://graph.facebook.com/v21.0/${pageId}/feed`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params.toString(),
+      },
+      { retries: 2, delayMs: 1000 },
+    );
 
     data = (await res.json().catch(() => ({}))) as {
       id?: string;
@@ -872,6 +972,11 @@ async function publishToBluesky(
     for (const img of selectedImages) {
       try {
         const imageBuffer = await fetchMediaBytes(img.url);
+        const { buffer, contentType } = await prepareImageForPlatform(
+          imageBuffer,
+          "bluesky",
+          img.mimeType,
+        );
 
         // Upload to Bluesky
         const uploadRes = await fetch(
@@ -879,10 +984,10 @@ async function publishToBluesky(
           {
             method: "POST",
             headers: {
-              "Content-Type": img.mimeType,
+              "Content-Type": contentType,
               Authorization: `Bearer ${jwt}`,
             },
-            body: imageBuffer,
+            body: buffer,
           },
         );
 

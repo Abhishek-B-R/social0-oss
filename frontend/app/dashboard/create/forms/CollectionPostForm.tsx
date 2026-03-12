@@ -38,6 +38,10 @@ import {
 } from "@/components/UploadPublishOverlay";
 import { PLATFORMS } from "@/lib/platforms";
 import {
+  validateMediaFile,
+  getAccountsExceededByAttachments,
+} from "@/lib/media-limits";
+import {
   consumeComposerPayload,
   clearComposerPayload,
 } from "@/lib/composer-bridge";
@@ -496,8 +500,58 @@ export function CollectionPostForm({
     });
   }, [maxVideoDurationSeconds, accounts]);
 
+  const attachmentFiles = useMemo(() => {
+    const out: { file: File }[] = [];
+    images.forEach((i) => {
+      const f = i.file;
+      if (f) out.push({ file: f });
+    });
+    videos.forEach((v) => {
+      const f = v.file;
+      if (f) out.push({ file: f });
+    });
+    return out;
+  }, [images, videos]);
+  const mediaSizeExceeded = useMemo(
+    () => getAccountsExceededByAttachments(accounts, attachmentFiles),
+    [accounts, attachmentFiles],
+  );
+  const disabledAccountIds = useMemo(() => {
+    const set = new Set(videoLimitState.accountIds);
+    mediaSizeExceeded.accountIds.forEach((id) => set.add(id));
+    return set;
+  }, [videoLimitState.accountIds, mediaSizeExceeded.accountIds]);
+  const disabledReasons = useMemo(
+    () => ({
+      ...videoLimitDisabledReasons,
+      ...mediaSizeExceeded.reasons,
+    }),
+    [videoLimitDisabledReasons, mediaSizeExceeded.reasons],
+  );
+
+  const mediaSizeExceededKey = useMemo(
+    () => [...mediaSizeExceeded.accountIds].sort().join(","),
+    [mediaSizeExceeded],
+  );
+  useEffect(() => {
+    if (mediaSizeExceeded.accountIds.size === 0) return;
+    setSelectedIds((prev) => {
+      let next: Set<string> = prev;
+      for (const id of mediaSizeExceeded.accountIds) {
+        if (prev.has(id)) {
+          if (next === prev) next = new Set(prev);
+          next.delete(id);
+        }
+      }
+      return next;
+    });
+  }, [mediaSizeExceededKey, mediaSizeExceeded]);
+
   const selectableAccounts = accounts.filter(
-    (a) => !a.tokenExpired && !videoLimitState.accountIds.has(a.id),
+    (a) =>
+      !a.tokenExpired &&
+      !videoLimitState.accountIds.has(a.id) &&
+      !mediaSizeExceeded.accountIds.has(a.id),
   );
   const selectAll = () => {
     if (selectableAccounts.every((a) => selectedIds.has(a.id))) {
@@ -513,6 +567,11 @@ export function CollectionPostForm({
     return Math.max(0, ...imageOrders, ...videoOrders);
   };
 
+  const selectedPlatforms = useMemo(
+    () => accounts.filter((a) => selectedIds.has(a.id)).map((a) => a.platform),
+    [accounts, selectedIds],
+  );
+
   const onImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length) return;
@@ -523,6 +582,12 @@ export function CollectionPostForm({
       if (!file.type.startsWith("image/")) {
         setError("Please select only image files.");
         continue;
+      }
+      const validation = validateMediaFile(file, selectedPlatforms);
+      if (!validation.allowed) {
+        setError(validation.error ?? "File too large for selected platforms.");
+        if (unifiedInputRef.current) unifiedInputRef.current.value = "";
+        return;
       }
       newImages.push({
         file,
@@ -540,6 +605,15 @@ export function CollectionPostForm({
   const onVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length) return;
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith("video/")) continue;
+      const validation = validateMediaFile(file, selectedPlatforms);
+      if (!validation.allowed) {
+        setError(validation.error ?? "File too large for selected platforms.");
+        if (unifiedInputRef.current) unifiedInputRef.current.value = "";
+        return;
+      }
+    }
     const newVideos: VideoFile[] = [];
     const maxOrder = getMaxOrder();
     for (let i = 0; i < files.length; i++) {
@@ -584,6 +658,15 @@ export function CollectionPostForm({
   const onUnifiedFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length) return;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const validation = validateMediaFile(file, selectedPlatforms);
+      if (!validation.allowed) {
+        setError(validation.error ?? "File too large for selected platforms.");
+        if (unifiedInputRef.current) unifiedInputRef.current.value = "";
+        return;
+      }
+    }
     setError(null);
     const maxOrder = getMaxOrder();
     let orderOffset = 0;
@@ -641,6 +724,14 @@ export function CollectionPostForm({
     setIsDragOverZone(false);
     const files = e.dataTransfer.files;
     if (!files?.length) return;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const validation = validateMediaFile(file, selectedPlatforms);
+      if (!validation.allowed) {
+        setError(validation.error ?? "File too large for selected platforms.");
+        return;
+      }
+    }
     setError(null);
     const maxOrder = getMaxOrder();
     let orderOffset = 0;
@@ -703,6 +794,12 @@ export function CollectionPostForm({
       }
       const file = e.clipboardData?.files?.[0];
       if (!file) return;
+      const platforms = accounts.filter((a) => selectedIds.has(a.id)).map((a) => a.platform);
+      const validation = validateMediaFile(file, platforms);
+      if (!validation.allowed) {
+        setError(validation.error ?? "File too large for selected platforms.");
+        return;
+      }
       if (file.type.startsWith("image/")) {
         e.preventDefault();
         setError(null);
@@ -1424,9 +1521,9 @@ export function CollectionPostForm({
             remember={remember}
             onRememberChange={setRemember}
             supportedPlatforms={supportedPlatforms}
-            disabledAccountIds={videoLimitState.accountIds}
-            disabledReasons={videoLimitDisabledReasons}
-            disabledAccountDefaultReason="Video exceeds this platform's length limit"
+            disabledAccountIds={disabledAccountIds}
+            disabledReasons={disabledReasons}
+            disabledAccountDefaultReason="Media exceeds this platform's limit"
             warningAccountIds={videoLimitState.softAccountIds}
             warningReasons={videoLimitWarningReasons}
             warningLabel="May limit reach"
