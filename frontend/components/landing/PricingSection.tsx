@@ -11,12 +11,31 @@ const starterFeatures = [
 ];
 
 const growthFeatures = [
-  { text: "Everything in Starter", highlight: true },
-  { text: "Up to 15 connected accounts", highlight: false },
+  { text: "Up to 15 connected accounts", highlight: true },
+  { text: "Multiple accounts per platform", highlight: false },
+  { text: "Unlimited posts", highlight: false },
+  { text: "Schedule posts across platforms", highlight: false },
+  { text: "Carousel posts", highlight: false },
+  { text: "Threads & Collections support", highlight: false },
+  { text: "Human support", highlight: false },
   { text: "Auto-plug high performing tweets", highlight: false },
   { text: "Auto-repost on autopilot", highlight: false },
   { text: "Bulk scheduling tools", highlight: false },
+];
+
+const proFeatures = [
+  { text: "Unlimited connected accounts", highlight: true },
+  { text: "Multiple accounts per platform", highlight: false },
+  { text: "Unlimited posts", highlight: false },
+  { text: "Schedule posts across platforms", highlight: false },
+  { text: "Carousel posts", highlight: false },
+  { text: "Threads & Collections support", highlight: false },
   { text: "Human support", highlight: false },
+  { text: "Auto-plug high performing tweets", highlight: false },
+  { text: "Auto-repost on autopilot", highlight: false },
+  { text: "Bulk scheduling tools", highlight: false },
+  { text: "Priority support", highlight: false },
+  { text: "Early access to new features", highlight: false },
 ];
 
 export function PricingSection() {
@@ -43,11 +62,11 @@ export function PricingSection() {
           </div>
         </div>
         <p className="mb-12 text-[15px] text-muted-foreground">
-          Both plans include a 7-day free trial. Cancel anytime.
+          All plans include a 7-day free trial. Cancel anytime.
         </p>
 
-        {/* Two-card grid */}
-        <div className="grid gap-px overflow-hidden rounded-2xl bg-border shadow-sm md:grid-cols-2">
+        {/* Three-card grid */}
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl bg-border shadow-sm md:grid-cols-3">
           {/* STARTER */}
           <div className="flex flex-col bg-background p-8 md:p-10">
             <div className="mb-6 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
@@ -165,6 +184,62 @@ export function PricingSection() {
             </Link>
 
             <p className="relative z-10 mt-3 text-center text-[12px] text-white/25 dark:text-[#0A0A0A]/40">
+              No credit card required
+            </p>
+          </div>
+
+          {/* PRO */}
+          <div className="flex flex-col bg-background p-8 md:p-10">
+            <div className="mb-6 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              Pro
+            </div>
+
+            <div className="mb-2 flex items-baseline gap-3">
+              <div className="font-serif text-[64px] leading-none tracking-tight text-foreground">
+                $33
+              </div>
+              <div>
+                <div className="text-[18px] font-medium text-muted-foreground line-through decoration-red-500 decoration-2">
+                  $49
+                </div>
+                <div className="text-[13px] text-muted-foreground">/month</div>
+              </div>
+              <span className="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                Save 33%
+              </span>
+            </div>
+
+            <p className="mb-8 text-[14px] leading-relaxed text-muted-foreground">
+              For power users and agencies who need unlimited reach.
+            </p>
+
+            <hr className="mb-8 border-border" />
+
+            <ul className="mb-10 flex-1 space-y-4">
+              {proFeatures.map((item) => (
+                <li key={item.text} className="flex items-start gap-3">
+                  <span
+                    className={`mt-0.5 shrink-0 text-[14px] ${item.highlight ? "font-semibold text-emerald-600 dark:text-emerald-400" : "text-emerald-600 dark:text-emerald-400"}`}
+                  >
+                    ✓
+                  </span>
+                  <span
+                    className={`text-[14px] leading-snug ${item.highlight ? "font-medium text-foreground" : "text-muted-foreground"}`}
+                  >
+                    {item.text}
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <Link
+              href="/auth"
+              className="block w-full rounded-[10px] border-2 border-foreground/10 bg-background py-3.5 text-center text-[14px] font-medium text-foreground transition-all hover:border-foreground/25 hover:bg-muted dark:border-white/10 dark:hover:border-white/20 dark:hover:bg-muted/50"
+            >
+              Get started — 7-day free trial
+            </Link>
+
+            <p className="mt-3 text-center text-[12px] text-muted-foreground">
               No credit card required
             </p>
           </div>

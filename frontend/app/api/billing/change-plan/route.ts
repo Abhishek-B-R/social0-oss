@@ -27,11 +27,16 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const plan = body.plan as string | undefined;
-  if (plan !== "starter" && plan !== "growth") {
+  if (plan !== "starter" && plan !== "growth" && plan !== "pro") {
     return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
   }
 
-  const productId = plan === "starter" ? PLAN_IDS.starter : PLAN_IDS.growth;
+  const productId =
+    plan === "starter"
+      ? PLAN_IDS.starter
+      : plan === "growth"
+        ? PLAN_IDS.growth
+        : PLAN_IDS.pro;
   if (!productId) {
     return NextResponse.json(
       { error: "Product not configured" },

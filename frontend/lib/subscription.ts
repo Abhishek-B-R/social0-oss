@@ -37,7 +37,7 @@ export async function getSubscriptionForUser(
   }
 
   return {
-    tier: tier === "starter" || tier === "growth" ? tier : "free",
+    tier: tier === "starter" || tier === "growth" || tier === "pro" ? tier : "free",
     expiresAt,
     subscriptionId: row?.subscriptionId ?? null,
     customerId: row?.customerId ?? null,

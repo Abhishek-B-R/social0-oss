@@ -32,11 +32,11 @@ export function BillingClient({
   dateFormat = "dd/MM/yyyy",
   timezone,
 }: BillingClientProps) {
-  const [loadingPlan, setLoadingPlan] = useState<"starter" | "growth" | null>(
-    null,
-  );
+  const [loadingPlan, setLoadingPlan] = useState<
+    "starter" | "growth" | "pro" | null
+  >(null);
   const [loadingChangePlan, setLoadingChangePlan] = useState<
-    "starter" | "growth" | null
+    "starter" | "growth" | "pro" | null
   >(null);
   const [error, setError] = useState<string | null>(null);
   const [waitingForWebhook, setWaitingForWebhook] = useState(
@@ -58,7 +58,9 @@ export function BillingClient({
         const syncData = await syncRes.json().catch(() => ({}));
         if (
           syncData?.ok === true &&
-          (syncData.tier === "starter" || syncData.tier === "growth")
+          (syncData.tier === "starter" ||
+            syncData.tier === "growth" ||
+            syncData.tier === "pro")
         ) {
           redirectToComposer();
           return true;
@@ -92,7 +94,7 @@ export function BillingClient({
     return () => clearInterval(id);
   }, [waitingForWebhook]);
 
-  async function handleUpgrade(plan: "starter" | "growth") {
+  async function handleUpgrade(plan: "starter" | "growth" | "pro") {
     setError(null);
     setLoadingPlan(plan);
     try {
@@ -113,7 +115,7 @@ export function BillingClient({
     }
   }
 
-  async function handleChangePlan(plan: "starter" | "growth") {
+  async function handleChangePlan(plan: "starter" | "growth" | "pro") {
     setError(null);
     setLoadingChangePlan(plan);
     try {
@@ -139,11 +141,13 @@ export function BillingClient({
   }
 
   const tierLabel =
-    subscription.tier === "growth"
-      ? "Growth"
-      : subscription.tier === "starter"
-        ? "Starter (Lite)"
-        : "Free";
+    subscription.tier === "pro"
+      ? "Pro"
+      : subscription.tier === "growth"
+        ? "Growth"
+        : subscription.tier === "starter"
+          ? "Starter (Lite)"
+          : "Free";
 
   if (waitingForWebhook) {
     return (
@@ -190,7 +194,9 @@ export function BillingClient({
               Connected accounts
             </p>
             <p className="text-xl font-semibold text-text">
-              {accountLimit.currentTotal} / {accountLimit.limitTotal}
+              {subscription.tier === "pro"
+                ? `${accountLimit.currentTotal} / Unlimited`
+                : `${accountLimit.currentTotal} / ${accountLimit.limitTotal}`}
             </p>
           </div>
           {twitterTweetLimit.limit > 0 && (
@@ -231,10 +237,11 @@ export function BillingClient({
         <p className="mt-0.5 text-sm text-text-muted">
           Early adopter pricing. Lock in before price increases.
         </p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl border-2 border-border bg-bg p-4">
             <h3 className="font-semibold text-text">
-              Starter (Lite) — <span className="line-through text-muted-foreground">$9</span>{" "}
+              Starter (Lite) —{" "}
+              <span className="line-through text-muted-foreground">$9</span>{" "}
               <span className="text-foreground">$6</span>/month
             </h3>
             <p className="mt-0.5 text-sm text-text-muted">
@@ -266,7 +273,7 @@ export function BillingClient({
               >
                 Current plan
               </button>
-            ) : subscription.tier === "growth" ? (
+            ) : subscription.tier === "growth" || subscription.tier === "pro" ? (
               <button
                 type="button"
                 onClick={() => {
@@ -303,7 +310,8 @@ export function BillingClient({
               Most popular
             </span>
             <h3 className="mt-1.5 font-semibold text-text">
-              Growth — <span className="line-through text-muted-foreground">$29</span>{" "}
+              Growth —{" "}
+              <span className="line-through text-muted-foreground">$29</span>{" "}
               <span className="text-foreground">$19</span>/month
             </h3>
             <p className="mt-0.5 text-sm text-text-muted">
@@ -349,6 +357,25 @@ export function BillingClient({
                   ? "Upgrading…"
                   : "Upgrade to Growth"}
               </button>
+            ) : subscription.tier === "pro" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Downgrading takes effect immediately. You'll be credited the difference. Continue?",
+                    )
+                  ) {
+                    handleChangePlan("growth");
+                  }
+                }}
+                disabled={loadingChangePlan !== null}
+                className="mt-4 w-full rounded-lg border-2 border-accent bg-transparent px-4 py-1.5 text-sm font-medium text-accent hover:bg-accent/10 disabled:opacity-50 transition-colors"
+              >
+                {loadingChangePlan === "growth"
+                  ? "Changing…"
+                  : "Downgrade to Growth"}
+              </button>
             ) : (
               <button
                 type="button"
@@ -359,6 +386,60 @@ export function BillingClient({
                 {loadingPlan === "growth"
                   ? "Redirecting…"
                   : "Upgrade to Growth"}
+              </button>
+            )}
+          </div>
+          <div className="rounded-xl border-2 border-border bg-bg p-4">
+            <h3 className="font-semibold text-text">
+              Pro —{" "}
+              <span className="line-through text-muted-foreground">$49</span>{" "}
+              <span className="text-foreground">$33</span>/month
+            </h3>
+            <p className="mt-0.5 text-sm text-text-muted">
+              Unlimited accounts, 1,500 tweets/month
+            </p>
+            <ul className="mt-3 space-y-1.5 text-sm text-text-muted">
+              {[
+                "Unlimited connected accounts",
+                "Everything in Growth",
+                "Priority support",
+                "Early access to new features",
+              ].map((f, i) => (
+                <li key={i} className="flex items-center gap-2">
+                  <span className="text-accent shrink-0">✓</span>
+                  {f}
+                </li>
+              ))}
+            </ul>
+            {subscription.tier === "pro" ? (
+              <button
+                type="button"
+                disabled
+                className="mt-4 w-full rounded-lg border-2 border-accent bg-transparent px-4 py-1.5 text-sm font-medium text-accent opacity-50 cursor-default"
+              >
+                Current plan
+              </button>
+            ) : subscription.tier === "starter" || subscription.tier === "growth" ? (
+              <button
+                type="button"
+                onClick={() => handleChangePlan("pro")}
+                disabled={loadingChangePlan !== null}
+                className="mt-4 w-full rounded-lg border-2 border-accent bg-transparent px-4 py-1.5 text-sm font-medium text-accent hover:bg-accent/10 disabled:opacity-50 transition-colors"
+              >
+                {loadingChangePlan === "pro"
+                  ? "Upgrading…"
+                  : "Upgrade to Pro"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleUpgrade("pro")}
+                disabled={loadingPlan !== null}
+                className="mt-4 w-full rounded-lg border-2 border-accent bg-transparent px-4 py-1.5 text-sm font-medium text-accent hover:bg-accent/10 disabled:opacity-50"
+              >
+                {loadingPlan === "pro"
+                  ? "Redirecting…"
+                  : "Upgrade to Pro"}
               </button>
             )}
           </div>

@@ -1,13 +1,14 @@
 /**
  * Subscription plan limits and feature flags.
- * Starter (Lite): $9/mo (early adopter $6). Growth: $29/mo (early adopter $19).
+ * Starter (Lite): $9/mo (early adopter $6). Growth: $29/mo (early adopter $19). Pro: $49/mo (early adopter $33).
  */
 
-export type SubscriptionTier = "free" | "starter" | "growth";
+export type SubscriptionTier = "free" | "starter" | "growth" | "pro";
 
 export const PLAN_IDS = {
   starter: process.env.DODO_PAYMENTS_STARTER_PRODUCT_ID ?? "",
   growth: process.env.DODO_PAYMENTS_GROWTH_PRODUCT_ID ?? "",
+  pro: process.env.DODO_PAYMENTS_PRO_PRODUCT_ID ?? "",
 } as const;
 
 export interface PlanLimits {
@@ -42,10 +43,19 @@ const GROWTH_LIMITS: PlanLimits = {
   allowResurface: true,
 };
 
+const PRO_LIMITS: PlanLimits = {
+  maxConnectedAccounts: 999, // effectively unlimited
+  tweetsPerMonth: 1500,
+  allowBulkTools: true,
+  allowAutoPlug: true,
+  allowResurface: true,
+};
+
 const LIMITS_BY_TIER: Record<SubscriptionTier, PlanLimits> = {
   free: FREE_LIMITS,
   starter: STARTER_LIMITS,
   growth: GROWTH_LIMITS,
+  pro: PRO_LIMITS,
 };
 
 export function getPlanLimits(tier: SubscriptionTier | null | undefined): PlanLimits {
@@ -56,9 +66,10 @@ export function getPlanLimits(tier: SubscriptionTier | null | undefined): PlanLi
 export function getTierFromProductId(productId: string): SubscriptionTier {
   if (productId === PLAN_IDS.starter) return "starter";
   if (productId === PLAN_IDS.growth) return "growth";
+  if (productId === PLAN_IDS.pro) return "pro";
   return "free";
 }
 
-export function isActiveTier(tier: SubscriptionTier | null | undefined): tier is "starter" | "growth" {
-  return tier === "starter" || tier === "growth";
+export function isActiveTier(tier: SubscriptionTier | null | undefined): tier is "starter" | "growth" | "pro" {
+  return tier === "starter" || tier === "growth" || tier === "pro";
 }

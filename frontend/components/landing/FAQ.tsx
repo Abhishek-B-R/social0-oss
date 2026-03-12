@@ -11,7 +11,7 @@ const faqs = [
   {
     question: "Is there a free trial?",
     answer:
-      "Yes! Both Starter and Growth plans include a 7-day free trial. No credit card required to start.",
+      "Yes! All plans include a 7-day free trial. No credit card required to start.",
   },
   {
     question: "Can I cancel anytime?",

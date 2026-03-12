@@ -16,7 +16,9 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const productIds = [PLAN_IDS.starter, PLAN_IDS.growth].filter(Boolean);
+  const productIds = [PLAN_IDS.starter, PLAN_IDS.growth, PLAN_IDS.pro].filter(
+    Boolean,
+  );
   if (!apiKey || productIds.length === 0) {
     return NextResponse.json(
       { ok: false, error: "Billing sync not configured" },

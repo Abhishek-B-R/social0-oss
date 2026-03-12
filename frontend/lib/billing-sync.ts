@@ -8,7 +8,10 @@ import { setSubscription } from "@/lib/subscription";
 const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
 const environment = (process.env.DODO_PAYMENTS_ENVIRONMENT as "test_mode" | "live_mode") ?? "test_mode";
 
-export type SyncSubscriptionResult = { ok: boolean; tier?: "starter" | "growth" };
+export type SyncSubscriptionResult = {
+  ok: boolean;
+  tier?: "starter" | "growth" | "pro";
+};
 
 /**
  * Sync subscription from Dodo Payments for a user (by userId).
@@ -17,7 +20,9 @@ export type SyncSubscriptionResult = { ok: boolean; tier?: "starter" | "growth" 
 export async function syncSubscriptionForUserId(
   userId: string,
 ): Promise<SyncSubscriptionResult> {
-  const productIds = [PLAN_IDS.starter, PLAN_IDS.growth].filter(Boolean);
+  const productIds = [PLAN_IDS.starter, PLAN_IDS.growth, PLAN_IDS.pro].filter(
+    Boolean,
+  );
   if (!apiKey || productIds.length === 0) {
     return { ok: false };
   }
