@@ -48,11 +48,7 @@ export function ThemeToggle({ variant = "full" }: ThemeToggleProps) {
         className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted text-foreground transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       >
-        {isDark ? (
-          <Moon className="h-5 w-5" />
-        ) : (
-          <Sun className="h-5 w-5" />
-        )}
+        {isDark ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
       </button>
     );
   }
@@ -87,4 +83,3 @@ export function ThemeToggle({ variant = "full" }: ThemeToggleProps) {
     </div>
   );
 }
-

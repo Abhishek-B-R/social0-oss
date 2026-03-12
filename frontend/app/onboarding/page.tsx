@@ -92,10 +92,12 @@ export default function OnboardingPlanPage() {
         </div>
       )}
 
-      <div className="grid gap-6 sm:grid-cols-3 mb-8">
+      {/* Pro tier commented out for now — add back later */}
+      <div className="grid gap-6 sm:grid-cols-2 mb-8">
         <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-sm">
           <h2 className="font-semibold text-foreground">
-            Starter (Lite) — <span className="line-through text-muted-foreground">$9</span>{" "}
+            Starter (Lite) —{" "}
+            <span className="line-through text-muted-foreground">$9</span>{" "}
             <span className="text-foreground">$6</span>/month
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
@@ -124,7 +126,8 @@ export default function OnboardingPlanPage() {
             Most popular
           </span>
           <h2 className="font-semibold text-foreground">
-            Growth — <span className="line-through text-muted-foreground">$29</span>{" "}
+            Growth —{" "}
+            <span className="line-through text-muted-foreground">$29</span>{" "}
             <span className="text-foreground">$19</span>/month
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
@@ -148,10 +151,11 @@ export default function OnboardingPlanPage() {
           </button>
         </div>
 
+        {/* Pro tier commented out for now — add back later
         <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-sm">
           <h2 className="font-semibold text-foreground">
             Pro — <span className="line-through text-muted-foreground">$49</span>{" "}
-            <span className="text-foreground">$33</span>/month
+            <span className="text-foreground">$35</span>/month
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
             Early adopter pricing · Save 33%
@@ -173,6 +177,7 @@ export default function OnboardingPlanPage() {
             {loadingPlan === "pro" ? "Redirecting…" : "Choose Pro"}
           </button>
         </div>
+        */}
       </div>
 
       <p className="text-center text-sm text-muted-foreground">

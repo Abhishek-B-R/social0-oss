@@ -65,8 +65,8 @@ export function PricingSection() {
           All plans include a 7-day free trial. Cancel anytime.
         </p>
 
-        {/* Three-card grid */}
-        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl bg-border shadow-sm md:grid-cols-3">
+        {/* Two-card grid (Pro tier commented out for now — add back later) */}
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl bg-border shadow-sm md:grid-cols-2">
           {/* STARTER */}
           <div className="flex flex-col bg-background p-8 md:p-10">
             <div className="mb-6 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
@@ -188,7 +188,7 @@ export function PricingSection() {
             </p>
           </div>
 
-          {/* PRO */}
+          {/* PRO — commented out for now, add back later
           <div className="flex flex-col bg-background p-8 md:p-10">
             <div className="mb-6 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               Pro
@@ -196,7 +196,7 @@ export function PricingSection() {
 
             <div className="mb-2 flex items-baseline gap-3">
               <div className="font-serif text-[64px] leading-none tracking-tight text-foreground">
-                $33
+                $35
               </div>
               <div>
                 <div className="text-[18px] font-medium text-muted-foreground line-through decoration-red-500 decoration-2">
@@ -205,7 +205,7 @@ export function PricingSection() {
                 <div className="text-[13px] text-muted-foreground">/month</div>
               </div>
               <span className="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-                Save 33%
+                Save 30%
               </span>
             </div>
 
@@ -243,6 +243,7 @@ export function PricingSection() {
               No credit card required
             </p>
           </div>
+          */}
         </div>
       </div>
     </section>

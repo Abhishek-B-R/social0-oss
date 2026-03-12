@@ -185,7 +185,8 @@ export function BillingClient({
         </h2>
         {subscription.expiresAt && (
           <p className="mt-0.5 text-sm text-text-muted">
-            Renews {formatDate(new Date(subscription.expiresAt), dateFormat, timezone)}
+            Renews{" "}
+            {formatDate(new Date(subscription.expiresAt), dateFormat, timezone)}
           </p>
         )}
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -237,7 +238,8 @@ export function BillingClient({
         <p className="mt-0.5 text-sm text-text-muted">
           Early adopter pricing. Lock in before price increases.
         </p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        {/* Pro tier commented out for now — add back later */}
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border-2 border-border bg-bg p-4">
             <h3 className="font-semibold text-text">
               Starter (Lite) —{" "}
@@ -273,7 +275,8 @@ export function BillingClient({
               >
                 Current plan
               </button>
-            ) : subscription.tier === "growth" || subscription.tier === "pro" ? (
+            ) : subscription.tier === "growth" ||
+              subscription.tier === "pro" ? (
               <button
                 type="button"
                 onClick={() => {
@@ -389,11 +392,12 @@ export function BillingClient({
               </button>
             )}
           </div>
+          {/* Pro tier commented out for now — add back later
           <div className="rounded-xl border-2 border-border bg-bg p-4">
             <h3 className="font-semibold text-text">
               Pro —{" "}
               <span className="line-through text-muted-foreground">$49</span>{" "}
-              <span className="text-foreground">$33</span>/month
+              <span className="text-foreground">$35</span>/month
             </h3>
             <p className="mt-0.5 text-sm text-text-muted">
               Unlimited accounts, 1,500 tweets/month
@@ -443,6 +447,7 @@ export function BillingClient({
               </button>
             )}
           </div>
+          */}
         </div>
       </div>
     </div>

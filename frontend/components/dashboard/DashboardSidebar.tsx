@@ -21,6 +21,8 @@ import {
   IconTool,
   IconList,
   IconCircleCheck,
+  IconBrandX,
+  IconBook2,
 } from "@tabler/icons-react";
 import { SignOutButton } from "@/components/SignOutButton";
 
@@ -225,6 +227,27 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
               icon={IconMessageCircle}
               isActive={isActive("/dashboard/feedback")}
             />
+          </Section>
+
+          <Section title="Resources">
+            <a
+              href="https://x.com/social0_app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-sidebar-text hover:bg-sidebar-active"
+            >
+              <IconBrandX className="h-4 w-4 shrink-0 text-sidebar-text" />
+              Latest updates
+            </a>
+            <a
+              href="https://docs.social0.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-sidebar-text hover:bg-sidebar-active"
+            >
+              <IconBook2 className="h-4 w-4 shrink-0 text-sidebar-text" />
+              Docs
+            </a>
           </Section>
         </nav>
       </div>

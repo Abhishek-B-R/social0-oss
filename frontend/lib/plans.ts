@@ -1,6 +1,6 @@
 /**
  * Subscription plan limits and feature flags.
- * Starter (Lite): $9/mo (early adopter $6). Growth: $29/mo (early adopter $19). Pro: $49/mo (early adopter $33).
+ * Starter (Lite): $9/mo (early adopter $6). Growth: $29/mo (early adopter $19). Pro: $49/mo (early adopter $35).
  */
 
 export type SubscriptionTier = "free" | "starter" | "growth" | "pro";
@@ -58,7 +58,9 @@ const LIMITS_BY_TIER: Record<SubscriptionTier, PlanLimits> = {
   pro: PRO_LIMITS,
 };
 
-export function getPlanLimits(tier: SubscriptionTier | null | undefined): PlanLimits {
+export function getPlanLimits(
+  tier: SubscriptionTier | null | undefined,
+): PlanLimits {
   if (!tier || tier === "free") return FREE_LIMITS;
   return LIMITS_BY_TIER[tier] ?? FREE_LIMITS;
 }
@@ -70,6 +72,8 @@ export function getTierFromProductId(productId: string): SubscriptionTier {
   return "free";
 }
 
-export function isActiveTier(tier: SubscriptionTier | null | undefined): tier is "starter" | "growth" | "pro" {
+export function isActiveTier(
+  tier: SubscriptionTier | null | undefined,
+): tier is "starter" | "growth" | "pro" {
   return tier === "starter" || tier === "growth" || tier === "pro";
 }

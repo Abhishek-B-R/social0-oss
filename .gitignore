@@ -3,3 +3,4 @@
 */node_modules/
 database/postgres_data/
 certificates
+*/.next/

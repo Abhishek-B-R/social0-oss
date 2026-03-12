@@ -113,6 +113,20 @@ export async function GET(request: Request) {
         "tweet.fields": ["public_metrics"],
       });
 
+      if (!tweet.data) {
+        console.error(
+          "[cron/autoplug] No tweet data for plug",
+          plug.id,
+          "platformPostId:",
+          plug.platformPostId,
+        );
+        await db
+          .update(autoPlugs)
+          .set({ status: "failed", updatedAt: now })
+          .where(eq(autoPlugs.id, plug.id));
+        continue;
+      }
+
       const metrics = tweet.data?.public_metrics;
       const likeCount = metrics?.like_count ?? 0;
       const retweetCount = metrics?.retweet_count ?? 0;
@@ -140,7 +154,20 @@ export async function GET(request: Request) {
 
       triggered++;
     } catch (e) {
-      console.error("[cron/autoplug] Twitter API error:", e);
+      const errMsg = e instanceof Error ? e.message : String(e);
+      const errDetail =
+        e && typeof e === "object" && "data" in e
+          ? JSON.stringify((e as { data?: unknown }).data)
+          : "";
+      console.error(
+        "[cron/autoplug] Twitter API error for plug",
+        plug.id,
+        "platformPostId:",
+        plug.platformPostId,
+        "—",
+        errMsg,
+        errDetail ? errDetail : "",
+      );
       await db
         .update(autoPlugs)
         .set({ status: "failed", updatedAt: now })

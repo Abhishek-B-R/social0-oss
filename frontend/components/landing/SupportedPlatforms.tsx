@@ -106,7 +106,7 @@ export function SupportedPlatforms() {
           {platforms.map((p) => (
             <div
               key={p.name}
-              className="rounded-xl border border-background/[0.08] bg-background/[0.04] p-6 transition-all hover:-translate-y-0.5 hover:bg-background/[0.07] dark:border-white/[0.08] dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
+              className="rounded-xl border border-background/8 bg-background/[0.04] p-6 transition-all hover:-translate-y-0.5 hover:bg-background/[0.07] dark:border-white/[0.08] dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
             >
               <div
                 className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg"

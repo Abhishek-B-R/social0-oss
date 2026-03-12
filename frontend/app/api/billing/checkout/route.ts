@@ -17,9 +17,10 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const plan = body.plan as string | undefined;
   const successUrl = typeof body.successUrl === "string" ? body.successUrl.trim() : null;
-  if (!plan || (plan !== "starter" && plan !== "growth" && plan !== "pro")) {
+  // Pro tier commented out for now — add back later
+  if (!plan || (plan !== "starter" && plan !== "growth" /* && plan !== "pro" */)) {
     return NextResponse.json(
-      { error: "Invalid plan. Use 'starter', 'growth', or 'pro'." },
+      { error: "Invalid plan. Use 'starter' or 'growth'." },
       { status: 400 },
     );
   }
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
       ? PLAN_IDS.starter
       : plan === "growth"
         ? PLAN_IDS.growth
-        : PLAN_IDS.pro;
+        : PLAN_IDS.pro; // unreachable while pro is commented out above
   if (!productId) {
     return NextResponse.json(
       { error: "Billing is not configured for this plan." },

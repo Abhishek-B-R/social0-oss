@@ -22,7 +22,7 @@ export function Hero() {
             {/* Eyebrow badge */}
             <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-              Now in beta
+              Now Live
             </div>
 
             {/* Headline: "everywhere" in Instrument Serif italic, teal in dark mode */}

@@ -11,6 +11,8 @@ const navLinks = [
   { href: "#platforms", label: "Platforms" },
   { href: "#pricing", label: "Pricing" },
   { href: "#faq", label: "FAQ" },
+  { href: "/terms", label: "Terms" },
+  { href: "/privacy", label: "Privacy" },
 ];
 
 export function LandingHeader() {
