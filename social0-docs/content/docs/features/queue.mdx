@@ -1,0 +1,15 @@
+---
+title: Queue
+description: Queue slots and scheduled posts.
+---
+
+# Queue
+
+There is no dedicated "Queue" page in the dashboard. Queue behavior is implemented via:
+
+- **Settings → Queue tab** — Configure queue schedule (slots/windows).
+- **Create flow** — When scheduling a post, you can assign it to a queue slot.
+- **Scheduled posts list** — Posts with a pending queue assignment show a **Queued** badge.
+- **API** — `/api/queue/slots`, `/api/queue/add`, etc. and a cron job for publishing.
+
+Scheduled posts with a `queued_posts` row (status pending) appear as **Queued** on the post list and detail.

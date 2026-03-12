@@ -1,0 +1,42 @@
+---
+title: Architecture
+description: Auth flow, data layer, key patterns.
+---
+
+# Architecture
+
+## Auth flow
+
+- **Session:** Server uses `auth.api.getSession({ headers })` (from `@/lib/auth`). Client uses `useSession()` from `@/lib/auth-client` where needed (e.g. landing header).
+- **Sign-in:** `/auth` — email+password via `signIn.email()`, Google via `signIn.social({ provider: "google" })`. Callback URL is `/dashboard/composer`.
+- **Sign-up:** POST to `/api/auth/sign-up` or sign-up-with-turnstile; optional Turnstile when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set. Success often redirects to `/auth/verify-email?email=...`.
+- **Verify email:** 6-digit OTP via `authClient.emailOtp.verifyEmail`; success → `/onboarding`.
+- **Password reset:** Forgot password requests OTP; reset-password page submits OTP + new password; success → `/auth?reset=success`.
+- **Protected routes:** Dashboard pages typically redirect to `/` or `/auth` when there is no session. Some (e.g. billing, bulk-tools) redirect to `/dashboard/billing?upgrade=1` when plan does not allow the feature.
+
+## Data layer
+
+- **Database:** Drizzle ORM (`@/db`, `@/db/schema`). Main entities: user, userSettings, account, connectedAccounts, posts, postPublications, mediaUploads, resurfaceSchedules, autoPlugs, queuedPosts, etc.
+- **Server actions:** `@/app/actions/` — settings, onboarding, posts, publish, resurface.
+- **List data:** Post list and filters in `app/dashboard/posts/posts-list-data.ts` — getPostsListData, getPostDetail, getPostForEdit, getPostMedia, getQueuedSlotForPost, hasPaymentFailedPosts.
+- **Subscription / limits:** `@/lib/subscription`, `@/lib/plan-limits`, `@/lib/plans`.
+
+## Key patterns
+
+- **Composer → Create:** Payload stored via `setComposerPayload()`; user sent to `/dashboard/create/[slug]?fromComposer=1`. Forms use `consumeComposerPayload()` to prefill.
+- **Post status:** List/detail may correct posts stuck in "publishing" when all publications finish (set to "published" or "partial" in DB).
+- **Queue:** No dedicated `/dashboard/queue` page. Queue via Settings (Queue tab), SchedulePostSidebar, and `/api/queue/*`. Scheduled posts with pending `queued_posts` show "Queued".
+- **Token health:** `runTokenHealthCheckForUser`; some platforms (YouTube, TikTok) skip expiry display.
+- **Content types:** `@/lib/content-types` — slugs text, image, video, threads, collection; create forms in `/dashboard/create/[type]`.
+
+## Glossary
+
+**Post statuses:** `draft`, `scheduled`, `publishing`, `published`, `partial`, `failed`.
+
+**Subscription tiers:** `free`, `starter`, `growth`, `pro`. Limits (accounts, tweets/month, bulk tools, resurface, auto-plug) in `@/lib/plans`.
+
+**Platform identifiers:** `linkedin`, `facebook`, `bluesky`, `youtube`, `pinterest`, `instagram`, `tiktok`, `twitter_x`, `threads`.
+
+**Content type slugs:** `text`, `image`, `video`, `threads`, `collection`.
+
+**Resurface:** Re-post or boost on a schedule (Growth+). **Auto-plug:** Add plug/comment to high-performing posts (Growth+). **Queued post:** Scheduled post with pending `queued_posts` row.

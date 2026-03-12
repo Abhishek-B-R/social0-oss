@@ -1,0 +1,80 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+/* Social0 design system overrides — match website exactly */
+:root {
+  --background: #fafaf8;
+  --foreground: #0a0a0a;
+  --accent: #1a6b4a;
+  --accent-foreground: #ffffff;
+  --border: #e2ded6;
+  --muted: #f0ede8;
+  --muted-foreground: #6b6b6b;
+  --card: #ffffff;
+  --sidebar-bg: #f5f2ed;
+  --font-sans: var(--geist-sans), system-ui, sans-serif;
+  --font-mono: var(--geist-mono), monospace;
+  --font-serif: var(--font-instrument-serif), Georgia, serif;
+
+  /* Fumadocs fd-* overrides so components use Social0 green */
+  --color-fd-primary: #1a6b4a;
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-accent: #e8f0ed;
+  --color-fd-accent-foreground: #0a0a0a;
+  --color-fd-ring: #1a6b4a;
+  --color-fd-background: #fafaf8;
+  --color-fd-foreground: #0a0a0a;
+  --color-fd-muted: #f0ede8;
+  --color-fd-muted-foreground: #6b6b6b;
+  --color-fd-border: #e2ded6;
+  --color-fd-card: #ffffff;
+  --color-fd-popover: #ffffff;
+  --color-fd-popover-foreground: #0a0a0a;
+  --color-fd-secondary: #f0ede8;
+  --color-fd-secondary-foreground: #0a0a0a;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #f5f5f3;
+  --border: #1f1f1f;
+  --muted: #141414;
+  --muted-foreground: #888888;
+  --card: #111111;
+  --sidebar-bg: #0d0d0d;
+  --accent: #1a6b4a;
+
+  --color-fd-background: #0a0a0a;
+  --color-fd-foreground: #f5f5f3;
+  --color-fd-primary: #1a6b4a;
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-accent: #1a1a1a;
+  --color-fd-accent-foreground: #f5f5f3;
+  --color-fd-ring: #1a6b4a;
+  --color-fd-muted: #141414;
+  --color-fd-muted-foreground: #888888;
+  --color-fd-border: #1f1f1f;
+  --color-fd-card: #111111;
+  --color-fd-popover: #111111;
+  --color-fd-popover-foreground: #f5f5f3;
+  --color-fd-secondary: #141414;
+  --color-fd-secondary-foreground: #f5f5f3;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-serif);
+}
+
+/* No shadow — border only (Social0 anti-pattern) */
+.fd-sidebar, [data-fd-sidebar], [data-fd-nav] {
+  box-shadow: none;
+  border-width: 1px;
+  border-color: var(--border);
+}

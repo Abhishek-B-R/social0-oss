@@ -1,0 +1,42 @@
+---
+title: Posts List (All Posts)
+description: Paginated, filterable list of user posts.
+---
+
+# Posts List (All Posts)
+
+## Route
+
+`/dashboard/posts`
+
+## Purpose
+
+Shows a paginated, filterable list of the current user's posts (drafts, scheduled, and published). Users can filter by platform, time range, and account; sort by newest or oldest; and open a post to view detail, edit, or publish.
+
+## Access
+
+- Auth required: yes
+- Plan required: any
+- Who sees this: all authenticated users
+
+## Data flow
+
+**Fetches:** Session, `getPostsListData()` (no status filter; all statuses), `getUserSettingsSnapshot()` for date/time format, `hasPaymentFailedPosts()` for banner. List data may fix posts stuck in "publishing" (set to "published" or "partial" in DB).
+
+**Mutates:** None directly (only the stuck-publishing fix inside getPostsListData).
+
+## Components
+
+- **AllPostsFilters** — Sort, platform, time, account; updates URL and resets page to 1.
+- **PostListCards** — Grid of cards; each links to `/dashboard/posts/[id]`.
+- **Pagination** — Preserves filter params.
+
+## URL params
+
+- `page`, `sort` (newest | oldest), `platform`, `time` (all | week | month), `account`, `tiktok_published` (success banner).
+
+## Related pages
+
+- `/dashboard/composer` — Create post
+- `/dashboard/posts/[id]` — Post detail
+- `/dashboard/billing` — Upgrade (payment-failed banner)
