@@ -9,6 +9,7 @@ import { getSubscriptionForUser } from "@/lib/subscription";
 import { getOnboardingStatus } from "@/app/actions/onboarding";
 
 function getPlanLabel(tier: string): string {
+  if (tier === "pro") return "Pro plan";
   if (tier === "growth") return "Growth plan";
   if (tier === "starter") return "Starter (Lite) plan";
   return "Free plan";

@@ -139,7 +139,7 @@ export default async function NewPostByTypePage({
   const effectiveTier: SubscriptionTier =
     subExpiresAt && new Date(subExpiresAt) < new Date()
       ? "free"
-      : rawTier === "starter" || rawTier === "growth"
+      : rawTier === "starter" || rawTier === "growth" || rawTier === "pro"
         ? rawTier
         : "free";
   const planLimits = getPlanLimits(effectiveTier);

@@ -8,10 +8,7 @@ import { useTheme } from "next-themes";
 import {
   IconFilePlus,
   IconPencil,
-  IconHexagon,
-  IconStack,
   IconStack2,
-  IconClockCheck,
   IconClock,
   IconFileText,
   IconCalendar,

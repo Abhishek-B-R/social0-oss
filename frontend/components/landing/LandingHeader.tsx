@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Menu, X, Moon, Sun } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
+import Image from "next/image";
 
 const navLinks = [
   { href: "#features", label: "Features" },
@@ -47,11 +48,29 @@ export function LandingHeader() {
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1100px] items-center justify-between px-6 lg:px-8">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <span className="font-serif text-[22px] tracking-tight text-foreground">
-            Social0
+        <div className="flex gap-2">
+          <span className="relative h-9 w-9 block">
+            <Image
+              src="/logo.png"
+              alt="Social0"
+              width={36}
+              height={36}
+              className="rounded-lg dark:hidden"
+            />
+            <Image
+              src="/logo-dark.png"
+              alt="Social0"
+              width={36}
+              height={36}
+              className="rounded-full hidden dark:block absolute inset-0 border border-white"
+            />
           </span>
-        </Link>
+          <Link href="/" className="flex items-center gap-2">
+            <span className="font-serif text-[22px] tracking-tight text-foreground">
+              Social0
+            </span>
+          </Link>
+        </div>
 
         {/* Desktop Nav */}
         <nav className="hidden items-center gap-8 md:flex">

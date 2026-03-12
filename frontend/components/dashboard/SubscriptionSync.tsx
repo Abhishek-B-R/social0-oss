@@ -36,7 +36,10 @@ export function SubscriptionSync({ tier }: SubscriptionSyncProps) {
         } catch {
           // ignore
         }
-        if (data?.ok === true && (data.tier === "starter" || data.tier === "growth")) {
+        if (
+          data?.ok === true &&
+          (data.tier === "starter" || data.tier === "growth" || data.tier === "pro")
+        ) {
           router.refresh();
         }
       })

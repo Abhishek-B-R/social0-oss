@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
 import { Turnstile } from "@marsidev/react-turnstile";
-import { signIn, signUp } from "@/lib/auth-client";
+import { signIn } from "@/lib/auth-client";
 
 const CALLBACK_URL = "/dashboard/composer";
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
@@ -67,7 +67,12 @@ function AuthPageContent() {
         ? "/api/auth/sign-up-with-turnstile"
         : "/api/auth/sign-up";
       const body = TURNSTILE_SITE_KEY
-        ? { name: name.trim(), email: email.trim().toLowerCase(), password, turnstileToken }
+        ? {
+            name: name.trim(),
+            email: email.trim().toLowerCase(),
+            password,
+            turnstileToken,
+          }
         : { name: name.trim(), email: email.trim().toLowerCase(), password };
       const res = await fetch(signUpUrl, {
         method: "POST",
@@ -80,11 +85,14 @@ function AuthPageContent() {
         return;
       }
       if (!res.ok) {
-        const data = await res.json().catch(() => ({})) as { error?: string | { message?: string }; message?: string };
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string | { message?: string };
+          message?: string;
+        };
         const msg =
           typeof data.error === "string"
             ? data.error
-            : data.error?.message ?? data.message ?? "Sign up failed";
+            : (data.error?.message ?? data.message ?? "Sign up failed");
         setError(msg);
         return;
       }
@@ -122,11 +130,11 @@ function AuthPageContent() {
                 className="rounded-full hidden dark:block absolute inset-0 border border-white"
               />
             </span>
-            <span className="font-semibold text-lg text-foreground">
+            <span className="font-serif text-[22px] tracking-tight text-foreground landing">
               Social0
             </span>
           </Link>
-          <nav className="hidden sm:flex items-center gap-8">
+          <nav className="hidden sm:flex items-center gap-8 landing">
             <Link
               href="/#features"
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -203,7 +211,8 @@ function AuthPageContent() {
 
             {resetSuccess && (
               <p className="rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-sm py-2 px-3 mb-4">
-                Password reset successfully. You can sign in with your new password.
+                Password reset successfully. You can sign in with your new
+                password.
               </p>
             )}
             {mode === "signin" ? (
@@ -251,9 +260,7 @@ function AuthPageContent() {
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-                {error && (
-                  <p className="text-sm text-destructive">{error}</p>
-                )}
+                {error && <p className="text-sm text-destructive">{error}</p>}
                 <button
                   type="submit"
                   disabled={loading}
@@ -329,12 +336,12 @@ function AuthPageContent() {
                     />
                   </div>
                 )}
-                {error && (
-                  <p className="text-sm text-destructive">{error}</p>
-                )}
+                {error && <p className="text-sm text-destructive">{error}</p>}
                 <button
                   type="submit"
-                  disabled={loading || (!!TURNSTILE_SITE_KEY && !turnstileToken)}
+                  disabled={
+                    loading || (!!TURNSTILE_SITE_KEY && !turnstileToken)
+                  }
                   className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-3 px-4 transition-colors"
                 >
                   {loading ? "Creating account…" : "Create account"}

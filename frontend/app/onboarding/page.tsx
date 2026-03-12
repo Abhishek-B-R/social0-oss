@@ -30,11 +30,30 @@ const GROWTH_FEATURES = [
   "Human support",
 ];
 
+const PRO_FEATURES = [
+  "Unlimited connected accounts",
+  "Multiple accounts per platform",
+  "Unlimited posts",
+  "Schedule posts across platforms",
+  "Carousel posts",
+  "Threads & Collections support",
+  "1,500 tweets/month (Twitter/X)",
+  "Auto-plug high performing tweets",
+  "Auto-repost on autopilot",
+  "Bulk scheduling tools",
+  "Fair usage policy",
+  "Human support",
+  "Priority support",
+  "Early access to new features",
+];
+
 export default function OnboardingPlanPage() {
-  const [loadingPlan, setLoadingPlan] = useState<"starter" | "growth" | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<
+    "starter" | "growth" | "pro" | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSelectPlan(plan: "starter" | "growth") {
+  async function handleSelectPlan(plan: "starter" | "growth" | "pro") {
     setError(null);
     setLoadingPlan(plan);
     try {
@@ -59,7 +78,7 @@ export default function OnboardingPlanPage() {
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <h1 className="text-2xl sm:text-3xl font-bold text-center text-foreground mb-2">
         Choose your plan
       </h1>
@@ -68,12 +87,12 @@ export default function OnboardingPlanPage() {
       </p>
 
       {error && (
-        <div className="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive max-w-2xl mx-auto">
           {error}
         </div>
       )}
 
-      <div className="grid gap-6 sm:grid-cols-2 mb-8">
+      <div className="grid gap-6 sm:grid-cols-3 mb-8">
         <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-sm">
           <h2 className="font-semibold text-foreground">
             Starter (Lite) — <span className="line-through text-muted-foreground">$9</span>{" "}
@@ -126,6 +145,32 @@ export default function OnboardingPlanPage() {
             className="mt-6 w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors"
           >
             {loadingPlan === "growth" ? "Redirecting…" : "Choose Growth"}
+          </button>
+        </div>
+
+        <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-sm">
+          <h2 className="font-semibold text-foreground">
+            Pro — <span className="line-through text-muted-foreground">$49</span>{" "}
+            <span className="text-foreground">$33</span>/month
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Early adopter pricing · Save 33%
+          </p>
+          <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">
+            {PRO_FEATURES.map((f, i) => (
+              <li key={i} className="flex items-center gap-2">
+                <span className="text-emerald-500 shrink-0">✓</span>
+                {f}
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={() => handleSelectPlan("pro")}
+            disabled={loadingPlan !== null}
+            className="mt-6 w-full rounded-xl border-2 border-emerald-500 bg-transparent px-4 py-3 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 transition-colors"
+          >
+            {loadingPlan === "pro" ? "Redirecting…" : "Choose Pro"}
           </button>
         </div>
       </div>

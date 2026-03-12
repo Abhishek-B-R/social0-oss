@@ -44,7 +44,8 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus | null> {
   ]);
 
   const onboardingCompleted = settingsRow?.onboardingCompleted ?? false;
-  const hasSubscription = sub.tier === "starter" || sub.tier === "growth";
+  const hasSubscription =
+    sub.tier === "starter" || sub.tier === "growth" || sub.tier === "pro";
   const connectedAccountsCount = accounts.length;
   const shouldOnboard =
     !onboardingCompleted && !hasSubscription && connectedAccountsCount === 0;
