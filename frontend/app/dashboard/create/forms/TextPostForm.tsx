@@ -45,6 +45,7 @@ import {
   consumeComposerPayload,
   clearComposerPayload,
 } from "@/lib/composer-bridge";
+import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
 import { MdClose } from "react-icons/md";
 
@@ -111,7 +112,9 @@ export function TextPostForm({
   );
   type OverlayPhase = "idle" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
-  const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>([]);
+  const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>(
+    [],
+  );
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resurfaceConfig, setResurfaceConfig] =
@@ -204,7 +207,9 @@ export function TextPostForm({
         );
         setContent(scheduled.originalContent ?? "");
         setSelectedIds(new Set(restoredIds));
-        setScheduledAt(scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null);
+        setScheduledAt(
+          scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null,
+        );
         setMode("scheduled");
         if (scheduled.queueSlotId)
           intendedQueueSlotIdRef.current = scheduled.queueSlotId;
@@ -286,16 +291,11 @@ export function TextPostForm({
     }
     if (!rememberAutoFeatures) return;
     if (hasRestoredAutoFeaturesRef.current) return;
-    const { autoRepostConfig, autoPlugConfig } =
-      getAutoFeaturesInitialState();
+    const { autoRepostConfig, autoPlugConfig } = getAutoFeaturesInitialState();
     if (autoRepostConfig) setResurfaceConfig(autoRepostConfig);
     if (autoPlugConfig) setAutoPlugConfig(autoPlugConfig);
     hasRestoredAutoFeaturesRef.current = true;
-  }, [
-    hasXForResurface,
-    rememberAutoFeatures,
-    getAutoFeaturesInitialState,
-  ]);
+  }, [hasXForResurface, rememberAutoFeatures, getAutoFeaturesInitialState]);
 
   // Persist Auto-Repost & Auto-Plug when remember is on
   useEffect(() => {
@@ -388,7 +388,7 @@ export function TextPostForm({
         scheduledAt,
         undefined,
         metadata,
-        scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+        scheduledAt ? (intendedQueueSlotIdRef.current ?? undefined) : undefined,
       );
       if (scheduledAt) intendedQueueSlotIdRef.current = null;
       setLoading(false);
@@ -486,7 +486,8 @@ export function TextPostForm({
           accountId: pub.connectedAccountId,
           accountName: pub.platformUsername
             ? `@${pub.platformUsername}`
-            : PLATFORMS.find((p) => p.id === pub.platform)?.name ?? pub.platform,
+            : (PLATFORMS.find((p) => p.id === pub.platform)?.name ??
+              pub.platform),
           status: "waiting" as PlatformStatus,
         }));
         setPlatformStatuses(initial);
@@ -513,8 +514,7 @@ export function TextPostForm({
                     status: (res?.status === "published"
                       ? "published"
                       : "failed") as PlatformStatus,
-                    error:
-                      res?.status === "failed" ? res?.error : undefined,
+                    error: res?.status === "failed" ? res?.error : undefined,
                     postUrl:
                       res?.status === "published"
                         ? (res?.platformPostUrl ?? null)
@@ -542,11 +542,7 @@ export function TextPostForm({
             (a) => a.platform === "twitter_x",
           );
           if (xAccount) {
-            await createAutoPlug(
-              result.postId,
-              xAccount.id,
-              autoPlugConfig,
-            );
+            await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
           }
         }
         return;
@@ -559,7 +555,9 @@ export function TextPostForm({
           scheduledAt,
           undefined,
           metadata,
-          scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+          scheduledAt
+            ? (intendedQueueSlotIdRef.current ?? undefined)
+            : undefined,
         );
         if (scheduledAt) intendedQueueSlotIdRef.current = null;
         setLoading(false);
@@ -581,7 +579,9 @@ export function TextPostForm({
       scheduledAt,
       [],
       metadata,
-      effectiveMode === "scheduled" ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+      effectiveMode === "scheduled"
+        ? (intendedQueueSlotIdRef.current ?? undefined)
+        : undefined,
     );
     if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
@@ -629,7 +629,8 @@ export function TextPostForm({
           accountId: pub.connectedAccountId,
           accountName: pub.platformUsername
             ? `@${pub.platformUsername}`
-            : PLATFORMS.find((p) => p.id === pub.platform)?.name ?? pub.platform,
+            : (PLATFORMS.find((p) => p.id === pub.platform)?.name ??
+              pub.platform),
           status: "waiting" as PlatformStatus,
         }));
         setPlatformStatuses(initial);
@@ -656,8 +657,7 @@ export function TextPostForm({
                     status: (res?.status === "published"
                       ? "published"
                       : "failed") as PlatformStatus,
-                    error:
-                      res?.status === "failed" ? res?.error : undefined,
+                    error: res?.status === "failed" ? res?.error : undefined,
                     postUrl:
                       res?.status === "published"
                         ? (res?.platformPostUrl ?? null)
@@ -685,11 +685,7 @@ export function TextPostForm({
             (a) => a.platform === "twitter_x",
           );
           if (xAccount) {
-            await createAutoPlug(
-              result.postId,
-              xAccount.id,
-              autoPlugConfig,
-            );
+            await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
           }
         }
         return;
@@ -725,12 +721,11 @@ export function TextPostForm({
     );
   }, [accounts, accountSearch]);
 
-  const submitDisabledReason =
-    !content.trim()
-      ? "Add some text to post"
-      : mode === "scheduled" && !scheduledAt
-          ? "Pick a date and time to schedule"
-          : null;
+  const submitDisabledReason = !content.trim()
+    ? "Add some text to post"
+    : mode === "scheduled" && !scheduledAt
+      ? "Pick a date and time to schedule"
+      : null;
 
   const submitLabel =
     mode === "draft"
@@ -850,7 +845,7 @@ export function TextPostForm({
             >
               What do you want to post?
             </label>
-            <textarea
+            <AutoResizeTextarea
               id="content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -859,6 +854,7 @@ export function TextPostForm({
               className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
               required
               autoFocus
+              maxHeight={400}
             />
             <CaptionCounter
               caption={content}
@@ -878,7 +874,8 @@ export function TextPostForm({
                   ---
                 </code>{" "}
                 is a separate tweet). Standard accounts: 280 chars per part;
-                Premium allows longer. Media will only appear on the first tweet.
+                Premium allows longer. Media will only appear on the first
+                tweet.
               </p>
             )}
           </div>
@@ -991,7 +988,7 @@ export function TextPostForm({
                             )}
                           </div>
                         </div>
-                        <textarea
+                        <AutoResizeTextarea
                           rows={3}
                           placeholder={
                             state.overridden
@@ -1015,6 +1012,7 @@ export function TextPostForm({
                             }))
                           }
                           className="w-full rounded-lg border border-input bg-bg px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 disabled:opacity-70"
+                          maxHeight={160}
                         />
                       </div>
                     );

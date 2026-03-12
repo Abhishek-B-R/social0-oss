@@ -41,6 +41,7 @@ import {
   consumeComposerPayload,
   clearComposerPayload,
 } from "@/lib/composer-bridge";
+import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
 import { ChevronDown, ChevronUp, Circle } from "lucide-react";
 import { uploadFile } from "@/lib/upload-file";
@@ -113,6 +114,9 @@ export function CollectionPostForm({
   const [images, setImages] = useState<ImageFile[]>([]);
   const [videos, setVideos] = useState<VideoFile[]>([]);
   const [carouselPreviewIndex, setCarouselPreviewIndex] = useState(0);
+  type PreviewCardMode = "carousel" | "post";
+  const [previewCardMode, setPreviewCardMode] =
+    useState<PreviewCardMode>("carousel");
   const validIds = useMemo(
     () => new Set(accounts.filter((a) => !a.tokenExpired).map((a) => a.id)),
     [accounts],
@@ -450,7 +454,9 @@ export function CollectionPostForm({
     const reasons: Record<string, string> = {};
     for (const acc of accounts) {
       if (videoLimitState.accountIds.has(acc.id)) {
-        const w = videoLimitState.warnings.find((x) => x.platform === acc.platform);
+        const w = videoLimitState.warnings.find(
+          (x) => x.platform === acc.platform,
+        );
         reasons[acc.id] = w?.message ?? `Video exceeds ${acc.platform} limit`;
       }
     }
@@ -461,7 +467,9 @@ export function CollectionPostForm({
     const reasons: Record<string, string> = {};
     for (const acc of accounts) {
       if (videoLimitState.softAccountIds.has(acc.id)) {
-        const w = videoLimitState.softWarnings.find((x) => x.platform === acc.platform);
+        const w = videoLimitState.softWarnings.find(
+          (x) => x.platform === acc.platform,
+        );
         reasons[acc.id] = w?.message ?? "May limit reach to new audiences.";
       }
     }
@@ -470,7 +478,10 @@ export function CollectionPostForm({
 
   useEffect(() => {
     if (maxVideoDurationSeconds <= 0) return;
-    const { accountIds } = getAccountsOverVideoLimit(accounts, maxVideoDurationSeconds);
+    const { accountIds } = getAccountsOverVideoLimit(
+      accounts,
+      maxVideoDurationSeconds,
+    );
     if (accountIds.size === 0) return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -1444,8 +1455,8 @@ export function CollectionPostForm({
                 {videoLimitState.warnings.length > 0 && (
                   <>
                     <p className="text-sm mb-1">
-                      The following exceed platform limits. Affected accounts are
-                      disabled for this post:
+                      The following exceed platform limits. Affected accounts
+                      are disabled for this post:
                     </p>
                     <ul className="list-disc list-inside text-sm space-y-1 mb-2">
                       {videoLimitState.warnings.map((w) => (
@@ -1522,7 +1533,7 @@ export function CollectionPostForm({
               Add a caption plus multiple images and/or video in a single post.
             </p>
 
-            <textarea
+            <AutoResizeTextarea
               ref={captionTextareaRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -1532,6 +1543,7 @@ export function CollectionPostForm({
               autoFocus
               onFocus={() => setIsCaptionFocused(true)}
               onBlur={() => setIsCaptionFocused(false)}
+              maxHeight={280}
             />
             <CaptionCounter
               caption={content}
@@ -1833,104 +1845,210 @@ export function CollectionPostForm({
           rememberAutoFeatures={rememberAutoFeatures}
           onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
-          <div className="hidden lg:block rounded-xl border border-border bg-bg p-4 shadow-sm -mt-3">
-            <h3 className="mb-3 text-sm font-semibold text-text">
-              Carousel preview
-            </h3>
-            {allItemsSorted.length === 0 ? (
-              <div className="flex aspect-square w-full flex-col items-center justify-center rounded-lg border border-dashed border-border bg-bg-subtle text-text-subtle">
-                <MdOutlineAddPhotoAlternate className="mb-2 h-12 w-12" />
-                <span className="text-xs">Upload media to see preview</span>
+          <div className="hidden lg:block max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-bg-elevated p-4 shadow-sm -mt-3">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="flex rounded-full border border-border bg-bg-muted p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setPreviewCardMode("carousel")}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    previewCardMode === "carousel"
+                      ? "bg-accent text-white"
+                      : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
+                  }`}
+                >
+                  Carousel preview
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewCardMode("post")}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    previewCardMode === "post"
+                      ? "bg-accent text-white"
+                      : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
+                  }`}
+                >
+                  Tweet preview
+                </button>
               </div>
+            </div>
+            {previewCardMode === "carousel" ? (
+              allItemsSorted.length === 0 ? (
+                <div className="flex aspect-square w-full flex-col items-center justify-center rounded-lg border border-dashed border-border bg-bg-subtle text-text-subtle">
+                  <MdOutlineAddPhotoAlternate className="mb-2 h-12 w-12" />
+                  <span className="text-xs">Upload media to see preview</span>
+                </div>
+              ) : (
+                <>
+                  <div className="relative aspect-square w-full max-h-60 overflow-hidden rounded-lg bg-bg-muted">
+                    {previewItem?.type === "video" ? (
+                      <video
+                        key={previewItem.preview}
+                        src={previewItem.preview}
+                        className="h-full w-full object-contain"
+                        controls
+                        muted
+                        playsInline
+                        preload="auto"
+                      />
+                    ) : (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={previewItem?.preview}
+                        alt=""
+                        className="h-full w-full object-contain"
+                      />
+                    )}
+                  </div>
+                  <div className="mt-2 flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (carouselPreviewIndex > 0)
+                          setCarouselPreviewIndex(carouselPreviewIndex - 1);
+                      }}
+                      disabled={carouselPreviewIndex === 0}
+                      className="rounded-full p-1 text-text-muted hover:bg-bg hover:text-text disabled:opacity-30 disabled:cursor-not-allowed"
+                      aria-label="Previous"
+                    >
+                      ←
+                    </button>
+                    <span className="text-xs text-text-muted">
+                      {carouselPreviewIndex + 1} / {allItemsSorted.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (carouselPreviewIndex < allItemsSorted.length - 1)
+                          setCarouselPreviewIndex(carouselPreviewIndex + 1);
+                      }}
+                      disabled={
+                        carouselPreviewIndex === allItemsSorted.length - 1
+                      }
+                      className="rounded-full p-1 text-text-muted hover:bg-bg hover:text-text disabled:opacity-30 disabled:cursor-not-allowed"
+                      aria-label="Next"
+                    >
+                      →
+                    </button>
+                  </div>
+                  <div className="mt-2 flex gap-1 overflow-x-auto pb-1">
+                    {allItemsSorted.map((item, idx) => (
+                      <button
+                        key={item.preview}
+                        type="button"
+                        onClick={() => setCarouselPreviewIndex(idx)}
+                        className={`relative h-12 w-12 shrink-0 overflow-hidden rounded border ${
+                          idx === carouselPreviewIndex
+                            ? "border-accent ring-1 ring-accent"
+                            : "border-border"
+                        }`}
+                      >
+                        {item.type === "video" ? (
+                          <video
+                            src={item.preview}
+                            className="h-full w-full object-cover"
+                            muted
+                            playsInline
+                            preload="metadata"
+                          />
+                        ) : (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={item.preview}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        )}
+                        {item.type === "video" && (
+                          <div className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded-full bg-black/70 px-1 py-0.5">
+                            <MdOutlineVideocam className="h-2.5 w-2.5 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )
             ) : (
               <>
-                <div className="relative aspect-square w-full max-h-60 overflow-hidden rounded-lg bg-bg-muted">
-                  {previewItem?.type === "video" ? (
-                    <video
-                      key={previewItem.preview}
-                      src={previewItem.preview}
-                      className="h-full w-full object-contain"
-                      controls
-                      muted
-                      playsInline
-                      preload="auto"
-                    />
-                  ) : (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={previewItem?.preview}
-                      alt=""
-                      className="h-full w-full object-contain"
-                    />
-                  )}
-                </div>
-                <div className="mt-2 flex items-center justify-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (carouselPreviewIndex > 0)
-                        setCarouselPreviewIndex(carouselPreviewIndex - 1);
-                    }}
-                    disabled={carouselPreviewIndex === 0}
-                    className="rounded-full p-1 text-text-muted hover:bg-bg hover:text-text disabled:opacity-30 disabled:cursor-not-allowed"
-                    aria-label="Previous"
-                  >
-                    ←
-                  </button>
-                  <span className="text-xs text-text-muted">
-                    {carouselPreviewIndex + 1} / {allItemsSorted.length}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (carouselPreviewIndex < allItemsSorted.length - 1)
-                        setCarouselPreviewIndex(carouselPreviewIndex + 1);
-                    }}
-                    disabled={
-                      carouselPreviewIndex === allItemsSorted.length - 1
-                    }
-                    className="rounded-full p-1 text-text-muted hover:bg-bg hover:text-text disabled:opacity-30 disabled:cursor-not-allowed"
-                    aria-label="Next"
-                  >
-                    →
-                  </button>
-                </div>
-                <div className="mt-2 flex gap-1 overflow-x-auto pb-1">
-                  {allItemsSorted.map((item, idx) => (
-                    <button
-                      key={item.preview}
-                      type="button"
-                      onClick={() => setCarouselPreviewIndex(idx)}
-                      className={`relative h-12 w-12 shrink-0 overflow-hidden rounded border ${
-                        idx === carouselPreviewIndex
-                          ? "border-accent ring-1 ring-accent"
-                          : "border-border"
-                      }`}
-                    >
-                      {item.type === "video" ? (
-                        <video
-                          src={item.preview}
-                          className="h-full w-full object-cover"
-                          muted
-                          playsInline
-                          preload="metadata"
-                        />
-                      ) : (
+                <div className="rounded-lg border border-border bg-bg p-3 shadow-sm">
+                  <div className="flex gap-3">
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-bg-muted flex items-center justify-center text-sm font-semibold text-text-muted">
+                      {selectedAccounts[0]?.profileImageUrl?.trim() ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img
-                          src={item.preview}
+                          src={selectedAccounts[0].profileImageUrl}
                           alt=""
                           className="h-full w-full object-cover"
+                          referrerPolicy="no-referrer"
                         />
+                      ) : (
+                        (selectedAccounts[0]?.platformUsername ?? "?")
+                          .charAt(0)
+                          .toUpperCase()
                       )}
-                      {item.type === "video" && (
-                        <div className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded-full bg-black/70 px-1 py-0.5">
-                          <MdOutlineVideocam className="h-2.5 w-2.5 text-white" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-text">
+                        {selectedAccounts[0]?.platformUsername
+                          ? `@${selectedAccounts[0].platformUsername}`
+                          : "@username"}{" "}
+                        <span className="font-normal text-text-muted">
+                          · now
+                        </span>
+                      </p>
+                      <p className="mt-1 text-sm text-text/80 whitespace-pre-wrap wrap-break-word">
+                        {content.trim() || (
+                          <span className="italic text-text-muted">
+                            Caption...
+                          </span>
+                        )}
+                      </p>
+                      {allItemsSorted.length > 0 && (
+                        <div className="mt-2 w-full max-h-[150px] grid grid-cols-2 grid-rows-2 gap-0.5 overflow-hidden rounded-lg bg-bg-muted">
+                          {allItemsSorted.slice(0, 4).map((item) => (
+                            <div
+                              key={item.preview}
+                              className="relative min-w-0 min-h-0 overflow-hidden"
+                            >
+                              {item.type === "video" ? (
+                                <video
+                                  src={item.preview}
+                                  className="h-full w-full object-cover"
+                                  muted
+                                  playsInline
+                                  preload="metadata"
+                                />
+                              ) : (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img
+                                  src={item.preview}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              )}
+                              {item.type === "video" && (
+                                <div className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded-full bg-black/70 px-1 py-0.5">
+                                  <MdOutlineVideocam className="h-2.5 w-2.5 text-white" />
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       )}
-                    </button>
-                  ))}
+                      <div className="mt-2 flex items-center gap-4 text-sm text-text-muted">
+                        <span>♡ 0</span>
+                        <span>↺ 0</span>
+                        <span>💬 0</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+                {selectedAccounts.length > 1 && (
+                  <p className="mt-2 text-xs text-text-muted">
+                    Posting to {selectedAccounts.length} platforms
+                  </p>
+                )}
               </>
             )}
           </div>

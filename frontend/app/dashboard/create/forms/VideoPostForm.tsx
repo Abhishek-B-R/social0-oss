@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useRef, useMemo, useEffect } from "react";
@@ -65,6 +66,7 @@ import {
   consumeComposerPayload,
   clearComposerPayload,
 } from "@/lib/composer-bridge";
+import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
 
 type PlatformCaptionState = {
@@ -150,7 +152,9 @@ export function VideoPostForm({
     useRememberedAccounts("post-form-video");
   const [accountSearch, setAccountSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
-    initialDraftId || initialScheduledId || initialEditId ? new Set() : getInitialSelectedIds(validIds),
+    initialDraftId || initialScheduledId || initialEditId
+      ? new Set()
+      : getInitialSelectedIds(validIds),
   );
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
@@ -165,7 +169,9 @@ export function VideoPostForm({
     Record<string, TikTokPostSettings>
   >({});
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
-  const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>([]);
+  const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>(
+    [],
+  );
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
@@ -195,8 +201,7 @@ export function VideoPostForm({
     coverImageUrl?: string;
     isTrialReel: boolean;
   }>({ isTrialReel: false });
-  const [instagramCoverUploading, setInstagramCoverUploading] =
-    useState(false);
+  const [instagramCoverUploading, setInstagramCoverUploading] = useState(false);
   const [instagramCoverError, setInstagramCoverError] = useState<string | null>(
     null,
   );
@@ -267,16 +272,11 @@ export function VideoPostForm({
     }
     if (!rememberAutoFeatures) return;
     if (hasRestoredAutoFeaturesRef.current) return;
-    const { autoRepostConfig, autoPlugConfig } =
-      getAutoFeaturesInitialState();
+    const { autoRepostConfig, autoPlugConfig } = getAutoFeaturesInitialState();
     if (autoRepostConfig) setResurfaceConfig(autoRepostConfig);
     if (autoPlugConfig) setAutoPlugConfig(autoPlugConfig);
     hasRestoredAutoFeaturesRef.current = true;
-  }, [
-    hasXForResurface,
-    rememberAutoFeatures,
-    getAutoFeaturesInitialState,
-  ]);
+  }, [hasXForResurface, rememberAutoFeatures, getAutoFeaturesInitialState]);
 
   // Persist Auto-Repost & Auto-Plug when remember is on
   useEffect(() => {
@@ -374,7 +374,9 @@ export function VideoPostForm({
         );
         setContent(scheduled.originalContent ?? "");
         setSelectedIds(new Set(restoredIds));
-        setScheduledAt(scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null);
+        setScheduledAt(
+          scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null,
+        );
         setMode("scheduled");
         if (scheduled.queueSlotId)
           intendedQueueSlotIdRef.current = scheduled.queueSlotId;
@@ -397,7 +399,8 @@ export function VideoPostForm({
               next[id] = {
                 privacy_level:
                   typeof t.privacy_level === "string" ? t.privacy_level : "",
-                video_title: typeof t.video_title === "string" ? t.video_title : "",
+                video_title:
+                  typeof t.video_title === "string" ? t.video_title : "",
                 disable_comment: !!t.disable_comment,
                 disable_duet: !!t.disable_duet,
                 disable_stitch: !!t.disable_stitch,
@@ -415,11 +418,17 @@ export function VideoPostForm({
         if (youtube && typeof youtube.title === "string") {
           setYoutubeTitle(youtube.title.slice(0, 100));
         }
-        const videoMeta = meta?.video as {
-          durationSeconds?: number;
-          isVertical?: boolean;
-        } | undefined;
-        if (videoMedia && videoMeta && typeof videoMeta.durationSeconds === "number") {
+        const videoMeta = meta?.video as
+          | {
+              durationSeconds?: number;
+              isVertical?: boolean;
+            }
+          | undefined;
+        if (
+          videoMedia &&
+          videoMeta &&
+          typeof videoMeta.durationSeconds === "number"
+        ) {
           setVideoDuration(videoMeta.durationSeconds);
           if (typeof videoMeta.isVertical === "boolean") {
             setIsVertical(videoMeta.isVertical);
@@ -472,7 +481,8 @@ export function VideoPostForm({
               next[id] = {
                 privacy_level:
                   typeof t.privacy_level === "string" ? t.privacy_level : "",
-                video_title: typeof t.video_title === "string" ? t.video_title : "",
+                video_title:
+                  typeof t.video_title === "string" ? t.video_title : "",
                 disable_comment: !!t.disable_comment,
                 disable_duet: !!t.disable_duet,
                 disable_stitch: !!t.disable_stitch,
@@ -490,11 +500,17 @@ export function VideoPostForm({
         if (youtube && typeof youtube.title === "string") {
           setYoutubeTitle(youtube.title.slice(0, 100));
         }
-        const videoMeta = meta?.video as {
-          durationSeconds?: number;
-          isVertical?: boolean;
-        } | undefined;
-        if (videoMedia && videoMeta && typeof videoMeta.durationSeconds === "number") {
+        const videoMeta = meta?.video as
+          | {
+              durationSeconds?: number;
+              isVertical?: boolean;
+            }
+          | undefined;
+        if (
+          videoMedia &&
+          videoMeta &&
+          typeof videoMeta.durationSeconds === "number"
+        ) {
           setVideoDuration(videoMeta.durationSeconds);
           if (typeof videoMeta.isVertical === "boolean") {
             setIsVertical(videoMeta.isVertical);
@@ -552,7 +568,8 @@ export function VideoPostForm({
               next[id] = {
                 privacy_level:
                   typeof t.privacy_level === "string" ? t.privacy_level : "",
-                video_title: typeof t.video_title === "string" ? t.video_title : "",
+                video_title:
+                  typeof t.video_title === "string" ? t.video_title : "",
                 disable_comment: !!t.disable_comment,
                 disable_duet: !!t.disable_duet,
                 disable_stitch: !!t.disable_stitch,
@@ -570,11 +587,17 @@ export function VideoPostForm({
         if (youtube && typeof youtube.title === "string") {
           setYoutubeTitle(youtube.title.slice(0, 100));
         }
-        const videoMeta = meta?.video as {
-          durationSeconds?: number;
-          isVertical?: boolean;
-        } | undefined;
-        if (videoMedia && videoMeta && typeof videoMeta.durationSeconds === "number") {
+        const videoMeta = meta?.video as
+          | {
+              durationSeconds?: number;
+              isVertical?: boolean;
+            }
+          | undefined;
+        if (
+          videoMedia &&
+          videoMeta &&
+          typeof videoMeta.durationSeconds === "number"
+        ) {
           setVideoDuration(videoMeta.durationSeconds);
           if (typeof videoMeta.isVertical === "boolean") {
             setIsVertical(videoMeta.isVertical);
@@ -648,7 +671,9 @@ export function VideoPostForm({
     const reasons: Record<string, string> = {};
     for (const acc of accounts) {
       if (videoLimitState.accountIds.has(acc.id)) {
-        const w = videoLimitState.warnings.find((x) => x.platform === acc.platform);
+        const w = videoLimitState.warnings.find(
+          (x) => x.platform === acc.platform,
+        );
         reasons[acc.id] = w?.message ?? `Video exceeds ${acc.platform} limit`;
       }
     }
@@ -659,7 +684,9 @@ export function VideoPostForm({
     const reasons: Record<string, string> = {};
     for (const acc of accounts) {
       if (videoLimitState.softAccountIds.has(acc.id)) {
-        const w = videoLimitState.softWarnings.find((x) => x.platform === acc.platform);
+        const w = videoLimitState.softWarnings.find(
+          (x) => x.platform === acc.platform,
+        );
         reasons[acc.id] = w?.message ?? "May limit reach to new audiences.";
       }
     }
@@ -667,7 +694,7 @@ export function VideoPostForm({
   }, [accounts, videoLimitState]);
 
   const selectableAccounts = accounts.filter(
-    (a) => !a.tokenExpired && !videoLimitState.accountIds.has(a.id)
+    (a) => !a.tokenExpired && !videoLimitState.accountIds.has(a.id),
   );
   const selectAll = () => {
     if (selectableAccounts.every((a) => selectedIds.has(a.id))) {
@@ -1060,7 +1087,7 @@ export function VideoPostForm({
         scheduledAt,
         mediaIds,
         meta,
-        scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+        scheduledAt ? (intendedQueueSlotIdRef.current ?? undefined) : undefined,
       );
       if (scheduledAt) intendedQueueSlotIdRef.current = null;
       setLoading(false);
@@ -1149,7 +1176,9 @@ export function VideoPostForm({
           scheduledAt,
           mediaIds,
           meta,
-          scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+          scheduledAt
+            ? (intendedQueueSlotIdRef.current ?? undefined)
+            : undefined,
         );
         if (scheduledAt) intendedQueueSlotIdRef.current = null;
         setLoading(false);
@@ -1171,7 +1200,9 @@ export function VideoPostForm({
       scheduledAt,
       mediaIds,
       meta,
-      effectiveMode === "scheduled" ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+      effectiveMode === "scheduled"
+        ? (intendedQueueSlotIdRef.current ?? undefined)
+        : undefined,
     );
     if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
@@ -1182,7 +1213,12 @@ export function VideoPostForm({
     }
     if (effectiveMode === "now" && result.postId) {
       setPublishedPostId(result.postId);
-      console.log("[cover] hasInstagramSelected:", hasInstagramSelected, "instagramConfig:", JSON.stringify(instagramConfig));
+      console.log(
+        "[cover] hasInstagramSelected:",
+        hasInstagramSelected,
+        "instagramConfig:",
+        JSON.stringify(instagramConfig),
+      );
       const publishOptions = hasInstagramSelected
         ? {
             instagramConfig: {
@@ -1191,7 +1227,10 @@ export function VideoPostForm({
             },
           }
         : undefined;
-      console.log("[cover] publishOptions being sent:", JSON.stringify(publishOptions));
+      console.log(
+        "[cover] publishOptions being sent:",
+        JSON.stringify(publishOptions),
+      );
       const list = await getPostPublicationList(result.postId);
       if (list.length === 0) {
         const publishResult = await publishPost(result.postId, publishOptions);
@@ -1213,7 +1252,8 @@ export function VideoPostForm({
         accountId: pub.connectedAccountId,
         accountName: pub.platformUsername
           ? `@${pub.platformUsername}`
-          : PLATFORMS.find((p) => p.id === pub.platform)?.name ?? pub.platform,
+          : (PLATFORMS.find((p) => p.id === pub.platform)?.name ??
+            pub.platform),
         status: "waiting" as PlatformStatus,
       }));
       setPlatformStatuses(initial);
@@ -1317,16 +1357,15 @@ export function VideoPostForm({
     });
   }, [videoDuration, accounts]);
 
-  const submitDisabledReason =
-    !content.trim()
-      ? "Add a caption"
-      : !hasVideo
-        ? "Add a video"
-        : videoDuration > MAX_VIDEO_DURATION_SECONDS
-          ? VIDEO_DURATION_MESSAGE
-          : mode === "scheduled" && !scheduledAt
-            ? "Pick a date and time to schedule"
-            : null;
+  const submitDisabledReason = !content.trim()
+    ? "Add a caption"
+    : !hasVideo
+      ? "Add a video"
+      : videoDuration > MAX_VIDEO_DURATION_SECONDS
+        ? VIDEO_DURATION_MESSAGE
+        : mode === "scheduled" && !scheduledAt
+          ? "Pick a date and time to schedule"
+          : null;
 
   const submitLabel =
     mode === "draft"
@@ -1467,8 +1506,8 @@ export function VideoPostForm({
                 {videoLimitState.warnings.length > 0 && (
                   <>
                     <p className="text-sm mb-1">
-                      The following exceed platform limits. Affected accounts are
-                      disabled for this post:
+                      The following exceed platform limits. Affected accounts
+                      are disabled for this post:
                     </p>
                     <ul className="list-disc list-inside text-sm space-y-1 mb-2">
                       {videoLimitState.warnings.map((w) => (
@@ -1553,7 +1592,7 @@ export function VideoPostForm({
                 </div>
               </div>
             )}
-            <textarea
+            <AutoResizeTextarea
               ref={captionTextareaRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -1563,6 +1602,7 @@ export function VideoPostForm({
               autoFocus
               onFocus={() => setIsCaptionFocused(true)}
               onBlur={() => setIsCaptionFocused(false)}
+              maxHeight={220}
             />
             <CaptionCounter
               caption={content}
@@ -1954,9 +1994,9 @@ export function VideoPostForm({
                       Custom Cover Image
                     </h4>
                     <p className="text-xs text-text-muted mb-2">
-                      Upload an image to use as the reel cover instead of a video
-                      frame. For best results use 9:16 (1080×1920), JPEG, under
-                      8MB.
+                      Upload an image to use as the reel cover instead of a
+                      video frame. For best results use 9:16 (1080×1920), JPEG,
+                      under 8MB.
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
                       <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text transition-colors hover:bg-bg-muted disabled:pointer-events-none disabled:opacity-60">
@@ -1971,7 +2011,9 @@ export function VideoPostForm({
                             if (!file) return;
                             setInstagramCoverError(null);
                             setInstagramCoverWarning(null);
-                            const isJpeg = file.type.includes("jpeg") || file.type.includes("jpg");
+                            const isJpeg =
+                              file.type.includes("jpeg") ||
+                              file.type.includes("jpg");
                             if (!isJpeg) {
                               setInstagramCoverWarning(
                                 "Instagram recommends JPEG for reel covers.",
@@ -2161,7 +2203,7 @@ export function VideoPostForm({
                             )}
                           </div>
                         </div>
-                        <textarea
+                        <AutoResizeTextarea
                           rows={3}
                           placeholder={
                             state.overridden
@@ -2185,6 +2227,7 @@ export function VideoPostForm({
                             }))
                           }
                           className="w-full rounded-lg border border-input bg-bg px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 disabled:opacity-70"
+                          maxHeight={160}
                         />
                       </div>
                     );
@@ -2261,7 +2304,7 @@ export function VideoPostForm({
           rememberAutoFeatures={rememberAutoFeatures}
           onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
-          <div className="hidden lg:block rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
+          <div className="hidden lg:block rounded-xl border border-border bg-bg-elevated p-4 shadow-sm max-h-[55vh] overflow-y-auto">
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="flex rounded-full border border-border bg-bg-muted p-0.5">
                 <button

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
@@ -53,6 +54,7 @@ import {
   consumeComposerPayload,
   clearComposerPayload,
 } from "@/lib/composer-bridge";
+import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
 
 type PlatformCaptionState = {
@@ -118,7 +120,9 @@ export function ImagePostForm({
   const { remember, setRemember, getInitialSelectedIds, persistSelection } =
     useRememberedAccounts("post-form-image");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
-    initialDraftId || initialScheduledId || initialEditId ? new Set() : getInitialSelectedIds(validIds),
+    initialDraftId || initialScheduledId || initialEditId
+      ? new Set()
+      : getInitialSelectedIds(validIds),
   );
   const [accountSearch, setAccountSearch] = useState("");
   const [previewIndex, setPreviewIndex] = useState(0);
@@ -138,7 +142,9 @@ export function ImagePostForm({
     Record<string, TikTokPostSettings>
   >({});
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
-  const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>([]);
+  const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>(
+    [],
+  );
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
@@ -334,7 +340,8 @@ export function ImagePostForm({
               next[id] = {
                 privacy_level:
                   typeof t.privacy_level === "string" ? t.privacy_level : "",
-                video_title: typeof t.video_title === "string" ? t.video_title : "",
+                video_title:
+                  typeof t.video_title === "string" ? t.video_title : "",
                 disable_comment: !!t.disable_comment,
                 disable_duet: !!t.disable_duet,
                 disable_stitch: !!t.disable_stitch,
@@ -425,7 +432,8 @@ export function ImagePostForm({
               next[id] = {
                 privacy_level:
                   typeof t.privacy_level === "string" ? t.privacy_level : "",
-                video_title: typeof t.video_title === "string" ? t.video_title : "",
+                video_title:
+                  typeof t.video_title === "string" ? t.video_title : "",
                 disable_comment: !!t.disable_comment,
                 disable_duet: !!t.disable_duet,
                 disable_stitch: !!t.disable_stitch,
@@ -472,7 +480,9 @@ export function ImagePostForm({
         );
         setContent(scheduled.originalContent ?? "");
         setSelectedIds(new Set(restoredIds));
-        setScheduledAt(scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null);
+        setScheduledAt(
+          scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null,
+        );
         setMode("scheduled");
         if (scheduled.queueSlotId)
           intendedQueueSlotIdRef.current = scheduled.queueSlotId;
@@ -522,7 +532,8 @@ export function ImagePostForm({
               next[id] = {
                 privacy_level:
                   typeof t.privacy_level === "string" ? t.privacy_level : "",
-                video_title: typeof t.video_title === "string" ? t.video_title : "",
+                video_title:
+                  typeof t.video_title === "string" ? t.video_title : "",
                 disable_comment: !!t.disable_comment,
                 disable_duet: !!t.disable_duet,
                 disable_stitch: !!t.disable_stitch,
@@ -631,16 +642,11 @@ export function ImagePostForm({
     }
     if (!rememberAutoFeatures) return;
     if (hasRestoredAutoFeaturesRef.current) return;
-    const { autoRepostConfig, autoPlugConfig } =
-      getAutoFeaturesInitialState();
+    const { autoRepostConfig, autoPlugConfig } = getAutoFeaturesInitialState();
     if (autoRepostConfig) setResurfaceConfig(autoRepostConfig);
     if (autoPlugConfig) setAutoPlugConfig(autoPlugConfig);
     hasRestoredAutoFeaturesRef.current = true;
-  }, [
-    hasXForResurface,
-    rememberAutoFeatures,
-    getAutoFeaturesInitialState,
-  ]);
+  }, [hasXForResurface, rememberAutoFeatures, getAutoFeaturesInitialState]);
 
   // Persist Auto-Repost & Auto-Plug when remember is on
   useEffect(() => {
@@ -937,9 +943,7 @@ export function ImagePostForm({
       });
     }
 
-    const finalMediaIds = mediaIds.filter(
-      (id): id is string => id !== null,
-    );
+    const finalMediaIds = mediaIds.filter((id): id is string => id !== null);
     if (finalMediaIds.length !== mediaIds.length) {
       setError("One or more media items failed to upload. Please try again.");
       setLoading(false);
@@ -1009,7 +1013,7 @@ export function ImagePostForm({
         scheduledAt,
         finalMediaIds,
         meta,
-        scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+        scheduledAt ? (intendedQueueSlotIdRef.current ?? undefined) : undefined,
       );
       if (scheduledAt) intendedQueueSlotIdRef.current = null;
       setLoading(false);
@@ -1098,7 +1102,9 @@ export function ImagePostForm({
           scheduledAt,
           finalMediaIds,
           meta,
-          scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+          scheduledAt
+            ? (intendedQueueSlotIdRef.current ?? undefined)
+            : undefined,
         );
         if (scheduledAt) intendedQueueSlotIdRef.current = null;
         setLoading(false);
@@ -1120,7 +1126,9 @@ export function ImagePostForm({
       scheduledAt,
       finalMediaIds,
       meta,
-      effectiveMode === "scheduled" ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+      effectiveMode === "scheduled"
+        ? (intendedQueueSlotIdRef.current ?? undefined)
+        : undefined,
     );
     if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
@@ -1152,7 +1160,8 @@ export function ImagePostForm({
         accountId: pub.connectedAccountId,
         accountName: pub.platformUsername
           ? `@${pub.platformUsername}`
-          : PLATFORMS.find((p) => p.id === pub.platform)?.name ?? pub.platform,
+          : (PLATFORMS.find((p) => p.id === pub.platform)?.name ??
+            pub.platform),
         status: "waiting" as PlatformStatus,
       }));
       setPlatformStatuses(initial);
@@ -1291,14 +1300,13 @@ export function ImagePostForm({
   );
   const previewImage = sortedImages[previewIndex] ?? null;
 
-  const submitDisabledReason =
-    !content.trim()
-      ? "Add a caption"
-      : images.length === 0
-        ? "Add at least one image"
-        : mode === "scheduled" && !scheduledAt
-          ? "Pick a date and time to schedule"
-          : null;
+  const submitDisabledReason = !content.trim()
+    ? "Add a caption"
+    : images.length === 0
+      ? "Add at least one image"
+      : mode === "scheduled" && !scheduledAt
+        ? "Pick a date and time to schedule"
+        : null;
 
   const submitLabel =
     mode === "draft"
@@ -1334,7 +1342,8 @@ export function ImagePostForm({
           uploadPercent={
             fileProgresses.length > 0
               ? Math.round(
-                  fileProgresses.reduce((a, b) => a + b, 0) / fileProgresses.length,
+                  fileProgresses.reduce((a, b) => a + b, 0) /
+                    fileProgresses.length,
                 )
               : null
           }
@@ -1466,30 +1475,32 @@ export function ImagePostForm({
                   Carousel post: Drag to reorder (mainly for Instagram)
                 </p>
                 {images.length > 4 &&
-                  (hasTwitterXSelected || hasBlueskySelected || hasThreadsSelected) && (
-                  <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-300" />
-                    <p>
-                      {[
-                        hasTwitterXSelected ? "X (Twitter)" : null,
-                        hasBlueskySelected ? "Bluesky" : null,
-                        hasThreadsSelected ? "Threads" : null,
-                      ]
-                        .filter(Boolean)
-                        .join(", ")}{" "}
-                      support up to 4 media attachments per post. You&apos;ve added more
-                      than 4, so only the first 4 will be published on those platforms;
-                      extra media will be ignored there.
-                    </p>
-                  </div>
-                )}
+                  (hasTwitterXSelected ||
+                    hasBlueskySelected ||
+                    hasThreadsSelected) && (
+                    <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-300" />
+                      <p>
+                        {[
+                          hasTwitterXSelected ? "X (Twitter)" : null,
+                          hasBlueskySelected ? "Bluesky" : null,
+                          hasThreadsSelected ? "Threads" : null,
+                        ]
+                          .filter(Boolean)
+                          .join(", ")}{" "}
+                        support up to 4 media attachments per post. You&apos;ve
+                        added more than 4, so only the first 4 will be published
+                        on those platforms; extra media will be ignored there.
+                      </p>
+                    </div>
+                  )}
                 {images.length > 1 && hasPinterestSelected && (
                   <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
                     <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-300" />
                     <p>
-                      Pinterest supports only 1 media attachment per post. You&apos;ve
-                      added more than 1, so only the first image will be used on
-                      Pinterest; the rest will be ignored there.
+                      Pinterest supports only 1 media attachment per post.
+                      You&apos;ve added more than 1, so only the first image
+                      will be used on Pinterest; the rest will be ignored there.
                     </p>
                   </div>
                 )}
@@ -1497,9 +1508,10 @@ export function ImagePostForm({
                   <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
                     <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-300" />
                     <p>
-                      Only the first 10 image(s) will be posted to Instagram. You&apos;ve
-                      added more than 10, so only the first 10 will be published on
-                      Instagram; extra images will be ignored there.
+                      Only the first 10 image(s) will be posted to Instagram.
+                      You&apos;ve added more than 10, so only the first 10 will
+                      be published on Instagram; extra images will be ignored
+                      there.
                     </p>
                   </div>
                 )}
@@ -1507,27 +1519,30 @@ export function ImagePostForm({
                   <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
                     <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-300" />
                     <p>
-                      Only the first 35 image(s) will be posted to TikTok. You&apos;ve
-                      added more than 35, so only the first 35 will be published on TikTok;
-                      extra images will be ignored there.
+                      Only the first 35 image(s) will be posted to TikTok.
+                      You&apos;ve added more than 35, so only the first 35 will
+                      be published on TikTok; extra images will be ignored
+                      there.
                     </p>
                   </div>
                 )}
-                {images.length > 20 && (hasLinkedInSelected || hasFacebookSelected) && (
-                  <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-300" />
-                    <p>
-                      {hasLinkedInSelected && hasFacebookSelected
-                        ? "LinkedIn and Facebook"
-                        : hasLinkedInSelected
-                          ? "LinkedIn"
-                          : "Facebook"}{" "}
-                      support up to 20 image attachments per post. You&apos;ve added
-                      more than 20, so only the first 20 will be published on those
-                      platforms; extra images will be ignored there.
-                    </p>
-                  </div>
-                )}
+                {images.length > 20 &&
+                  (hasLinkedInSelected || hasFacebookSelected) && (
+                    <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-300" />
+                      <p>
+                        {hasLinkedInSelected && hasFacebookSelected
+                          ? "LinkedIn and Facebook"
+                          : hasLinkedInSelected
+                            ? "LinkedIn"
+                            : "Facebook"}{" "}
+                        support up to 20 image attachments per post. You&apos;ve
+                        added more than 20, so only the first 20 will be
+                        published on those platforms; extra images will be
+                        ignored there.
+                      </p>
+                    </div>
+                  )}
                 <div className="flex flex-wrap gap-2">
                   {sortedImages.map((img, index) => (
                     <div
@@ -1587,7 +1602,7 @@ export function ImagePostForm({
                 </div>
               </div>
             )}
-            <textarea
+            <AutoResizeTextarea
               ref={captionTextareaRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -1597,6 +1612,7 @@ export function ImagePostForm({
               autoFocus
               onFocus={() => setIsCaptionFocused(true)}
               onBlur={() => setIsCaptionFocused(false)}
+              maxHeight={220}
             />
             <CaptionCounter
               caption={content}
@@ -1950,7 +1966,7 @@ export function ImagePostForm({
                             )}
                           </div>
                         </div>
-                        <textarea
+                        <AutoResizeTextarea
                           rows={3}
                           placeholder={
                             state.overridden
@@ -1974,6 +1990,7 @@ export function ImagePostForm({
                             }))
                           }
                           className="w-full rounded-lg border border-input bg-bg px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 disabled:opacity-70"
+                          maxHeight={160}
                         />
                       </div>
                     );
@@ -2052,7 +2069,7 @@ export function ImagePostForm({
           rememberAutoFeatures={rememberAutoFeatures}
           onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
-          <div className="hidden lg:block">
+          <div className="hidden lg:block max-h-[55vh] overflow-y-auto">
             <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div className="flex rounded-full border border-border bg-bg-muted p-0.5">

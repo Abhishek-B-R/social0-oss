@@ -39,6 +39,7 @@ import {
   consumeComposerPayload,
   clearComposerPayload,
 } from "@/lib/composer-bridge";
+import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
 import {
   getVideoDuration,
@@ -1802,16 +1803,17 @@ export function ThreadsPostForm({
                     </button>
                   )}
                 </div>
-                <textarea
+                <AutoResizeTextarea
                   data-caption-textarea="true"
                   value={post.text}
                   onChange={(e) => updatePost(post.id, e.target.value)}
                   placeholder="What's happening?"
                   rows={3}
-                  className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+                  className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
                   autoFocus={index === 0}
                   onFocus={() => setFocusedPostId(post.id)}
                   onBlur={() => setFocusedPostId(null)}
+                  maxHeight={280}
                 />
                 <CaptionCounter
                   caption={post.text}
