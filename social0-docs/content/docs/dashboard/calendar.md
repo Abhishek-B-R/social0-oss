@@ -5,14 +5,14 @@ description: View your scheduled and published posts on a calendar.
 
 ## Overview
 
-The Calendar view (if available in your Dashboard) shows your posts on a calendar—scheduled posts on their date and time, and optionally published posts. Use it to see your content plan at a glance and spot gaps or busy days.
+The Calendar view shows your posts on a calendar—scheduled posts on their date and time, and optionally published posts. Use it to see your content plan at a glance and spot gaps or busy days.
 
 ## How to open the Calendar
 
 1. In the Dashboard, open the sidebar or menu.
-2. Click **Calendar** (if you see it).
+2. Click **Calendar**.
 
-You’ll see a calendar (week or month view). Posts appear on the day (and time) they’re set to go out or when they were published.
+You’ll see a calendar (week or mont or day view). Posts appear on the day (and time) they’re set to go out or when they were published.
 
 ## What you can do
 
@@ -30,7 +30,7 @@ Times use the timezone you set in **Settings** → **Preferences**.
 ## Common questions
 
 **Q: Can I drag a post to a different day on the calendar?**  
-A: It depends on the product. If drag-and-drop is supported, you’ll see the post move. Otherwise, open the post and edit the scheduled date and time.
+A: Currently, you can't drag a post to a different day on the calendar. If this is something you'd like to see, please let us know by requesting the feature!
 
 **Q: Does the calendar show queue slots?**  
 A: Queued posts appear on the date they’re set to go out. The exact time may be the slot window (e.g. “9 AM slot”) depending on how we display it.

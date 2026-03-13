@@ -5,30 +5,32 @@ description: Where to find bulk image and video upload in the Dashboard.
 
 ## Overview
 
-Bulk tools let you upload many images or many videos at once and schedule them (e.g. one per day or per queue slot). They’re available on **Growth** and **Pro** plans. You’ll find them under **Dashboard** → **More** → **Bulk tools** (or in a similar place in your app).
+Bulk tools let you upload many images or many videos at once and schedule them (e.g. one per day or per queue slot). They’re available on **Growth** and **Pro** plans. You’ll find them under **Dashboard** → **Create** → **Bulk tools** (or More on mobile).
 
 ## How to open bulk tools
 
-1. In the Dashboard, open the sidebar or menu.
-2. Click **More** (or “Bulk tools” if it’s a top-level item).
-3. Choose **Bulk Image Upload** or **Bulk Video Upload**.
+1. In the Dashboard, look at the left sidebar.
+2. Under the **Create** section, you'll see **Bulk tools** as a visible option—just click it.
+3. Then pick either **Bulk Image Upload** or **Bulk Video Upload** from the options provided.
 
 If you don’t see them, your plan may not include bulk tools. Go to **Billing** to upgrade to Growth or Pro.
 
 ## What each tool does
 
-**Bulk Image Upload**  
-- Upload multiple images.  
-- Add a caption (or per-image if the form allows).  
-- Choose which accounts get the posts.  
-- Set a schedule (e.g. one post per day at 9 AM, or assign to queue slots).  
+**Bulk Image Upload**
+
+- Upload multiple images.
+- Add a caption (or per-image if the form allows).
+- Choose which accounts get the posts.
+- Set a schedule (e.g. one post per day at 9 AM, or assign to queue slots).
 - Each image becomes its own scheduled post.
 
-**Bulk Video Upload**  
-- Upload multiple videos (one per post).  
-- Add captions if you want.  
-- Choose which accounts get the posts (only video-capable platforms).  
-- Set the schedule.  
+**Bulk Video Upload**
+
+- Upload multiple videos (one per post).
+- Add captions if you want.
+- Choose which accounts get the posts (only video-capable platforms).
+- Set the schedule.
 - Each video becomes its own scheduled post.
 
 ## Tips
@@ -42,4 +44,4 @@ If you don’t see them, your plan may not include bulk tools. Go to **Billing**
 A: Bulk tools are on Growth and Pro. Upgrade in **Billing** and the option will work.
 
 **Q: Can I use different captions for each image?**  
-A: It depends on the form. If there’s a caption field per image/video, yes. Otherwise one caption may apply to all.
+A: Yes, you can use different captions for each image or video—just add them in the per-file caption fields during upload.

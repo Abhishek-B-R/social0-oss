@@ -16,14 +16,42 @@ If you’re already signed in, click the Dashboard link in the header or go to [
 
 ## What you’ll see
 
+At the top of the sidebar you’ll see a **Create post** button—the quickest way to start a new post. Below that, the sidebar is grouped into sections:
+
+**CREATE**
+
 - **Composer** — The main place to write a post and click Continue to pick platforms and publish or schedule.
-- **Sidebar or menu** — Links to Create, Posts, Connections, Settings, Billing, and other sections.
-- **Posts** — List of all your posts (drafts, scheduled, published). Open any post to view, edit, or retry.
+- **Manual setup** — Choose the post type yourself (text, image, video, thread, or collection) and fill in the form.
+- **Bulk tools** — Upload and schedule many images or videos at once (Growth and Pro plans).
+
+**POSTS**
+
+- **All** — List of all your posts (drafts, scheduled, published). Open any post to view, edit, or retry.
+- **Posted** — Posts that have already been sent to your connected accounts.
+- **Scheduled** — Posts set to go out at a specific time or in a queue slot.
+- **Drafts** — Posts you’ve saved but not yet published or scheduled.
+- **Calendar** — View your scheduled and published posts on a calendar.
+
+**WORKSPACE**
+
 - **Connections** — List of connected accounts. Add or disconnect accounts here.
+- **Teams** — Invite team members and manage access (coming soon).
+
+**CONFIGURATION**
+
 - **Settings** — Profile, timezone, date format, queue slots, and other preferences.
 - **Billing** — Your plan, usage, and upgrade or cancel.
 
+**SUPPORT**
+
+- **Feedback** — Send feedback or feature requests to the Social0 team.
+
+**RESOURCES**
+
+- **Latest updates** — See what’s new.
+- **Docs** — Link to this documentation.
+
 ## Tips
 
-- Bookmark the Dashboard URL so you can jump back quickly.
-- Use the Composer for the fastest path from idea to publish; use Create when you want to pick the post type yourself.
+- Save the Dashboard page in your browser's bookmarks/favorites for quick access later.
+- Use the **Composer** for the fastest path from idea to publish; use **Manual setup** when you want to pick the post type yourself.

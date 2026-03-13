@@ -10,7 +10,7 @@ The Feedback page lets you send suggestions, report issues, or ask questions dir
 ## How to open Feedback
 
 1. In the Dashboard, open the sidebar or menu.
-2. Click **Feedback** (or “Support” or “Send feedback”—wording may vary).
+2. Click **Feedback**
 
 You’ll see the feedback board. If something doesn’t load, you may see a link to our feedback site (e.g. social0.canny.io) as a fallback.
 
@@ -30,7 +30,7 @@ You’re signed in with your Social0 account so we know who’s posting. We don�
 ## Common questions
 
 **Q: Is this the same as support?**  
-A: The feedback board is for ideas and discussion. For account or billing issues, use the support option in the app or the contact details on the Social0 website.
+A: The feedback board is for ideas and discussion. For account or billing issues, contact support@social0.app.
 
 **Q: Will you reply to every post?**  
 A: We try to respond to as many as we can. Popular ideas often get a reply or an update when we ship something related.

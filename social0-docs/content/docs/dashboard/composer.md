@@ -25,8 +25,8 @@ If something’s wrong (e.g. video aspect ratio), we’ll show a message so you 
 
 ## Tips
 
-- Use the Composer when you want to move fast. Use **Create** when you want to choose “Text,” “Image,” “Video,” “Threads,” or “Collection” yourself.
-- You can reorder images or thread parts by dragging before you click Continue.
+- Use the Composer when you want to move fast. Use **Manual Posting** when you want to choose “Text,” “Image,” “Video,” “Threads,” or “Collection” yourself.
+- You can reorder images or videos by dragging before you click Continue.
 
 ## Common questions
 

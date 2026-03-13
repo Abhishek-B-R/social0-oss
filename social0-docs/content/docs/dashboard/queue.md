@@ -1,5 +1,5 @@
 ---
-title: "Queue (in the dashboard)"
+title: "Queue (in settings panel)"
 description: Where queue slots are set and how scheduled posts use them.
 ---
 
@@ -35,7 +35,7 @@ Those slots are now available when you schedule a post.
 ## Common questions
 
 **Q: Is there a page that shows only queued posts?**  
-A: No. Use the Posts list and look for the **Queued** label, or filter by “Scheduled” to see both fixed-time and queued posts.
+A: No, there isn’t a page just for queued posts. On the main **All Posts** page (`/posts`), queued posts are shown with a "Scheduled" label along with other scheduled posts. But on the **Scheduled Posts** page (`/posts/scheduled`), where only scheduled posts appear, posts assigned to queue slots are shown as queued posts.
 
 **Q: Can I change which slot a post is in?**  
 A: Yes. Open the post and edit it; change the queue assignment to a different slot (or to a specific date and time) and save.

@@ -5,38 +5,42 @@ description: Change your profile, timezone, date format, queue slots, and other 
 
 ## Overview
 
-Settings is where you control your profile (name, avatar), how you see dates and times (timezone, date format, 12/24 hour), your queue schedule (time slots for scheduled posts), and a quick view of your connections. Everything you need to personalize Social0 is here.
+Settings is a single panel with four tabs at the top: **Profile**, **Preferences**, **Queue**, and **Connections**. Use them to control your profile and avatar, how dates and times are shown, your weekly posting queue, and the avatars used for each connected account. Everything you need to personalize Social0 is here.
 
 ## How to open Settings
 
-1. In the Dashboard, open the sidebar or menu.
+1. In the Dashboard, open the sidebar (or **More** on mobile).
 2. Click **Settings**.
 
-You’ll see tabs or sections: **Profile**, **Preferences**, **Queue**, and **Connections** (or similar).
+You’ll see four tabs: **Profile**, **Preferences**, **Queue**, and **Connections**. Click a tab to switch sections.
 
 ## What you can change
 
-**Profile**  
-- **Display name** — The name shown in Social0.  
-- **Avatar** — Your profile picture. You can upload a new one.  
-- **Password** — If you signed up with email, you can change your password here.  
-- **Sign out everywhere** — Log out of all devices. Use this if you think someone else has access to your account.
+**Profile**
 
-**Preferences**  
-- **Timezone** — Used for all scheduled times. Set it so “9 AM” is 9 AM where you are.  
-- **Date format** — How dates are shown (e.g. MM/DD/YYYY or DD/MM/YYYY).  
-- **Time format** — 12-hour (AM/PM) or 24-hour.  
-- **Emails** — Whether you get automation emails (e.g. about connections or posts). Turn on or off as you like.
+- **Display name** — The name shown in Social0. Edit the field and click **Save**.
+- **Avatar** — Your profile picture. Use **Upload image** or paste an image URL and click **Save URL**.
+- **Email** — Shown for reference. If you signed up with Google, this comes from your sign-in and can’t be changed here. If you signed up with a custom email and password, you can edit your email address by clicking on change email button.
+- **Appearance** — Choose **Light**, **System**, or **Dark** so the app matches your preference.
+- **Security** — **Sign out all devices** logs you out everywhere. Use this if you think someone else has access to your account.
 
-**Queue**  
-- **Queue slots** — Define when you want posts to go out (e.g. “Every weekday at 9 AM”). When you schedule a post, you can assign it to one of these slots. See [Queue](/docs/features/queue).
+**Preferences**
 
-**Connections**  
-- A list of your connected accounts. You can override the avatar shown for a connection here if the option is available. To add or remove accounts, use **Dashboard** → **Connections**.
+- **Platform preferences** — **24-hour time format** (on/off) and **Date format** (e.g. DD/MM/YYYY). Click **Save** to apply.
+- **Timezone** — Schedules, post times, and the calendar use this. Pick your timezone from the dropdown or click **Use my location**, then **Save timezone**.
+- **Email preferences** — **Automation emails** (helpful reminders when you haven’t posted or connected accounts). Turn on or off and click **Save**.
+
+**Queue**
+
+- **Posting queue** — Weekly time slots in your timezone. When you use “Next queue slot” in the schedule panel, posts go to the next free slot. The grid shows **Time** and each day (Mon–Sun); tick the days for each time and use **+ Add posting time** to add more rows. Editing the queue does not change posts that are already scheduled. See [Queue](/docs/dashboard/queue).
+
+**Connections**
+
+- A list of your connected social accounts. For each one you can set a **custom avatar**: **Upload image** or paste an image URL and click **Save URL**. To add or remove accounts, use **Dashboard** → **Connections** (the main Connections page), not this tab.
 
 ## Tips
 
-- Set your timezone first so scheduling and queue times are correct.  
+- Set your timezone first so scheduling and queue times are correct.
 - If you use the queue, set up your slots in the Queue tab before assigning posts to them.
 
 ## Common questions

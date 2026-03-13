@@ -1,26 +1,43 @@
 ---
-title: "More (dashboard menu)"
-description: Extra tools like bulk upload and other options.
+title: "More (mobile menu)"
+description: "Settings and the rest of the dashboard on mobile—Manual setup, posts, tools, billing, and feedback."
 ---
 
 ## Overview
 
-**More** (or “More tools,” depending on the app) is a section in the Dashboard that holds extra features. Often it includes **Bulk tools** (upload and schedule many images or videos at once). Other options may appear here over time. If you don’t see something, your plan may not include it—check **Billing** to see what’s available.
+On mobile, the Dashboard uses a **bottom navbar** with five icons: **Connections**, **Posts**, **Create**, **Calendar**, and **More**. **Create** is the Composer (write a post and pick platforms). **More** is the last icon—tap it to open this page. Everything that lives in the sidebar on desktop (settings, posts, tools, billing, feedback) is available here under two sections so you can still reach it all from a small screen.
 
-## What you might see
+**Bottom navbar (mobile)** — The five icons are: **Connections** (connected accounts), **Posts** (all your posts), **Create** (the Composer—create a post), **Calendar** (view scheduled and published posts), and **More** (this page).
 
-- **Bulk tools** — Upload many images or many videos and schedule them (e.g. one per day). Available on Growth and Pro plans. See [Bulk tools](/docs/features/bulk-tools).
-- **Other tools** — The app may add more entries here (e.g. calendar view, exports). Check the menu to see what’s there.
+## What you’ll see
+
+The More page is split into two sections:
+
+**MANUAL POSTING**
+
+- **Manual setup** — Choose the post type yourself (text, image, video, thread, or collection) and fill in the form. Use this when you don’t want to start from the Composer.
+- **Bulk tools** — Upload and schedule many images or many videos at once. Available on Growth and Pro plans. See [Bulk tools](/docs/features/bulk-tools).
+
+**POSTS & TOOLS**
+
+- **All posts** — List of all your posts (drafts, scheduled, and published).
+- **Scheduled** — Posts set to go out at a specific time or in a queue slot.
+- **Posted** — Posts that have already been sent to your connected accounts.
+- **Drafts** — Posts you’ve saved but not yet published or scheduled.
+- **Teams** — Invite team members and manage access (coming soon).
+- **Settings** — Profile, timezone, date format, queue slots, and other preferences.
+- **Billing** — Your plan, usage, and upgrade or cancel.
+- **Share feedback** — Send feedback or feature requests to the Social0 team.
 
 ## How to open More
 
-1. In the Dashboard, open the sidebar or menu.
-2. Click **More** (or the equivalent).
-3. Choose the tool you want (e.g. Bulk Image Upload, Bulk Video Upload).
+1. On your phone or tablet, open the Dashboard.
+2. In the **bottom navbar**, tap the **More** icon (one of the five icons at the bottom).
+3. Tap any item on the More page to go to that section (e.g. Manual setup, All posts, Settings, Billing).
 
-If you click a tool that your plan doesn’t include, you’ll see a message and a link to upgrade in Billing.
+If you tap something your plan doesn’t include (such as Bulk tools on Starter), you’ll see a message and a link to upgrade in Billing.
 
 ## Tips
 
-- Use bulk tools when you have a batch of content to spread over several days. Set your queue or schedule once and we’ll post each item in order.
-- If a feature you expect isn’t there, it may be under a different name or coming soon. Use **Feedback** to suggest it.
+- The bottom navbar shows Connections, Posts, Create (Composer), Calendar, and More; everything else is inside More. On desktop, the same options live in the left sidebar.
+- Use **Share feedback** if you have ideas or run into issues—we read every message.

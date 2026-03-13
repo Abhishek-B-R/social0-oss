@@ -12,7 +12,7 @@ Our Terms and Conditions describe the agreement between you and Social0 when you
 - **Using the service** — You use Social0 to create, schedule, and publish content to the platforms you connect. You’re responsible for that content and for following each platform’s rules.
 - **Your account** — You keep your login details safe and tell us if you think someone else has access. You must be old enough and allowed to enter into this agreement where you live.
 - **Payment** — If you choose a paid plan, you pay as described at signup and on the Billing page. Refunds and cancellations follow our policy (described in the full terms).
-- **Ending the agreement** — You can cancel your plan and stop using the service. We can suspend or end access if you break the terms. What happens to your data when you leave is in the full terms and our Privacy Policy.
+- **Ending the agreement** — You can cancel your plan and stop using the service. (Extreme cases 😕). What happens to your data when you leave is in the full terms and our Privacy Policy.
 
 ## Where to read the full terms
 
