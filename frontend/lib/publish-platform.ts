@@ -2288,20 +2288,8 @@ async function publishToTikTok(
     return { status: "failed", lastError: hint, error: "No media" };
   }
 
-  // Photo post: TikTok supports JPG/JPEG/WEBP only — PNG is not supported
+  // Photo post: TikTok supports JPG/JPEG/WEBP only. PNG is converted to JPEG during processing (processImageForTikTok).
   if (isPhotoPost) {
-    const hasPng = imageEntries.some(
-      (m) =>
-        m.mimeType === "image/png" || m.mimeType?.toLowerCase().includes("png"),
-    );
-    if (hasPng) {
-      return {
-        status: "failed",
-        lastError:
-          "TikTok does not support PNG images. Please use JPG or WEBP.",
-        error: "PNG not supported",
-      };
-    }
     if (imageEntries.length > 35) {
       return {
         status: "failed",
@@ -2453,17 +2441,20 @@ async function publishToTikTok(
     }
 
     // Build photo-specific post_info (no duet/stitch, different brand content structure)
+    // TikTok API requires brand_content_toggle and brand_organic_toggle as booleans for DIRECT_POST
     const photoPostInfo: {
       privacy_level: string;
       title?: string;
       description?: string;
       disable_comment?: boolean;
-      brand_content_toggle?: boolean;
-      brand_organic_toggle?: boolean;
+      brand_content_toggle: boolean;
+      brand_organic_toggle: boolean;
       is_aigc?: boolean;
       auto_add_music?: boolean;
     } = {
       privacy_level: accountSettings.privacy_level,
+      brand_content_toggle: false,
+      brand_organic_toggle: false,
     };
 
     if (!postAsDraft) {
@@ -2484,7 +2475,7 @@ async function publishToTikTok(
       photoPostInfo.disable_comment = true;
     }
 
-    // Photo posts: brand_content_toggle and brand_organic_toggle are independent booleans
+    // Photo posts: brand_content_toggle and brand_organic_toggle are required booleans
     // brand_content_toggle: true if promoting third-party business (Branded content radio)
     // brand_organic_toggle: true if promoting creator's own business (Your brand radio)
     if (accountSettings.brand_content_toggle) {
@@ -2503,7 +2494,7 @@ async function publishToTikTok(
       } else if (hasOrganic) {
         // "Your brand" selected: creator's own business
         photoPostInfo.brand_organic_toggle = true;
-        // brand_content_toggle stays false/undefined for "Your brand"
+        photoPostInfo.brand_content_toggle = false;
       }
     }
 

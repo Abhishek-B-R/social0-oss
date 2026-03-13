@@ -1391,13 +1391,17 @@ export function CollectionPostForm({
 
   const hasContent = content.trim().length > 0;
   const hasMedia = images.length > 0 || videos.length > 0;
+  const tiktokPhotoOnlyOver35 =
+    hasTikTok && videos.length === 0 && images.length > 35;
   const submitDisabledReason = !hasContent
     ? "Add a caption"
     : !hasMedia
       ? "Add at least one image or video"
-      : mode === "scheduled" && !scheduledAt
-        ? "Pick a date and time to schedule"
-        : null;
+      : tiktokPhotoOnlyOver35
+        ? "TikTok allows at most 35 images per post. Remove extra images or add a video."
+        : mode === "scheduled" && !scheduledAt
+          ? "Pick a date and time to schedule"
+          : null;
   const submitLabel =
     mode === "draft"
       ? "Save draft"
@@ -1512,7 +1516,9 @@ export function CollectionPostForm({
             submitDisabled={
               accounts.length === 0 ||
               (mode === "scheduled" && !scheduledAt) ||
-              !hasContent
+              !hasContent ||
+              !hasMedia ||
+              tiktokPhotoOnlyOver35
             }
             use24HourTimeFormat={use24HourTimeFormat}
             dateFormat={dateFormat}
@@ -1585,6 +1591,13 @@ export function CollectionPostForm({
                 )}
               </div>
             )}
+
+          {tiktokPhotoOnlyOver35 && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              TikTok allows at most 35 images per post when posting images only.
+              Remove extra images or add a video to publish to TikTok.
+            </div>
+          )}
 
           {(() => {
             const totalAttachments = images.length + videos.length;
@@ -1894,7 +1907,8 @@ export function CollectionPostForm({
             accounts.length === 0 ||
             (mode === "scheduled" && !scheduledAt) ||
             !hasContent ||
-            !hasMedia
+            !hasMedia ||
+            tiktokPhotoOnlyOver35
           }
           hasAccountSelected={selectedIds.size > 0}
           submitDisabledReason={submitDisabledReason}

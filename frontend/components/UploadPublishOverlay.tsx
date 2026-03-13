@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { PlatformIcon } from "@/components/PlatformIcon";
 
-const PUBLISH_ESCAPE_MS = 4 * 60 * 1000; // 4 minutes
+const PUBLISH_ESCAPE_MS = 2 * 60 * 1000; // 4 minutes
 
 export type OverlayPhase = "uploading" | "publishing" | "saving";
 
@@ -147,11 +147,11 @@ export function UploadPublishOverlay({
   const isSavingDraft = phase === "saving";
   const showPlatformRows =
     phase === "publishing" && platformStatuses.length > 0 && !isScheduling;
-  const isFinalizing =
-    typeof uploadPercent === "number" && uploadPercent >= 95;
+  const isFinalizing = typeof uploadPercent === "number" && uploadPercent >= 95;
 
   useEffect(() => {
     if (phase !== "publishing" || allDone) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowLongRunningEscape(false);
       if (escapeTimerRef.current) {
         clearTimeout(escapeTimerRef.current);
@@ -251,9 +251,7 @@ export function UploadPublishOverlay({
                     )}
                   </div>
                   <span className="text-xs font-medium text-text-muted shrink-0">
-                    {isFinalizing
-                      ? "Finalizing…"
-                      : `${uploadPercent}%`}
+                    {isFinalizing ? "Finalizing…" : `${uploadPercent}%`}
                   </span>
                 </div>
               </div>

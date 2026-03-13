@@ -62,6 +62,7 @@ export const VIDEO_LIMITS: Record<
   },
 };
 
+/** Character limits per platform. TikTok: 4000 for photo description + 90 for title; video caption max 2200 (enforced in publisher). */
 export const PLATFORM_CHAR_LIMITS: Record<string, number> = {
   twitter_x: 280,
   bluesky: 300,

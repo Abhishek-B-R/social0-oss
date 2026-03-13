@@ -142,6 +142,7 @@ export function ImagePostForm({
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const imageUploadAbortRef = useRef<AbortController | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [showPngTikTokInfo, setShowPngTikTokInfo] = useState(false);
   const [tiktokSettings, setTiktokSettings] = useState<
     Record<string, TikTokPostSettings>
   >({});
@@ -756,10 +757,26 @@ export function ImagePostForm({
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length) return;
+    const hasTikTokInSelection = accounts.some(
+      (a) => selectedIds.has(a.id) && a.platform === "tiktok",
+    );
+    const TIKTOK_MAX_IMAGES = 35;
+    if (hasTikTokInSelection && images.length >= TIKTOK_MAX_IMAGES) {
+      setError("TikTok allows at most 35 images per post.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     const newImages: ImageFile[] = [];
     const maxOrder =
       images.length > 0 ? Math.max(...images.map((i) => i.order)) : 0;
+    let added = 0;
+    const cap = hasTikTokInSelection
+      ? Math.min(files.length, TIKTOK_MAX_IMAGES - images.length)
+      : files.length;
     for (let i = 0; i < files.length; i++) {
+      if (added >= cap) {
+        break;
+      }
       const file = files[i];
       if (!file.type.startsWith("image/")) {
         setError("Please select only image files (JPEG, PNG, GIF, WebP).");
@@ -771,18 +788,31 @@ export function ImagePostForm({
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
+      if (hasTikTokInSelection && (file.type === "image/png" || file.name?.toLowerCase().endsWith(".png"))) {
+        setShowPngTikTokInfo(true);
+      }
       newImages.push({
         file,
         preview: URL.createObjectURL(file),
-        order: maxOrder + i + 1,
+        order: maxOrder + added + 1,
       });
+      added++;
     }
-    setError(null);
+    if (hasTikTokInSelection && files.length > cap && added === cap) {
+      setError(
+        "TikTok allows at most 35 images per post. Only the first " +
+          cap +
+          " of the selected images were added.",
+      );
+    } else if (added > 0) {
+      setError(null);
+    }
     setImages((prev) => [...prev, ...newImages]);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const [isDragOverZone, setIsDragOverZone] = useState(false);
+  const TIKTOK_MAX_IMAGES = 35;
   const handleDropImages = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -796,6 +826,13 @@ export function ImagePostForm({
       setError("Please use only image files (JPEG, PNG, GIF, WebP).");
     }
     if (imageFiles.length === 0) return;
+    const hasTikTokDrop = accounts.some(
+      (a) => selectedIds.has(a.id) && a.platform === "tiktok",
+    );
+    if (hasTikTokDrop && images.length >= TIKTOK_MAX_IMAGES) {
+      setError("TikTok allows at most 35 images per post.");
+      return;
+    }
     const platforms = accounts.filter((a) => selectedIds.has(a.id)).map((a) => a.platform);
     for (const file of imageFiles) {
       const validation = validateMediaFile(file, platforms);
@@ -804,11 +841,26 @@ export function ImagePostForm({
         return;
       }
     }
-    setError(null);
+    const toAdd = hasTikTokDrop
+      ? imageFiles.slice(0, TIKTOK_MAX_IMAGES - images.length)
+      : imageFiles;
+    if (hasTikTokDrop && imageFiles.length > toAdd.length) {
+      setError(
+        "TikTok allows at most 35 images per post. Only the first " +
+          toAdd.length +
+          " dropped images were added.",
+      );
+    } else {
+      setError(null);
+    }
+    const hasPng = toAdd.some(
+      (f) => f.type === "image/png" || f.name?.toLowerCase().endsWith(".png"),
+    );
+    if (hasTikTokDrop && hasPng) setShowPngTikTokInfo(true);
     setImages((prev) => {
       const maxOrder =
         prev.length > 0 ? Math.max(...prev.map((i) => i.order)) : 0;
-      const newImages: ImageFile[] = imageFiles.map((file, i) => ({
+      const newImages: ImageFile[] = toAdd.map((file, i) => ({
         file,
         preview: URL.createObjectURL(file),
         order: maxOrder + i + 1,
@@ -1376,9 +1428,11 @@ export function ImagePostForm({
     ? "Add a caption"
     : images.length === 0
       ? "Add at least one image"
-      : mode === "scheduled" && !scheduledAt
-        ? "Pick a date and time to schedule"
-        : null;
+      : hasTikTok && images.length > 35
+        ? "TikTok allows at most 35 images per post. Remove extra images."
+        : mode === "scheduled" && !scheduledAt
+          ? "Pick a date and time to schedule"
+          : null;
 
   const submitLabel =
     mode === "draft"
@@ -1591,14 +1645,28 @@ export function ImagePostForm({
                   </div>
                 )}
                 {images.length > 35 && hasTikTok && (
-                  <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-300" />
+                  <div className="flex items-start gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                     <p>
-                      Only the first 35 image(s) will be posted to TikTok.
-                      You&apos;ve added more than 35, so only the first 35 will
-                      be published on TikTok; extra images will be ignored
-                      there.
+                      TikTok allows at most 35 images per post. Remove extra
+                      images to publish to TikTok.
                     </p>
+                  </div>
+                )}
+                {showPngTikTokInfo && hasTikTok && (
+                  <div className="flex items-start gap-2 rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs text-blue-800 dark:text-blue-200">
+                    <p>
+                      PNG images will be automatically converted to JPEG for
+                      TikTok.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowPngTikTokInfo(false)}
+                      className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-blue-600 dark:text-blue-300 hover:bg-blue-500/20"
+                      aria-label="Dismiss"
+                    >
+                      Dismiss
+                    </button>
                   </div>
                 )}
                 {images.length > 20 &&
@@ -1664,12 +1732,19 @@ export function ImagePostForm({
                     onDragEnter={() => setIsDragOverZone(true)}
                     onDragLeave={() => setIsDragOverZone(false)}
                     onDrop={handleDropImages}
+                    disabled={hasTikTok && images.length >= 35}
                     className={`flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed text-text-muted transition-colors ${
-                      isUploadZoneHovered || isDragOverZone
-                        ? "border-accent bg-accent/5"
-                        : "border-border bg-bg-subtle"
+                      hasTikTok && images.length >= 35
+                        ? "cursor-not-allowed border-border bg-bg-subtle opacity-60"
+                        : isUploadZoneHovered || isDragOverZone
+                          ? "border-accent bg-accent/5"
+                          : "border-border bg-bg-subtle"
                     }`}
-                    title="Add more · Drag and drop or paste (Ctrl+V)"
+                    title={
+                      hasTikTok && images.length >= 35
+                        ? "TikTok allows at most 35 images"
+                        : "Add more · Drag and drop or paste (Ctrl+V)"
+                    }
                   >
                     <ImagePlus className="h-6 w-6" />
                     <span className="text-xs mt-0.5">Add more</span>
@@ -2117,6 +2192,7 @@ export function ImagePostForm({
             accounts.length === 0 ||
             !content.trim() ||
             images.length === 0 ||
+            (hasTikTok && images.length > 35) ||
             (mode === "scheduled" && !scheduledAt)
           }
           hasAccountSelected={selectedIds.size > 0}

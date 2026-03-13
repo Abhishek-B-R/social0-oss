@@ -7,6 +7,8 @@ import type {
   TwitterTweetLimitResult,
 } from "@/lib/plan-limits";
 import { formatDate } from "@/lib/date-format";
+import { Info } from "lucide-react";
+import { DOCS_FAIR_USAGE_URL } from "@/lib/docs-url";
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_MAX_ATTEMPTS = 45; // ~1.5 min
@@ -263,7 +265,20 @@ export function BillingClient({
               ].map((f, i) => (
                 <li key={i} className="flex items-center gap-2">
                   <span className="text-accent shrink-0">✓</span>
-                  {f}
+                  {f === "Fair usage policy" ? (
+                    <a
+                      href={DOCS_FAIR_USAGE_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-text-muted hover:text-text transition-colors"
+                      aria-label="Fair usage policy (opens docs)"
+                    >
+                      Fair usage policy
+                      <Info className="h-3.5 w-3.5 shrink-0" />
+                    </a>
+                  ) : (
+                    f
+                  )}
                 </li>
               ))}
             </ul>
@@ -337,7 +352,20 @@ export function BillingClient({
               ].map((f, i) => (
                 <li key={i} className="flex items-center gap-2">
                   <span className="text-accent shrink-0">✓</span>
-                  {f}
+                  {f === "Fair usage policy" ? (
+                    <a
+                      href={DOCS_FAIR_USAGE_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-text-muted hover:text-text transition-colors"
+                      aria-label="Fair usage policy (opens docs)"
+                    >
+                      Fair usage policy
+                      <Info className="h-3.5 w-3.5 shrink-0" />
+                    </a>
+                  ) : (
+                    f
+                  )}
                 </li>
               ))}
             </ul>

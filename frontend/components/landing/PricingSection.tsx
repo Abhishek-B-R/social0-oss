@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Info } from "lucide-react";
+import { DOCS_FAIR_USAGE_URL } from "@/lib/docs-url";
 
 const starterFeatures = [
   "Connect up to 5 accounts",
@@ -61,8 +63,21 @@ export function PricingSection() {
             </div>
           </div>
         </div>
-        <p className="mb-12 text-[15px] text-muted-foreground">
+        <p className="mb-3 text-[15px] text-muted-foreground">
           All plans include a 7-day free trial. Cancel anytime.
+        </p>
+        <p className="mb-12 flex flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground">
+          <span>Fair usage applies</span>
+          <a
+            href={DOCS_FAIR_USAGE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Fair usage policy (Twitter/X tweet limits)"
+          >
+            <Info className="h-3.5 w-3.5 shrink-0" />
+          </a>
+          <span>— Twitter/X limits: Starter 300/mo, Growth 1,500/mo, Pro unlimited.</span>
         </p>
 
         {/* Two-card grid (Pro tier commented out for now — add back later) */}
