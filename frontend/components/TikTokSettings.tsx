@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -354,30 +355,36 @@ export function TikTokSettings({
             </span>
           </label>
           <label
-            className={`flex items-center gap-3 ${creatorInfo?.data?.duet_disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+            className={`flex items-center gap-3 ${creatorInfo?.data?.duet_disabled || settings.privacy_level === "SELF_ONLY" ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             <input
               type="checkbox"
               checked={!settings.disable_duet}
-              onChange={(e) =>
-                updateSetting("disable_duet", !e.target.checked)
+              onChange={(e) => updateSetting("disable_duet", !e.target.checked)}
+              disabled={
+                creatorInfo?.data?.duet_disabled === true ||
+                settings.privacy_level === "SELF_ONLY"
               }
-              disabled={creatorInfo?.data?.duet_disabled === true}
               className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <span
-              className={`text-sm ${creatorInfo?.data?.duet_disabled ? "text-gray-500" : "text-gray-700"}`}
+              className={`text-sm ${creatorInfo?.data?.duet_disabled || settings.privacy_level === "SELF_ONLY" ? "text-gray-500" : "text-gray-700"}`}
             >
               Allow Duet
-              {creatorInfo?.data?.duet_disabled && (
+              {(creatorInfo?.data?.duet_disabled ||
+                settings.privacy_level === "SELF_ONLY") && (
                 <span className="ml-1 text-xs text-gray-400">
-                  (disabled in your settings)
+                  (
+                  {settings.privacy_level === "SELF_ONLY"
+                    ? "not available with Only me"
+                    : "disabled in your settings"}
+                  )
                 </span>
               )}
             </span>
           </label>
           <label
-            className={`flex items-center gap-3 ${creatorInfo?.data?.stitch_disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+            className={`flex items-center gap-3 ${creatorInfo?.data?.stitch_disabled || settings.privacy_level === "SELF_ONLY" ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             <input
               type="checkbox"
@@ -385,16 +392,24 @@ export function TikTokSettings({
               onChange={(e) =>
                 updateSetting("disable_stitch", !e.target.checked)
               }
-              disabled={creatorInfo?.data?.stitch_disabled === true}
+              disabled={
+                creatorInfo?.data?.stitch_disabled === true ||
+                settings.privacy_level === "SELF_ONLY"
+              }
               className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 size-4 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <span
-              className={`text-sm ${creatorInfo?.data?.stitch_disabled ? "text-gray-500" : "text-gray-700"}`}
+              className={`text-sm ${creatorInfo?.data?.stitch_disabled || settings.privacy_level === "SELF_ONLY" ? "text-gray-500" : "text-gray-700"}`}
             >
               Allow Stitch
-              {creatorInfo?.data?.stitch_disabled && (
+              {(creatorInfo?.data?.stitch_disabled ||
+                settings.privacy_level === "SELF_ONLY") && (
                 <span className="ml-1 text-xs text-gray-400">
-                  (disabled in your settings)
+                  (
+                  {settings.privacy_level === "SELF_ONLY"
+                    ? "not available with Only me"
+                    : "disabled in your settings"}
+                  )
                 </span>
               )}
             </span>
@@ -426,7 +441,9 @@ export function TikTokSettings({
           >
             <span
               className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                settings.brand_content_toggle ? "translate-x-5" : "translate-x-0"
+                settings.brand_content_toggle
+                  ? "translate-x-5"
+                  : "translate-x-0"
               }`}
             />
           </button>
@@ -460,7 +477,8 @@ export function TikTokSettings({
                 <span className="text-sm text-gray-700">Your brand</span>
                 {settings.brand_organic && !settings.brand_content && (
                   <p className="text-xs text-amber-700 mt-1 italic">
-                    Your video will be labeled as &quot;Promotional content&quot;
+                    Your video will be labeled as &quot;Promotional
+                    content&quot;
                   </p>
                 )}
               </div>
@@ -759,11 +777,17 @@ export function TikTokSettings({
             <>
               <label className={`flex items-center gap-3 ${isPrivate ? "cursor-not-allowed opacity-50" : ""}`}>
                 <input type="checkbox" checked={!settings.disable_duet} onChange={(e) => updateSetting("disable_duet", !e.target.checked)} disabled={isPrivate} className="rounded border-border text-accent focus:ring-accent size-4 disabled:cursor-not-allowed" />
-                <span className="text-sm text-text">Allow Duet</span>
+                <span className="text-sm text-text">
+                  Allow Duet
+                  {isPrivate && <span className="ml-1 text-xs text-text-muted">(not available with Only me)</span>}
+                </span>
               </label>
               <label className={`flex items-center gap-3 ${isPrivate ? "cursor-not-allowed opacity-50" : ""}`}>
                 <input type="checkbox" checked={!settings.disable_stitch} onChange={(e) => updateSetting("disable_stitch", !e.target.checked)} disabled={isPrivate} className="rounded border-border text-accent focus:ring-accent size-4 disabled:cursor-not-allowed" />
-                <span className="text-sm text-text">Allow Stitch</span>
+                <span className="text-sm text-text">
+                  Allow Stitch
+                  {isPrivate && <span className="ml-1 text-xs text-text-muted">(not available with Only me)</span>}
+                </span>
               </label>
             </>
           )}
