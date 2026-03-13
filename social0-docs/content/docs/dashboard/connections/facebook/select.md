@@ -1,46 +1,30 @@
 ---
-title: Facebook Account Select
-description: Select Facebook Page after OAuth.
+title: "Choose Facebook Page"
+description: After connecting Facebook, pick which Page(s) to use in Social0.
 ---
 
-# Facebook Account Select
+## Overview
 
-## Route
-`/dashboard/connections/facebook/select` — expects `?token=...` and optional `?returnTo=...`
+When you connect Facebook, you’re asked to choose which **Facebook Page(s)** to use. Social0 posts to Pages, not personal profiles. You’ll see a list of Pages you manage; select the one(s) you want and confirm. Each Page you connect will appear as a separate account when you create a post.
 
-## Purpose
-After Facebook OAuth, user selects which Facebook Page to connect. Fetches pages from `/api/connect/facebook/select?token=...` (pages: id, name, pictureUrl). AccountPicker for selection; handleSelect POSTs to /api/connect/facebook/select with token, pageId, returnTo, then redirects to returnTo.
+## How to choose Facebook Pages
 
-## Access
-- Auth required: likely
-- Plan required: any
-- Who sees this: users completing Facebook connect flow
+1. In Social0, go to **Connections** and click **Connect** for Facebook.
+2. Sign in to Facebook when asked and approve the permissions.
+3. You’ll see a list of **Facebook Pages** you manage. Select the Page(s) you want to connect.
+4. Click **Confirm** or **Connect**. You’ll return to the Connections page with those Pages added.
 
-## Data Flow
-### What it fetches
-- GET /api/connect/facebook/select?token=... — returns pages (id, name, pictureUrl).
+You can connect more Pages later by going through the same flow and selecting additional Pages.
 
-### What it mutates
-- POST /api/connect/facebook/select with { token, pageId, returnTo }; redirect on success.
+## Tips
 
-## Components Used
-AccountPicker — accounts, loading, error, onSelect (handleSelect).
+- You must be an admin (or have the right role) on a Page to connect it. If a Page doesn’t appear, check your role in Facebook Page settings.
+- Connecting a Page doesn’t automatically connect Instagram. If you want to post to Instagram too, connect Instagram separately (that uses a linked Facebook Page).
 
-## State
-accounts, loading, submitLoading, error. token, returnTo from searchParams.
+## Common questions
 
-## Key Business Logic
-Missing token → "Missing token". returnTo default "/dashboard/connections".
+**Q: Can I connect more than one Page?**  
+A: Yes. Select multiple Pages on the selection screen, or connect again later and add more. Each Page will show as its own account in Social0.
 
-## URL Params / Search Params
-- token — required.
-- returnTo — default /dashboard/connections.
-
-## Error States
-Missing token; API errors on fetch or submit.
-
-## Related Pages
-- /dashboard/connections
-
-## TODO / Known Issues
-None.
+**Q: I don’t see my Page.**  
+A: Make sure you’re an admin on that Page in Facebook. Only Pages you can manage will appear in the list.

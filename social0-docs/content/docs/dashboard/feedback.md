@@ -1,46 +1,36 @@
 ---
-title: Feedback
-description: Canny feedback board embed.
+title: "Feedback"
+description: How to send feedback or feature requests to the Social0 team.
 ---
 
-# Feedback
+## Overview
 
-## Route
-`/dashboard/feedback`
+The Feedback page lets you send suggestions, report issues, or ask questions directly to the Social0 team. You’ll see a feedback board where you can post ideas, vote on others’ ideas, and read answers from the team. It’s the best place to tell us what you’d like to see or what’s not working for you.
 
-## Purpose
-Embeds Canny feedback board (vote on features, report bugs, suggest improvements). Fetches SSO token from `/api/canny/sso`, loads Canny SDK script, then calls `window.Canny("render", { boardToken, basePath, ssoToken, theme: "auto" })` into a mount div. Requires NEXT_PUBLIC_CANNY_BOARD_TOKEN.
+## How to open Feedback
 
-## Access
-- Auth required: yes (SSO endpoint likely requires session)
-- Plan required: any
-- Who sees this: authenticated users (no explicit redirect in page; 401 from SSO shows error)
+1. In the Dashboard, open the sidebar or menu.
+2. Click **Feedback** (or “Support” or “Send feedback”—wording may vary).
 
-## Data Flow
-### What it fetches
-- GET /api/canny/sso — returns { token }. 401 → "Unauthorized"; other errors → "Failed to get feedback session". Missing token → "No token received".
-- Canny SDK script from https://sdk.canny.io/sdk.js (loaded client-side).
+You’ll see the feedback board. If something doesn’t load, you may see a link to our feedback site (e.g. social0.canny.io) as a fallback.
 
-### What it mutates
-None. Canny widget may submit feedback to Canny.
+## What you can do
 
-## Components Used
-Loading bar (fixed top) until sdkLoaded && ssoToken && !error. Then either error UI (message + link to CANNY_FALLBACK_URL https://social0.canny.io) or header + div with ref (data-canny) for Canny mount.
+- **Post feedback** — Describe your idea or issue. The team can respond and others can vote.
+- **Vote** — Vote on other people’s suggestions so we know what matters most.
+- **Read** — See what others have asked and what the team has said.
 
-## State
-mountRef, error, ssoToken, sdkLoaded. cannyReady = sdkLoaded && ssoToken && !error. isLoading = !cannyReady && !error.
+You’re signed in with your Social0 account so we know who’s posting. We don’t share that outside the product.
 
-## Key Business Logic
-If boardToken env missing → setError("Feedback board not configured"). If window.Canny not a function after script load → "Feedback widget not available". Render only when mountRef.current exists and no error.
+## Tips
 
-## URL Params / Search Params
-None.
+- Be specific: “I’d like to schedule posts to LinkedIn in a queue” is more helpful than “improve LinkedIn.”
+- If you hit a bug, describe what you did and what you expected. That helps us fix it faster.
 
-## Error States
-Error state: message "We couldn't load the feedback board" + link to open Canny in new tab. Loading bar shown until ready or error.
+## Common questions
 
-## Related Pages
-- Dashboard sidebar may link here. More page has "Share feedback" (currently href="#") — could link to /dashboard/feedback.
+**Q: Is this the same as support?**  
+A: The feedback board is for ideas and discussion. For account or billing issues, use the support option in the app or the contact details on the Social0 website.
 
-## TODO / Known Issues
-- eslint-disable for setState in effect (sdkLoaded, setError). More page "Share feedback" links to "#" not /dashboard/feedback.
+**Q: Will you reply to every post?**  
+A: We try to respond to as many as we can. Popular ideas often get a reply or an update when we ship something related.

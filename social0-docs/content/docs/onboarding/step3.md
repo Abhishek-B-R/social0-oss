@@ -1,47 +1,31 @@
 ---
-title: Onboarding Step 3 — Connect Accounts
-description: Connect social accounts during onboarding.
+title: "Onboarding — Connect accounts"
+description: Connect your first social accounts so you can start posting.
 ---
 
-# Onboarding Step 3 — Connect Accounts
+## Overview
 
-## Route
-`/onboarding/step3`
+In this step you connect the social accounts you want to use with Social0. **You need a paid plan to connect accounts**—on the free tier you cannot connect any. If you have a paid plan, you’ll see a list of platforms (Twitter/X, LinkedIn, Instagram, etc.). Click **Connect** for each one you want, sign in to that platform when asked, and approve the permissions. When you’re done, click **Next** to finish onboarding.
 
-## Purpose
-User connects social accounts. Server loads current connected accounts and account limit (plan); ConnectStepClient shows account list and connect CTAs. When user finishes, they proceed to step 4.
+## How to connect accounts during onboarding
 
-## Access
-- Auth required: yes (redirect to "/" if no session)
-- Plan required: any (limit shown from checkAccountLimits)
+1. You’ll see the list of platforms and which ones are already connected (if any).
+2. Click **Connect** next to a platform (e.g. Twitter/X or LinkedIn).
+3. Sign in to that platform in the window or tab that opens and approve the permissions.
+4. You’ll return to Social0 with that account connected. Repeat for any other accounts you want.
+5. When you’re ready, click **Next** to go to the final step.
 
-## Data Flow
-### What it fetches
-- Session via auth.api.getSession.
-- connectedAccounts for userId, isActive = true (id, platform, platformUsername, profileImageUrl, isActive, isTwitterPremium).
-- checkAccountLimits(userId, "linkedin") for limitTotal.
+How many accounts you can connect depends on your plan. If you hit the limit, we’ll tell you; you can upgrade from **Billing** later.
 
-### What it mutates
-Connect/disconnect performed inside ConnectStepClient (OAuth and API); page itself does not mutate.
+## Tips
 
-## Components Used
-ConnectStepClient — receives initialAccounts and limitTotal, renders list and connect flows.
+- Connect at least one account so you can try publishing right after onboarding.
+- You can add or remove accounts anytime from **Dashboard** → **Connections**.
 
-## State
-Server passes initialAccounts and limitTotal; client state inside ConnectStepClient.
+## Common questions
 
-## Key Business Logic
-accounts normalized to array. limitTotal used to show "at limit" when applicable.
+**Q: Can I skip this step?**  
+A: You need a paid plan and at least one connected account to publish. If you’re on a paid plan, you can finish onboarding and connect later from **Connections**. On the free tier you cannot connect accounts.
 
-## URL Params / Search Params
-None.
-
-## Error States
-Handled inside ConnectStepClient.
-
-## Related Pages
-- `/onboarding/step2` — previous
-- `/onboarding/step4` — next
-
-## TODO / Known Issues
-None in page file.
+**Q: I’m at my account limit.**  
+A: Your plan sets the maximum number of accounts. Upgrade in **Billing** to connect more.

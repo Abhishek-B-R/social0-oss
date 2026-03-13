@@ -1,42 +1,17 @@
 ---
-title: Posts List (All Posts)
-description: Paginated, filterable list of user posts.
+title: "Posts (overview)"
+description: Where to find help for viewing, editing, and managing your posts.
 ---
 
-# Posts List (All Posts)
+## Overview
 
-## Route
+Your posts—drafts, scheduled, and published—live in the **Posts** section of the Dashboard. You can open any post to view it, edit it, publish it, retry a failed one, or delete it. Filter by platform or time and sort by newest or oldest to find what you need.
 
-`/dashboard/posts`
+## Where to read more
 
-## Purpose
+- [Posts](/docs/dashboard/posts) — The main Posts list and what you can do there.
+- [Post detail](/docs/dashboard/posts/[id]) — Opening one post, seeing status per platform, and using Edit, Retry, Post again, or Delete.
+- [Drafts](/docs/dashboard/posts/drafts), [Scheduled](/docs/dashboard/posts/scheduled), [Posted](/docs/dashboard/posts/posted) — Filter views for each type.
+- [Edit a post](/docs/dashboard/posts/[id]/edit) — How to change content or schedule before a post goes out.
 
-Shows a paginated, filterable list of the current user's posts (drafts, scheduled, and published). Users can filter by platform, time range, and account; sort by newest or oldest; and open a post to view detail, edit, or publish.
-
-## Access
-
-- Auth required: yes
-- Plan required: any
-- Who sees this: all authenticated users
-
-## Data flow
-
-**Fetches:** Session, `getPostsListData()` (no status filter; all statuses), `getUserSettingsSnapshot()` for date/time format, `hasPaymentFailedPosts()` for banner. List data may fix posts stuck in "publishing" (set to "published" or "partial" in DB).
-
-**Mutates:** None directly (only the stuck-publishing fix inside getPostsListData).
-
-## Components
-
-- **AllPostsFilters** — Sort, platform, time, account; updates URL and resets page to 1.
-- **PostListCards** — Grid of cards; each links to `/dashboard/posts/[id]`.
-- **Pagination** — Preserves filter params.
-
-## URL params
-
-- `page`, `sort` (newest | oldest), `platform`, `time` (all | week | month), `account`, `tiktok_published` (success banner).
-
-## Related pages
-
-- `/dashboard/composer` — Create post
-- `/dashboard/posts/[id]` — Post detail
-- `/dashboard/billing` — Upgrade (payment-failed banner)
+Use the sidebar or the [Docs overview](/docs/developer/pages) to jump to other topics.

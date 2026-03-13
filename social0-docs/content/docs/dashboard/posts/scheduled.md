@@ -1,47 +1,35 @@
 ---
-title: Scheduled Posts
-description: Filtered view of posts with status scheduled.
+title: "Scheduled posts"
+description: Posts that are set to go out at a specific time or in a queue slot.
 ---
 
-# Scheduled Posts
+## Overview
 
-## Route
-`/dashboard/posts/scheduled`
+**Scheduled** posts are ones you’ve set for a future date and time (or assigned to a queue slot). They sit in your Posts list until that time; then Social0 publishes them for you. You can edit or cancel them anytime before they go out.
 
-## Purpose
-Filtered view of posts with status "scheduled". Same structure as All Posts but statusFilter = "scheduled", basePath and empty/filter messages tailored to scheduled. Includes QueueSuccessBanner and passes queuedPostIds to PostListCards so queued posts show "Queued" badge.
+## How to see scheduled posts
 
-## Access
-- Auth required: yes (no session → return null)
-- Plan required: any
-- Who sees this: all authenticated users
+1. Go to **Dashboard** → **Posts**.
+2. Use the filter or tab for **Scheduled** (if available), or look for posts marked **Scheduled** or **Queued**.
 
-## Data Flow
-### What it fetches
-- Session; getUserSettingsSnapshot (use24HourTimeFormat, dateFormat; timezone not passed to PostListCards in code read).
-- getPostsListData with statusFilter: "scheduled", same sort/platform/time/account/page/limit as main posts page. Returns queuedPostIds (pending queued_posts for scheduled posts on this page).
+Each card shows the post preview and when it’s set to go out (or which queue slot it’s in).
 
-### What it mutates
-Same as posts list (getPostsListData may fix stuck "publishing" posts). No user actions that write from this page only.
+## How to change or cancel a scheduled post
 
-## Components Used
-QueueSuccessBanner, AllPostsFilters (basePath /dashboard/posts/scheduled), PostListCards (queuedPostIds, emptyMessage "You have no scheduled posts.", filterMessage for scheduled), Pagination (basePath /dashboard/posts/scheduled).
+1. Open the post from the list.
+2. Click **Edit** to change the content and/or the date and time (or queue slot).
+3. Save. The post will go out at the new time.
+4. To cancel, delete the post or remove the schedule so it becomes a draft.
 
-## State
-Server-only; filters and page from search params.
+## Tips
 
-## Key Business Logic
-Scheduled-only filter. "View all posts" links to /dashboard/posts. queuedPostIds makes cards show Queued when post is in queue.
+- All times use the timezone you set in **Settings** → **Preferences**. Check that first if a time looks wrong.
+- Posts that are in a queue show as **Queued** and the slot they’re in. You can still edit or delete them before the slot time.
 
-## URL Params / Search Params
-Same as All Posts: sort, platform, time, account, page.
+## Common questions
 
-## Error States
-Empty/filtered empty handled by PostListCards. No session → null.
+**Q: Can I schedule a post for the past?**  
+A: No. Pick a future date and time. If you need it out now, use **Publish now** instead of Schedule.
 
-## Related Pages
-- /dashboard/posts — View all posts
-- /dashboard/composer, /dashboard/create — create/schedule
-
-## TODO / Known Issues
-getUserSettingsSnapshot timezone not passed to PostListCards in the read snippet (may be in full file).
+**Q: What if I’m at my tweet limit when a scheduled post is supposed to go out?**  
+A: If your plan has a monthly tweet limit and you’ve hit it, that post may fail to send to Twitter/X. Upgrade or wait until the next month, then retry the post from the Posts list.

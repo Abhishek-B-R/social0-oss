@@ -1,47 +1,37 @@
 ---
-title: Drafts
-description: Filtered view of draft posts.
+title: "Drafts"
+description: Posts you’ve saved but not yet published or scheduled.
 ---
 
-# Drafts
+## Overview
 
-## Route
-`/dashboard/posts/drafts`
+A **draft** is a post you’ve started but haven’t published or scheduled yet. It stays in your Posts list so you can finish it later. You can open any draft, edit it, and then publish now or schedule it.
 
-## Purpose
-Filtered view of posts with status "draft". Same layout as All Posts: filters, PostListCards, Pagination. basePath /dashboard/posts/drafts; emptyMessage "You have no drafts.", filterMessage "No drafts match your filters." No queuedPostIds (drafts are not queued).
+## How to see your drafts
 
-## Access
-- Auth required: yes (no session → return null)
-- Plan required: any
-- Who sees this: all authenticated users
+1. Go to **Dashboard** → **Posts**.
+2. Use the filter or tab for **Drafts** (if available), or scroll through the list and look for posts marked **Draft**.
 
-## Data Flow
-### What it fetches
-- Session; getUserSettingsSnapshot (use24HourTimeFormat, dateFormat).
-- getPostsListData with statusFilter: "draft", same params as other post list pages.
+Each draft shows a preview of the content. Click one to open it.
 
-### What it mutates
-Same potential as other list pages (stuck publishing fix). No page-specific mutations.
+## How to finish and publish a draft
 
-## Components Used
-AllPostsFilters (basePath /dashboard/posts/drafts), PostListCards, Pagination.
+1. Open the draft from the Posts list.
+2. Click **Edit** to open the create form with your content.
+3. Make any changes you want (text, media, accounts).
+4. Click **Publish now** to send it right away, or **Schedule** to pick a date and time.
 
-## State
-Server-only.
+Once you publish or schedule, the post is no longer a draft.
 
-## Key Business Logic
-Draft-only. "View all posts" → /dashboard/posts.
+## Tips
 
-## URL Params / Search Params
-sort, platform, time, account, page.
+- Drafts are saved automatically as you create them. You can leave and come back later.
+- If you have many drafts, use the Posts filters to narrow by platform or time so you can find the one you need.
 
-## Error States
-Empty/filter empty via PostListCards.
+## Common questions
 
-## Related Pages
-- /dashboard/posts
-- /dashboard/composer, /dashboard/create
+**Q: Can I delete a draft?**  
+A: Yes. Open the post and use the delete option. It will be removed from your list.
 
-## TODO / Known Issues
-None.
+**Q: How long do drafts stay?**  
+A: They stay until you publish, schedule, or delete them. We don’t auto-delete drafts.

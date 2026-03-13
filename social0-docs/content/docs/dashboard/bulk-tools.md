@@ -1,47 +1,45 @@
 ---
-title: Bulk Tools
-description: Upload and schedule multiple videos or images.
+title: "Bulk tools (dashboard)"
+description: Where to find bulk image and video upload in the Dashboard.
 ---
 
-# Bulk Tools
+## Overview
 
-## Route
-`/dashboard/bulk-tools`
+Bulk tools let you upload many images or many videos at once and schedule them (e.g. one per day or per queue slot). They’re available on **Growth** and **Pro** plans. You’ll find them under **Dashboard** → **More** → **Bulk tools** (or in a similar place in your app).
 
-## Purpose
-Landing for bulk upload: two cards — Bulk Video Upload (/dashboard/bulk-tools/video) and Bulk Image Upload (/dashboard/bulk-tools/image). Describes "Upload and schedule multiple videos or images at once." No auth check in this page (layout may enforce).
+## How to open bulk tools
 
-## Access
-- Auth required: not checked in page
-- Plan required: growth or pro for actual bulk tools (enforced on image/video sub-pages)
-- Who sees this: dashboard users
+1. In the Dashboard, open the sidebar or menu.
+2. Click **More** (or “Bulk tools” if it’s a top-level item).
+3. Choose **Bulk Image Upload** or **Bulk Video Upload**.
 
-## Data Flow
-### What it fetches
-None. CONTENT_TYPES and getPlatformIcon used for platform badges on cards.
+If you don’t see them, your plan may not include bulk tools. Go to **Billing** to upgrade to Growth or Pro.
 
-### What it mutates
-Nothing.
+## What each tool does
 
-## Components Used
-Two Link cards with platform icons (PlatformIcons from VIDEO_PLATFORMS / IMAGE_PLATFORMS from content-types).
+**Bulk Image Upload**  
+- Upload multiple images.  
+- Add a caption (or per-image if the form allows).  
+- Choose which accounts get the posts.  
+- Set a schedule (e.g. one post per day at 9 AM, or assign to queue slots).  
+- Each image becomes its own scheduled post.
 
-## State
-None.
+**Bulk Video Upload**  
+- Upload multiple videos (one per post).  
+- Add captions if you want.  
+- Choose which accounts get the posts (only video-capable platforms).  
+- Set the schedule.  
+- Each video becomes its own scheduled post.
 
-## Key Business Logic
-VIDEO_PLATFORMS and IMAGE_PLATFORMS from CONTENT_TYPES (video/image). PLATFORM_DISPLAY for names and colors.
+## Tips
 
-## URL Params / Search Params
-None.
+- Make sure each file meets the usual size and format rules. We’ll tell you if something’s wrong.
+- After you’re done, check **Posts** to see all the scheduled posts; you can edit or cancel any of them.
 
-## Error States
-None.
+## Common questions
 
-## Related Pages
-- /dashboard/bulk-tools/video
-- /dashboard/bulk-tools/image
-- /dashboard/billing?upgrade=1 — when plan doesn’t allow bulk tools
+**Q: I only see “Upgrade” when I click Bulk tools.**  
+A: Bulk tools are on Growth and Pro. Upgrade in **Billing** and the option will work.
 
-## TODO / Known Issues
-None.
+**Q: Can I use different captions for each image?**  
+A: It depends on the form. If there’s a caption field per image/video, yes. Otherwise one caption may apply to all.

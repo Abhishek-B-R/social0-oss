@@ -1,55 +1,38 @@
 ---
-title: Auth (Sign in / Sign up)
-description: Sign in and sign up page for email and Google.
+title: "Sign in and sign up"
+description: How to create an account or sign in to Social0 with Google or email.
 ---
 
-# Auth (Sign in / Sign up)
+## Overview
 
-## Route
-`/auth` — sign in and sign up
+You sign in or sign up on one page. You can use **Google** (one click) or **email and password**. After you sign in, you’re taken to the Dashboard. If you sign up with email, we’ll send you a verification code; enter it to finish and then you’ll go through onboarding.
 
-## Purpose
-Single page for email+password and Google sign-in/sign-up. Supports mode toggle (signin/signup), Turnstile for sign-up when configured, and shows reset-success message when arriving with `?reset=success`. After successful auth, redirects to `/dashboard/composer`.
+## How to sign up
 
-## Access
-- Auth required: no
-- Plan required: none
-- Who sees this: unauthenticated users (and anyone who navigates here)
+1. Go to [social0.app](https://social0.app) and click **Get started** (or **Sign in** and then switch to “Sign up”).
+2. **With Google:** Click the Google button and sign in with your Google account. You’re done—we’ll take you to the Dashboard (or onboarding if you’re new).
+3. **With email:** Enter your name, email, and password. Click **Sign up**. Check your email for a 6-digit code, enter it on the verification page, and you’ll go to onboarding.
 
-## Data Flow
-### What it fetches
-- No server data on load. Uses `useSearchParams()` for `reset=success` and client-side `signIn` from `@/lib/auth-client`.
+No credit card is required to sign up. On the free tier you can only explore the dashboard. You need a paid plan to connect accounts and to post or schedule anything. You can start with a **7-day free trial** to try everything, then continue with a paid plan when the trial ends.
 
-### What it mutates
-- **Sign in (email):** `signIn.email({ email, password, callbackURL })` — redirects or sets error.
-- **Sign in (Google):** `signIn.social({ provider: "google", callbackURL })` — redirects to OAuth.
-- **Sign up:** POST to `/api/auth/sign-up-with-turnstile` or `/api/auth/sign-up` with name, email, password, and optionally turnstileToken. On success: redirect to response url or to `/auth/verify-email?email=...` if no url in response.
+## How to sign in
 
-## Components Used
-- Auth page is one client component (AuthPageContent) with form sections, Turnstile widget when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set, and links to forgot password and landing.
+1. Go to [social0.app](https://social0.app) and click **Sign in** (or **Get started** if you’re not logged in).
+2. **With Google:** Click the Google button and sign in. You’ll land in the Dashboard.
+3. **With email:** Enter your email and password and click **Sign in**. If you forgot your password, use **Forgot password** to get a reset code by email.
 
-## State
-- mode: "signin" | "signup"
-- resetSuccess: boolean (from ?reset=success)
-- email, password, name
-- turnstileToken (string | null)
-- error, loading
+## Tips
 
-## Key Business Logic
-- CALLBACK_URL = "/dashboard/composer". Sign-up requires Turnstile when TURNSTILE_SITE_KEY is set; error "Please complete the verification" if missing.
-- After sign-up success, redirect to verify-email when API doesn’t return a redirect url.
+- Use the same email you use for the social accounts you want to connect, so everything stays in one place.
+- After you sign in, the main button on the site becomes a link to your Dashboard.
 
-## URL Params / Search Params
-- `reset` — "success" shows success message (e.g. after password reset).
+## Common questions
 
-## Error States
-- Sign-in/sign-up errors shown inline. API errors parsed from JSON (data.error or data.message).
+**Q: I didn’t get the verification email.**  
+A: Check your spam folder. If it’s not there, use “Resend code” on the verification page. Make sure the email address is correct.
 
-## Related Pages
-- `/` — landing; header link
-- `/auth/forgot-password` — request password reset
-- `/auth/verify-email` — after sign up
-- `/dashboard/composer` — after sign in
+**Q: I forgot my password.**  
+A: Click **Forgot password** on the sign-in page. Enter your email; we’ll send a 6-digit code. Use that on the reset-password page to set a new password.
 
-## TODO / Known Issues
-None in page file.
+**Q: Can I use both Google and email?**  
+A: Your account is either Google or email, not both. Use the same method each time you sign in.

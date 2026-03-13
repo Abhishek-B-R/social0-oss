@@ -1,45 +1,29 @@
 ---
-title: Forgot Password
-description: Request a password reset code by email.
+title: "Forgot password"
+description: Request a reset code by email so you can set a new password.
 ---
 
-# Forgot Password
+## Overview
 
-## Route
-`/auth/forgot-password`
+If you don’t remember your password, use the **Forgot password** link on the sign-in page. Enter the email you used to sign up and we’ll send you a 6-digit code. You’ll then use that code on the reset-password page to set a new password.
 
-## Purpose
-User enters email; app sends a password-reset OTP via `authClient.emailOtp.requestPasswordReset`. On success, redirects to `/auth/reset-password?email=...` to enter the code and new password.
+## How to request a password reset
 
-## Access
-- Auth required: no
-- Plan required: none
+1. Go to the sign-in page and click **Forgot password** (or the equivalent link).
+2. Enter the **email address** you use for your Social0 account.
+3. Click **Send code** (or **Submit**). We’ll send a 6-digit code to that email.
+4. Check your inbox (and spam). Open the email and note the code.
+5. You’ll be taken to the reset-password page (or click the link in the email). Enter the code and your new password there. See [Reset password](/docs/auth/reset-password).
 
-## Data Flow
-### What it fetches
-None.
+## Tips
 
-### What it mutates
-Calls `authClient.emailOtp.requestPasswordReset({ email })`; no direct DB writes in this page.
+- Use the same email you used when you signed up. If you don’t get the email, check that address and your spam folder.
+- Codes expire after a period. If yours is old, request a new code from the forgot-password page.
 
-## Components Used
-Single-page form (email input, submit, link back to /auth).
+## Common questions
 
-## State
-email, error, loading.
+**Q: I didn’t get the reset email.**  
+A: Check spam and wait a minute. Try again with **Send code**. Make sure you’re using the email tied to your Social0 account.
 
-## Key Business Logic
-Email normalized to trim and lowercase. Empty email shows "Enter your email address."
-
-## URL Params / Search Params
-None.
-
-## Error States
-Inline error from API or generic "Something went wrong. Try again."
-
-## Related Pages
-- `/auth` — Back to sign in
-- `/auth/reset-password` — Next step (with email in query)
-
-## TODO / Known Issues
-None.
+**Q: I use Google to sign in. Can I reset my password?**  
+A: If you signed up with Google, you don’t have a Social0 password—you sign in with Google. Use the Google sign-in option. If you added a password later in Settings, use forgot password with that email.

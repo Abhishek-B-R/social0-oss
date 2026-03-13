@@ -1,58 +1,37 @@
 ---
-title: Composer
-description: Quick composer that routes to the right create form.
+title: "Composer"
+description: The quick way to create a post—type, add media, and we take you to the right next step.
 ---
 
-# Composer
+## Overview
 
-## Route
-`/dashboard/composer` — quick composer that routes to the right create form
+The Composer is the main place to start a new post. You type or paste your text, add images or video if you want, and click **Continue**. Social0 figures out the right post type (text, image, video, thread, or collection) and sends you to the next screen to pick accounts and publish or schedule. No need to choose the type yourself unless you want to.
 
-## Purpose
-Lightweight entry point for creating a post: user types or pastes content and/or adds images/videos (including thread slots). On "Continue", the app chooses the target form (text, image, video, threads, collection) and passes the payload via `composer-bridge` so the create form can prefill. No auth-gating of content; plan/limits are enforced on the target create page.
+## How to use the Composer
 
-## Access
-- Auth required: yes
-- Plan required: any
-- Who sees this: all authenticated users (redirect to `/` if no session)
+1. Open the **Composer** (it’s usually the first screen you see in the Dashboard).
+2. Type or paste your post in the text box.
+3. Optionally add images or video: drag and drop files or click to upload. For a thread, turn on **Add another post as thread** and add more parts.
+4. Click **Continue**.
+5. On the next screen, select which connected accounts should receive the post.
+6. Click **Publish now** to post immediately, or **Schedule** to pick a date and time.
 
-## Data Flow
-### What it fetches
-- **Session** — `auth.api.getSession({ headers })`; no session → `redirect("/")`. No other server data on this page.
+If something’s wrong (e.g. video aspect ratio), we’ll show a message so you can fix it before continuing.
 
-### What it mutates
-- **Client-only until submit:** Text, media, and thread slots live in React state. On "Continue", `setComposerPayload()` from `@/lib/composer-bridge` stores the payload in memory; then `router.push(\`/dashboard/create/${targetSlug}?fromComposer=1\`)`. The create form reads the payload with `consumeComposerPayload()` and clears it in effect cleanup.
+## What the Composer does for you
 
-## Components Used
-- **ComposerClient** — Single client component that implements the full composer UI (textarea, media strip, thread slots, buttons). No other major components.
+- **Picks the post type** — Text only → text post. One image or more (no video) → image post. One video → video post. Multiple videos or mixed media → collection. Thread mode → thread post.
+- **Prefills the next step** — Your text and media are carried over to the create/schedule screen so you don’t re-enter anything.
 
-## State
-- **text** — string; main caption/content.
-- **media** — array of `ComposerMediaItem & { id }` (image or video with file, previewUrl). Reorderable by drag.
-- **isThread** — boolean; toggles thread mode (multiple posts).
-- **threadSlots** — array of `{ id, text, media[] }`; each slot has up to 4 media (THREAD_MAX_MEDIA_PER_POST = 4).
-- **loading** — boolean during submit before navigation.
-- **draggedIndex** / **threadDragged** — drag state for reordering media (main or per-slot).
-- **scrollArrows** — { left, right } for horizontal media strip scroll.
-- **mediaError** — string; e.g. video aspect-ratio validation message from `validateVideoAspectRatio`.
+## Tips
 
-## Key Business Logic
-- **Route choice:** If `isThread` → slug "threads". Else: 0 videos + N images → "image"; 1 video + 0 images → "video"; multiple videos or mixed → "collection"; else "text".
-- **Paste/drop:** `onPaste` and file input add images/videos; videos are validated with `validateVideoAspectRatio` from `@/lib/video-aspect-ratio`; invalid aspect ratio sets `mediaError` and does not add the video.
-- **Thread:** Max 4 media per main post and per thread slot. Turning on thread moves main content into first slot; turning off clears thread slots. Adding thread slot creates new slot with empty text and media.
-- **Submit:** Requires at least main text, main media, or any thread slot content. Payload includes `text`, `isThread`, `media`, and optionally `threadPosts` (array of `{ text, media }`). Navigation adds `fromComposer=1`.
-- **Scroll arrows:** Shown when media strip overflows; scroll by 100px.
+- Use the Composer when you want to move fast. Use **Create** when you want to choose “Text,” “Image,” “Video,” “Threads,” or “Collection” yourself.
+- You can reorder images or thread parts by dragging before you click Continue.
 
-## URL Params / Search Params
-- None read on this page. On submit, navigates with `?fromComposer=1`.
+## Common questions
 
-## Error States
-- **mediaError** — Displayed below the composer (e.g. aspect ratio message). No toast or boundary.
-- Submit disabled when loading or when there is no content (main + thread all empty).
+**Q: I added a video and it said “invalid aspect ratio.” What do I do?**  
+A: Use a common aspect ratio (e.g. 16:9, 9:16, 1:1). Resize or re-export your video in one of those and try again.
 
-## Related Pages
-- `/dashboard/create/[type]` — Target after Continue (text, image, video, threads, collection)
-- `/dashboard/connections` — Linked from composer copy for connecting accounts
-
-## TODO / Known Issues
-None found in ComposerClient or composer page.
+**Q: Can I save from the Composer without publishing?**  
+A: When you click Continue you go to the next step; there you can schedule for later or save as a draft instead of publishing now.

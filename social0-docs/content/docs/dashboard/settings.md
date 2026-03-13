@@ -1,58 +1,48 @@
 ---
-title: Settings
-description: User profile, preferences, queue, and connections.
+title: "Settings"
+description: Change your profile, timezone, date format, queue slots, and other preferences.
 ---
 
-# Settings
+## Overview
 
-## Route
-`/dashboard/settings` — user profile, preferences, queue schedule, and connections
+Settings is where you control your profile (name, avatar), how you see dates and times (timezone, date format, 12/24 hour), your queue schedule (time slots for scheduled posts), and a quick view of your connections. Everything you need to personalize Social0 is here.
 
-## Purpose
-Single settings screen with tabs: Profile (display name, avatar, theme), Preferences (automation emails, date/time format, timezone), Queue (schedule/windows for queue), and Connections (list of connected accounts with avatar override). Credential (email/password) users see password visibility toggle; OAuth-only users do not. Saves are done via server actions with revalidatePath.
+## How to open Settings
 
-## Access
-- Auth required: yes
-- Plan required: any
-- Who sees this: all authenticated users
+1. In the Dashboard, open the sidebar or menu.
+2. Click **Settings**.
 
-## Data Flow
-### What it fetches
-- **Session** — `auth.api.getSession({ headers })`; no session → `redirect("/")`.
-- **User settings** — `getUserSettingsSnapshot()` from `@/app/actions/settings`: automationEmails, use24HourTimeFormat, dateFormat, timezone.
-- **Connections** — `db.query.connectedAccounts.findMany` where userId and isActive = true; id, platform, platformUsername, profileImageUrl, isTwitterPremium.
-- **Credential account** — `db.query.account.findFirst` where userId and providerId = "credential"; used to set isCredentialUser (show password field or not).
-- **Time zones** — Intl.supportedValuesOf("timeZone") when available, else fallback list (UTC, America/New_York, etc.).
+You’ll see tabs or sections: **Profile**, **Preferences**, **Queue**, and **Connections** (or similar).
 
-### What it mutates
-- **updateDisplayName** — form "displayName" → user.name.
-- **updateUserImage** — image URL → user.image (and updateConnectionAvatar for per-connection avatar).
-- **updateAutomationEmails** — form "automationEmails" checkbox → userSettings.automationEmails.
-- **updatePlatformPreferences** — use24HourTimeFormat, dateFormat → userSettings.
-- **updateTimezone** — form timezone → userSettings.timezone.
-- **signOutAllDevices** — revokes sessions and redirects to "/".
-All via `@/app/actions/settings`; revalidatePath("/dashboard/settings"). Avatar upload uses `uploadFile` from `@/lib/upload-file` then passes URL to updateUserImage/updateConnectionAvatar.
+## What you can change
 
-## Components Used
-- **SettingsClient** — Client component with tabs: Profile, Preferences, Queue, Connections. Uses ThemeToggle, PLATFORMS, DATE_FORMAT_OPTIONS, PlatformIcon, QueueScheduleSection, Dialog (password/confirm), Input, Label, Button. Calls settings actions and uploadFile for avatars.
+**Profile**  
+- **Display name** — The name shown in Social0.  
+- **Avatar** — Your profile picture. You can upload a new one.  
+- **Password** — If you signed up with email, you can change your password here.  
+- **Sign out everywhere** — Log out of all devices. Use this if you think someone else has access to your account.
 
-## State
-- **SettingsClient:** Tab selection, form defaults from server, pending state via useFormStatus, dialog open state for password/sign-out. QueueScheduleSection and connection avatar state live in client.
+**Preferences**  
+- **Timezone** — Used for all scheduled times. Set it so “9 AM” is 9 AM where you are.  
+- **Date format** — How dates are shown (e.g. MM/DD/YYYY or DD/MM/YYYY).  
+- **Time format** — 12-hour (AM/PM) or 24-hour.  
+- **Emails** — Whether you get automation emails (e.g. about connections or posts). Turn on or off as you like.
 
-## Key Business Logic
-- **isCredentialUser:** When true, profile section shows password field and sign-out-all-devices; otherwise only display name and avatar.
-- **Queue tab:** QueueScheduleSection manages queue schedule (slots/windows); behavior depends on plan and API — needs investigation for full detail.
-- **Connections:** List with optional avatar override per connection (updateConnectionAvatar).
+**Queue**  
+- **Queue slots** — Define when you want posts to go out (e.g. “Every weekday at 9 AM”). When you schedule a post, you can assign it to one of these slots. See [Queue](/docs/features/queue).
 
-## URL Params / Search Params
-None.
+**Connections**  
+- A list of your connected accounts. You can override the avatar shown for a connection here if the option is available. To add or remove accounts, use **Dashboard** → **Connections**.
 
-## Error States
-- updateUserImage / updateConnectionAvatar return { error } on failure; SettingsClient can show error. signOutAllDevices redirects to "/". No global error boundary documented.
+## Tips
 
-## Related Pages
-- `/dashboard/connections` — dedicated connections management (this tab is a subset view)
-- `/` — after sign out all devices
+- Set your timezone first so scheduling and queue times are correct.  
+- If you use the queue, set up your slots in the Queue tab before assigning posts to them.
 
-## TODO / Known Issues
-SettingsClient is large (~1000+ lines); QueueScheduleSection and connection avatar flow may have additional logic not summarized here.
+## Common questions
+
+**Q: I changed my timezone but my scheduled posts still show the old time.**  
+A: The time you already set is stored. If you want a post to go out at “9 AM in my new timezone,” edit that post and set the time again; it will use your current timezone.
+
+**Q: Where do I connect or disconnect accounts?**  
+A: Use **Dashboard** → **Connections** for that. The Connections section in Settings is a quick view; some accounts let you change the avatar shown there.

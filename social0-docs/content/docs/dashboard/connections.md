@@ -1,54 +1,47 @@
 ---
-title: Connections
-description: Manage connected social accounts.
+title: "Connections"
+description: See and manage all your connected social accounts in one place.
 ---
 
-# Connections
+## Overview
 
-## Route
-`/dashboard/connections` — manage connected social accounts
+The Connections page lists every social account you’ve connected to Social0. You can see each account’s name and avatar, whether the connection is healthy or needs attention, and add new accounts. **Connecting accounts requires a paid plan**—on the free tier you cannot connect accounts; you can only explore the dashboard. How many accounts you can connect depends on your plan (see [Billing](/docs/billing/plans)).
 
-## Purpose
-Lists the user's active connected accounts (OAuth-linked platforms), shows token status (ok / expiring_soon / expired), and supports connecting new accounts. Runs a token health check on load. TikTok accounts may show creator username/nickname from TikTok API. Displays account limit when at plan cap (e.g. for LinkedIn) to discourage adding more until upgrade.
+## How to open Connections
 
-## Access
-- Auth required: yes
-- Plan required: any (account limits enforced by plan)
-- Who sees this: all authenticated users
+1. In the Dashboard, open the sidebar or menu.
+2. Click **Connections**.
 
-## Data Flow
-### What it fetches
-- **Session** — `auth.api.getSession({ headers })`; no session → `redirect("/")`.
-- **Token health** — `runTokenHealthCheckForUser(session.user.id)` from `@/lib/token-health` (updates DB token status/expiry as needed).
-- **Accounts** — `db.query.connectedAccounts.findMany` where userId and isActive = true; columns: id, platform, platformUsername, profileImageUrl, isActive, tokenExpiresAt, tokenStatus, isTwitterPremium.
-- **Account limit** — `checkAccountLimits(session.user.id, "linkedin")` from `@/lib/plan-limits` (current total vs limit; used for any platform limit display).
-- **TikTok creator info** — For each TikTok account, `getTikTokCreatorInfo(accountId, userId)` from `@/lib/tiktok-creator-info`; used for creator_username and creator_nickname in display.
+You’ll see all connected accounts. If you’re at your plan’s account limit, we’ll show that and you can upgrade from Billing.
 
-### What it mutates
-- **Token health check** may update connectedAccounts (tokenStatus, tokenExpiresAt). No user-triggered mutations on this page (connect/disconnect handled by OAuth flows and other components).
+## What you’ll see
 
-## Components Used
-- **OAuthErrorHandler** — Handles OAuth callback errors (e.g. from URL params).
-- **ConnectionsList** — Renders list of accounts with avatar, platform, username (or TikTok creator nickname), token status, expires-in-days when expiring_soon. Shows account limit when at cap (currentTotal >= limitTotal). Connect buttons/links for adding accounts.
-- **ConnectionsSkeleton** — Suspense fallback while ConnectionsContent loads.
+- **Account name and avatar** — So you can tell which profile or page it is.
+- **Status** — Most accounts show “OK.” If a connection is expiring soon or has expired, we’ll show a warning. When that happens, disconnect and reconnect that account to fix it.
+- **Connect buttons** — To add a new account for each platform.
 
-## State
-Server-only in the page. ConnectionsList may have client state for connect flows.
+## How to connect another account
 
-## Key Business Logic
-- **Token status:** getTokenStatus(dbTokenStatus, expiresAt, platform): "expired" if DB says expired or expiresAt < now; "expiring_soon" if expires within 7 days; NEVER_EXPIRES_PLATFORMS and SKIP_EXPIRY_DISPLAY (youtube, tiktok) → "ok". expiresInDays only set when status === "expiring_soon".
-- **TikTok display:** platformUsername and platformDisplayName prefer creator_username and creator_nickname from getTikTokCreatorInfo when available.
-- **Account limit:** Passed to ConnectionsList when currentTotal >= limitTotal so UI can show "at limit" and link to billing/upgrade.
+1. On the Connections page, find the platform you want (e.g. Twitter/X, LinkedIn).
+2. Click **Connect**.
+3. Sign in to that platform when asked and approve the permissions.
+4. You’ll return to Social0 with the new account in the list.
 
-## URL Params / Search Params
-- OAuthErrorHandler may read error params from OAuth redirects (exact keys unclear — needs investigation if documenting).
+## How to disconnect an account
 
-## Error States
-- No session: redirect. OAuth errors: handled by OAuthErrorHandler. List empty: ConnectionsList shows empty state and connect CTAs.
+1. Find the account on the Connections page.
+2. Use the **Disconnect** (or similar) option for that account.
+3. Confirm. That account will no longer receive posts from Social0. You can reconnect it anytime.
 
-## Related Pages
-- `/dashboard/billing` — upgrade when at account limit
-- OAuth connect routes (e.g. platform-specific connect/select pages)
+## Tips
 
-## TODO / Known Issues
-None in page file.
+- If a post failed because an account was disconnected or expired, reconnect that account and try publishing again from the Posts list.
+- TikTok may show your creator name; that’s normal.
+
+## Common questions
+
+**Q: Why does it say “Expiring soon” or “Expired”?**  
+A: That platform’s connection needs to be renewed. Disconnect the account and connect it again; you’ll sign in again and we’ll get a fresh connection.
+
+**Q: Can I connect two Twitter accounts?**  
+A: Yes. Connect the first, then click Connect again for Twitter and sign in with the second account. Both will appear in the list.

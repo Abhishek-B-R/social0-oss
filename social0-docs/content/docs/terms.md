@@ -1,42 +1,24 @@
 ---
-title: Terms and Conditions
-description: Terms and conditions for Social0.
+title: "Terms and Conditions"
+description: The rules and agreement for using Social0.
 ---
 
-# Terms and Conditions
+## Overview
 
-## Route
-`/terms`
+Our Terms and Conditions describe the agreement between you and Social0 when you use the product. They cover what the service is, your responsibilities (e.g. keeping your account secure, not misusing the product), how we handle your content and data, what happens if you or we end the agreement, and limits on liability. This page is a short summary. The full terms are on our website.
 
-## Purpose
-Static legal page: Terms and Conditions for Social0. Sections: Acceptance, Description of service, Account and third-party connections, Your content and conduct, Data handling and security, Termination and data deletion, Changes to service and terms, Disclaimers and limitation of liability, Contact (legal@social0.app). Last updated February 2026.
+## What you’re agreeing to
 
-## Access
-- Auth required: no
-- Plan required: none
-- Who sees this: everyone
+- **Using the service** — You use Social0 to create, schedule, and publish content to the platforms you connect. You’re responsible for that content and for following each platform’s rules.
+- **Your account** — You keep your login details safe and tell us if you think someone else has access. You must be old enough and allowed to enter into this agreement where you live.
+- **Payment** — If you choose a paid plan, you pay as described at signup and on the Billing page. Refunds and cancellations follow our policy (described in the full terms).
+- **Ending the agreement** — You can cancel your plan and stop using the service. We can suspend or end access if you break the terms. What happens to your data when you leave is in the full terms and our Privacy Policy.
 
-## Data Flow
-None. Static content. Metadata: title "Terms and Conditions | Social0", description.
+## Where to read the full terms
 
-## Components Used
-LandingHeader, LandingFooter, prose sections.
+The complete Terms and Conditions are at [social0.app/terms](https://social0.app/terms). They include sections on acceptable use, content and conduct, data handling, termination, and contact (e.g. legal@social0.app). Our [Privacy Policy](/docs/privacy) explains how we handle your data.
 
-## State
-None.
+## Tips
 
-## Key Business Logic
-None.
-
-## URL Params / Search Params
-None.
-
-## Error States
-None.
-
-## Related Pages
-- / — landing
-- /privacy — privacy policy
-
-## TODO / Known Issues
-None.
+- Don’t share your account or use Social0 for spam or abuse. Each platform has its own rules; breaking them can get your account restricted there and with us.
+- If something in the terms is unclear, contact us before you rely on it.

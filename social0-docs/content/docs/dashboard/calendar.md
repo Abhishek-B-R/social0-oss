@@ -1,51 +1,36 @@
 ---
-title: Calendar
-description: Scheduled and published posts by date.
+title: "Calendar"
+description: View your scheduled and published posts on a calendar.
 ---
 
-# Calendar
+## Overview
 
-## Route
-`/dashboard/calendar`
+The Calendar view (if available in your Dashboard) shows your posts on a calendar—scheduled posts on their date and time, and optionally published posts. Use it to see your content plan at a glance and spot gaps or busy days.
 
-## Purpose
-Shows scheduled and published posts in a calendar view (month/week/day). Fetches user posts with status scheduled or published, joins publications for first-publish date and platform info, builds PostForCalendar list for range [now - 1 month, now + 2 months], and passes to CalendarClient with user date/time preferences.
+## How to open the Calendar
 
-## Access
-- Auth required: yes (no session → return null)
-- Plan required: any
-- Who sees this: all authenticated users
+1. In the Dashboard, open the sidebar or menu.
+2. Click **Calendar** (if you see it).
 
-## Data Flow
-### What it fetches
-- Session via auth.api.getSession.
-- getUserSettingsSnapshot() for use24HourTimeFormat, dateFormat, timezone.
-- posts where userId and status in (scheduled, published); columns id, originalContent, status, scheduledAt, createdAt.
-- postPublications joined with connectedAccounts for postIds: publishedAt, platform, profileImageUrl, platformUsername, isTwitterPremium. First publication per post (earliest publishedAt) used for display date when status is published.
-- displayDate for each post: scheduled → scheduledAt; published → first publication’s publishedAt else createdAt. Filter to rangeStart (subMonths(now,1)) to rangeEnd (addMonths(now,2)).
-- calendarPosts: id, snippet (first 40 chars), status, displayDate (ISO), platform, profileImageUrl, platformUsername, isTwitterPremium.
+You’ll see a calendar (week or month view). Posts appear on the day (and time) they’re set to go out or when they were published.
 
-### What it mutates
-Nothing.
+## What you can do
 
-## Components Used
-CalendarClient — receives posts, initialMonth (format(now, "yyyy-MM")), use24HourTimeFormat, dateFormat, timezone.
+- **View** — See which days have scheduled or published posts.
+- **Click a post** — Open it to view details, edit, or cancel.
+- **Change view** — Switch between week and month if the option is there.
 
-## State
-Server-only. CalendarClient holds view state (month/week/day).
+Times use the timezone you set in **Settings** → **Preferences**.
 
-## Key Business Logic
-Empty postIds: still render CalendarClient with empty posts. Range filter avoids loading unbounded data.
+## Tips
 
-## URL Params / Search Params
-None in page (CalendarClient may use params for view).
+- Use the calendar to plan ahead. If a day is empty, consider scheduling something there.
+- If you don’t see a Calendar link, your app may not have this view yet. Use the **Posts** list and filter by “Scheduled” to see what’s coming up.
 
-## Error States
-No session → return null. Empty list → same layout with empty calendar.
+## Common questions
 
-## Related Pages
-- Posts list and post detail (calendar items link to posts)
-- Settings (timezone/date format affect display)
+**Q: Can I drag a post to a different day on the calendar?**  
+A: It depends on the product. If drag-and-drop is supported, you’ll see the post move. Otherwise, open the post and edit the scheduled date and time.
 
-## TODO / Known Issues
-None in page file.
+**Q: Does the calendar show queue slots?**  
+A: Queued posts appear on the date they’re set to go out. The exact time may be the slot window (e.g. “9 AM slot”) depending on how we display it.

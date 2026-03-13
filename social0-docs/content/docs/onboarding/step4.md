@@ -1,45 +1,21 @@
 ---
-title: Onboarding Step 4 — Complete
-description: Final onboarding step and redirect.
+title: "Onboarding — You’re all set"
+description: The final onboarding step before you start using the Dashboard.
 ---
 
-# Onboarding Step 4 — Complete
+## Overview
 
-## Route
-`/onboarding/step4`
+After you connect your accounts and click **Next**, you’ll see a short “You’re all set” (or similar) screen. That’s the end of onboarding. From there you can go to the Dashboard and start creating posts.
 
-## Purpose
-Marks onboarding complete and shows final client UI. Server calls `setOnboardingCompleted()` (upserts userSettings.onboardingCompleted = true), then renders OnboardingStep4Client (likely "You're all set" and link to dashboard).
+## What happens next
 
-## Access
-- Auth required: yes (setOnboardingCompleted redirects to "/" if no userId)
-- Plan required: any
+1. We’ll show a confirmation message.
+2. Click the button to go to the **Dashboard** (usually the Composer).
+3. Create your first post: type in the Composer, click **Continue**, pick your accounts, and publish or schedule.
 
-## Data Flow
-### What it fetches
-None; setOnboardingCompleted runs first.
+You can open **Connections**, **Posts**, **Settings**, and **Billing** from the Dashboard anytime. If you skipped the plan or didn’t connect an account, you can do that from the Dashboard when you’re ready.
 
-### What it mutates
-`setOnboardingCompleted()` from `@/app/actions/onboarding` — sets userSettings.onboardingCompleted = true for current user.
+## Tips
 
-## Components Used
-OnboardingStep4Client — client component for final screen (exact content not read here).
-
-## State
-None on server. Client state in OnboardingStep4Client.
-
-## Key Business Logic
-Onboarding completion is persisted before rendering so subsequent app loads see onboardingCompleted.
-
-## URL Params / Search Params
-None.
-
-## Error States
-None documented in page.
-
-## Related Pages
-- `/onboarding/step3` — previous
-- `/dashboard/composer` or `/dashboard` — typical next destination
-
-## TODO / Known Issues
-None.
+- Bookmark the Dashboard so you can get back quickly.
+- Use **Feedback** in the app to tell us what you’d like to see next.

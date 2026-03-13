@@ -1,61 +1,41 @@
 ---
-title: Post Detail
-description: Single post view and actions.
+title: "Post detail"
+description: View one post, see its status on each platform, and edit, retry, or delete it.
 ---
 
-# Post Detail
+## Overview
 
-## Route
-`/dashboard/posts/[id]` — single post view and actions
+When you click a post from the Posts list, you open the **post detail** page. Here you see the full content, any images or video, and the status for each platform (Posted, Failed, Scheduled, etc.). From here you can edit the post, publish or retry, schedule it, delete it, or “Post again” (reuse the content for a new post).
 
-## Purpose
-Shows one post's full content, media, status, and per-platform publication state. Lets the user edit (draft → create form, scheduled → edit form), publish now, retry failed/partial, delete (draft/scheduled), "Post again" (published/partial), or "Edit and post". Drafts are redirected to the appropriate create form with `?draft=id`.
+## How to open a post
 
-## Access
-- Auth required: yes
-- Plan required: any
-- Who sees this: post owner only; not found or wrong user → redirect to `/dashboard/posts`
+1. Go to **Dashboard** → **Posts**.
+2. Click the post you want.
 
-## Data Flow
-### What it fetches
-- **Session** — `auth.api.getSession({ headers })`; no session → `redirect("/dashboard/posts")`.
-- **User settings** — `getUserSettingsSnapshot()` for `use24HourTimeFormat`, `dateFormat`, `timezone`.
-- **Post detail** — `getPostDetail(id, session.user.id)` from `../posts-list-data`: loads post row and joined publications (platform, status, URLs, errors, profile info). Returns `null` if not found or not owner → redirect to `/dashboard/posts`.
-- **Queued slot** — When post is scheduled, `getQueuedSlotForPost(postId, userId)` returns slot id and scheduled time if there is a pending `queued_posts` row.
-- **Draft handling** — If post status is "draft", page loads media via `getPostMedia(session.user.id, post.mediaIds)`, derives display type and slug, then `redirect(\`/dashboard/create/${slug}?draft=${id}\`)`.
-- **Media** — For non-draft, `getPostMedia(session.user.id, post.mediaIds)` for thumbnails and video URLs.
+You’ll see the full caption, media, and a status for each account you selected (e.g. “Posted,” “Failed,” “Scheduled”).
 
-### What it mutates
-Nothing directly. Child components (`PublishButton`, `PostCardDeleteButton`, `PostAgainButton`) perform publish, delete, or resurface actions via server actions or API.
+## What you can do
 
-## Components Used
-- **PublishButton** — Triggers publish-now/retry for the post (draft, scheduled, failed, partial).
-- **PostAgainButton** — "Post again" for published/partial posts (reuse content).
-- **PostCardDeleteButton** — Delete for draft or scheduled.
-- **AccountAvatar** — Per-publication avatar (profile image, platform, Twitter Premium).
-- **Link** — Back to posts, "Edit post" (scheduled + queued), "Edit and post" (published/partial/failed).
+- **Edit** — Change the text, media, or schedule. For drafts, you’re taken to the create form. For scheduled posts, you can change the time or the content.
+- **Publish now** — If the post is a draft or scheduled, you can publish it immediately.
+- **Retry** — If one or more platforms failed, use **Retry** to send again to those platforms.
+- **Post again** — For a post that’s already published (or partially published), use “Post again” or “Edit and post” to reuse the same content and send it again (e.g. with a new schedule).
+- **Delete** — Remove the post. Use this for drafts or scheduled posts you no longer want.
+- **View on platform** — If the post was published, we may show a link to view it on Twitter, Instagram, etc.
 
-## State
-Server-only; no local useState. Display type and thread parts are derived from `post.metadata` and `post.originalContent`.
+## Status per platform
 
-## Key Business Logic
-- **Display type** — From `metadata.contentType` if set (threads, collection, image, video, text); else from thread parts count, media count, and mime types. Maps to slug: text, image, video, threads, collection.
-- **Draft** — Always redirect to `/dashboard/create/{slug}?draft={id}` so user edits in the form.
-- **Scheduled + queued** — Badge shows "Queued" when `queuedSlot` exists; "Edit post" goes to create form with `?scheduled=id`.
-- **Status badges** — draft, scheduled, publishing, published, partial, failed with distinct styles. Publication-level badges: Posted, Partial, Publishing, Scheduled, Failed, Pending.
-- **View links** — Instagram → profile URL; TikTok (published, numeric platformPostId) → tiktok.com/@username/video/id; else `platformPostUrl`.
-- **Thread display** — If thread, shows parts with optional per-part media from `metadata.twitterThread.parts` or `---`-split content.
+Each connected account you chose for the post will show a status: Posted, Failed, Scheduled, Publishing, or Pending. If it failed, we’ll show a short reason when we can (e.g. “Payment required,” “Connection expired”). Fix the issue (e.g. upgrade, reconnect) and click **Retry**.
 
-## URL Params / Search Params
-- **Dynamic:** `[id]` — post id. Invalid or not-owned → redirect to `/dashboard/posts`.
+## Tips
 
-## Error States
-- No session or no post / not owner: redirect to `/dashboard/posts`.
-- Failed publication: per-platform error text shown; "Retry" uses PublishButton.
+- If you see “Payment required,” upgrade your plan in **Billing** and then retry.
+- For TikTok, the post may take a few minutes to show on your profile; that’s normal.
 
-## Related Pages
-- `/dashboard/posts` — Back to list
-- `/dashboard/create/[slug]` — Edit (draft, scheduled, or edit and post) with `?draft=`, `?scheduled=`, or `?edit=`
+## Common questions
 
-## TODO / Known Issues
-None found in page file.
+**Q: Can I edit a post after it’s published?**  
+A: You can’t change what’s already on the platforms. You can use “Post again” or “Edit and post” to create a new post with the same (or edited) content.
+
+**Q: Why does it say “Queued”?**  
+A: The post is scheduled and assigned to a queue slot. It will go out in that time window. You can still edit or delete it before that time.

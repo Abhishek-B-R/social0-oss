@@ -1,47 +1,31 @@
 ---
-title: Instagram Account Select
-description: Select Facebook Page (with Instagram) after OAuth.
+title: "Choose Instagram account (via Facebook Page)"
+description: After connecting, pick which Facebook Page (and its linked Instagram) to use.
 ---
 
-# Instagram Account Select
+## Overview
 
-## Route
-`/dashboard/connections/instagram/select` — expects `?token=...` and optional `?returnTo=...`
+Instagram posting in Social0 works through a linked **Facebook Page**. When you connect Instagram, you sign in with Facebook and then choose which Page (and its linked Instagram account) to use. You’ll see a list of Pages that have Instagram linked; pick one and confirm. That Instagram account will then appear in Social0 so you can send posts to it.
 
-## Purpose
-After Instagram/Facebook OAuth, user picks which Facebook Page (with linked Instagram) to connect. Fetches pages from `/api/connect/instagram-facebook/select?token=...` (pages with pageId, pageName, instagramUsername, instagramProfilePictureUrl). AccountPicker used to select one; handleSelect POSTs to /api/connect/instagram/select (or similar) with token, pageId, returnTo, then redirects to returnTo.
+## How to choose your Instagram account
 
-## Access
-- Auth required: likely (API requires session)
-- Plan required: any
-- Who sees this: users completing Instagram connect flow
+1. In Social0, go to **Connections** and click **Connect** for Instagram.
+2. You’ll be asked to sign in to Facebook and approve permissions.
+3. On the next screen you’ll see a list of **Facebook Pages** that have an Instagram account linked. Each option may show the Page name and the linked Instagram username.
+4. Select the Page (and Instagram) you want to use.
+5. Click **Confirm** or **Connect**. You’ll return to Connections with that Instagram account added.
 
-## Data Flow
-### What it fetches
-- GET /api/connect/instagram-facebook/select?token=... — returns pages array; mapped to AccountPickerAccount (id: pageId, name: pageName + @username, pictureUrl).
+If you have more than one Instagram account (each linked to a different Page), you can connect each one by going through the flow again and choosing a different Page.
 
-### What it mutates
-- handleSelect(pageId): POST /api/connect/instagram/select (or equivalent) with token, pageId, returnTo; on success redirect to returnTo.
+## Tips
 
-## Components Used
-AccountPicker from @/components/AccountPicker — receives accounts, loading, error, onSelect. Page provides accounts from API and handleSelect.
+- The Instagram account must be linked to a Facebook Page. If you haven’t set that up yet, do it in Facebook or Instagram settings, then come back to Social0 to connect.
+- Only one Instagram account per Facebook Page. To use another Instagram account, connect its linked Page in a separate connection.
 
-## State
-accounts, loading, submitLoading, error. Token and returnTo from searchParams.
+## Common questions
 
-## Key Business Logic
-Missing token → "Missing token". returnTo default "/dashboard/connections". Single selection then submit.
+**Q: I don’t see my Instagram account.**  
+A: Make sure it’s linked to a Facebook Page and that you’re an admin on that Page. Only Pages you manage (with linked Instagram) will appear.
 
-## URL Params / Search Params
-- token — required.
-- returnTo — default /dashboard/connections.
-
-## Error States
-Missing token or fetch error; submit error from API.
-
-## Related Pages
-- /dashboard/connect/instagram-facebook/select — redirects here with same params
-- /dashboard/connections
-
-## TODO / Known Issues
-None.
+**Q: Can I connect a second Instagram account?**  
+A: Yes. Connect again and choose the other Facebook Page that has the other Instagram account linked. Both will show in your Connections list.

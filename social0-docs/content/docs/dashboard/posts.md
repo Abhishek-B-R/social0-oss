@@ -1,61 +1,47 @@
 ---
-title: Posts List (All Posts)
-description: Paginated, filterable list of user posts.
+title: "Posts"
+description: See all your posts—drafts, scheduled, and published—in one list.
 ---
 
-# Posts List (All Posts)
+## Overview
 
-## Route
-`/dashboard/posts` — list of all user posts
+The Posts page is your list of everything you’ve created: drafts, scheduled posts, and published posts. You can filter by platform or time, sort by newest or oldest, and open any post to view it, edit it, publish it, or retry if it failed.
 
-## Purpose
-Shows a paginated, filterable list of the current user's posts (drafts, scheduled, and published). Users can filter by platform, time range, and account; sort by newest or oldest; and open a post to view detail, edit, or publish. Also surfaces a payment-failed banner when the user has failed posts due to trial end and no active subscription, and a TikTok success message when arriving from TikTok publish.
+## How to open Posts
 
-## Access
-- Auth required: yes
-- Plan required: any
-- Who sees this: all authenticated users
+1. In the Dashboard, open the sidebar or menu.
+2. Click **Posts**.
 
-## Data Flow
-### What it fetches
-- **Session** — `auth.api.getSession({ headers })`; unauthenticated returns `null` (no redirect in code; caller may redirect).
-- **Posts list data** — `getPostsListData()` from `./posts-list-data` with `userId`, `sort` (from search params, default "newest"), `platform`, `time`, `account`, `page`, `limit: POSTS_PAGE_SIZE` (18). No status filter (all statuses). Returns: `userPosts`, `publicationsByPostId`, `firstMediaByPost`, `platformOptions`, `accountOptions`, `resurfaceByPostId`, `autoPlugByPostId`, `totalCount`. Logic also fixes posts stuck in "publishing" when all publications are finished (sets post status to "published" or "partial" in DB).
-- **User settings** — `getUserSettingsSnapshot()` from `@/app/actions/settings` for `use24HourTimeFormat`, `dateFormat`, `timezone` (used for timestamps).
-- **Payment-failed check** — `hasPaymentFailedPosts(session.user.id)` from posts-list-data: true if user has no active tier and has at least one post with `status = 'failed'` and `failureReason` containing "Payment required".
+You’ll see a list (or grid) of post cards. Each shows a preview of the content, which platforms it’s for, and its status (Draft, Scheduled, Published, Failed, etc.).
 
-### What it mutates
-- **Indirect:** `getPostsListData` may update `posts` table for stuck "publishing" posts (set to "published" or "partial"). No direct form/button mutations on this page.
+## What you can do
 
-## Components Used
-- **AllPostsFilters** — Client component: sort (newest/oldest), platform, time (all/week/month), account. Updates URL search params and resets `page` to 1 on change. Uses `platformOptions` and `accountOptions` from server.
-- **PostListCards** — Grid of post cards. Each card: type badge, status badge, caption preview (120 chars), failure reason if failed, platform icons (max 3 + "N more"), timestamp. Links to `/dashboard/posts/[id]`. Empty state links to "Create your first post" → composer. Receives `queuedPostIds` only on scheduled tab (this page does not pass it).
-- **Pagination** — `currentPage`, `totalPages`, `basePath="/dashboard/posts"`, preserves `sort`, `platform`, `time`, `account` in links.
+- **Open a post** — Click a post to see the full content, media, and status per platform. From there you can edit, publish, schedule, retry a failed post, or delete.
+- **Filter** — Filter by platform (e.g. only Twitter) or by time (e.g. this week). Use the filter controls at the top.
+- **Sort** — Sort by newest or oldest using the sort option.
+- **Create a new post** — Use the “Create post” or “Composer” button to start a new one.
 
-## State
-Server-only; no useState on the page. Filters and pagination are URL-driven (search params).
+## Statuses you’ll see
 
-## Key Business Logic
-- **Banners:** If `showPaymentFailedBanner` → amber banner with "Some posts failed to publish because your trial ended" and "Upgrade now" → `/dashboard/billing`. If `showTikTokMessage` (search param `tiktok_published=true`) → blue success message about TikTok processing delay.
-- **Filters:** Applied in `getPostsListData`: platform and account filter by publication rows; time filter "week" / "month" uses `startOfWeek` / `startOfMonth` (week starts Monday) on `createdAt`.
-- **Pagination:** `page` from search params, 1-based; offset = (page - 1) * POSTS_PAGE_SIZE. `totalCount` is post count after filters (before pagination slice).
-- **Stuck publishing:** Posts with status "publishing" whose publications are all "published" are updated to "published"; if some published and some failed, updated to "partial".
+- **Draft** — Not published or scheduled yet. You can edit and then publish or schedule.
+- **Scheduled** — Has a date and time; Social0 will publish it then.
+- **Queued** — Scheduled and assigned to a queue slot. It will go out in that time window.
+- **Published** — Successfully sent to all selected platforms.
+- **Partial** — Sent to some platforms; one or more failed. You can open the post and retry the failed ones.
+- **Failed** — Didn’t go out (e.g. payment required, connection issue). Fix the issue (e.g. upgrade, reconnect account) and retry from the post.
 
-## URL Params / Search Params
-- `page` — 1-based page number (default 1).
-- `sort` — "newest" (default) or "oldest".
-- `platform` — platform id to filter (e.g. twitter_x, linkedin); empty = all.
-- `time` — "all", "week", "month".
-- `account` — connected account id; empty = all.
-- `tiktok_published` — "true" shows TikTok success banner.
+## Tips
 
-## Error States
-- No session: component returns `null` (layout or parent may redirect).
-- Empty list: PostListCards shows empty message and "Create your first post" CTA; with active filters, shows "No posts match your filters."
+- If you see a banner like “Some posts failed because your trial ended,” go to **Billing** to upgrade, then retry the failed posts from this list.
+- After publishing to TikTok, it may take a few minutes for the post to appear on TikTok. That’s normal.
 
-## Related Pages
-- `/dashboard/composer` — Create post (header CTA)
-- `/dashboard/posts/[id]` — Post detail (each card)
-- `/dashboard/billing` — Upgrade (payment-failed banner)
+## Common questions
 
-## TODO / Known Issues
-None found in page file.
+**Q: How do I edit a scheduled post?**  
+A: Open the post from the list. Use **Edit** to change the content or the scheduled time.
+
+**Q: Can I cancel a scheduled post?**  
+A: Yes. Open the post and delete it, or remove the schedule so it becomes a draft.
+
+**Q: One platform failed. Can I retry just that one?**  
+A: Open the post. You’ll see which platforms succeeded and which failed. Use **Retry** to send again to the failed ones.

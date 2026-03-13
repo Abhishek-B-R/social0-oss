@@ -1,40 +1,23 @@
 ---
-title: Teams
-description: Coming soon — invite team members and manage access.
+title: "Teams"
+description: Invite team members and manage access (coming soon).
 ---
 
-# Teams
+## Overview
 
-## Route
-`/dashboard/teams`
+Teams will let you invite other people to your Social0 account and control what they can do (e.g. create posts, manage connections, or view only). This feature is not available yet. When it is, you’ll find it in the Dashboard (e.g. under **More** or in the sidebar). You’ll be able to invite team members by email and assign roles.
 
-## Purpose
-Placeholder. "Coming soon. Invite team members and manage access." No data or actions.
+## What to expect (when it’s ready)
 
-## Access
-- Auth required: not checked in page
-- Plan required: any
+- **Invite** — Send an invite by email. The person accepts and joins your team.
+- **Roles** — Different levels of access (e.g. admin, editor, viewer) so you can limit who can post or change settings.
+- **Manage** — See who’s on the team and remove or change roles as needed.
 
-## Data Flow
-None. Static text.
+## For now
 
-## Components Used
-None (heading + paragraph).
+If you see a **Teams** link and click it, you may see a “Coming soon” message. No action is needed. When we launch Teams, we’ll announce it and update the docs.
 
-## State
-None.
+## Tips
 
-## Key Business Logic
-None.
-
-## URL Params / Search Params
-None.
-
-## Error States
-None.
-
-## Related Pages
-Linked from More page.
-
-## TODO / Known Issues
-Feature not implemented.
+- Until Teams is available, only the account owner can use the Dashboard. Share the login only if you’re comfortable giving full access.
+- Use **Feedback** in the app to tell us how you’d like Teams to work.

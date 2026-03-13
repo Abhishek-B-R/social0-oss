@@ -1,45 +1,21 @@
 ---
-title: Onboarding Step 2 — Goal
-description: Select your goal after plan selection.
+title: "Onboarding — Set your goal"
+description: Choose why you’re using Social0 so we can tailor your experience.
 ---
 
-# Onboarding Step 2 — Goal
+## Overview
 
-## Route
-`/onboarding/step2` — optional `?paid=1` after checkout
+Right after you pick a plan (or skip), we ask you to set a goal: personal brand, business, clients, or exploring. This helps us show you the right options and tips. Pick one and click **Next** to go to the step where you connect your accounts.
 
-## Purpose
-User selects a goal (personal brand, business, clients, exploring). Selection is saved via `setOnboardingGoal(selected)` then redirect to `/onboarding/step3`. If `paid=1`, triggers billing sync and confetti animation.
+## How to set your goal
 
-## Access
-- Auth required: yes (setOnboardingGoal redirects to "/" if no userId)
-- Plan required: any
+1. You’ll see a few options (e.g. “Personal brand,” “Business,” “Managing clients,” “Just exploring”).
+2. Click the one that fits you best.
+3. Click **Next**. You’ll go to the screen where you connect your first account(s).
 
-## Data Flow
-### What it fetches
-When paid=1: POST /api/billing/sync (once per mount via ref); on ok refreshes router. No initial server data.
+If you just finished paying for a plan, the page may briefly update your account and show a short celebration. Then continue with the goal step.
 
-### What it mutates
-`setOnboardingGoal(selected)` from `@/app/actions/onboarding` — upserts userSettings.onboardingGoal. Then client redirect to /onboarding/step3.
+## Tips
 
-## Components Used
-Goal buttons (GOALS: personal_brand, business, clients, exploring), Next button. Confetti (canvas-confetti) when paid=1.
-
-## State
-selected (goal id), saving, syncAttempted (ref to run sync once).
-
-## Key Business Logic
-Sync runs only when paid=1 and !syncAttempted.current; then router.refresh(). Confetti runs when paid=1 for 2s (emerald colors).
-
-## URL Params / Search Params
-- `paid` — "1" triggers sync and confetti.
-
-## Error States
-None explicit. Saving disables Next.
-
-## Related Pages
-- `/onboarding` — plan selection
-- `/onboarding/step3` — connect accounts
-
-## TODO / Known Issues
-Commented-out blockquote (testimonial) in code.
+- You can change how you use Social0 anytime. The goal is only to get you started with relevant suggestions.
+- If you’re not sure, “Just exploring” is fine. You can always focus on one use case later.

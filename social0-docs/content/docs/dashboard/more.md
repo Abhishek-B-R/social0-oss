@@ -1,45 +1,26 @@
 ---
-title: More
-description: Settings and the rest of the dashboard.
+title: "More (dashboard menu)"
+description: Extra tools like bulk upload and other options.
 ---
 
-# More
+## Overview
 
-## Route
-`/dashboard/more`
+**More** (or “More tools,” depending on the app) is a section in the Dashboard that holds extra features. Often it includes **Bulk tools** (upload and schedule many images or videos at once). Other options may appear here over time. If you don’t see something, your plan may not include it—check **Billing** to see what’s available.
 
-## Purpose
-Hub page "Settings and the rest of the dashboard." Two sections: "Manual posting" (link to /dashboard/create) and "Posts & tools" (bulk tools, all posts, scheduled, posted, drafts, teams, settings, billing). One item "Share feedback" is a dead link (href="#").
+## What you might see
 
-## Access
-- Auth required: not enforced in page (dashboard layout may enforce)
-- Plan required: any
-- Who sees this: dashboard users
+- **Bulk tools** — Upload many images or many videos and schedule them (e.g. one per day). Available on Growth and Pro plans. See [Bulk tools](/docs/features/bulk-tools).
+- **Other tools** — The app may add more entries here (e.g. calendar view, exports). Check the menu to see what’s there.
 
-## Data Flow
-### What it fetches
-None. Static links.
+## How to open More
 
-### What it mutates
-Nothing.
+1. In the Dashboard, open the sidebar or menu.
+2. Click **More** (or the equivalent).
+3. Choose the tool you want (e.g. Bulk Image Upload, Bulk Video Upload).
 
-## Components Used
-Static list of Link components and one <a href="#"> for feedback. Icons from @tabler/icons-react.
+If you click a tool that your plan doesn’t include, you’ll see a message and a link to upgrade in Billing.
 
-## State
-None.
+## Tips
 
-## Key Business Logic
-MANUAL_POSTING_LINKS: Manual setup → /dashboard/create. MORE_LINKS: Bulk tools, All posts, Scheduled, Posted, Drafts, Teams, Settings, Billing. Feedback link does not go to /dashboard/feedback.
-
-## URL Params / Search Params
-None.
-
-## Error States
-None.
-
-## Related Pages
-All links in the page (create, bulk-tools, posts, scheduled, posted, drafts, teams, settings, billing). Feedback should point to /dashboard/feedback.
-
-## TODO / Known Issues
-"Share feedback" uses href="#". Should be /dashboard/feedback.
+- Use bulk tools when you have a batch of content to spread over several days. Set your queue or schedule once and we’ll post each item in order.
+- If a feature you expect isn’t there, it may be under a different name or coming soon. Use **Feedback** to suggest it.

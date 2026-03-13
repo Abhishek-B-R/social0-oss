@@ -1,45 +1,33 @@
 ---
-title: Verify Email
-description: Verify email with 6-digit code after sign up.
+title: "Verify your email"
+description: Enter the 6-digit code we sent so you can finish signing up.
 ---
 
-# Verify Email
+## Overview
 
-## Route
-`/auth/verify-email` — expects `?email=...`
+When you sign up with email, we send a 6-digit verification code to your inbox. You enter that code on the verify-email page to confirm your email and finish sign-up. After that you’ll go to onboarding (plan, goal, connect accounts).
 
-## Purpose
-After sign-up, user enters 6-digit verification code sent to their email. Submits via `authClient.emailOtp.verifyEmail`. On success, redirects to `/onboarding`. Resend code with 30s cooldown via `authClient.emailOtp.sendVerificationOtp` (type: "email-verification").
+## How to verify your email
 
-## Access
-- Auth required: no (user may not have full session until verified)
-- Plan required: none
+1. After you sign up, you’ll be taken to a page that says to check your email (or you’ll get a link that takes you there).
+2. Open your email and find the message from Social0 with the 6-digit code.
+3. Enter the code in the boxes on the page (one digit per box). You can paste the whole code if you like.
+4. Click **Verify** (or **Continue**). If the code is correct, you’ll go to onboarding.
 
-## Data Flow
-### What it fetches
-Email from search param. No server fetch on load.
+If you don’t see the email, check your spam folder. The page usually has a **Resend code** button; you may need to wait a short time (e.g. 30 seconds) before you can resend.
 
-### What it mutates
-verifyEmail and sendVerificationOtp via auth-client.
+## Tips
 
-## Components Used
-VerifyEmailContent (OTP inputs, verify button, resend), wrapped in Suspense.
+- Type or paste the code carefully. If you get “Invalid or expired code,” request a new one with **Resend code** and try again.
+- Keep the email tab open so you can copy the code quickly.
 
-## State
-email, otp (6 digits), error, loading, resendCooldown (seconds). RESEND_COOLDOWN_SEC = 30.
+## Common questions
 
-## Key Business Logic
-Same OTP input behavior as reset-password (paste, focus, backspace). Resend disabled while resendCooldown > 0 or loading.
+**Q: I didn’t get the email.**  
+A: Check spam and “Promotions” (Gmail). Wait a minute and try **Resend code**. Make sure the email address you signed up with is correct.
 
-## URL Params / Search Params
-- `email` — required. Missing shows "Missing email" and link to /auth.
+**Q: The code expired.**  
+A: Codes expire after a while for security. Click **Resend code** to get a new one and enter it promptly.
 
-## Error States
-Inline error. Missing email: message + "Sign up again" link.
-
-## Related Pages
-- `/auth` — sign up again
-- `/onboarding` — after successful verify
-
-## TODO / Known Issues
-None.
+**Q: I lost access to that email.**  
+A: If you can’t receive email there, sign up again with an email you can access, or contact support with your account details.

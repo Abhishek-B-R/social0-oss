@@ -1,48 +1,37 @@
 ---
-title: Bulk Video Upload
-description: Upload and schedule multiple videos at once.
+title: "Bulk video upload"
+description: Upload many videos at once and schedule them as separate posts.
 ---
 
-# Bulk Video Upload
+## Overview
 
-## Route
-`/dashboard/bulk-tools/video`
+Bulk video upload lets you upload several videos (one per post), add captions if you want, choose which accounts get them, and set a schedule. Each video becomes its own post. This feature is on **Growth** and **Pro** plans. Only video-capable platforms (e.g. YouTube, TikTok, Instagram, Facebook) will appear when you pick accounts.
 
-## Purpose
-Upload and schedule multiple videos at once. Plan-gated: checkBulkToolsAllowed false → redirect to /dashboard/billing?upgrade=1. Loads connected accounts for video platforms and passes to BulkToolsVideoClient.
+## How to use bulk video upload
 
-## Access
-- Auth required: yes (redirect "/" if no session)
-- Plan required: growth or pro
-- Who sees this: authenticated users with bulk-tools-allowed plan
+1. Go to **Dashboard** → **More** → **Bulk tools** and open **Bulk Video Upload**.
+2. Upload your videos (one file per post). Order them as you want them to go out.
+3. Add captions if the form allows (one per video or one for all).
+4. Select which connected accounts should receive the posts (only video-capable platforms).
+5. Set the schedule: e.g. one video per day at 6 PM, or assign to queue slots.
+6. Confirm. Each video is created as a scheduled post.
 
-## Data Flow
-### What it fetches
-- Session; redirect if none.
-- checkBulkToolsAllowed(session.user.id); redirect to billing?upgrade=1 if false.
-- connectedAccounts for userId; filter isActive and platform in VIDEO_PLATFORMS; sort by PLATFORMS; add tokenExpired (same logic as bulk-tools/image).
+You’ll see them in **Posts** with status **Scheduled** (or **Queued** if you used slots).
 
-### What it mutates
-None in page; BulkToolsVideoClient handles upload/schedule.
+## Limits you’ll notice
 
-## Components Used
-BulkToolsVideoClient — accounts, supportedPlatforms (VIDEO_PLATFORMS).
+- Each platform has its own video length and size limits (e.g. TikTok often under 10 minutes). Keep your files within those limits.
+- Aspect ratio (e.g. 16:9, 9:16) must be supported. We’ll tell you if a file doesn’t match.
 
-## State
-Server-only. Client state in BulkToolsVideoClient.
+## Tips
 
-## Key Business Logic
-Same as bulk-tools/image but VIDEO_PLATFORMS from content-types.
+- Vertical (9:16) works well for TikTok and Reels; horizontal (16:9) for YouTube. Choose the right format for the accounts you’re posting to.
+- Large files can take a while to upload. Wait for the upload to finish before closing the page.
 
-## URL Params / Search Params
-None.
+## Common questions
 
-## Error States
-No session or no bulk allowed → redirect.
+**Q: Can I upload 20 videos in one go?**  
+A: Yes, as long as the tool allows it. Set the schedule so they spread over the days you want. You can edit or cancel any from the Posts list.
 
-## Related Pages
-- /dashboard/bulk-tools
-- /dashboard/billing?upgrade=1
-
-## TODO / Known Issues
-eslint-disable react-hooks/purity for Date.now().
+**Q: One video failed. What do I do?**  
+A: Check the error (e.g. length, size, aspect ratio). Fix the file and create a new post for that video, or remove it from the bulk run and try again.

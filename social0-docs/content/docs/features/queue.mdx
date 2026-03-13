@@ -1,15 +1,42 @@
 ---
-title: Queue
-description: Queue slots and scheduled posts.
+title: "Queue"
+description: How to set up time slots and send scheduled posts in those windows.
 ---
 
-# Queue
+## Overview
 
-There is no dedicated "Queue" page in the dashboard. Queue behavior is implemented via:
+The queue lets you define time slots (e.g. “weekdays at 9 AM” or “every day at 6 PM”) and assign scheduled posts to those slots. Instead of picking an exact time for each post, you choose a slot and Social0 publishes the post in that window. Posts that are in a queue show as **Queued** in your Posts list.
 
-- **Settings → Queue tab** — Configure queue schedule (slots/windows).
-- **Create flow** — When scheduling a post, you can assign it to a queue slot.
-- **Scheduled posts list** — Posts with a pending queue assignment show a **Queued** badge.
-- **API** — `/api/queue/slots`, `/api/queue/add`, etc. and a cron job for publishing.
+## How to set up your queue
 
-Scheduled posts with a `queued_posts` row (status pending) appear as **Queued** on the post list and detail.
+1. Go to **Dashboard** → **Settings**.
+2. Open the **Queue** tab.
+3. Add or edit **slots**—each slot is a day and time (or recurring pattern). For example: “Every weekday at 9:00 AM.”
+4. Save. Your slots are now available when you schedule a post.
+
+## How to schedule a post into the queue
+
+1. Create your post and choose **Schedule**.
+2. When picking the time, choose **Add to queue** (or the equivalent option) and select one of your slots.
+3. Confirm. The post is queued for that slot and will be published in that time window.
+
+You’ll see it in **Posts** with a **Queued** badge and which slot it’s in.
+
+## Where queue appears
+
+- **Settings** → **Queue** — Create and edit your slots.
+- **Create/Schedule flow** — When scheduling, you can assign a post to a slot.
+- **Posts list** — Queued posts show a **Queued** label and slot info.
+
+## Tips
+
+- Use a few consistent slots (e.g. morning and evening) so your audience knows when to expect posts.
+- You can still schedule posts to a specific date and time without using the queue.
+
+## Common questions
+
+**Q: What’s the difference between “Schedule” and “Queue”?**  
+A: **Schedule** = one specific date and time. **Queue** = one of your recurring slots. Both are “scheduled”; the queue just groups them into time windows you define.
+
+**Q: Can I change which slot a post is in?**  
+A: Yes. Open the post from the Posts list and change its schedule or queue assignment.

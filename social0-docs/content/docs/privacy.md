@@ -1,42 +1,30 @@
 ---
-title: Privacy Policy
-description: Privacy policy for Social0.
+title: "Privacy Policy"
+description: How Social0 collects, uses, and protects your information.
 ---
 
-# Privacy Policy
+## Overview
 
-## Route
-`/privacy`
+Our Privacy Policy explains what information we collect when you use Social0, how we use it, how we store and protect it, and what rights you have. This page is a short summary. The full, legally binding policy is on our website.
 
-## Purpose
-Static legal page: Privacy Policy for Social0. Sections: Introduction, Information we collect, How we use your information, Data storage and security, Cookies, Third-party services, Google user data (YouTube scopes, Limited Use), Data retention and deletion, Your rights, Updates, Contact (privacy@social0.app). Last updated February 2026.
+## What we collect and why
 
-## Access
-- Auth required: no
-- Plan required: none
-- Who sees this: everyone
+- **Account info** — Email, name, and profile picture (from Google or what you enter) so we can identify you and run the product.
+- **Connected accounts** — When you connect Twitter, LinkedIn, etc., we receive and store the access we need to post and manage content on your behalf. We don’t see or store your password for those platforms.
+- **Content you create** — Your posts, captions, and media so we can publish and schedule them to the platforms you choose.
+- **Usage** — How you use the app (e.g. which features you use) to improve the product and fix issues.
 
-## Data Flow
-None. Static content. Metadata: title "Privacy Policy | Social0", description.
+We use this to run Social0, keep your account secure, send you important updates, and comply with the law. We don’t sell your personal data to third parties.
 
-## Components Used
-LandingHeader, LandingFooter, prose sections with headings and lists.
+## Your rights
 
-## State
-None.
+You can ask us to access, correct, or delete your data, or to export it. How to do that is in the full Privacy Policy. If you delete your account, we’ll remove or anonymize your data as described there.
 
-## Key Business Logic
-None. Content is static copy.
+## Where to read the full policy
 
-## URL Params / Search Params
-None.
+The complete Privacy Policy is at [social0.app/privacy](https://social0.app/privacy). It includes details on data storage, cookies, third-party services (e.g. payment and analytics), and how to contact us (e.g. privacy@social0.app).
 
-## Error States
-None.
+## Tips
 
-## Related Pages
-- / — landing; footer may link here
-- /terms — terms of service
-
-## TODO / Known Issues
-None.
+- We only request the permissions we need from each platform (e.g. to post). You can disconnect an account anytime from **Connections**.
+- Keep your password and verification codes private. We’ll never ask for them by email or chat.
