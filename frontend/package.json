@@ -27,6 +27,7 @@
     "@tabler/icons-react": "^3.40.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.36.3",
+    "@vercel/analytics": "^2.0.1",
     "better-auth": "^1.0.0",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
