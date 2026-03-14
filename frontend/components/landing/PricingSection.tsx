@@ -66,19 +66,6 @@ export function PricingSection() {
         <p className="mb-3 text-[15px] text-muted-foreground">
           All plans include a 7-day free trial. Cancel anytime.
         </p>
-        <p className="mb-12 flex flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground">
-          <span>Fair usage applies</span>
-          <a
-            href={DOCS_FAIR_USAGE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Fair usage policy (Twitter/X tweet limits)"
-          >
-            <Info className="h-3.5 w-3.5 shrink-0" />
-          </a>
-          <span>— Twitter/X limits: Starter 300/mo, Growth 1,500/mo, Pro unlimited.</span>
-        </p>
 
         {/* Two-card grid (Pro tier commented out for now — add back later) */}
         <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl bg-border shadow-sm md:grid-cols-2">
@@ -120,6 +107,23 @@ export function PricingSection() {
                   </span>
                 </li>
               ))}
+              <li className="flex items-start gap-3 text-[13px] text-muted-foreground">
+                <span className="mt-0.5 shrink-0 text-[14px] text-emerald-600 dark:text-emerald-400">
+                  ✓
+                </span>
+                <span className="text-[14px] leading-snug text-muted-foreground">
+                  Fair usage policiy applies for twitter/x posts
+                </span>
+                <a
+                  href={DOCS_FAIR_USAGE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label="Fair usage policy (Twitter/X tweet limits)"
+                >
+                  <Info className="h-3.5 w-3.5 shrink-0" />
+                </a>
+              </li>
             </ul>
 
             <Link
@@ -189,6 +193,23 @@ export function PricingSection() {
                   </span>
                 </li>
               ))}
+              <li className="flex items-start gap-3 text-[13px] text-muted-foreground">
+                <span className="mt-0.5 shrink-0 text-[14px] text-emerald-500/70 dark:text-emerald-600/70">
+                  ✓
+                </span>
+                <span className="text-white/50 dark:text-[#0A0A0A]/60">
+                  Fair usage policiy applies for twitter/x posts
+                </span>
+                <a
+                  href={DOCS_FAIR_USAGE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label="Fair usage policy (Twitter/X tweet limits)"
+                >
+                  <Info className="h-3.5 w-3.5 shrink-0" />
+                </a>
+              </li>
             </ul>
 
             <Link
