@@ -98,10 +98,11 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
 
   return (
     <aside
-      className="dashboard-sidebar hidden h-full w-60 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar-bg lg:flex"
+      className="dashboard-sidebar hidden h-full w-60 shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar-bg lg:flex"
       data-sidebar="dashboard"
     >
-      <div className="flex flex-col gap-6 p-4">
+      {/* Sticky top: logo + Create post */}
+      <div className="flex shrink-0 flex-col gap-6 p-4">
         <Link
           href="/dashboard/composer"
           className="flex items-center gap-3 rounded-lg px-3 py-2 font-semibold text-lg text-sidebar-text hover:bg-sidebar-active transition-colors"
@@ -131,8 +132,11 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
           <IconFilePlus className="h-4 w-4 shrink-0" size={16} />
           Create post
         </Link>
+      </div>
 
-        <nav className="flex flex-1 flex-col gap-6">
+      {/* Scrollable middle: nav */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <nav className="flex flex-col gap-6 p-4 pt-0">
           <Section title="Create">
             <NavLink
               href="/dashboard/composer"
@@ -252,7 +256,8 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
         </nav>
       </div>
 
-      <div className="border-t border-sidebar-border p-4">
+      {/* Sticky bottom: user + Sign out */}
+      <div className="shrink-0 border-t border-sidebar-border bg-sidebar-bg p-4">
         <div className="sidebar-user-block flex items-center gap-3 rounded-lg px-3 py-2">
           {user.image ? (
             // eslint-disable-next-line @next/next/no-img-element
