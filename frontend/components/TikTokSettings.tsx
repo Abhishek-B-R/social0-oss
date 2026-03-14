@@ -408,7 +408,7 @@ export function TikTokSettings({
                   (
                   {settings.privacy_level === "SELF_ONLY"
                     ? "not available with Only me"
-                    : "disabled in your settings"}
+                    : "disabled in your settings because this is a private account"}
                   )
                 </span>
               )}
