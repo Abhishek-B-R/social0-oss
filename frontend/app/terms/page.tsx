@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
+import { MdQuestionMark } from "react-icons/md";
+import { DOCS_TERMS_URL } from "@/lib/docs-url";
 
 export const metadata: Metadata = {
   title: "Terms and Conditions | Social0",
@@ -12,6 +14,16 @@ export default function TermsPage() {
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <LandingHeader />
       <main className="flex-1 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <a
+          href={DOCS_TERMS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute top-20 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+          title="Documentation for this page"
+          aria-label="Documentation for this page"
+        >
+          <MdQuestionMark className="h-4 w-4" />
+        </a>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-8">
           Terms and Conditions
         </h1>

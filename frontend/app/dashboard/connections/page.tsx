@@ -14,6 +14,8 @@ import {
 } from "@/lib/token-health";
 import { checkAccountLimits } from "@/lib/plan-limits";
 import { getTikTokCreatorInfo } from "@/lib/tiktok-creator-info";
+import { DOCS_CONNECTIONS_URL } from "@/lib/docs-url";
+import { MdQuestionMark } from "react-icons/md";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -70,7 +72,9 @@ async function ConnectionsContent() {
     checkAccountLimits(session.user.id, "linkedin"),
   ]);
 
-  const tiktokIds = accounts.filter((a) => a.platform === "tiktok").map((a) => a.id);
+  const tiktokIds = accounts
+    .filter((a) => a.platform === "tiktok")
+    .map((a) => a.id);
   const tiktokCreatorInfo = await Promise.all(
     tiktokIds.map((id) => getTikTokCreatorInfo(id, session.user.id)),
   );
@@ -89,7 +93,8 @@ async function ConnectionsContent() {
             a.platform,
           );
           const expiresInDays = getExpiresInDays(a.tokenExpiresAt ?? null);
-          const creatorInfo = a.platform === "tiktok" ? creatorInfoByAccountId.get(a.id) : null;
+          const creatorInfo =
+            a.platform === "tiktok" ? creatorInfoByAccountId.get(a.id) : null;
           const platformUsername =
             creatorInfo?.creator_username != null
               ? creatorInfo.creator_username
@@ -112,7 +117,10 @@ async function ConnectionsContent() {
         })}
         accountLimit={
           accountLimit.currentTotal >= accountLimit.limitTotal
-            ? { currentTotal: accountLimit.currentTotal, limitTotal: accountLimit.limitTotal }
+            ? {
+                currentTotal: accountLimit.currentTotal,
+                limitTotal: accountLimit.limitTotal,
+              }
             : undefined
         }
       />
@@ -132,6 +140,16 @@ async function ConnectionsContent() {
 export default function ConnectionsPage() {
   return (
     <Suspense fallback={<ConnectionsSkeleton />}>
+      <a
+        href={DOCS_CONNECTIONS_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <MdQuestionMark className="h-4 w-4" />
+      </a>
       <ConnectionsContent />
     </Suspense>
   );

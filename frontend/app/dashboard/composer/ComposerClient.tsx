@@ -395,11 +395,13 @@ export function ComposerClient() {
       setComposerPayload({
         text: text.trim(),
         isThread,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         media: media.map(({ id, ...rest }) => rest),
         threadPosts:
           isThread && threadSlots.length > 0
             ? threadSlots.map((s) => ({
                 text: s.text.trim(),
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 media: s.media.map(({ id: _id, ...rest }) => rest),
               }))
             : undefined,

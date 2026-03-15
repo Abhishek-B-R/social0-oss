@@ -28,6 +28,7 @@ import {
   MdOutlineAddPhotoAlternate,
   MdOutlineVideocam,
   MdClose,
+  MdQuestionMark,
 } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettings } from "@/components/TikTokSettings";
@@ -58,6 +59,7 @@ import {
   getAccountsOverVideoLimit,
   type VideoLimitWarning,
 } from "@/lib/platform-limits";
+import { DOCS_COLLECTION_POST_TYPE_URL } from "@/lib/docs-url";
 
 type Account = {
   id: string;
@@ -572,89 +574,6 @@ export function CollectionPostForm({
     [accounts, selectedIds],
   );
 
-  const onImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files?.length) return;
-    const newImages: ImageFile[] = [];
-    const maxOrder = getMaxOrder();
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (!file.type.startsWith("image/")) {
-        setError("Please select only image files.");
-        continue;
-      }
-      const validation = validateMediaFile(file, selectedPlatforms);
-      if (!validation.allowed) {
-        setError(validation.error ?? "File too large for selected platforms.");
-        if (unifiedInputRef.current) unifiedInputRef.current.value = "";
-        return;
-      }
-      newImages.push({
-        file,
-        preview: URL.createObjectURL(file),
-        order: maxOrder + i + 1,
-      });
-    }
-    if (newImages.length > 0) {
-      setError(null);
-      setImages((prev) => [...prev, ...newImages]);
-    }
-    if (unifiedInputRef.current) unifiedInputRef.current.value = "";
-  };
-
-  const onVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files?.length) return;
-    for (const file of Array.from(files)) {
-      if (!file.type.startsWith("video/")) continue;
-      const validation = validateMediaFile(file, selectedPlatforms);
-      if (!validation.allowed) {
-        setError(validation.error ?? "File too large for selected platforms.");
-        if (unifiedInputRef.current) unifiedInputRef.current.value = "";
-        return;
-      }
-    }
-    const newVideos: VideoFile[] = [];
-    const maxOrder = getMaxOrder();
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (!file.type.startsWith("video/")) {
-        setError("Please select only video files.");
-        continue;
-      }
-      newVideos.push({
-        file,
-        preview: URL.createObjectURL(file),
-        order: maxOrder + i + 1,
-      });
-    }
-    if (newVideos.length === 0) {
-      if (unifiedInputRef.current) unifiedInputRef.current.value = "";
-      return;
-    }
-    setError(null);
-    const videosWithFile = newVideos.filter(
-      (v): v is VideoFile & { file: File } => v.file != null,
-    );
-    Promise.all(videosWithFile.map((v) => getVideoDuration(v.file))).then(
-      (durations) => {
-        const withinDuration: VideoFile[] = [];
-        const overDuration = durations.some(
-          (d) => d > MAX_VIDEO_DURATION_SECONDS,
-        );
-        videosWithFile.forEach((v, i) => {
-          if (durations[i] <= MAX_VIDEO_DURATION_SECONDS)
-            withinDuration.push({ ...v, durationSeconds: durations[i] });
-        });
-        if (overDuration) setError(VIDEO_DURATION_MESSAGE);
-        if (withinDuration.length > 0) {
-          setVideos((prev) => [...prev, ...withinDuration]);
-        }
-        if (unifiedInputRef.current) unifiedInputRef.current.value = "";
-      },
-    );
-  };
-
   const onUnifiedFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length) return;
@@ -794,7 +713,9 @@ export function CollectionPostForm({
       }
       const file = e.clipboardData?.files?.[0];
       if (!file) return;
-      const platforms = accounts.filter((a) => selectedIds.has(a.id)).map((a) => a.platform);
+      const platforms = accounts
+        .filter((a) => selectedIds.has(a.id))
+        .map((a) => a.platform);
       const validation = validateMediaFile(file, platforms);
       if (!validation.allowed) {
         setError(validation.error ?? "File too large for selected platforms.");
@@ -831,8 +752,10 @@ export function CollectionPostForm({
     };
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isUploadZoneHovered, isCaptionFocused]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const getAllItems = () => {
     return [
       ...images.map((img) => ({ ...img, type: "image" as const })),
@@ -1247,6 +1170,7 @@ export function CollectionPostForm({
       let list: Awaited<ReturnType<typeof getPostPublicationList>> = [];
       try {
         list = await getPostPublicationList(result.postId);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (_) {
         // Proceed with empty list so publish still runs (e.g. after ETIMEDOUT)
       }
@@ -1434,6 +1358,16 @@ export function CollectionPostForm({
 
   return (
     <>
+      <a
+        href={DOCS_COLLECTION_POST_TYPE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <MdQuestionMark className="h-4 w-4" />
+      </a>
       {overlayPhase !== "idle" && (
         <UploadPublishOverlay
           phase={

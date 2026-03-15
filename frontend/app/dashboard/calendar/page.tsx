@@ -6,12 +6,15 @@ import { headers } from "next/headers";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { CalendarClient, type PostForCalendar } from "./CalendarClient";
 import { format, subMonths, addMonths } from "date-fns";
+import { MdQuestionMark } from "react-icons/md";
+import { DOCS_CALENDAR_URL } from "@/lib/docs-url";
 
 export default async function CalendarPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return null;
 
-  const { use24HourTimeFormat, dateFormat, timezone } = await getUserSettingsSnapshot();
+  const { use24HourTimeFormat, dateFormat, timezone } =
+    await getUserSettingsSnapshot();
   const now = new Date();
   const rangeStart = subMonths(now, 1);
   const rangeEnd = addMonths(now, 2);
@@ -28,11 +31,8 @@ export default async function CalendarPage() {
     .where(
       and(
         eq(posts.userId, session.user.id),
-        or(
-          eq(posts.status, "scheduled"),
-          eq(posts.status, "published")
-        )
-      )
+        or(eq(posts.status, "scheduled"), eq(posts.status, "published")),
+      ),
     );
 
   const postIds = userPosts.map((p) => p.id);
@@ -44,7 +44,13 @@ export default async function CalendarPage() {
           View your scheduled and published posts by month, week, or day.
         </p>
         <div className="mt-6 flex min-h-0 flex-1 flex-col">
-          <CalendarClient posts={[]} initialMonth={format(now, "yyyy-MM")} use24HourTimeFormat={use24HourTimeFormat} dateFormat={dateFormat} timezone={timezone} />
+          <CalendarClient
+            posts={[]}
+            initialMonth={format(now, "yyyy-MM")}
+            use24HourTimeFormat={use24HourTimeFormat}
+            dateFormat={dateFormat}
+            timezone={timezone}
+          />
         </div>
       </div>
     );
@@ -62,7 +68,7 @@ export default async function CalendarPage() {
     .from(postPublications)
     .innerJoin(
       connectedAccounts,
-      eq(postPublications.connectedAccountId, connectedAccounts.id)
+      eq(postPublications.connectedAccountId, connectedAccounts.id),
     )
     .where(inArray(postPublications.postId, postIds));
 
@@ -98,16 +104,14 @@ export default async function CalendarPage() {
     const displayDate =
       post.status === "scheduled" && post.scheduledAt
         ? new Date(post.scheduledAt)
-        : firstPublicationByPost.get(post.id)?.publishedAt ??
+        : (firstPublicationByPost.get(post.id)?.publishedAt ??
           post.createdAt ??
-          new Date();
+          new Date());
     if (displayDate < rangeStart || displayDate > rangeEnd) continue;
     const firstPub = firstPublicationByPost.get(post.id);
     calendarPosts.push({
       id: post.id,
-      snippet:
-        post.originalContent?.slice(0, 40).trim() ||
-        "(No caption)",
+      snippet: post.originalContent?.slice(0, 40).trim() || "(No caption)",
       status: post.status ?? "scheduled",
       displayDate: displayDate.toISOString(),
       platform: firstPub?.platform ?? null,
@@ -119,6 +123,16 @@ export default async function CalendarPage() {
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
+      <a
+        href={DOCS_CALENDAR_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <MdQuestionMark className="h-4 w-4" />
+      </a>
       <h1 className="text-2xl font-extrabold text-text">Calendar</h1>
       <p className="mt-2 text-text-muted">
         View your scheduled and published posts by month, week, or day.

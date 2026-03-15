@@ -3,11 +3,17 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AlertTriangle } from "lucide-react";
-import { getPostsListData, hasPaymentFailedPosts, POSTS_PAGE_SIZE } from "./posts-list-data";
+import {
+  getPostsListData,
+  hasPaymentFailedPosts,
+  POSTS_PAGE_SIZE,
+} from "./posts-list-data";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { AllPostsFilters } from "./AllPostsFilters";
 import { PostListCards } from "./PostListCards";
 import { Pagination } from "@/components/ui/Pagination";
+import { MdQuestionMark } from "react-icons/md";
+import { DOCS_POSTS_URL } from "@/lib/docs-url";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +54,8 @@ export default async function PostsPage({
     limit: POSTS_PAGE_SIZE,
   });
 
-  const { use24HourTimeFormat, dateFormat, timezone } = await getUserSettingsSnapshot();
+  const { use24HourTimeFormat, dateFormat, timezone } =
+    await getUserSettingsSnapshot();
 
   const hasActiveFilters = !!(params.platform || params.time || params.account);
   const showTikTokMessage = params?.tiktok_published === "true";
@@ -56,6 +63,16 @@ export default async function PostsPage({
 
   return (
     <div>
+      <a
+        href={DOCS_POSTS_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <MdQuestionMark className="h-4 w-4" />
+      </a>
       {showPaymentFailedBanner && (
         <div className="mb-6 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
           <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={1.5} />

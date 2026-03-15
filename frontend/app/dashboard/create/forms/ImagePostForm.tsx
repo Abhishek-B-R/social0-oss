@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 "use client";
@@ -28,7 +29,7 @@ import type {
 } from "@/components/autoplug/AutoPlugPanel";
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
-import { MdClose } from "react-icons/md";
+import { MdClose, MdQuestionMark } from "react-icons/md";
 import {
   TikTokSettings,
   type TikTokPostSettings,
@@ -60,6 +61,7 @@ import {
 } from "@/lib/composer-bridge";
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
+import { DOCS_IMAGE_POST_TYPE_URL } from "@/lib/docs-url";
 
 type PlatformCaptionState = {
   overridden: boolean;
@@ -687,7 +689,6 @@ export function ImagePostForm({
       (acc) => acc.platform === "instagram" || acc.platform === "tiktok",
     );
     if (hasInstagramOrTikTok) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPreviewCardMode("media");
     } else {
       setPreviewCardMode("post");
@@ -747,10 +748,7 @@ export function ImagePostForm({
   };
 
   const selectedPlatforms = useMemo(
-    () =>
-      accounts
-        .filter((a) => selectedIds.has(a.id))
-        .map((a) => a.platform),
+    () => accounts.filter((a) => selectedIds.has(a.id)).map((a) => a.platform),
     [accounts, selectedIds],
   );
 
@@ -788,7 +786,10 @@ export function ImagePostForm({
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
-      if (hasTikTokInSelection && (file.type === "image/png" || file.name?.toLowerCase().endsWith(".png"))) {
+      if (
+        hasTikTokInSelection &&
+        (file.type === "image/png" || file.name?.toLowerCase().endsWith(".png"))
+      ) {
         setShowPngTikTokInfo(true);
       }
       newImages.push({
@@ -833,7 +834,9 @@ export function ImagePostForm({
       setError("TikTok allows at most 35 images per post.");
       return;
     }
-    const platforms = accounts.filter((a) => selectedIds.has(a.id)).map((a) => a.platform);
+    const platforms = accounts
+      .filter((a) => selectedIds.has(a.id))
+      .map((a) => a.platform);
     for (const file of imageFiles) {
       const validation = validateMediaFile(file, platforms);
       if (!validation.allowed) {
@@ -1256,10 +1259,9 @@ export function ImagePostForm({
       } catch (_) {
         // Proceed with empty list so publish still runs (e.g. after ETIMEDOUT)
       }
-      const publishOptions =
-        hasTikTokSelected
-          ? { tiktokConfig: { autoAddMusic: tiktokConfig.autoAddMusic } }
-          : undefined;
+      const publishOptions = hasTikTokSelected
+        ? { tiktokConfig: { autoAddMusic: tiktokConfig.autoAddMusic } }
+        : undefined;
       if (list.length === 0) {
         const publishResult = await publishPost(result.postId, publishOptions);
         const succeededCount =
@@ -1453,6 +1455,16 @@ export function ImagePostForm({
 
   return (
     <>
+      <a
+        href={DOCS_IMAGE_POST_TYPE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <MdQuestionMark className="h-4 w-4" />
+      </a>
       {overlayPhase !== "idle" && (
         <UploadPublishOverlay
           phase={
@@ -1698,7 +1710,6 @@ export function ImagePostForm({
                       onClick={() => setPreviewIndex(index)}
                       className="relative h-20 w-20 shrink-0 cursor-move overflow-hidden rounded-lg border border-border hover:border-accent transition-colors"
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */}
                       <img
                         src={img.preview}
                         alt=""
@@ -1993,7 +2004,7 @@ export function ImagePostForm({
                 </div>
               )}
 
-      {activeConfigPanel === "tiktok" && (
+              {activeConfigPanel === "tiktok" && (
                 <div className="mt-2 border-t border-border pt-4 space-y-4">
                   {tiktokAccounts.length > 1 ? (
                     <>
@@ -2055,7 +2066,8 @@ export function ImagePostForm({
                         Auto Add Music
                       </p>
                       <p className="text-xs text-text-muted mt-0.5">
-                        TikTok will automatically add recommended music to your photos.
+                        TikTok will automatically add recommended music to your
+                        photos.
                       </p>
                     </div>
                     <button
@@ -2069,12 +2081,16 @@ export function ImagePostForm({
                         }))
                       }
                       className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
-                        tiktokConfig.autoAddMusic ? "bg-emerald-600" : "bg-gray-200"
+                        tiktokConfig.autoAddMusic
+                          ? "bg-emerald-600"
+                          : "bg-gray-200"
                       }`}
                     >
                       <span
                         className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                          tiktokConfig.autoAddMusic ? "translate-x-5" : "translate-x-0"
+                          tiktokConfig.autoAddMusic
+                            ? "translate-x-5"
+                            : "translate-x-0"
                         }`}
                       />
                     </button>
@@ -2291,7 +2307,6 @@ export function ImagePostForm({
                     <div className="flex gap-3">
                       <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-bg-muted flex items-center justify-center text-sm font-semibold text-text-muted">
                         {selectedAccounts[0]?.profileImageUrl?.trim() ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
                           <img
                             src={selectedAccounts[0].profileImageUrl}
                             alt=""
@@ -2327,7 +2342,6 @@ export function ImagePostForm({
                           >
                             {sortedImages.length === 1 && (
                               <div className="aspect-video w-full min-h-0 max-h-[150px] overflow-hidden rounded-lg bg-bg-muted">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={sortedImages[0].preview}
                                   alt=""
@@ -2338,7 +2352,6 @@ export function ImagePostForm({
                             {sortedImages.length === 2 && (
                               <div className="flex h-[150px] w-full gap-0.5">
                                 <div className="flex-1 min-w-0 overflow-hidden rounded-l-lg">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
                                     src={sortedImages[0].preview}
                                     alt=""
@@ -2346,7 +2359,6 @@ export function ImagePostForm({
                                   />
                                 </div>
                                 <div className="flex-1 min-w-0 overflow-hidden rounded-r-lg">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
                                     src={sortedImages[1].preview}
                                     alt=""
@@ -2358,7 +2370,6 @@ export function ImagePostForm({
                             {sortedImages.length === 3 && (
                               <div className="grid grid-cols-2 gap-0.5 w-full max-h-[150px]">
                                 <div className="row-span-2 min-h-0 overflow-hidden rounded-l-lg">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
                                     src={sortedImages[0].preview}
                                     alt=""
@@ -2366,7 +2377,6 @@ export function ImagePostForm({
                                   />
                                 </div>
                                 <div className="min-h-0 overflow-hidden rounded-tr-lg">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
                                     src={sortedImages[1].preview}
                                     alt=""
@@ -2374,7 +2384,6 @@ export function ImagePostForm({
                                   />
                                 </div>
                                 <div className="min-h-0 overflow-hidden rounded-br-lg">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
                                     src={sortedImages[2].preview}
                                     alt=""
@@ -2390,7 +2399,6 @@ export function ImagePostForm({
                                     key={img.preview}
                                     className="min-w-0 min-h-0 overflow-hidden rounded-lg"
                                   >
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                       src={img.preview}
                                       alt=""

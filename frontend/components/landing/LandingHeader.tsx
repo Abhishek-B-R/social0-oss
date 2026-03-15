@@ -47,7 +47,7 @@ export function LandingHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md landing">
       <div className="mx-auto flex h-16 max-w-[1100px] items-center justify-between px-6 lg:px-8">
         {/* Logo */}
         <div className="flex gap-2">

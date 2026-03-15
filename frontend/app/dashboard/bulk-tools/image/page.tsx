@@ -9,6 +9,8 @@ import { CONTENT_TYPES } from "@/lib/content-types";
 import { PLATFORMS } from "@/lib/platforms";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import { checkBulkToolsAllowed } from "@/lib/plan-limits";
+import { MdQuestionMark } from "react-icons/md";
+import { DOCS_BULK_TOOLS_IMAGE_URL } from "@/lib/docs-url";
 
 const platformOrder: string[] = PLATFORMS.map((p) => p.id);
 const IMAGE_PLATFORMS = new Set<string>(
@@ -66,9 +68,21 @@ export default async function BulkToolsImagePage() {
   );
 
   return (
-    <BulkToolsImageClient
-      accounts={accounts}
-      supportedPlatforms={Array.from(IMAGE_PLATFORMS)}
-    />
+    <>
+      <BulkToolsImageClient
+        accounts={accounts}
+        supportedPlatforms={Array.from(IMAGE_PLATFORMS)}
+      />
+      <a
+        href={DOCS_BULK_TOOLS_IMAGE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <MdQuestionMark className="h-4 w-4" />
+      </a>
+    </>
   );
 }

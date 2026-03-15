@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
+import { DOCS_PRIVACY_URL } from "@/lib/docs-url";
+import { MdQuestionMark } from "react-icons/md";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | Social0",
@@ -9,9 +11,19 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="min-h-screen flex flex-col bg-background text-foreground landing">
       <LandingHeader />
       <main className="flex-1 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <a
+          href={DOCS_PRIVACY_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute top-20 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+          title="Documentation for this page"
+          aria-label="Documentation for this page"
+        >
+          <MdQuestionMark className="h-4 w-4" />
+        </a>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-8">
           Privacy Policy
         </h1>

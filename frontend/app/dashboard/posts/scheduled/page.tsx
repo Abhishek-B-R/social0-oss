@@ -8,13 +8,21 @@ import { AllPostsFilters } from "../AllPostsFilters";
 import { PostListCards } from "../PostListCards";
 import { Pagination } from "@/components/ui/Pagination";
 import { QueueSuccessBanner } from "./QueueSuccessBanner";
+import { MdQuestionMark } from "react-icons/md";
+import { DOCS_POSTS_SCHEDULED_URL } from "@/lib/docs-url";
 
 export const dynamic = "force-dynamic";
 
 export default async function ScheduledPostsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sort?: string; platform?: string; time?: string; account?: string; page?: string }>;
+  searchParams: Promise<{
+    sort?: string;
+    platform?: string;
+    time?: string;
+    account?: string;
+    page?: string;
+  }>;
 }) {
   const params = await searchParams;
   const session = await auth.api.getSession({ headers: await headers() });
@@ -48,6 +56,16 @@ export default async function ScheduledPostsPage({
 
   return (
     <div>
+      <a
+        href={DOCS_POSTS_SCHEDULED_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <MdQuestionMark className="h-4 w-4" />
+      </a>
       <QueueSuccessBanner />
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
@@ -65,7 +83,11 @@ export default async function ScheduledPostsPage({
       </div>
 
       <div className="mb-6">
-        <Suspense fallback={<div className="h-10 w-48 rounded-lg bg-bg-muted animate-pulse" />}>
+        <Suspense
+          fallback={
+            <div className="h-10 w-48 rounded-lg bg-bg-muted animate-pulse" />
+          }
+        >
           <AllPostsFilters
             platformOptions={platformOptions}
             accountOptions={accountOptions}

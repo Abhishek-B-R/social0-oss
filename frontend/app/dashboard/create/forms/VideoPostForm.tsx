@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -25,7 +26,7 @@ import type {
 } from "@/components/autoplug/AutoPlugPanel";
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
-import { MdOutlineVideoLibrary, MdClose } from "react-icons/md";
+import { MdOutlineVideoLibrary, MdClose, MdQuestionMark } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettings } from "@/components/TikTokSettings";
 import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
@@ -72,6 +73,7 @@ import {
 } from "@/lib/composer-bridge";
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
+import { DOCS_VIDEO_POST_TYPE_URL } from "@/lib/docs-url";
 
 type PlatformCaptionState = {
   overridden: boolean;
@@ -144,7 +146,7 @@ export function VideoPostForm({
   const [existingVideoId, setExistingVideoId] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(0);
   const [isVertical, setIsVertical] = useState(false);
-  const [customThumbnail, setCustomThumbnail] = useState<File | null>(null);
+  const [, setCustomThumbnail] = useState<File | null>(null);
   const [customThumbnailPreview, setCustomThumbnailPreview] = useState<
     string | null
   >(null);
@@ -710,10 +712,13 @@ export function VideoPostForm({
     mediaSizeExceeded.accountIds.forEach((id) => set.add(id));
     return set;
   }, [videoLimitState.accountIds, mediaSizeExceeded.accountIds]);
-  const disabledReasons = useMemo(() => ({
-    ...videoLimitDisabledReasons,
-    ...mediaSizeExceeded.reasons,
-  }), [videoLimitDisabledReasons, mediaSizeExceeded.reasons]);
+  const disabledReasons = useMemo(
+    () => ({
+      ...videoLimitDisabledReasons,
+      ...mediaSizeExceeded.reasons,
+    }),
+    [videoLimitDisabledReasons, mediaSizeExceeded.reasons],
+  );
 
   const selectableAccounts = accounts.filter(
     (a) =>
@@ -747,7 +752,9 @@ export function VideoPostForm({
       const file = e.clipboardData?.files?.[0];
       if (!file || !file.type.startsWith("video/")) return;
       e.preventDefault();
-      const platforms = accounts.filter((a) => selectedIds.has(a.id)).map((a) => a.platform);
+      const platforms = accounts
+        .filter((a) => selectedIds.has(a.id))
+        .map((a) => a.platform);
       const validation = validateMediaFile(file, platforms);
       if (!validation.allowed) {
         setError(validation.error ?? "File too large for selected platforms.");
@@ -782,6 +789,7 @@ export function VideoPostForm({
     };
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isUploadZoneHovered, isCaptionFocused]);
 
   useEffect(() => {
@@ -928,9 +936,6 @@ export function VideoPostForm({
     (a) => a.platform === "pinterest",
   );
   const hasYouTubeSelected = selectedAccounts.some(
-    (a) => a.platform === "youtube",
-  );
-  const youtubeAccounts = selectedAccounts.filter(
     (a) => a.platform === "youtube",
   );
   const hasInstagramSelected = selectedAccounts.some(
@@ -1281,6 +1286,7 @@ export function VideoPostForm({
       let list: Awaited<ReturnType<typeof getPostPublicationList>> = [];
       try {
         list = await getPostPublicationList(result.postId);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (_) {
         // Proceed with empty list so publish still runs (e.g. after ETIMEDOUT)
       }
@@ -1441,6 +1447,16 @@ export function VideoPostForm({
 
   return (
     <>
+      <a
+        href={DOCS_VIDEO_POST_TYPE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <MdQuestionMark className="h-4 w-4" />
+      </a>
       {overlayPhase !== "idle" && (
         <UploadPublishOverlay
           phase={
@@ -2398,7 +2414,6 @@ export function VideoPostForm({
                   <div className="flex gap-3">
                     <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-bg-muted flex items-center justify-center text-sm font-semibold text-text-muted">
                       {selectedAccounts[0]?.profileImageUrl?.trim() ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img
                           src={selectedAccounts[0].profileImageUrl}
                           alt=""

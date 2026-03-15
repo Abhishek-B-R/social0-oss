@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Video, ImageIcon, Layers } from "lucide-react";
 import { getPlatformIcon } from "@/lib/platform-icons";
 import { CONTENT_TYPES } from "@/lib/content-types";
+import { MdQuestionMark } from "react-icons/md";
+import { DOCS_BULK_TOOLS_URL } from "@/lib/docs-url";
 
 const VIDEO_PLATFORMS =
   CONTENT_TYPES.find((c) => c.id === "video")?.platforms ?? [];
@@ -47,6 +49,16 @@ function PlatformIcons({ platformIds }: { platformIds: readonly string[] }) {
 export default function BulkToolsPage() {
   return (
     <div>
+      <a
+        href={DOCS_BULK_TOOLS_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <MdQuestionMark className="h-4 w-4" />
+      </a>
       <h1 className="text-2xl font-extrabold text-text">Bulk tools</h1>
       <p className="mt-2 text-text-muted">
         Upload and schedule multiple videos or images at once.

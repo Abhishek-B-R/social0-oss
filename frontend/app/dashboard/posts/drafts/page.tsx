@@ -7,6 +7,8 @@ import { getPostsListData, POSTS_PAGE_SIZE } from "../posts-list-data";
 import { AllPostsFilters } from "../AllPostsFilters";
 import { PostListCards } from "../PostListCards";
 import { Pagination } from "@/components/ui/Pagination";
+import { MdQuestionMark } from "react-icons/md";
+import { DOCS_POSTS_DRAFTS_URL } from "@/lib/docs-url";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +54,16 @@ export default async function DraftsPostsPage({
 
   return (
     <div>
+      <a
+        href={DOCS_POSTS_DRAFTS_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <MdQuestionMark className="h-4 w-4" />
+      </a>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-extrabold text-text">Drafts</h2>

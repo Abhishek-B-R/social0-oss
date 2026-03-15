@@ -1,6 +1,8 @@
 "use client";
 
+import { DOCS_FEEDBACK_URL } from "@/lib/docs-url";
 import { useEffect, useRef, useState } from "react";
+import { MdQuestionMark } from "react-icons/md";
 
 declare global {
   interface Window {
@@ -86,6 +88,16 @@ export default function FeedbackPage() {
 
   return (
     <>
+      <a
+        href={DOCS_FEEDBACK_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <MdQuestionMark className="h-4 w-4" />
+      </a>
       {/* Loading bar: fixed at top until Canny is ready */}
       {isLoading && (
         <>
@@ -128,12 +140,30 @@ export default function FeedbackPage() {
       ) : (
         <div className="flex h-full flex-col">
           <header className="shrink-0 border-b border-border bg-bg-elevated px-4 py-4 sm:px-6">
-            <h1 className="text-2xl font-extrabold text-foreground">Feedback</h1>
+            <h1 className="text-2xl font-extrabold text-foreground">
+              Feedback
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Vote on features, report bugs, and suggest improvements.
             </p>
           </header>
-          <div ref={mountRef} data-canny className="min-h-0 flex-1 mt-10" />
+          <div className="relative min-h-0 flex-1 mt-10">
+            {isLoading && (
+              <div
+                className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-bg/80"
+                aria-label="Loading feedback board"
+              >
+                <div
+                  className="h-8 w-8 animate-spin rounded-full border-2 border-accent/30 border-t-accent"
+                  role="presentation"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Loading feedback board…
+                </p>
+              </div>
+            )}
+            <div ref={mountRef} data-canny className="h-full min-h-[200px]" />
+          </div>
         </div>
       )}
     </>

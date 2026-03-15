@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { MdQuestionMark } from "react-icons/md";
+import { DOCS_ONBOARDING_URL } from "@/lib/docs-url";
 
 const STARTER_FEATURES = [
   "Connect up to 5 accounts",
@@ -79,6 +81,16 @@ export default function OnboardingPlanPage() {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <a
+        href={DOCS_ONBOARDING_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <MdQuestionMark className="h-4 w-4" />
+      </a>
       <h1 className="text-2xl sm:text-3xl font-bold text-center text-foreground mb-2">
         Choose your plan
       </h1>

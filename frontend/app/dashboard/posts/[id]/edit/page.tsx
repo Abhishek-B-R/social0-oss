@@ -13,7 +13,9 @@ import { getUserSettingsSnapshot } from "@/app/actions/settings";
 
 const platformOrder: string[] = PLATFORMS.map((p) => p.id);
 
-function sortAccountsByPlatform<T extends { platform: string }>(accounts: T[]): T[] {
+function sortAccountsByPlatform<T extends { platform: string }>(
+  accounts: T[],
+): T[] {
   return [...accounts].sort(
     (a, b) =>
       platformOrder.indexOf(a.platform) - platformOrder.indexOf(b.platform),
@@ -50,6 +52,7 @@ export default async function EditPostPage({
     },
   });
 
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   const skipExpiryDisplay = new Set(["youtube", "tiktok"]);
   const activeAccounts = sortAccountsByPlatform(
@@ -90,9 +93,7 @@ export default async function EditPostPage({
         <span className="text-gray-400">/</span>
         <span className="text-sm font-medium text-text">Edit post</span>
       </div>
-      <h2 className="text-2xl font-extrabold text-text mb-2">
-        Edit post
-      </h2>
+      <h2 className="text-2xl font-extrabold text-text mb-2">Edit post</h2>
       <p className="text-gray-500 mb-8 font-medium">
         Update content, accounts, or scheduled time.
       </p>

@@ -7,13 +7,21 @@ import { getPostsListData, POSTS_PAGE_SIZE } from "../posts-list-data";
 import { AllPostsFilters } from "../AllPostsFilters";
 import { PostListCards } from "../PostListCards";
 import { Pagination } from "@/components/ui/Pagination";
+import { MdQuestionMark } from "react-icons/md";
+import { DOCS_POSTS_POSTED_URL } from "@/lib/docs-url";
 
 export const dynamic = "force-dynamic";
 
 export default async function PostedPostsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sort?: string; platform?: string; time?: string; account?: string; page?: string }>;
+  searchParams: Promise<{
+    sort?: string;
+    platform?: string;
+    time?: string;
+    account?: string;
+    page?: string;
+  }>;
 }) {
   const params = await searchParams;
   const session = await auth.api.getSession({ headers: await headers() });
@@ -46,12 +54,20 @@ export default async function PostedPostsPage({
 
   return (
     <div>
+      <a
+        href={DOCS_POSTS_POSTED_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <MdQuestionMark className="h-4 w-4" />
+      </a>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-extrabold text-text">Posted</h2>
-          <p className="text-text-muted mt-1 font-medium">
-            Published posts
-          </p>
+          <p className="text-text-muted mt-1 font-medium">Published posts</p>
         </div>
         <Link
           href="/dashboard/posts"
@@ -62,7 +78,11 @@ export default async function PostedPostsPage({
       </div>
 
       <div className="mb-6">
-        <Suspense fallback={<div className="h-10 w-48 rounded-lg bg-bg-muted animate-pulse" />}>
+        <Suspense
+          fallback={
+            <div className="h-10 w-48 rounded-lg bg-bg-muted animate-pulse" />
+          }
+        >
           <AllPostsFilters
             platformOptions={platformOptions}
             accountOptions={accountOptions}

@@ -6,6 +6,8 @@ import { connectedAccounts, account } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { SettingsClient } from "./SettingsClient";
+import { MdQuestionMark } from "react-icons/md";
+import { DOCS_SETTINGS_URL } from "@/lib/docs-url";
 
 export type SettingsConnection = {
   id: string;
@@ -24,8 +26,19 @@ export default async function SettingsPage() {
 
   const timeZones =
     typeof Intl !== "undefined" && "supportedValuesOf" in Intl
-      ? (Intl as unknown as { supportedValuesOf(key: "timeZone"): string[] }).supportedValuesOf("timeZone")
-      : ["UTC", "America/New_York", "America/Los_Angeles", "Europe/London", "Europe/Paris", "Asia/Kolkata", "Asia/Tokyo", "Australia/Sydney"];
+      ? (
+          Intl as unknown as { supportedValuesOf(key: "timeZone"): string[] }
+        ).supportedValuesOf("timeZone")
+      : [
+          "UTC",
+          "America/New_York",
+          "America/Los_Angeles",
+          "Europe/London",
+          "Europe/Paris",
+          "Asia/Kolkata",
+          "Asia/Tokyo",
+          "Australia/Sydney",
+        ];
 
   const [settings, connections, credentialAccount] = await Promise.all([
     getUserSettingsSnapshot(),
@@ -62,14 +75,26 @@ export default async function SettingsPage() {
   }));
 
   return (
-    <SettingsClient
-      displayName={session.user.name ?? ""}
-      email={session.user.email}
-      image={session.user.image ?? null}
-      settings={settings}
-      connections={connectionsForClient}
-      timeZones={timeZones}
-      isCredentialUser={isCredentialUser}
-    />
+    <>
+      <a
+        href={DOCS_SETTINGS_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <MdQuestionMark className="h-4 w-4" />
+      </a>
+      <SettingsClient
+        displayName={session.user.name ?? ""}
+        email={session.user.email}
+        image={session.user.image ?? null}
+        settings={settings}
+        connections={connectionsForClient}
+        timeZones={timeZones}
+        isCredentialUser={isCredentialUser}
+      />
+    </>
   );
 }

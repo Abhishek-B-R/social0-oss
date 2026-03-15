@@ -31,7 +31,7 @@ import {
 } from "@/components/UploadPublishOverlay";
 import { PLATFORMS } from "@/lib/platforms";
 import { IoMdAddCircleOutline } from "react-icons/io";
-import { MdClose } from "react-icons/md";
+import { MdClose, MdQuestionMark } from "react-icons/md";
 import { MdOutlinePhotoLibrary, MdOutlineVideocam } from "react-icons/md";
 import { AlertTriangle } from "lucide-react";
 import {
@@ -54,6 +54,7 @@ import {
   getAccountsOverVideoLimit,
   type VideoLimitWarning,
 } from "@/lib/platform-limits";
+import { DOCS_THREADS_POST_TYPE_URL } from "@/lib/docs-url";
 
 const PREVIEW_MEDIA_MAX_H = 200;
 const MAX_ATTACHMENTS_PER_POST = 4;
@@ -278,7 +279,9 @@ export function ThreadsPostForm({
     { id: 1, text: "", images: [], videos: [] },
   ]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
-    initialDraftId || initialScheduledId || initialEditId ? new Set() : getInitialSelectedIds(validIds),
+    initialDraftId || initialScheduledId || initialEditId
+      ? new Set()
+      : getInitialSelectedIds(validIds),
   );
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
@@ -311,7 +314,9 @@ export function ThreadsPostForm({
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const threadUploadAbortRef = useRef<AbortController | null>(null);
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
-  const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>([]);
+  const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>(
+    [],
+  );
   const postsRef = useRef<ThreadPost[]>(posts);
   const [showFirstTextError, setShowFirstTextError] = useState(false);
   const [addMediaZoneHover, setAddMediaZoneHover] = useState<number | null>(
@@ -340,12 +345,18 @@ export function ThreadsPostForm({
     const payload = consumeComposerPayload();
     if (!payload) return;
 
-    const toMediaImage = (m: { type: string; file: File; previewUrl: string }, order: number) => ({
+    const toMediaImage = (
+      m: { type: string; file: File; previewUrl: string },
+      order: number,
+    ) => ({
       file: m.file,
       preview: URL.createObjectURL(m.file),
       order,
     });
-    const toMediaVideo = (m: { type: string; file: File; previewUrl: string }, order: number) => ({
+    const toMediaVideo = (
+      m: { type: string; file: File; previewUrl: string },
+      order: number,
+    ) => ({
       file: m.file,
       preview: URL.createObjectURL(m.file),
       order,
@@ -411,7 +422,9 @@ export function ThreadsPostForm({
           validAccountIds.has(id),
         );
         setSelectedIds(new Set(restoredIds));
-        setScheduledAt(scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null);
+        setScheduledAt(
+          scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null,
+        );
         setMode("scheduled");
         if (scheduled.queueSlotId)
           intendedQueueSlotIdRef.current = scheduled.queueSlotId;
@@ -711,7 +724,9 @@ export function ThreadsPostForm({
     const reasons: Record<string, string> = {};
     for (const acc of accounts) {
       if (videoLimitState.accountIds.has(acc.id)) {
-        const w = videoLimitState.warnings.find((x) => x.platform === acc.platform);
+        const w = videoLimitState.warnings.find(
+          (x) => x.platform === acc.platform,
+        );
         reasons[acc.id] = w?.message ?? `Video exceeds ${acc.platform} limit`;
       }
     }
@@ -722,7 +737,9 @@ export function ThreadsPostForm({
     const reasons: Record<string, string> = {};
     for (const acc of accounts) {
       if (videoLimitState.softAccountIds.has(acc.id)) {
-        const w = videoLimitState.softWarnings.find((x) => x.platform === acc.platform);
+        const w = videoLimitState.softWarnings.find(
+          (x) => x.platform === acc.platform,
+        );
         reasons[acc.id] = w?.message ?? "May limit reach to new audiences.";
       }
     }
@@ -731,7 +748,10 @@ export function ThreadsPostForm({
 
   useEffect(() => {
     if (maxVideoDurationSeconds <= 0) return;
-    const { accountIds } = getAccountsOverVideoLimit(accounts, maxVideoDurationSeconds);
+    const { accountIds } = getAccountsOverVideoLimit(
+      accounts,
+      maxVideoDurationSeconds,
+    );
     if (accountIds.size === 0) return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -1067,8 +1087,7 @@ export function ThreadsPostForm({
         const hasMedia =
           files &&
           Array.from(files).some(
-            (f) =>
-              f.type.startsWith("image/") || f.type.startsWith("video/"),
+            (f) => f.type.startsWith("image/") || f.type.startsWith("video/"),
           );
         if (!hasMedia) return;
       }
@@ -1164,16 +1183,11 @@ export function ThreadsPostForm({
     }
     if (!rememberAutoFeatures) return;
     if (hasRestoredAutoFeaturesRef.current) return;
-    const { autoRepostConfig, autoPlugConfig } =
-      getAutoFeaturesInitialState();
+    const { autoRepostConfig, autoPlugConfig } = getAutoFeaturesInitialState();
     if (autoRepostConfig) setResurfaceConfig(autoRepostConfig);
     if (autoPlugConfig) setAutoPlugConfig(autoPlugConfig);
     hasRestoredAutoFeaturesRef.current = true;
-  }, [
-    hasXForResurface,
-    rememberAutoFeatures,
-    getAutoFeaturesInitialState,
-  ]);
+  }, [hasXForResurface, rememberAutoFeatures, getAutoFeaturesInitialState]);
 
   // Persist Auto-Repost & Auto-Plug when remember is on
   useEffect(() => {
@@ -1388,7 +1402,7 @@ export function ThreadsPostForm({
         scheduledAt,
         mediaIds,
         metadata,
-        scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+        scheduledAt ? (intendedQueueSlotIdRef.current ?? undefined) : undefined,
       );
       if (scheduledAt) intendedQueueSlotIdRef.current = null;
       setLoading(false);
@@ -1477,7 +1491,9 @@ export function ThreadsPostForm({
           scheduledAt,
           mediaIds,
           metadata,
-          scheduledAt ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+          scheduledAt
+            ? (intendedQueueSlotIdRef.current ?? undefined)
+            : undefined,
         );
         if (scheduledAt) intendedQueueSlotIdRef.current = null;
         setLoading(false);
@@ -1499,7 +1515,9 @@ export function ThreadsPostForm({
       scheduledAt,
       mediaIds,
       metadata,
-      effectiveMode === "scheduled" ? intendedQueueSlotIdRef.current ?? undefined : undefined,
+      effectiveMode === "scheduled"
+        ? (intendedQueueSlotIdRef.current ?? undefined)
+        : undefined,
     );
     if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
@@ -1536,7 +1554,8 @@ export function ThreadsPostForm({
         accountId: pub.connectedAccountId,
         accountName: pub.platformUsername
           ? `@${pub.platformUsername}`
-          : PLATFORMS.find((p) => p.id === pub.platform)?.name ?? pub.platform,
+          : (PLATFORMS.find((p) => p.id === pub.platform)?.name ??
+            pub.platform),
         status: "waiting" as PlatformStatus,
       }));
       setPlatformStatuses(initial);
@@ -1618,12 +1637,11 @@ export function ThreadsPostForm({
   const firstPostText = posts[0]?.text.trim() ?? "";
   const hasContent = firstPostText.length > 0;
 
-  const submitDisabledReason =
-    !hasContent
-      ? "Add text to the first post"
-      : mode === "scheduled" && !scheduledAt
-        ? "Pick a date and time to schedule"
-        : null;
+  const submitDisabledReason = !hasContent
+    ? "Add text to the first post"
+    : mode === "scheduled" && !scheduledAt
+      ? "Pick a date and time to schedule"
+      : null;
 
   const submitLabel =
     mode === "draft"
@@ -1659,6 +1677,16 @@ export function ThreadsPostForm({
 
   return (
     <>
+      <a
+        href={DOCS_THREADS_POST_TYPE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <MdQuestionMark className="h-4 w-4" />
+      </a>
       {overlayPhase !== "idle" && (
         <UploadPublishOverlay
           phase={
@@ -1789,8 +1817,8 @@ export function ThreadsPostForm({
                 {videoLimitState.warnings.length > 0 && (
                   <>
                     <p className="text-sm mb-1">
-                      The following exceed platform limits. Affected accounts are
-                      disabled for this post:
+                      The following exceed platform limits. Affected accounts
+                      are disabled for this post:
                     </p>
                     <ul className="list-disc list-inside text-sm space-y-1 mb-2">
                       {videoLimitState.warnings.map((w) => (
@@ -1852,17 +1880,17 @@ export function ThreadsPostForm({
                   (p.images.length > 0 && p.videos.length > 0) ||
                   p.videos.length > 1,
               ) && (
-              <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
-                <p>
-                  Bluesky supports only one video per post and doesn&apos;t
-                  allow mixing images and videos. For posts with multiple videos
-                  or both images and videos, only the first video will be
-                  published to Bluesky. Add images and videos to different
-                  posts in your thread to include both.
-                </p>
-              </div>
-            )}
+                <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                  <p>
+                    Bluesky supports only one video per post and doesn&apos;t
+                    allow mixing images and videos. For posts with multiple
+                    videos or both images and videos, only the first video will
+                    be published to Bluesky. Add images and videos to different
+                    posts in your thread to include both.
+                  </p>
+                </div>
+              )}
 
             {posts.map((post, index) => (
               <div
@@ -2004,7 +2032,8 @@ export function ThreadsPostForm({
                         addVideoToPost(post.id, videoFiles);
                     }}
                     className={`flex items-center justify-center gap-2 w-full rounded-xl border px-4 py-2 cursor-pointer transition-colors text-sm text-text-muted ${
-                      addMediaZoneHover === post.id || dragOverPostId === post.id
+                      addMediaZoneHover === post.id ||
+                      dragOverPostId === post.id
                         ? "border-accent bg-accent/5"
                         : "border-border bg-bg-subtle hover:border-accent hover:bg-accent/5"
                     }`}
