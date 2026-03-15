@@ -1,5 +1,6 @@
 "use client";
 
+import { DOCS_BULK_TOOLS_VIDEO_URL } from "@/lib/docs-url";
 import { HelpCircle } from "lucide-react";
 
 const CAPTION_MAX = 2200;
@@ -67,13 +68,16 @@ export function BulkScheduleSettings({
   return (
     <div className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm -mt-14">
       <div className="flex items-center gap-2">
-        <h3 className="text-lg font-semibold text-foreground">
+        <h3 className="text-2xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
           Bulk Schedule Settings
         </h3>
         <button
           type="button"
           className="text-muted-foreground hover:text-foreground"
           aria-label="Help"
+          onClick={() => {
+            window.open(DOCS_BULK_TOOLS_VIDEO_URL, "_blank");
+          }}
         >
           <HelpCircle className="h-4 w-4" />
         </button>

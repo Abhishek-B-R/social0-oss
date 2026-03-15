@@ -8,6 +8,7 @@ import { CalendarClient, type PostForCalendar } from "./CalendarClient";
 import { format, subMonths, addMonths } from "date-fns";
 import { MdQuestionMark } from "react-icons/md";
 import { DOCS_CALENDAR_URL } from "@/lib/docs-url";
+import DocsInfoIcon from "@/components/info-icon";
 
 export default async function CalendarPage() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -123,17 +124,12 @@ export default async function CalendarPage() {
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <a
-        href={DOCS_CALENDAR_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
-        title="Documentation for this page"
-        aria-label="Documentation for this page"
-      >
-        <MdQuestionMark className="h-4 w-4" />
-      </a>
-      <h1 className="text-2xl font-extrabold text-text">Calendar</h1>
+      <div className="flex items-center gap-2">
+        <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+          Calendar
+        </h1>
+        <DocsInfoIcon url={DOCS_CALENDAR_URL} />
+      </div>
       <p className="mt-2 text-text-muted">
         View your scheduled and published posts by month, week, or day.
       </p>

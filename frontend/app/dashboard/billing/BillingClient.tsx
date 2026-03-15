@@ -182,7 +182,7 @@ export function BillingClient({
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm -mt-4">
-        <h2 className="text-lg font-semibold text-text">
+        <h2 className="text-2xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
           Current plan : {tierLabel}
         </h2>
         {subscription.expiresAt && (
@@ -236,14 +236,16 @@ export function BillingClient({
       )}
 
       <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
-        <h2 className="text-lg font-semibold text-text">Plans</h2>
+        <h2 className="text-2xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+          Plans
+        </h2>
         <p className="mt-0.5 text-sm text-text-muted">
           Early adopter pricing. Lock in before price increases.
         </p>
         {/* Pro tier commented out for now — add back later */}
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border-2 border-border bg-bg p-4">
-            <h3 className="font-semibold text-text">
+            <h3 className="text-xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
               Starter (Lite) —{" "}
               <span className="line-through text-muted-foreground">$9</span>{" "}
               <span className="text-foreground">$6</span>/month
@@ -327,7 +329,7 @@ export function BillingClient({
             <span className="rounded bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
               Most popular
             </span>
-            <h3 className="mt-1.5 font-semibold text-text">
+            <h3 className="text-xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
               Growth —{" "}
               <span className="line-through text-muted-foreground">$29</span>{" "}
               <span className="text-foreground">$19</span>/month

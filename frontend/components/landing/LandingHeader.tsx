@@ -7,10 +7,10 @@ import { useSession } from "@/lib/auth-client";
 import Image from "next/image";
 
 const navLinks = [
-  { href: "#features", label: "Features" },
-  { href: "#platforms", label: "Platforms" },
-  { href: "#pricing", label: "Pricing" },
-  { href: "#faq", label: "FAQ" },
+  { href: "/#features", label: "Features" },
+  { href: "/#platforms", label: "Platforms" },
+  { href: "/#pricing", label: "Pricing" },
+  { href: "/#faq", label: "FAQ" },
   { href: "/terms", label: "Terms" },
   { href: "/privacy", label: "Privacy" },
 ];

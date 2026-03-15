@@ -311,12 +311,14 @@ export function BulkToolsImageClient({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
-        Bulk Image Scheduling
+      <div className="flex items-center gap-2">
+        <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+          Bulk Image Scheduling
+        </h1>
         <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
           Beta
         </span>
-      </h1>
+      </div>
 
       {success ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/40 p-6 text-center">

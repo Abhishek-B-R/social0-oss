@@ -15,6 +15,15 @@ import { ImagePostForm } from "../forms/ImagePostForm";
 import { VideoPostForm } from "../forms/VideoPostForm";
 import { ThreadsPostForm } from "../forms/ThreadsPostForm";
 import { CollectionPostForm } from "../forms/CollectionPostForm";
+import {
+  DOCS_COLLECTION_POST_TYPE_URL,
+  DOCS_CREATE_TYPE_URL,
+  DOCS_IMAGE_POST_TYPE_URL,
+  DOCS_TEXT_POST_TYPE_URL,
+  DOCS_THREADS_POST_TYPE_URL,
+  DOCS_VIDEO_POST_TYPE_URL,
+} from "@/lib/docs-url";
+import DocsInfoIcon from "@/components/info-icon";
 
 const platformOrder: string[] = PLATFORMS.map((p) => p.id);
 function sortAccountsByPlatformOrder<T extends { platform: string }>(
@@ -121,7 +130,10 @@ export default async function NewPostByTypePage({
       })),
   );
 
-  const rawDateFormat = settingsRow?.dateFormat as DateFormatKey | null | undefined;
+  const rawDateFormat = settingsRow?.dateFormat as
+    | DateFormatKey
+    | null
+    | undefined;
   const use24HourTimeFormat = settingsRow?.use24HourTimeFormat ?? false;
   const dateFormat: DateFormatKey =
     rawDateFormat === "dd/MM/yyyy" ||
@@ -130,7 +142,8 @@ export default async function NewPostByTypePage({
       ? rawDateFormat
       : "dd/MM/yyyy";
   const timezone =
-    typeof settingsRow?.timezone === "string" && settingsRow.timezone.trim().length > 0
+    typeof settingsRow?.timezone === "string" &&
+    settingsRow.timezone.trim().length > 0
       ? settingsRow.timezone.trim()
       : "UTC";
 
@@ -144,13 +157,29 @@ export default async function NewPostByTypePage({
         : "free";
   const planLimits = getPlanLimits(effectiveTier);
 
+  const url =
+    contentType.slug === "collection"
+      ? DOCS_COLLECTION_POST_TYPE_URL
+      : contentType.slug === "video"
+        ? DOCS_VIDEO_POST_TYPE_URL
+        : contentType.slug === "text"
+          ? DOCS_TEXT_POST_TYPE_URL
+          : contentType.slug === "image"
+            ? DOCS_IMAGE_POST_TYPE_URL
+            : contentType.slug === "threads"
+              ? DOCS_THREADS_POST_TYPE_URL
+              : DOCS_CREATE_TYPE_URL;
+
   const FormComponent = FORM_MAP[contentType.slug];
 
   return (
     <div>
-      <h2 className="text-2xl font-extrabold text-text mb-16">
-        {contentType.name}
-      </h2>
+      <div className="flex items-center gap-2 mb-16">
+        <h2 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+          {contentType.name}
+        </h2>
+        <DocsInfoIcon url={url} />
+      </div>
       <FormComponent
         accounts={filtered}
         use24HourTimeFormat={use24HourTimeFormat}

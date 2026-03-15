@@ -11,31 +11,36 @@ const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
  */
 export function DevScheduledPostPoller() {
   useEffect(() => {
-    if (process.env.NODE_ENV !== "development" || typeof document === "undefined") {
+    if (
+      process.env.NODE_ENV !== "development" ||
+      typeof document === "undefined"
+    ) {
       return;
     }
 
     const runCrons = async () => {
       try {
-        const res = await fetch("/api/dev/trigger-crons");
-        if (!res.ok) return;
-        const data = await res.json();
-        const { publishScheduled, resurface, autoplug } = data;
-        if (publishScheduled?.processed > 0) {
-          console.log("[Dev] Published", publishScheduled.processed, "scheduled post(s)", publishScheduled.ids);
-        }
-        if (resurface?.processed > 0) {
-          console.log("[Dev] Resurface processed", resurface.processed);
-        }
-        if ((autoplug?.triggered ?? 0) > 0 || (autoplug?.expired ?? 0) > 0) {
-          console.log("[Dev] Autoplug", autoplug);
-        }
+        // const res = await fetch("/api/dev/trigger-crons");
+        // if (!res.ok) return;
+        // const data = await res.json();
+        // const { publishScheduled, resurface, autoplug } = data;
+        // if (publishScheduled?.processed > 0) {
+        //   console.log("[Dev] Published", publishScheduled.processed, "scheduled post(s)", publishScheduled.ids);
+        // }
+        // if (resurface?.processed > 0) {
+        //   console.log("[Dev] Resurface processed", resurface.processed);
+        // }
+        // if ((autoplug?.triggered ?? 0) > 0 || (autoplug?.expired ?? 0) > 0) {
+        //   console.log("[Dev] Autoplug", autoplug);
+        // }
       } catch {
         // ignore
       }
     };
 
-    const intervalRef = { current: null as ReturnType<typeof setInterval> | null };
+    const intervalRef = {
+      current: null as ReturnType<typeof setInterval> | null,
+    };
 
     const onVisibilityChange = () => {
       if (document.visibilityState === "hidden") {

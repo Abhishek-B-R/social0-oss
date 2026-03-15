@@ -159,7 +159,9 @@ export function BulkToolsVideoClient({
           if (validFiles.length === 0) return;
           Promise.all(validFiles.map(getVideoDuration)).then((durations) => {
             const withinDuration: File[] = [];
-            const overDuration = durations.some((d) => d > MAX_VIDEO_DURATION_SECONDS);
+            const overDuration = durations.some(
+              (d) => d > MAX_VIDEO_DURATION_SECONDS,
+            );
             validFiles.forEach((file, i) => {
               if (durations[i] <= MAX_VIDEO_DURATION_SECONDS)
                 withinDuration.push(file);
@@ -369,12 +371,14 @@ export function BulkToolsVideoClient({
 
   return (
     <div className="space-y-6 -ml-2 sm:-ml-3 lg:-ml-4">
-      <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
-        Bulk Video Scheduling
+      <div className="flex items-center gap-2">
+        <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+          Bulk Video Scheduling
+        </h1>
         <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
           Beta
         </span>
-      </h1>
+      </div>
 
       {success ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/40 p-6 text-center">

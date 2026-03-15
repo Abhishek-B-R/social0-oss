@@ -41,6 +41,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
+import DocsInfoIcon from "@/components/info-icon";
+import { DOCS_SETTINGS_URL } from "@/lib/docs-url";
 
 export type SettingsConnection = {
   id: string;
@@ -266,10 +268,13 @@ function ChangeEmailForm({
   onResend?: () => void;
 }) {
   const router = useRouter();
-  const setOtpFromString = useCallback((s: string) => {
-    const digits = s.replace(/\D/g, "").slice(0, OTP_LENGTH).split("");
-    onOtpChange(digits.join(""));
-  }, [onOtpChange]);
+  const setOtpFromString = useCallback(
+    (s: string) => {
+      const digits = s.replace(/\D/g, "").slice(0, OTP_LENGTH).split("");
+      onOtpChange(digits.join(""));
+    },
+    [onOtpChange],
+  );
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -287,9 +292,15 @@ function ChangeEmailForm({
         credentials: "include",
         body: JSON.stringify({ newEmail: email }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string | { message?: string }; message?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string | { message?: string };
+        message?: string;
+      };
       if (!res.ok) {
-        const msg = typeof data.error === "string" ? data.error : data.error?.message ?? data.message ?? "Failed to send code.";
+        const msg =
+          typeof data.error === "string"
+            ? data.error
+            : (data.error?.message ?? data.message ?? "Failed to send code.");
         onError(msg);
         return;
       }
@@ -317,9 +328,17 @@ function ChangeEmailForm({
         credentials: "include",
         body: JSON.stringify({ newEmail: email, otp: otp.trim() }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string | { message?: string }; message?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string | { message?: string };
+        message?: string;
+      };
       if (!res.ok) {
-        const msg = typeof data.error === "string" ? data.error : data.error?.message ?? data.message ?? "Invalid or expired code.";
+        const msg =
+          typeof data.error === "string"
+            ? data.error
+            : (data.error?.message ??
+              data.message ??
+              "Invalid or expired code.");
         onError(msg);
         return;
       }
@@ -334,7 +353,11 @@ function ChangeEmailForm({
 
   if (step === "email") {
     return (
-      <form id={CHANGE_EMAIL_SEND_FORM_ID} onSubmit={handleSendOtp} className="space-y-3 mt-2">
+      <form
+        id={CHANGE_EMAIL_SEND_FORM_ID}
+        onSubmit={handleSendOtp}
+        className="space-y-3 mt-2"
+      >
         <div className="space-y-2">
           <Label htmlFor="new-email">New email address</Label>
           <Input
@@ -354,7 +377,10 @@ function ChangeEmailForm({
     );
   }
 
-  const otpDigits = otp.split("").concat(Array(OTP_LENGTH).fill("")).slice(0, OTP_LENGTH);
+  const otpDigits = otp
+    .split("")
+    .concat(Array(OTP_LENGTH).fill(""))
+    .slice(0, OTP_LENGTH);
   const otpInputs = otpDigits.map((digit, i) => (
     <input
       key={i}
@@ -370,22 +396,28 @@ function ChangeEmailForm({
           next[i] = v;
           onOtpChange(next.join(""));
           if (v && i < OTP_LENGTH - 1) {
-            const nextEl = e.target.nextElementSibling as HTMLInputElement | null;
+            const nextEl = e.target
+              .nextElementSibling as HTMLInputElement | null;
             nextEl?.focus();
           }
         }
       }}
       onPaste={(e) => {
         e.preventDefault();
-        const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
+        const pasted = e.clipboardData
+          .getData("text")
+          .replace(/\D/g, "")
+          .slice(0, OTP_LENGTH);
         setOtpFromString(pasted);
         const firstEmpty = Math.min(pasted.length, OTP_LENGTH - 1);
-        const el = e.currentTarget.parentElement?.querySelectorAll("input")[firstEmpty];
+        const el =
+          e.currentTarget.parentElement?.querySelectorAll("input")[firstEmpty];
         el?.focus();
       }}
       onKeyDown={(e) => {
         if (e.key === "Backspace" && !otpDigits[i] && i > 0) {
-          const prev = e.currentTarget.previousElementSibling as HTMLInputElement | null;
+          const prev = e.currentTarget
+            .previousElementSibling as HTMLInputElement | null;
           prev?.focus();
         }
       }}
@@ -395,20 +427,31 @@ function ChangeEmailForm({
   ));
 
   return (
-    <form id={CHANGE_EMAIL_VERIFY_FORM_ID} onSubmit={handleConfirmEmail} className="space-y-3 mt-2">
+    <form
+      id={CHANGE_EMAIL_VERIFY_FORM_ID}
+      onSubmit={handleConfirmEmail}
+      className="space-y-3 mt-2"
+    >
       <p className="text-sm text-muted-foreground">
-        We sent a 6-digit code to <strong className="text-foreground">{newEmail}</strong>
+        We sent a 6-digit code to{" "}
+        <strong className="text-foreground">{newEmail}</strong>
       </p>
       <div className="space-y-2">
         <Label>Verification code</Label>
-        <div className="flex justify-center gap-2" role="group" aria-label="Verification code">
+        <div
+          className="flex justify-center gap-2"
+          role="group"
+          aria-label="Verification code"
+        >
           {otpInputs}
         </div>
       </div>
       {onResend != null && (
         <div className="text-sm">
           {resendCooldown != null && resendCooldown > 0 ? (
-            <span className="text-muted-foreground">Resend code in {resendCooldown}s</span>
+            <span className="text-muted-foreground">
+              Resend code in {resendCooldown}s
+            </span>
           ) : (
             <button
               type="button"
@@ -483,7 +526,9 @@ function ChangePasswordModal({
               disabled={loading}
               className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
             >
-              {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              {loading && (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              )}
               {loading ? "Updating…" : "Change password"}
             </Button>
           </DialogFooter>
@@ -512,7 +557,10 @@ function ChangeEmailModal({
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
-    const t = setInterval(() => setResendCooldown((c) => (c <= 1 ? 0 : c - 1)), 1000);
+    const t = setInterval(
+      () => setResendCooldown((c) => (c <= 1 ? 0 : c - 1)),
+      1000,
+    );
     return () => clearInterval(t);
   }, [resendCooldown]);
 
@@ -539,9 +587,15 @@ function ChangeEmailModal({
         credentials: "include",
         body: JSON.stringify({ newEmail: email }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string | { message?: string }; message?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string | { message?: string };
+        message?: string;
+      };
       if (!res.ok) {
-        const msg = typeof data.error === "string" ? data.error : data.error?.message ?? data.message ?? "Failed to send code.";
+        const msg =
+          typeof data.error === "string"
+            ? data.error
+            : (data.error?.message ?? data.message ?? "Failed to send code.");
         setError(msg);
         return;
       }
@@ -622,7 +676,9 @@ function ChangeEmailModal({
                   disabled={loading || otp.trim().length !== OTP_LENGTH}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
                 >
-                  {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                  {loading && (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  )}
                   {loading ? "Updating…" : "Verify & update"}
                 </Button>
               </>
@@ -633,7 +689,9 @@ function ChangeEmailModal({
                 disabled={loading}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
               >
-                {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                {loading && (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                )}
                 {loading ? "Sending…" : "Send code"}
               </Button>
             )}
@@ -856,7 +914,12 @@ export function SettingsClient({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-text">Settings</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+            Settings
+          </h1>
+          <DocsInfoIcon url={DOCS_SETTINGS_URL} />
+        </div>
         <p className="mt-1 text-sm text-text-muted">
           Manage your account, security, and posting preferences.
         </p>
@@ -978,7 +1041,10 @@ export function SettingsClient({
                   )}
                 </>
               )}
-              <form action={signOutAllDevices} className={isCredentialUser ? "mt-6" : "mt-4"}>
+              <form
+                action={signOutAllDevices}
+                className={isCredentialUser ? "mt-6" : "mt-4"}
+              >
                 <button
                   type="submit"
                   className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"

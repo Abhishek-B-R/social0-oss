@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -81,11 +81,27 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(e.target as Node)
+      ) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [userMenuOpen]);
 
   const isDark = mounted && resolvedTheme === "dark";
   const logoSrc = isDark ? "/logo-dark.png" : "/logo-circular.png";
@@ -102,7 +118,7 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
       data-sidebar="dashboard"
     >
       {/* Sticky top: logo + Create post */}
-      <div className="flex shrink-0 flex-col gap-6 p-4">
+      <div className="flex shrink-0 flex-col gap-4 p-4">
         <Link
           href="/dashboard/composer"
           className="flex items-center gap-3 rounded-lg px-3 py-2 font-semibold text-lg text-sidebar-text hover:bg-sidebar-active transition-colors"
@@ -256,9 +272,19 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
         </nav>
       </div>
 
-      {/* Sticky bottom: user + Sign out */}
-      <div className="shrink-0 border-t border-sidebar-border bg-sidebar-bg p-4">
-        <div className="sidebar-user-block flex items-center gap-3 rounded-lg px-3 py-2">
+      {/* Sticky bottom: user menu (closed by default; Sign out on click) */}
+      <div
+        ref={userMenuRef}
+        className="shrink-0 border-t border-sidebar-border bg-sidebar-bg p-4"
+      >
+        <button
+          type="button"
+          onClick={() => setUserMenuOpen((o) => !o)}
+          className="sidebar-user-block flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-sidebar-active"
+          aria-expanded={userMenuOpen}
+          aria-haspopup="true"
+          aria-label={userMenuOpen ? "Close account menu" : "Open account menu"}
+        >
           {user.image ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -278,13 +304,15 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
             <p className="truncate text-xs text-sidebar-text">{planLabel}</p>
           </div>
           <IconChevronDown
-            className="h-4 w-4 shrink-0 text-sidebar-text"
+            className={`h-4 w-4 shrink-0 text-sidebar-text transition-transform ${userMenuOpen ? "rotate-180" : ""}`}
             size={16}
           />
-        </div>
-        <div className="mt-2">
-          <SignOutButton />
-        </div>
+        </button>
+        {userMenuOpen && (
+          <div className="mt-2">
+            <SignOutButton />
+          </div>
+        )}
       </div>
     </aside>
   );

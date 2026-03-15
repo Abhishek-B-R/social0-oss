@@ -22,9 +22,20 @@ export default function PrivacyPage() {
           title="Documentation for this page"
           aria-label="Documentation for this page"
         >
-          <MdQuestionMark className="h-4 w-4" />
+          <svg
+            className="w-4 h-4"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+            aria-hidden
+          >
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+              clipRule="evenodd"
+            />
+          </svg>
         </a>
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-8">
+        <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[22px] text-foreground landing mb-8">
           Privacy Policy
         </h1>
         <p className="text-sm text-muted-foreground mb-10">
@@ -33,7 +44,7 @@ export default function PrivacyPage() {
 
         <div className="prose prose-zinc dark:prose-invert max-w-none space-y-8 text-base leading-relaxed">
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
+            <h2 className="text-2xl font-semibold font-serif text-foreground mb-2">
               1. Introduction
             </h2>
             <p>
@@ -45,7 +56,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
+            <h2 className="text-2xl font-semibold font-serif text-foreground mb-2">
               2. Information we collect
             </h2>
             <p className="mb-3">
@@ -77,7 +88,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
+            <h2 className="text-2xl font-semibold font-serif text-foreground mb-2">
               3. How we use your information
             </h2>
             <p>
@@ -92,7 +103,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
+            <h2 className="text-2xl font-semibold font-serif text-foreground mb-2">
               4. Data storage and security
             </h2>
             <p>
@@ -107,7 +118,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
+            <h2 className="text-2xl font-semibold font-serif text-foreground mb-2">
               5. Cookies and similar technologies
             </h2>
             <p>
@@ -121,7 +132,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
+            <h2 className="text-2xl font-semibold font-serif text-foreground mb-2">
               6. Third-party services
             </h2>
             <p>
@@ -138,7 +149,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
+            <h2 className="text-2xl font-semibold font-serif text-foreground mb-2">
               7. Google user data
             </h2>
             <p className="mb-3">
@@ -179,7 +190,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
+            <h2 className="text-2xl font-semibold font-serif text-foreground mb-2">
               8. Data retention and deletion
             </h2>
             <p>
@@ -196,7 +207,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
+            <h2 className="text-2xl font-semibold font-serif text-foreground mb-2">
               9. Your rights
             </h2>
             <p>
@@ -210,7 +221,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
+            <h2 className="text-2xl font-semibold font-serif text-foreground mb-2">
               10. Updates to this policy
             </h2>
             <p>
@@ -223,7 +234,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
+            <h2 className="text-2xl font-semibold font-serif text-foreground mb-2">
               11. Contact
             </h2>
             <p>

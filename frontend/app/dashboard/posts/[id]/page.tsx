@@ -25,8 +25,8 @@ import {
 } from "lucide-react";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { formatDateTime } from "@/lib/date-format";
-import { MdQuestionMark } from "react-icons/md";
 import { DOCS_POST_VIEW_URL } from "@/lib/docs-url";
+import DocsInfoIcon from "@/components/info-icon";
 
 const TYPE_ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
   Thread: Layers,
@@ -209,23 +209,16 @@ export default async function PostDetailPage({
 
   return (
     <div className="space-y-6">
-      <a
-        href={DOCS_POST_VIEW_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
-        title="Documentation for this page"
-        aria-label="Documentation for this page"
-      >
-        <MdQuestionMark className="h-4 w-4" />
-      </a>
-      <Link
-        href="/dashboard/posts"
-        className="inline-flex items-center gap-2 text-sm font-medium text-text-muted hover:text-text mb-6"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to posts
-      </Link>
+      <div className="flex items-center gap-2 justify-between">
+        <Link
+          href="/dashboard/posts"
+          className="inline-flex items-center gap-2 text-sm font-medium text-text-muted hover:text-text mb-6"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to posts
+        </Link>
+        <DocsInfoIcon url={DOCS_POST_VIEW_URL} />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         {/* Left column: content + media */}

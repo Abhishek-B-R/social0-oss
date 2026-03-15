@@ -71,7 +71,9 @@ function ContentTypeCard({
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-bg-muted text-text-muted group-hover:bg-accent/20 group-hover:text-accent">
         {Icon && <Icon className="h-6 w-6" />}
       </div>
-      <h3 className="mb-3 font-semibold text-text">{name}</h3>
+      <h3 className="text-xl font-semibold font-serif text-foreground mb-2 landing">
+        {name}
+      </h3>
       <div className="mt-auto flex flex-wrap gap-1.5">
         {platforms.map((platformId) => {
           const p = PLATFORM_DISPLAY[platformId];

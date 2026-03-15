@@ -1,9 +1,8 @@
 "use client";
 
+import DocsInfoIcon from "@/components/info-icon";
 import { DOCS_FEEDBACK_URL } from "@/lib/docs-url";
 import { useEffect, useRef, useState } from "react";
-import { MdQuestionMark } from "react-icons/md";
-
 declare global {
   interface Window {
     Canny?: (method: string, options: Record<string, unknown>) => void;
@@ -88,16 +87,6 @@ export default function FeedbackPage() {
 
   return (
     <>
-      <a
-        href={DOCS_FEEDBACK_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
-        title="Documentation for this page"
-        aria-label="Documentation for this page"
-      >
-        <MdQuestionMark className="h-4 w-4" />
-      </a>
       {/* Loading bar: fixed at top until Canny is ready */}
       {isLoading && (
         <>
@@ -123,7 +112,12 @@ export default function FeedbackPage() {
 
       {error ? (
         <div className="flex min-h-full flex-col items-center justify-center gap-4 p-8 text-center">
-          <h1 className="text-2xl font-semibold text-foreground">Feedback</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+              Feedback
+            </h1>
+            <DocsInfoIcon url={DOCS_FEEDBACK_URL} />
+          </div>
           <p className="text-muted-foreground">
             We couldn’t load the feedback board. You can share feedback directly
             on Canny.
@@ -140,9 +134,12 @@ export default function FeedbackPage() {
       ) : (
         <div className="flex h-full flex-col">
           <header className="shrink-0 border-b border-border bg-bg-elevated px-4 py-4 sm:px-6">
-            <h1 className="text-2xl font-extrabold text-foreground">
-              Feedback
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+                Feedback
+              </h1>
+              <DocsInfoIcon url={DOCS_FEEDBACK_URL} />
+            </div>
             <p className="mt-1 text-sm text-muted-foreground">
               Vote on features, report bugs, and suggest improvements.
             </p>

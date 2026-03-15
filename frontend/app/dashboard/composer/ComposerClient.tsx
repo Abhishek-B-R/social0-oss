@@ -22,6 +22,9 @@ import {
   ASPECT_RATIO_MESSAGE,
   type VideoAspectResult,
 } from "@/lib/video-aspect-ratio";
+import { DOCS_COMPOSER_URL } from "@/lib/docs-url";
+import InfoIcon from "@/components/info-icon";
+import DocsInfoIcon from "@/components/info-icon";
 
 const THREAD_MAX_MEDIA_PER_POST = 4;
 
@@ -426,7 +429,12 @@ export function ComposerClient() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 mt-10">
       <div className="space-y-2">
-        <h1 className="text-2xl font-extrabold text-text">Composer</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing">
+            Composer
+          </h1>
+          <DocsInfoIcon url={DOCS_COMPOSER_URL} />
+        </div>
         <p className="text-sm text-text-muted">
           Type anything, paste/upload media, and we&apos;ll route you to the
           right post flow. You can always adjust details on the next screen.

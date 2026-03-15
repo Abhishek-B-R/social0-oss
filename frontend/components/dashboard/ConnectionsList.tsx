@@ -8,9 +8,11 @@ import { PLATFORMS } from "@/lib/platforms";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { ConnectPlatformButton } from "./ConnectPlatformButton";
 import { DisconnectAccountModal } from "./DisconnectAccountModal";
-import { AlertTriangle, X, RefreshCw, Cross } from "lucide-react";
+import { AlertTriangle, X, RefreshCw } from "lucide-react";
 import { IconCrown } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
+import DocsInfoIcon from "../info-icon";
+import { DOCS_CONNECTIONS_URL } from "@/lib/docs-url";
 
 const PLATFORM_UI: Record<string, { name: string; color: string }> = {
   linkedin: { name: "LinkedIn", color: "bg-[#0A66C2]" },
@@ -120,9 +122,12 @@ export function ConnectionsList({
             connection.
           </p>
         )}
-        <h2 className="text-2xl font-extrabold text-text">
-          Connected Accounts
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+            Connected Accounts
+          </h2>
+          <DocsInfoIcon url={DOCS_CONNECTIONS_URL} />
+        </div>
         <p className="text-sm text-text-muted">
           Link your social accounts to publish from one place. You can connect
           multiple accounts per platform.

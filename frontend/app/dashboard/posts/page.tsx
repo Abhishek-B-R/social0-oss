@@ -63,16 +63,6 @@ export default async function PostsPage({
 
   return (
     <div>
-      <a
-        href={DOCS_POSTS_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
-        title="Documentation for this page"
-        aria-label="Documentation for this page"
-      >
-        <MdQuestionMark className="h-4 w-4" />
-      </a>
       {showPaymentFailedBanner && (
         <div className="mb-6 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
           <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={1.5} />
@@ -95,11 +85,15 @@ export default async function PostsPage({
       )}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-extrabold text-text flex items-center gap-2">
+          <h2 className="text-3xl font-bold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
             All Posts
-            <span
-              className="text-text-muted"
-              title="All your posts with filters"
+            <a
+              href={DOCS_POSTS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+              title="Documentation for this page"
+              aria-label="Documentation for this page"
             >
               <svg
                 className="w-4 h-4"
@@ -113,7 +107,7 @@ export default async function PostsPage({
                   clipRule="evenodd"
                 />
               </svg>
-            </span>
+            </a>
           </h2>
           <p className="text-text-muted mt-1 font-medium">
             Your drafts, scheduled, and published posts

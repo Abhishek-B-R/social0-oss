@@ -1,20 +1,15 @@
+import DocsInfoIcon from "@/components/info-icon";
 import { DOCS_API_KEYS_URL } from "@/lib/docs-url";
-import { MdQuestionMark } from "react-icons/md";
 
 export default function ApiKeysPage() {
   return (
     <div>
-      <a
-        href={DOCS_API_KEYS_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
-        title="Documentation for this page"
-        aria-label="Documentation for this page"
-      >
-        <MdQuestionMark className="h-4 w-4" />
-      </a>
-      <h1 className="text-2xl font-extrabold text-text">API Keys (v2)</h1>
+      <div className="flex items-center gap-2">
+        <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+          API Keys (v2)
+        </h1>
+        <DocsInfoIcon url={DOCS_API_KEYS_URL} />
+      </div>
       <p className="mt-2 text-text-muted">
         Create and manage API keys for programmatic access. This is for v2 of
         the API.

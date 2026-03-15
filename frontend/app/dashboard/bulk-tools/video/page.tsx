@@ -11,6 +11,7 @@ import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import { checkBulkToolsAllowed } from "@/lib/plan-limits";
 import { MdQuestionMark } from "react-icons/md";
 import { DOCS_BULK_TOOLS_VIDEO_URL } from "@/lib/docs-url";
+import DocsInfoIcon from "@/components/info-icon";
 
 const platformOrder: string[] = PLATFORMS.map((p) => p.id);
 const VIDEO_PLATFORMS = new Set<string>(
@@ -77,7 +78,18 @@ export default async function BulkToolsVideoPage() {
         title="Documentation for this page"
         aria-label="Documentation for this page"
       >
-        <MdQuestionMark className="h-4 w-4" />
+        <svg
+          className="w-4 h-4"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+          aria-hidden
+        >
+          <path
+            fillRule="evenodd"
+            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+            clipRule="evenodd"
+          />
+        </svg>
       </a>
       <BulkToolsVideoClient
         accounts={accounts}

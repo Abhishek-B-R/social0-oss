@@ -5,8 +5,8 @@ import { getSubscriptionForUser } from "@/lib/subscription";
 import { checkAccountLimits, checkTwitterTweetLimit } from "@/lib/plan-limits";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { BillingClient } from "./BillingClient";
-import { MdQuestionMark } from "react-icons/md";
 import { DOCS_BILLING_URL } from "@/lib/docs-url";
+import DocsInfoIcon from "@/components/info-icon";
 
 export default async function BillingPage({
   searchParams,
@@ -30,17 +30,12 @@ export default async function BillingPage({
 
   return (
     <div>
-      <a
-        href={DOCS_BILLING_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
-        title="Documentation for this page"
-        aria-label="Documentation for this page"
-      >
-        <MdQuestionMark className="h-4 w-4" />
-      </a>
-      <h1 className="text-2xl font-extrabold text-text">Billing</h1>
+      <div className="flex items-center gap-2">
+        <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+          Billing
+        </h1>
+        <DocsInfoIcon url={DOCS_BILLING_URL} />
+      </div>
       <p className="mt-1 text-text-muted">
         Manage your subscription and billing.
       </p>
