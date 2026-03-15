@@ -199,11 +199,11 @@ export function BillingClient({
           </div>
         )}
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border border-border bg-bg p-2.5">
+          <div className="rounded-lg bg-bg-muted/50 dark:bg-bg-muted/30 p-4">
             <p className="text-sm font-medium text-text-muted">
               Connected accounts
             </p>
-            <p className="text-xl font-semibold text-text">
+            <p className="mt-1 text-2xl font-bold tabular-nums text-text">
               {subscription.tier === "pro"
                 ? `${accountLimit.currentTotal} / Unlimited`
                 : accountLimit.limitTotal === 0
@@ -214,11 +214,11 @@ export function BillingClient({
             </p>
           </div>
           {twitterTweetLimit.limit > 0 && (
-            <div className="rounded-lg border border-border bg-bg p-2.5">
+            <div className="rounded-lg bg-bg-muted/50 dark:bg-bg-muted/30 p-4">
               <p className="text-sm font-medium text-text-muted">
                 Twitter tweets this month
               </p>
-              <p className="text-xl font-semibold text-text">
+              <p className="mt-1 text-2xl font-bold tabular-nums text-text">
                 {twitterTweetLimit.used} / {twitterTweetLimit.limit}
               </p>
             </div>
@@ -258,8 +258,8 @@ export function BillingClient({
           <div className="rounded-xl border-2 border-border bg-bg p-4">
             <h3 className="text-xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
               Starter (Lite) —{" "}
-              <span className="line-through text-muted-foreground">$9</span>{" "}
-              <span className="text-foreground">$6</span>/month
+              <span className="line-through text-muted-foreground text-base">$9</span>{" "}
+              <span className="text-foreground text-2xl font-bold">$6</span>/month
             </h3>
             <p className="mt-0.5 text-sm text-text-muted">
               Up to 5 accounts, 300 tweets/month
@@ -317,7 +317,7 @@ export function BillingClient({
                   }
                 }}
                 disabled={loadingChangePlan !== null}
-                className="mt-4 w-full rounded-lg border-2 border-accent bg-transparent px-4 py-1.5 text-sm font-medium text-accent hover:bg-accent/10 disabled:opacity-50 transition-colors"
+                className="mt-4 w-full rounded-lg border border-border bg-transparent px-4 py-1.5 text-sm font-medium text-text-muted hover:bg-bg-muted disabled:opacity-50 transition-colors"
               >
                 {loadingChangePlan === "starter"
                   ? "Changing…"
@@ -342,8 +342,8 @@ export function BillingClient({
             </span>
             <h3 className="text-xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
               Growth —{" "}
-              <span className="line-through text-muted-foreground">$29</span>{" "}
-              <span className="text-foreground">$19</span>/month
+              <span className="line-through text-muted-foreground text-base">$29</span>{" "}
+              <span className="text-foreground text-2xl font-bold">$19</span>/month
             </h3>
             <p className="mt-0.5 text-sm text-text-muted">
               Up to 15 accounts, 1,500 tweets/month
@@ -414,7 +414,7 @@ export function BillingClient({
                   }
                 }}
                 disabled={loadingChangePlan !== null}
-                className="mt-4 w-full rounded-lg border-2 border-accent bg-transparent px-4 py-1.5 text-sm font-medium text-accent hover:bg-accent/10 disabled:opacity-50 transition-colors"
+                className="mt-4 w-full rounded-lg border border-border bg-transparent px-4 py-1.5 text-sm font-medium text-text-muted hover:bg-bg-muted disabled:opacity-50 transition-colors"
               >
                 {loadingChangePlan === "growth"
                   ? "Changing…"

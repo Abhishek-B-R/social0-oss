@@ -266,12 +266,12 @@ export default async function PostDetailPage({
                     return (
                       <div
                         key={idx}
-                        className="rounded-xl border border-border bg-bg-subtle p-4"
+                        className="rounded-lg bg-neutral-100 dark:bg-neutral-900 p-4"
                       >
                         <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">
                           Part {idx + 1}
                         </span>
-                        <p className="mt-2 text-sm text-text whitespace-pre-wrap wrap-break-word">
+                        <p className="mt-2 text-sm text-text whitespace-pre-wrap break-words">
                           {part.text || "(No caption)"}
                         </p>
                         {partMedia.length > 0 && (
@@ -327,8 +327,8 @@ export default async function PostDetailPage({
                 <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
                   Caption
                 </label>
-                <div className="min-h-[120px] rounded-xl border border-border bg-bg-subtle px-3 py-3">
-                  <p className="text-sm text-text whitespace-pre-wrap wrap-break-word">
+                <div className="rounded-lg bg-neutral-100 dark:bg-neutral-900 p-4 min-h-[80px]">
+                  <p className="text-sm text-text whitespace-pre-wrap break-words">
                     {parts[0] ?? "(No caption)"}
                   </p>
                 </div>
@@ -339,11 +339,11 @@ export default async function PostDetailPage({
           {media.length > 0 && (
             <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
               <h2 className="text-base font-semibold text-text">Media</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {media.map((m) => (
                   <div
                     key={m.id}
-                    className="relative aspect-square rounded-lg overflow-hidden bg-bg-muted"
+                    className="relative aspect-square max-h-[200px] rounded-lg overflow-hidden bg-bg-muted"
                   >
                     {m.mimeType.startsWith("video/") ? (
                       <video
@@ -481,7 +481,10 @@ export default async function PostDetailPage({
             </div>
             {post.status === "failed" && post.failureReason && (
               <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
-                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" strokeWidth={1.5} />
+                <AlertTriangle
+                  className="h-4 w-4 shrink-0 mt-0.5"
+                  strokeWidth={1.5}
+                />
                 <span>{post.failureReason}</span>
               </div>
             )}
@@ -516,7 +519,7 @@ export default async function PostDetailPage({
                   return (
                     <li
                       key={`${pub.platform}-${i}`}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg-subtle px-3 py-2"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg-subtle px-3 py-2 hover:border-emerald-500 transition-colors"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <AccountAvatar
@@ -555,7 +558,7 @@ export default async function PostDetailPage({
                             href={viewUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+                            className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 transition-colors"
                           >
                             View
                           </a>

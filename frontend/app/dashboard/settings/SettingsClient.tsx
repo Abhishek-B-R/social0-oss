@@ -993,7 +993,11 @@ export function SettingsClient({
                         </p>
                       </>
                     ) : (
-                      <p className="mt-1 rounded-xl border border-border bg-bg-muted px-4 py-2.5 text-sm text-text-muted">
+                      <p
+                        className="mt-1 rounded-xl border border-border bg-bg-muted px-4 py-2.5 text-sm text-text-muted select-none cursor-not-allowed"
+                        tabIndex={-1}
+                        aria-readonly="true"
+                      >
                         {email}
                       </p>
                     )}

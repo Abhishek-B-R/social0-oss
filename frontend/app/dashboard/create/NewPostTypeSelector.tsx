@@ -66,7 +66,7 @@ function ContentTypeCard({
   return (
     <Link
       href={`/dashboard/create/${slug}`}
-      className="group flex flex-col rounded-2xl border-2 border-dashed border-border bg-bg-elevated p-6 shadow-sm transition-all hover:border-accent hover:bg-accent/10 hover:shadow-md"
+      className="group flex flex-col rounded-2xl border-2 dark:border-neutral-700 border-neutral-300 bg-bg-elevated p-6 shadow-sm transition-all hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-accent/5 focus-visible:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/20"
     >
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-bg-muted text-text-muted group-hover:bg-accent/20 group-hover:text-accent">
         {Icon && <Icon className="h-6 w-6" />}
@@ -78,14 +78,14 @@ function ContentTypeCard({
         {platforms.map((platformId) => {
           const p = PLATFORM_DISPLAY[platformId];
           if (!p) return null;
-          const Icon = p.icon;
+          const PlatformIcon = p.icon;
           return (
             <span
               key={platformId}
-              className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${p.color} text-white shadow-sm`}
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-lg  ${p.color} text-white shadow-sm`}
               title={p.name}
             >
-              <Icon className="h-4 w-4" />
+              <PlatformIcon className="h-4 w-4" />
             </span>
           );
         })}

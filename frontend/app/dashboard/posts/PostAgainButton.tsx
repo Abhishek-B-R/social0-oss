@@ -61,7 +61,10 @@ export function PostAgainButton({
           {loading ? "Posting…" : label}
         </button>
         {error && (
-          <p className="text-[10px] text-red-600 dark:text-red-400 text-right truncate max-w-full" title={error}>
+          <p
+            className="text-[10px] text-red-600 dark:text-red-400 text-right truncate max-w-full"
+            title={error}
+          >
             {error}
           </p>
         )}
@@ -76,13 +79,16 @@ export function PostAgainButton({
           type="button"
           onClick={() => handleClick()}
           disabled={loading}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle transition-colors disabled:opacity-50"
         >
           <Repeat className="h-4 w-4" />
           {loading ? "Posting…" : label}
         </button>
         {error && (
-          <p className="text-xs text-red-600 dark:text-red-400 max-w-[280px] text-right" title={error}>
+          <p
+            className="text-xs text-red-600 dark:text-red-400 max-w-[280px] text-right"
+            title={error}
+          >
             {error}
           </p>
         )}

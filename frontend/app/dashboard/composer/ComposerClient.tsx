@@ -9,6 +9,8 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  X,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -23,7 +25,6 @@ import {
   type VideoAspectResult,
 } from "@/lib/video-aspect-ratio";
 import { DOCS_COMPOSER_URL } from "@/lib/docs-url";
-import InfoIcon from "@/components/info-icon";
 import DocsInfoIcon from "@/components/info-icon";
 
 const THREAD_MAX_MEDIA_PER_POST = 4;
@@ -55,18 +56,42 @@ export function ComposerClient() {
   const [mediaError, setMediaError] = useState<string | null>(null);
   const mediaStripRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const threadTextareaRefs = useRef<Record<string, HTMLTextAreaElement>>({});
+
+  const MAX_TEXTAREA_HEIGHT_PX = 750;
+  const MAX_THREAD_TEXTAREA_HEIGHT_PX = 250;
+
+  const autoResizeTextarea = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT_PX) + "px";
+  }, []);
 
   useEffect(() => {
     textareaRef.current?.focus();
   }, []);
 
-  // Auto-resize textarea: min 20px, max 140px, then scroll
   useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "20px";
-    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
-  }, [text]);
+    autoResizeTextarea();
+  }, [text, autoResizeTextarea]);
+
+  const resizeThreadSlotTextarea = useCallback(
+    (el: HTMLTextAreaElement | null) => {
+      if (!el) return;
+      el.style.height = "auto";
+      el.style.height =
+        Math.min(el.scrollHeight, MAX_THREAD_TEXTAREA_HEIGHT_PX) + "px";
+    },
+    [],
+  );
+
+  useEffect(() => {
+    threadSlots.forEach((slot) => {
+      const el = threadTextareaRefs.current[slot.id];
+      if (el) resizeThreadSlotTextarea(el);
+    });
+  }, [threadSlots, resizeThreadSlotTextarea]);
 
   const updateScrollArrows = useCallback(() => {
     const el = mediaStripRef.current;
@@ -414,7 +439,8 @@ export function ComposerClient() {
       search.set("fromComposer", "1");
 
       router.push(`/dashboard/create/${targetSlug}?${search.toString()}`);
-    } finally {
+      // Leave loading true so spinner stays until navigation completes
+    } catch {
       setLoading(false);
     }
   };
@@ -427,7 +453,7 @@ export function ComposerClient() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 mt-10">
+    <div className="mx-auto max-w-3xl space-y-6 mt-10">
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing">
@@ -444,7 +470,7 @@ export function ComposerClient() {
       <div className="space-y-4 rounded-2xl border border-border bg-bg-elevated p-4 sm:p-5 shadow-sm">
         <textarea
           ref={textareaRef}
-          className="min-h-[50px] max-h-[140px] w-full resize-none overflow-y-auto border-none bg-transparent text-base text-text outline-none placeholder:text-text-muted"
+          className="min-h-[70px] max-h-[400px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-base text-text outline-none placeholder:text-text-muted"
           placeholder="Share what's on your mind..."
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -618,6 +644,14 @@ export function ComposerClient() {
             </button>
           </div>
 
+          {text.length > 0 && (
+            <p
+              className="text-right text-xs text-text-muted"
+              aria-live="polite"
+            >
+              {text.length} character{text.length !== 1 ? "s" : ""}
+            </p>
+          )}
           <button
             type="button"
             onClick={handleSubmit}
@@ -629,14 +663,28 @@ export function ComposerClient() {
             }
             className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
           >
-            <FileText className="h-4 w-4" />
-            <span>Continue</span>
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <FileText className="h-4 w-4" />
+            )}
+            <span>{loading ? "Loading…" : "Continue"}</span>
           </button>
         </div>
         {mediaError && (
-          <p className="text-sm text-red-600 dark:text-red-400 pt-1">
-            {mediaError}
-          </p>
+          <div className="flex items-center justify-between gap-2 pt-1 rounded-lg bg-red-500/10 px-3 py-2">
+            <p className="text-sm text-red-600 dark:text-red-400 flex-1 min-w-0">
+              {mediaError}
+            </p>
+            <button
+              type="button"
+              onClick={() => setMediaError(null)}
+              className="shrink-0 rounded-full p-1 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors"
+              aria-label="Dismiss error"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         )}
       </div>
 
@@ -661,12 +709,18 @@ export function ComposerClient() {
                 </button>
               </div>
               <textarea
-                className="min-h-[100px] w-full resize-none rounded-xl border border-input bg-bg px-4 py-3 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+                ref={(el) => {
+                  if (el) threadTextareaRefs.current[slot.id] = el;
+                }}
+                className="min-h-[120px] max-h-[250px] w-full resize-none overflow-y-auto rounded-xl border border-input bg-bg px-4 py-3 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
                 placeholder="What's in this post?"
                 value={slot.text}
-                onChange={(e) =>
-                  updateThreadSlot(slot.id, { text: e.target.value })
-                }
+                onChange={(e) => {
+                  updateThreadSlot(slot.id, { text: e.target.value });
+                  requestAnimationFrame(() =>
+                    resizeThreadSlotTextarea(e.target as HTMLTextAreaElement),
+                  );
+                }}
               />
               {slot.media.length > 0 && (
                 <div className="space-y-1">
@@ -739,26 +793,35 @@ export function ComposerClient() {
                   </div>
                 </div>
               )}
-              <label
-                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  slot.media.length >= THREAD_MAX_MEDIA_PER_POST
-                    ? "cursor-not-allowed border-border bg-bg-muted text-text-muted opacity-70"
-                    : "cursor-pointer border-border bg-bg-muted text-text-muted hover:bg-bg-hover hover:text-text"
-                }`}
-              >
-                <ImagePlus className="h-4 w-4" />
-                <span>Images / Videos (max 4)</span>
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) =>
-                    handleThreadSlotFiles(slot.id, e.target.files)
-                  }
-                  disabled={slot.media.length >= THREAD_MAX_MEDIA_PER_POST}
-                />
-              </label>
+              <div className="flex items-center justify-between">
+                <label
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    slot.media.length >= THREAD_MAX_MEDIA_PER_POST
+                      ? "cursor-not-allowed border-border bg-bg-muted text-text-muted opacity-70"
+                      : "cursor-pointer border-border bg-bg-muted text-text-muted hover:bg-bg-hover hover:text-text"
+                  }`}
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  <span>Images / Videos (max 4)</span>
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) =>
+                      handleThreadSlotFiles(slot.id, e.target.files)
+                    }
+                    disabled={slot.media.length >= THREAD_MAX_MEDIA_PER_POST}
+                  />
+                </label>
+                <p
+                  className="text-right text-xs text-text-muted mt-1"
+                  aria-live="polite"
+                >
+                  {slot.text.length} character
+                  {slot.text.length !== 1 ? "s" : ""}
+                </p>
+              </div>
             </div>
           ))}
           <button

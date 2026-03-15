@@ -118,8 +118,9 @@ export default function FeedbackPage() {
             </h1>
             <DocsInfoIcon url={DOCS_FEEDBACK_URL} />
           </div>
-          <p className="text-muted-foreground">
-            We couldn’t load the feedback board. You can share feedback directly
+          <p className="text-muted-foreground max-w-md">
+            Vote on features, report bugs, and suggest improvements. We
+            couldn’t load the feedback board here—you can share feedback directly
             on Canny.
           </p>
           <a
@@ -141,7 +142,8 @@ export default function FeedbackPage() {
               <DocsInfoIcon url={DOCS_FEEDBACK_URL} />
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Vote on features, report bugs, and suggest improvements.
+              Vote on features, report bugs, and suggest improvements. Be the
+              first to suggest a feature or report an issue.
             </p>
           </header>
           <div className="relative min-h-0 flex-1 mt-10">

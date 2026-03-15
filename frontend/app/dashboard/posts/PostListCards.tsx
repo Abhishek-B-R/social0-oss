@@ -278,8 +278,8 @@ export function PostListCards({
 
         const isPublishing = uiStatus === "publishing";
         const cardBorderClass = isPublishing
-          ? "border-l-4 border-l-amber-400 border border-border"
-          : "border border-border";
+          ? "border-l-4 border-l-amber-400 border border-border hover:border-emerald-500"
+          : "border border-border hover:border-emerald-500";
         const autoPlugBadge = getAutoPlugBadge(autoPlugByPostId[post.id]?.status);
 
         return (

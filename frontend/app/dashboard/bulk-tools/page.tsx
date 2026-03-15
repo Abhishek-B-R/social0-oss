@@ -63,7 +63,7 @@ export default function BulkToolsPage() {
       <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
         <Link
           href="/dashboard/bulk-tools/video"
-          className="group flex flex-col rounded-2xl border-2 border-dashed border-border bg-bg-elevated p-6 shadow-sm transition-colors hover:bg-accent/10 hover:border-accent"
+          className="group flex flex-col rounded-2xl border-2 border-border bg-bg-elevated p-6 shadow-sm transition-colors hover:bg-accent/10 hover:border-emerald-500"
         >
           <div className="flex items-center justify-center gap-2 text-text-muted group-hover:text-accent mb-3">
             <Layers className="h-8 w-8" />
@@ -85,7 +85,7 @@ export default function BulkToolsPage() {
 
         <Link
           href="/dashboard/bulk-tools/image"
-          className="group flex flex-col rounded-2xl border-2 border-dashed border-border bg-bg-elevated p-6 shadow-sm transition-colors hover:bg-accent/10 hover:border-accent"
+          className="group flex flex-col rounded-2xl border-2 border-border bg-bg-elevated p-6 shadow-sm transition-colors hover:bg-accent/10 hover:border-emerald-500"
         >
           <div className="flex items-center justify-center gap-2 text-text-muted group-hover:text-accent mb-3">
             <Layers className="h-8 w-8" />
