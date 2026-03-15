@@ -11,7 +11,7 @@ import {
   resurfaceEvents,
   autoPlugs,
 } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 
@@ -30,7 +30,7 @@ export type CreateAutoPlugResult =
 
 export async function createAutoPlug(
   postId: string,
-  connectedAccountId: string,
+  connectedAccountId: string | null,
   config: AutoPlugConfig,
 ): Promise<CreateAutoPlugResult> {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -58,8 +58,10 @@ export async function createAutoPlug(
     return { success: false, error: "Post must be published first" };
   }
 
-  const [pub] = await db
+  const xPublications = await db
     .select({
+      autoPlugId: autoPlugs.id,
+      connectedAccountId: postPublications.connectedAccountId,
       platformPostId: postPublications.platformPostId,
       connectedAccountUserId: connectedAccounts.userId,
     })
@@ -68,18 +70,37 @@ export async function createAutoPlug(
       connectedAccounts,
       eq(postPublications.connectedAccountId, connectedAccounts.id),
     )
+    .leftJoin(
+      autoPlugs,
+      and(
+        eq(autoPlugs.postId, postId),
+        eq(autoPlugs.connectedAccountId, postPublications.connectedAccountId),
+        inArray(autoPlugs.status, ["watching", "triggered"]),
+      ),
+    )
     .where(
       and(
         eq(postPublications.postId, postId),
-        eq(postPublications.connectedAccountId, connectedAccountId),
         eq(connectedAccounts.platform, "twitter_x"),
         eq(postPublications.status, "published"),
       ),
     )
-    .limit(1);
+    .orderBy(desc(postPublications.publishedAt), desc(postPublications.createdAt));
+
+  const pub =
+    (connectedAccountId
+      ? xPublications.find((row) => row.connectedAccountId === connectedAccountId)
+      : null) ?? xPublications[0];
 
   if (!pub || pub.connectedAccountUserId !== session.user.id) {
-    return { success: false, error: "Connected account not found for this post" };
+    return { success: false, error: "No published X post found for this post" };
+  }
+
+  if (!pub.connectedAccountId) {
+    return {
+      success: false,
+      error: "Published X post is missing account metadata",
+    };
   }
 
   if (!pub.platformPostId) {
@@ -95,6 +116,11 @@ export async function createAutoPlug(
   if (!plugComment) {
     return { success: false, error: "Auto-Plug message is required" };
   }
+
+  if (pub.autoPlugId) {
+    return { success: false, error: "Auto-Plug is already set up for this X post" };
+  }
+
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
@@ -103,7 +129,7 @@ export async function createAutoPlug(
       .insert(autoPlugs)
       .values({
         postId,
-        connectedAccountId,
+        connectedAccountId: pub.connectedAccountId,
         platform: PLATFORM_X,
         metricType,
         metricThreshold: threshold,

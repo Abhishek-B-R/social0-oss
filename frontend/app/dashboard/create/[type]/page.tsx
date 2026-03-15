@@ -1,20 +1,13 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { connectedAccounts, userSettings } from "@/db/schema";
+import { userSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
-import { PLATFORMS } from "@/lib/platforms";
 import { getContentTypeBySlug } from "@/lib/content-types";
-import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import { getPlanLimits } from "@/lib/plans";
 import type { SubscriptionTier } from "@/lib/plans";
 import type { DateFormatKey } from "@/lib/date-format";
-import { TextPostForm } from "../forms/TextPostForm";
-import { ImagePostForm } from "../forms/ImagePostForm";
-import { VideoPostForm } from "../forms/VideoPostForm";
-import { ThreadsPostForm } from "../forms/ThreadsPostForm";
-import { CollectionPostForm } from "../forms/CollectionPostForm";
 import {
   DOCS_COLLECTION_POST_TYPE_URL,
   DOCS_CREATE_TYPE_URL,
@@ -24,24 +17,7 @@ import {
   DOCS_VIDEO_POST_TYPE_URL,
 } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
-
-const platformOrder: string[] = PLATFORMS.map((p) => p.id);
-function sortAccountsByPlatformOrder<T extends { platform: string }>(
-  accounts: T[],
-): T[] {
-  return [...accounts].sort(
-    (a, b) =>
-      platformOrder.indexOf(a.platform) - platformOrder.indexOf(b.platform),
-  );
-}
-
-const FORM_MAP = {
-  text: TextPostForm,
-  image: ImagePostForm,
-  video: VideoPostForm,
-  threads: ThreadsPostForm,
-  collection: CollectionPostForm,
-} as const;
+import { CreatePostWithAccountsClient } from "../CreatePostWithAccountsClient";
 
 export default async function NewPostByTypePage({
   params,
@@ -79,56 +55,16 @@ export default async function NewPostByTypePage({
   const contentType = getContentTypeBySlug(typeSlug);
   if (!contentType) notFound();
 
-  const [accounts, settingsRow] = await Promise.all([
-    db.query.connectedAccounts.findMany({
-      where: eq(connectedAccounts.userId, session.user.id),
-      columns: {
-        id: true,
-        platform: true,
-        platformUsername: true,
-        profileImageUrl: true,
-        isActive: true,
-        tokenExpiresAt: true,
-        tokenStatus: true,
-        platformMetadata: true,
-        isTwitterPremium: true,
-      },
-    }),
-    db.query.userSettings.findFirst({
-      where: eq(userSettings.userId, session.user.id),
-      columns: {
-        use24HourTimeFormat: true,
-        dateFormat: true,
-        timezone: true,
-        subscriptionTier: true,
-        subscriptionExpiresAt: true,
-      },
-    }),
-  ]);
-
-  // eslint-disable-next-line react-hooks/purity
-  const now = Date.now();
-  const skipExpiryDisplay = new Set(["youtube", "tiktok"]);
-  const allowedPlatforms = new Set(contentType.platforms);
-  const filtered = sortAccountsByPlatformOrder(
-    accounts
-      .filter((a) => a.isActive !== false && allowedPlatforms.has(a.platform))
-      .map((a) => ({
-        id: a.id,
-        platform: a.platform,
-        platformUsername: a.platformUsername,
-        profileImageUrl: a.profileImageUrl,
-        isActive: a.isActive,
-        isTwitterPremium: a.isTwitterPremium ?? false,
-        tokenExpired: NEVER_EXPIRES_PLATFORMS.has(a.platform)
-          ? false
-          : a.tokenStatus === "expired" ||
-            (!skipExpiryDisplay.has(a.platform) &&
-              !!a.tokenExpiresAt &&
-              new Date(a.tokenExpiresAt).getTime() < now),
-        platformMetadata: a.platformMetadata ?? undefined,
-      })),
-  );
+  const settingsRow = await db.query.userSettings.findFirst({
+    where: eq(userSettings.userId, session.user.id),
+    columns: {
+      use24HourTimeFormat: true,
+      dateFormat: true,
+      timezone: true,
+      subscriptionTier: true,
+      subscriptionExpiresAt: true,
+    },
+  });
 
   const rawDateFormat = settingsRow?.dateFormat as
     | DateFormatKey
@@ -170,8 +106,6 @@ export default async function NewPostByTypePage({
               ? DOCS_THREADS_POST_TYPE_URL
               : DOCS_CREATE_TYPE_URL;
 
-  const FormComponent = FORM_MAP[contentType.slug];
-
   return (
     <div>
       <div className="flex items-center gap-2 mb-16">
@@ -180,8 +114,9 @@ export default async function NewPostByTypePage({
         </h2>
         <DocsInfoIcon url={url} />
       </div>
-      <FormComponent
-        accounts={filtered}
+      <CreatePostWithAccountsClient
+        contentTypeSlug={contentType.slug as "text" | "image" | "video" | "threads" | "collection"}
+        supportedPlatforms={[...contentType.platforms]}
         use24HourTimeFormat={use24HourTimeFormat}
         dateFormat={dateFormat}
         timezone={timezone}
@@ -190,7 +125,6 @@ export default async function NewPostByTypePage({
         editId={editId ?? undefined}
         allowAutoRepost={planLimits.allowResurface}
         allowAutoPlug={planLimits.allowAutoPlug}
-        supportedPlatforms={[...contentType.platforms]}
       />
     </div>
   );

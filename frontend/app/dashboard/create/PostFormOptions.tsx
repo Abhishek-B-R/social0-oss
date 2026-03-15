@@ -42,6 +42,8 @@ type PostFormOptionsProps = {
   onRememberChange?: (checked: boolean) => void;
   /** Platform IDs this form supports. Shown in empty state when no accounts match. */
   supportedPlatforms?: string[];
+  /** When true, show skeleton placeholders in the account grid instead of AccountBubbleSelector. */
+  accountsLoading?: boolean;
   /** Account IDs disabled for this post (e.g. video exceeds platform limit). */
   disabledAccountIds?: Set<string>;
   /** Reason per disabled account id. */
@@ -74,6 +76,7 @@ export function PostFormOptions({
   remember = false,
   onRememberChange,
   supportedPlatforms,
+  accountsLoading = false,
   disabledAccountIds,
   disabledReasons,
   disabledAccountDefaultReason,
@@ -122,22 +125,38 @@ export function PostFormOptions({
           )}
         </div>
         <div className="mt-4">
-          <AccountBubbleSelector
-            accounts={accounts}
-            selectedIds={selectedIds}
-            onToggleAccount={onToggleAccount}
-            selectAll={selectAll}
-            platformName={platformName}
-            compact
-            hideSelectAll
-            supportedPlatforms={supportedPlatforms}
-            disabledAccountIds={disabledAccountIds}
-            disabledReasons={disabledReasons}
-            disabledAccountDefaultReason={disabledAccountDefaultReason}
-            warningAccountIds={warningAccountIds}
-            warningReasons={warningReasons}
-            warningLabel={warningLabel}
-          />
+          {accountsLoading ? (
+            <div className="flex flex-wrap items-center gap-4">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex flex-col items-center"
+                  aria-hidden
+                >
+                  <div className="h-12 w-12 shrink-0 rounded-full bg-bg-muted animate-pulse border-2 border-transparent" />
+                  <div className="mt-1.5 h-3 w-14 rounded bg-bg-muted animate-pulse" />
+                  <div className="mt-1 h-3 w-10 rounded bg-bg-muted animate-pulse" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <AccountBubbleSelector
+              accounts={accounts}
+              selectedIds={selectedIds}
+              onToggleAccount={onToggleAccount}
+              selectAll={selectAll}
+              platformName={platformName}
+              compact
+              hideSelectAll
+              supportedPlatforms={supportedPlatforms}
+              disabledAccountIds={disabledAccountIds}
+              disabledReasons={disabledReasons}
+              disabledAccountDefaultReason={disabledAccountDefaultReason}
+              warningAccountIds={warningAccountIds}
+              warningReasons={warningReasons}
+              warningLabel={warningLabel}
+            />
+          )}
         </div>
       </section>
 

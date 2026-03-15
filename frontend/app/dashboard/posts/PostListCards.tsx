@@ -90,6 +90,38 @@ function getUiStatus(post: PostRow): string {
   return post.status ?? "draft";
 }
 
+function getAutoPlugBadge(status?: string | null): {
+  label: string;
+  className: string;
+} | null {
+  switch (status) {
+    case "watching":
+      return {
+        label: "Auto-Plug watching",
+        className: "bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-200",
+      };
+    case "triggered":
+      return {
+        label: "Auto-Plug sent",
+        className:
+          "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200",
+      };
+    case "expired":
+      return {
+        label: "Auto-Plug expired",
+        className:
+          "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200",
+      };
+    case "failed":
+      return {
+        label: "Auto-Plug failed",
+        className: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-200",
+      };
+    default:
+      return null;
+  }
+}
+
 function getTimestampLabel(
   post: PostRow,
   publications: { publishedAt: Date | null }[],
@@ -248,6 +280,7 @@ export function PostListCards({
         const cardBorderClass = isPublishing
           ? "border-l-4 border-l-amber-400 border border-border"
           : "border border-border";
+        const autoPlugBadge = getAutoPlugBadge(autoPlugByPostId[post.id]?.status);
 
         return (
           <li
@@ -284,6 +317,15 @@ export function PostListCards({
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" strokeWidth={1.5} />
                   {post.failureReason}
                 </p>
+              )}
+              {autoPlugBadge && (
+                <div className="mt-2">
+                  <span
+                    className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${autoPlugBadge.className}`}
+                  >
+                    {autoPlugBadge.label}
+                  </span>
+                </div>
               )}
               {/* BOTTOM ROW: [Platform icons left] [Date right muted] */}
               <div className="flex items-center justify-between gap-2">

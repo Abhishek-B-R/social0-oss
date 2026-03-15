@@ -20,6 +20,9 @@ export async function GET() {
       profileImageUrl: true,
       isActive: true,
       isTwitterPremium: true,
+      tokenExpiresAt: true,
+      tokenStatus: true,
+      platformMetadata: true,
     },
   });
 

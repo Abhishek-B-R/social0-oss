@@ -86,6 +86,7 @@ type VideoFile = {
 
 export function CollectionPostForm({
   accounts,
+  accountsLoading = false,
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
   timezone = null,
@@ -97,6 +98,7 @@ export function CollectionPostForm({
   supportedPlatforms,
 }: {
   accounts: Account[];
+  accountsLoading?: boolean;
   use24HourTimeFormat?: boolean;
   dateFormat?: string | null;
   timezone?: string | null;
@@ -1108,16 +1110,7 @@ export function CollectionPostForm({
             resurfaceConfig.plugComment?.trim() || null,
           ).catch(() => {});
         }
-        if (autoPlugConfig) {
-          const xAccount = selectedAccounts.find(
-            (a) => a.platform === "twitter_x",
-          );
-          if (xAccount) {
-            createAutoPlug(result.postId, xAccount.id, autoPlugConfig).catch(
-              () => {},
-            );
-          }
-        }
+        await setupAutoPlug(result.postId);
         return;
       }
       if (effectiveMode === "scheduled") {
@@ -1241,16 +1234,7 @@ export function CollectionPostForm({
           resurfaceConfig.plugComment?.trim() || null,
         ).catch(() => {});
       }
-      if (autoPlugConfig) {
-        const xAccount = selectedAccounts.find(
-          (a) => a.platform === "twitter_x",
-        );
-        if (xAccount) {
-          createAutoPlug(result.postId, xAccount.id, autoPlugConfig).catch(
-            () => {},
-          );
-        }
-      }
+      await setupAutoPlug(result.postId);
       setOverlayPhase("done");
       router.push(`/dashboard/posts/${result.postId}`);
       router.refresh();
@@ -1310,6 +1294,20 @@ export function CollectionPostForm({
   const tiktokAccounts = selectedAccounts.filter(
     (a) => a.platform === "tiktok",
   );
+  const setupAutoPlug = async (postId: string) => {
+    if (!autoPlugConfig) return true;
+    const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
+    const autoPlugResult = await createAutoPlug(
+      postId,
+      xAccount?.id ?? null,
+      autoPlugConfig,
+    );
+    if (!autoPlugResult.success) {
+      setError(autoPlugResult.error);
+      return false;
+    }
+    return true;
+  };
 
   const hasContent = content.trim().length > 0;
   const hasMedia = images.length > 0 || videos.length > 0;
@@ -1457,6 +1455,7 @@ export function CollectionPostForm({
             remember={remember}
             onRememberChange={setRemember}
             supportedPlatforms={supportedPlatforms}
+            accountsLoading={accountsLoading}
             disabledAccountIds={disabledAccountIds}
             disabledReasons={disabledReasons}
             disabledAccountDefaultReason="Media exceeds this platform's limit"

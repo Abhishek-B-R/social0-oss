@@ -70,6 +70,7 @@ type Account = {
 
 export function TextPostForm({
   accounts,
+  accountsLoading = false,
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
   timezone = null,
@@ -81,6 +82,7 @@ export function TextPostForm({
   supportedPlatforms,
 }: {
   accounts: Account[];
+  accountsLoading?: boolean;
   use24HourTimeFormat?: boolean;
   dateFormat?: string | null;
   timezone?: string | null;
@@ -324,6 +326,21 @@ export function TextPostForm({
     : [];
   const twitterThreadWarning = hasTwitter && isThread && threadParts.length > 1;
 
+  const setupAutoPlug = async (postId: string) => {
+    if (!autoPlugConfig) return true;
+    const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
+    const autoPlugResult = await createAutoPlug(
+      postId,
+      xAccount?.id ?? null,
+      autoPlugConfig,
+    );
+    if (!autoPlugResult.success) {
+      setError(autoPlugResult.error);
+      return false;
+    }
+    return true;
+  };
+
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -477,16 +494,7 @@ export function TextPostForm({
               resurfaceConfig.plugComment?.trim() || null,
             ).catch(() => {});
           }
-          if (autoPlugConfig) {
-            const xAccount = selectedAccounts.find(
-              (a) => a.platform === "twitter_x",
-            );
-            if (xAccount) {
-              createAutoPlug(result.postId, xAccount.id, autoPlugConfig).catch(
-                () => {},
-              );
-            }
-          }
+          await setupAutoPlug(result.postId);
           return;
         }
         const initial: PlatformResult[] = list.map((pub) => ({
@@ -545,14 +553,7 @@ export function TextPostForm({
             resurfaceConfig.plugComment?.trim() || null,
           );
         }
-        if (autoPlugConfig) {
-          const xAccount = selectedAccounts.find(
-            (a) => a.platform === "twitter_x",
-          );
-          if (xAccount) {
-            await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
-          }
-        }
+        await setupAutoPlug(result.postId);
         setOverlayPhase("done");
         router.push(`/dashboard/posts/${result.postId}`);
         router.refresh();
@@ -628,16 +629,7 @@ export function TextPostForm({
               resurfaceConfig.plugComment?.trim() || null,
             ).catch(() => {});
           }
-          if (autoPlugConfig) {
-            const xAccount = selectedAccounts.find(
-              (a) => a.platform === "twitter_x",
-            );
-            if (xAccount) {
-              createAutoPlug(result.postId, xAccount.id, autoPlugConfig).catch(
-                () => {},
-              );
-            }
-          }
+          await setupAutoPlug(result.postId);
           return;
         }
         const initial: PlatformResult[] = list.map((pub) => ({
@@ -696,14 +688,7 @@ export function TextPostForm({
             resurfaceConfig.plugComment?.trim() || null,
           );
         }
-        if (autoPlugConfig) {
-          const xAccount = selectedAccounts.find(
-            (a) => a.platform === "twitter_x",
-          );
-          if (xAccount) {
-            await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
-          }
-        }
+        await setupAutoPlug(result.postId);
         setOverlayPhase("done");
         router.push(`/dashboard/posts/${result.postId}`);
         router.refresh();
@@ -841,6 +826,7 @@ export function TextPostForm({
             remember={remember}
             onRememberChange={setRemember}
             supportedPlatforms={supportedPlatforms}
+            accountsLoading={accountsLoading}
           />
 
           {error && (

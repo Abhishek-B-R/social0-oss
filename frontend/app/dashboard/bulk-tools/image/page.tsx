@@ -1,27 +1,13 @@
 import { auth } from "@/lib/auth";
-import { db } from "@/db";
-import { connectedAccounts } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { BulkToolsImageClient } from "@/components/bulk-tools/BulkToolsImageClient";
+import { BulkToolsImageWithAccounts } from "../BulkToolsImageWithAccounts";
 import { CONTENT_TYPES } from "@/lib/content-types";
-import { PLATFORMS } from "@/lib/platforms";
-import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import { checkBulkToolsAllowed } from "@/lib/plan-limits";
 import { DOCS_BULK_TOOLS_IMAGE_URL } from "@/lib/docs-url";
 
-const platformOrder: string[] = PLATFORMS.map((p) => p.id);
-const IMAGE_PLATFORMS = new Set<string>(
-  CONTENT_TYPES.find((c) => c.id === "image")?.platforms ?? [],
-);
-
-function sortAccounts<T extends { platform: string }>(accounts: T[]): T[] {
-  return [...accounts].sort(
-    (a, b) =>
-      platformOrder.indexOf(a.platform) - platformOrder.indexOf(b.platform),
-  );
-}
+const IMAGE_PLATFORMS =
+  CONTENT_TYPES.find((c) => c.id === "image")?.platforms ?? [];
 
 export default async function BulkToolsImagePage() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -30,46 +16,9 @@ export default async function BulkToolsImagePage() {
   const bulkAllowed = await checkBulkToolsAllowed(session.user.id);
   if (!bulkAllowed) redirect("/dashboard/billing?upgrade=1");
 
-  const all = await db.query.connectedAccounts.findMany({
-    where: eq(connectedAccounts.userId, session.user.id),
-    columns: {
-      id: true,
-      platform: true,
-      platformUsername: true,
-      profileImageUrl: true,
-      isActive: true,
-      tokenExpiresAt: true,
-      tokenStatus: true,
-      isTwitterPremium: true,
-    },
-  });
-
-  // eslint-disable-next-line react-hooks/purity
-  const now = Date.now();
-  const skipExpiryDisplay = new Set(["youtube", "tiktok"]);
-  const accounts = sortAccounts(
-    all
-      .filter((a) => a.isActive !== false && IMAGE_PLATFORMS.has(a.platform))
-      .map((a) => ({
-        id: a.id,
-        platform: a.platform,
-        platformUsername: a.platformUsername,
-        profileImageUrl: a.profileImageUrl,
-        isActive: a.isActive,
-        isTwitterPremium: a.isTwitterPremium ?? false,
-        tokenExpired: NEVER_EXPIRES_PLATFORMS.has(a.platform)
-          ? false
-          : a.tokenStatus === "expired" ||
-            (!skipExpiryDisplay.has(a.platform) &&
-              !!a.tokenExpiresAt &&
-              new Date(a.tokenExpiresAt).getTime() < now),
-      })),
-  );
-
   return (
     <>
-      <BulkToolsImageClient
-        accounts={accounts}
+      <BulkToolsImageWithAccounts
         supportedPlatforms={Array.from(IMAGE_PLATFORMS)}
       />
       <a

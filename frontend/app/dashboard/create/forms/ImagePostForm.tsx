@@ -88,6 +88,7 @@ type ImageFile = {
 
 export function ImagePostForm({
   accounts,
+  accountsLoading = false,
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
   timezone = null,
@@ -99,6 +100,7 @@ export function ImagePostForm({
   supportedPlatforms,
 }: {
   accounts: Account[];
+  accountsLoading?: boolean;
   use24HourTimeFormat?: boolean;
   dateFormat?: string | null;
   timezone?: string | null;
@@ -1196,16 +1198,7 @@ export function ImagePostForm({
             resurfaceConfig.plugComment?.trim() || null,
           ).catch(() => {});
         }
-        if (autoPlugConfig) {
-          const xAccount = selectedAccounts.find(
-            (a) => a.platform === "twitter_x",
-          );
-          if (xAccount) {
-            createAutoPlug(result.postId, xAccount.id, autoPlugConfig).catch(
-              () => {},
-            );
-          }
-        }
+        await setupAutoPlug(result.postId);
         return;
       }
       if (effectiveMode === "scheduled") {
@@ -1337,14 +1330,7 @@ export function ImagePostForm({
           resurfaceConfig.plugComment?.trim() || null,
         );
       }
-      if (autoPlugConfig) {
-        const xAccount = selectedAccounts.find(
-          (a) => a.platform === "twitter_x",
-        );
-        if (xAccount) {
-          await createAutoPlug(result.postId, xAccount.id, autoPlugConfig);
-        }
-      }
+      await setupAutoPlug(result.postId);
       setOverlayPhase("done");
       router.push(`/dashboard/posts/${result.postId}`);
       router.refresh();
@@ -1394,6 +1380,20 @@ export function ImagePostForm({
   const hasTwitterXSelected = selectedAccounts.some(
     (a) => a.platform === "twitter_x",
   );
+  const setupAutoPlug = async (postId: string) => {
+    if (!autoPlugConfig) return true;
+    const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
+    const autoPlugResult = await createAutoPlug(
+      postId,
+      xAccount?.id ?? null,
+      autoPlugConfig,
+    );
+    if (!autoPlugResult.success) {
+      setError(autoPlugResult.error);
+      return false;
+    }
+    return true;
+  };
   const hasBlueskySelected = selectedAccounts.some(
     (a) => a.platform === "bluesky",
   );
@@ -1555,6 +1555,7 @@ export function ImagePostForm({
             remember={remember}
             onRememberChange={setRemember}
             supportedPlatforms={supportedPlatforms}
+            accountsLoading={accountsLoading}
             disabledAccountIds={mediaSizeExceeded.accountIds}
             disabledReasons={mediaSizeExceeded.reasons}
             disabledAccountDefaultReason="Image exceeds this platform's size limit"
