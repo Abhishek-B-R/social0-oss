@@ -10,6 +10,8 @@ export type SubscriptionState = {
   expiresAt: Date | null;
   subscriptionId: string | null;
   customerId: string | null;
+  /** True once user has ever had a paid plan (trial or paid). Used for trial vs upgrade messaging when limit is 0. */
+  hasUsedTrial: boolean;
 };
 
 export async function getSubscriptionForUser(
@@ -22,17 +24,20 @@ export async function getSubscriptionForUser(
       subscriptionExpiresAt: true,
       subscriptionId: true,
       customerId: true,
+      hasUsedTrial: true,
     },
   });
 
   const tier = (row?.subscriptionTier as SubscriptionTier) ?? "free";
   const expiresAt = row?.subscriptionExpiresAt ?? null;
+  const hasUsedTrial = row?.hasUsedTrial ?? false;
   if (expiresAt && new Date(expiresAt) < new Date()) {
     return {
       tier: "free",
       expiresAt: null,
       subscriptionId: null,
       customerId: row?.customerId ?? null,
+      hasUsedTrial,
     };
   }
 
@@ -41,6 +46,7 @@ export async function getSubscriptionForUser(
     expiresAt,
     subscriptionId: row?.subscriptionId ?? null,
     customerId: row?.customerId ?? null,
+    hasUsedTrial,
   };
 }
 
@@ -53,6 +59,8 @@ export async function setSubscription(
     customerId: string | null;
   },
 ): Promise<void> {
+  const isPaidTier =
+    data.tier === "starter" || data.tier === "growth" || data.tier === "pro";
   await db
     .insert(userSettings)
     .values({
@@ -61,6 +69,7 @@ export async function setSubscription(
       subscriptionExpiresAt: data.expiresAt,
       subscriptionId: data.subscriptionId,
       customerId: data.customerId,
+      ...(isPaidTier ? { hasUsedTrial: true } : {}),
     })
     .onConflictDoUpdate({
       target: userSettings.userId,
@@ -69,6 +78,7 @@ export async function setSubscription(
         subscriptionExpiresAt: data.expiresAt,
         subscriptionId: data.subscriptionId,
         customerId: data.customerId,
+        ...(isPaidTier ? { hasUsedTrial: true } : {}),
       },
     });
 }

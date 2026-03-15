@@ -4,7 +4,7 @@ import Link from "next/link";
 import NextImage from "next/image";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { PublishButton } from "../PublishButton";
 import { PostAgainButton } from "../PostAgainButton";
@@ -12,6 +12,7 @@ import { PostCardDeleteButton } from "../PostCardDeleteButton";
 import {
   getPostDetail,
   getPostMedia,
+  hasPaymentFailedPosts,
   type PostDetailRow,
   type PostMediaRow,
 } from "../posts-list-data";
@@ -170,7 +171,10 @@ export default async function PostDetailPage({
     await getUserSettingsSnapshot();
 
   const { id } = await params;
-  const data = await getPostDetail(id, session.user.id);
+  const [data, showPaymentFailedBanner] = await Promise.all([
+    getPostDetail(id, session.user.id),
+    hasPaymentFailedPosts(session.user.id),
+  ]);
   if (!data) redirect("/dashboard/posts");
 
   const { post, publications, queuedSlot } = data;
@@ -209,6 +213,18 @@ export default async function PostDetailPage({
 
   return (
     <div className="space-y-6">
+      {showPaymentFailedBanner && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+          <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+          <span>Some posts failed to publish because your trial ended.</span>
+          <Link
+            href="/dashboard/billing"
+            className="ml-auto font-medium underline underline-offset-2"
+          >
+            Upgrade now →
+          </Link>
+        </div>
+      )}
       <div className="flex items-center gap-2 justify-between">
         <Link
           href="/dashboard/posts"
@@ -463,6 +479,12 @@ export default async function PostDetailPage({
                 </p>
               )}
             </div>
+            {post.status === "failed" && post.failureReason && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" strokeWidth={1.5} />
+                <span>{post.failureReason}</span>
+              </div>
+            )}
           </div>
 
           <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">

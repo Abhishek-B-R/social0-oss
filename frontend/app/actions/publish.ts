@@ -125,8 +125,15 @@ export type PublishOptions = {
  * Returns the list of publications for a post (for progress UI).
  * Caller must be authenticated and own the post.
  */
-export async function getPostPublicationList(postId: string): Promise<
-  { publicationId: string; connectedAccountId: string; platform: string; platformUsername: string | null }[]
+export async function getPostPublicationList(
+  postId: string,
+): Promise<
+  {
+    publicationId: string;
+    connectedAccountId: string;
+    platform: string;
+    platformUsername: string | null;
+  }[]
 > {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
@@ -191,7 +198,10 @@ export async function executePublish(
   publicationIdFilter?: string,
   options?: PublishOptions,
 ): Promise<PublishResult> {
-  console.log("[executePublish] called — options:", JSON.stringify(options ?? null));
+  console.log(
+    "[executePublish] called — options:",
+    JSON.stringify(options ?? null),
+  );
   if (!postId || !isValidPostId(postId)) {
     return {
       success: false,
@@ -229,7 +239,7 @@ export async function executePublish(
   if (!isActiveTier(subscription.tier)) {
     logPublishBlocked("subscription", post.userId, post.id);
     const failureReason =
-      "Payment required — your free trial has ended. Upgrade to publish scheduled posts.";
+      "Payment required — your free trial has ended. Upgrade to publish or schedule posts.";
     await db
       .update(posts)
       .set({
@@ -240,7 +250,8 @@ export async function executePublish(
       .where(eq(posts.id, postId));
     return {
       success: false,
-      error: "An active subscription is required to publish. Upgrade in Billing.",
+      error:
+        "An active subscription is required to publish. Upgrade in Billing.",
       results: [],
     };
   }
@@ -289,7 +300,8 @@ export async function executePublish(
         limit: tweetLimit.limit,
       });
       const failureReason =
-        tweetLimit.reason ?? "Twitter monthly limit reached. Resets next month or upgrade for more.";
+        tweetLimit.reason ??
+        "Twitter monthly limit reached. Resets next month or upgrade for more.";
       await db
         .update(posts)
         .set({
@@ -333,7 +345,9 @@ export async function executePublish(
     if (!Array.isArray(partsVal) || partsVal.length === 0) return null;
     const joined = partsVal
       .map((p) =>
-        p && typeof p === "object" && typeof (p as Record<string, unknown>).text === "string"
+        p &&
+        typeof p === "object" &&
+        typeof (p as Record<string, unknown>).text === "string"
           ? ((p as Record<string, unknown>).text as string).trim()
           : "",
       )
@@ -513,8 +527,7 @@ export async function executePublish(
       }
     }
 
-    const baseContent =
-      contentForNonTwitter ?? post.finalContent ?? "";
+    const baseContent = contentForNonTwitter ?? post.finalContent ?? "";
     const accountCaptions =
       post.metadata && typeof post.metadata === "object"
         ? (post.metadata as Record<string, unknown>).accountCaptions
@@ -523,7 +536,9 @@ export async function executePublish(
       accountCaptions &&
       typeof accountCaptions === "object" &&
       !Array.isArray(accountCaptions) &&
-      typeof (accountCaptions as Record<string, string>)[pub.connectedAccountId] === "string"
+      typeof (accountCaptions as Record<string, string>)[
+        pub.connectedAccountId
+      ] === "string"
         ? (accountCaptions as Record<string, string>)[pub.connectedAccountId]
         : baseContent;
 
@@ -590,7 +605,10 @@ export async function executePublish(
               );
               mediaAssets.push(videoUrn);
             } catch (e) {
-              console.error("[executePublish] LinkedIn video upload failed:", e);
+              console.error(
+                "[executePublish] LinkedIn video upload failed:",
+                e,
+              );
               const err =
                 e instanceof Error ? e.message : "Failed to upload video";
               await db
@@ -624,7 +642,10 @@ export async function executePublish(
                   mediaAssets.push(imageUrn);
                 }
               } catch (e) {
-                console.error("[executePublish] LinkedIn image upload failed:", e);
+                console.error(
+                  "[executePublish] LinkedIn image upload failed:",
+                  e,
+                );
                 const err =
                   e instanceof Error ? e.message : "Failed to upload images";
                 await db
@@ -812,9 +833,7 @@ export async function executePublish(
                 : [],
             };
           })
-          .filter(
-            (p): p is { text: string; mediaIds: string[] } => p !== null,
-          );
+          .filter((p): p is { text: string; mediaIds: string[] } => p !== null);
 
         return parts.length > 0 ? { parts } : null;
       })();
@@ -847,9 +866,7 @@ export async function executePublish(
         // Skip 280 char validation — Premium users can post up to 25k chars.
         // If Twitter rejects, the API error will be surfaced to the user.
 
-        const uniqueDbMediaIds = [
-          ...new Set(parts.flatMap((p) => p.mediaIds)),
-        ];
+        const uniqueDbMediaIds = [...new Set(parts.flatMap((p) => p.mediaIds))];
         const mediaByDbId = new Map<
           string,
           { url: string | null; mimeType: string | null }
@@ -864,13 +881,19 @@ export async function executePublish(
             .from(mediaUploads)
             .where(inArray(mediaUploads.id, uniqueDbMediaIds));
           for (const m of media) {
-            mediaByDbId.set(m.id, { url: m.url ?? null, mimeType: m.mimeType ?? null });
+            mediaByDbId.set(m.id, {
+              url: m.url ?? null,
+              mimeType: m.mimeType ?? null,
+            });
           }
         }
 
-        const missingMediaId = uniqueDbMediaIds.find((id) => !mediaByDbId.has(id));
+        const missingMediaId = uniqueDbMediaIds.find(
+          (id) => !mediaByDbId.has(id),
+        );
         if (missingMediaId) {
-          const msg = "One or more media files are missing. Re-upload and try again.";
+          const msg =
+            "One or more media files are missing. Re-upload and try again.";
           await db
             .update(postPublications)
             .set({
@@ -931,12 +954,12 @@ export async function executePublish(
           if (cached) return cached;
           const media = mediaByDbId.get(dbId);
           const url = media?.url;
-          if (!url) throw new Error("Media has no URL. Re-upload and try again.");
+          if (!url)
+            throw new Error("Media has no URL. Re-upload and try again.");
 
-          const twitterMediaId =
-            media.mimeType?.startsWith("video/")
-              ? await uploadTwitterVideo(url, accessToken, accessSecret!)
-              : await uploadTwitterImage(url, accessToken, accessSecret!);
+          const twitterMediaId = media.mimeType?.startsWith("video/")
+            ? await uploadTwitterVideo(url, accessToken, accessSecret!)
+            : await uploadTwitterImage(url, accessToken, accessSecret!);
 
           twitterMediaIdByDbId.set(dbId, twitterMediaId);
           return twitterMediaId;
@@ -956,8 +979,13 @@ export async function executePublish(
                 return m ? { id, ...m } : null;
               })
               .filter(
-                (m): m is { id: string; url: string | null; mimeType: string | null } =>
-                  m !== null,
+                (
+                  m,
+                ): m is {
+                  id: string;
+                  url: string | null;
+                  mimeType: string | null;
+                } => m !== null,
               );
 
             const videos = orderedMedia.filter((m) =>
@@ -970,7 +998,9 @@ export async function executePublish(
             const partTwitterMediaIds: string[] = [];
             if (videos.length > 0) {
               // Twitter supports one video per tweet. If both video+images exist, we prefer video.
-              partTwitterMediaIds.push(await ensureTwitterMediaId(videos[0].id));
+              partTwitterMediaIds.push(
+                await ensureTwitterMediaId(videos[0].id),
+              );
             } else if (images.length > 0) {
               for (const img of images.slice(0, 4)) {
                 partTwitterMediaIds.push(await ensureTwitterMediaId(img.id));
@@ -1028,7 +1058,11 @@ export async function executePublish(
           });
         } catch (e) {
           const errorMessage = getTwitterErrorMessage(e);
-          console.error("[executePublish] Twitter post failed:", errorMessage, e);
+          console.error(
+            "[executePublish] Twitter post failed:",
+            errorMessage,
+            e,
+          );
           await db
             .update(postPublications)
             .set({
@@ -1063,32 +1097,18 @@ export async function executePublish(
         const order = new Map(post.mediaIds.map((id, i) => [id, i]));
         const ordered = media
           .filter((m) => m.url && m.mimeType)
-          .sort(
-            (a, b) =>
-              (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0),
-          )
+          .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
           .slice(0, 4) as { id: string; url: string; mimeType: string }[];
 
         let twitterUploadFailed = false;
         for (const m of ordered) {
           try {
             const twitterMediaId = m.mimeType.startsWith("video/")
-              ? await uploadTwitterVideo(
-                  m.url,
-                  accessToken,
-                  accessSecret,
-                )
-              : await uploadTwitterImage(
-                  m.url,
-                  accessToken,
-                  accessSecret,
-                );
+              ? await uploadTwitterVideo(m.url, accessToken, accessSecret)
+              : await uploadTwitterImage(m.url, accessToken, accessSecret);
             mediaIds.push(twitterMediaId);
           } catch (e) {
-            console.error(
-              "[executePublish] Twitter media upload failed:",
-              e,
-            );
+            console.error("[executePublish] Twitter media upload failed:", e);
             const err =
               e instanceof Error ? e.message : "Failed to upload media";
             await db
@@ -1291,7 +1311,10 @@ export async function executePublish(
             pub.connectedAccountId,
           );
         } catch (e) {
-          console.error("[executePublish] Bluesky decrypt app password failed:", e);
+          console.error(
+            "[executePublish] Bluesky decrypt app password failed:",
+            e,
+          );
           const err =
             e instanceof Error
               ? e.message
@@ -1318,7 +1341,10 @@ export async function executePublish(
       if (pub.platform === "tiktok") {
         try {
           const { getValidToken } = await import("@/lib/token-refresh");
-          tokenForPublish = await getValidToken(pub.connectedAccountId, "tiktok");
+          tokenForPublish = await getValidToken(
+            pub.connectedAccountId,
+            "tiktok",
+          );
         } catch (err) {
           console.error("[executePublish] TikTok getValidToken failed:", err);
           const errorMsg =
@@ -1343,8 +1369,13 @@ export async function executePublish(
 
       // For Pinterest, merge post-level pin settings (board, title, link) into platformMetadata
       let effectivePlatformMetadata = pub.platformMetadata ?? null;
-      if (pub.platform === "pinterest" && post.metadata && typeof post.metadata === "object") {
-        const pinterestMeta = (post.metadata as Record<string, unknown>).pinterest;
+      if (
+        pub.platform === "pinterest" &&
+        post.metadata &&
+        typeof post.metadata === "object"
+      ) {
+        const pinterestMeta = (post.metadata as Record<string, unknown>)
+          .pinterest;
         const accountMeta =
           pinterestMeta &&
           typeof pinterestMeta === "object" &&
@@ -1363,7 +1394,9 @@ export async function executePublish(
           pub.platform,
           pub.isTwitterPremium ?? false,
         );
-        let platformOptions: { instagram?: { coverImageUrl?: string; isTrialReel: boolean } } | undefined;
+        let platformOptions:
+          | { instagram?: { coverImageUrl?: string; isTrialReel: boolean } }
+          | undefined;
         if (pub.platform === "instagram" && options?.instagramConfig) {
           // coverImageUrl comes from our own uploadFile() flow — not user-supplied.
           // Instagram fetches the URL (not our server), so SSRF doesn't apply here.
@@ -1378,7 +1411,12 @@ export async function executePublish(
               // invalid URL — leave undefined
             }
           }
-          console.log("[Instagram cover] coverImageUrl from options:", rawUrl, "→ accepted:", !!coverImageUrl);
+          console.log(
+            "[Instagram cover] coverImageUrl from options:",
+            rawUrl,
+            "→ accepted:",
+            !!coverImageUrl,
+          );
           platformOptions = {
             instagram: {
               coverImageUrl,
@@ -1475,10 +1513,7 @@ export async function executePublish(
     "Succeeded:",
     results.filter((r) => r.status === "published").length,
   );
-  console.log(
-    "Failed:",
-    results.filter((r) => r.status === "failed").length,
-  );
+  console.log("Failed:", results.filter((r) => r.status === "failed").length);
   const succeeded = results.filter((r) => r.status === "published").length;
   const failed = results.filter((r) => r.status === "failed").length;
   const anyFailed = failed > 0;
@@ -1506,10 +1541,7 @@ export async function executePublish(
   const errorSummary =
     failedList.length > 0
       ? failedList
-          .map(
-            (r) =>
-              `${r.platform}: ${r.error ?? "Unknown error"}`.trim(),
-          )
+          .map((r) => `${r.platform}: ${r.error ?? "Unknown error"}`.trim())
           .join(" — ")
       : undefined;
 

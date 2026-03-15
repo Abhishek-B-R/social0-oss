@@ -38,11 +38,14 @@ type ConnectStepClientProps = {
   initialAccounts?: Account[];
   /** Plan limit for connected accounts (e.g. 5 for starter, 15 for growth). */
   limitTotal: number;
+  /** True once user has ever had a paid plan. When limit is 0, drives trial vs upgrade message. */
+  hasUsedTrial: boolean;
 };
 
 export function ConnectStepClient({
   initialAccounts = [],
   limitTotal,
+  hasUsedTrial,
 }: ConnectStepClientProps) {
   const router = useRouter();
   const [showSkipModal, setShowSkipModal] = useState(false);
@@ -92,13 +95,29 @@ export function ConnectStepClient({
 
         {atLimit && (
           <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 text-center mb-4">
-            You&apos;ve reached your {limitTotal} account limit.{" "}
-            <Link
-              href="/dashboard/billing"
-              className="font-medium underline underline-offset-2 hover:no-underline"
-            >
-              Upgrade →
-            </Link>
+            {limitTotal === 0 ? (
+              <>
+                {hasUsedTrial
+                  ? "Upgrade to a plan to connect accounts and start posting."
+                  : "Start your 7-day free trial to connect accounts and start posting."}{" "}
+                <Link
+                  href="/dashboard/billing"
+                  className="font-medium underline underline-offset-2 hover:no-underline"
+                >
+                  {hasUsedTrial ? "Upgrade" : "Start trial"} →
+                </Link>
+              </>
+            ) : (
+              <>
+                You&apos;ve reached your {limitTotal} account limit.{" "}
+                <Link
+                  href="/dashboard/billing"
+                  className="font-medium underline underline-offset-2 hover:no-underline"
+                >
+                  Upgrade →
+                </Link>
+              </>
+            )}
           </div>
         )}
 

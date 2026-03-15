@@ -175,7 +175,7 @@ export async function POST(req: NextRequest) {
         logConnectBlocked(
           session.user.id,
           "linkedin",
-          limitCheck.reason ?? "Account limit reached",
+          limitCheck.reason ?? "You need an active plan to connect accounts and post content.",
           limitCheck.currentTotal,
           limitCheck.limitTotal,
         );
@@ -183,7 +183,7 @@ export async function POST(req: NextRequest) {
           {
             error: "limit_reached",
             message:
-              "You've reached your account limit. Upgrade or remove an account first.",
+              "You need an active plan to connect accounts and post content.",
           },
           { status: 403 },
         );

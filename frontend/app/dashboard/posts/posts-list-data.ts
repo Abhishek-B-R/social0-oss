@@ -461,6 +461,7 @@ export type PostDetailRow = {
   createdAt: Date | null;
   mediaIds: string[] | null;
   metadata: Record<string, unknown> | null;
+  failureReason: string | null;
 };
 
 /** Queued slot info when a post is in the queue (scheduled + has queued_posts row). */
@@ -515,6 +516,7 @@ export async function getPostDetail(
         createdAt: posts.createdAt,
         mediaIds: posts.mediaIds,
         metadata: posts.metadata,
+        failureReason: posts.failureReason,
       })
       .from(posts)
       .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
@@ -555,6 +557,7 @@ export async function getPostDetail(
         createdAt: post.createdAt,
         mediaIds: post.mediaIds,
         metadata: post.metadata ?? null,
+        failureReason: post.failureReason ?? null,
       },
       publications: pubs,
       queuedSlot,

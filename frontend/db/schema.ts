@@ -276,6 +276,7 @@ export const userSettings = pgTable("user_settings", {
   subscriptionExpiresAt: timestamp("subscription_expires_at"),
   subscriptionId: text("subscription_id"), // Payment provider subscription ID (portal/cancel)
   customerId: text("customer_id"), // Payment provider customer ID
+  hasUsedTrial: boolean("has_used_trial").default(false), // true once user has ever had a paid plan (trial or paid); used for messaging when limit is 0
   onboardingCompleted: boolean("onboarding_completed").default(false),
   onboardingGoal: text("onboarding_goal"),
 });

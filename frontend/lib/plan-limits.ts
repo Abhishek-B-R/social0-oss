@@ -11,6 +11,8 @@ export type AccountLimitResult = {
   reason?: string;
   currentTotal: number;
   limitTotal: number;
+  /** True once user has ever had a paid plan. Used for trial vs upgrade messaging when limit is 0. */
+  hasUsedTrial: boolean;
 };
 
 export async function checkAccountLimits(
@@ -33,11 +35,18 @@ export async function checkAccountLimits(
   const currentTotal = totalRow?.count ?? 0;
 
   if (currentTotal >= limits.maxConnectedAccounts) {
+    const reason =
+      limits.maxConnectedAccounts === 0
+        ? sub.hasUsedTrial
+          ? "Upgrade to a plan to connect accounts and start posting."
+          : "Start your 7-day free trial to connect accounts and start posting."
+        : `Plan limit: up to ${limits.maxConnectedAccounts} connected accounts. Upgrade to add more.`;
     return {
       allowed: false,
-      reason: `Plan limit: up to ${limits.maxConnectedAccounts} connected accounts. Upgrade to add more.`,
+      reason,
       currentTotal,
       limitTotal: limits.maxConnectedAccounts,
+      hasUsedTrial: sub.hasUsedTrial,
     };
   }
 
@@ -45,6 +54,7 @@ export async function checkAccountLimits(
     allowed: true,
     currentTotal,
     limitTotal: limits.maxConnectedAccounts,
+    hasUsedTrial: sub.hasUsedTrial,
   };
 }
 

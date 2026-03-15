@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Check } from "lucide-react";
 
 const STEPS = [
@@ -23,7 +22,6 @@ export function OnboardingProgress({ currentStep }: OnboardingProgressProps) {
       {STEPS.map((step, i) => {
         const isCurrent = step.num === currentStep;
         const isPast = step.num < currentStep;
-        const isFuture = step.num > currentStep;
         return (
           <span key={step.num} className="flex items-center gap-1 sm:gap-2">
             {i > 0 && (
@@ -35,13 +33,13 @@ export function OnboardingProgress({ currentStep }: OnboardingProgressProps) {
               />
             )}
             {isPast ? (
-              <Link
-                href={step.path}
-                className="flex items-center gap-1 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 font-medium"
+              <span
+                className="flex items-center gap-1 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 font-medium cursor-default"
+                aria-label={`${step.num}. ${step.label} (completed)`}
               >
                 <Check className="h-3.5 w-3.5" aria-hidden />
                 <span className="sr-only sm:not-sr-only">{step.num}. {step.label}</span>
-              </Link>
+              </span>
             ) : isCurrent ? (
               <span
                 className="flex items-center gap-1 rounded-full bg-emerald-500 text-white px-2.5 py-1 font-medium"

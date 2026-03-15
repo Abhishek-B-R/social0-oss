@@ -42,7 +42,12 @@ type Account = {
   expiresInDays: number | null;
 };
 
-type AccountLimit = { currentTotal: number; limitTotal: number };
+type AccountLimit = {
+  currentTotal: number;
+  limitTotal: number;
+  /** When limit is 0, drives trial vs upgrade message. */
+  hasUsedTrial?: boolean;
+};
 
 export function ConnectionsList({
   accounts,
@@ -134,13 +139,29 @@ export function ConnectionsList({
         </p>
         {atLimit && (
           <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-            You&apos;ve reached your {accountLimit!.limitTotal} account limit.{" "}
-            <Link
-              href="/dashboard/billing"
-              className="font-medium underline underline-offset-2 hover:no-underline"
-            >
-              Upgrade →
-            </Link>
+            {accountLimit!.limitTotal === 0 ? (
+              <>
+                {accountLimit!.hasUsedTrial
+                  ? "Upgrade to a plan to connect accounts and start posting."
+                  : "Start your 7-day free trial to connect accounts and start posting."}{" "}
+                <Link
+                  href="/dashboard/billing"
+                  className="font-medium underline underline-offset-2 hover:no-underline"
+                >
+                  {accountLimit!.hasUsedTrial ? "Upgrade" : "Start trial"} →
+                </Link>
+              </>
+            ) : (
+              <>
+                You&apos;ve reached your {accountLimit!.limitTotal} account limit.{" "}
+                <Link
+                  href="/dashboard/billing"
+                  className="font-medium underline underline-offset-2 hover:no-underline"
+                >
+                  Upgrade →
+                </Link>
+              </>
+            )}
           </div>
         )}
         <div className="min-w-0 overflow-x-auto rounded-2xl border border-border bg-bg-elevated p-3 shadow-sm">

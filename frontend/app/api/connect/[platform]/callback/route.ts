@@ -230,12 +230,12 @@ export async function GET(
           logConnectBlocked(
             userId,
             "twitter_x",
-            limitCheck.reason ?? "Account limit reached",
+            limitCheck.reason ?? "You need an active plan to connect accounts and post content.",
             limitCheck.currentTotal,
             limitCheck.limitTotal,
           );
           return safeRedirect(
-            `/dashboard/connections?error=limit_reached&message=${encodeURIComponent(limitCheck.reason ?? "Account limit reached")}`,
+            `/dashboard/connections?error=limit_reached&message=${encodeURIComponent(limitCheck.reason ?? "You need an active plan to connect accounts and post content.")}`,
             "/dashboard/connections",
           );
         }
@@ -674,12 +674,12 @@ export async function GET(
           logConnectBlocked(
             userId,
             "pinterest",
-            pinterestLimitCheck.reason ?? "Account limit reached",
+            pinterestLimitCheck.reason ?? "You need an active plan to connect accounts and post content.",
             pinterestLimitCheck.currentTotal,
             pinterestLimitCheck.limitTotal,
           );
           return safeRedirect(
-            `/dashboard/connections?error=limit_reached&message=${encodeURIComponent(pinterestLimitCheck.reason ?? "Account limit reached")}`,
+            `/dashboard/connections?error=limit_reached&message=${encodeURIComponent(pinterestLimitCheck.reason ?? "You need an active plan to connect accounts and post content.")}`,
             "/dashboard/connections",
           );
         }
@@ -995,12 +995,12 @@ export async function GET(
       logConnectBlocked(
         userId,
         platform,
-        limitCheck.reason ?? "Account limit reached",
+        limitCheck.reason ?? "You need an active plan to connect accounts and post content.",
         limitCheck.currentTotal,
         limitCheck.limitTotal,
       );
       return safeRedirect(
-        `/dashboard/connections?error=limit_reached&message=${encodeURIComponent(limitCheck.reason ?? "Account limit reached")}`,
+        `/dashboard/connections?error=limit_reached&message=${encodeURIComponent(limitCheck.reason ?? "You need an active plan to connect accounts and post content.")}`,
         "/dashboard/connections",
       );
     }

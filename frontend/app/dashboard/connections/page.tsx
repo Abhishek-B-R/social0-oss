@@ -83,7 +83,7 @@ async function ConnectionsContent() {
 
   return (
     <>
-      <OAuthErrorHandler />
+      <OAuthErrorHandler hasUsedTrial={accountLimit.hasUsedTrial} />
       <ConnectionsList
         accounts={accounts.map((a) => {
           const status = getTokenStatus(
@@ -119,6 +119,7 @@ async function ConnectionsContent() {
             ? {
                 currentTotal: accountLimit.currentTotal,
                 limitTotal: accountLimit.limitTotal,
+                hasUsedTrial: accountLimit.hasUsedTrial,
               }
             : undefined
         }

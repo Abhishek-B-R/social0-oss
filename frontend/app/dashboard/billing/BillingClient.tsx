@@ -191,6 +191,13 @@ export function BillingClient({
             {formatDate(new Date(subscription.expiresAt), dateFormat, timezone)}
           </p>
         )}
+        {subscription.tier === "free" && (
+          <div className="mt-3 rounded-lg border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+            {subscription.hasUsedTrial
+              ? "Upgrade to a plan to connect accounts and start posting. Choose a plan below."
+              : "Start your 7-day free trial to connect accounts and start posting. Choose a plan below to get started."}
+          </div>
+        )}
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <div className="rounded-lg border border-border bg-bg p-2.5">
             <p className="text-sm font-medium text-text-muted">
@@ -199,7 +206,11 @@ export function BillingClient({
             <p className="text-xl font-semibold text-text">
               {subscription.tier === "pro"
                 ? `${accountLimit.currentTotal} / Unlimited`
-                : `${accountLimit.currentTotal} / ${accountLimit.limitTotal}`}
+                : accountLimit.limitTotal === 0
+                  ? accountLimit.hasUsedTrial
+                    ? "0 — Upgrade to connect"
+                    : "0 — Start trial to connect"
+                  : `${accountLimit.currentTotal} / ${accountLimit.limitTotal}`}
             </p>
           </div>
           {twitterTweetLimit.limit > 0 && (

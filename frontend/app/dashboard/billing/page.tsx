@@ -41,8 +41,8 @@ export default async function BillingPage({
       </p>
       {showUpgradeBanner && (
         <div className="mt-6 rounded-xl border border-accent/50 bg-accent/10 px-4 py-3 text-sm text-text">
-          Upgrade to the Growth plan to use bulk tools, auto-plug, and
-          auto-repost.
+          Upgrade to the Growth plan or higher plans to use bulk tools,
+          auto-plug, and auto-repost.
         </div>
       )}
       <div className="mt-5">

@@ -4,7 +4,12 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-export function OAuthErrorHandler() {
+export function OAuthErrorHandler({
+  hasUsedTrial = false,
+}: {
+  /** When true, show upgrade message; when false, show start-trial message. Used when error is limit_reached and no message in URL. */
+  hasUsedTrial?: boolean;
+} = {}) {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
   const messageParam = searchParams.get("message");
@@ -24,7 +29,9 @@ export function OAuthErrorHandler() {
           setMessage(
             messageParam
               ? decodeURIComponent(messageParam)
-              : "Account limit reached. Upgrade your plan to connect more.",
+              : hasUsedTrial
+                ? "Upgrade to a plan to connect accounts and start posting."
+                : "Start your 7-day free trial to connect accounts and start posting.",
           );
           break;
         case "oauth_failed":
@@ -61,7 +68,7 @@ export function OAuthErrorHandler() {
       // Auto-hide after 3 seconds
       setTimeout(() => setShowSuccess(false), 3000);
     }
-  }, [error, messageParam, platform, connected]);
+  }, [error, messageParam, platform, connected, hasUsedTrial]);
 
   if (!showError && !showSuccess) {
     return null;

@@ -274,7 +274,7 @@ export async function GET(
       const igLimitCheck = await checkAccountLimits(userId, "instagram");
       if (!igLimitCheck.allowed) {
         return safeRedirect(
-          `/dashboard/connections?error=limit_reached&message=${encodeURIComponent(igLimitCheck.reason ?? "Account limit reached")}`,
+          `/dashboard/connections?error=limit_reached&message=${encodeURIComponent(igLimitCheck.reason ?? "You need an active plan to connect accounts and post content.")}`,
           "/dashboard/connections",
         );
       }

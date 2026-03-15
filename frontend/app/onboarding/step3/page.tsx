@@ -6,7 +6,6 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { checkAccountLimits } from "@/lib/plan-limits";
 import { ConnectStepClient } from "./ConnectStepClient";
-import { MdQuestionMark } from "react-icons/md";
 import { DOCS_ONBOARDING_CONNECT_URL } from "@/lib/docs-url";
 
 export default async function OnboardingStep3Page() {
@@ -41,7 +40,7 @@ export default async function OnboardingStep3Page() {
         href={DOCS_ONBOARDING_CONNECT_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        className="absolute top-5 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
         title="Documentation for this page"
         aria-label="Documentation for this page"
       >
@@ -68,6 +67,7 @@ export default async function OnboardingStep3Page() {
           isTwitterPremium: a.isTwitterPremium ?? false,
         }))}
         limitTotal={accountLimit.limitTotal}
+        hasUsedTrial={accountLimit.hasUsedTrial}
       />
     </>
   );

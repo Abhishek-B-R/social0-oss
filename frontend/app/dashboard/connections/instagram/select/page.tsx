@@ -71,7 +71,7 @@ export default function InstagramSelectPage() {
         if (res.status === 403) {
           const data = await res.json().catch(() => ({}));
           setError(
-            data.message ?? "You've reached your account limit. Upgrade or remove an account first.",
+            data.message ?? "You need an active plan to connect accounts and post content.",
           );
           setSubmitLoading(false);
           return;

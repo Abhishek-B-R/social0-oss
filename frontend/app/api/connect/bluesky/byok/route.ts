@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
           {
             error: "limit_reached",
             message:
-              limitCheck.reason ?? "Account limit reached. Upgrade to add more.",
+              limitCheck.reason ?? "You need an active plan to connect accounts and post content.",
           },
           { status: 403 },
         );
