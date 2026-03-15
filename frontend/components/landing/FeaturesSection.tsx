@@ -1,3 +1,4 @@
+import type React from "react";
 import {
   Zap,
   Target,
@@ -7,42 +8,68 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-const features = [
+type Feature = {
+  icon: typeof Zap;
+  title: string;
+  tag: string;
+  desc: React.ReactNode;
+};
+
+const features: Feature[] = [
   {
     icon: Zap,
     title: "Parallel publishing",
     tag: "Fast",
-    desc: "All platforms receive your post simultaneously. If one fails, the others still go through — you'll see exactly which.",
+    desc: "All platforms receive your post at the same time. If one fails, the others still go through — and you'll see exactly which.",
   },
   {
     icon: Target,
     title: "Per-platform captions",
     tag: "Flexible",
-    desc: "Write a base caption and override it per platform. Twitter needs a hook, LinkedIn likes context.",
+    desc: (
+      <>
+        Write one base caption and customize it per platform.
+        <br />
+        Twitter needs a hook. LinkedIn likes context.
+      </>
+    ),
   },
   {
     icon: CalendarDays,
     title: "Smart scheduling",
     tag: "Organised",
-    desc: "Pick a date and time. View everything in a calendar. Reschedule with a drag.",
+    desc: "Pick a date and time. View everything in a calendar. Reschedule if needed.",
   },
   {
     icon: Lock,
     title: "Encrypted token storage",
     tag: "Secure",
-    desc: "OAuth tokens encrypted with AES-256-GCM. Your credentials never leave the server.",
+    desc: "Your accounts stay secure. OAuth tokens are encrypted and we never store passwords.",
   },
   {
     icon: MessageSquareText,
     title: "Threads & carousels",
     tag: "Rich content",
-    desc: "Multi-part threads for Twitter and Bluesky. Image carousels for Instagram and LinkedIn.",
+    desc: (
+      <>
+        Create multi-part threads for Twitter and Bluesky.
+        <br />
+        Post image carousels to Instagram and Tiktok.
+      </>
+    ),
   },
   {
     icon: RefreshCw,
     title: "Auto-plug & repost",
     tag: "Growth",
-    desc: "Automatically repost your evergreen content. Add a plug to popular posts when they hit a threshold.",
+    desc: (
+      <>
+        Automatically repost evergreen content to extend its reach.
+        <br />
+        Add a plug to your best-performing posts to capture leads and
+        opportunities.
+      </>
+    ),
   },
 ];
 
@@ -55,11 +82,13 @@ export function FeaturesSection() {
           <div className="mb-3 text-[11px] uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
             Features
           </div>
-          <h2 className="max-w-md font-serif text-[clamp(28px,4vw,44px)] leading-tight tracking-tight text-foreground">
-            Built for people who
-            <br />
-            actually post.
+          <h2 className="max-w-[480px] font-serif text-[clamp(28px,4vw,44px)] leading-tight tracking-tight text-foreground">
+            Built for people who actually post.
           </h2>
+          <p className="mt-1 text-[15px] text-muted-foreground">
+            Tools that save time, reduce tab switching, and help your content
+            reach more people.
+          </p>
         </div>
 
         {/* 2-column bordered grid */}

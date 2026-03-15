@@ -6,20 +6,20 @@ import {
   IconClock,
   IconCircleCheck,
   IconFileText,
-  IconFiles,
   IconUsers,
   IconCreditCard,
   IconMessageCircle,
+  IconTool,
 } from "@tabler/icons-react";
 import { DOCS_MORE_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
 
 const MANUAL_POSTING_LINKS = [
-  { href: "/dashboard/create", label: "Manual setup", icon: IconFiles },
+  { href: "/dashboard/create", label: "Manual setup", icon: IconTool },
+  { href: "/dashboard/bulk-tools", label: "Bulk tools", icon: IconStack2 },
 ] as const;
 
 const MORE_LINKS = [
-  { href: "/dashboard/bulk-tools", label: "Bulk tools", icon: IconStack2 },
   { href: "/dashboard/posts", label: "All posts", icon: IconList },
   { href: "/dashboard/posts/scheduled", label: "Scheduled", icon: IconClock },
   { href: "/dashboard/posts/posted", label: "Posted", icon: IconCircleCheck },

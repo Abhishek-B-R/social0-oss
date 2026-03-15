@@ -16,6 +16,7 @@ import {
   type PostDetailRow,
   type PostMediaRow,
 } from "../posts-list-data";
+import { getAutoPlugBadge } from "../autoplug-badge";
 import {
   Image as ImageIcon,
   Video,
@@ -177,7 +178,7 @@ export default async function PostDetailPage({
   ]);
   if (!data) redirect("/dashboard/posts");
 
-  const { post, publications, queuedSlot } = data;
+  const { post, publications, queuedSlot, autoPlug, resurface } = data;
 
   if (post.status === "draft") {
     const media =
@@ -573,6 +574,61 @@ export default async function PostDetailPage({
               </ul>
             )}
           </div>
+
+          {(autoPlug || resurface) && (
+            <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-3">
+              <h2 className="text-base font-semibold text-text">Status</h2>
+              <dl className="text-sm space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <dt className="font-medium text-text-muted shrink-0">
+                    Autoplug:
+                  </dt>
+                  <dd>
+                    {autoPlug ? (() => {
+                      const badge = getAutoPlugBadge(autoPlug.status);
+                      return badge ? (
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
+                        >
+                          {badge.label}
+                        </span>
+                      ) : (
+                        <span className="text-text-muted">—</span>
+                      );
+                    })() : (
+                      <span className="text-text-muted">—</span>
+                    )}
+                  </dd>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <dt className="font-medium text-text-muted shrink-0">
+                    Autorepost:
+                  </dt>
+                  <dd>
+                    {resurface ? (
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          resurface.resurfacesDone >= resurface.maxResurfaces
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+                            : resurface.isActive
+                              ? "bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-200"
+                              : "bg-gray-100 text-gray-700 dark:bg-bg-muted dark:text-text-muted"
+                        }`}
+                      >
+                        {resurface.resurfacesDone >= resurface.maxResurfaces
+                          ? `Done (${resurface.resurfacesDone}/${resurface.maxResurfaces})`
+                          : resurface.isActive
+                            ? `Active (${resurface.resurfacesDone}/${resurface.maxResurfaces})`
+                            : "Inactive"}
+                      </span>
+                    ) : (
+                      <span className="text-text-muted">—</span>
+                    )}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          )}
         </div>
       </div>
     </div>

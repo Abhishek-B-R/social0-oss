@@ -323,27 +323,6 @@ export async function getPostsListData({
           })
           .catch(() => ({}) as ResurfaceMap);
 
-  type AutoPlugMap = Record<string, { status: string }>;
-  const autoPlugByPostId: AutoPlugMap =
-    postIdsWithXPublished.length === 0
-      ? {}
-      : await db
-          .select({
-            postId: autoPlugs.postId,
-            status: autoPlugs.status,
-          })
-          .from(autoPlugs)
-          .where(inArray(autoPlugs.postId, postIdsWithXPublished))
-          .orderBy(desc(autoPlugs.createdAt))
-          .then((rows) => {
-            const out: AutoPlugMap = {};
-            for (const r of rows) {
-              if (out[r.postId] == null) out[r.postId] = { status: r.status };
-            }
-            return out;
-          })
-          .catch(() => ({}) as AutoPlugMap);
-
   const pagePostIds = userPostsWithStatus.map((p) => p.id);
   const queuedPostIds =
     statusFilter === "scheduled" && pagePostIds.length > 0
@@ -370,7 +349,6 @@ export async function getPostsListData({
     platformOptions,
     accountOptions,
     resurfaceByPostId,
-    autoPlugByPostId,
     totalCount,
     queuedPostIds,
   };
@@ -494,11 +472,23 @@ export async function getQueuedSlotForPost(
   };
 }
 
+/** Resurface (autorepost) schedule for post detail when post has X published. */
+export type ResurfaceDetail = {
+  id: string;
+  isActive: boolean;
+  resurfacesDone: number;
+  maxResurfaces: number;
+};
+
 export type PostDetailResult = {
   post: PostDetailRow;
   publications: PublicationRow[];
   /** Set when post is scheduled and has a pending queued_posts entry */
   queuedSlot: QueuedSlotInfo | null;
+  /** Set when post has Auto-Plug enabled (X published); latest status */
+  autoPlug: { status: string } | null;
+  /** Set when post has resurface/autorepost (X published); at most one schedule per post */
+  resurface: ResurfaceDetail | null;
 };
 
 /** Fetch a single post by id; verifies userId. Returns null if not found, not owner, or invalid id. */
@@ -548,6 +538,39 @@ export async function getPostDetail(
       queuedSlot = await getQueuedSlotForPost(postId, userId);
     }
 
+    const hasXPublished = pubs.some(
+      (p) => p.platform === "twitter_x" && p.status === "published",
+    );
+    let autoPlug: { status: string } | null = null;
+    let resurface: ResurfaceDetail | null = null;
+    if (hasXPublished) {
+      const [plug] = await db
+        .select({ status: autoPlugs.status })
+        .from(autoPlugs)
+        .where(eq(autoPlugs.postId, postId))
+        .orderBy(desc(autoPlugs.createdAt))
+        .limit(1);
+      if (plug) autoPlug = { status: plug.status };
+
+      const [sched] = await db
+        .select({
+          id: resurfaceSchedules.id,
+          isActive: resurfaceSchedules.isActive,
+          resurfacesDone: resurfaceSchedules.resurfacesDone,
+          maxResurfaces: resurfaceSchedules.maxResurfaces,
+        })
+        .from(resurfaceSchedules)
+        .where(eq(resurfaceSchedules.postId, postId))
+        .limit(1);
+      if (sched)
+        resurface = {
+          id: sched.id,
+          isActive: sched.isActive ?? true,
+          resurfacesDone: sched.resurfacesDone ?? 0,
+          maxResurfaces: sched.maxResurfaces,
+        };
+    }
+
     return {
       post: {
         id: post.id,
@@ -561,6 +584,8 @@ export async function getPostDetail(
       },
       publications: pubs,
       queuedSlot,
+      autoPlug,
+      resurface,
     };
   } catch {
     return null;

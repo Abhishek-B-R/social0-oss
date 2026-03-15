@@ -37,7 +37,6 @@ export default async function ScheduledPostsPage({
     platformOptions,
     accountOptions,
     resurfaceByPostId,
-    autoPlugByPostId,
     totalCount,
     queuedPostIds,
   } = await getPostsListData({
@@ -116,7 +115,6 @@ export default async function ScheduledPostsPage({
         publicationsByPostId={publicationsByPostId}
         firstMediaByPost={firstMediaByPost}
         resurfaceByPostId={resurfaceByPostId}
-        autoPlugByPostId={autoPlugByPostId}
         queuedPostIds={queuedPostIds}
         emptyMessage="You have no scheduled posts."
         filterMessage="No scheduled posts match your filters."

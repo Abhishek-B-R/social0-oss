@@ -10,13 +10,13 @@ const personas = [
   {
     title: "Content Creators",
     description:
-      "One caption, nine platforms. No more copying and pasting between apps all day.",
+      "One post, nine platforms. Share images and videos without copying between apps all day.",
     icon: Video,
   },
   {
     title: "Solo Marketers",
     description:
-      "Run your company's social without a team. Or an agency. Or enterprise pricing.",
+      "Run your company’s social media without hiring a team or an agency.",
     icon: Megaphone,
   },
 ];

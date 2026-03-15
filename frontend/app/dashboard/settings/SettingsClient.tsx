@@ -248,7 +248,6 @@ function ChangeEmailForm({
   onOtpChange,
   onError,
   onSuccess,
-  loading,
   setLoading,
   resendCooldown,
   onResend,

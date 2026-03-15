@@ -4,17 +4,17 @@ const steps = [
   {
     icon: Link2,
     title: "Connect your accounts",
-    desc: "OAuth for every platform. Tokens encrypted at rest. We never store passwords.",
+    desc: "Connect your social accounts in seconds with secure authentication for every platform.",
   },
   {
     icon: PenLine,
     title: "Write your post",
-    desc: "One composer. Per-platform captions if you need them. Character limits shown live.",
+    desc: "Write your post once. Customize captions for each platform if needed.",
   },
   {
     icon: Send,
     title: "Publish or schedule",
-    desc: "Hit publish now, or pick a time. All platforms receive the post in parallel.",
+    desc: "Publish instantly or schedule it for later. Your post goes live across all platforms at once.",
   },
 ];
 

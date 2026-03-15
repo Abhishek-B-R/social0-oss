@@ -109,6 +109,7 @@ export function ComposerClient() {
   useEffect(() => {
     const el = mediaStripRef.current;
     if (!el) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     updateScrollArrows();
     const ro = new ResizeObserver(updateScrollArrows);
     ro.observe(el);
@@ -467,7 +468,7 @@ export function ComposerClient() {
         </p>
       </div>
 
-      <div className="space-y-4 rounded-2xl border border-border bg-bg-elevated p-4 sm:p-5 shadow-sm">
+      <div className="space-y-4 rounded-2xl border border-border bg-bg-elevated p-4 sm:p-5 shadow-sm focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/30 transition">
         <textarea
           ref={textareaRef}
           className="min-h-[70px] max-h-[400px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-base text-text outline-none placeholder:text-text-muted"

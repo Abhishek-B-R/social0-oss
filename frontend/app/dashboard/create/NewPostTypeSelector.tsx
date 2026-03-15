@@ -66,7 +66,7 @@ function ContentTypeCard({
   return (
     <Link
       href={`/dashboard/create/${slug}`}
-      className="group flex flex-col rounded-2xl border-2 dark:border-neutral-700 border-neutral-300 bg-bg-elevated p-6 shadow-sm transition-all hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-accent/5 focus-visible:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/20"
+      className="group flex flex-col rounded-2xl border-2 border-border bg-bg-elevated p-6 shadow-sm transition-all hover:border-emerald-500 hover:bg-accent/5 focus-visible:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/20"
     >
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-bg-muted text-text-muted group-hover:bg-accent/20 group-hover:text-accent">
         {Icon && <Icon className="h-6 w-6" />}

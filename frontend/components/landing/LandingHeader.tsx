@@ -53,7 +53,7 @@ export function LandingHeader() {
         <div className="flex gap-2">
           <span className="relative h-9 w-9 block">
             <Image
-              src="/logo.png"
+              src="/logo-circular.png"
               alt="Social0"
               width={36}
               height={36}
@@ -106,7 +106,7 @@ export function LandingHeader() {
           {user ? (
             <Link
               href="/dashboard"
-              className="inline-flex rounded-full items-center gap-2.5 border border-border bg-background px-3 py-2 text-[14px] font-semibold text-foreground transition-colors hover:bg-muted"
+              className="inline-flex rounded-full items-center gap-2.5 border border-border bg-background px-4 py-2 text-[14px] font-semibold text-foreground transition-colors hover:bg-muted"
             >
               {user.image ? (
                 // eslint-disable-next-line @next/next/no-img-element

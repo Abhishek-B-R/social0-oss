@@ -36,7 +36,6 @@ export default async function PostedPostsPage({
     platformOptions,
     accountOptions,
     resurfaceByPostId,
-    autoPlugByPostId,
     totalCount,
   } = await getPostsListData({
     userId: session.user.id,
@@ -111,7 +110,6 @@ export default async function PostedPostsPage({
         publicationsByPostId={publicationsByPostId}
         firstMediaByPost={firstMediaByPost}
         resurfaceByPostId={resurfaceByPostId}
-        autoPlugByPostId={autoPlugByPostId}
         emptyMessage="You haven't published any posts yet."
         filterMessage="No posted content matches your filters."
         hasActiveFilters={hasActiveFilters}
