@@ -44,10 +44,10 @@ export const metadata: Metadata = {
     description,
     images: [
       {
-        url: "/og.png",
+        url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Social0 – Schedule and post to all your social accounts from one place",
+        alt: "Social0 — Social Media Scheduling Dashboard",
       },
     ],
   },
@@ -55,7 +55,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title,
     description,
-    images: ["/og.png"],
+    images: ["/og-image.png"],
+    creator: "@social0_app",
   },
   icons: {
     icon: "/logo-circular.png",

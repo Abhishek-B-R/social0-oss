@@ -1,33 +1,24 @@
 import type { MetadataRoute } from "next";
 
-const baseUrl =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://social0.app";
-
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
-      url: baseUrl,
+      url: "https://social0.app",
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 1,
     },
     {
-      url: `${baseUrl}/auth`,
+      url: "https://social0.app/privacy",
       lastModified: new Date(),
       changeFrequency: "monthly",
-      priority: 0.9,
+      priority: 0.3,
     },
     {
-      url: `${baseUrl}/privacy`,
+      url: "https://social0.app/terms",
       lastModified: new Date(),
       changeFrequency: "monthly",
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/terms`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.5,
+      priority: 0.3,
     },
   ];
 }

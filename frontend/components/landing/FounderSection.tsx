@@ -15,7 +15,7 @@ export function FounderSection() {
             >
               <img
                 src="/pfp.jpg"
-                alt="Abhishek"
+                alt="Abhishek, founder of Social0"
                 className="h-full w-full object-cover"
               />
             </div>

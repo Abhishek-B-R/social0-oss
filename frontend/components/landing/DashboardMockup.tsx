@@ -52,7 +52,10 @@ const stats = [
 
 export function DashboardMockup() {
   return (
-    <section className="px-6 pb-24 lg:px-8">
+    <section
+      className="px-6 pb-24 lg:px-8"
+      aria-label="Social0 dashboard showing post scheduling across multiple platforms"
+    >
       <div className="mx-auto max-w-[1100px]">
         {/* Light mode: dark mockup, Dark mode: light mockup */}
         <div className="mt-16 overflow-hidden rounded-2xl border border-black/[0.08] bg-[#0A0A0A] shadow-[0_40px_80px_rgba(0,0,0,0.18)] dark:border-border dark:bg-[#FAFAF8] dark:shadow-[0_40px_80px_rgba(0,0,0,0.4)]">

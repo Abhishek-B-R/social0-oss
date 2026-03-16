@@ -5,8 +5,10 @@ import { DOCS_PRIVACY_URL } from "@/lib/docs-url";
 import { MdQuestionMark } from "react-icons/md";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Social0",
-  description: "Privacy policy for Social0.",
+  title: "Privacy Policy | Social0 — Social Media Scheduling Tool",
+  description:
+    "Read the Social0 privacy policy. Learn how we collect, use, and protect your data when you use our social media scheduling platform.",
+  alternates: { canonical: "https://social0.app/privacy" },
 };
 
 export default function PrivacyPage() {

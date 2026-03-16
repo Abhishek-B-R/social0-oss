@@ -164,13 +164,14 @@ function AuthPageContent() {
       </header>
 
       <main className="flex-1 relative flex items-center justify-center px-4 py-12">
+        <h1 className="sr-only">Sign in to Social0</h1>
         <div className="absolute inset-0 bg-gradient-radial from-emerald-100/50 via-emerald-50/30 to-transparent pointer-events-none dark:from-emerald-950/30 dark:via-emerald-950/15" />
         <div className="relative z-10 w-full max-w-md">
           <div className="rounded-2xl border border-border bg-card shadow-xl p-8 sm:p-10">
             <div className="text-center mb-6">
-              <h1 className="text-2xl font-bold text-foreground mb-2">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
                 {mode === "signin" ? "Sign in to Social0" : "Create an account"}
-              </h1>
+              </h2>
               <p className="text-sm text-muted-foreground">
                 {mode === "signin"
                   ? "Plan, schedule, and publish to all your social accounts."
@@ -368,6 +369,20 @@ function AuthPageContent() {
               <FcGoogle className="h-5 w-5 shrink-0" aria-hidden="true" />
               <span>Google</span>
             </button>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <Link href="/" className="underline hover:text-foreground transition-colors">
+              Back to homepage
+            </Link>
+            <span className="text-border">·</span>
+            <Link href="/privacy" className="underline hover:text-foreground transition-colors">
+              Privacy Policy
+            </Link>
+            <span className="text-border">·</span>
+            <Link href="/terms" className="underline hover:text-foreground transition-colors">
+              Terms of Service
+            </Link>
           </div>
 
           <p className="mt-8 text-center text-xs text-muted-foreground">

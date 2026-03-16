@@ -112,7 +112,7 @@ export function LandingHeader() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={user.image}
-                  alt=""
+                  alt="User profile photo"
                   className="h-7 w-7 rounded-full object-cover"
                   referrerPolicy="no-referrer"
                 />
@@ -191,7 +191,7 @@ export function LandingHeader() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={user.image}
-                    alt=""
+                    alt="User profile photo"
                     className="h-7 w-7 rounded-full object-cover"
                     referrerPolicy="no-referrer"
                   />
