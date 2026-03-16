@@ -7,7 +7,6 @@ import {
   runTokenHealthCheck,
   filterAccountsNeedingHealthCheck,
   BATCH_SIZE,
-  type AccountForHealthCheck,
 } from "@/lib/token-health";
 
 export const dynamic = "force-dynamic";

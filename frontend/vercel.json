@@ -3,7 +3,6 @@
     { "path": "/api/cron/publish-scheduled", "schedule": "*/5 * * * *" },
     { "path": "/api/cron/repost", "schedule": "*/10 * * * *" },
     { "path": "/api/cron/autoplug", "schedule": "*/5 * * * *" },
-    { "path": "/api/cron/token-health", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/twitter-premium", "schedule": "0 5 * * *" }
+    { "path": "/api/cron/token-health", "schedule": "0 6 * * *" }
   ]
 }

@@ -26,7 +26,7 @@ This document describes **architecture rules**, **known mistakes** (what the AI 
   - **`app/api/`** — API routes only (REST-style or cron). No page components here.
     - **`app/api/billing/`** — Checkout, portal, sync, change-plan (Dodo Payments).
     - **`app/api/media/`** — `presign/` (get presigned PUT URL), `confirm/` (record upload after client PUT), `upload/` (deprecated; prefer presign + confirm).
-    - **`app/api/cron/`** — `publish-scheduled`, `repost`, `autoplug`, `token-health`, `twitter-premium` (daily X Premium status recheck).
+    - **`app/api/cron/`** — `publish-scheduled`, `repost`, `autoplug`, `token-health`.
     - **`app/api/auth/`** — Better Auth catch-all, subscription-check, sign-up-with-turnstile.
     - **`app/api/connect/`** — OAuth and BYOK (Bluesky); Instagram-Facebook, Facebook select.
     - **`app/api/webhooks/dodo/`** — Dodo Payments webhook for subscription events.
@@ -100,7 +100,7 @@ This document describes **architecture rules**, **known mistakes** (what the AI 
 ### 1.10 Twitter (X) Premium
 
 - **Character limit:** Connected Twitter accounts have `is_twitter_premium`; Premium allows up to 25,000 characters (non-Premium 280). Use `getLimitForAccount(account)` from `lib/platform-limits.ts` in UI and validation.
-- **Cron:** `app/api/cron/twitter-premium/route.ts` runs daily at 5 AM; rechecks Premium status via Twitter API and updates `connected_accounts.is_twitter_premium`.
+- **X Premium:** Set on connect (callback) and via user-triggered "Refresh Twitter Premium Status" on the connections page; `connected_accounts.is_twitter_premium`.
 
 ### 1.11 Canny feedback
 
@@ -214,7 +214,7 @@ Keep using `safeRedirect` (or an equivalent) whenever the redirect target can co
 - **Platform limits:** Respect platform-specific content length and media limits (e.g. Twitter 280 or 25k if Premium, TikTok/Instagram caption 2200, Bluesky 3000). Use `lib/platform-limits.ts` for UI and `lib/publish-validation.ts` for server (`CONTENT_LIMITS`, `MAX_MEDIA_IDS`, etc.). Validate before publish and in the UI.
 - **Plan limits:** Enforce `checkAccountLimits` before allowing new account connections; enforce `checkTwitterTweetLimit` before publishing to Twitter; gate bulk tools, auto-plug, and resurface by plan via `lib/plan-limits.ts`.
 - **Rate limits:** `lib/ratelimit.ts` uses Upstash Redis for optional rate limiting on API, OAuth, and presign routes. Prefer not to burst large numbers of requests to a single platform.
-- **Cron:** Vercel Cron has limits on frequency and duration. Crons (see `frontend/vercel.json`): `publish-scheduled`, `repost`, `autoplug` (daily midnight), `token-health` (daily 6 AM), `twitter-premium` (daily 5 AM). Keep them idempotent and within `maxDuration` (e.g. 60s for publish-scheduled).
+- **Cron:** Vercel Cron has limits on frequency and duration. Crons (see `frontend/vercel.json`): `publish-scheduled`, `repost`, `autoplug`, `token-health` (daily 6 AM). Keep them idempotent and within `maxDuration` (e.g. 60s for publish-scheduled).
 
 ### 3.4 Token management rules
 
@@ -248,7 +248,7 @@ On disconnect: revoke token on the platform (best effort), then hard-delete the 
 | Plan limits       | `lib/plan-limits.ts`: `checkAccountLimits`, `checkBulkToolsAllowed`, `checkAutoPlugAllowed`, `checkResurfaceAllowed`, `checkTwitterTweetLimit`. Subscription: `getSubscriptionForUser()`, `getPlanLimits(tier)` from `lib/plans.ts`. |
 | Token storage     | Encrypted in DB only; never log or send to client. |
 | Cron auth         | `lib/cron-auth.ts` — Bearer token + constant-time compare; skip only in development. |
-| Crons             | `vercel.json`: publish-scheduled, repost, autoplug (0 0 * * *); token-health (0 6 * * *); twitter-premium (0 5 * * *). |
+| Crons             | `vercel.json`: publish-scheduled, repost, autoplug; token-health (0 6 * * *). |
 | Token refresh     | `getValidToken()` in `lib/token-refresh.ts`; YouTube/TikTok auto-refresh before publish. |
 | Token health cron | `app/api/cron/token-health` runs daily at 6 AM via `lib/token-health.ts`. |
 | Rate limiting     | `lib/ratelimit.ts` (Upstash Redis); optional; presign uses upload limiter. |
@@ -258,7 +258,7 @@ On disconnect: revoke token on the platform (best effort), then hard-delete the 
 | BYOK              | Only Bluesky: `app/api/connect/bluesky/byok/route.ts`. |
 | Onboarding        | `app/actions/onboarding.ts`: `getOnboardingStatus()`, `setOnboardingCompleted()`. Dashboard layout redirects when `shouldOnboard` and not in connect flow. |
 | Billing           | Dodo: checkout, portal, sync, change-plan under `app/api/billing/`; webhook `app/api/webhooks/dodo` (sets/downgrades tier; does not call sync). `lib/billing-sync.ts`: `syncSubscriptionForUserId()` — when no active sub found, downgrades user to free. |
-| Twitter Premium   | `connected_accounts.is_twitter_premium`; cron `api/cron/twitter-premium`; char limit in `lib/platform-limits.ts`. |
+| Twitter Premium   | `connected_accounts.is_twitter_premium`; set on connect + manual refresh on connections page; char limit in `lib/platform-limits.ts`. |
 | Canny feedback    | SSO: `GET /api/canny/sso` (JWT with `env.CANNY_PRIVATE_KEY`). Page: `app/dashboard/feedback`; client uses `NEXT_PUBLIC_CANNY_BOARD_TOKEN`, Canny("render", { …, theme: "auto" }). Sidebar: Feedback → `/dashboard/feedback`. |
 | Migration safety  | Never edit existing `.sql` files; always `db:generate` for new migrations. |
 
