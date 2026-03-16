@@ -223,7 +223,7 @@ export function ConnectionsList({
                             profileImageUrl={account.profileImageUrl}
                             username={account.platformUsername}
                             platform={account.platform}
-                            isTwitterPremium={account.isTwitterPremium ?? false}
+                            isTwitterPremium={false}
                             size="sm"
                             className="shrink-0"
                           />
@@ -232,10 +232,18 @@ export function ConnectionsList({
                             account.platformUsername ? (
                               <>
                                 <span
-                                  className="truncate text-xs font-medium text-text"
+                                  className="flex items-center gap-1 truncate text-xs font-medium text-text"
                                   title={account.platformDisplayName}
                                 >
                                   {account.platformDisplayName}
+                                  {account.platform === "twitter_x" &&
+                                    account.isTwitterPremium && (
+                                      <img
+                                        src="/icons/twitter-premium.svg"
+                                        alt="X Premium"
+                                        className="h-3 w-3"
+                                      />
+                                    )}
                                 </span>
                                 <span
                                   className="truncate text-[10px] text-text-muted"
@@ -246,7 +254,7 @@ export function ConnectionsList({
                               </>
                             ) : (
                               <span
-                                className="truncate text-xs font-medium text-text max-w-[120px] sm:max-w-[160px]"
+                                className="flex items-center gap-1 truncate text-xs font-medium text-text max-w-[120px] sm:max-w-[160px]"
                                 title={
                                   account.platformUsername
                                     ? `@${account.platformUsername}`
@@ -254,6 +262,14 @@ export function ConnectionsList({
                                 }
                               >
                                 @{account.platformUsername || "user"}
+                                {account.platform === "twitter_x" &&
+                                  account.isTwitterPremium && (
+                                    <img
+                                      src="/icons/twitter-premium.svg"
+                                      alt="X Premium"
+                                      className="h-3 w-3"
+                                    />
+                                  )}
                               </span>
                             )}
                           </div>

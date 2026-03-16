@@ -228,16 +228,23 @@ function AutoPlugPanelInner({
                     profileImageUrl={xAccount?.profileImageUrl}
                     username={xAccount?.platformUsername}
                     platform="twitter_x"
-                    isTwitterPremium={xAccount?.isTwitterPremium ?? false}
+                    isTwitterPremium={false}
                     size="md"
                     className="h-10 w-10"
                   />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground">
+                  <p className="flex items-center gap-1 text-sm font-semibold text-foreground">
                     {xAccount?.platformUsername
                       ? `@${xAccount.platformUsername}`
                       : "X account"}
+                    {xAccount?.isTwitterPremium && (
+                      <img
+                        src="/icons/twitter-premium.svg"
+                        alt="X Premium"
+                        className="h-3.5 w-3.5"
+                      />
+                    )}
                   </p>
                   <p className="mt-0.5 text-sm text-foreground/80 whitespace-pre-wrap wrap-break-word">
                     {commentSlice || "Your reply will appear here."}

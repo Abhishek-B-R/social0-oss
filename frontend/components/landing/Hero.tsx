@@ -62,7 +62,7 @@ export function Hero() {
               </div>
               {/* Social proof — under CTA to reinforce action */}
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500/80" />
+                <span className="h-1.5 w-1.5 ml-2 shrink-0 rounded-full bg-emerald-500/80" />
                 Be among the first to try Social0
               </p>
             </div>
