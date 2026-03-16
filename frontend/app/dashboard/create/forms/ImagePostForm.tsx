@@ -1353,6 +1353,10 @@ export function ImagePostForm({
   };
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+  const previewAccount =
+    selectedAccounts.length > 0
+      ? selectedAccounts[selectedAccounts.length - 1]
+      : null;
   const uniquePlatformsFromSelection = useMemo(
     () => [...new Set(selectedAccounts.map((a) => a.platform))],
     [selectedAccounts],
@@ -2297,24 +2301,33 @@ export function ImagePostForm({
                   <div className="rounded-lg border border-border bg-bg p-3 shadow-sm">
                     <div className="flex gap-3">
                       <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-bg-muted flex items-center justify-center text-sm font-semibold text-text-muted">
-                        {selectedAccounts[0]?.profileImageUrl?.trim() ? (
+                        {previewAccount?.profileImageUrl?.trim() ? (
                           <img
-                            src={selectedAccounts[0].profileImageUrl}
+                            src={previewAccount.profileImageUrl}
                             alt=""
                             className="h-full w-full object-cover"
                             referrerPolicy="no-referrer"
                           />
                         ) : (
-                          (selectedAccounts[0]?.platformUsername ?? "?")
+                          (previewAccount?.platformUsername ?? "?")
                             .charAt(0)
                             .toUpperCase()
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-text">
-                          {selectedAccounts[0]?.platformUsername
-                            ? `@${selectedAccounts[0].platformUsername}`
-                            : "@username"}{" "}
+                        <p className="text-sm font-semibold text-text inline-flex items-center gap-0.5 flex-wrap">
+                          {previewAccount?.platformUsername
+                            ? `@${previewAccount.platformUsername}`
+                            : "@username"}
+                          {previewAccount?.platform === "twitter_x" &&
+                            previewAccount?.isTwitterPremium && (
+                              <img
+                                src="/icons/twitter-premium.svg"
+                                alt=""
+                                className="h-3.5 w-3.5 shrink-0"
+                                aria-hidden
+                              />
+                            )}{" "}
                           <span className="font-normal text-text-muted">
                             · now
                           </span>

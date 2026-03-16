@@ -279,6 +279,10 @@ export function TextPostForm({
   }, [remember, selectedIds, persistSelection]);
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+  const previewAccount =
+    selectedAccounts.length > 0
+      ? selectedAccounts[selectedAccounts.length - 1]
+      : null;
   const selectedAccountIds = Array.from(selectedIds);
   const showCustomCaptionsSection = selectedIds.size >= 2;
   const platformDisplayName = (platformId: string) =>
@@ -1105,18 +1109,18 @@ export function TextPostForm({
               <div className="flex gap-3">
                 <div className="flex flex-col items-center shrink-0">
                   <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-muted text-sm font-semibold text-text-muted">
-                    {selectedAccounts[0]?.profileImageUrl?.trim() ? (
+                    {previewAccount?.profileImageUrl?.trim() ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
-                        src={selectedAccounts[0].profileImageUrl}
+                        src={previewAccount.profileImageUrl}
                         alt=""
                         className="h-full w-full object-cover"
                         referrerPolicy="no-referrer"
                       />
                     ) : (
                       (
-                        selectedAccounts[0]?.platformUsername ??
-                        selectedAccounts[0]?.platform ??
+                        previewAccount?.platformUsername ??
+                        previewAccount?.platform ??
                         "A"
                       )
                         .charAt(0)
@@ -1125,10 +1129,20 @@ export function TextPostForm({
                   </div>
                 </div>
                 <div className="min-w-0 flex-1 max-h-[320px] overflow-y-auto">
-                  <p className="text-sm font-semibold text-text shrink-0">
-                    {selectedAccounts[0]?.platformUsername
-                      ? `@${selectedAccounts[0].platformUsername}`
-                      : (selectedAccounts[0]?.platform ?? "Account")}
+                  <p className="text-sm font-semibold text-text shrink-0 inline-flex items-center gap-0.5 flex-wrap">
+                    {previewAccount?.platformUsername
+                      ? `@${previewAccount.platformUsername}`
+                      : (previewAccount?.platform ?? "Account")}
+                    {previewAccount?.platform === "twitter_x" &&
+                      previewAccount?.isTwitterPremium && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src="/icons/twitter-premium.svg"
+                          alt=""
+                          className="h-3.5 w-3.5 shrink-0"
+                          aria-hidden
+                        />
+                      )}
                   </p>
                   {content.trim() ? (
                     <p className="mt-0.5 text-sm text-text whitespace-pre-wrap wrap-break-word">

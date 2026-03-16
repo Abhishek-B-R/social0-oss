@@ -1171,6 +1171,10 @@ export function ThreadsPostForm({
   };
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+  const previewAccount =
+    selectedAccounts.length > 0
+      ? selectedAccounts[selectedAccounts.length - 1]
+      : null;
   const selectedAccountIds = Array.from(selectedIds);
   const hasXForResurface =
     getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
@@ -2154,10 +2158,10 @@ export function ThreadsPostForm({
               <div className="max-h-[350px] overflow-y-auto space-y-0">
                 {posts.map((post, index) => {
                   const displayName =
-                    selectedAccounts[0]?.platformUsername != null
-                      ? `@${selectedAccounts[0].platformUsername}`
+                    previewAccount?.platformUsername != null
+                      ? `@${previewAccount.platformUsername}`
                       : "@username";
-                  const initial = (selectedAccounts[0]?.platformUsername ?? "A")
+                  const initial = (previewAccount?.platformUsername ?? "A")
                     .charAt(0)
                     .toUpperCase();
                   const hasContent =
@@ -2173,10 +2177,10 @@ export function ThreadsPostForm({
                     <div key={post.id} className="flex gap-3">
                       <div className="flex flex-col items-center">
                         <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-muted text-sm font-semibold text-text-muted">
-                          {selectedAccounts[0]?.profileImageUrl?.trim() ? (
+                          {previewAccount?.profileImageUrl?.trim() ? (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img
-                              src={selectedAccounts[0].profileImageUrl}
+                              src={previewAccount.profileImageUrl}
                               alt=""
                               className="h-full w-full object-cover"
                               referrerPolicy="no-referrer"
@@ -2190,8 +2194,17 @@ export function ThreadsPostForm({
                         )}
                       </div>
                       <div className="min-w-0 flex-1 pb-4">
-                        <p className="text-sm font-semibold text-text">
+                        <p className="text-sm font-semibold text-text inline-flex items-center gap-0.5 flex-wrap">
                           {displayName}
+                          {previewAccount?.platform === "twitter_x" &&
+                            previewAccount?.isTwitterPremium && (
+                              <img
+                                src="/icons/twitter-premium.svg"
+                                alt=""
+                                className="h-3.5 w-3.5 shrink-0"
+                                aria-hidden
+                              />
+                            )}
                         </p>
                         {hasContent ? (
                           <>
