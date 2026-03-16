@@ -11,7 +11,7 @@ const targetPlatforms = [
   { icon: ThreadsIcon, name: "Threads" },
 ];
 
-export function Hero() {
+export function Hero({ signedIn = false }: { signedIn?: boolean }) {
   return (
     <section className="px-6 pb-8 pt-20 lg:px-8 lg:pt-28">
       <div className="mx-auto max-w-[1180px]">
@@ -49,15 +49,15 @@ export function Hero() {
             <div className="flex flex-col gap-4">
               <div className="flex flex-wrap items-center gap-4">
                 <Link
-                  href="/auth"
+                  href={signedIn ? "/dashboard" : "/auth"}
                   className="inline-flex items-center gap-2 rounded-[10px] bg-foreground px-7 py-3.5 text-[15px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
                 >
-                  Start for free
+                  {signedIn ? "Go to dashboard" : "Start for free"}
                   <span aria-hidden="true">→</span>
                 </Link>
                 <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <CheckCircle className="h-3.5 w-3.5" /> No credit card
-                  required
+                  <CheckCircle className="h-3.5 w-3.5" /> 7-day free trial ·
+                  Cancel anytime
                 </span>
               </div>
               {/* Social proof — under CTA to reinforce action */}

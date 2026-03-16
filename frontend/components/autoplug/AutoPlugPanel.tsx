@@ -200,6 +200,17 @@ function AutoPlugPanelInner({
             </div>
           </div>
 
+          {xAccount && (
+            <p className="text-xs text-muted-foreground">
+              Auto-Plug will watch{" "}
+              {xAccount.platformUsername
+                ? `@${xAccount.platformUsername}`
+                : "your X account"}
+              {"'"}s tweet. If you selected more than one X account, it uses the
+              first one.
+            </p>
+          )}
+
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">
               Reply automatically with:

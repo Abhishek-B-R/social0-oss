@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -9,7 +10,7 @@ import { AccountAvatar } from "@/components/AccountAvatar";
 import { ConnectPlatformButton } from "./ConnectPlatformButton";
 import { DisconnectAccountModal } from "./DisconnectAccountModal";
 import { AlertTriangle, X, RefreshCw } from "lucide-react";
-import { IconCrown } from "@tabler/icons-react";
+import { IconCrown, IconLoader2 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import DocsInfoIcon from "../info-icon";
 import { DOCS_CONNECTIONS_URL } from "@/lib/docs-url";
@@ -61,6 +62,9 @@ export function ConnectionsList({
   );
   const [disconnectLabel, setDisconnectLabel] = useState("");
   const [refreshingAllPremium, setRefreshingAllPremium] = useState(false);
+  const [premiumRefreshError, setPremiumRefreshError] = useState<string | null>(
+    null,
+  );
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -79,6 +83,7 @@ export function ConnectionsList({
   const reauthStatus = searchParams.get("reauth");
 
   const handleRefreshAllPremium = async () => {
+    setPremiumRefreshError(null);
     setRefreshingAllPremium(true);
     try {
       const res = await fetch("/api/connect/refresh-twitter-premium", {
@@ -86,9 +91,15 @@ export function ConnectionsList({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Failed to refresh premium status");
+        const message = data.error ?? "Failed to refresh premium status";
+        setPremiumRefreshError(message);
+        return;
       }
       router.refresh();
+    } catch (err) {
+      setPremiumRefreshError(
+        err instanceof Error ? err.message : "Failed to refresh premium status",
+      );
     } finally {
       setRefreshingAllPremium(false);
     }
@@ -127,6 +138,19 @@ export function ConnectionsList({
             connection.
           </p>
         )}
+        {premiumRefreshError && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+            <span>{premiumRefreshError}</span>
+            <button
+              type="button"
+              onClick={() => setPremiumRefreshError(null)}
+              className="shrink-0 rounded p-0.5 transition-colors hover:bg-amber-500/20 dark:hover:bg-amber-500/20"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <h2 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
             Connected Accounts
@@ -153,7 +177,8 @@ export function ConnectionsList({
               </>
             ) : (
               <>
-                You&apos;ve reached your {accountLimit!.limitTotal} account limit.{" "}
+                You&apos;ve reached your {accountLimit!.limitTotal} account
+                limit.{" "}
                 <Link
                   href="/dashboard/billing"
                   className="font-medium underline underline-offset-2 hover:no-underline"
@@ -340,13 +365,16 @@ export function ConnectionsList({
                 )}
                 title="Recheck X Premium status for all connected Twitter accounts"
               >
-                <IconCrown
-                  className={cn(
-                    "h-4 w-4 text-amber-500",
-                    refreshingAllPremium && "animate-spin",
-                  )}
-                  strokeWidth={1.5}
-                />
+                {refreshingAllPremium ? (
+                  <span className="h-4 w-4 text-amber-500 flex items-center justify-center">
+                    <IconLoader2 className="animate-spin h-4 w-4" />
+                  </span>
+                ) : (
+                  <IconCrown
+                    className={cn("h-4 w-4 text-amber-500")}
+                    strokeWidth={1.5}
+                  />
+                )}
                 <span className={refreshingAllPremium ? "animate-pulse" : ""}>
                   Refresh Twitter Premium Status
                 </span>

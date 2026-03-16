@@ -1,3 +1,5 @@
+"use client";
+/* eslint-disable @next/next/no-img-element */
 import { XIcon } from "./PlatformIcons";
 
 export function FounderSection() {
@@ -7,9 +9,12 @@ export function FounderSection() {
         <div className="flex flex-col items-center gap-10 md:flex-row md:gap-16">
           {/* Photo */}
           <div className="relative shrink-0">
-            <div className="h-32 w-32 overflow-hidden rounded-full bg-muted dark:bg-muted/60">
+            <div
+              className="h-32 w-32 overflow-hidden rounded-full bg-muted dark:bg-muted/60"
+              onClick={() => window.open("https://x.com/abhitwt", "_blank")}
+            >
               <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/me-original-kHBh6EO4auYBHlL4qunshacNB27xMD.jpg"
+                src="/pfp.jpg"
                 alt="Abhishek"
                 className="h-full w-full object-cover"
               />
@@ -21,13 +26,57 @@ export function FounderSection() {
 
           {/* Content */}
           <div className="flex-1 text-center md:text-left">
-            {/* Pull quote - the most prominent element */}
-            <blockquote className="mb-8">
-              <p className="font-serif text-[clamp(24px,4vw,36px)] italic leading-snug tracking-tight text-foreground">
-                &ldquo;I got tired of copy-pasting the same tweet into 6
-                different tabs every morning. So I built this.&rdquo;
+            <h2 className="mb-4 font-serif text-[clamp(24px,3vw,32px)] tracking-tight text-foreground">
+              Why I built Social0
+            </h2>
+            <div className="mb-6 space-y-2 text-[16px] leading-relaxed text-muted-foreground">
+              <p>Every morning I opened the same tabs.</p>
+              <p className="text-muted-foreground/80 dark:text-muted-foreground/80">
+                Twitter. LinkedIn. Threads. Bluesky.
               </p>
-            </blockquote>
+              <p>
+                Just to post the{" "}
+                <strong className="font-semibold text-foreground">
+                  same update again and again
+                </strong>
+                .
+              </p>
+              <p>
+                Sometimes it meant opening{" "}
+                <strong className="font-semibold text-foreground">
+                  4–6 different tabs
+                </strong>{" "}
+                just to share one post.
+              </p>
+              <p>
+                Most tools started at{" "}
+                <strong className="font-semibold text-foreground">
+                  $50–$100/month
+                </strong>{" "}
+                or were packed with features I didn’t actually need.
+              </p>
+              <p>
+                The cheaper ones were{" "}
+                <strong className="font-semibold text-foreground">
+                  slow, buggy, or missing basic functionality
+                </strong>
+                .
+              </p>
+              <p>
+                I wanted something{" "}
+                <strong className="font-semibold text-emerald-700 dark:text-emerald-400">
+                  simple, fast, and affordable
+                </strong>
+                .
+              </p>
+              <p className="text-foreground">
+                So I built Social0 — a way to{" "}
+                <strong className="font-semibold text-emerald-700 dark:text-emerald-400">
+                  write once and publish everywhere
+                </strong>
+                .
+              </p>
+            </div>
 
             <div className="flex flex-col items-center gap-4 md:flex-row md:items-center md:gap-6">
               <div>
@@ -46,7 +95,7 @@ export function FounderSection() {
               <div className="hidden h-10 w-px bg-border md:block" />
               <div className="flex items-center gap-2 text-[14px] text-muted-foreground">
                 <span className="font-semibold text-foreground">6,500+</span>
-                <span>followers watching this get built</span>
+                <span>people following the journey</span>
               </div>
             </div>
           </div>
@@ -59,7 +108,7 @@ export function FounderSection() {
               9
             </div>
             <div className="text-[13px] text-muted-foreground">
-              platforms connected
+              platforms supported
             </div>
           </div>
           <div className="h-10 w-px bg-border" />
@@ -68,7 +117,7 @@ export function FounderSection() {
               1
             </div>
             <div className="text-[13px] text-muted-foreground">
-              solo founder
+              Built by a solo founder
             </div>
           </div>
         </div>

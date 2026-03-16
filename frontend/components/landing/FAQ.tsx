@@ -11,7 +11,7 @@ const faqs = [
   {
     question: "Is there a free trial?",
     answer:
-      "Yes! All plans include a 7-day free trial. No credit card required to start.",
+      "Yes! All plans include a 7-day free trial. Cancel anytime.",
   },
   {
     question: "Can I cancel anytime?",
@@ -19,9 +19,24 @@ const faqs = [
       "Absolutely. No contracts, no cancellation fees. You can cancel your subscription at any time from your dashboard.",
   },
   {
+    question: "Do I need to give Social0 my social media passwords?",
+    answer:
+      "No. Social0 connects using official OAuth integrations from each platform. You sign in directly with the platform and grant permission — we never see or store your passwords.",
+  },
+  {
+    question: "Can I connect multiple accounts per platform?",
+    answer:
+      "Yes. You can connect multiple accounts from the same platform and choose which ones to publish to for each post.",
+  },
+  {
     question: "How does parallel publishing work?",
     answer:
       "When you hit publish, Social0 sends your post to all selected platforms simultaneously. If one platform fails (API error, rate limit), the others still go through. You'll see exactly which succeeded and which failed.",
+  },
+  {
+    question: "What happens if a platform fails to publish?",
+    answer:
+      "If one platform fails (for example due to an API error or rate limit), the other platforms will still publish normally. You'll see exactly which platforms succeeded and which failed.",
   },
   {
     question: "Is my data secure?",
@@ -31,7 +46,7 @@ const faqs = [
   {
     question: "Who built Social0?",
     answer:
-      "Social0 is built by a solo founder who was tired of copy-pasting the same content across multiple browser tabs every day. This is a real product solving a real problem.",
+      "Social0 is built by an independent developer who posts online and wanted a faster way to publish across multiple platforms. The product is being continuously improved based on user feedback.",
   },
 ];
 

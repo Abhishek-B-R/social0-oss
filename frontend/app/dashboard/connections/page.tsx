@@ -8,13 +8,10 @@ import { Suspense } from "react";
 import { ConnectionsSkeleton } from "@/components/dashboard/ConnectionsSkeleton";
 import { OAuthErrorHandler } from "@/components/OAuthErrorHandler";
 import { ConnectionsList } from "@/components/dashboard/ConnectionsList";
-import {
-  runTokenHealthCheckForUser,
-  NEVER_EXPIRES_PLATFORMS,
-} from "@/lib/token-health";
+import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import { checkAccountLimits } from "@/lib/plan-limits";
-import { getTikTokCreatorInfo } from "@/lib/tiktok-creator-info";
-import { DOCS_CONNECTIONS_URL } from "@/lib/docs-url";
+
+/** Token health is updated by the token-health cron; do not block page load with API calls. */
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -49,7 +46,9 @@ async function ConnectionsContent() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/");
 
-  await runTokenHealthCheckForUser(session.user.id);
+  if (process.env.NODE_ENV === "development") {
+    console.time("connections: total");
+  }
 
   const [accounts, accountLimit] = await Promise.all([
     db.query.connectedAccounts.findMany({
@@ -71,15 +70,9 @@ async function ConnectionsContent() {
     checkAccountLimits(session.user.id, "linkedin"),
   ]);
 
-  const tiktokIds = accounts
-    .filter((a) => a.platform === "tiktok")
-    .map((a) => a.id);
-  const tiktokCreatorInfo = await Promise.all(
-    tiktokIds.map((id) => getTikTokCreatorInfo(id, session.user.id)),
-  );
-  const creatorInfoByAccountId = new Map(
-    tiktokIds.map((id, i) => [id, tiktokCreatorInfo[i] ?? null]),
-  );
+  if (process.env.NODE_ENV === "development") {
+    console.timeEnd("connections: total");
+  }
 
   return (
     <>
@@ -92,21 +85,11 @@ async function ConnectionsContent() {
             a.platform,
           );
           const expiresInDays = getExpiresInDays(a.tokenExpiresAt ?? null);
-          const creatorInfo =
-            a.platform === "tiktok" ? creatorInfoByAccountId.get(a.id) : null;
-          const platformUsername =
-            creatorInfo?.creator_username != null
-              ? creatorInfo.creator_username
-              : a.platformUsername;
-          const platformDisplayName =
-            a.platform === "tiktok" && creatorInfo?.creator_nickname != null
-              ? creatorInfo.creator_nickname
-              : undefined;
           return {
             id: a.id,
             platform: a.platform,
-            platformUsername,
-            platformDisplayName,
+            platformUsername: a.platformUsername,
+            platformDisplayName: undefined,
             profileImageUrl: a.profileImageUrl,
             isActive: a.isActive,
             isTwitterPremium: a.isTwitterPremium ?? false,

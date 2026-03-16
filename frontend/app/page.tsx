@@ -1,3 +1,5 @@
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Hero } from "@/components/landing/Hero";
 import { PlatformStrip } from "@/components/landing/PlatformStrip";
@@ -12,12 +14,14 @@ import { FAQ } from "@/components/landing/FAQ";
 import { FinalCTA } from "@/components/landing/FinalCTA";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const session = await auth.api.getSession({ headers: await headers() });
+
   return (
     <div className="min-h-screen bg-background landing">
       <LandingHeader />
       <main>
-        <Hero />
+        <Hero signedIn={!!session} />
         <PlatformStrip />
         <DashboardMockup />
         <WhoIsItFor />
@@ -25,9 +29,9 @@ export default function LandingPage() {
         <FeaturesSection />
         <SupportedPlatforms />
         <FounderSection />
-        <PricingSection />
+        <PricingSection signedIn={!!session} />
         <FAQ />
-        <FinalCTA />
+        <FinalCTA signedIn={!!session} />
       </main>
       <LandingFooter />
     </div>

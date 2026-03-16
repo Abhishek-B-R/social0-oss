@@ -3,7 +3,7 @@ import { Info } from "lucide-react";
 import { DOCS_FAIR_USAGE_URL } from "@/lib/docs-url";
 
 const starterFeatures = [
-  "Connect up to 5 accounts",
+  "Up to 5 connected accounts",
   "Multiple accounts per platform",
   "Unlimited posts",
   "Schedule posts across platforms",
@@ -40,7 +40,7 @@ const proFeatures = [
   { text: "Early access to new features", highlight: false },
 ];
 
-export function PricingSection() {
+export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
   return (
     <section id="pricing" className="px-6 py-24 lg:px-8">
       <div className="mx-auto max-w-[1100px]">
@@ -59,7 +59,7 @@ export function PricingSection() {
           <div className="text-right">
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-[13px] text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-400">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              Early adopter pricing — rates will increase
+              Early adopter pricing — early users keep this price forever
             </div>
           </div>
         </div>
@@ -112,14 +112,14 @@ export function PricingSection() {
                   ✓
                 </span>
                 <span className="text-[14px] leading-snug text-muted-foreground">
-                  Fair usage policiy applies for twitter/x posts
+                  Twitter/X posting limits apply
                 </span>
                 <a
                   href={DOCS_FAIR_USAGE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label="Fair usage policy (Twitter/X tweet limits)"
+                  aria-label="Twitter/X posting limits (API constraints)"
                 >
                   <Info className="h-3.5 w-3.5 shrink-0" />
                 </a>
@@ -127,14 +127,14 @@ export function PricingSection() {
             </ul>
 
             <Link
-              href="/auth"
+              href={signedIn ? "/dashboard" : "/auth"}
               className="block w-full rounded-[10px] border-2 border-foreground/10 bg-background py-3.5 text-center text-[14px] font-medium text-foreground transition-all hover:border-foreground/25 hover:bg-muted dark:border-white/10 dark:hover:border-white/20 dark:hover:bg-muted/50"
             >
-              Get started — 7-day free trial
+              {signedIn ? "Go to dashboard →" : "Get started — 7-day free trial"}
             </Link>
 
             <p className="mt-3 text-center text-[12px] text-muted-foreground">
-              No credit card required
+              7-day free trial · Cancel anytime
             </p>
           </div>
 
@@ -173,7 +173,7 @@ export function PricingSection() {
             </div>
 
             <p className="relative z-10 mb-8 text-[14px] leading-relaxed text-white/50 dark:text-[#0A0A0A]/60">
-              For serious creators who want to grow on autopilot.
+              For creators who want automation, reposting, and bulk scheduling.
             </p>
 
             <hr className="relative z-10 mb-8 border-white/[0.08] dark:border-[#0A0A0A]/10" />
@@ -198,14 +198,14 @@ export function PricingSection() {
                   ✓
                 </span>
                 <span className="text-white/50 dark:text-[#0A0A0A]/60">
-                  Fair usage policiy applies for twitter/x posts
+                  Twitter/X posting limits apply
                 </span>
                 <a
                   href={DOCS_FAIR_USAGE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label="Fair usage policy (Twitter/X tweet limits)"
+                  aria-label="Twitter/X posting limits (API constraints)"
                 >
                   <Info className="h-3.5 w-3.5 shrink-0" />
                 </a>
@@ -213,14 +213,14 @@ export function PricingSection() {
             </ul>
 
             <Link
-              href="/auth"
+              href={signedIn ? "/dashboard" : "/auth"}
               className="relative z-10 block w-full rounded-[10px] bg-emerald-600 py-3.5 text-center text-[14px] font-medium text-white transition-all hover:-translate-y-px hover:bg-emerald-500 hover:shadow-[0_6px_20px_rgba(34,145,79,0.35)]"
             >
-              Get started — 7-day free trial
+              {signedIn ? "Go to dashboard →" : "Get started — 7-day free trial"}
             </Link>
 
             <p className="relative z-10 mt-3 text-center text-[12px] text-white/25 dark:text-[#0A0A0A]/40">
-              No credit card required
+              7-day free trial · Cancel anytime
             </p>
           </div>
 
@@ -276,7 +276,7 @@ export function PricingSection() {
             </Link>
 
             <p className="mt-3 text-center text-[12px] text-muted-foreground">
-              No credit card required
+              7-day free trial · Cancel anytime
             </p>
           </div>
           */}

@@ -251,6 +251,12 @@ function AutoResurfacePanelInner({
             />
           </div>
 
+          <p className="text-xs text-muted-foreground">
+            Auto-Repost will requeue this X post
+            {subtitle ? ` for ${subtitle}` : ""}. If you posted to more than one
+            X account, it still uses a single tweet to avoid spammy behaviour.
+          </p>
+
           {extraIntervalHours.length < MAX_EXTRA_INTERVALS && (
             <button
               type="button"

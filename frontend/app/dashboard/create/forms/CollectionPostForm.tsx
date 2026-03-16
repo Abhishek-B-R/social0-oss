@@ -2039,13 +2039,14 @@ export function CollectionPostForm({
                           : "@username"}
                         {previewAccount?.platform === "twitter_x" &&
                           previewAccount?.isTwitterPremium && (
-                          <img
-                            src="/icons/twitter-premium.svg"
-                            alt=""
-                            className="h-3.5 w-3.5 shrink-0"
-                            aria-hidden
-                          />
-                        )}{" "}
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src="/icons/twitter-premium.svg"
+                              alt=""
+                              className="h-3.5 w-3.5 shrink-0"
+                              aria-hidden
+                            />
+                          )}{" "}
                         <span className="font-normal text-text-muted">
                           · now
                         </span>
