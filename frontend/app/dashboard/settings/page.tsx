@@ -17,6 +17,35 @@ export type SettingsConnection = {
   isTwitterPremium?: boolean;
 };
 
+/** Get UTC offset in minutes for a timezone (positive = east of UTC). Used for sorting. */
+function getTimezoneOffsetMinutes(tz: string): number {
+  try {
+    const parts = new Intl.DateTimeFormat("en", {
+      timeZone: tz,
+      timeZoneName: "longOffset",
+    }).formatToParts(new Date());
+    const tzPart = parts.find((p) => p.type === "timeZoneName")?.value ?? "";
+    const m = tzPart.replace(/^GMT\s*/i, "").trim();
+    if (!m || m === "") return 0;
+    const sign = m.startsWith("-") ? -1 : 1;
+    const numPart = m.replace(/^[+-]/, "");
+    const [h, min] = numPart.split(":").map((s) => parseInt(s ?? "0", 10));
+    return sign * (h * 60 + (min || 0));
+  } catch {
+    return 0;
+  }
+}
+
+/** Sort timezones by GMT offset (UTC first, then east, then west), then alphabetically by name. */
+function sortTimezonesByOffset(tzList: string[]): string[] {
+  return [...tzList].sort((a, b) => {
+    const offsetA = getTimezoneOffsetMinutes(a);
+    const offsetB = getTimezoneOffsetMinutes(b);
+    if (offsetA !== offsetB) return offsetA - offsetB;
+    return a.localeCompare(b);
+  });
+}
+
 export default async function SettingsPage() {
   const session = await auth.api.getSession({ headers: await headers() });
 
@@ -24,7 +53,7 @@ export default async function SettingsPage() {
     redirect("/");
   }
 
-  const timeZones =
+  const rawTimeZones =
     typeof Intl !== "undefined" && "supportedValuesOf" in Intl
       ? (
           Intl as unknown as { supportedValuesOf(key: "timeZone"): string[] }
@@ -39,6 +68,8 @@ export default async function SettingsPage() {
           "Asia/Tokyo",
           "Australia/Sydney",
         ];
+
+  const timeZones = sortTimezonesByOffset(rawTimeZones);
 
   const [settings, connections, credentialAccount] = await Promise.all([
     getUserSettingsSnapshot(),

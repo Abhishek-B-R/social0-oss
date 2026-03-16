@@ -46,9 +46,7 @@ async function ConnectionsContent() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/");
 
-  if (process.env.NODE_ENV === "development") {
-    console.time("connections: total");
-  }
+  const devStart = process.env.NODE_ENV === "development" ? Date.now() : 0;
 
   const [accounts, accountLimit] = await Promise.all([
     db.query.connectedAccounts.findMany({
@@ -70,8 +68,8 @@ async function ConnectionsContent() {
     checkAccountLimits(session.user.id, "linkedin"),
   ]);
 
-  if (process.env.NODE_ENV === "development") {
-    console.timeEnd("connections: total");
+  if (devStart) {
+    console.log("connections: total", `${Date.now() - devStart}ms`);
   }
 
   return (
