@@ -58,15 +58,15 @@ export function DashboardMockup() {
     >
       <div className="mx-auto max-w-[1100px]">
         {/* Light mode: dark mockup, Dark mode: light mockup */}
-        <div className="mt-16 overflow-hidden rounded-2xl border border-black/[0.08] bg-[#0A0A0A] shadow-[0_40px_80px_rgba(0,0,0,0.18)] dark:border-border dark:bg-[#FAFAF8] dark:shadow-[0_40px_80px_rgba(0,0,0,0.4)]">
+        <div className="mt-16 overflow-hidden rounded-2xl border border-black/8 bg-[#0A0A0A] shadow-[0_40px_80px_rgba(0,0,0,0.18)] dark:border-border dark:bg-[#FAFAF8] dark:shadow-[0_40px_80px_rgba(0,0,0,0.4)]">
           {/* Fake browser bar */}
-          <div className="flex items-center gap-2 border-b border-white/[0.06] bg-[#141414] px-5 py-3.5 dark:border-black/[0.06] dark:bg-[#F0EEE9]">
+          <div className="flex items-center gap-2 border-b border-white/6 bg-[#141414] px-5 py-3.5 dark:border-black/6 dark:bg-[#F0EEE9]">
             <div className="flex gap-1.5">
               <div className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]" />
               <div className="h-2.5 w-2.5 rounded-full bg-[#FFBD2E]" />
               <div className="h-2.5 w-2.5 rounded-full bg-[#28CA41]" />
             </div>
-            <div className="ml-3 rounded bg-white/[0.05] px-3 py-1 font-mono text-[11px] text-white/25 dark:bg-black/[0.05] dark:text-black/30">
+            <div className="ml-3 rounded bg-white/5 px-3 py-1 font-mono text-[11px] text-white/25 dark:bg-black/5 dark:text-black/30">
               social0.app/dashboard
             </div>
           </div>
@@ -74,7 +74,7 @@ export function DashboardMockup() {
           {/* Two-column layout */}
           <div className="grid gap-6 p-6 md:grid-cols-[260px_1fr]">
             {/* Sidebar — connected accounts */}
-            <div className="hidden rounded-xl border border-white/[0.06] bg-[#141414] p-4 dark:border-black/[0.06] dark:bg-[#F0EEE9] md:block">
+            <div className="hidden rounded-xl border border-white/6 bg-[#141414] p-4 dark:border-black/6 dark:bg-[#F0EEE9] md:block">
               <div className="mb-4 text-[10px] font-medium uppercase tracking-widest text-white/25 dark:text-black/40">
                 Connected
               </div>
@@ -82,7 +82,7 @@ export function DashboardMockup() {
                 {connectedAccounts.map((account) => (
                   <div key={account.handle} className="flex items-center gap-3">
                     <div
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#000] dark:bg-[#000]"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black dark:bg-black"
                       style={{ background: account.color }}
                     >
                       <account.icon className="h-4 w-4 text-white" />
@@ -104,7 +104,7 @@ export function DashboardMockup() {
             {/* Composer + stats */}
             <div className="space-y-4">
               {/* Composer box */}
-              <div className="rounded-xl border border-white/[0.06] bg-[#141414] p-5 dark:border-black/[0.06] dark:bg-[#F0EEE9]">
+              <div className="rounded-xl border border-white/6 bg-[#141414] p-5 dark:border-black/6 dark:bg-[#F0EEE9]">
                 <p className="mb-4 text-[14px] leading-relaxed text-white/80 dark:text-black/80">
                   Just shipped parallel publishing — all 9 platforms fire
                   simultaneously now. No queue, no waiting. If one fails the
@@ -119,7 +119,7 @@ export function DashboardMockup() {
                   {targetPlatforms.map((platform) => (
                     <span
                       key={platform.name}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] px-2.5 py-1 text-[11px] font-medium text-white/60 dark:bg-black/[0.06] dark:text-black/60"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white/8 px-2.5 py-1 text-[11px] font-medium text-white/60 dark:bg-black/6 dark:text-black/60"
                     >
                       <platform.icon className="h-3 w-3" />
                       {platform.name}
@@ -129,7 +129,7 @@ export function DashboardMockup() {
 
                 {/* Bottom row */}
                 <div className="flex items-center justify-between">
-                  <span className="rounded bg-white/[0.05] px-2.5 py-1 font-mono text-[11px] text-white/25 dark:bg-black/[0.05] dark:text-black/40">
+                  <span className="rounded bg-white/5 px-2.5 py-1 font-mono text-[11px] text-white/25 dark:bg-black/5 dark:text-black/40">
                     Tomorrow 9:00 AM IST
                   </span>
                   <button
@@ -146,7 +146,7 @@ export function DashboardMockup() {
                 {stats.map((stat) => (
                   <div
                     key={stat.label}
-                    className="rounded-xl border border-white/[0.06] bg-[#141414] p-4 dark:border-black/[0.06] dark:bg-[#F0EEE9]"
+                    className="rounded-xl border border-white/6 bg-[#141414] p-4 dark:border-black/6 dark:bg-[#F0EEE9]"
                   >
                     <div className="mb-1 font-mono text-[24px] font-medium text-white/90 dark:text-black/90">
                       {stat.value}

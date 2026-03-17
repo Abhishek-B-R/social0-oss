@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
+import { IconLoader2 } from "@tabler/icons-react";
 import { MdQuestionMark } from "react-icons/md";
 import { DOCS_ONBOARDING_URL } from "@/lib/docs-url";
+
+const PAYMENT_FAILED_MESSAGE =
+  "Payment failed. Please check your payment method and try again.";
 
 const STARTER_FEATURES = [
   "Connect up to 5 accounts",
@@ -49,11 +54,20 @@ const PRO_FEATURES = [
   "Early access to new features",
 ];
 
-export default function OnboardingPlanPage() {
+function OnboardingPlanContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [loadingPlan, setLoadingPlan] = useState<
     "starter" | "growth" | "pro" | null
   >(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("payment_failed") === "1") {
+      setError(PAYMENT_FAILED_MESSAGE);
+      router.replace("/onboarding", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   async function handleSelectPlan(plan: "starter" | "growth" | "pro") {
     setError(null);
@@ -138,9 +152,16 @@ export default function OnboardingPlanPage() {
             type="button"
             onClick={() => handleSelectPlan("starter")}
             disabled={loadingPlan !== null}
-            className="mt-6 w-full rounded-xl border-2 border-emerald-500 bg-transparent px-4 py-3 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 transition-colors"
+            className="mt-6 w-full rounded-xl border-2 border-emerald-500 bg-transparent px-4 py-3 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 transition-colors inline-flex items-center justify-center gap-2"
           >
-            {loadingPlan === "starter" ? "Redirecting…" : "Choose Starter"}
+            {loadingPlan === "starter" ? (
+              <>
+                <IconLoader2 className="h-4 w-4 shrink-0 animate-spin" strokeWidth={1.5} />
+                Redirecting to checkout…
+              </>
+            ) : (
+              "Choose Starter"
+            )}
           </button>
         </div>
 
@@ -168,9 +189,16 @@ export default function OnboardingPlanPage() {
             type="button"
             onClick={() => handleSelectPlan("growth")}
             disabled={loadingPlan !== null}
-            className="mt-6 w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+            className="mt-6 w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors inline-flex items-center justify-center gap-2"
           >
-            {loadingPlan === "growth" ? "Redirecting…" : "Choose Growth"}
+            {loadingPlan === "growth" ? (
+              <>
+                <IconLoader2 className="h-4 w-4 shrink-0 animate-spin" strokeWidth={1.5} />
+                Redirecting to checkout…
+              </>
+            ) : (
+              "Choose Growth"
+            )}
           </button>
         </div>
 
@@ -212,5 +240,13 @@ export default function OnboardingPlanPage() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function OnboardingPlanPage() {
+  return (
+    <Suspense fallback={null}>
+      <OnboardingPlanContent />
+    </Suspense>
   );
 }

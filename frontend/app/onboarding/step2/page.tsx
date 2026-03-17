@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { IconLoader2 } from "@tabler/icons-react";
 import confetti from "canvas-confetti";
 import { setOnboardingGoal } from "@/app/actions/onboarding";
 import { DOCS_ONBOARDING_GOAL_URL } from "@/lib/docs-url";
@@ -19,22 +20,38 @@ export default function OnboardingGoalPage() {
   const paid = searchParams.get("paid") === "1";
   const [selected, setSelected] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [paymentVerified, setPaymentVerified] = useState<boolean | null>(null);
+  const [verifying, setVerifying] = useState(false);
   const syncAttempted = useRef(false);
 
-  // After payment redirect, sync subscription from Dodo so step3 connect sees the plan (webhook may not have run yet)
+  // After payment redirect, sync subscription from Dodo. Only stay on step 2 if user has a paid plan in DB.
   useEffect(() => {
     if (!paid || syncAttempted.current) return;
     syncAttempted.current = true;
+    setVerifying(true);
     fetch("/api/billing/sync", { method: "POST", credentials: "include" })
       .then((res) => res.json())
       .then((data) => {
-        if (data?.ok === true) router.refresh();
+        const hasPaidTier =
+          data?.ok === true &&
+          data?.tier &&
+          data.tier !== "free";
+        setVerifying(false);
+        if (hasPaidTier) {
+          setPaymentVerified(true);
+          router.refresh();
+        } else {
+          router.replace("/onboarding?payment_failed=1");
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        setVerifying(false);
+        router.replace("/onboarding?payment_failed=1");
+      });
   }, [paid, router]);
 
   useEffect(() => {
-    if (paid) {
+    if (paid && paymentVerified) {
       const duration = 2_000;
       const end = Date.now() + duration;
       const frame = () => {
@@ -67,6 +84,15 @@ export default function OnboardingGoalPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  if (paid && verifying) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-24">
+        <IconLoader2 className="h-8 w-8 shrink-0 animate-spin text-accent" strokeWidth={1.5} />
+        <p className="text-sm text-muted-foreground">Confirming your subscription…</p>
+      </div>
+    );
   }
 
   return (

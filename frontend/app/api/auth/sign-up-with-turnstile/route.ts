@@ -7,7 +7,7 @@ const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/sit
 
 /**
  * Sign-up with Cloudflare Turnstile verification.
- * After signup, send OTP and redirect to verify-email (email/password only).
+ * Better Auth emailOTP plugin sends the verification OTP; we redirect to verify-email (email/password only).
  */
 export async function POST(request: Request) {
   const secret = env.TURNSTILE_SECRET_KEY;
@@ -73,23 +73,9 @@ export async function POST(request: Request) {
       }
     }
 
-    try {
-      await auth.api.sendVerificationOTP({
-        body: { email: normalizedEmail, type: "email-verification" },
-        headers: h,
-      });
-    } catch (otpError) {
-      const code = otpError && typeof (otpError as { code?: string }).code === "string"
-        ? (otpError as { code: string }).code
-        : "";
-      const benignCodes = ["USER_ALREADY_EXISTS", "EMAIL_ALREADY_VERIFIED"];
-      if (!benignCodes.includes(code)) {
-        throw otpError;
-      }
-      // Account already created; redirect so user can use Resend on verify-email page
-    }
+    // OTP is sent by Better Auth emailOTP plugin on sign-up (single send path); do not call sendVerificationOTP here to avoid duplicate emails.
 
-    const redirectUrl = new URL("/auth/verify-email", request.url);
+    const redirectUrl = new URL("/auth/verify-email", env.NEXT_PUBLIC_APP_URL);
     redirectUrl.searchParams.set("email", normalizedEmail);
     const res = NextResponse.redirect(redirectUrl);
     const setCookies = response.headers.getSetCookie?.() ?? [];

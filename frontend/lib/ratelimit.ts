@@ -45,3 +45,12 @@ export const twitterPremiumRefreshLimiter = redis
       prefix: "rl:twitter_premium_refresh",
     })
   : null;
+
+// Check-email (for sign-in "email not found" message): limit per IP to reduce enumeration
+export const checkEmailLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(30, "1 h"),
+      prefix: "rl:check_email",
+    })
+  : null;

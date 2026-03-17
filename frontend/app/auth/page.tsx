@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
+import { IconEye, IconEyeOff } from "@tabler/icons-react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { signIn } from "@/lib/auth-client";
 
@@ -24,6 +25,7 @@ function AuthPageContent() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleGoogleSignIn = () => {
     signIn.social({
@@ -36,14 +38,24 @@ function AuthPageContent() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    const normalizedEmail = email.trim().toLowerCase();
     try {
+      const checkRes = await fetch(
+        `/api/auth/check-email?email=${encodeURIComponent(normalizedEmail)}`,
+        { credentials: "include" },
+      );
+      const checkData = (await checkRes.json().catch(() => ({}))) as { exists?: boolean };
+      if (checkData.exists === false) {
+        setError("No account found with this email. Please sign up first.");
+        return;
+      }
       const { error: err } = await signIn.email({
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
         password,
         callbackURL: CALLBACK_URL,
       });
       if (err) {
-        setError(err.message ?? "Sign in failed");
+        setError(err.message ?? "Invalid email or password");
         return;
       }
       window.location.href = CALLBACK_URL;
@@ -251,15 +263,30 @@ function AuthPageContent() {
                       Forgot password?
                     </Link>
                   </div>
-                  <input
-                    id="signin-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    autoComplete="current-password"
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
+                  <div className="relative">
+                    <input
+                      id="signin-password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      autoComplete="current-password"
+                      placeholder="Enter a strong password"
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((p) => !p)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <IconEyeOff className="h-4 w-4" />
+                      ) : (
+                        <IconEye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
                 <button
@@ -315,17 +342,31 @@ function AuthPageContent() {
                   >
                     Password
                   </label>
-                  <input
-                    id="signup-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={8}
-                    autoComplete="new-password"
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    placeholder="At least 8 characters"
-                  />
+                  <div className="relative">
+                    <input
+                      id="signup-password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={8}
+                      autoComplete="new-password"
+                      placeholder="Enter a strong password"
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((p) => !p)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <IconEyeOff className="h-4 w-4" />
+                      ) : (
+                        <IconEye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
                 {TURNSTILE_SITE_KEY && (
                   <div className="flex justify-center">

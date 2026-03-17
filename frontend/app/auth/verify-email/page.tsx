@@ -15,7 +15,8 @@ function VerifyEmailContent() {
   const [email] = useState(decodeURIComponent(emailParam));
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const otpString = otp.join("");
@@ -39,7 +40,7 @@ function VerifyEmailContent() {
     e.preventDefault();
     if (otpString.length !== OTP_LENGTH) return;
     setError(null);
-    setLoading(true);
+    setVerifying(true);
     try {
       const { error: err } = await authClient.emailOtp.verifyEmail({
         email: email.trim().toLowerCase(),
@@ -49,18 +50,18 @@ function VerifyEmailContent() {
         setError("Invalid or expired code. Try again.");
         return;
       }
-      window.location.href = "/onboarding";
+      window.location.href = "/dashboard";
     } catch {
       setError("Invalid or expired code. Try again.");
     } finally {
-      setLoading(false);
+      setVerifying(false);
     }
   };
 
   const handleResend = async () => {
     if (resendCooldown > 0 || !email) return;
     setError(null);
-    setLoading(true);
+    setResending(true);
     try {
       const { error: err } = await authClient.emailOtp.sendVerificationOtp({
         email: email.trim().toLowerCase(),
@@ -74,7 +75,7 @@ function VerifyEmailContent() {
     } catch {
       setError("Failed to resend code.");
     } finally {
-      setLoading(false);
+      setResending(false);
     }
   };
 
@@ -183,10 +184,10 @@ function VerifyEmailContent() {
               )}
               <button
                 type="submit"
-                disabled={loading || otpString.length !== OTP_LENGTH}
+                disabled={verifying || resending || otpString.length !== OTP_LENGTH}
                 className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-3 px-4 transition-colors"
               >
-                {loading ? "Verifying…" : "Verify"}
+                {verifying ? "Verifying…" : "Verify"}
               </button>
             </form>
 
@@ -194,12 +195,14 @@ function VerifyEmailContent() {
               <button
                 type="button"
                 onClick={handleResend}
-                disabled={resendCooldown > 0 || loading}
+                disabled={resendCooldown > 0 || resending}
                 className="text-sm font-medium text-emerald-600 hover:text-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {resendCooldown > 0
                   ? `Resend code in ${resendCooldown}s`
-                  : "Resend code"}
+                  : resending
+                    ? "Sending…"
+                    : "Resend code"}
               </button>
             </div>
           </div>
