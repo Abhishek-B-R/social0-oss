@@ -152,7 +152,7 @@ export async function POST(request: Request) {
       {
         product_id: productId,
         quantity: 1,
-        proration_billing_mode: "difference_immediately",
+        proration_billing_mode: "prorated_immediately",
       },
     );
 

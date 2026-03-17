@@ -25,20 +25,20 @@ const growthFeatures = [
   { text: "Bulk scheduling tools", highlight: false },
 ];
 
-const proFeatures = [
-  { text: "Unlimited connected accounts", highlight: true },
-  { text: "Multiple accounts per platform", highlight: false },
-  { text: "Unlimited posts", highlight: false },
-  { text: "Schedule posts across platforms", highlight: false },
-  { text: "Carousel posts", highlight: false },
-  { text: "Threads & Collections support", highlight: false },
-  { text: "Human support", highlight: false },
-  { text: "Auto-plug high performing tweets", highlight: false },
-  { text: "Auto-repost on autopilot", highlight: false },
-  { text: "Bulk scheduling tools", highlight: false },
-  { text: "Priority support", highlight: false },
-  { text: "Early access to new features", highlight: false },
-];
+// const proFeatures = [
+//   { text: "Unlimited connected accounts", highlight: true },
+//   { text: "Multiple accounts per platform", highlight: false },
+//   { text: "Unlimited posts", highlight: false },
+//   { text: "Schedule posts across platforms", highlight: false },
+//   { text: "Carousel posts", highlight: false },
+//   { text: "Threads & Collections support", highlight: false },
+//   { text: "Human support", highlight: false },
+//   { text: "Auto-plug high performing tweets", highlight: false },
+//   { text: "Auto-repost on autopilot", highlight: false },
+//   { text: "Bulk scheduling tools", highlight: false },
+//   { text: "Priority support", highlight: false },
+//   { text: "Early access to new features", highlight: false },
+// ];
 
 export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
   return (
@@ -130,7 +130,9 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
               href={signedIn ? "/dashboard" : "/auth"}
               className="block w-full rounded-[10px] border-2 border-foreground/10 bg-background py-3.5 text-center text-[14px] font-medium text-foreground transition-all hover:border-foreground/25 hover:bg-muted dark:border-white/10 dark:hover:border-white/20 dark:hover:bg-muted/50"
             >
-              {signedIn ? "Go to dashboard →" : "Get started — 7-day free trial"}
+              {signedIn
+                ? "Go to dashboard →"
+                : "Get started — 7-day free trial"}
             </Link>
 
             <p className="mt-3 text-center text-[12px] text-muted-foreground">
@@ -176,7 +178,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
               For creators who want automation, reposting, and bulk scheduling.
             </p>
 
-            <hr className="relative z-10 mb-8 border-white/[0.08] dark:border-[#0A0A0A]/10" />
+            <hr className="relative z-10 mb-8 border-white/8 dark:border-[#0A0A0A]/10" />
 
             <ul className="relative z-10 mb-10 flex-1 space-y-4">
               {growthFeatures.map((item) => (
@@ -216,7 +218,9 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
               href={signedIn ? "/dashboard" : "/auth"}
               className="relative z-10 block w-full rounded-[10px] bg-emerald-600 py-3.5 text-center text-[14px] font-medium text-white transition-all hover:-translate-y-px hover:bg-emerald-500 hover:shadow-[0_6px_20px_rgba(34,145,79,0.35)]"
             >
-              {signedIn ? "Go to dashboard →" : "Get started — 7-day free trial"}
+              {signedIn
+                ? "Go to dashboard →"
+                : "Get started — 7-day free trial"}
             </Link>
 
             <p className="relative z-10 mt-3 text-center text-[12px] text-white/25 dark:text-[#0A0A0A]/40">

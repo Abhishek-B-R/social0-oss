@@ -10,6 +10,7 @@ import { OAuthErrorHandler } from "@/components/OAuthErrorHandler";
 import { ConnectionsList } from "@/components/dashboard/ConnectionsList";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import { checkAccountLimits } from "@/lib/plan-limits";
+import { syncConnectedAccountsToLimit } from "@/lib/plan-limits";
 
 /** Token health is updated by the token-health cron; do not block page load with API calls. */
 
@@ -47,6 +48,10 @@ async function ConnectionsContent() {
   if (!session) redirect("/");
 
   const devStart = process.env.NODE_ENV === "development" ? Date.now() : 0;
+
+  // Ensure connected_accounts.isActive matches the current plan tier.
+  // This makes upgrades immediately unlock previously over-limit accounts once the tier updates (webhook-driven).
+  await syncConnectedAccountsToLimit(session.user.id).catch(() => {});
 
   const [accounts, accountLimit] = await Promise.all([
     db.query.connectedAccounts.findMany({

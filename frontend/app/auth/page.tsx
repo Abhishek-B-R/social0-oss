@@ -44,7 +44,9 @@ function AuthPageContent() {
         `/api/auth/check-email?email=${encodeURIComponent(normalizedEmail)}`,
         { credentials: "include" },
       );
-      const checkData = (await checkRes.json().catch(() => ({}))) as { exists?: boolean };
+      const checkData = (await checkRes.json().catch(() => ({}))) as {
+        exists?: boolean;
+      };
       if (checkData.exists === false) {
         setError("No account found with this email. Please sign up first.");
         return;
@@ -228,6 +230,26 @@ function AuthPageContent() {
                 password.
               </p>
             )}
+
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              className="w-full inline-flex items-center justify-center gap-3 rounded-xl border border-border bg-background hover:bg-muted/50 text-foreground font-medium py-3 px-4 transition-colors"
+            >
+              <FcGoogle className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <span>Continue with Google</span>
+            </button>
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">
+                  OR CONTINUE WITH EMAIL
+                </span>
+              </div>
+            </div>
             {mode === "signin" ? (
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div>
@@ -278,7 +300,9 @@ function AuthPageContent() {
                       type="button"
                       onClick={() => setShowPassword((p) => !p)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
                     >
                       {showPassword ? (
                         <IconEyeOff className="h-4 w-4" />
@@ -358,7 +382,9 @@ function AuthPageContent() {
                       type="button"
                       onClick={() => setShowPassword((p) => !p)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
                     >
                       {showPassword ? (
                         <IconEyeOff className="h-4 w-4" />
@@ -390,38 +416,27 @@ function AuthPageContent() {
                 </button>
               </form>
             )}
-
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              className="w-full inline-flex items-center justify-center gap-3 rounded-xl border border-border bg-background hover:bg-muted/50 text-foreground font-medium py-3 px-4 transition-colors"
-            >
-              <FcGoogle className="h-5 w-5 shrink-0" aria-hidden="true" />
-              <span>Google</span>
-            </button>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            <Link href="/" className="underline hover:text-foreground transition-colors">
+            <Link
+              href="/"
+              className="underline hover:text-foreground transition-colors"
+            >
               Back to homepage
             </Link>
             <span className="text-border">·</span>
-            <Link href="/privacy" className="underline hover:text-foreground transition-colors">
+            <Link
+              href="/privacy"
+              className="underline hover:text-foreground transition-colors"
+            >
               Privacy Policy
             </Link>
             <span className="text-border">·</span>
-            <Link href="/terms" className="underline hover:text-foreground transition-colors">
+            <Link
+              href="/terms"
+              className="underline hover:text-foreground transition-colors"
+            >
               Terms of Service
             </Link>
           </div>

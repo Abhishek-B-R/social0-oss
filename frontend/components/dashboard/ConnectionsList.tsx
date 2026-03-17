@@ -262,6 +262,15 @@ export function ConnectionsList({
                             >
                               Upgrade to use this account
                             </Link>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDisconnect(account)}
+                              className="shrink-0 rounded p-0.5 text-destructive transition-colors hover:bg-destructive/10"
+                              title="Remove account"
+                              aria-label={`Disconnect ${account.platformUsername || account.platform}`}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
                           </div>
                         );
                       }

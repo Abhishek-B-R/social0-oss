@@ -2,14 +2,15 @@
 
 import { db } from "@/db";
 import { connectedAccounts, postPublications } from "@/db/schema";
-import { eq, and, sql, gte, asc, desc, inArray } from "drizzle-orm";
+import { eq, and, sql, gte, asc, inArray } from "drizzle-orm";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { getPlanLimits } from "@/lib/plans";
 
 /**
- * Sync connected_accounts.isActive to plan limit. Keeps the first N accounts active;
- * extra are marked isActive = false. Order: most recently used (lastSyncedAt) first,
- * then by createdAt, so recently used accounts are kept when over limit.
+ * Sync connected_accounts.isActive to plan limit.
+ * Keeps the first N accounts (by createdAt ASC — oldest first) active; extra
+ * are marked isActive = false. This ordering is GLOBAL across all platforms so
+ * limit behavior is deterministic and matches the composer account picker.
  */
 export async function syncConnectedAccountsToLimit(userId: string): Promise<void> {
   const sub = await getSubscriptionForUser(userId);
@@ -19,10 +20,7 @@ export async function syncConnectedAccountsToLimit(userId: string): Promise<void
     .select({ id: connectedAccounts.id })
     .from(connectedAccounts)
     .where(eq(connectedAccounts.userId, userId))
-    .orderBy(
-      desc(sql`COALESCE(${connectedAccounts.lastSyncedAt}, '1970-01-01'::timestamp)`),
-      asc(connectedAccounts.createdAt),
-    );
+    .orderBy(asc(connectedAccounts.createdAt));
 
   if (accounts.length === 0) return;
 

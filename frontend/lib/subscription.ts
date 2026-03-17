@@ -103,14 +103,13 @@ export async function setSubscription(
     data.tier === "starter" || data.tier === "growth" || data.tier === "pro";
 
   await db.execute(sql`
-      INSERT INTO user_settings (user_id, subscription_tier, subscription_expires_at, subscription_id, customer_id, has_used_trial, pending_plan_tier, subscription_cancel_at_period_end)
-      VALUES (${userId}, ${data.tier}, ${data.expiresAt}, ${data.subscriptionId}, ${data.customerId}, ${isPaidTier}, null, false)
+      INSERT INTO user_settings (user_id, subscription_tier, subscription_expires_at, subscription_id, customer_id, has_used_trial, subscription_cancel_at_period_end)
+      VALUES (${userId}, ${data.tier}, ${data.expiresAt}, ${data.subscriptionId}, ${data.customerId}, ${isPaidTier}, false)
       ON CONFLICT (user_id) DO UPDATE SET
         subscription_tier = EXCLUDED.subscription_tier,
         subscription_expires_at = EXCLUDED.subscription_expires_at,
         subscription_id = EXCLUDED.subscription_id,
         customer_id = EXCLUDED.customer_id,
-        pending_plan_tier = EXCLUDED.pending_plan_tier,
         has_used_trial = user_settings.has_used_trial OR EXCLUDED.has_used_trial,
         subscription_cancel_at_period_end = false
       WHERE
@@ -118,7 +117,6 @@ export async function setSubscription(
         OR user_settings.subscription_expires_at IS DISTINCT FROM EXCLUDED.subscription_expires_at
         OR user_settings.subscription_id IS DISTINCT FROM EXCLUDED.subscription_id
         OR user_settings.customer_id IS DISTINCT FROM EXCLUDED.customer_id
-        OR user_settings.pending_plan_tier IS DISTINCT FROM EXCLUDED.pending_plan_tier
         OR user_settings.subscription_cancel_at_period_end IS DISTINCT FROM false
     `);
 }
