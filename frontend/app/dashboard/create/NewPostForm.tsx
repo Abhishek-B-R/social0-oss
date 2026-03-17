@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { PLATFORMS } from "@/lib/platforms";
@@ -141,7 +142,11 @@ export function NewPostForm({
         </div>
         {accounts.length === 0 ? (
           <p className="text-sm text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 rounded-xl p-4 border border-amber-100 dark:border-amber-800/60">
-            Connect at least one account from the dashboard to post.
+            Connect at least one account from the{" "}
+            <Link href="/dashboard/connections" className="font-medium underline hover:no-underline">
+              connections
+            </Link>{" "}
+            page to post.
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

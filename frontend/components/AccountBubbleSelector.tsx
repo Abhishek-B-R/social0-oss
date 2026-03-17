@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { cn } from "@/lib/utils";
@@ -72,15 +73,21 @@ export function AccountBubbleSelector({
       <p className="rounded-xl border border-amber-100 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/40 p-4 text-sm text-amber-700 dark:text-amber-200">
         {platformList ? (
           <>
-            Connect at least one account from the dashboard that supports this
-            form to post.
+            Connect at least one account from the{" "}
+            <Link href="/dashboard/connections" className="font-medium underline hover:no-underline">
+              connections
+            </Link>{" "}
+            page that supports this form to post.
             <br />
             Supported platforms: {platformList}.
           </>
         ) : (
           <>
-            Connect at least one account from the dashboard that supports this
-            form to post.
+            Connect at least one account from the{" "}
+            <Link href="/dashboard/connections" className="font-medium underline hover:no-underline">
+              connections
+            </Link>{" "}
+            page that supports this form to post.
           </>
         )}
       </p>

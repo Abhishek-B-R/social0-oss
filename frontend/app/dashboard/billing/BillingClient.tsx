@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { IconLoader2 } from "@tabler/icons-react";
 import type { SubscriptionState } from "@/lib/subscription";
 import type {
   AccountLimitResult,
@@ -34,6 +36,8 @@ export function BillingClient({
   dateFormat = "dd/MM/yyyy",
   timezone,
 }: BillingClientProps) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [loadingPlan, setLoadingPlan] = useState<
     "starter" | "growth" | "pro" | null
   >(null);
@@ -41,9 +45,23 @@ export function BillingClient({
     "starter" | "growth" | "pro" | null
   >(null);
   const [error, setError] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
   const [waitingForWebhook, setWaitingForWebhook] = useState(
     Boolean(justSubscribed && subscription.tier === "free"),
   );
+
+  // After return from checkout (?success=1): sync from Dodo, then refresh and clear URL
+  useEffect(() => {
+    const success = searchParams.get("success");
+    if (success !== "1") return;
+    setVerifying(true);
+    fetch("/api/billing/sync", { method: "POST", credentials: "include" })
+      .then(() => {
+        router.replace("/dashboard/billing");
+        router.refresh();
+      })
+      .finally(() => setVerifying(false));
+  }, [searchParams, router]);
 
   useEffect(() => {
     if (!waitingForWebhook) return;
@@ -129,7 +147,11 @@ export function BillingClient({
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
-        window.location.reload();
+        await fetch("/api/billing/sync", {
+          method: "POST",
+          credentials: "include",
+        }).catch(() => {});
+        router.refresh();
         return;
       }
       if (data.error === "no_active_subscription" && data.plan) {
@@ -175,6 +197,15 @@ export function BillingClient({
           </button>{" "}
           to sync your plan.
         </p>
+      </div>
+    );
+  }
+
+  if (verifying) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+        <IconLoader2 className="w-4 h-4 shrink-0 animate-spin" strokeWidth={1.5} />
+        Confirming your subscription...
       </div>
     );
   }
@@ -320,7 +351,15 @@ export function BillingClient({
                 className="mt-4 w-full rounded-lg border border-border bg-transparent px-4 py-1.5 text-sm font-medium text-text-muted hover:bg-bg-muted disabled:opacity-50 transition-colors"
               >
                 {loadingChangePlan === "starter"
-                  ? "Changing…"
+                  ? (
+                      <span className="inline-flex items-center justify-center gap-2">
+                        <IconLoader2
+                          className="h-4 w-4 shrink-0 animate-spin"
+                          strokeWidth={1.5}
+                        />
+                        Updating...
+                      </span>
+                    )
                   : "Downgrade to Starter"}
               </button>
             ) : (
@@ -398,7 +437,15 @@ export function BillingClient({
                 className="mt-4 w-full rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50 transition-colors"
               >
                 {loadingChangePlan === "growth"
-                  ? "Upgrading…"
+                  ? (
+                      <span className="inline-flex items-center justify-center gap-2">
+                        <IconLoader2
+                          className="h-4 w-4 shrink-0 animate-spin"
+                          strokeWidth={1.5}
+                        />
+                        Updating...
+                      </span>
+                    )
                   : "Upgrade to Growth"}
               </button>
             ) : subscription.tier === "pro" ? (
@@ -417,7 +464,15 @@ export function BillingClient({
                 className="mt-4 w-full rounded-lg border border-border bg-transparent px-4 py-1.5 text-sm font-medium text-text-muted hover:bg-bg-muted disabled:opacity-50 transition-colors"
               >
                 {loadingChangePlan === "growth"
-                  ? "Changing…"
+                  ? (
+                      <span className="inline-flex items-center justify-center gap-2">
+                        <IconLoader2
+                          className="h-4 w-4 shrink-0 animate-spin"
+                          strokeWidth={1.5}
+                        />
+                        Updating...
+                      </span>
+                    )
                   : "Downgrade to Growth"}
               </button>
             ) : (
@@ -472,7 +527,15 @@ export function BillingClient({
                 className="mt-4 w-full rounded-lg border-2 border-accent bg-transparent px-4 py-1.5 text-sm font-medium text-accent hover:bg-accent/10 disabled:opacity-50 transition-colors"
               >
                 {loadingChangePlan === "pro"
-                  ? "Upgrading…"
+                  ? (
+                      <span className="inline-flex items-center justify-center gap-2">
+                        <IconLoader2
+                          className="h-4 w-4 shrink-0 animate-spin"
+                          strokeWidth={1.5}
+                        />
+                        Updating...
+                      </span>
+                    )
                   : "Upgrade to Pro"}
               </button>
             ) : (

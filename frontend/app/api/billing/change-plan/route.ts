@@ -75,15 +75,45 @@ export async function POST(request: Request) {
       );
     }
 
-    await client.subscriptions.changePlan(row.subscriptionId, {
-      product_id: productId,
-      quantity: 1,
-      proration_billing_mode: "difference_immediately",
-    });
+    const dodoResponse = await client.subscriptions.changePlan(
+      row.subscriptionId,
+      {
+        product_id: productId,
+        quantity: 1,
+        proration_billing_mode: "difference_immediately",
+      },
+    );
+
+    // Dodo may return a checkout URL when user must complete payment on their hosted page
+    const raw = dodoResponse as Record<string, unknown>;
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[billing/change-plan] Dodo changePlan response keys:", raw ? Object.keys(raw) : "null");
+    }
+    const checkoutUrl =
+      typeof raw?.payment_link === "string"
+        ? raw.payment_link
+        : typeof raw?.checkout_url === "string"
+          ? raw.checkout_url
+          : typeof raw?.redirect_url === "string"
+            ? raw.redirect_url
+            : typeof raw?.url === "string"
+              ? raw.url
+              : null;
+
+    if (checkoutUrl) {
+      return NextResponse.json({ success: true, checkoutUrl });
+    }
     return NextResponse.json({ success: true });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Failed to change plan";
-    console.error("[billing/change-plan] Dodo changePlan error:", msg);
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to change plan";
+    const body =
+      error instanceof Error ? error.message : JSON.stringify(error);
+    console.error("[billing/change-plan] Dodo error full:", body);
+    // Log any response body if present (e.g. SDK error with response)
+    const err = error as Record<string, unknown> | undefined;
+    if (err && typeof err === "object" && err.response != null) {
+      console.error("[billing/change-plan] Dodo error response:", err.response);
+    }
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
