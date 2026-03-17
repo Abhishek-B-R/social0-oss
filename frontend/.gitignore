@@ -52,3 +52,4 @@ certificates
 
 # lock files (keep package-lock.json, remove bun.lock if using npm)
 bun.lock
+e2e/auth.json
