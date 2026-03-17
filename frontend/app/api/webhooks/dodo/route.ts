@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 import { Webhook } from "standardwebhooks";
+import DodoPayments from "dodopayments";
 import { db } from "@/db";
 import { user, userSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { setSubscription } from "@/lib/subscription";
+import { syncConnectedAccountsToLimit } from "@/lib/plan-limits";
 import { getTierFromProductId, PLAN_IDS } from "@/lib/plans";
 
 const webhookSecret = process.env.DODO_PAYMENTS_WEBHOOK_SECRET ?? "";
+const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
+const environment =
+  (process.env.DODO_PAYMENTS_ENVIRONMENT as "test_mode" | "live_mode") ??
+  "test_mode";
 
 type DodoSubscriptionData = {
   subscription_id?: string;
@@ -66,7 +72,9 @@ async function handleSubscriptionActiveOrUpdated(payload: {
     subscriptionId: data.subscription_id ?? null,
     customerId: data.customer?.customer_id ?? null,
   });
-  // Log without PII (no userId, no subscription_id in production logs)
+  await syncConnectedAccountsToLimit(userId).catch((e) =>
+    console.error("[dodo webhook] syncConnectedAccountsToLimit failed:", e),
+  );
   console.log("[dodo webhook] Subscription updated", { tier });
 }
 
@@ -98,6 +106,52 @@ async function handleSubscriptionCancelledOrExpired(payload: {
     subscriptionId: null,
     customerId: null,
   });
+  await syncConnectedAccountsToLimit(userId).catch((e) =>
+    console.error("[dodo webhook] syncConnectedAccountsToLimit failed:", e),
+  );
+}
+
+/**
+ * On subscription.renewed: if user had a pending downgrade scheduled, apply it
+ * now by calling Dodo changePlan, then clear pendingPlanTier. A subsequent
+ * plan_changed/updated webhook will update our DB with the new tier.
+ */
+async function handleSubscriptionRenewed(payload: {
+  data: DodoSubscriptionData;
+}) {
+  const data = payload.data;
+  const subscriptionId = data.subscription_id ?? null;
+  if (!subscriptionId || !apiKey) return;
+
+  const row = await db.query.userSettings.findFirst({
+    where: eq(userSettings.subscriptionId, subscriptionId),
+    columns: { userId: true, pendingPlanTier: true },
+  });
+  if (!row?.pendingPlanTier || (row.pendingPlanTier !== "starter" && row.pendingPlanTier !== "growth"))
+    return;
+
+  const productId =
+    row.pendingPlanTier === "starter"
+      ? PLAN_IDS.starter
+      : PLAN_IDS.growth;
+  if (!productId) return;
+
+  const client = new DodoPayments({ bearerToken: apiKey, environment });
+  try {
+    await client.subscriptions.changePlan(subscriptionId, {
+      product_id: productId,
+      quantity: 1,
+      proration_billing_mode: "prorated_immediately",
+    });
+    await db
+      .update(userSettings)
+      .set({ pendingPlanTier: null, downgradeReason: null })
+      .where(eq(userSettings.userId, row.userId));
+    console.log("[dodo webhook] Pending downgrade applied on renewal", { pendingPlanTier: row.pendingPlanTier });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Apply downgrade failed";
+    console.error("[dodo webhook] Failed to apply pending downgrade on renewal:", msg);
+  }
 }
 
 export async function POST(request: Request) {
@@ -139,10 +193,12 @@ export async function POST(request: Request) {
   const data = payload.data;
 
   try {
-    if (
+    if (eventType === "subscription.renewed" && data) {
+      await handleSubscriptionRenewed({ data });
+      await handleSubscriptionActiveOrUpdated({ data });
+    } else if (
       eventType === "subscription.active" ||
       eventType === "subscription.updated" ||
-      eventType === "subscription.renewed" ||
       eventType === "subscription.plan_changed"
     ) {
       if (data) await handleSubscriptionActiveOrUpdated({ data });

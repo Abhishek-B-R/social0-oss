@@ -279,6 +279,23 @@ export const userSettings = pgTable("user_settings", {
   hasUsedTrial: boolean("has_used_trial").default(false), // true once user has ever had a paid plan (trial or paid); used for messaging when limit is 0
   onboardingCompleted: boolean("onboarding_completed").default(false),
   onboardingGoal: text("onboarding_goal"),
+  /** Scheduled downgrade: target tier at period end (starter | growth). Cleared when cancelled or after switch. */
+  pendingPlanTier: text("pending_plan_tier"),
+  /** Downgrade feedback (captured before scheduling downgrade). */
+  downgradeReason: text("downgrade_reason"),
+  /** True when user cancelled; access until subscription_expires_at. Cleared when sub ends or user undoes cancel. */
+  subscriptionCancelAtPeriodEnd: boolean("subscription_cancel_at_period_end").default(false),
+});
+
+// ===== SUBSCRIPTION CANCELLATION FEEDBACK =====
+export const subscriptionCancellations = pgTable("subscription_cancellations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id")
+    .references(() => user.id, { onDelete: "cascade" })
+    .notNull(),
+  subscriptionId: text("subscription_id").notNull(),
+  reason: text("reason").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // ===== PLATFORM RATE LIMITS (optional) =====

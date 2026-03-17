@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
@@ -16,8 +17,8 @@ const environment =
 const client = new DodoPayments({ bearerToken: apiKey, environment });
 
 /**
- * Change plan for an existing subscription (upgrade or downgrade).
- * Uses difference_immediately: user pays/gets credited the price difference.
+ * Change plan (upgrade or schedule downgrade). Upgrade: charge difference now, optionally redirect to checkout.
+ * Downgrade: schedule at period end, store pending_plan in DB.
  */
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -26,9 +27,12 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const plan = body.plan as string | undefined;
-  // Pro tier commented out for now — add back later
-  if (plan !== "starter" && plan !== "growth" /* && plan !== "pro" */) {
+  const scheduleAtPeriodEnd = Boolean(body.scheduleAtPeriodEnd);
+  const plan =
+    body.plan === "starter" || body.plan === "growth" ? body.plan : null;
+  const reason =
+    typeof body.reason === "string" ? body.reason.trim().slice(0, 5000) : "";
+  if (!plan) {
     return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
   }
 
@@ -37,13 +41,12 @@ export async function POST(request: Request) {
       ? PLAN_IDS.starter
       : plan === "growth"
         ? PLAN_IDS.growth
-        : PLAN_IDS.pro; // unreachable while pro is commented out above
+        : "";
   if (!productId) {
-    return NextResponse.json(
-      { error: "Product not configured" },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: "Plan not configured" }, { status: 503 });
   }
+
+  const planTier = plan;
 
   if (!apiKey) {
     return NextResponse.json(
@@ -54,27 +57,96 @@ export async function POST(request: Request) {
 
   const row = await db.query.userSettings.findFirst({
     where: eq(userSettings.userId, session.user.id),
-    columns: { subscriptionId: true },
+    columns: {
+      subscriptionId: true,
+      subscriptionExpiresAt: true,
+      customerId: true,
+      subscriptionTier: true,
+    },
   });
 
   if (!row?.subscriptionId) {
     return NextResponse.json(
-      { error: "No active subscription found" },
+      { error: "no_active_subscription" },
       { status: 404 },
     );
   }
 
+  const currentTier = (row.subscriptionTier as string) ?? "free";
+  if (!scheduleAtPeriodEnd && currentTier === plan) {
+    const planLabel = plan === "growth" ? "Growth" : "Starter";
+    return NextResponse.json(
+      { error: `Already on ${planLabel} plan` },
+      { status: 400 },
+    );
+  }
+
   try {
-    // Verify subscription is active before calling changePlan (DB may have stale cancelled ID)
-    const subscription = await client.subscriptions.retrieve(row.subscriptionId);
-    const status = subscription.status ?? "";
-    if (status !== "active") {
+    if (scheduleAtPeriodEnd) {
+      // Don't call Dodo changePlan — defer downgrade until renewal. Store pending
+      // locally; webhook handler will call changePlan on subscription.renewed.
+      // Replace cancel with downgrade: clear cancel flag so only one intent applies.
+      if (reason.length > 0) {
+        try {
+          await db
+            .update(userSettings)
+            .set({ downgradeReason: reason })
+            .where(eq(userSettings.userId, session.user.id));
+        } catch (reasonErr) {
+          const reasonMsg =
+            reasonErr instanceof Error ? reasonErr.message : String(reasonErr);
+          if (!reasonMsg.toLowerCase().includes("downgrade_reason"))
+            throw reasonErr;
+        }
+      }
+      await db
+        .update(userSettings)
+        .set({
+          pendingPlanTier: planTier,
+          subscriptionCancelAtPeriodEnd: false,
+        })
+        .where(eq(userSettings.userId, session.user.id));
+      return NextResponse.json({ success: true, scheduled: true });
+    }
+
+    // Immediate upgrade: verify subscription is still active in Dodo before changing.
+    // IMPORTANT: Trial → upgrade must go through checkout so a payment is actually collected.
+    let subscription: { status?: string; previous_billing_date?: string | null } | null;
+    try {
+      subscription = await client.subscriptions.retrieve(row.subscriptionId);
+    } catch {
       return NextResponse.json(
-        { error: "no_active_subscription", plan },
-        { status: 422 },
+        { error: "no_active_subscription" },
+        { status: 404 },
+      );
+    }
+    const status = subscription?.status;
+    if (status !== "active" && status !== "on_hold") {
+      return NextResponse.json(
+        { error: "no_active_subscription" },
+        { status: 404 },
       );
     }
 
+    // Trial users (no previous_billing_date) must upgrade via checkout, not changePlan,
+    // otherwise they'd get premium without a confirmed payment.
+    const previousBillingDate =
+      subscription && "previous_billing_date" in subscription
+        ? subscription.previous_billing_date
+        : null;
+    const isTrialUpgrade = !previousBillingDate;
+    if (isTrialUpgrade) {
+      return NextResponse.json(
+        {
+          success: false,
+          requireCheckout: true,
+          error: "trial_upgrade_requires_checkout",
+        },
+        { status: 402 },
+      );
+    }
+
+    // Update the same subscription in-place (no new subscription created). Only one active subscription exists.
     const dodoResponse = await client.subscriptions.changePlan(
       row.subscriptionId,
       {
@@ -84,11 +156,66 @@ export async function POST(request: Request) {
       },
     );
 
-    // Dodo may return a checkout URL when user must complete payment on their hosted page
-    const raw = dodoResponse as Record<string, unknown>;
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[billing/change-plan] Dodo changePlan response keys:", raw ? Object.keys(raw) : "null");
+    if (process.env.BILLING_DEBUG === "1") {
+      console.log(
+        "[billing/change-plan] UPGRADE RESPONSE:",
+        JSON.stringify(dodoResponse, null, 2),
+      );
     }
+
+    // Dodo may not return proration details from changePlan. Pull the latest payment
+    // so the client can show what was actually charged and use its created_at for renewedAt.
+    let latestPayment: {
+      paymentId: string;
+      status?: string;
+      totalAmount?: number;
+      currency?: string;
+      invoiceUrl?: string;
+    } | null = null;
+    let renewedAt: string | null = null;
+    try {
+      const list = await (client.payments as any).list({
+        subscription_id: row.subscriptionId,
+        limit: 1,
+      });
+      const item = Array.isArray((list as any)?.items)
+        ? (list as any).items[0]
+        : null;
+      if (item && typeof item === "object") {
+        latestPayment = {
+          paymentId: String((item as any).payment_id ?? ""),
+          status:
+            typeof (item as any).status === "string"
+              ? (item as any).status
+              : undefined,
+          totalAmount:
+            typeof (item as any).total_amount === "number"
+              ? (item as any).total_amount
+              : undefined,
+          currency:
+            typeof (item as any).currency === "string"
+              ? (item as any).currency
+              : undefined,
+          invoiceUrl:
+            typeof (item as any).invoice_url === "string"
+              ? (item as any).invoice_url
+              : undefined,
+        };
+        const createdAt = (item as { created_at?: string }).created_at;
+        renewedAt =
+          typeof createdAt === "string" ? createdAt : new Date().toISOString();
+      } else {
+        renewedAt = new Date().toISOString();
+      }
+    } catch {
+      renewedAt = new Date().toISOString();
+    }
+
+    const rawUnknown = dodoResponse as unknown;
+    const raw =
+      rawUnknown && typeof rawUnknown === "object"
+        ? (rawUnknown as Record<string, unknown>)
+        : {};
     const checkoutUrl =
       typeof raw?.payment_link === "string"
         ? raw.payment_link
@@ -100,20 +227,28 @@ export async function POST(request: Request) {
               ? raw.url
               : null;
 
-    if (checkoutUrl) {
-      return NextResponse.json({ success: true, checkoutUrl });
+    return NextResponse.json({
+      success: true,
+      pending: true,
+      ...(checkoutUrl ? { checkoutUrl } : {}),
+      ...(latestPayment ? { latestPayment } : {}),
+      ...(renewedAt ? { renewedAt } : {}),
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Failed to change plan";
+    const is409 =
+      String(msg).includes("409") ||
+      String(msg).toLowerCase().includes("previous payment is not successful");
+    if (is409) {
+      return NextResponse.json(
+        {
+          error:
+            "Previous payment is not complete. Please wait a moment and try again.",
+        },
+        { status: 409 },
+      );
     }
-    return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Failed to change plan";
-    const body =
-      error instanceof Error ? error.message : JSON.stringify(error);
-    console.error("[billing/change-plan] Dodo error full:", body);
-    // Log any response body if present (e.g. SDK error with response)
-    const err = error as Record<string, unknown> | undefined;
-    if (err && typeof err === "object" && err.response != null) {
-      console.error("[billing/change-plan] Dodo error response:", err.response);
-    }
+    console.error("[billing/change-plan] Dodo error:", msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

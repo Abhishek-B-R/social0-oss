@@ -232,9 +232,39 @@ export function ConnectionsList({
                   </div>
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1.5">
                     {platformAccounts.map((account) => {
+                      const isInactive = account.isActive === false;
                       const isExpired = account.tokenStatus === "expired";
                       const isExpiringSoon =
                         account.tokenStatus === "expiring_soon";
+                      if (isInactive) {
+                        return (
+                          <div
+                            key={account.id}
+                            className="flex min-w-0 max-w-full flex-wrap items-center gap-1 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 opacity-75"
+                          >
+                            <AccountAvatar
+                              profileImageUrl={account.profileImageUrl}
+                              username={account.platformUsername}
+                              platform={account.platform}
+                              isTwitterPremium={false}
+                              size="sm"
+                              className="shrink-0"
+                            />
+                            <div className="min-w-0 flex flex-col justify-center">
+                              <span className="truncate text-xs font-medium text-muted-foreground max-w-[120px] sm:max-w-[160px]">
+                                @{account.platformUsername || "user"}
+                              </span>
+                            </div>
+                            <Link
+                              href="/dashboard/billing"
+                              className="shrink-0 inline-flex items-center gap-0.5 rounded border border-amber-500/50 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200 transition-colors hover:bg-amber-500/20"
+                              title="Upgrade to use this account"
+                            >
+                              Upgrade to use this account
+                            </Link>
+                          </div>
+                        );
+                      }
                       return (
                         <div
                           key={account.id}

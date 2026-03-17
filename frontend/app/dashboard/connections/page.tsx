@@ -50,10 +50,7 @@ async function ConnectionsContent() {
 
   const [accounts, accountLimit] = await Promise.all([
     db.query.connectedAccounts.findMany({
-      where: and(
-        eq(connectedAccounts.userId, session.user.id),
-        eq(connectedAccounts.isActive, true),
-      ),
+      where: eq(connectedAccounts.userId, session.user.id),
       columns: {
         id: true,
         platform: true,

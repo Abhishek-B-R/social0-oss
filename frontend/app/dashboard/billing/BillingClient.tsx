@@ -2,17 +2,63 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { IconLoader2 } from "@tabler/icons-react";
+import { IconLoader2, IconInfoCircle, IconX } from "@tabler/icons-react";
+import { toast } from "sonner";
 import type { SubscriptionState } from "@/lib/subscription";
 import type {
   AccountLimitResult,
   TwitterTweetLimitResult,
 } from "@/lib/plan-limits";
 import { formatDate } from "@/lib/date-format";
-import { Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { DOCS_FAIR_USAGE_URL } from "@/lib/docs-url";
 
 const POLL_INTERVAL_MS = 2000;
+
+function formatPreviewAmount(summary: {
+  total_amount: number;
+  currency: string;
+}): string {
+  const amount = (summary.total_amount / 100).toFixed(2);
+  const c = (summary.currency ?? "usd").toUpperCase();
+  if (c === "USD") return `$${amount}`;
+  return `${c} ${amount}`;
+}
+
+const STARTER_BILLING_FEATURES = [
+  "Connect up to 5 accounts",
+  "Multiple accounts per platform",
+  "Unlimited posts",
+  "Schedule posts across platforms",
+  "Carousel posts",
+  "Threads & Collections support",
+  "300 tweets/month (Twitter/X)",
+  "Human support",
+];
+
+const GROWTH_BILLING_FEATURES = [
+  "Connect up to 5 accounts",
+  "Multiple accounts per platform",
+  "Unlimited posts",
+  "Schedule posts across platforms",
+  "Carousel posts",
+  "Threads & Collections support",
+  "300 tweets/month (Twitter/X)",
+  "Up to 15 connected accounts",
+  "1,500 tweets/month (Twitter/X)",
+  "Auto-plug high performing tweets",
+  "Auto-repost on autopilot",
+  "Bulk scheduling tools",
+  "Human support",
+];
 const POLL_MAX_ATTEMPTS = 45; // ~1.5 min
 
 type BillingClientProps = {
@@ -38,29 +84,72 @@ export function BillingClient({
 }: BillingClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [loadingPlan, setLoadingPlan] = useState<
-    "starter" | "growth" | "pro" | null
+  const [verifying, setVerifying] = useState(false);
+  const [loading, setLoading] = useState<
+    "portal" | "pause" | "cancel" | "undoCancel" | null
+  >(null);
+  const [pauseOpen, setPauseOpen] = useState(false);
+  const [cancelStep, setCancelStep] = useState<0 | 1 | 2>(0);
+  const [cancelReason, setCancelReason] = useState("");
+  const [downgradeStep, setDowngradeStep] = useState<0 | 1 | 2>(0);
+  const [downgradeReason, setDowngradeReason] = useState("");
+  const [targetDowngradePlan, setTargetDowngradePlan] = useState<
+    "starter" | null
   >(null);
   const [loadingChangePlan, setLoadingChangePlan] = useState<
-    "starter" | "growth" | "pro" | null
+    "starter" | "growth" | null
   >(null);
-  const [error, setError] = useState<string | null>(null);
-  const [verifying, setVerifying] = useState(false);
+  const [upgradeConfirmOpen, setUpgradeConfirmOpen] = useState(false);
+  const [upgradeConfirmPlan, setUpgradeConfirmPlan] = useState<
+    "starter" | "growth" | null
+  >(null);
+  const [upgradePreview, setUpgradePreview] = useState<{
+    immediateCharge: { summary: { total_amount: number; currency: string } };
+  } | null>(null);
+  const [showRenewedTodayBanner] = useState(false);
+  const [renewedOnDate] = useState<Date | null>(null);
+  const [upgradePending, setUpgradePending] = useState(false);
   const [waitingForWebhook, setWaitingForWebhook] = useState(
     Boolean(justSubscribed && subscription.tier === "free"),
   );
 
-  // After return from checkout (?success=1): sync from Dodo, then refresh and clear URL
+  // After return from checkout (?success=1): verify plan actually changed by polling sync; stop after 3 attempts and clear URL
   useEffect(() => {
     const success = searchParams.get("success");
+    const status = searchParams.get("status");
+
+    if (success === "1" && status === "failed") {
+      router.replace("/dashboard/billing");
+      toast.error("Payment failed. Please try again.");
+      return;
+    }
+
     if (success !== "1") return;
+
     setVerifying(true);
-    fetch("/api/billing/sync", { method: "POST", credentials: "include" })
-      .then(() => {
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    const poll = async () => {
+      attempts++;
+
+      await fetch("/api/billing/sync", {
+        method: "POST",
+        credentials: "include",
+      });
+      router.refresh();
+
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      if (attempts < maxAttempts) {
+        setTimeout(poll, 2000);
+      } else {
+        setVerifying(false);
         router.replace("/dashboard/billing");
-        router.refresh();
-      })
-      .finally(() => setVerifying(false));
+      }
+    };
+
+    poll();
   }, [searchParams, router]);
 
   useEffect(() => {
@@ -114,56 +203,6 @@ export function BillingClient({
     return () => clearInterval(id);
   }, [waitingForWebhook]);
 
-  async function handleUpgrade(plan: "starter" | "growth" | "pro") {
-    setError(null);
-    setLoadingPlan(plan);
-    try {
-      const res = await fetch("/api/billing/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ plan }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.url) {
-        window.location.href = data.url;
-        return;
-      }
-      setError(data.error ?? "Failed to start checkout");
-    } finally {
-      setLoadingPlan(null);
-    }
-  }
-
-  async function handleChangePlan(plan: "starter" | "growth" | "pro") {
-    setError(null);
-    setLoadingChangePlan(plan);
-    try {
-      const res = await fetch("/api/billing/change-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ plan }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
-        await fetch("/api/billing/sync", {
-          method: "POST",
-          credentials: "include",
-        }).catch(() => {});
-        router.refresh();
-        return;
-      }
-      if (data.error === "no_active_subscription" && data.plan) {
-        handleUpgrade(data.plan);
-        return;
-      }
-      setError(data.error ?? "Failed to change plan");
-    } finally {
-      setLoadingChangePlan(null);
-    }
-  }
-
   const tierLabel =
     subscription.tier === "pro"
       ? "Pro"
@@ -173,18 +212,32 @@ export function BillingClient({
           ? "Starter (Lite)"
           : "Free";
 
+  const pricePerMonth =
+    subscription.tier === "starter"
+      ? 6
+      : subscription.tier === "growth"
+        ? 19
+        : subscription.tier === "pro"
+          ? 35
+          : 0;
+
+  const renewalDate =
+    subscription.expiresAt && timezone
+      ? formatDate(subscription.expiresAt, dateFormat, timezone)
+      : subscription.expiresAt
+        ? formatDate(subscription.expiresAt, dateFormat)
+        : null;
+
   if (waitingForWebhook) {
     return (
       <div className="rounded-xl border border-border bg-bg-elevated p-8 shadow-sm text-center">
         <h2 className="text-lg font-semibold text-text">
           Setting up your subscription
         </h2>
-        <p className="mt-2 text-text-muted">
-          Payment received. We’re activating your plan — this usually takes a
-          few seconds.
-        </p>
-        <p className="mt-4 text-sm text-text-muted">
-          You’ll be redirected to the dashboard shortly…
+        <p className="mt-2 text-text-muted">Processing your payment.</p>
+        <p className="mt-2 text-sm text-text-muted">
+          We&apos;re confirming your subscription — this usually takes a few
+          seconds.
         </p>
         <p className="mt-6 text-xs text-text-muted">
           Still here after a minute?{" "}
@@ -204,356 +257,1009 @@ export function BillingClient({
   if (verifying) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-        <IconLoader2 className="w-4 h-4 shrink-0 animate-spin" strokeWidth={1.5} />
+        <IconLoader2
+          className="w-4 h-4 shrink-0 animate-spin"
+          strokeWidth={1.5}
+        />
         Confirming your subscription...
       </div>
     );
   }
 
+  const handleChangePlan = async () => {
+    setLoading("portal");
+    try {
+      const res = await fetch("/api/billing/portal", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      toast.error(data.error ?? "Could not open billing portal. Try again.");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handlePause = async (months: 1 | 2 | 3) => {
+    setLoading("pause");
+    try {
+      const res = await fetch("/api/billing/pause", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ months }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        setPauseOpen(false);
+        router.refresh();
+        return;
+      }
+      if (data.error === "not_supported") {
+        setPauseOpen(false);
+        router.push("/dashboard/feedback");
+        return;
+      }
+      toast.error(data.error ?? "Failed to pause subscription.");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleCancel = async () => {
+    setLoading("cancel");
+    try {
+      const res = await fetch("/api/billing/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ reason: cancelReason }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        setCancelStep(0);
+        setCancelReason("");
+        if (data.immediate) {
+          toast.success(
+            "Subscription cancelled. You've been moved to the free plan.",
+          );
+          router.refresh();
+          router.replace("/dashboard/billing");
+        } else {
+          toast.info(
+            `You'll keep full access until ${renewalDate ?? "your period end"}. No further charges.`,
+          );
+          router.refresh();
+        }
+        return;
+      }
+      toast.error(data.error ?? "Failed to cancel subscription. Please try again.");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleUndoCancel = async () => {
+    setLoading("undoCancel");
+    try {
+      const res = await fetch("/api/billing/undo-cancel", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        toast.success("Cancellation undone. Your subscription will continue.");
+        router.refresh();
+        return;
+      }
+      toast.error(data.error ?? "Failed to undo cancellation. Please try again.");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleScheduleDowngrade = async () => {
+    if (!targetDowngradePlan) return;
+    setLoadingChangePlan(targetDowngradePlan);
+    try {
+      const res = await fetch("/api/billing/change-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          plan: targetDowngradePlan,
+          scheduleAtPeriodEnd: true,
+          reason: downgradeReason.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        setDowngradeStep(0);
+        setDowngradeReason("");
+        setTargetDowngradePlan(null);
+        toast.info(
+          `Downgrade scheduled. You'll move to ${targetDowngradePlan === "starter" ? "Starter" : "Growth"} on ${renewalDate ?? "your renewal date"}.`,
+        );
+        router.refresh();
+        return;
+      }
+      if (res.status === 404 && data.error === "no_active_subscription") {
+        const ok = await redirectToCheckoutForPlan(targetDowngradePlan);
+        if (ok) return;
+      }
+      toast.error(data.error ?? "Failed to schedule downgrade. Please try again.");
+    } finally {
+      setLoadingChangePlan(null);
+    }
+  };
+
+  const handleCancelDowngrade = async () => {
+    try {
+      const res = await fetch("/api/billing/cancel-downgrade", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast.success("Downgrade cancelled.");
+        router.refresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? "Failed to cancel downgrade. Please try again.");
+      }
+    } catch {
+      toast.error("Failed to cancel downgrade. Please try again.");
+    }
+  };
+
+  const handleUpgradePlan = async (plan: "starter" | "growth") => {
+    setLoadingChangePlan(plan);
+    try {
+      // For Starter → Growth, show preview first so user sees exact charge before confirming.
+      if (plan === "growth" && subscription.tier === "starter") {
+        const previewRes = await fetch("/api/billing/preview-plan-change", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ plan }),
+        });
+        const previewData = await previewRes.json().catch(() => ({}));
+        if (previewRes.ok && previewData.immediateCharge) {
+          setUpgradePreview({
+            immediateCharge: previewData.immediateCharge,
+          });
+          setUpgradeConfirmPlan("growth");
+          setUpgradeConfirmOpen(true);
+          setLoadingChangePlan(null);
+          return;
+        }
+        // Preview failed (e.g. no subscription) — fall back to direct change-plan.
+      }
+
+      const res = await fetch("/api/billing/change-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ plan, scheduleAtPeriodEnd: false }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success && data.pending) {
+        toast.info(
+          "Payment processing — your plan will update automatically once payment clears.",
+        );
+        return;
+      }
+      if (data.requireCheckout === true) {
+        const ok = await redirectToCheckoutForPlan(plan);
+        if (ok) return;
+      }
+      if (res.status === 409) {
+        setUpgradePending(true);
+        toast.info(
+          "Your upgrade payment is still being processed. You'll be moved to Growth automatically — no action needed. If you didn't receive a payment request, try again after a few minutes.",
+        );
+        return;
+      }
+      if (res.status === 404 && data.error === "no_active_subscription") {
+        const ok = await redirectToCheckoutForPlan(plan);
+        if (ok) return;
+      }
+      toast.error(data.error ?? "Failed to change plan. Please try again.");
+    } finally {
+      setLoadingChangePlan(null);
+    }
+  };
+
+  const handleConfirmUpgrade = async () => {
+    if (!upgradeConfirmPlan || !upgradePreview) return;
+    setLoadingChangePlan(upgradeConfirmPlan);
+    try {
+      const res = await fetch("/api/billing/change-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          plan: upgradeConfirmPlan,
+          scheduleAtPeriodEnd: false,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success && data.pending) {
+        setUpgradeConfirmOpen(false);
+        setUpgradeConfirmPlan(null);
+        setUpgradePreview(null);
+        toast.info(
+          "Payment processing — your plan will update automatically once payment clears.",
+        );
+        return;
+      }
+      if (data.requireCheckout === true) {
+        const ok = await redirectToCheckoutForPlan(upgradeConfirmPlan);
+        if (ok) return;
+      }
+      if (res.status === 409) {
+        setUpgradeConfirmOpen(false);
+        setUpgradeConfirmPlan(null);
+        setUpgradePreview(null);
+        setUpgradePending(true);
+        toast.info(
+          "Your upgrade payment is still being processed. You'll be moved to Growth automatically — no action needed. If you didn't receive a payment request, try again after a few minutes.",
+        );
+        return;
+      }
+      if (res.status === 404 && data.error === "no_active_subscription") {
+        const ok = await redirectToCheckoutForPlan(upgradeConfirmPlan);
+        if (ok) return;
+      }
+      toast.error(data.error ?? "Failed to change plan. Please try again.");
+    } finally {
+      setLoadingChangePlan(null);
+    }
+  };
+
+  const redirectToCheckoutForPlan = async (plan: "starter" | "growth") => {
+    const res = await fetch("/api/billing/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        plan,
+        successUrl: "/dashboard/billing?success=1",
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.url) {
+      window.location.href = data.url;
+      return true;
+    }
+    return false;
+  };
+
+  const handleUpgradeFromFree = async (plan: "starter" | "growth") => {
+    setLoadingChangePlan(plan);
+    try {
+      const ok = await redirectToCheckoutForPlan(plan);
+      if (!ok) toast.error("Failed to start checkout. Please try again.");
+    } finally {
+      setLoadingChangePlan(null);
+    }
+  };
+
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm -mt-4">
-        <h2 className="text-2xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
-          Current plan : {tierLabel}
-        </h2>
-        {subscription.expiresAt && (
-          <p className="mt-0.5 text-sm text-text-muted">
-            Renews{" "}
-            {formatDate(new Date(subscription.expiresAt), dateFormat, timezone)}
+
+      <div className="border border-border rounded-xl p-6">
+        <p className="text-sm text-muted-foreground">Current plan</p>
+        <h2 className="text-2xl font-serif text-foreground">{tierLabel}</h2>
+        {showRenewedTodayBanner && renewedOnDate && (
+          <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-1">
+            Your plan renewed on{" "}
+            {renewedOnDate.toLocaleDateString(undefined, {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+            .
           </p>
         )}
-        {subscription.tier === "free" && (
-          <div className="mt-3 rounded-lg border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-            {subscription.hasUsedTrial
-              ? "Upgrade to a plan to connect accounts and start posting. Choose a plan below."
-              : "Start your 7-day free trial to connect accounts and start posting. Choose a plan below to get started."}
-          </div>
-        )}
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg bg-bg-muted/50 dark:bg-bg-muted/30 p-4">
-            <p className="text-sm font-medium text-text-muted">
-              Connected accounts
-            </p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-text">
-              {subscription.tier === "pro"
-                ? `${accountLimit.currentTotal} / Unlimited`
-                : accountLimit.limitTotal === 0
-                  ? accountLimit.hasUsedTrial
-                    ? "0 — Upgrade to connect"
-                    : "0 — Start trial to connect"
-                  : `${accountLimit.currentTotal} / ${accountLimit.limitTotal}`}
+        <p className="text-sm text-muted-foreground">
+          {subscription.cancelAtPeriodEnd
+            ? renewalDate
+              ? `Cancels on ${renewalDate}`
+              : "Cancels at period end"
+            : renewalDate
+              ? `Renews ${renewalDate}`
+              : "Renews —"}{" "}
+          · {pricePerMonth > 0 ? `$${pricePerMonth}/month` : "$0/month"}
+        </p>
+
+        <div className="mt-4 grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs text-muted-foreground">Connected accounts</p>
+            <p className="text-2xl font-medium text-foreground">
+              {accountLimit.currentTotal} / {accountLimit.limitTotal}
             </p>
           </div>
-          {twitterTweetLimit.limit > 0 && (
-            <div className="rounded-lg bg-bg-muted/50 dark:bg-bg-muted/30 p-4">
-              <p className="text-sm font-medium text-text-muted">
-                Twitter tweets this month
-              </p>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-text">
-                {twitterTweetLimit.used} / {twitterTweetLimit.limit}
-              </p>
-            </div>
+          <div>
+            <p className="text-xs text-muted-foreground">
+              Twitter posts this month
+            </p>
+            <p className="text-2xl font-medium text-foreground">
+              {twitterTweetLimit.used}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Button onClick={handleChangePlan} disabled={loading !== null}>
+            {loading === "portal" ? (
+              <>
+                <IconLoader2
+                  className="h-4 w-4 animate-spin"
+                  strokeWidth={1.5}
+                />
+                Opening…
+              </>
+            ) : (
+              "Manage Subscription"
+            )}
+          </Button>
+
+          {subscription.tier !== "free" && !subscription.cancelAtPeriodEnd && (
+            <Button
+              variant="outline"
+              onClick={() => setCancelStep(1)}
+              disabled={loading !== null}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              Cancel Subscription
+            </Button>
+          )}
+          {subscription.tier !== "free" && subscription.cancelAtPeriodEnd && (
+            <Button
+              variant="outline"
+              onClick={handleUndoCancel}
+              disabled={loading !== null}
+            >
+              {loading === "undoCancel" ? (
+                <>
+                  <IconLoader2
+                    className="h-4 w-4 animate-spin"
+                    strokeWidth={1.5}
+                  />
+                  Undoing…
+                </>
+              ) : (
+                "Undo Cancel"
+              )}
+            </Button>
           )}
         </div>
-        {subscription.tier !== "free" && (
-          <div className="mt-3">
-            <a
-              href="/api/billing/portal"
-              className="inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent/90 transition-colors"
-            >
-              Manage subscription
-            </a>
-            <p className="mt-1.5 text-xs text-text-muted">
-              Upgrade, downgrade, cancel, or update payment method. Upgrades are
-              prorated.
-            </p>
-          </div>
-        )}
       </div>
 
-      {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
+      {subscription.cancelAtPeriodEnd && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 flex items-center justify-between flex-wrap gap-2">
+          <span>
+            Your subscription is cancelled. You have access until {renewalDate}.
+          </span>
         </div>
       )}
 
-      <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
-        <h2 className="text-2xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
-          Plans
-        </h2>
-        <p className="mt-0.5 text-sm text-text-muted">
-          Early adopter pricing. Lock in before price increases.
-        </p>
-        {/* Pro tier commented out for now — add back later */}
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border-2 border-border bg-bg p-4">
-            <h3 className="text-xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
-              Starter (Lite) —{" "}
-              <span className="line-through text-muted-foreground text-base">$9</span>{" "}
-              <span className="text-foreground text-2xl font-bold">$6</span>/month
-            </h3>
-            <p className="mt-0.5 text-sm text-text-muted">
-              Up to 5 accounts, 300 tweets/month
-            </p>
-            <ul className="mt-3 space-y-1.5 text-sm text-text-muted">
-              {[
-                "Connect up to 5 accounts",
-                "Multiple accounts per platform",
-                "Unlimited posts",
-                "Schedule posts across platforms",
-                "Carousel posts",
-                "Threads & Collections support",
-                "300 tweets/month (Twitter/X)",
-                "Fair usage policy",
-                "Human support",
-              ].map((f, i) => (
-                <li key={i} className="flex items-center gap-2">
-                  <span className="text-accent shrink-0">✓</span>
-                  {f === "Fair usage policy" ? (
-                    <a
-                      href={DOCS_FAIR_USAGE_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-text-muted hover:text-text transition-colors"
-                      aria-label="Fair usage policy (opens docs)"
-                    >
-                      Fair usage policy
-                      <Info className="h-3.5 w-3.5 shrink-0" />
-                    </a>
-                  ) : (
-                    f
-                  )}
+      {subscription.pendingPlanTier && subscription.tier !== "free" && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 flex items-center justify-between flex-wrap gap-2">
+          <span>
+            Your plan will downgrade to{" "}
+            {subscription.pendingPlanTier === "starter" ? "Starter" : "Growth"}{" "}
+            on {renewalDate ?? "your renewal date"}.
+          </span>
+          <button
+            type="button"
+            onClick={handleCancelDowngrade}
+            className="text-xs underline hover:no-underline ml-4"
+          >
+            Cancel downgrade
+          </button>
+        </div>
+      )}
+
+      <section className="mt-8">
+        <h2 className="text-lg font-semibold text-foreground mb-4">Plans</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {/* Starter card */}
+          <div
+            className={`rounded-2xl border-2 bg-card p-6 flex flex-col ${
+              subscription.tier === "starter"
+                ? "ring-1 ring-accent border-accent/30"
+                : "border-border"
+            }`}
+          >
+            <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              Starter
+            </div>
+            <div className="mb-2 flex items-baseline gap-2">
+              <span className="font-serif text-2xl font-bold text-foreground">
+                $6
+              </span>
+              <span className="text-sm text-muted-foreground line-through">
+                $9
+              </span>
+              <span className="text-xs text-muted-foreground">/month</span>
+            </div>
+            <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
+              {STARTER_BILLING_FEATURES.map((f) => (
+                <li key={f} className="flex items-center gap-2">
+                  <span className="text-emerald-500 shrink-0">✓</span>
+                  {f}
                 </li>
               ))}
+              <li className="flex items-center gap-2">
+                <span className="text-emerald-500 shrink-0">✓</span>
+                <a
+                  href={DOCS_FAIR_USAGE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                  aria-label="Fair usage (opens docs)"
+                >
+                  Fair usage policy
+                  <IconInfoCircle className="h-3.5 w-3.5" strokeWidth={1.5} />
+                </a>
+              </li>
             </ul>
-            {subscription.tier === "starter" ? (
-              <button
-                type="button"
-                disabled
-                className="mt-4 w-full rounded-lg border-2 border-accent bg-transparent px-4 py-1.5 text-sm font-medium text-accent opacity-50 cursor-default"
-              >
-                Current plan
-              </button>
-            ) : subscription.tier === "growth" ||
-              subscription.tier === "pro" ? (
-              <button
-                type="button"
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Downgrading takes effect immediately. You'll be credited the difference. Continue?",
-                    )
-                  ) {
-                    handleChangePlan("starter");
-                  }
-                }}
-                disabled={loadingChangePlan !== null}
-                className="mt-4 w-full rounded-lg border border-border bg-transparent px-4 py-1.5 text-sm font-medium text-text-muted hover:bg-bg-muted disabled:opacity-50 transition-colors"
-              >
-                {loadingChangePlan === "starter"
-                  ? (
-                      <span className="inline-flex items-center justify-center gap-2">
-                        <IconLoader2
-                          className="h-4 w-4 shrink-0 animate-spin"
-                          strokeWidth={1.5}
-                        />
-                        Updating...
-                      </span>
-                    )
-                  : "Downgrade to Starter"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleUpgrade("starter")}
-                disabled={loadingPlan !== null}
-                className="mt-4 w-full rounded-lg border-2 border-accent bg-transparent px-4 py-1.5 text-sm font-medium text-accent hover:bg-accent/10 disabled:opacity-50"
-              >
-                {loadingPlan === "starter"
-                  ? "Redirecting…"
-                  : "Upgrade to Starter"}
-              </button>
-            )}
+            <div className="mt-6">
+              {subscription.tier === "starter" ? (
+                <Button disabled className="w-full" variant="outline">
+                  Current plan
+                </Button>
+              ) : subscription.tier === "growth" ? (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  disabled={loadingChangePlan !== null}
+                  onClick={() => {
+                    setTargetDowngradePlan("starter");
+                    setDowngradeReason("");
+                    setDowngradeStep(1);
+                  }}
+                >
+                  Downgrade to Starter
+                </Button>
+              ) : (
+                <Button
+                  className="w-full"
+                  disabled={loadingChangePlan !== null}
+                  onClick={() => handleUpgradeFromFree("starter")}
+                >
+                  {loadingChangePlan === "starter" ? (
+                    <>
+                      <IconLoader2
+                        className="h-4 w-4 animate-spin"
+                        strokeWidth={1.5}
+                      />
+                      Opening…
+                    </>
+                  ) : (
+                    "Upgrade to Starter"
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
-          <div className="rounded-xl border-2 border-accent bg-accent/5 p-4">
-            <span className="rounded bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
+
+          {/* Growth card */}
+          <div
+            className={`rounded-2xl border-2 p-6 flex flex-col relative ${
+              subscription.tier === "growth"
+                ? "ring-1 ring-accent border-accent/30 bg-accent/5"
+                : "border-border bg-card"
+            }`}
+          >
+            <span className="absolute top-4 right-4 rounded bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
               Most popular
             </span>
-            <h3 className="text-xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
-              Growth —{" "}
-              <span className="line-through text-muted-foreground text-base">$29</span>{" "}
-              <span className="text-foreground text-2xl font-bold">$19</span>/month
-            </h3>
-            <p className="mt-0.5 text-sm text-text-muted">
-              Up to 15 accounts, 1,500 tweets/month
-            </p>
-            <ul className="mt-3 space-y-1.5 text-sm text-text-muted">
-              {[
-                "Up to 15 connected accounts",
-                "Multiple accounts per platform",
-                "Unlimited posts",
-                "Schedule posts across platforms",
-                "Carousel posts",
-                "Threads & Collections support",
-                "1,500 tweets/month (Twitter/X)",
-                "Auto-plug high performing tweets",
-                "Auto-repost on autopilot",
-                "Bulk scheduling tools",
-                "Fair usage policy",
-                "Human support",
-              ].map((f, i) => (
-                <li key={i} className="flex items-center gap-2">
-                  <span className="text-accent shrink-0">✓</span>
-                  {f === "Fair usage policy" ? (
-                    <a
-                      href={DOCS_FAIR_USAGE_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-text-muted hover:text-text transition-colors"
-                      aria-label="Fair usage policy (opens docs)"
-                    >
-                      Fair usage policy
-                      <Info className="h-3.5 w-3.5 shrink-0" />
-                    </a>
-                  ) : (
-                    f
-                  )}
-                </li>
-              ))}
-            </ul>
-            {subscription.tier === "growth" ? (
-              <button
-                type="button"
-                disabled
-                className="mt-4 w-full rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white opacity-50 cursor-default"
-              >
-                Current plan
-              </button>
-            ) : subscription.tier === "starter" ? (
-              <button
-                type="button"
-                onClick={() => handleChangePlan("growth")}
-                disabled={loadingChangePlan !== null}
-                className="mt-4 w-full rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50 transition-colors"
-              >
-                {loadingChangePlan === "growth"
-                  ? (
-                      <span className="inline-flex items-center justify-center gap-2">
-                        <IconLoader2
-                          className="h-4 w-4 shrink-0 animate-spin"
-                          strokeWidth={1.5}
-                        />
-                        Updating...
-                      </span>
-                    )
-                  : "Upgrade to Growth"}
-              </button>
-            ) : subscription.tier === "pro" ? (
-              <button
-                type="button"
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Downgrading takes effect immediately. You'll be credited the difference. Continue?",
-                    )
-                  ) {
-                    handleChangePlan("growth");
-                  }
-                }}
-                disabled={loadingChangePlan !== null}
-                className="mt-4 w-full rounded-lg border border-border bg-transparent px-4 py-1.5 text-sm font-medium text-text-muted hover:bg-bg-muted disabled:opacity-50 transition-colors"
-              >
-                {loadingChangePlan === "growth"
-                  ? (
-                      <span className="inline-flex items-center justify-center gap-2">
-                        <IconLoader2
-                          className="h-4 w-4 shrink-0 animate-spin"
-                          strokeWidth={1.5}
-                        />
-                        Updating...
-                      </span>
-                    )
-                  : "Downgrade to Growth"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleUpgrade("growth")}
-                disabled={loadingPlan !== null}
-                className="mt-4 w-full rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50"
-              >
-                {loadingPlan === "growth"
-                  ? "Redirecting…"
-                  : "Upgrade to Growth"}
-              </button>
-            )}
-          </div>
-          {/* Pro tier commented out for now — add back later
-          <div className="rounded-xl border-2 border-border bg-bg p-4">
-            <h3 className="font-semibold text-text">
-              Pro —{" "}
-              <span className="line-through text-muted-foreground">$49</span>{" "}
-              <span className="text-foreground">$35</span>/month
-            </h3>
-            <p className="mt-0.5 text-sm text-text-muted">
-              Unlimited accounts, 1,500 tweets/month
-            </p>
-            <ul className="mt-3 space-y-1.5 text-sm text-text-muted">
-              {[
-                "Unlimited connected accounts",
-                "Everything in Growth",
-                "Priority support",
-                "Early access to new features",
-              ].map((f, i) => (
-                <li key={i} className="flex items-center gap-2">
-                  <span className="text-accent shrink-0">✓</span>
+            <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              Growth
+            </div>
+            <div className="mb-2 flex items-baseline gap-2">
+              <span className="font-serif text-2xl font-bold text-foreground">
+                $19
+              </span>
+              <span className="text-sm text-muted-foreground line-through">
+                $29
+              </span>
+              <span className="text-xs text-muted-foreground">/month</span>
+            </div>
+            <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
+              {GROWTH_BILLING_FEATURES.map((f) => (
+                <li key={f} className="flex items-center gap-2">
+                  <span className="text-emerald-500 shrink-0">✓</span>
                   {f}
                 </li>
               ))}
             </ul>
-            {subscription.tier === "pro" ? (
-              <button
-                type="button"
-                disabled
-                className="mt-4 w-full rounded-lg border-2 border-accent bg-transparent px-4 py-1.5 text-sm font-medium text-accent opacity-50 cursor-default"
-              >
-                Current plan
-              </button>
-            ) : subscription.tier === "starter" || subscription.tier === "growth" ? (
-              <button
-                type="button"
-                onClick={() => handleChangePlan("pro")}
-                disabled={loadingChangePlan !== null}
-                className="mt-4 w-full rounded-lg border-2 border-accent bg-transparent px-4 py-1.5 text-sm font-medium text-accent hover:bg-accent/10 disabled:opacity-50 transition-colors"
-              >
-                {loadingChangePlan === "pro"
-                  ? (
-                      <span className="inline-flex items-center justify-center gap-2">
+            <div className="mt-6">
+              {subscription.tier === "growth" ? (
+                <Button disabled className="w-full">
+                  Current plan
+                </Button>
+              ) : subscription.tier === "starter" ? (
+                <Button
+                  className="w-full bg-accent hover:bg-accent/90 text-white"
+                  disabled={loadingChangePlan !== null || upgradePending}
+                  onClick={() => handleUpgradePlan("growth")}
+                >
+                  {loadingChangePlan === "growth" && !upgradeConfirmOpen ? (
+                    <>
+                      <IconLoader2
+                        className="h-4 w-4 animate-spin"
+                        strokeWidth={1.5}
+                      />
+                      Getting price…
+                    </>
+                  ) : (
+                    "Upgrade (starts new billing cycle)"
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  className="w-full bg-accent hover:bg-accent/90 text-white"
+                  disabled={loadingChangePlan !== null}
+                  onClick={() => handleUpgradeFromFree("growth")}
+                >
+                  {loadingChangePlan === "growth" ? (
+                    <>
+                      <IconLoader2
+                        className="h-4 w-4 animate-spin"
+                        strokeWidth={1.5}
+                      />
+                      Opening…
+                    </>
+                  ) : (
+                    "Upgrade to Growth"
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Dialog
+        open={upgradeConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setUpgradeConfirmOpen(false);
+            setUpgradeConfirmPlan(null);
+            setUpgradePreview(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Upgrade to Growth</DialogTitle>
+            <DialogDescription>
+              You&apos;ll be charged{" "}
+              {upgradePreview?.immediateCharge?.summary
+                ? formatPreviewAmount(upgradePreview.immediateCharge.summary)
+                : "the amount below"}{" "}
+              immediately. Your billing cycle will restart from today.
+            </DialogDescription>
+          </DialogHeader>
+          {upgradePreview && upgradeConfirmPlan && (
+            <div className="rounded-xl border border-border p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Upgrading to</p>
+                  <p className="font-medium">
+                    {upgradeConfirmPlan === "growth" ? "Growth" : "Starter"}{" "}
+                    plan
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">
+                    You&apos;ll be charged now
+                  </p>
+                  <p className="text-xl font-medium">
+                    {formatPreviewAmount(
+                      upgradePreview.immediateCharge.summary,
+                    )}
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Your billing cycle will restart from today.
+              </p>
+              {subscription.cancelAtPeriodEnd && (
+                <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                  Your cancellation will be removed after upgrade.
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter className="mt-4 gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setUpgradeConfirmOpen(false);
+                setUpgradeConfirmPlan(null);
+                setUpgradePreview(null);
+              }}
+              disabled={loadingChangePlan !== null}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmUpgrade}
+              disabled={
+                loadingChangePlan !== null ||
+                !upgradePreview ||
+                !upgradeConfirmPlan
+              }
+            >
+              {loadingChangePlan === upgradeConfirmPlan ? (
+                <>
+                  <IconLoader2
+                    className="h-4 w-4 animate-spin"
+                    strokeWidth={1.5}
+                  />
+                  Upgrading…
+                </>
+              ) : (
+                "Continue Upgrade"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={downgradeStep !== 0}
+        onOpenChange={(open) => {
+          if (open) return;
+          setDowngradeStep(0);
+          setDowngradeReason("");
+          setTargetDowngradePlan(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg" showCloseButton={false}>
+          {downgradeStep === 1 ? (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium tracking-wide text-muted-foreground">
+                  STEP 1 OF 2
+                </p>
+                <button
+                  type="button"
+                  aria-label="Close"
+                  className="rounded-md p-1 text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setDowngradeStep(0);
+                    setDowngradeReason("");
+                    setTargetDowngradePlan(null);
+                  }}
+                >
+                  <IconX className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+              </div>
+
+              <DialogHeader>
+                <DialogTitle>Before you downgrade...</DialogTitle>
+                <DialogDescription>
+                  What made you decide to downgrade?
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-2">
+                <textarea
+                  value={downgradeReason}
+                  onChange={(e) => setDowngradeReason(e.target.value)}
+                  placeholder="Please share your reason..."
+                  className="min-h-32 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                />
+                <p className="text-xs text-muted-foreground whitespace-pre-line">
+                  this helps me understand what&apos;s missing. i&apos;ll read
+                  every response and use it to improve Social0.{"\n"}— abhishek
+                  (the person who built + runs social0)
+                </p>
+              </div>
+
+              <DialogFooter className="mt-4 gap-2 sm:gap-0">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDowngradeStep(0);
+                    setDowngradeReason("");
+                    setTargetDowngradePlan(null);
+                  }}
+                  disabled={loadingChangePlan !== null}
+                >
+                  Close
+                </Button>
+                <Button
+                  onClick={() => setDowngradeStep(2)}
+                  disabled={
+                    loadingChangePlan !== null ||
+                    downgradeReason.trim().length === 0
+                  }
+                >
+                  Continue
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium tracking-wide text-muted-foreground">
+                  STEP 2 OF 2
+                </p>
+                <button
+                  type="button"
+                  aria-label="Close"
+                  className="rounded-md p-1 text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setDowngradeStep(0);
+                    setDowngradeReason("");
+                    setTargetDowngradePlan(null);
+                  }}
+                >
+                  <IconX className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+              </div>
+
+              <div className="mt-2">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-950/30 flex items-center justify-center">
+                    <div className="w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-900/50 flex items-center justify-center">
+                      <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    </div>
+                  </div>
+                </div>
+
+                <h3 className="text-lg font-semibold text-foreground text-center">
+                  Downgrade to Starter?
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground text-center">
+                  You&apos;ll stay on Growth until{" "}
+                  {renewalDate ?? "your renewal date"}. After that, your plan
+                  switches to Starter ($6/month). You won&apos;t be charged now.
+                </p>
+                {subscription.cancelAtPeriodEnd && (
+                  <p className="mt-2 text-sm text-amber-700 dark:text-amber-300 text-center">
+                    Your cancellation will be replaced with a downgrade at the
+                    end of your billing cycle.
+                  </p>
+                )}
+
+                <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-left">
+                  <p className="text-sm font-medium mb-3">
+                    You&apos;ll lose access to:
+                  </p>
+                  <ul className="space-y-2">
+                    {[
+                      "Up to 15 accounts (drops to 5)",
+                      "1,500 tweets/month (drops to 300)",
+                      "Auto-plug high performing tweets",
+                      "Auto-repost on autopilot",
+                      "Bulk scheduling tools",
+                    ].map((item) => (
+                      <li
+                        key={item}
+                        className="flex items-center gap-2 text-sm text-muted-foreground"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="flex items-center justify-between mt-6">
+                  <button
+                    onClick={() => setDowngradeStep(1)}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
+                    type="button"
+                    disabled={loadingChangePlan !== null}
+                  >
+                    Go Back
+                  </button>
+                  <button
+                    onClick={handleScheduleDowngrade}
+                    disabled={loadingChangePlan !== null}
+                    className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl px-6 py-3 text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                    type="button"
+                  >
+                    {loadingChangePlan ? (
+                      <>
                         <IconLoader2
-                          className="h-4 w-4 shrink-0 animate-spin"
+                          className="w-4 h-4 animate-spin"
                           strokeWidth={1.5}
                         />
-                        Updating...
-                      </span>
-                    )
-                  : "Upgrade to Pro"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleUpgrade("pro")}
-                disabled={loadingPlan !== null}
-                className="mt-4 w-full rounded-lg border-2 border-accent bg-transparent px-4 py-1.5 text-sm font-medium text-accent hover:bg-accent/10 disabled:opacity-50"
+                        Scheduling...
+                      </>
+                    ) : (
+                      "Schedule Downgrade"
+                    )}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={pauseOpen} onOpenChange={setPauseOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pause your subscription</DialogTitle>
+            <DialogDescription>
+              How long would you like to pause? You can resume anytime. Your
+              data and connections will be preserved.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 gap-2">
+            {[1, 2, 3].map((m) => (
+              <Button
+                key={m}
+                variant="outline"
+                onClick={() => handlePause(m as 1 | 2 | 3)}
+                disabled={loading !== null}
               >
-                {loadingPlan === "pro"
-                  ? "Redirecting…"
-                  : "Upgrade to Pro"}
-              </button>
-            )}
+                {loading === "pause" ? (
+                  <>
+                    <IconLoader2
+                      className="h-4 w-4 animate-spin"
+                      strokeWidth={1.5}
+                    />
+                    Updating…
+                  </>
+                ) : (
+                  `Pause for ${m} month${m > 1 ? "s" : ""}`
+                )}
+              </Button>
+            ))}
           </div>
-          */}
-        </div>
-      </div>
+
+          <DialogFooter className="mt-2">
+            <p className="text-xs text-muted-foreground">
+              Your data and settings will be preserved during the pause
+            </p>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={cancelStep !== 0} onOpenChange={() => setCancelStep(0)}>
+        <DialogContent className="sm:max-w-lg">
+          {cancelStep === 1 ? (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium tracking-wide text-muted-foreground">
+                  STEP 1 OF 2
+                </p>
+              </div>
+              <DialogHeader>
+                <DialogTitle>Please tell us how we can do better</DialogTitle>
+                <DialogDescription>
+                  What made you cancel your subscription?
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-2">
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Please share your reason..."
+                  className="min-h-32 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                />
+                <p className="text-xs text-muted-foreground whitespace-pre-line">
+                  the feedback you put here matters to me. i will pay attention
+                  and improve Social0 based on it, thank you for your time.
+                  {"\n"}— abhishek (the person who built + runs social0)
+                </p>
+              </div>
+
+              <DialogFooter className="mt-4 gap-2 sm:gap-0">
+                <Button
+                  variant="outline"
+                  onClick={() => setCancelStep(0)}
+                  disabled={loading !== null}
+                >
+                  Close
+                </Button>
+                <Button
+                  onClick={() => setCancelStep(2)}
+                  disabled={
+                    loading !== null || cancelReason.trim().length === 0
+                  }
+                >
+                  Continue
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium tracking-wide text-muted-foreground">
+                  STEP 2 OF 2
+                </p>
+              </div>
+
+              <div className="mt-2">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-950/30 flex items-center justify-center">
+                    <div className="w-6 h-6 rounded-full bg-red-200 dark:bg-red-900/50 flex items-center justify-center">
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                    </div>
+                  </div>
+                </div>
+
+                <h3 className="text-lg font-semibold text-foreground text-center">
+                  Confirm Cancellation
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground text-center">
+                  Thank you for your feedback. Your subscription will be
+                  cancelled at the end of your current billing period.
+                  You&apos;ll continue to have access until then.
+                </p>
+
+                <div className="mt-5 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20 p-4 text-left">
+                  <p className="text-sm font-medium text-foreground mb-3">
+                    After your period ends, you&apos;ll lose access to:
+                  </p>
+                  <ul className="space-y-2">
+                    {[
+                      "Multi-platform posting (9 platforms)",
+                      "Content scheduling",
+                      "Bulk scheduling tools",
+                      "Auto-repost & Auto-plug",
+                      "Connected accounts get disconnected after 30 days",
+                    ].map((item) => (
+                      <li
+                        key={item}
+                        className="flex items-center gap-2 text-sm text-muted-foreground"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="flex items-center justify-between mt-6">
+                  <button
+                    onClick={() => setCancelStep(1)}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
+                    type="button"
+                  >
+                    Go Back
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    disabled={loading === "cancel"}
+                    className="bg-red-500 hover:bg-red-600 text-white rounded-xl px-6 py-3 text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                    type="button"
+                  >
+                    {loading === "cancel" ? (
+                      <>
+                        <IconLoader2
+                          className="w-4 h-4 animate-spin"
+                          strokeWidth={1.5}
+                        />
+                        Cancelling...
+                      </>
+                    ) : (
+                      "Confirm Cancel"
+                    )}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

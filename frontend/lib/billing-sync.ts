@@ -37,6 +37,8 @@ export async function syncSubscriptionForUserId(
   const client = new DodoPayments({ bearerToken: apiKey, environment });
 
   try {
+    let sawUnpaidActiveSubscription = false;
+
     for (const productId of productIds) {
       for await (const sub of client.subscriptions.list({
         product_id: productId,
@@ -49,6 +51,36 @@ export async function syncSubscriptionForUserId(
         const tier = getTierFromProductId(sub.product_id ?? "");
         if (tier === "free") continue;
 
+        // Before trusting this upgrade, make sure there isn't a recent payment for this
+        // subscription still in progress. We only sync the upgrade once Dodo shows a
+        // succeeded payment (webhook remains the primary source of truth).
+        const subscriptionId = sub.subscription_id ?? null;
+        if (subscriptionId) {
+          try {
+            const payments = await client.payments.list({
+              subscription_id: subscriptionId,
+              limit: 1,
+            } as any);
+            const item = Array.isArray((payments as any)?.items)
+              ? (payments as any).items[0]
+              : null;
+            const paymentStatus =
+              item && typeof (item as any).status === "string"
+                ? (item as any).status
+                : null;
+
+            if (paymentStatus && paymentStatus !== "succeeded") {
+              // Payment is still processing or not successful yet — don't upgrade tier.
+              sawUnpaidActiveSubscription = true;
+              continue;
+            }
+          } catch {
+            // If we can't read payments, be conservative and avoid changing tier here.
+            sawUnpaidActiveSubscription = true;
+            continue;
+          }
+        }
+
         await setSubscription(userId, {
           tier,
           expiresAt: sub.next_billing_date ? new Date(sub.next_billing_date) : null,
@@ -58,13 +90,17 @@ export async function syncSubscriptionForUserId(
         return { ok: true, tier };
       }
     }
-    // No active subscription found — downgrade to free
-    await setSubscription(userId, {
-      tier: "free",
-      expiresAt: null,
-      subscriptionId: null,
-      customerId: null,
-    });
+    // If we saw an active subscription but its latest payment isn't succeeded yet,
+    // don't touch the tier — webhook will update it once payment clears.
+    if (!sawUnpaidActiveSubscription) {
+      // No active subscription found at all — downgrade to free
+      await setSubscription(userId, {
+        tier: "free",
+        expiresAt: null,
+        subscriptionId: null,
+        customerId: null,
+      });
+    }
     return { ok: false };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Sync failed";

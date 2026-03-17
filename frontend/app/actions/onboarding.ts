@@ -3,7 +3,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { userSettings, connectedAccounts } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSubscriptionForUser } from "@/lib/subscription";
@@ -63,24 +63,20 @@ export async function setOnboardingGoal(goal: string): Promise<void> {
   const userId = await getCurrentUserId();
   if (!userId) redirect("/");
 
-  await db
-    .insert(userSettings)
-    .values({ userId, onboardingGoal: goal })
-    .onConflictDoUpdate({
-      target: userSettings.userId,
-      set: { onboardingGoal: goal },
-    });
+  await db.execute(sql`
+    INSERT INTO user_settings (user_id, onboarding_goal)
+    VALUES (${userId}, ${goal})
+    ON CONFLICT (user_id) DO UPDATE SET onboarding_goal = EXCLUDED.onboarding_goal
+  `);
 }
 
 export async function setOnboardingCompleted(): Promise<void> {
   const userId = await getCurrentUserId();
   if (!userId) redirect("/");
 
-  await db
-    .insert(userSettings)
-    .values({ userId, onboardingCompleted: true })
-    .onConflictDoUpdate({
-      target: userSettings.userId,
-      set: { onboardingCompleted: true },
-    });
+  await db.execute(sql`
+    INSERT INTO user_settings (user_id, onboarding_completed)
+    VALUES (${userId}, true)
+    ON CONFLICT (user_id) DO UPDATE SET onboarding_completed = true
+  `);
 }

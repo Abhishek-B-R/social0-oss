@@ -2,9 +2,49 @@
 
 import { db } from "@/db";
 import { connectedAccounts, postPublications } from "@/db/schema";
-import { eq, and, sql, gte } from "drizzle-orm";
+import { eq, and, sql, gte, asc, desc, inArray } from "drizzle-orm";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { getPlanLimits } from "@/lib/plans";
+
+/**
+ * Sync connected_accounts.isActive to plan limit. Keeps the first N accounts active;
+ * extra are marked isActive = false. Order: most recently used (lastSyncedAt) first,
+ * then by createdAt, so recently used accounts are kept when over limit.
+ */
+export async function syncConnectedAccountsToLimit(userId: string): Promise<void> {
+  const sub = await getSubscriptionForUser(userId);
+  const limitTotal = getPlanLimits(sub.tier).maxConnectedAccounts;
+
+  const accounts = await db
+    .select({ id: connectedAccounts.id })
+    .from(connectedAccounts)
+    .where(eq(connectedAccounts.userId, userId))
+    .orderBy(
+      desc(sql`COALESCE(${connectedAccounts.lastSyncedAt}, '1970-01-01'::timestamp)`),
+      asc(connectedAccounts.createdAt),
+    );
+
+  if (accounts.length === 0) return;
+
+  const toActivate = limitTotal > 0 ? accounts.slice(0, limitTotal) : [];
+  const toDeactivate = limitTotal > 0 ? accounts.slice(limitTotal) : accounts;
+
+  const activateIds = toActivate.map((a) => a.id);
+  const deactivateIds = toDeactivate.map((a) => a.id);
+
+  if (activateIds.length > 0) {
+    await db
+      .update(connectedAccounts)
+      .set({ isActive: true })
+      .where(and(eq(connectedAccounts.userId, userId), inArray(connectedAccounts.id, activateIds)));
+  }
+  if (deactivateIds.length > 0) {
+    await db
+      .update(connectedAccounts)
+      .set({ isActive: false })
+      .where(and(eq(connectedAccounts.userId, userId), inArray(connectedAccounts.id, deactivateIds)));
+  }
+}
 
 export type AccountLimitResult = {
   allowed: boolean;
