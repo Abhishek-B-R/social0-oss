@@ -19,7 +19,7 @@ export function EditPostWithAccountsClient({
   use24HourTimeFormat,
   dateFormat,
 }: EditPostWithAccountsClientProps) {
-  const { accounts, loading, error } = useAccountsForForm(null);
+  const { accounts, loading } = useAccountsForForm(null);
 
   if (loading) {
     return (
@@ -29,21 +29,6 @@ export function EditPostWithAccountsClient({
           <div className="h-10 w-full rounded-lg bg-bg-muted" />
         </div>
         <AccountsGridSkeleton />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-        {error}{" "}
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className="font-medium underline underline-offset-2"
-        >
-          Retry
-        </button>
       </div>
     );
   }

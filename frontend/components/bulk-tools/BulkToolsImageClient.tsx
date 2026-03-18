@@ -14,6 +14,7 @@ import {
 } from "@/lib/bulk-schedule";
 import { createPost } from "@/app/actions/posts";
 import { uploadFile } from "@/lib/upload-file";
+import { toast } from "sonner";
 
 const LIMITS = {
   totalSize: 250 * 1024 * 1024, // 250MB total batch
@@ -90,7 +91,6 @@ export function BulkToolsImageClient({
   const [progress, setProgress] = useState("");
   const [uploadPercent, setUploadPercent] = useState(0);
   const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const cancelledRef = useRef(false);
 
   const platformName = (id: string) =>
@@ -227,11 +227,11 @@ export function BulkToolsImageClient({
     // Require a caption for every image before scheduling
     const missingCaption = items.some((item) => !item.caption.trim());
     if (missingCaption) {
-      setError("Caption is required for all images before scheduling.");
+      toast.error("Caption is required for all images before scheduling.");
       return;
     }
 
-    setError(null);
+    toast.dismiss();
     cancelledRef.current = false;
     setScheduling(true);
     setUploadPercent(0);
@@ -276,7 +276,7 @@ export function BulkToolsImageClient({
       );
 
       if (failedUploads.length > 0) {
-        setError(`${failedUploads.length} image(s) failed to upload.`);
+        toast.error(`${failedUploads.length} image(s) failed to upload.`);
       }
 
       if (successfulUploads.length === 0) {
@@ -303,7 +303,7 @@ export function BulkToolsImageClient({
 
       setSuccess(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to schedule");
+      toast.error(e instanceof Error ? e.message : "Failed to schedule");
     } finally {
       setScheduling(false);
       setProgress("");
@@ -441,22 +441,6 @@ export function BulkToolsImageClient({
                 )}
               </div>
               <div className="space-y-3">
-                {error && (
-                  <div
-                    className="relative rounded-xl bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900/60 px-4 py-3 pr-10 text-sm font-medium border border-red-100"
-                    role="alert"
-                  >
-                    {error}
-                    <button
-                      type="button"
-                      onClick={() => setError(null)}
-                      className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-red-700/70 hover:bg-red-100 hover:text-red-800 dark:text-red-200/80 dark:hover:bg-red-900/30"
-                      aria-label="Dismiss error"
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
                 {items.map((item, index) => (
                   <ImageCard
                     key={item.id}

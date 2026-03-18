@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createAutoPlug } from "@/app/actions/resurface";
 import { AutoPlugPanel, type AutoPlugConfig } from "./AutoPlugPanel";
 import { RESURFACE_PLATFORMS } from "@/lib/resurface-utils";
+import { toast } from "sonner";
 
 type PublicationLike = {
   connectedAccountId: string;
@@ -29,7 +30,6 @@ export function AddAutoPlugModal({
   const router = useRouter();
   const [config, setConfig] = useState<AutoPlugConfig | null>(null);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const supportedPubs = publications.filter((p) =>
     RESURFACE_PLATFORMS.includes(
@@ -48,7 +48,7 @@ export function AddAutoPlugModal({
 
   const handleSave = async () => {
     if (!config || !xPub) return;
-    setError(null);
+    toast.dismiss();
     setSaving(true);
     const result = await createAutoPlug(
       postId,
@@ -60,7 +60,7 @@ export function AddAutoPlugModal({
       onClose();
       router.refresh();
     } else {
-      setError(result.error ?? "Failed to add Auto-Plug");
+      toast.error(result.error ?? "Failed to add Auto-Plug");
     }
   };
 
@@ -100,7 +100,6 @@ export function AddAutoPlugModal({
             publishedAt={publishedAt}
             onChange={setConfig}
           />
-          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
           <div className="mt-4 flex justify-end gap-2">
             <button
               type="button"

@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { Upload } from "lucide-react";
+import { toast } from "sonner";
 
 type BulkUploadZoneProps = {
   accept: string;
@@ -40,24 +41,23 @@ export function BulkUploadZone({
   disabled = false,
 }: BulkUploadZoneProps) {
   const [dragActive, setDragActive] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const validateAndEmit = useCallback(
     (files: FileList | null) => {
-      setError(null);
+      toast.dismiss();
       if (!files?.length) return;
       const list = Array.from(files);
       const alreadyCount = currentCount ?? 0;
       const nextCount = alreadyCount + list.length;
       if (nextCount > maxFiles) {
-        setError(
+        toast.error(
           `Maximum ${maxFiles} files. You selected ${list.length} (total would be ${nextCount}). Select fewer files or split into multiple uploads.`,
         );
         return;
       }
       const oversized = list.filter((f) => f.size > maxSizeBytes);
       if (oversized.length > 0) {
-        setError(
+        toast.error(
           `${oversized.length} file(s) exceed ${maxSizeLabel}. Please choose smaller files.`,
         );
         return;
@@ -67,7 +67,7 @@ export function BulkUploadZone({
         const incomingBytes = list.reduce((sum, f) => sum + f.size, 0);
         const nextBytes = alreadyBytes + incomingBytes;
         if (nextBytes > maxTotalBytes) {
-          setError(
+          toast.error(
             `Total batch size limit exceeded (${formatBytes(nextBytes)} / ${formatBytes(maxTotalBytes)}). Select fewer files or split into multiple uploads.`,
           );
           return;
@@ -186,14 +186,6 @@ export function BulkUploadZone({
           </>
         )}
       </label>
-      {error && (
-        <p
-          className="text-sm text-red-600 font-medium dark:text-red-400"
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
     </div>
   );
 }

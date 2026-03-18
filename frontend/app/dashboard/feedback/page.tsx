@@ -3,6 +3,7 @@
 import DocsInfoIcon from "@/components/info-icon";
 import { DOCS_FEEDBACK_URL } from "@/lib/docs-url";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 declare global {
   interface Window {
     Canny?: (method: string, options: Record<string, unknown>) => void;
@@ -14,11 +15,10 @@ const CANNY_FALLBACK_URL = "https://social0.canny.io";
 
 export default function FeedbackPage() {
   const mountRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
   const [ssoToken, setSsoToken] = useState<string | null>(null);
   const [sdkLoaded, setSdkLoaded] = useState(false);
-  const cannyReady = sdkLoaded && !!ssoToken && !error;
-  const isLoading = !cannyReady && !error;
+  const cannyReady = sdkLoaded && !!ssoToken;
+  const isLoading = !cannyReady;
 
   // Fetch SSO token on mount
   useEffect(() => {
@@ -33,10 +33,10 @@ export default function FeedbackPage() {
       })
       .then((data) => {
         if (!cancelled && data?.token) setSsoToken(data.token);
-        if (!cancelled && !data?.token) setError("No token received");
+        if (!cancelled && !data?.token) toast.error("No token received");
       })
       .catch((err) => {
-        if (!cancelled) setError(err?.message ?? "Failed to load feedback");
+        if (!cancelled) toast.error(err?.message ?? "Failed to load feedback");
       });
     return () => {
       cancelled = true;
@@ -54,7 +54,7 @@ export default function FeedbackPage() {
     script.src = CANNY_SDK_URL;
     script.async = true;
     script.onload = () => setSdkLoaded(true);
-    script.onerror = () => setError("Failed to load feedback widget");
+    script.onerror = () => toast.error("Failed to load feedback widget");
     document.body.appendChild(script);
     return () => {
       script.remove();
@@ -63,17 +63,17 @@ export default function FeedbackPage() {
 
   // Render Canny when SDK and token are ready
   useEffect(() => {
-    if (!sdkLoaded || !ssoToken || !mountRef.current || error) return;
+    if (!sdkLoaded || !ssoToken || !mountRef.current) return;
 
     const boardToken = process.env.NEXT_PUBLIC_CANNY_BOARD_TOKEN;
     if (!boardToken) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setError("Feedback board not configured");
+      toast.error("Feedback board not configured");
       return;
     }
 
     if (typeof window.Canny !== "function") {
-      setError("Feedback widget not available");
+      toast.error("Feedback widget not available");
       return;
     }
 
@@ -83,7 +83,7 @@ export default function FeedbackPage() {
       ssoToken,
       theme: "auto",
     });
-  }, [sdkLoaded, ssoToken, error]);
+  }, [sdkLoaded, ssoToken]);
 
   return (
     <>
@@ -110,7 +110,7 @@ export default function FeedbackPage() {
         </>
       )}
 
-      {error ? (
+      {!cannyReady ? (
         <div className="flex min-h-full flex-col items-center justify-center gap-4 p-8 text-center">
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
@@ -119,9 +119,9 @@ export default function FeedbackPage() {
             <DocsInfoIcon url={DOCS_FEEDBACK_URL} />
           </div>
           <p className="text-muted-foreground max-w-md">
-            Vote on features, report bugs, and suggest improvements. We
-            couldn’t load the feedback board here—you can share feedback directly
-            on Canny.
+            Vote on features, report bugs, and suggest improvements. We couldn’t
+            load the feedback board here—you can share feedback directly on
+            Canny.
           </p>
           <a
             href={CANNY_FALLBACK_URL}

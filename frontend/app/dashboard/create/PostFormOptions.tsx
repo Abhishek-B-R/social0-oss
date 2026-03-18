@@ -23,7 +23,6 @@ type PostFormOptionsProps = {
   setMode: (m: PublishMode) => void;
   scheduledAt: Date | null;
   setScheduledAt: (d: Date | null) => void;
-  error: string | null;
   loading: boolean;
   submitLabel: string;
   submitDisabled?: boolean;
@@ -64,7 +63,6 @@ export function PostFormOptions({
   setMode,
   scheduledAt,
   setScheduledAt,
-  error,
   loading,
   submitLabel,
   submitDisabled = false,
@@ -128,11 +126,7 @@ export function PostFormOptions({
           {accountsLoading ? (
             <div className="flex flex-wrap items-center gap-4">
               {Array.from({ length: 10 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="flex flex-col items-center"
-                  aria-hidden
-                >
+                <div key={i} className="flex flex-col items-center" aria-hidden>
                   <div className="h-12 w-12 shrink-0 rounded-full bg-bg-muted animate-pulse border-2 border-transparent" />
                   <div className="mt-1.5 h-3 w-14 rounded bg-bg-muted animate-pulse" />
                   <div className="mt-1 h-3 w-10 rounded bg-bg-muted animate-pulse" />
@@ -232,12 +226,6 @@ export function PostFormOptions({
               </>
             )}
           </p>
-        </div>
-      )}
-
-      {!hideScheduleAndActions && error && (
-        <div className="rounded-xl bg-destructive/10 text-destructive px-4 py-3 text-sm font-medium border border-destructive/30">
-          {error}
         </div>
       )}
 

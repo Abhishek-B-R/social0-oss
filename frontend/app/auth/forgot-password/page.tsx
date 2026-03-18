@@ -5,19 +5,19 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    toast.dismiss();
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
-      setError("Enter your email address.");
+      toast.error("Enter your email address.");
       return;
     }
     setLoading(true);
@@ -26,14 +26,14 @@ export default function ForgotPasswordPage() {
         email: normalizedEmail,
       });
       if (err) {
-        setError(err.message ?? "Something went wrong. Try again.");
+        toast.error(err.message ?? "Something went wrong. Try again.");
         return;
       }
       router.push(
         `/auth/reset-password?email=${encodeURIComponent(normalizedEmail)}`,
       );
     } catch {
-      setError("Something went wrong. Try again.");
+      toast.error("Something went wrong. Try again.");
     } finally {
       setLoading(false);
     }
@@ -100,9 +100,6 @@ export default function ForgotPasswordPage() {
                   placeholder="you@example.com"
                 />
               </div>
-              {error && (
-                <p className="text-sm text-destructive">{error}</p>
-              )}
               <button
                 type="submit"
                 disabled={loading}

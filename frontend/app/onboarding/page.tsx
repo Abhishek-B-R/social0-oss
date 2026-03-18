@@ -4,8 +4,8 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { IconLoader2 } from "@tabler/icons-react";
-import { MdQuestionMark } from "react-icons/md";
 import { DOCS_ONBOARDING_URL } from "@/lib/docs-url";
+import { toast } from "sonner";
 
 const PAYMENT_FAILED_MESSAGE =
   "Payment failed. Please check your payment method and try again.";
@@ -60,17 +60,16 @@ function OnboardingPlanContent() {
   const [loadingPlan, setLoadingPlan] = useState<
     "starter" | "growth" | "pro" | null
   >(null);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (searchParams.get("payment_failed") === "1") {
-      setError(PAYMENT_FAILED_MESSAGE);
+      toast.error(PAYMENT_FAILED_MESSAGE);
       router.replace("/onboarding", { scroll: false });
     }
   }, [searchParams, router]);
 
   async function handleSelectPlan(plan: "starter" | "growth" | "pro") {
-    setError(null);
+    toast.dismiss();
     setLoadingPlan(plan);
     try {
       const res = await fetch("/api/billing/checkout", {
@@ -87,7 +86,7 @@ function OnboardingPlanContent() {
         window.location.href = data.url;
         return;
       }
-      setError(data.error ?? "Failed to start checkout");
+      toast.error(data.error ?? "Failed to start checkout");
     } finally {
       setLoadingPlan(null);
     }
@@ -123,12 +122,6 @@ function OnboardingPlanContent() {
         Early adopter pricing. Lock in before price increases.
       </p>
 
-      {error && (
-        <div className="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive max-w-2xl mx-auto">
-          {error}
-        </div>
-      )}
-
       {/* Pro tier commented out for now — add back later */}
       <div className="grid gap-6 sm:grid-cols-2 mb-8">
         <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-sm">
@@ -156,7 +149,10 @@ function OnboardingPlanContent() {
           >
             {loadingPlan === "starter" ? (
               <>
-                <IconLoader2 className="h-4 w-4 shrink-0 animate-spin" strokeWidth={1.5} />
+                <IconLoader2
+                  className="h-4 w-4 shrink-0 animate-spin"
+                  strokeWidth={1.5}
+                />
                 Redirecting to checkout…
               </>
             ) : (
@@ -193,7 +189,10 @@ function OnboardingPlanContent() {
           >
             {loadingPlan === "growth" ? (
               <>
-                <IconLoader2 className="h-4 w-4 shrink-0 animate-spin" strokeWidth={1.5} />
+                <IconLoader2
+                  className="h-4 w-4 shrink-0 animate-spin"
+                  strokeWidth={1.5}
+                />
                 Redirecting to checkout…
               </>
             ) : (

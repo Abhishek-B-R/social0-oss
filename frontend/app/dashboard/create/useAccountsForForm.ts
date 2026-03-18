@@ -6,15 +6,15 @@ import {
   transformAccountsForForm,
   type AccountForForm,
 } from "@/lib/accounts-for-form";
+import { toast } from "sonner";
 
 export function useAccountsForForm(allowedPlatforms?: string[] | null) {
   const [accounts, setAccounts] = useState<AccountForForm[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const refetch = useCallback(async () => {
     setLoading(true);
-    setError(null);
+    toast.dismiss();
     try {
       const res = await fetch("/api/accounts", { credentials: "include" });
       if (!res.ok) {
@@ -28,16 +28,17 @@ export function useAccountsForForm(allowedPlatforms?: string[] | null) {
           : null;
       setAccounts(transformAccountsForForm(data, allowedSet));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load accounts");
+      toast.error(e instanceof Error ? e.message : "Failed to load accounts");
       setAccounts([]);
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowedPlatforms?.join(",")]);
 
   useEffect(() => {
     refetch();
   }, [refetch]);
 
-  return { accounts, loading, error, refetch };
+  return { accounts, loading, refetch };
 }

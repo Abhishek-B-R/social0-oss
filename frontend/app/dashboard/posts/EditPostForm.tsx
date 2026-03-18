@@ -11,6 +11,7 @@ import { uploadFile } from "@/lib/upload-file";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { ScheduleDateTimePicker } from "@/components/ui/ScheduleDateTimePicker";
 import type { PostForEdit, PostMediaRow } from "./posts-list-data";
+import { toast } from "sonner";
 
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/gif,image/webp";
 const VIDEO_ACCEPT = "video/mp4,video/quicktime,video/webm,video/x-msvideo";
@@ -52,7 +53,6 @@ export function EditPostForm({
   const [idsToRemove, setIdsToRemove] = useState<Set<string>>(new Set());
   const [newFiles, setNewFiles] = useState<NewFileItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setContent(post.originalContent ?? "");
@@ -101,7 +101,9 @@ export function EditPostForm({
       for (const file of list) {
         const validation = validateMediaFile(file, selectedPlatforms);
         if (!validation.allowed) {
-          setError(validation.error ?? "File too large for selected platforms.");
+          toast.error(
+            validation.error ?? "File too large for selected platforms.",
+          );
           return;
         }
       }
@@ -109,7 +111,7 @@ export function EditPostForm({
         file,
         previewUrl: URL.createObjectURL(file),
       }));
-      setError(null);
+      toast.dismiss();
       setNewFiles((prev) => [...prev, ...toAdd]);
     },
     [selectedPlatforms],
@@ -137,10 +139,10 @@ export function EditPostForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    toast.dismiss();
     if (scheduledAt !== null) {
       if (scheduledAt <= new Date()) {
-        setError("Scheduled time must be in the future.");
+        toast.error("Scheduled time must be in the future.");
         return;
       }
     }
@@ -166,10 +168,10 @@ export function EditPostForm({
         router.push("/dashboard/posts");
         router.refresh();
       } else {
-        setError(result.error);
+        toast.error(result.error);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      toast.error(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setLoading(false);
     }
@@ -425,12 +427,6 @@ export function EditPostForm({
           </div>
         )}
       </div>
-
-      {error && (
-        <div className="rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 px-4 py-3 text-sm font-medium border border-red-100 dark:border-red-800/60">
-          {error}
-        </div>
-      )}
 
       <div className="flex gap-3">
         <button

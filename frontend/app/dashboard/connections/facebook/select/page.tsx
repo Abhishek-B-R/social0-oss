@@ -3,22 +3,24 @@
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AccountPicker, type AccountPickerAccount } from "@/components/AccountPicker";
+import {
+  AccountPicker,
+  type AccountPickerAccount,
+} from "@/components/AccountPicker";
+import { toast } from "sonner";
 
 export default function FacebookSelectPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const returnTo =
-    searchParams.get("returnTo") ?? "/dashboard/connections";
+  const returnTo = searchParams.get("returnTo") ?? "/dashboard/connections";
 
   const [accounts, setAccounts] = useState<AccountPickerAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) {
-      setError("Missing token");
+      toast.error("Missing token");
       setLoading(false);
       return;
     }
@@ -27,20 +29,26 @@ export default function FacebookSelectPage() {
     })
       .then((res) => {
         if (!res.ok)
-          return res.json().then((d) => Promise.reject(new Error(d.error ?? "Failed to load pages")));
+          return res
+            .json()
+            .then((d) =>
+              Promise.reject(new Error(d.error ?? "Failed to load pages")),
+            );
         return res.json();
       })
       .then((data) => {
         setAccounts(
-          (data.pages ?? []).map((p: { id: string; name: string; pictureUrl?: string | null }) => ({
-            id: p.id,
-            name: p.name,
-            pictureUrl: p.pictureUrl ?? null,
-          })),
+          (data.pages ?? []).map(
+            (p: { id: string; name: string; pictureUrl?: string | null }) => ({
+              id: p.id,
+              name: p.name,
+              pictureUrl: p.pictureUrl ?? null,
+            }),
+          ),
         );
       })
       .catch((err) => {
-        setError(err.message ?? "Failed to load pages");
+        toast.error(err.message ?? "Failed to load pages");
       })
       .finally(() => {
         setLoading(false);
@@ -50,7 +58,7 @@ export default function FacebookSelectPage() {
   const handleSelect = useCallback(
     async (pageId: string) => {
       if (!token) return;
-      setError(null);
+      toast.dismiss();
       setSubmitLoading(true);
       try {
         const res = await fetch("/api/connect/facebook/select", {
@@ -62,8 +70,9 @@ export default function FacebookSelectPage() {
         });
         if (res.status === 403) {
           const data = await res.json().catch(() => ({}));
-          setError(
-            data.message ?? "You need an active plan to connect accounts and post content.",
+          toast.error(
+            data.message ??
+              "You need an active plan to connect accounts and post content.",
           );
           setSubmitLoading(false);
           return;
@@ -74,12 +83,12 @@ export default function FacebookSelectPage() {
         }
         const data = await res.json().catch(() => ({}));
         if (data.error) {
-          setError(data.message ?? data.error);
+          toast.error(data.message ?? data.error);
         } else {
           window.location.href = returnTo;
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to connect");
+        toast.error(err instanceof Error ? err.message : "Failed to connect");
       } finally {
         setSubmitLoading(false);
       }
@@ -95,10 +104,9 @@ export default function FacebookSelectPage() {
     );
   }
 
-  if (error && accounts.length === 0) {
+  if (accounts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-12">
-        <p className="text-destructive">{error}</p>
         <Link
           href={returnTo}
           className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
@@ -131,7 +139,6 @@ export default function FacebookSelectPage() {
       submitLabel="Connect Selected Page"
       onSelect={handleSelect}
       loading={submitLoading}
-      error={error}
     />
   );
 }

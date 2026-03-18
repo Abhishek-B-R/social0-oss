@@ -3,31 +3,40 @@
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AccountPicker, type AccountPickerAccount } from "@/components/AccountPicker";
+import {
+  AccountPicker,
+  type AccountPickerAccount,
+} from "@/components/AccountPicker";
+import { toast } from "sonner";
 
 export default function InstagramSelectPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const returnTo =
-    searchParams.get("returnTo") ?? "/dashboard/connections";
+  const returnTo = searchParams.get("returnTo") ?? "/dashboard/connections";
 
   const [accounts, setAccounts] = useState<AccountPickerAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) {
-      setError("Missing token");
+      toast.error("Missing token");
       setLoading(false);
       return;
     }
-    fetch(`/api/connect/instagram-facebook/select?token=${encodeURIComponent(token)}`, {
-      credentials: "include",
-    })
+    fetch(
+      `/api/connect/instagram-facebook/select?token=${encodeURIComponent(token)}`,
+      {
+        credentials: "include",
+      },
+    )
       .then((res) => {
         if (!res.ok)
-          return res.json().then((d) => Promise.reject(new Error(d.error ?? "Failed to load accounts")));
+          return res
+            .json()
+            .then((d) =>
+              Promise.reject(new Error(d.error ?? "Failed to load accounts")),
+            );
         return res.json();
       })
       .then((data) => {
@@ -41,14 +50,16 @@ export default function InstagramSelectPage() {
               instagramProfilePictureUrl?: string | null;
             }) => ({
               id: p.pageId,
-              name: p.pageName + (p.instagramUsername ? ` (@${p.instagramUsername})` : ""),
+              name:
+                p.pageName +
+                (p.instagramUsername ? ` (@${p.instagramUsername})` : ""),
               pictureUrl: p.instagramProfilePictureUrl ?? null,
             }),
           ),
         );
       })
       .catch((err) => {
-        setError(err.message ?? "Failed to load accounts");
+        toast.error(err.message ?? "Failed to load accounts");
       })
       .finally(() => {
         setLoading(false);
@@ -58,7 +69,7 @@ export default function InstagramSelectPage() {
   const handleSelect = useCallback(
     async (pageId: string) => {
       if (!token) return;
-      setError(null);
+      toast.dismiss();
       setSubmitLoading(true);
       try {
         const res = await fetch("/api/connect/instagram-facebook/select", {
@@ -70,8 +81,9 @@ export default function InstagramSelectPage() {
         });
         if (res.status === 403) {
           const data = await res.json().catch(() => ({}));
-          setError(
-            data.message ?? "You need an active plan to connect accounts and post content.",
+          toast.error(
+            data.message ??
+              "You need an active plan to connect accounts and post content.",
           );
           setSubmitLoading(false);
           return;
@@ -82,12 +94,12 @@ export default function InstagramSelectPage() {
         }
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setError(data.message ?? data.error ?? "Failed to connect");
+          toast.error(data.message ?? data.error ?? "Failed to connect");
         } else {
           window.location.href = returnTo;
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to connect");
+        toast.error(err instanceof Error ? err.message : "Failed to connect");
       } finally {
         setSubmitLoading(false);
       }
@@ -103,10 +115,9 @@ export default function InstagramSelectPage() {
     );
   }
 
-  if (error && accounts.length === 0) {
+  if (accounts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-12">
-        <p className="text-destructive">{error}</p>
         <Link
           href={returnTo}
           className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
@@ -139,7 +150,6 @@ export default function InstagramSelectPage() {
       submitLabel="Connect Selected Page"
       onSelect={handleSelect}
       loading={submitLoading}
-      error={error}
     />
   );
 }

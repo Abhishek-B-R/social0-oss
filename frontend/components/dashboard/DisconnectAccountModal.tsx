@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 
 type DisconnectAccountModalProps = {
   isOpen: boolean;
@@ -21,14 +22,15 @@ export function DisconnectAccountModal({
 }: DisconnectAccountModalProps) {
   const router = useRouter();
   const [disconnecting, setDisconnecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleDisconnect = async () => {
     if (!accountId) return;
     setDisconnecting(true);
-    setError(null);
+    toast.dismiss();
     try {
-      const res = await fetch(`/api/accounts/${accountId}`, { method: "DELETE" });
+      const res = await fetch(`/api/accounts/${accountId}`, {
+        method: "DELETE",
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to disconnect");
@@ -37,7 +39,7 @@ export function DisconnectAccountModal({
       onDisconnected?.();
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to disconnect");
+      toast.error(e instanceof Error ? e.message : "Failed to disconnect");
     } finally {
       setDisconnecting(false);
     }
@@ -73,9 +75,6 @@ export function DisconnectAccountModal({
               Disconnecting will remove <strong>{accountLabel}</strong> from
               Social0. Your post history will be preserved.
             </p>
-            {error && (
-              <p className="mt-3 text-sm font-medium text-destructive">{error}</p>
-            )}
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-3">

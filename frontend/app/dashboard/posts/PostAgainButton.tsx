@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { postAgain } from "@/app/actions/posts";
 import { Repeat } from "lucide-react";
 import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";
+import { toast } from "sonner";
 
 type OverlayPhase = "idle" | "publishing" | "done";
 
@@ -20,20 +21,19 @@ export function PostAgainButton({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
 
   const handleClick = async (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
-    setError(null);
+    toast.dismiss();
     setLoading(true);
     setOverlayPhase("publishing");
     const result = await postAgain(postId);
     setLoading(false);
     if (!result.success) {
-      setError(result.error);
+      toast.error(result.error);
       setOverlayPhase("idle");
       return;
     }
@@ -60,14 +60,6 @@ export function PostAgainButton({
           <Repeat className="h-3 w-3" />
           {loading ? "Posting…" : label}
         </button>
-        {error && (
-          <p
-            className="text-[10px] text-red-600 dark:text-red-400 text-right truncate max-w-full"
-            title={error}
-          >
-            {error}
-          </p>
-        )}
       </div>
     );
   }
@@ -84,14 +76,6 @@ export function PostAgainButton({
           <Repeat className="h-4 w-4" />
           {loading ? "Posting…" : label}
         </button>
-        {error && (
-          <p
-            className="text-xs text-red-600 dark:text-red-400 max-w-[280px] text-right"
-            title={error}
-          >
-            {error}
-          </p>
-        )}
       </div>
       {showOverlay && (
         <UploadPublishOverlay

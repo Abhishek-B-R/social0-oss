@@ -39,7 +39,6 @@ type SchedulePostSidebarProps = {
   hasAccountSelected: boolean;
   /** When submit is disabled, show this reason on hover (e.g. "Add a caption", "Add at least one image") */
   submitDisabledReason?: string | null;
-  error: string | null;
   /** When true, show times in 24h format */
   use24HourTimeFormat?: boolean;
   /** User's date format (dd/MM/yyyy, MM/dd/yyyy, yyyy-MM-dd) */
@@ -79,7 +78,6 @@ export function SchedulePostSidebar({
   submitDisabled,
   hasAccountSelected,
   submitDisabledReason,
-  error,
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
   timezone = null,
@@ -241,7 +239,8 @@ export function SchedulePostSidebar({
     setDateValue(format(inTz, "yyyy-MM-dd"));
     setTimeValue(format(inTz, "HH:mm"));
     setScheduledAt(utc);
-    if (intendedQueueSlotIdRef) intendedQueueSlotIdRef.current = nextSlot.slotId;
+    if (intendedQueueSlotIdRef)
+      intendedQueueSlotIdRef.current = nextSlot.slotId;
   };
 
   const clearQueueSlotRef = () => {
@@ -307,7 +306,7 @@ export function SchedulePostSidebar({
                   : !hasAccountSelected
                     ? "Select at least one account to post"
                     : submitDisabled
-                      ? submitDisabledReason ?? "Complete the form to post"
+                      ? (submitDisabledReason ?? "Complete the form to post")
                       : undefined
               }
               className="w-full rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-accent"
@@ -336,10 +335,11 @@ export function SchedulePostSidebar({
                 aria-busy="true"
                 aria-live="polite"
               >
-                <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-accent/30 border-t-accent" aria-hidden />
-                <span className="text-sm text-text-muted">
-                  Loading queue…
-                </span>
+                <div
+                  className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-accent/30 border-t-accent"
+                  aria-hidden
+                />
+                <span className="text-sm text-text-muted">Loading queue…</span>
               </div>
             ) : nextSlot ? (
               <>
@@ -348,10 +348,11 @@ export function SchedulePostSidebar({
                   onClick={fillNextSlot}
                   className="flex w-full items-center gap-2 rounded-xl border border-border bg-bg-muted/50 px-3 py-2.5 text-left text-sm font-medium text-text transition-colors hover:bg-bg-muted hover:border-accent/40 focus:outline-none focus:ring-2 focus:ring-accent/20"
                 >
-                  <ListOrdered className="h-4 w-4 shrink-0 text-accent" aria-hidden />
-                  <span>
-                    Next Queue Slot: {nextSlot.displayLabel}
-                  </span>
+                  <ListOrdered
+                    className="h-4 w-4 shrink-0 text-accent"
+                    aria-hidden
+                  />
+                  <span>Next Queue Slot: {nextSlot.displayLabel}</span>
                 </button>
                 <p className="text-xs text-text-muted">
                   Timezone: {nextSlot.timezoneLabel}
@@ -425,7 +426,8 @@ export function SchedulePostSidebar({
                     : !combinedDateTime
                       ? "Pick a date and time to schedule"
                       : submitDisabled
-                        ? submitDisabledReason ?? "Complete the form to schedule"
+                        ? (submitDisabledReason ??
+                          "Complete the form to schedule")
                         : undefined
               }
               className="w-full rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-accent"
@@ -564,7 +566,9 @@ export function SchedulePostSidebar({
                     role="switch"
                     aria-checked={autoPlug.enabled}
                     aria-label={
-                      autoPlug.enabled ? "Disable Auto-Plug" : "Enable Auto-Plug"
+                      autoPlug.enabled
+                        ? "Disable Auto-Plug"
+                        : "Enable Auto-Plug"
                     }
                     onClick={autoPlug.onToggle}
                     className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${

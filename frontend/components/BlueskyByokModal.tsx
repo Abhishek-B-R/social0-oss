@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 
 type BlueskyByokModalProps = {
   isOpen: boolean;
@@ -8,20 +9,23 @@ type BlueskyByokModalProps = {
   onSuccess: (username: string) => void;
 };
 
-export function BlueskyByokModal({ isOpen, onClose, onSuccess }: BlueskyByokModalProps) {
+export function BlueskyByokModal({
+  isOpen,
+  onClose,
+  onSuccess,
+}: BlueskyByokModalProps) {
   const [formData, setFormData] = useState({
     handle: "",
     appPassword: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError(null);
+    toast.dismiss();
 
     try {
       const response = await fetch("/api/connect/bluesky/byok", {
@@ -35,7 +39,9 @@ export function BlueskyByokModal({ isOpen, onClose, onSuccess }: BlueskyByokModa
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || data.error || "Failed to connect Bluesky account");
+        throw new Error(
+          data.message || data.error || "Failed to connect Bluesky account",
+        );
       }
 
       // Success - close modal and refresh
@@ -44,25 +50,23 @@ export function BlueskyByokModal({ isOpen, onClose, onSuccess }: BlueskyByokModa
       // Reload page to show updated connection status
       window.location.reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      toast.error(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleChange = (field: keyof typeof formData) => (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
-  };
+  const handleChange =
+    (field: keyof typeof formData) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+    };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="rounded-2xl border border-gray-200 bg-white p-6 max-w-md w-full mx-4 shadow-xl">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900">
-            Connect Bluesky
-          </h2>
+          <h2 className="text-xl font-bold text-gray-900">Connect Bluesky</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 rounded-lg p-1"
@@ -86,7 +90,9 @@ export function BlueskyByokModal({ isOpen, onClose, onSuccess }: BlueskyByokModa
         </div>
 
         <p className="text-sm text-gray-600 mb-4">
-          Requires your handle and an App Password. Do not use your main password. Generate an App Password in Bluesky Settings → App Passwords.
+          Requires your handle and an App Password. Do not use your main
+          password. Generate an App Password in Bluesky Settings → App
+          Passwords.
         </p>
         <a
           href="https://bsky.app/settings/app-passwords"
@@ -114,11 +120,18 @@ export function BlueskyByokModal({ isOpen, onClose, onSuccess }: BlueskyByokModa
               className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               placeholder="@username.bsky.social"
             />
-            <p className="mt-1 text-xs text-gray-500">Format: @username.bsky.social or username.bsky.social</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Format: @username.bsky.social or username.bsky.social
+            </p>
           </div>
 
           <div>
-            <label htmlFor="appPassword" className="block text-sm font-medium text-gray-700 mb-1">App Password</label>
+            <label
+              htmlFor="appPassword"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              App Password
+            </label>
             <input
               id="appPassword"
               type="password"
@@ -130,15 +143,20 @@ export function BlueskyByokModal({ isOpen, onClose, onSuccess }: BlueskyByokModa
             />
           </div>
 
-          {error && (
-            <p className="text-sm font-medium text-red-600">{error}</p>
-          )}
-
           <div className="flex gap-3">
-            <button type="button" onClick={onClose} disabled={isSubmitting} className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+            >
               Cancel
             </button>
-            <button type="submit" disabled={isSubmitting} className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-sm font-semibold shadow-md disabled:opacity-50">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-sm font-semibold shadow-md disabled:opacity-50"
+            >
               {isSubmitting ? "Connecting..." : "Connect"}
             </button>
           </div>

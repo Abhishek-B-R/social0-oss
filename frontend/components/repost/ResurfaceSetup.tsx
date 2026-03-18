@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createResurfaceSchedule } from "@/app/actions/resurface";
+import { toast } from "sonner";
 
 const INTERVAL_OPTIONS = [
   { value: 1, label: "1h" },
@@ -37,11 +38,10 @@ export function ResurfaceSetup({
   const [maxResurfaces, setMaxResurfaces] = useState(initialMaxResurfaces);
   const [plugComment, setPlugComment] = useState(initialPlugComment);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
   const handleEnable = async () => {
-    setError(null);
+    toast.dismiss();
     setLoading(true);
     const result = await createResurfaceSchedule(
       postId,
@@ -55,7 +55,7 @@ export function ResurfaceSetup({
       setDone(true);
       onSuccess?.();
     } else {
-      setError(result.error);
+      toast.error(result.error);
     }
   };
 
@@ -136,9 +136,6 @@ export function ResurfaceSetup({
               className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text placeholder:text-text-muted"
             />
           </div>
-          {error && (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          )}
           <button
             type="button"
             onClick={handleEnable}

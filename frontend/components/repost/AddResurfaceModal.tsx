@@ -8,6 +8,7 @@ import {
   type AutoResurfaceConfig,
 } from "./AutoResurfacePanel";
 import { RESURFACE_PLATFORMS } from "@/lib/resurface-utils";
+import { toast } from "sonner";
 
 type PublicationLike = { connectedAccountId: string; platform: string };
 
@@ -27,7 +28,6 @@ export function AddResurfaceModal({
   const router = useRouter();
   const [config, setConfig] = useState<AutoResurfaceConfig | null>(null);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const supportedPubs = publications.filter((p) =>
     RESURFACE_PLATFORMS.includes(
@@ -44,7 +44,7 @@ export function AddResurfaceModal({
 
   const handleSave = async () => {
     if (!config || !hasX) return;
-    setError(null);
+    toast.dismiss();
     setSaving(true);
     const result = await createResurfaceSchedule(
       postId,
@@ -58,7 +58,7 @@ export function AddResurfaceModal({
       onClose();
       router.refresh();
     } else {
-      setError(result.error ?? "Failed to enable");
+      toast.error(result.error ?? "Failed to enable");
     }
   };
 
@@ -98,7 +98,6 @@ export function AddResurfaceModal({
             publishedAt={publishedAt}
             onChange={setConfig}
           />
-          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
           <div className="mt-4 flex justify-end gap-2">
             <button
               type="button"

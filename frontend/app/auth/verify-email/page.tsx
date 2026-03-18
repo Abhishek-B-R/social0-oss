@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 const RESEND_COOLDOWN_SEC = 30;
 const OTP_LENGTH = 6;
@@ -14,7 +15,6 @@ function VerifyEmailContent() {
   const emailParam = searchParams.get("email") ?? "";
   const [email] = useState(decodeURIComponent(emailParam));
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
-  const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -25,21 +25,26 @@ function VerifyEmailContent() {
     const digits = s.replace(/\D/g, "").slice(0, OTP_LENGTH).split("");
     setOtp((prev) => {
       const next = [...prev];
-      digits.forEach((d, i) => { next[i] = d; });
+      digits.forEach((d, i) => {
+        next[i] = d;
+      });
       return next;
     });
   }, []);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
-    const t = setInterval(() => setResendCooldown((c) => (c <= 1 ? 0 : c - 1)), 1000);
+    const t = setInterval(
+      () => setResendCooldown((c) => (c <= 1 ? 0 : c - 1)),
+      1000,
+    );
     return () => clearInterval(t);
   }, [resendCooldown]);
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otpString.length !== OTP_LENGTH) return;
-    setError(null);
+    toast.dismiss();
     setVerifying(true);
     try {
       const { error: err } = await authClient.emailOtp.verifyEmail({
@@ -47,12 +52,12 @@ function VerifyEmailContent() {
         otp: otpString,
       });
       if (err) {
-        setError("Invalid or expired code. Try again.");
+        toast.error("Invalid or expired code. Try again.");
         return;
       }
       window.location.href = "/dashboard";
     } catch {
-      setError("Invalid or expired code. Try again.");
+      toast.error("Invalid or expired code. Try again.");
     } finally {
       setVerifying(false);
     }
@@ -60,7 +65,7 @@ function VerifyEmailContent() {
 
   const handleResend = async () => {
     if (resendCooldown > 0 || !email) return;
-    setError(null);
+    toast.dismiss();
     setResending(true);
     try {
       const { error: err } = await authClient.emailOtp.sendVerificationOtp({
@@ -68,12 +73,12 @@ function VerifyEmailContent() {
         type: "email-verification",
       });
       if (err) {
-        setError(err.message ?? "Failed to resend code.");
+        toast.error(err.message ?? "Failed to resend code.");
         return;
       }
       setResendCooldown(RESEND_COOLDOWN_SEC);
     } catch {
-      setError("Failed to resend code.");
+      toast.error("Failed to resend code.");
     } finally {
       setResending(false);
     }
@@ -112,22 +117,28 @@ function VerifyEmailContent() {
             return next;
           });
           if (v && i < OTP_LENGTH - 1) {
-            const nextEl = e.target.nextElementSibling as HTMLInputElement | null;
+            const nextEl = e.target
+              .nextElementSibling as HTMLInputElement | null;
             nextEl?.focus();
           }
         }
       }}
       onPaste={(e) => {
         e.preventDefault();
-        const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
+        const pasted = e.clipboardData
+          .getData("text")
+          .replace(/\D/g, "")
+          .slice(0, OTP_LENGTH);
         setOtpFromString(pasted);
         const firstEmpty = Math.min(pasted.length, OTP_LENGTH - 1);
-        const el = e.currentTarget.parentElement?.querySelectorAll("input")[firstEmpty];
+        const el =
+          e.currentTarget.parentElement?.querySelectorAll("input")[firstEmpty];
         el?.focus();
       }}
       onKeyDown={(e) => {
         if (e.key === "Backspace" && !otp[i] && i > 0) {
-          const prev = e.currentTarget.previousElementSibling as HTMLInputElement | null;
+          const prev = e.currentTarget
+            .previousElementSibling as HTMLInputElement | null;
           prev?.focus();
         }
       }}
@@ -157,7 +168,9 @@ function VerifyEmailContent() {
                 className="rounded-full hidden dark:block absolute inset-0 border border-white"
               />
             </span>
-            <span className="font-semibold text-lg text-foreground">Social0</span>
+            <span className="font-semibold text-lg text-foreground">
+              Social0
+            </span>
           </Link>
         </div>
       </header>
@@ -171,20 +184,24 @@ function VerifyEmailContent() {
                 Verify your email
               </h1>
               <p className="text-sm text-muted-foreground">
-                We sent a 6-digit code to <strong className="text-foreground">{email}</strong>
+                We sent a 6-digit code to{" "}
+                <strong className="text-foreground">{email}</strong>
               </p>
             </div>
 
             <form onSubmit={handleVerify} className="space-y-6">
-              <div className="flex justify-center gap-2" role="group" aria-label="Verification code">
+              <div
+                className="flex justify-center gap-2"
+                role="group"
+                aria-label="Verification code"
+              >
                 {inputs}
               </div>
-              {error && (
-                <p className="text-sm text-destructive text-center">{error}</p>
-              )}
               <button
                 type="submit"
-                disabled={verifying || resending || otpString.length !== OTP_LENGTH}
+                disabled={
+                  verifying || resending || otpString.length !== OTP_LENGTH
+                }
                 className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-3 px-4 transition-colors"
               >
                 {verifying ? "Verifying…" : "Verify"}
@@ -208,7 +225,10 @@ function VerifyEmailContent() {
           </div>
 
           <p className="mt-8 text-center text-sm text-muted-foreground">
-            <Link href="/auth" className="underline hover:text-foreground transition-colors">
+            <Link
+              href="/auth"
+              className="underline hover:text-foreground transition-colors"
+            >
               Back to sign in
             </Link>
           </p>

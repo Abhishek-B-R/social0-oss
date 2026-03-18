@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 
 type PersonalProfile = {
   id: string;
@@ -19,15 +20,13 @@ type CompanyPage = {
 export default function LinkedInSelectPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const returnTo =
-    searchParams.get("returnTo") ?? "/dashboard/connections";
+  const returnTo = searchParams.get("returnTo") ?? "/dashboard/connections";
 
   const [personalProfile, setPersonalProfile] =
     useState<PersonalProfile | null>(null);
   const [companyPages, setCompanyPages] = useState<CompanyPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [selectedPersonal, setSelectedPersonal] = useState(true);
   const [selectedCompanyIds, setSelectedCompanyIds] = useState<Set<string>>(
@@ -36,7 +35,7 @@ export default function LinkedInSelectPage() {
 
   useEffect(() => {
     if (!token) {
-      setError("Missing token");
+      toast.error("Missing token");
       setLoading(false);
       return;
     }
@@ -57,7 +56,7 @@ export default function LinkedInSelectPage() {
         setCompanyPages(data.companyPages ?? []);
       })
       .catch((err) => {
-        setError(err.message ?? "Failed to load accounts");
+        toast.error(err.message ?? "Failed to load accounts");
       })
       .finally(() => {
         setLoading(false);
@@ -81,10 +80,10 @@ export default function LinkedInSelectPage() {
       if (selectedPersonal && personalProfile) ids.push(personalProfile.id);
       selectedCompanyIds.forEach((urn) => ids.push(urn));
       if (ids.length === 0) {
-        setError("Select at least one account to connect.");
+        toast.error("Select at least one account to connect.");
         return;
       }
-      setError(null);
+      toast.dismiss();
       setSubmitLoading(true);
       try {
         const res = await fetch("/api/connect/linkedin/select", {
@@ -100,7 +99,7 @@ export default function LinkedInSelectPage() {
         });
         if (res.status === 403) {
           const data = await res.json().catch(() => ({}));
-          setError(
+          toast.error(
             data.message ??
               "You need an active plan to connect accounts and post content.",
           );
@@ -113,25 +112,17 @@ export default function LinkedInSelectPage() {
         }
         const data = await res.json().catch(() => ({}));
         if (data.error) {
-          setError(data.message ?? data.error);
+          toast.error(data.message ?? data.error);
         } else {
           window.location.href = returnTo;
         }
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to connect",
-        );
+        toast.error(err instanceof Error ? err.message : "Failed to connect");
       } finally {
         setSubmitLoading(false);
       }
     },
-    [
-      token,
-      returnTo,
-      selectedPersonal,
-      personalProfile,
-      selectedCompanyIds,
-    ],
+    [token, returnTo, selectedPersonal, personalProfile, selectedCompanyIds],
   );
 
   if (loading) {
@@ -142,10 +133,9 @@ export default function LinkedInSelectPage() {
     );
   }
 
-  if (error && !personalProfile && companyPages.length === 0) {
+  if (!personalProfile && companyPages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-12">
-        <p className="text-destructive">{error}</p>
         <Link
           href={returnTo}
           className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
@@ -244,10 +234,6 @@ export default function LinkedInSelectPage() {
             </div>
           )}
         </div>
-
-        {error && (
-          <p className="mt-4 text-sm text-destructive">{error}</p>
-        )}
 
         <div className="mt-6 flex justify-end gap-2">
           <Link

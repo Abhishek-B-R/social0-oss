@@ -31,7 +31,7 @@ import {
 } from "@/components/UploadPublishOverlay";
 import { PLATFORMS } from "@/lib/platforms";
 import { IoMdAddCircleOutline } from "react-icons/io";
-import { MdClose, MdQuestionMark } from "react-icons/md";
+import { MdClose } from "react-icons/md";
 import { MdOutlinePhotoLibrary, MdOutlineVideocam } from "react-icons/md";
 import { AlertTriangle } from "lucide-react";
 import {
@@ -54,7 +54,7 @@ import {
   getAccountsOverVideoLimit,
   type VideoLimitWarning,
 } from "@/lib/platform-limits";
-import { DOCS_THREADS_POST_TYPE_URL } from "@/lib/docs-url";
+import { toast } from "sonner";
 
 const PREVIEW_MEDIA_MAX_H = 200;
 const MAX_ATTACHMENTS_PER_POST = 4;
@@ -291,7 +291,6 @@ export function ThreadsPostForm({
   const [draftLoading, setDraftLoading] = useState(
     !!(initialDraftId || initialScheduledId || initialEditId),
   );
-  const [error, setError] = useState<string | null>(null);
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
@@ -412,7 +411,7 @@ export function ThreadsPostForm({
         const result = await getScheduledPost(initialScheduledId);
         if (cancelled) return;
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           setDraftLoading(false);
           return;
         }
@@ -483,7 +482,7 @@ export function ThreadsPostForm({
           nextIdRef.current = 2;
         }
       } catch {
-        if (!cancelled) setError("Failed to load post");
+        if (!cancelled) toast.error("Failed to load post");
       } finally {
         if (!cancelled) setDraftLoading(false);
       }
@@ -502,7 +501,7 @@ export function ThreadsPostForm({
         const result = await getDraft(initialDraftId);
         if (cancelled) return;
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           return;
         }
         const { draft } = result;
@@ -569,7 +568,7 @@ export function ThreadsPostForm({
         setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
         if (draft.scheduledAt) setMode("scheduled");
       } catch {
-        if (!cancelled) setError("Failed to load draft");
+        if (!cancelled) toast.error("Failed to load draft");
       } finally {
         if (!cancelled) setDraftLoading(false);
       }
@@ -588,7 +587,7 @@ export function ThreadsPostForm({
         const result = await getPostToEdit(initialEditId);
         if (cancelled) return;
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           setDraftLoading(false);
           return;
         }
@@ -653,7 +652,7 @@ export function ThreadsPostForm({
         }
         setSelectedIds(new Set(toEdit.connectedAccountIds));
       } catch {
-        if (!cancelled) setError("Failed to load post");
+        if (!cancelled) toast.error("Failed to load post");
       } finally {
         if (!cancelled) setDraftLoading(false);
       }
@@ -687,7 +686,7 @@ export function ThreadsPostForm({
       router.push("/dashboard/posts/drafts");
       router.refresh();
     } else {
-      setError(result.error);
+      toast.error(result.error);
     }
   };
 
@@ -875,16 +874,18 @@ export function ThreadsPostForm({
       if (!file.type.startsWith("image/")) continue;
       const validation = validateMediaFile(file, selectedPlatforms);
       if (!validation.allowed) {
-        setError(validation.error ?? "File too large for selected platforms.");
+        toast.error(
+          validation.error ?? "File too large for selected platforms.",
+        );
         return;
       }
     }
-    setError(null);
+    toast.dismiss();
     const post = posts.find((p) => p.id === postId);
     if (!post) return;
     const totalAttachments = post.images.length + post.videos.length;
     if (totalAttachments >= MAX_ATTACHMENTS_PER_POST) {
-      setError("Max 4 attachments per post");
+      toast.error("Max 4 attachments per post");
       return;
     }
     const newImages: MediaImage[] = [];
@@ -903,7 +904,7 @@ export function ThreadsPostForm({
       MAX_ATTACHMENTS_PER_POST - totalAttachments,
     );
     if (toAdd.length === 0) {
-      setError("Max 4 attachments per post");
+      toast.error("Max 4 attachments per post");
       return;
     }
     setPosts((prev) => {
@@ -960,16 +961,18 @@ export function ThreadsPostForm({
       if (!file.type.startsWith("video/")) continue;
       const validation = validateMediaFile(file, selectedPlatforms);
       if (!validation.allowed) {
-        setError(validation.error ?? "File too large for selected platforms.");
+        toast.error(
+          validation.error ?? "File too large for selected platforms.",
+        );
         return;
       }
     }
-    setError(null);
+    toast.dismiss();
     const post = posts.find((p) => p.id === postId);
     if (!post) return;
     const totalAttachments = post.images.length + post.videos.length;
     if (totalAttachments >= MAX_ATTACHMENTS_PER_POST) {
-      setError("Max 4 attachments per post");
+      toast.error("Max 4 attachments per post");
       return;
     }
     const newVideos: MediaVideo[] = [];
@@ -997,14 +1000,14 @@ export function ThreadsPostForm({
           if (durations[i] <= MAX_VIDEO_DURATION_SECONDS)
             withinDuration.push({ ...v, durationSeconds: durations[i] });
         });
-        if (overDuration) setError(VIDEO_DURATION_MESSAGE);
+        if (overDuration) toast.error(VIDEO_DURATION_MESSAGE);
         if (withinDuration.length === 0) return;
         const toAdd = withinDuration.slice(
           0,
           MAX_ATTACHMENTS_PER_POST - totalAttachments,
         );
         if (toAdd.length === 0) {
-          setError("Max 4 attachments per post");
+          toast.error("Max 4 attachments per post");
           return;
         }
         setPosts((prev) => {
@@ -1189,7 +1192,7 @@ export function ThreadsPostForm({
       autoPlugConfig,
     );
     if (!autoPlugResult.success) {
-      setError(autoPlugResult.error);
+      toast.error(autoPlugResult.error);
       return false;
     }
     return true;
@@ -1225,7 +1228,7 @@ export function ThreadsPostForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    toast.dismiss();
     if (!firstPostText) {
       setShowFirstTextError(true);
       return;
@@ -1248,7 +1251,7 @@ export function ThreadsPostForm({
     const contentParts = threadPosts.map((p) => p.text.trim()).filter(Boolean);
     const content = contentParts.join(THREAD_SEPARATOR);
     if (!content.trim()) {
-      setError("Add some text to your thread before posting.");
+      toast.error("Add some text to your thread before posting.");
       setLoading(false);
       setOverlayPhase("idle");
       return;
@@ -1266,7 +1269,7 @@ export function ThreadsPostForm({
         const videos = allMedia.filter((m) => m.type === "video");
 
         if (videos.length > 0 && images.length > 0) {
-          setError(
+          toast.error(
             `Twitter X only supports either images or a single video per tweet. Remove images or video from part ${
               i + 1
             }.`,
@@ -1276,7 +1279,7 @@ export function ThreadsPostForm({
           return;
         }
         if (videos.length > 1) {
-          setError(
+          toast.error(
             `Twitter X only supports one video per tweet. Part ${
               i + 1
             } currently has ${videos.length} videos.`,
@@ -1286,7 +1289,7 @@ export function ThreadsPostForm({
           return;
         }
         if (images.length > 4) {
-          setError(
+          toast.error(
             `Twitter X supports up to 4 images per tweet. Part ${
               i + 1
             } currently has ${images.length} images.`,
@@ -1376,7 +1379,7 @@ export function ThreadsPostForm({
             : typeof reason === "string"
               ? reason
               : `Failed to upload ${label}`;
-        setError(messageBase);
+        toast.error(messageBase);
         setLoading(false);
         setOverlayPhase("idle");
         setUploadProgress(null);
@@ -1431,7 +1434,7 @@ export function ThreadsPostForm({
         router.push("/dashboard/posts/scheduled");
         router.refresh();
       } else {
-        setError(result.error);
+        toast.error(result.error);
       }
       return;
     }
@@ -1453,7 +1456,7 @@ export function ThreadsPostForm({
           router.push("/dashboard/posts/drafts");
           router.refresh();
         } else {
-          setError(result.error);
+          toast.error(result.error);
         }
         return;
       }
@@ -1467,7 +1470,7 @@ export function ThreadsPostForm({
         );
         setLoading(false);
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           setOverlayPhase("idle");
           return;
         }
@@ -1513,7 +1516,7 @@ export function ThreadsPostForm({
           router.push("/dashboard/posts/scheduled");
           router.refresh();
         } else {
-          setError(result.error);
+          toast.error(result.error);
         }
         return;
       }
@@ -1533,7 +1536,7 @@ export function ThreadsPostForm({
     if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
     if (!result.success) {
-      setError(result.error);
+      toast.error(result.error);
       setOverlayPhase("idle");
       return;
     }
@@ -1542,6 +1545,7 @@ export function ThreadsPostForm({
       let list: Awaited<ReturnType<typeof getPostPublicationList>> = [];
       try {
         list = await getPostPublicationList(result.postId);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (_) {
         // Proceed with empty list so publish still runs (e.g. after ETIMEDOUT)
       }
@@ -1757,7 +1761,6 @@ export function ThreadsPostForm({
             setMode={setMode}
             scheduledAt={scheduledAt}
             setScheduledAt={setScheduledAt}
-            error={error}
             loading={loading}
             submitLabel={submitLabel}
             submitDisabled={
@@ -1837,29 +1840,6 @@ export function ThreadsPostForm({
                 )}
               </div>
             )}
-
-          {error && (
-            <div className="relative rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 pr-10 text-sm font-medium text-destructive">
-              {error}
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setError(null)}
-                  className="rounded-lg border border-border bg-bg-elevated px-3 py-1.5 text-xs font-medium text-text hover:bg-bg-muted transition-colors"
-                >
-                  Try again
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setError(null)}
-                className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-destructive/70 hover:bg-destructive/20 transition-colors"
-                aria-label="Dismiss error"
-              >
-                <MdClose className="w-4 h-4" />
-              </button>
-            </div>
-          )}
 
           <div className="rounded-2xl border border-border bg-bg p-6 shadow-sm space-y-4">
             <p className="text-sm font-semibold text-text">
@@ -2090,7 +2070,6 @@ export function ThreadsPostForm({
           }
           hasAccountSelected={selectedIds.size > 0}
           submitDisabledReason={submitDisabledReason}
-          error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
           timezone={timezone}
@@ -2198,6 +2177,7 @@ export function ThreadsPostForm({
                           {displayName}
                           {previewAccount?.platform === "twitter_x" &&
                             previewAccount?.isTwitterPremium && (
+                              // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 src="/icons/twitter-premium.svg"
                                 alt=""

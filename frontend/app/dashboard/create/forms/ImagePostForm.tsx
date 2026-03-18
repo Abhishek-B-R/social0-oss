@@ -62,6 +62,7 @@ import {
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
 import { DOCS_IMAGE_POST_TYPE_URL } from "@/lib/docs-url";
+import { toast } from "sonner";
 
 type PlatformCaptionState = {
   overridden: boolean;
@@ -140,7 +141,6 @@ export function ImagePostForm({
   const [draftLoading, setDraftLoading] = useState(
     !!(initialDraftId || initialScheduledId || initialEditId),
   );
-  const [error, setError] = useState<string | null>(null);
   type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
@@ -294,7 +294,7 @@ export function ImagePostForm({
         const result = await getDraft(initialDraftId);
         if (cancelled) return;
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           return;
         }
         const { draft } = result;
@@ -368,7 +368,7 @@ export function ImagePostForm({
           if (Object.keys(next).length > 0) setTiktokSettings(next);
         }
       } catch {
-        if (!cancelled) setError("Failed to load draft");
+        if (!cancelled) toast.error("Failed to load draft");
       } finally {
         if (!cancelled) setDraftLoading(false);
       }
@@ -387,7 +387,7 @@ export function ImagePostForm({
         const result = await getPostToEdit(initialEditId);
         if (cancelled) return;
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           setDraftLoading(false);
           return;
         }
@@ -460,7 +460,7 @@ export function ImagePostForm({
           if (Object.keys(next).length > 0) setTiktokSettings(next);
         }
       } catch {
-        if (!cancelled) setError("Failed to load post");
+        if (!cancelled) toast.error("Failed to load post");
       } finally {
         if (!cancelled) setDraftLoading(false);
       }
@@ -479,7 +479,7 @@ export function ImagePostForm({
         const result = await getScheduledPost(initialScheduledId);
         if (cancelled) return;
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           setDraftLoading(false);
           return;
         }
@@ -560,7 +560,7 @@ export function ImagePostForm({
           if (Object.keys(next).length > 0) setTiktokSettings(next);
         }
       } catch {
-        if (!cancelled) setError("Failed to load post");
+        if (!cancelled) toast.error("Failed to load post");
       } finally {
         if (!cancelled) setDraftLoading(false);
       }
@@ -576,7 +576,7 @@ export function ImagePostForm({
 
   const addImageFromClipboard = (file: File) => {
     if (!file.type.startsWith("image/")) return;
-    setError(null);
+    toast.dismiss();
     setImages((prev) => {
       const maxOrder =
         prev.length > 0 ? Math.max(...prev.map((i) => i.order)) : 0;
@@ -629,10 +629,10 @@ export function ImagePostForm({
         router.push("/dashboard/posts/drafts");
         router.refresh();
       } else {
-        setError(result.error);
+        toast.error(result.error);
       }
     } catch {
-      setError("Failed to delete draft");
+      toast.error("Failed to delete draft");
     }
   };
 
@@ -762,7 +762,7 @@ export function ImagePostForm({
     );
     const TIKTOK_MAX_IMAGES = 35;
     if (hasTikTokInSelection && images.length >= TIKTOK_MAX_IMAGES) {
-      setError("TikTok allows at most 35 images per post.");
+      toast.error("TikTok allows at most 35 images per post.");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -779,12 +779,12 @@ export function ImagePostForm({
       }
       const file = files[i];
       if (!file.type.startsWith("image/")) {
-        setError("Please select only image files (JPEG, PNG, GIF, WebP).");
+        toast.error("Please select only image files (JPEG, PNG, GIF, WebP).");
         continue;
       }
       const validation = validateMediaFile(file, selectedPlatforms);
       if (!validation.allowed) {
-        setError(validation.error);
+        toast.error(validation.error);
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
@@ -802,13 +802,13 @@ export function ImagePostForm({
       added++;
     }
     if (hasTikTokInSelection && files.length > cap && added === cap) {
-      setError(
+      toast.error(
         "TikTok allows at most 35 images per post. Only the first " +
           cap +
           " of the selected images were added.",
       );
     } else if (added > 0) {
-      setError(null);
+      toast.dismiss();
     }
     setImages((prev) => [...prev, ...newImages]);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -826,14 +826,14 @@ export function ImagePostForm({
       f.type.startsWith("image/"),
     );
     if (imageFiles.length < files.length) {
-      setError("Please use only image files (JPEG, PNG, GIF, WebP).");
+      toast.error("Please use only image files (JPEG, PNG, GIF, WebP).");
     }
     if (imageFiles.length === 0) return;
     const hasTikTokDrop = accounts.some(
       (a) => selectedIds.has(a.id) && a.platform === "tiktok",
     );
     if (hasTikTokDrop && images.length >= TIKTOK_MAX_IMAGES) {
-      setError("TikTok allows at most 35 images per post.");
+      toast.error("TikTok allows at most 35 images per post.");
       return;
     }
     const platforms = accounts
@@ -842,7 +842,9 @@ export function ImagePostForm({
     for (const file of imageFiles) {
       const validation = validateMediaFile(file, platforms);
       if (!validation.allowed) {
-        setError(validation.error ?? "File too large for selected platforms.");
+        toast.error(
+          validation.error ?? "File too large for selected platforms.",
+        );
         return;
       }
     }
@@ -850,13 +852,13 @@ export function ImagePostForm({
       ? imageFiles.slice(0, TIKTOK_MAX_IMAGES - images.length)
       : imageFiles;
     if (hasTikTokDrop && imageFiles.length > toAdd.length) {
-      setError(
+      toast.error(
         "TikTok allows at most 35 images per post. Only the first " +
           toAdd.length +
           " dropped images were added.",
       );
     } else {
-      setError(null);
+      toast.dismiss();
     }
     const hasPng = toAdd.some(
       (f) => f.type === "image/png" || f.name?.toLowerCase().endsWith(".png"),
@@ -907,7 +909,7 @@ export function ImagePostForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    toast.dismiss();
 
     if (!content.trim()) {
       setShowCaptionError(true);
@@ -917,11 +919,11 @@ export function ImagePostForm({
 
     if ((intendedModeRef.current ?? mode) === "scheduled") {
       if (!scheduledAt) {
-        setError("Please select a date and time.");
+        toast.error("Please select a date and time.");
         return;
       }
       if (scheduledAt <= new Date()) {
-        setError("Scheduled time must be in the future.");
+        toast.error("Scheduled time must be in the future.");
         return;
       }
     }
@@ -931,13 +933,13 @@ export function ImagePostForm({
         const settings =
           tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
         if (!settings.video_title?.trim()) {
-          setError(
+          toast.error(
             `TikTok: A video title is required for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
           );
           return;
         }
         if (!settings.privacy_level?.trim()) {
-          setError(
+          toast.error(
             `TikTok: Privacy level is required. Please select a privacy level for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
           );
           return;
@@ -948,14 +950,14 @@ export function ImagePostForm({
           !settings.brand_organic &&
           !settings.brand_content
         ) {
-          setError(
+          toast.error(
             `TikTok: If promoting a brand/product/service, you must select at least one option (Your brand or Branded content).`,
           );
           return;
         }
 
         if (settings.brand_content && settings.privacy_level === "SELF_ONLY") {
-          setError(
+          toast.error(
             `TikTok: Branded content visibility cannot be set to private. Please select Public or Friends.`,
           );
           return;
@@ -971,7 +973,7 @@ export function ImagePostForm({
         setPinterestError(
           "Please select a board for Pinterest before posting.",
         );
-        setError(null);
+        toast.dismiss();
         pinterestSectionRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "center",
@@ -981,7 +983,7 @@ export function ImagePostForm({
     }
     setPinterestError(null);
     setLoading(true);
-    setError(null);
+    toast.dismiss();
     setOverlayPhase("uploading");
 
     const sortedImages = [...images].sort((a, b) => a.order - b.order);
@@ -1043,7 +1045,7 @@ export function ImagePostForm({
             : typeof reason === "string"
               ? reason
               : "Failed to upload one or more images.";
-        setError(message);
+        toast.error(message);
         setLoading(false);
         setOverlayPhase("idle");
         setUploadProgress(null);
@@ -1061,7 +1063,9 @@ export function ImagePostForm({
 
     const finalMediaIds = mediaIds.filter((id): id is string => id !== null);
     if (finalMediaIds.length !== mediaIds.length) {
-      setError("One or more media items failed to upload. Please try again.");
+      toast.error(
+        "One or more media items failed to upload. Please try again.",
+      );
       setLoading(false);
       setOverlayPhase("idle");
       setUploadProgress(null);
@@ -1138,7 +1142,7 @@ export function ImagePostForm({
         router.push("/dashboard/posts/scheduled");
         router.refresh();
       } else {
-        setError(result.error);
+        toast.error(result.error);
       }
       return;
     }
@@ -1160,7 +1164,7 @@ export function ImagePostForm({
           router.push("/dashboard/posts/drafts");
           router.refresh();
         } else {
-          setError(result.error);
+          toast.error(result.error);
         }
         return;
       }
@@ -1174,7 +1178,7 @@ export function ImagePostForm({
         );
         setLoading(false);
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           setOverlayPhase("idle");
           return;
         }
@@ -1220,7 +1224,7 @@ export function ImagePostForm({
           router.push("/dashboard/posts/scheduled");
           router.refresh();
         } else {
-          setError(result.error);
+          toast.error(result.error);
         }
         return;
       }
@@ -1240,7 +1244,7 @@ export function ImagePostForm({
     if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
     if (!result.success) {
-      setError(result.error);
+      toast.error(result.error);
       setOverlayPhase("idle");
       return;
     }
@@ -1393,7 +1397,7 @@ export function ImagePostForm({
       autoPlugConfig,
     );
     if (!autoPlugResult.success) {
-      setError(autoPlugResult.error);
+      toast.error(autoPlugResult.error);
       return false;
     }
     return true;
@@ -1535,7 +1539,6 @@ export function ImagePostForm({
             setMode={setMode}
             scheduledAt={scheduledAt}
             setScheduledAt={setScheduledAt}
-            error={error}
             loading={loading}
             submitLabel={submitLabel}
             submitDisabled={
@@ -1785,28 +1788,6 @@ export function ImagePostForm({
             )}
           </div>
 
-          {error && (
-            <div className="relative rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 pr-10 text-sm font-medium text-destructive">
-              {error}
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setError(null)}
-                  className="rounded-lg border border-border bg-bg-elevated px-3 py-1.5 text-xs font-medium text-text hover:bg-bg-muted transition-colors"
-                >
-                  Try again
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setError(null)}
-                className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-destructive/70 hover:bg-destructive/20 transition-colors"
-                aria-label="Dismiss error"
-              >
-                <MdClose className="w-4 h-4" />
-              </button>
-            </div>
-          )}
           {pinterestError && (
             <div
               className="relative rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 pr-10 text-sm font-medium text-destructive"
@@ -2036,7 +2017,7 @@ export function ImagePostForm({
                           if (id)
                             setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                         }}
-                        onError={(err) => setError(err)}
+                        onError={(err) => toast.error(err)}
                       />
                     </>
                   ) : (
@@ -2051,7 +2032,7 @@ export function ImagePostForm({
                         if (id)
                           setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                       }}
-                      onError={(err) => setError(err)}
+                      onError={(err) => toast.error(err)}
                     />
                   )}
                   {/* Auto Add Music — TikTok photos only */}
@@ -2208,7 +2189,6 @@ export function ImagePostForm({
           }
           hasAccountSelected={selectedIds.size > 0}
           submitDisabledReason={submitDisabledReason}
-          error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
           timezone={timezone}

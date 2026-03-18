@@ -48,8 +48,9 @@ import {
 } from "@/lib/composer-bridge";
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
-import { MdClose, MdQuestionMark } from "react-icons/md";
+import { MdQuestionMark } from "react-icons/md";
 import { DOCS_TEXT_POST_TYPE_URL } from "@/lib/docs-url";
+import { toast } from "sonner";
 
 const TWITTER_THREAD_SEP = "---";
 
@@ -120,7 +121,6 @@ export function TextPostForm({
     [],
   );
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
@@ -165,7 +165,7 @@ export function TextPostForm({
         const result = await getDraft(initialDraftId);
         if (cancelled) return;
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           return;
         }
         const { draft } = result;
@@ -180,7 +180,7 @@ export function TextPostForm({
         setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
         if (draft.scheduledAt) setMode("scheduled");
       } catch {
-        if (!cancelled) setError("Failed to load draft");
+        if (!cancelled) toast.error("Failed to load draft");
       } finally {
         if (!cancelled) setDraftLoading(false);
       }
@@ -198,7 +198,7 @@ export function TextPostForm({
         const result = await getScheduledPost(initialScheduledId);
         if (cancelled) return;
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           setDraftLoading(false);
           return;
         }
@@ -218,7 +218,7 @@ export function TextPostForm({
         if (scheduled.queueSlotId)
           intendedQueueSlotIdRef.current = scheduled.queueSlotId;
       } catch {
-        if (!cancelled) setError("Failed to load post");
+        if (!cancelled) toast.error("Failed to load post");
       } finally {
         if (!cancelled) setDraftLoading(false);
       }
@@ -236,7 +236,7 @@ export function TextPostForm({
         const result = await getPostToEdit(initialEditId);
         if (cancelled) return;
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           setDraftLoading(false);
           return;
         }
@@ -250,7 +250,7 @@ export function TextPostForm({
         setContent(toEdit.originalContent ?? "");
         setSelectedIds(new Set(restoredIds));
       } catch {
-        if (!cancelled) setError("Failed to load post");
+        if (!cancelled) toast.error("Failed to load post");
       } finally {
         if (!cancelled) setDraftLoading(false);
       }
@@ -339,7 +339,7 @@ export function TextPostForm({
       autoPlugConfig,
     );
     if (!autoPlugResult.success) {
-      setError(autoPlugResult.error);
+      toast.error(autoPlugResult.error);
       return false;
     }
     return true;
@@ -365,7 +365,7 @@ export function TextPostForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    toast.dismiss();
     if (!content.trim()) {
       setShowContentError(true);
       return;
@@ -373,11 +373,11 @@ export function TextPostForm({
     setShowContentError(false);
     if ((intendedModeRef.current ?? mode) === "scheduled") {
       if (!scheduledAt) {
-        setError("Please select a date and time.");
+        toast.error("Please select a date and time.");
         return;
       }
       if (scheduledAt <= new Date()) {
-        setError("Scheduled time must be in the future.");
+        toast.error("Scheduled time must be in the future.");
         return;
       }
     }
@@ -421,7 +421,7 @@ export function TextPostForm({
         router.refresh();
       } else {
         setOverlayPhase("idle");
-        setError(result.error);
+        toast.error(result.error);
       }
       return;
     }
@@ -441,7 +441,7 @@ export function TextPostForm({
           router.refresh();
         } else {
           setOverlayPhase("idle");
-          setError(result.error);
+          toast.error(result.error);
         }
         return;
       }
@@ -456,7 +456,7 @@ export function TextPostForm({
         setLoading(false);
         if (!result.success) {
           setOverlayPhase("idle");
-          setError(result.error);
+          toast.error(result.error);
           return;
         }
         if (result.allPlatformsFailed && result.postId) {
@@ -582,7 +582,7 @@ export function TextPostForm({
           router.refresh();
         } else {
           setOverlayPhase("idle");
-          setError(result.error);
+          toast.error(result.error);
         }
         return;
       }
@@ -704,7 +704,7 @@ export function TextPostForm({
       router.refresh();
     } else {
       setOverlayPhase("idle");
-      setError(result.error);
+      toast.error(result.error);
     }
   };
 
@@ -715,7 +715,7 @@ export function TextPostForm({
       router.push("/dashboard/posts/drafts");
       router.refresh();
     } else {
-      setError(result.error);
+      toast.error(result.error);
     }
   };
 
@@ -807,7 +807,6 @@ export function TextPostForm({
             setMode={setMode}
             scheduledAt={scheduledAt}
             setScheduledAt={setScheduledAt}
-            error={error}
             loading={loading}
             submitLabel={submitLabel}
             submitDisabled={
@@ -832,20 +831,6 @@ export function TextPostForm({
             supportedPlatforms={supportedPlatforms}
             accountsLoading={accountsLoading}
           />
-
-          {error && (
-            <div className="relative rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 pr-10 text-sm font-medium text-destructive">
-              {error}
-              <button
-                type="button"
-                onClick={() => setError(null)}
-                className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-destructive/70 hover:bg-destructive/20 transition-colors"
-                aria-label="Dismiss error"
-              >
-                <MdClose className="w-4 h-4" />
-              </button>
-            </div>
-          )}
 
           <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
             <label
@@ -1045,7 +1030,6 @@ export function TextPostForm({
           }
           hasAccountSelected={selectedIds.size > 0}
           submitDisabledReason={submitDisabledReason}
-          error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
           timezone={timezone}

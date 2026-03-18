@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { publishPost } from "@/app/actions/publish";
+import { toast } from "sonner";
 
 export function PublishButton({
   postId,
@@ -15,19 +16,20 @@ export function PublishButton({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handlePublish = async () => {
-    setError(null);
+    toast.dismiss();
     setLoading(true);
     const result = await publishPost(postId);
     setLoading(false);
     if (result.error) {
-      setError(result.error);
+      toast.error(result.error);
       return;
     }
     if (!result.success && result.results.some((r) => r.error)) {
-      setError(result.results.find((r) => r.error)?.error ?? "Publish failed");
+      toast.error(
+        result.results.find((r) => r.error)?.error ?? "Publish failed",
+      );
       return;
     }
     router.refresh();
@@ -43,11 +45,6 @@ export function PublishButton({
       >
         {loading ? "Publishing…" : label}
       </button>
-      {error && (
-        <p className="text-xs text-red-600 dark:text-red-400 max-w-[280px] text-right" title={error}>
-          {error}
-        </p>
-      )}
     </div>
   );
 }

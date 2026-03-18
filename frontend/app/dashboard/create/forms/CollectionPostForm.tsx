@@ -58,6 +58,7 @@ import {
   getAccountsOverVideoLimit,
   type VideoLimitWarning,
 } from "@/lib/platform-limits";
+import { toast } from "sonner";
 
 type Account = {
   id: string;
@@ -143,7 +144,6 @@ export function CollectionPostForm({
   const [draftLoading, setDraftLoading] = useState(
     !!(initialDraftId || initialScheduledId || initialEditId),
   );
-  const [error, setError] = useState<string | null>(null);
   type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
@@ -248,7 +248,7 @@ export function CollectionPostForm({
         const result = await getScheduledPost(initialScheduledId);
         if (cancelled) return;
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           setDraftLoading(false);
           return;
         }
@@ -294,7 +294,7 @@ export function CollectionPostForm({
           videosRef.current = scheduledVideos;
         }
       } catch {
-        if (!cancelled) setError("Failed to load post");
+        if (!cancelled) toast.error("Failed to load post");
       } finally {
         if (!cancelled) setDraftLoading(false);
       }
@@ -313,7 +313,7 @@ export function CollectionPostForm({
         const result = await getDraft(initialDraftId);
         if (cancelled) return;
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           return;
         }
         const { draft } = result;
@@ -342,7 +342,7 @@ export function CollectionPostForm({
         if (draftImages.length > 0) setImages(draftImages);
         if (draftVideos.length > 0) setVideos(draftVideos);
       } catch {
-        if (!cancelled) setError("Failed to load draft");
+        if (!cancelled) toast.error("Failed to load draft");
       } finally {
         if (!cancelled) setDraftLoading(false);
       }
@@ -361,7 +361,7 @@ export function CollectionPostForm({
         const result = await getPostToEdit(initialEditId);
         if (cancelled) return;
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           setDraftLoading(false);
           return;
         }
@@ -389,7 +389,7 @@ export function CollectionPostForm({
         if (editImages.length > 0) setImages(editImages);
         if (editVideos.length > 0) setVideos(editVideos);
       } catch {
-        if (!cancelled) setError("Failed to load post");
+        if (!cancelled) toast.error("Failed to load post");
       } finally {
         if (!cancelled) setDraftLoading(false);
       }
@@ -423,7 +423,7 @@ export function CollectionPostForm({
       router.push("/dashboard/posts/drafts");
       router.refresh();
     } else {
-      setError(result.error);
+      toast.error(result.error);
     }
   };
 
@@ -581,12 +581,14 @@ export function CollectionPostForm({
       const file = files[i];
       const validation = validateMediaFile(file, selectedPlatforms);
       if (!validation.allowed) {
-        setError(validation.error ?? "File too large for selected platforms.");
+        toast.error(
+          validation.error ?? "File too large for selected platforms.",
+        );
         if (unifiedInputRef.current) unifiedInputRef.current.value = "";
         return;
       }
     }
-    setError(null);
+    toast.dismiss();
     const maxOrder = getMaxOrder();
     let orderOffset = 0;
     const newImages: ImageFile[] = [];
@@ -624,7 +626,7 @@ export function CollectionPostForm({
             if (durations[i] <= MAX_VIDEO_DURATION_SECONDS)
               withinDuration.push({ ...v, durationSeconds: durations[i] });
           });
-          if (overDuration) setError(VIDEO_DURATION_MESSAGE);
+          if (overDuration) toast.error(VIDEO_DURATION_MESSAGE);
           if (withinDuration.length > 0) {
             setVideos((prev) => [...prev, ...withinDuration]);
           }
@@ -647,11 +649,13 @@ export function CollectionPostForm({
       const file = files[i];
       const validation = validateMediaFile(file, selectedPlatforms);
       if (!validation.allowed) {
-        setError(validation.error ?? "File too large for selected platforms.");
+        toast.error(
+          validation.error ?? "File too large for selected platforms.",
+        );
         return;
       }
     }
-    setError(null);
+    toast.dismiss();
     const maxOrder = getMaxOrder();
     let orderOffset = 0;
     const newImages: ImageFile[] = [];
@@ -689,7 +693,7 @@ export function CollectionPostForm({
             if (durations[i] <= MAX_VIDEO_DURATION_SECONDS)
               withinDuration.push({ ...v, durationSeconds: durations[i] });
           });
-          if (overDuration) setError(VIDEO_DURATION_MESSAGE);
+          if (overDuration) toast.error(VIDEO_DURATION_MESSAGE);
           if (withinDuration.length > 0) {
             setVideos((prev) => [...prev, ...withinDuration]);
           }
@@ -718,12 +722,14 @@ export function CollectionPostForm({
         .map((a) => a.platform);
       const validation = validateMediaFile(file, platforms);
       if (!validation.allowed) {
-        setError(validation.error ?? "File too large for selected platforms.");
+        toast.error(
+          validation.error ?? "File too large for selected platforms.",
+        );
         return;
       }
       if (file.type.startsWith("image/")) {
         e.preventDefault();
-        setError(null);
+        toast.dismiss();
         const maxOrder = getMaxOrder();
         setImages((prev) => [
           ...prev,
@@ -731,10 +737,10 @@ export function CollectionPostForm({
         ]);
       } else if (file.type.startsWith("video/")) {
         e.preventDefault();
-        setError(null);
+        toast.dismiss();
         getVideoDuration(file).then((duration) => {
           if (duration > MAX_VIDEO_DURATION_SECONDS) {
-            setError(VIDEO_DURATION_MESSAGE);
+            toast.error(VIDEO_DURATION_MESSAGE);
             return;
           }
           const maxOrder = getMaxOrder();
@@ -862,7 +868,7 @@ export function CollectionPostForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    toast.dismiss();
 
     if (!content.trim()) {
       setShowCaptionError(true);
@@ -881,13 +887,13 @@ export function CollectionPostForm({
         const settings =
           tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
         if (!settings.video_title?.trim()) {
-          setError(
+          toast.error(
             `TikTok: A video title is required for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
           );
           return;
         }
         if (!settings.privacy_level?.trim()) {
-          setError(
+          toast.error(
             `TikTok: Privacy level is required. Please select a privacy level for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
           );
           return;
@@ -898,14 +904,14 @@ export function CollectionPostForm({
           !settings.brand_organic &&
           !settings.brand_content
         ) {
-          setError(
+          toast.error(
             `TikTok: If promoting a brand/product/service, you must select at least one option (Your brand or Branded content).`,
           );
           return;
         }
 
         if (settings.brand_content && settings.privacy_level === "SELF_ONLY") {
-          setError(
+          toast.error(
             `TikTok: Branded content visibility cannot be set to private. Please select Public or Friends.`,
           );
           return;
@@ -914,7 +920,7 @@ export function CollectionPostForm({
     }
 
     setLoading(true);
-    setError(null);
+    toast.dismiss();
     setOverlayPhase("uploading");
 
     const sortedItems = getAllItems();
@@ -982,7 +988,7 @@ export function CollectionPostForm({
             : typeof firstReason === "string"
               ? firstReason
               : "Failed to upload one or more media items.";
-        setError(message);
+        toast.error(message);
         setLoading(false);
         setOverlayPhase("idle");
         setUploadProgress(null);
@@ -1000,7 +1006,9 @@ export function CollectionPostForm({
 
     const finalMediaIds = mediaIds.filter((id): id is string => id !== null);
     if (finalMediaIds.length !== mediaIds.length) {
-      setError("One or more media items failed to upload. Please try again.");
+      toast.error(
+        "One or more media items failed to upload. Please try again.",
+      );
       setLoading(false);
       setOverlayPhase("idle");
       setUploadProgress(null);
@@ -1050,7 +1058,7 @@ export function CollectionPostForm({
         router.push("/dashboard/posts/scheduled");
         router.refresh();
       } else {
-        setError(result.error);
+        toast.error(result.error);
       }
       return;
     }
@@ -1072,7 +1080,7 @@ export function CollectionPostForm({
           router.push("/dashboard/posts/drafts");
           router.refresh();
         } else {
-          setError(result.error);
+          toast.error(result.error);
         }
         return;
       }
@@ -1086,7 +1094,7 @@ export function CollectionPostForm({
         );
         setLoading(false);
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           setOverlayPhase("idle");
           return;
         }
@@ -1132,7 +1140,7 @@ export function CollectionPostForm({
           router.push("/dashboard/posts/scheduled");
           router.refresh();
         } else {
-          setError(result.error);
+          toast.error(result.error);
         }
         return;
       }
@@ -1152,7 +1160,7 @@ export function CollectionPostForm({
     if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
     if (!result.success) {
-      setError(result.error);
+      toast.error(result.error);
       setOverlayPhase("idle");
       return;
     }
@@ -1307,7 +1315,7 @@ export function CollectionPostForm({
       autoPlugConfig,
     );
     if (!autoPlugResult.success) {
-      setError(autoPlugResult.error);
+      toast.error(autoPlugResult.error);
       return false;
     }
     return true;
@@ -1434,7 +1442,6 @@ export function CollectionPostForm({
             setMode={setMode}
             scheduledAt={scheduledAt}
             setScheduledAt={setScheduledAt}
-            error={error}
             loading={loading}
             submitLabel={submitLabel}
             submitDisabled={
@@ -1710,29 +1717,6 @@ export function CollectionPostForm({
             )}
           </div>
 
-          {error && (
-            <div className="relative rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 pr-10 text-sm font-medium text-destructive">
-              {error}
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setError(null)}
-                  className="rounded-lg border border-border bg-bg-elevated px-3 py-1.5 text-xs font-medium text-text hover:bg-bg-muted transition-colors"
-                >
-                  Try again
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setError(null)}
-                className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-destructive/70 hover:bg-destructive/20 transition-colors"
-                aria-label="Dismiss error"
-              >
-                <MdClose className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
           {hasTikTok && (
             <div className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm">
               <p className="text-xs text-text-muted mb-3">
@@ -1798,7 +1782,7 @@ export function CollectionPostForm({
                           if (id)
                             setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                         }}
-                        onError={(err) => setError(err)}
+                        onError={(err) => toast.error(err)}
                       />
                     </>
                   ) : (
@@ -1813,7 +1797,7 @@ export function CollectionPostForm({
                         if (id)
                           setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                       }}
-                      onError={(err) => setError(err)}
+                      onError={(err) => toast.error(err)}
                     />
                   )}
                 </div>
@@ -1837,7 +1821,6 @@ export function CollectionPostForm({
           }
           hasAccountSelected={selectedIds.size > 0}
           submitDisabledReason={submitDisabledReason}
-          error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
           timezone={timezone}

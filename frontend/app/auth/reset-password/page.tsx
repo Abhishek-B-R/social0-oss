@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 const OTP_LENGTH = 6;
 
@@ -16,7 +17,6 @@ function ResetPasswordContent() {
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const otpString = otp.join("");
@@ -34,17 +34,17 @@ function ResetPasswordContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    toast.dismiss();
     if (otpString.length !== OTP_LENGTH) {
-      setError("Enter the 6-digit code from your email.");
+      toast.error("Enter the 6-digit code from your email.");
       return;
     }
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      toast.error("Password must be at least 8 characters.");
       return;
     }
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      toast.error("Passwords do not match.");
       return;
     }
     setLoading(true);
@@ -55,12 +55,12 @@ function ResetPasswordContent() {
         password,
       });
       if (err) {
-        setError(err.message ?? "Invalid or expired code. Try again.");
+        toast.error(err.message ?? "Invalid or expired code. Try again.");
         return;
       }
       router.push("/auth?reset=success");
     } catch {
-      setError("Something went wrong. Try again.");
+      toast.error("Something went wrong. Try again.");
     } finally {
       setLoading(false);
     }
@@ -72,7 +72,10 @@ function ResetPasswordContent() {
         <main className="flex-1 flex items-center justify-center px-4">
           <p className="text-muted-foreground">
             Missing email.{" "}
-            <Link href="/auth/forgot-password" className="text-emerald-600 hover:underline">
+            <Link
+              href="/auth/forgot-password"
+              className="text-emerald-600 hover:underline"
+            >
               Request a reset
             </Link>
             .
@@ -99,7 +102,8 @@ function ResetPasswordContent() {
             return next;
           });
           if (v && i < OTP_LENGTH - 1) {
-            const nextEl = e.target.nextElementSibling as HTMLInputElement | null;
+            const nextEl = e.target
+              .nextElementSibling as HTMLInputElement | null;
             nextEl?.focus();
           }
         }
@@ -112,9 +116,8 @@ function ResetPasswordContent() {
           .slice(0, OTP_LENGTH);
         setOtpFromString(pasted);
         const firstEmpty = Math.min(pasted.length, OTP_LENGTH - 1);
-        const el = e.currentTarget.parentElement?.querySelectorAll("input")[
-          firstEmpty
-        ];
+        const el =
+          e.currentTarget.parentElement?.querySelectorAll("input")[firstEmpty];
         el?.focus();
       }}
       onKeyDown={(e) => {
@@ -167,8 +170,8 @@ function ResetPasswordContent() {
               </h1>
               <p className="text-sm text-muted-foreground">
                 Enter the 6-digit code we sent to{" "}
-                <strong className="text-foreground">{email}</strong> and choose a
-                new password.
+                <strong className="text-foreground">{email}</strong> and choose
+                a new password.
               </p>
             </div>
 
@@ -218,9 +221,6 @@ function ResetPasswordContent() {
                   placeholder="Confirm password"
                 />
               </div>
-              {error && (
-                <p className="text-sm text-destructive">{error}</p>
-              )}
               <button
                 type="submit"
                 disabled={

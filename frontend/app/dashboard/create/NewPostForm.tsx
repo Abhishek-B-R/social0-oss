@@ -7,6 +7,7 @@ import { createPost, type PublishMode } from "@/app/actions/posts";
 import { PLATFORMS } from "@/lib/platforms";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { ScheduleDateTimePicker } from "@/components/ui/ScheduleDateTimePicker";
+import { toast } from "sonner";
 
 const TWITTER_THREAD_SEP = "---";
 
@@ -33,7 +34,6 @@ export function NewPostForm({
   const [mode, setMode] = useState<PublishMode>("now");
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
   const hasTwitter = selectedAccounts.some((a) => a.platform === "twitter_x");
@@ -69,14 +69,14 @@ export function NewPostForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    toast.dismiss();
     if (mode === "scheduled") {
       if (!scheduledAt) {
-        setError("Please select a date and time.");
+        toast.error("Please select a date and time.");
         return;
       }
       if (scheduledAt <= new Date()) {
-        setError("Scheduled time must be in the future.");
+        toast.error("Scheduled time must be in the future.");
         return;
       }
     }
@@ -92,7 +92,7 @@ export function NewPostForm({
       router.push("/dashboard/posts");
       router.refresh();
     } else {
-      setError(result.error);
+      toast.error(result.error);
     }
   };
 
@@ -117,9 +117,11 @@ export function NewPostForm({
         {twitterThreadWarning && (
           <p className="mt-3 text-sm text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg px-3 py-2">
             Twitter: This will post as a thread (each part between{" "}
-            <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">---</code> is a separate
-            tweet). Standard accounts: 280 chars per part; Premium allows longer. Media will
-            only appear on the first tweet.
+            <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">
+              ---
+            </code>{" "}
+            is a separate tweet). Standard accounts: 280 chars per part; Premium
+            allows longer. Media will only appear on the first tweet.
           </p>
         )}
       </div>
@@ -143,7 +145,10 @@ export function NewPostForm({
         {accounts.length === 0 ? (
           <p className="text-sm text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 rounded-xl p-4 border border-amber-100 dark:border-amber-800/60">
             Connect at least one account from the{" "}
-            <Link href="/dashboard/connections" className="font-medium underline hover:no-underline">
+            <Link
+              href="/dashboard/connections"
+              className="font-medium underline hover:no-underline"
+            >
               connections
             </Link>{" "}
             page to post.
@@ -271,12 +276,6 @@ export function NewPostForm({
           )}
         </p>
       </div>
-
-      {error && (
-        <div className="rounded-xl bg-destructive/10 text-destructive px-4 py-3 text-sm font-medium border border-destructive/30">
-          {error}
-        </div>
-      )}
 
       <div className="flex gap-3">
         <button

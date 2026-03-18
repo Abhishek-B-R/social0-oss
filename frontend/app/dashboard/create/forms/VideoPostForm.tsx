@@ -26,7 +26,7 @@ import type {
 } from "@/components/autoplug/AutoPlugPanel";
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
-import { MdOutlineVideoLibrary, MdClose, MdQuestionMark } from "react-icons/md";
+import { MdOutlineVideoLibrary, MdClose } from "react-icons/md";
 import { type TikTokPostSettings } from "@/components/TikTokSettings";
 import { TikTokSettings } from "@/components/TikTokSettings";
 import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
@@ -73,7 +73,7 @@ import {
 } from "@/lib/composer-bridge";
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
-import { DOCS_VIDEO_POST_TYPE_URL } from "@/lib/docs-url";
+import { toast } from "sonner";
 
 type PlatformCaptionState = {
   overridden: boolean;
@@ -170,7 +170,6 @@ export function VideoPostForm({
   const [draftLoading, setDraftLoading] = useState(
     !!(initialDraftId || initialScheduledId || initialEditId),
   );
-  const [error, setError] = useState<string | null>(null);
   type OverlayPhase = "idle" | "uploading" | "publishing" | "saving" | "done";
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [tiktokSettings, setTiktokSettings] = useState<
@@ -272,7 +271,7 @@ export function VideoPostForm({
       autoPlugConfig,
     );
     if (!autoPlugResult.success) {
-      setError(autoPlugResult.error);
+      toast.error(autoPlugResult.error);
       return false;
     }
     return true;
@@ -387,7 +386,7 @@ export function VideoPostForm({
         const result = await getScheduledPost(initialScheduledId);
         if (cancelled) return;
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           setDraftLoading(false);
           return;
         }
@@ -461,7 +460,7 @@ export function VideoPostForm({
           }
         }
       } catch {
-        if (!cancelled) setError("Failed to load post");
+        if (!cancelled) toast.error("Failed to load post");
       } finally {
         if (!cancelled) setDraftLoading(false);
       }
@@ -480,7 +479,7 @@ export function VideoPostForm({
         const result = await getDraft(initialDraftId);
         if (cancelled) return;
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           return;
         }
         const { draft } = result;
@@ -543,7 +542,7 @@ export function VideoPostForm({
           }
         }
       } catch {
-        if (!cancelled) setError("Failed to load draft");
+        if (!cancelled) toast.error("Failed to load draft");
       } finally {
         if (!cancelled) setDraftLoading(false);
       }
@@ -562,7 +561,7 @@ export function VideoPostForm({
         const result = await getPostToEdit(initialEditId);
         if (cancelled) return;
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           setDraftLoading(false);
           return;
         }
@@ -630,7 +629,7 @@ export function VideoPostForm({
           }
         }
       } catch {
-        if (!cancelled) setError("Failed to load post");
+        if (!cancelled) toast.error("Failed to load post");
       } finally {
         if (!cancelled) setDraftLoading(false);
       }
@@ -648,7 +647,7 @@ export function VideoPostForm({
       router.push("/dashboard/posts/drafts");
       router.refresh();
     } else {
-      setError(result.error);
+      toast.error(result.error);
     }
   };
 
@@ -777,13 +776,15 @@ export function VideoPostForm({
         .map((a) => a.platform);
       const validation = validateMediaFile(file, platforms);
       if (!validation.allowed) {
-        setError(validation.error ?? "File too large for selected platforms.");
+        toast.error(
+          validation.error ?? "File too large for selected platforms.",
+        );
         return;
       }
-      setError(null);
+      toast.dismiss();
       validateVideoAspectRatio(file).then((result) => {
         if (!result.valid) {
-          setError(
+          toast.error(
             `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(result.ratio)}${getAspectRatioDescriptor(result.ratio)}.`,
           );
           return;
@@ -791,7 +792,7 @@ export function VideoPostForm({
         setIsVertical(result.height > result.width);
         getVideoDuration(file).then((duration) => {
           if (duration > MAX_VIDEO_DURATION_SECONDS) {
-            setError(VIDEO_DURATION_MESSAGE);
+            toast.error(VIDEO_DURATION_MESSAGE);
             return;
           }
           if (videoPreviewRef.current)
@@ -831,20 +832,20 @@ export function VideoPostForm({
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("video/")) {
-      setError("Please select a video file (MP4, WebM, etc.).");
+      toast.error("Please select a video file (MP4, WebM, etc.).");
       return;
     }
     const validation = validateMediaFile(file, selectedPlatforms);
     if (!validation.allowed) {
-      setError(validation.error ?? "File too large for selected platforms.");
+      toast.error(validation.error ?? "File too large for selected platforms.");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
-    setError(null);
+    toast.dismiss();
     if (fileInputRef.current) fileInputRef.current.value = "";
     validateVideoAspectRatio(file).then((result) => {
       if (!result.valid) {
-        setError(
+        toast.error(
           `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(result.ratio)}${getAspectRatioDescriptor(result.ratio)}.`,
         );
         return;
@@ -852,7 +853,7 @@ export function VideoPostForm({
       setIsVertical(result.height > result.width);
       getVideoDuration(file).then((duration) => {
         if (duration > MAX_VIDEO_DURATION_SECONDS) {
-          setError(VIDEO_DURATION_MESSAGE);
+          toast.error(VIDEO_DURATION_MESSAGE);
           return;
         }
         if (videoPreview) URL.revokeObjectURL(videoPreview);
@@ -887,19 +888,19 @@ export function VideoPostForm({
       f.type.startsWith("video/"),
     );
     if (!file) {
-      setError("Please drop a video file (MP4, WebM, etc.).");
+      toast.error("Please drop a video file (MP4, WebM, etc.).");
       return;
     }
     const validation = validateMediaFile(file, selectedPlatforms);
     if (!validation.allowed) {
-      setError(validation.error ?? "File too large for selected platforms.");
+      toast.error(validation.error ?? "File too large for selected platforms.");
       return;
     }
-    setError(null);
+    toast.dismiss();
     if (fileInputRef.current) fileInputRef.current.value = "";
     validateVideoAspectRatio(file).then((result) => {
       if (!result.valid) {
-        setError(
+        toast.error(
           `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(result.ratio)}${getAspectRatioDescriptor(result.ratio)}.`,
         );
         return;
@@ -907,7 +908,7 @@ export function VideoPostForm({
       setIsVertical(result.height > result.width);
       getVideoDuration(file).then((duration) => {
         if (duration > MAX_VIDEO_DURATION_SECONDS) {
-          setError(VIDEO_DURATION_MESSAGE);
+          toast.error(VIDEO_DURATION_MESSAGE);
           return;
         }
         if (videoPreviewRef.current)
@@ -972,7 +973,7 @@ export function VideoPostForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    toast.dismiss();
 
     if (!content.trim()) {
       setShowCaptionError(true);
@@ -981,17 +982,17 @@ export function VideoPostForm({
     setShowCaptionError(false);
 
     if (hasVideo && videoDuration > MAX_VIDEO_DURATION_SECONDS) {
-      setError(VIDEO_DURATION_MESSAGE);
+      toast.error(VIDEO_DURATION_MESSAGE);
       return;
     }
 
     if ((intendedModeRef.current ?? mode) === "scheduled") {
       if (!scheduledAt) {
-        setError("Please select a date and time.");
+        toast.error("Please select a date and time.");
         return;
       }
       if (scheduledAt <= new Date()) {
-        setError("Scheduled time must be in the future.");
+        toast.error("Scheduled time must be in the future.");
         return;
       }
     }
@@ -1001,13 +1002,13 @@ export function VideoPostForm({
         const settings =
           tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
         if (!settings.video_title?.trim()) {
-          setError(
+          toast.error(
             `TikTok: A video title is required for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
           );
           return;
         }
         if (!settings.privacy_level?.trim()) {
-          setError(
+          toast.error(
             `TikTok: Privacy level is required. Please select a privacy level for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
           );
           return;
@@ -1019,7 +1020,7 @@ export function VideoPostForm({
           !settings.brand_organic &&
           !settings.brand_content
         ) {
-          setError(
+          toast.error(
             `TikTok: If promoting a brand/product/service, you must select at least one option (Your brand or Branded content).`,
           );
           return;
@@ -1027,7 +1028,7 @@ export function VideoPostForm({
 
         // Validate branded content cannot be private (per TikTok guidelines)
         if (settings.brand_content && settings.privacy_level === "SELF_ONLY") {
-          setError(
+          toast.error(
             `TikTok: Branded content visibility cannot be set to private. Please select Public or Friends.`,
           );
           return;
@@ -1043,7 +1044,7 @@ export function VideoPostForm({
         setPinterestError(
           "Please select a board for Pinterest before posting.",
         );
-        setError(null);
+        toast.dismiss();
         pinterestSectionRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "center",
@@ -1053,7 +1054,7 @@ export function VideoPostForm({
     }
     setPinterestError(null);
     setLoading(true);
-    setError(null);
+    toast.dismiss();
     setOverlayPhase("uploading");
 
     const mediaIds: string[] = [];
@@ -1071,7 +1072,7 @@ export function VideoPostForm({
         );
         mediaIds.push(id);
       } catch (err) {
-        setError(
+        toast.error(
           err instanceof Error
             ? err.message
             : "Failed to upload video. Please try again.",
@@ -1168,7 +1169,7 @@ export function VideoPostForm({
         router.push("/dashboard/posts/scheduled");
         router.refresh();
       } else {
-        setError(result.error);
+        toast.error(result.error);
       }
       return;
     }
@@ -1190,7 +1191,7 @@ export function VideoPostForm({
           router.push("/dashboard/posts/drafts");
           router.refresh();
         } else {
-          setError(result.error);
+          toast.error(result.error);
         }
         return;
       }
@@ -1204,7 +1205,7 @@ export function VideoPostForm({
         );
         setLoading(false);
         if (!result.success) {
-          setError(result.error);
+          toast.error(result.error);
           setOverlayPhase("idle");
           return;
         }
@@ -1250,7 +1251,7 @@ export function VideoPostForm({
           router.push("/dashboard/posts/scheduled");
           router.refresh();
         } else {
-          setError(result.error);
+          toast.error(result.error);
         }
         return;
       }
@@ -1270,7 +1271,7 @@ export function VideoPostForm({
     if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
     if (!result.success) {
-      setError(result.error);
+      toast.error(result.error);
       setOverlayPhase("idle");
       return;
     }
@@ -1521,7 +1522,6 @@ export function VideoPostForm({
             setMode={setMode}
             scheduledAt={scheduledAt}
             setScheduledAt={setScheduledAt}
-            error={error}
             loading={loading || isUploading}
             submitLabel={submitLabel}
             submitDisabled={submitDisabled}
@@ -1684,29 +1684,6 @@ export function VideoPostForm({
               </p>
             )}
           </div>
-
-          {error && (
-            <div className="relative rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 pr-10 text-sm font-medium text-destructive">
-              {error}
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setError(null)}
-                  className="rounded-lg border border-border bg-bg-elevated px-3 py-1.5 text-xs font-medium text-text hover:bg-bg-muted transition-colors"
-                >
-                  Try again
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setError(null)}
-                className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-destructive/70 hover:bg-destructive/20 transition-colors"
-                aria-label="Dismiss error"
-              >
-                <MdClose className="w-4 h-4" />
-              </button>
-            </div>
-          )}
 
           {(showPlatformCaptionsSection ||
             hasPinterestSelected ||
@@ -1993,7 +1970,7 @@ export function VideoPostForm({
                           if (id)
                             setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                         }}
-                        onError={(err) => setError(err)}
+                        onError={(err) => toast.error(err)}
                       />
                     </>
                   ) : (
@@ -2008,7 +1985,7 @@ export function VideoPostForm({
                         if (id)
                           setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                       }}
-                      onError={(err) => setError(err)}
+                      onError={(err) => toast.error(err)}
                     />
                   )}
                 </div>
@@ -2318,7 +2295,6 @@ export function VideoPostForm({
           }
           hasAccountSelected={selectedIds.size > 0}
           submitDisabledReason={submitDisabledReason}
-          error={error}
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
           timezone={timezone}

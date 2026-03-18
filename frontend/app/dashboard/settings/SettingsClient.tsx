@@ -43,6 +43,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import DocsInfoIcon from "@/components/info-icon";
 import { DOCS_SETTINGS_URL } from "@/lib/docs-url";
+import { toast } from "sonner";
 
 export type SettingsConnection = {
   id: string;
@@ -474,11 +475,10 @@ function ChangePasswordModal({
   onSuccess: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
-    if (!next) setError(null);
+    if (!next) toast.dismiss();
   };
   return (
     <>
@@ -501,7 +501,7 @@ function ChangePasswordModal({
           <ChangePasswordForm
             formId={CHANGE_PASSWORD_FORM_ID}
             onError={(msg) => {
-              setError(msg);
+              toast.error(msg);
               onError(msg);
             }}
             onSuccess={() => {
@@ -510,11 +510,6 @@ function ChangePasswordModal({
             }}
             setLoading={setLoading}
           />
-          {error && (
-            <p className="text-sm text-destructive mt-2" role="alert">
-              {error}
-            </p>
-          )}
           <DialogFooter className="mt-4 gap-2 sm:gap-0">
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
@@ -550,7 +545,6 @@ function ChangeEmailModal({
   const [step, setStep] = useState<"email" | "otp">("email");
   const [newEmail, setNewEmail] = useState("");
   const [otp, setOtp] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
@@ -569,7 +563,7 @@ function ChangeEmailModal({
       setStep("email");
       setNewEmail("");
       setOtp("");
-      setError(null);
+      toast.dismiss();
       setResendCooldown(0);
     }
   };
@@ -577,7 +571,7 @@ function ChangeEmailModal({
   const handleSendCode = async () => {
     const email = newEmail.trim().toLowerCase();
     if (!email) return;
-    setError(null);
+    toast.dismiss();
     setLoading(true);
     try {
       const res = await fetch("/api/account/change-email/send-otp", {
@@ -595,13 +589,13 @@ function ChangeEmailModal({
           typeof data.error === "string"
             ? data.error
             : (data.error?.message ?? data.message ?? "Failed to send code.");
-        setError(msg);
+        toast.error(msg);
         return;
       }
       setStep("otp");
       setResendCooldown(RESEND_COOLDOWN_SEC);
     } catch {
-      setError("Failed to send code.");
+      toast.error("Failed to send code.");
     } finally {
       setLoading(false);
     }
@@ -635,13 +629,13 @@ function ChangeEmailModal({
             onStepChange={setStep}
             onNewEmailChange={(v) => {
               setNewEmail(v);
-              setError(null);
+              toast.dismiss();
             }}
             onOtpChange={(v) => {
               setOtp(v);
-              setError(null);
+              toast.dismiss();
             }}
-            onError={setError}
+            onError={toast.error}
             onSuccess={() => {
               onSuccess();
               handleOpenChange(false);
@@ -651,11 +645,6 @@ function ChangeEmailModal({
             resendCooldown={step === "otp" ? resendCooldown : undefined}
             onResend={step === "otp" ? handleSendCode : undefined}
           />
-          {error && (
-            <p className="text-sm text-destructive mt-2" role="alert">
-              {error}
-            </p>
-          )}
           <DialogFooter className="mt-4 gap-2 sm:gap-0">
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
@@ -723,7 +712,6 @@ function AvatarEditor({
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState("");
 
   const sizeClass = size === "lg" ? "h-20 w-20 text-2xl" : "h-14 w-14 text-lg";
@@ -731,25 +719,25 @@ function AvatarEditor({
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setError(null);
+    toast.dismiss();
     if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
-      setError("Please use JPEG, PNG, GIF, or WebP.");
+      toast.error("Please use JPEG, PNG, GIF, or WebP.");
       return;
     }
     if (file.size > MAX_AVATAR_SIZE_BYTES) {
-      setError("Image must be under 2MB.");
+      toast.error("Image must be under 2MB.");
       return;
     }
     setLoading(true);
     try {
       const { url: imageUrl } = await uploadFile(file, 0);
       if (!imageUrl) {
-        setError("Upload failed");
+        toast.error("Upload failed");
         return;
       }
       const result = await onSave(imageUrl);
       if (result.error) {
-        setError(result.error);
+        toast.error(result.error);
         return;
       }
       router.refresh();
@@ -762,12 +750,12 @@ function AvatarEditor({
   const handleSaveUrl = async () => {
     const url = urlInput.trim();
     if (!url) return;
-    setError(null);
+    toast.dismiss();
     setLoading(true);
     try {
       const result = await onSave(url);
       if (result.error) {
-        setError(result.error);
+        toast.error(result.error);
         return;
       }
       setUrlInput("");
@@ -832,7 +820,6 @@ function AvatarEditor({
             Save URL
           </button>
         </div>
-        {error && <p className="text-xs text-red-500">{error}</p>}
       </div>
     </div>
   );

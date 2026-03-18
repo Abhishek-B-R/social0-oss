@@ -26,6 +26,7 @@ import {
   VIDEO_DURATION_MESSAGE,
 } from "@/lib/video-duration";
 import { uploadFile } from "@/lib/upload-file";
+import { toast } from "sonner";
 
 const LIMITS = {
   totalSize: 250 * 1024 * 1024, // 250MB total batch
@@ -100,7 +101,6 @@ export function BulkToolsVideoClient({
   const [scheduling, setScheduling] = useState(false);
   const [progress, setProgress] = useState("");
   const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const cancelledRef = useRef(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadPercent, setUploadPercent] = useState(0);
@@ -142,7 +142,7 @@ export function BulkToolsVideoClient({
 
   const addFiles = useCallback(
     (files: File[]) => {
-      setError(null);
+      toast.dismiss();
       if (files.length === 0) return;
       Promise.all(files.map(validateVideoAspectRatio)).then(
         (results: VideoAspectResult[]) => {
@@ -154,7 +154,7 @@ export function BulkToolsVideoClient({
           });
           if (firstInvalid) {
             const { ratio } = firstInvalid as VideoAspectResult;
-            setError(
+            toast.error(
               `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(ratio)}${getAspectRatioDescriptor(ratio)}.`,
             );
           }
@@ -169,7 +169,7 @@ export function BulkToolsVideoClient({
                 withinDuration.push(file);
             });
             if (overDuration) {
-              setError(VIDEO_DURATION_MESSAGE);
+              toast.error(VIDEO_DURATION_MESSAGE);
             }
             if (withinDuration.length === 0) return;
             setItems((prev) => {
@@ -277,11 +277,11 @@ export function BulkToolsVideoClient({
     // Require a caption for every video before scheduling
     const missingCaption = items.some((item) => !item.caption.trim());
     if (missingCaption) {
-      setError("Caption is required for all videos before scheduling.");
+      toast.error("Caption is required for all videos before scheduling.");
       return;
     }
 
-    setError(null);
+    toast.dismiss();
     cancelledRef.current = false;
     setScheduling(true);
     setIsUploading(true);
@@ -326,7 +326,7 @@ export function BulkToolsVideoClient({
         .filter((entry) => entry.result.status === "rejected");
 
       if (failedUploads.length > 0) {
-        setError(`${failedUploads.length} video(s) failed to upload.`);
+        toast.error(`${failedUploads.length} video(s) failed to upload.`);
       }
 
       if (successfulUploads.length === 0) {
@@ -352,7 +352,7 @@ export function BulkToolsVideoClient({
 
       setSuccess(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to schedule");
+      toast.error(e instanceof Error ? e.message : "Failed to schedule");
     } finally {
       setScheduling(false);
       setProgress("");
@@ -499,22 +499,6 @@ export function BulkToolsVideoClient({
                   ⚠️ Do not close this tab — your videos will not be saved if
                   you leave now.
                 </p>
-              </div>
-            )}
-            {error && (
-              <div
-                className="relative rounded-xl bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900/60 px-4 py-3 pr-10 text-sm font-medium border border-red-100"
-                role="alert"
-              >
-                {error}
-                <button
-                  type="button"
-                  onClick={() => setError(null)}
-                  className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-red-700/70 hover:bg-red-100 hover:text-red-800 dark:text-red-200/80 dark:hover:bg-red-900/30"
-                  aria-label="Dismiss error"
-                >
-                  ×
-                </button>
               </div>
             )}
 

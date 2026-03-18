@@ -8,6 +8,7 @@ import { FcGoogle } from "react-icons/fc";
 import { IconEye, IconEyeOff } from "@tabler/icons-react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { signIn } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 const CALLBACK_URL = "/dashboard/composer";
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
@@ -23,7 +24,6 @@ function AuthPageContent() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -36,7 +36,7 @@ function AuthPageContent() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    toast.dismiss();
     setLoading(true);
     const normalizedEmail = email.trim().toLowerCase();
     try {
@@ -48,7 +48,7 @@ function AuthPageContent() {
         exists?: boolean;
       };
       if (checkData.exists === false) {
-        setError("No account found with this email. Please sign up first.");
+        toast.error("No account found with this email. Please sign up first.");
         return;
       }
       const { error: err } = await signIn.email({
@@ -57,12 +57,12 @@ function AuthPageContent() {
         callbackURL: CALLBACK_URL,
       });
       if (err) {
-        setError(err.message ?? "Invalid email or password");
+        toast.error(err.message ?? "Invalid email or password");
         return;
       }
       window.location.href = CALLBACK_URL;
     } catch {
-      setError("Sign in failed");
+      toast.error("Sign in failed");
     } finally {
       setLoading(false);
     }
@@ -70,9 +70,9 @@ function AuthPageContent() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    toast.dismiss();
     if (TURNSTILE_SITE_KEY && !turnstileToken) {
-      setError("Please complete the verification");
+      toast.error("Please complete the verification");
       return;
     }
     setLoading(true);
@@ -107,7 +107,7 @@ function AuthPageContent() {
           typeof data.error === "string"
             ? data.error
             : (data.error?.message ?? data.message ?? "Sign up failed");
-        setError(msg);
+        toast.error(msg);
         return;
       }
       const data = await res.json().catch(() => ({}));
@@ -117,7 +117,7 @@ function AuthPageContent() {
         window.location.href = `/auth/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`;
       }
     } catch {
-      setError("Sign up failed");
+      toast.error("Sign up failed");
     } finally {
       setLoading(false);
     }
@@ -198,7 +198,7 @@ function AuthPageContent() {
                 type="button"
                 onClick={() => {
                   setMode("signin");
-                  setError(null);
+                  toast.dismiss();
                 }}
                 className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
                   mode === "signin"
@@ -212,7 +212,7 @@ function AuthPageContent() {
                 type="button"
                 onClick={() => {
                   setMode("signup");
-                  setError(null);
+                  toast.dismiss();
                 }}
                 className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
                   mode === "signup"
@@ -312,7 +312,6 @@ function AuthPageContent() {
                     </button>
                   </div>
                 </div>
-                {error && <p className="text-sm text-destructive">{error}</p>}
                 <button
                   type="submit"
                   disabled={loading}
@@ -404,7 +403,6 @@ function AuthPageContent() {
                     />
                   </div>
                 )}
-                {error && <p className="text-sm text-destructive">{error}</p>}
                 <button
                   type="submit"
                   disabled={
