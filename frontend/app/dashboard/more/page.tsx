@@ -33,12 +33,12 @@ export default function MorePage() {
   return (
     <div>
       <div className="flex items-center gap-2">
-        <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+        <h1 className="text-2xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2 sm:text-3xl">
           More
         </h1>
         <DocsInfoIcon url={DOCS_MORE_URL} />
       </div>
-      <p className="mt-2 text-text-muted">
+      <p className="mt-1.5 text-sm text-text-muted sm:mt-2">
         Settings and the rest of the dashboard.
       </p>
 
@@ -46,12 +46,12 @@ export default function MorePage() {
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-text-muted">
           Manual posting
         </h2>
-        <ul className="space-y-1 rounded-xl border border-border bg-bg-elevated shadow-sm">
+        <ul className="space-y-0.5 rounded-xl border border-border bg-bg-elevated shadow-sm sm:space-y-1">
           {MANUAL_POSTING_LINKS.map(({ href, label, icon: Icon }) => (
             <li key={href}>
               <Link
                 href={href}
-                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
+                className="flex min-h-[44px] items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors active:bg-bg-muted touch-manipulation"
               >
                 <Icon className="h-4 w-4 shrink-0 text-text-muted" />
                 {label}
@@ -65,12 +65,12 @@ export default function MorePage() {
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-text-muted">
           Posts & tools
         </h2>
-        <ul className="space-y-1 rounded-xl border border-border bg-bg-elevated shadow-sm">
+        <ul className="space-y-0.5 rounded-xl border border-border bg-bg-elevated shadow-sm sm:space-y-1">
           {MORE_LINKS.map(({ href, label, icon: Icon }) => (
             <li key={href}>
               <Link
                 href={href}
-                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
+                className="flex min-h-[44px] items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors active:bg-bg-muted touch-manipulation"
               >
                 <Icon className="h-4 w-4 shrink-0 text-text-muted" />
                 {label}
@@ -80,7 +80,7 @@ export default function MorePage() {
           <li>
             <a
               href="#"
-              className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
+              className="flex min-h-[44px] items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors active:bg-bg-muted touch-manipulation"
             >
               <IconMessageCircle
                 className="h-4 w-4 shrink-0 text-text-muted"

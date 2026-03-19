@@ -254,7 +254,7 @@ export function PostListCards({
           >
             <Link
               href={`/dashboard/posts/${post.id}`}
-              className="block p-4"
+              className="block p-4 active:opacity-95 touch-manipulation"
             >
               {/* TOP ROW: [Post type badge] left, [Status badge] right */}
               <div className="mb-1.5 flex items-center justify-between gap-2">

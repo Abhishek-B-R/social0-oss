@@ -3,20 +3,28 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  IconFilePlus,
   IconList,
   IconLink,
   IconDots,
   IconCalendar,
 } from "@tabler/icons-react";
+import { TiktokCreateButton } from "./TiktokCreateButton";
 
-const NAV_ITEMS = [
-  { href: "/dashboard/connections", label: "Connections", icon: IconLink },
+const CREATE_HREF = "/dashboard/composer";
+
+type NavItemIcon = React.ComponentType<{ className?: string }>;
+
+const NAV_ITEMS: Array<{
+  href: string;
+  label: string;
+  icon?: NavItemIcon;
+}> = [
   { href: "/dashboard/posts", label: "Posts", icon: IconList },
-  { href: "/dashboard/composer", label: "Create", icon: IconFilePlus },
   { href: "/dashboard/calendar", label: "Calendar", icon: IconCalendar },
+  { href: CREATE_HREF, label: "Create" },
+  { href: "/dashboard/connections", label: "Connections", icon: IconLink },
   { href: "/dashboard/more", label: "More", icon: IconDots },
-] as const;
+];
 
 export function DashboardBottomNav() {
   const pathname = usePathname();
@@ -56,26 +64,21 @@ export function DashboardBottomNav() {
     >
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const active = isActive(href);
-        const isCreate = href === "/dashboard/composer";
+        const isCreate = href === CREATE_HREF;
 
         if (isCreate) {
           return (
-            <Link
+            <div
               key={href}
-              href={href}
-              className="flex flex-1 flex-col items-center gap-0.5 py-3 pt-2"
+              className="min-h-[56px] flex-1 shrink-0"
+              aria-hidden
             >
-              <span
-                className={`flex flex-col items-center gap-0.5 rounded-full px-2.5 py-1 shadow-sm transition-colors ${
-                  active
-                    ? "bg-accent text-accent-foreground"
-                    : "bg-bg-muted text-text-muted hover:bg-accent/20 hover:text-accent"
-                }`}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                <span className="text-xs font-medium leading-tight">{label}</span>
-              </span>
-            </Link>
+              <TiktokCreateButton
+                href={href}
+                isActive={active}
+                aria-label={label}
+              />
+            </div>
           );
         }
 
@@ -83,11 +86,14 @@ export function DashboardBottomNav() {
           <Link
             key={href}
             href={href}
-            className={`flex flex-1 flex-col items-center gap-0.5 py-3 pt-2 text-xs transition-colors ${
-              active ? "text-accent" : "text-text-muted hover:text-text"
+            className={`flex min-h-[56px] flex-1 shrink-0 flex-col items-center justify-center gap-0.5 py-3 pt-2 text-xs transition-colors touch-manipulation ${
+              active
+                ? "text-accent"
+                : "text-text-muted hover:text-text active:text-text"
             }`}
+            aria-current={active ? "page" : undefined}
           >
-            <Icon className="h-5 w-5 shrink-0" />
+            {Icon && <Icon className="h-5 w-5 shrink-0" />}
             <span>{label}</span>
           </Link>
         );

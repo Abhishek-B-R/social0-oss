@@ -48,8 +48,6 @@ import {
 } from "@/lib/composer-bridge";
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
-import { MdQuestionMark } from "react-icons/md";
-import { DOCS_TEXT_POST_TYPE_URL } from "@/lib/docs-url";
 import { toast } from "sonner";
 
 const TWITTER_THREAD_SEP = "---";

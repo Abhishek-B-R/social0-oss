@@ -144,7 +144,7 @@ export function ConnectionsList({
             <button
               type="button"
               onClick={() => setPremiumRefreshError(null)}
-              className="shrink-0 rounded p-0.5 transition-colors hover:bg-amber-500/20 dark:hover:bg-amber-500/20"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded transition-colors hover:bg-amber-500/20 dark:hover:bg-amber-500/20 touch-manipulation"
               aria-label="Dismiss"
             >
               <X className="h-4 w-4" />
@@ -152,12 +152,12 @@ export function ConnectionsList({
           </div>
         )}
         <div className="flex items-center gap-2">
-          <h2 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+          <h2 className="text-2xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2 sm:text-3xl">
             Connected Accounts
           </h2>
           <DocsInfoIcon url={DOCS_CONNECTIONS_URL} />
         </div>
-        <p className="text-sm text-text-muted">
+        <p className="text-sm leading-snug text-text-muted">
           Link your social accounts to publish from one place. You can connect
           multiple accounts per platform.
         </p>
@@ -265,7 +265,7 @@ export function ConnectionsList({
                             <button
                               type="button"
                               onClick={() => handleOpenDisconnect(account)}
-                              className="shrink-0 rounded p-0.5 text-destructive transition-colors hover:bg-destructive/10"
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-destructive transition-colors hover:bg-destructive/10 touch-manipulation active:bg-destructive/20"
                               title="Remove account"
                               aria-label={`Disconnect ${account.platformUsername || account.platform}`}
                             >
@@ -372,7 +372,7 @@ export function ConnectionsList({
                           <button
                             type="button"
                             onClick={() => handleOpenDisconnect(account)}
-                            className="shrink-0 rounded p-0.5 text-destructive transition-colors hover:bg-destructive/10"
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-destructive transition-colors hover:bg-destructive/10 touch-manipulation active:bg-destructive/20"
                             title="Remove account"
                             aria-label={`Disconnect ${account.platformDisplayName && account.platformUsername ? `${account.platformDisplayName} (@${account.platformUsername})` : account.platformUsername || account.platform}`}
                           >

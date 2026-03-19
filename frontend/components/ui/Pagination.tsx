@@ -51,11 +51,11 @@ export function Pagination({
   const nextHref = buildPaginationUrl(basePath, nextPage, searchParams);
   const displayPage = page;
   const buttonClass =
-    "inline-flex items-center gap-1 rounded-lg border border-input bg-bg px-3 py-2 text-sm font-medium text-text shadow-sm transition-colors hover:bg-bg-muted disabled:pointer-events-none disabled:opacity-50";
+    "inline-flex min-h-[44px] items-center justify-center gap-1 rounded-lg border border-input bg-bg px-4 py-2.5 text-sm font-medium text-text shadow-sm transition-colors hover:bg-bg-muted active:bg-bg-muted touch-manipulation disabled:pointer-events-none disabled:opacity-50";
 
   return (
     <nav
-      className="flex items-center justify-center gap-4 py-6"
+      className="flex items-center justify-center gap-4 py-6 pb-16 lg:pb-6"
       aria-label="Pagination"
     >
       {displayPage <= 1 ? (

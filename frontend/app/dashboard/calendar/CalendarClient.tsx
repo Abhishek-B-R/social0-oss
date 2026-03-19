@@ -90,6 +90,81 @@ function DayCell({
   const hasMore =
     !fillHeight && !isExpanded && (isMobile ? posts.length > 1 : moreCount > 0);
 
+  // Mobile (month + week): show date + one dot per post by status (green=published, blue=scheduled, purple=partial, red=failed)
+  const mobileCompactCell = isMobile;
+  const countPublished = posts.filter((p) => p.status === "published").length;
+  const countScheduled = posts.filter((p) => p.status === "scheduled").length;
+  const countPartial = posts.filter((p) => p.status === "partial").length;
+  const countFailed = posts.filter((p) => p.status === "failed").length;
+  const hasAnyDots =
+    countPublished > 0 ||
+    countScheduled > 0 ||
+    countPartial > 0 ||
+    countFailed > 0;
+
+  if (mobileCompactCell) {
+    return (
+      <div
+        className={`flex min-h-[72px] flex-col border border-border p-1.5 ${
+          fillHeight ? "min-h-0 flex-1" : "sm:min-h-[100px]"
+        } ${
+          isCurrentMonth ? "bg-bg" : "bg-bg-subtle"
+        } ${isToday(date) ? "bg-accent/10" : ""}`}
+      >
+        <div className="flex flex-1 flex-col items-center justify-center gap-1">
+          {onDayClick ? (
+            <button
+              type="button"
+              onClick={() => onDayClick(date)}
+              className="rounded text-sm font-medium text-text hover:bg-bg-muted hover:text-accent"
+            >
+              {format(date, "d")}
+            </button>
+          ) : (
+            <span className="text-sm font-medium text-text">
+              {format(date, "d")}
+            </span>
+          )}
+          {hasAnyDots && (
+            <div
+              className="flex flex-wrap items-center justify-center gap-0.5 max-w-full"
+              aria-hidden
+            >
+              {Array.from({ length: countPublished }).map((_, i) => (
+                <span
+                  key={`pub-${i}`}
+                  className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
+                  title={`${countPublished} published`}
+                />
+              ))}
+              {Array.from({ length: countScheduled }).map((_, i) => (
+                <span
+                  key={`sched-${i}`}
+                  className="h-2 w-2 shrink-0 rounded-full bg-blue-500"
+                  title={`${countScheduled} scheduled`}
+                />
+              ))}
+              {Array.from({ length: countPartial }).map((_, i) => (
+                <span
+                  key={`part-${i}`}
+                  className="h-2 w-2 shrink-0 rounded-full bg-violet-500"
+                  title={`${countPartial} partial`}
+                />
+              ))}
+              {Array.from({ length: countFailed }).map((_, i) => (
+                <span
+                  key={`fail-${i}`}
+                  className="h-2 w-2 shrink-0 rounded-full bg-red-500"
+                  title={`${countFailed} failed`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`border border-border p-2 ${
@@ -357,15 +432,15 @@ export function CalendarClient({
   return (
     <div
       className={
-        isFullPageView ? "flex min-h-0 flex-1 flex-col gap-4" : "space-y-4"
+        isFullPageView ? "flex min-h-0 flex-1 flex-col gap-3 sm:gap-4" : "space-y-3 sm:space-y-4"
       }
     >
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 sm:gap-4">
+        <div className="flex items-center gap-0.5 sm:gap-2">
           <button
             type="button"
             onClick={handlePrev}
-            className="rounded-lg p-2 text-text-muted hover:bg-bg-muted"
+            className="rounded-lg p-2 text-text-muted hover:bg-bg-muted touch-manipulation"
             aria-label={
               view === "week"
                 ? "Previous week"
@@ -376,7 +451,7 @@ export function CalendarClient({
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <h2 className="min-w-[180px] text-center text-lg font-semibold text-text">
+          <h2 className="min-w-[140px] text-center text-base font-semibold text-text sm:min-w-[180px] sm:text-lg">
             {headerTitle}
             {view === "day" && isToday(selectedDate) && (
               <span className="ml-2 rounded bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
@@ -387,7 +462,7 @@ export function CalendarClient({
           <button
             type="button"
             onClick={handleNext}
-            className="rounded-lg p-2 text-text-muted hover:bg-bg-muted"
+            className="rounded-lg p-2 text-text-muted hover:bg-bg-muted touch-manipulation"
             aria-label={
               view === "week"
                 ? "Next week"
@@ -403,37 +478,37 @@ export function CalendarClient({
           <button
             type="button"
             onClick={switchToMonth}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
+            className={`flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium touch-manipulation sm:gap-1.5 sm:px-3 sm:text-sm ${
               view === "month"
                 ? "bg-accent/15 text-accent"
                 : "text-text-muted hover:bg-bg-muted"
             }`}
           >
-            <Calendar className="h-4 w-4" />
+            <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             Month
           </button>
           <button
             type="button"
             onClick={handleSwitchToWeek}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
+            className={`flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium touch-manipulation sm:gap-1.5 sm:px-3 sm:text-sm ${
               view === "week"
                 ? "bg-accent/15 text-accent"
                 : "text-text-muted hover:bg-bg-muted"
             }`}
           >
-            <LayoutGrid className="h-4 w-4" />
+            <LayoutGrid className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             Week
           </button>
           <button
             type="button"
             onClick={handleSwitchToDay}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
+            className={`flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium touch-manipulation sm:gap-1.5 sm:px-3 sm:text-sm ${
               view === "day"
                 ? "bg-accent/15 text-accent"
                 : "text-text-muted hover:bg-bg-muted"
             }`}
           >
-            <CalendarDays className="h-4 w-4" />
+            <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             Day
           </button>
         </div>
@@ -445,7 +520,7 @@ export function CalendarClient({
             {weekDays.map((day) => (
               <div
                 key={day.toISOString()}
-                className="p-2 text-center text-xs font-semibold uppercase text-text-muted"
+                className="p-1.5 text-center text-[10px] font-semibold uppercase text-text-muted sm:p-2 sm:text-xs"
               >
                 {format(day, "EEE")}
               </div>
@@ -468,6 +543,26 @@ export function CalendarClient({
               />
             ))}
           </div>
+          {isMobile && (
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-t border-border bg-bg-subtle px-3 py-2">
+              <span className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
+                Published
+              </span>
+              <span className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden />
+                Scheduled
+              </span>
+              <span className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                <span className="h-2 w-2 rounded-full bg-violet-500" aria-hidden />
+                Partial
+              </span>
+              <span className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                <span className="h-2 w-2 rounded-full bg-red-500" aria-hidden />
+                Failed
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -477,7 +572,7 @@ export function CalendarClient({
             {weekDates.map((day) => (
               <div
                 key={day.toISOString()}
-                className="border-r border-border p-2 text-center text-xs font-semibold uppercase text-text-muted last:border-r-0"
+                className="border-r border-border p-1.5 text-center text-[10px] font-semibold uppercase text-text-muted last:border-r-0 sm:p-2 sm:text-xs"
               >
                 {format(day, "EEE d")}
               </div>
@@ -508,6 +603,26 @@ export function CalendarClient({
               </div>
             ))}
           </div>
+          {isMobile && (
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-t border-border bg-bg-subtle px-3 py-2">
+              <span className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
+                Published
+              </span>
+              <span className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden />
+                Scheduled
+              </span>
+              <span className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                <span className="h-2 w-2 rounded-full bg-violet-500" aria-hidden />
+                Partial
+              </span>
+              <span className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                <span className="h-2 w-2 rounded-full bg-red-500" aria-hidden />
+                Failed
+              </span>
+            </div>
+          )}
         </div>
       )}
 

@@ -37,22 +37,22 @@ const GROWTH_FEATURES = [
   "Human support",
 ];
 
-const PRO_FEATURES = [
-  "Unlimited connected accounts",
-  "Multiple accounts per platform",
-  "Unlimited posts",
-  "Schedule posts across platforms",
-  "Carousel posts",
-  "Threads & Collections support",
-  "1,500 tweets/month (Twitter/X)",
-  "Auto-plug high performing tweets",
-  "Auto-repost on autopilot",
-  "Bulk scheduling tools",
-  "Fair usage policy",
-  "Human support",
-  "Priority support",
-  "Early access to new features",
-];
+// const PRO_FEATURES = [
+//   "Unlimited connected accounts",
+//   "Multiple accounts per platform",
+//   "Unlimited posts",
+//   "Schedule posts across platforms",
+//   "Carousel posts",
+//   "Threads & Collections support",
+//   "1,500 tweets/month (Twitter/X)",
+//   "Auto-plug high performing tweets",
+//   "Auto-repost on autopilot",
+//   "Bulk scheduling tools",
+//   "Fair usage policy",
+//   "Human support",
+//   "Priority support",
+//   "Early access to new features",
+// ];
 
 function OnboardingPlanContent() {
   const searchParams = useSearchParams();

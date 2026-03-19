@@ -32,7 +32,12 @@ export default async function CalendarPage() {
     .where(
       and(
         eq(posts.userId, session.user.id),
-        or(eq(posts.status, "scheduled"), eq(posts.status, "published")),
+        or(
+          eq(posts.status, "scheduled"),
+          eq(posts.status, "published"),
+          eq(posts.status, "partial"),
+          eq(posts.status, "failed"),
+        ),
       ),
     );
 
@@ -125,15 +130,15 @@ export default async function CalendarPage() {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <div className="flex items-center gap-2">
-        <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+        <h1 className="text-2xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2 sm:text-3xl">
           Calendar
         </h1>
         <DocsInfoIcon url={DOCS_CALENDAR_URL} />
       </div>
-      <p className="mt-2 text-text-muted">
+      <p className="mt-1.5 text-sm text-text-muted sm:mt-2">
         View your scheduled and published posts by month, week, or day.
       </p>
-      <div className="mt-6 flex min-h-0 flex-1 flex-col">
+      <div className="mt-4 flex min-h-0 flex-1 flex-col sm:mt-6">
         <CalendarClient
           posts={calendarPosts}
           initialMonth={format(now, "yyyy-MM")}

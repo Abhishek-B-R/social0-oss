@@ -454,24 +454,24 @@ export function ComposerClient() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 mt-10">
-      <div className="space-y-2">
+    <div className="mx-auto max-w-3xl space-y-4 px-1 py-6 sm:mt-10 sm:space-y-6 sm:px-0 sm:py-0">
+      <div className="space-y-1.5 sm:space-y-2">
         <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing">
+          <h1 className="text-2xl font-semibold font-serif tracking-tight text-foreground sm:text-3xl sm:mb-2 landing">
             Composer
           </h1>
           <DocsInfoIcon url={DOCS_COMPOSER_URL} />
         </div>
-        <p className="text-sm text-text-muted">
+        <p className="text-sm leading-snug text-text-muted sm:leading-normal">
           Type anything, paste/upload media, and we&apos;ll route you to the
           right post flow. You can always adjust details on the next screen.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border bg-bg-elevated p-4 sm:p-5 shadow-sm transition-all duration-200 hover:border-muted-foreground/30 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/30">
+      <div className="rounded-2xl border-2 border-border bg-bg-elevated p-4 shadow-sm transition-all duration-200 hover:border-muted-foreground/30 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 sm:rounded-2xl sm:p-5 sm:focus-within:ring-1 sm:focus-within:ring-emerald-500/30">
         <textarea
           ref={textareaRef}
-          className="min-h-[70px] max-h-[400px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-base text-text outline-none placeholder:text-text-muted"
+          className="min-h-[88px] max-h-[400px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-base text-text outline-none placeholder:text-text-muted sm:min-h-[70px]"
           placeholder="Share what's on your mind..."
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -582,16 +582,16 @@ export function ComposerClient() {
             Threads can contain at most 4 attachments per post.
           </p>
         )}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+        <div className="flex flex-col gap-3 pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:pt-2">
           <div className="flex flex-wrap items-center gap-2">
             <label
-              className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition-colors touch-manipulation sm:py-1.5 ${
                 isThread && media.length >= THREAD_MAX_MEDIA_PER_POST
                   ? "cursor-not-allowed border-border bg-bg-muted opacity-70"
                   : "border-border bg-bg-muted text-text-muted hover:bg-bg-hover hover:text-text"
               }`}
             >
-              <ImagePlus className="h-4 w-4" />
+              <ImagePlus className="h-4 w-4 shrink-0" />
               <span>Images / Videos{isThread ? " (max 4)" : ""}</span>
               <input
                 type="file"
@@ -634,20 +634,20 @@ export function ComposerClient() {
                   setThreadSlots([]);
                 }
               }}
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition-colors touch-manipulation sm:py-1.5 ${
                 isThread
                   ? "border-accent bg-accent/10 text-accent"
                   : "border-border bg-bg-muted text-text-muted hover:bg-bg-hover hover:text-text"
               }`}
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-3 w-3 shrink-0" />
               <span>Add another post as thread</span>
             </button>
           </div>
 
           {text.length > 0 && (
             <p
-              className="text-right text-xs text-text-muted"
+              className="text-right text-xs text-text-muted sm:order-0"
               aria-live="polite"
             >
               {text.length} character{text.length !== 1 ? "s" : ""}
@@ -662,7 +662,7 @@ export function ComposerClient() {
                 media.length === 0 &&
                 !threadSlots.some((s) => s.text.trim() || s.media.length > 0))
             }
-            className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
+            className="order-first inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70 touch-manipulation sm:order-0 sm:w-auto sm:py-2"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -836,14 +836,14 @@ export function ComposerClient() {
         </div>
       )}
 
-      <p className="text-xs text-text-muted">
+      <p className="text-xs leading-relaxed text-text-muted sm:text-xs">
         Paste or drop almost anything here. We&apos;ll detect whether it&apos;s
         text, images, video, or a combination and start you in the best-fitting
         post builder.
       </p>
 
-      <p className="flex items-center gap-2 text-sm text-text-muted">
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-accent">
+      <p className="flex items-center gap-2 text-sm leading-snug text-text-muted">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent">
           ✓
         </span>
         You can connect your accounts from{" "}

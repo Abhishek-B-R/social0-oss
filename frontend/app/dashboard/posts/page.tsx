@@ -63,28 +63,28 @@ export default async function PostsPage({
   return (
     <div>
       {showPaymentFailedBanner && (
-        <div className="mb-6 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400 sm:mb-6">
           <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-          <span>Some posts failed to publish because your trial ended.</span>
+          <span className="min-w-0 flex-1">Some posts failed to publish because your trial ended.</span>
           <Link
             href="/dashboard/billing"
-            className="ml-auto font-medium underline underline-offset-2"
+            className="inline-flex min-h-[44px] shrink-0 items-center font-medium underline underline-offset-2 touch-manipulation active:opacity-90"
           >
             Upgrade now →
           </Link>
         </div>
       )}
       {showTikTokMessage && (
-        <div className="mb-6 rounded-xl bg-blue-50 border border-blue-200 p-4 dark:bg-blue-950/40 dark:border-blue-900/60">
-          <p className="text-sm text-blue-800 font-medium dark:text-blue-200">
+        <div className="mb-4 rounded-xl bg-blue-50 border border-blue-200 p-4 dark:bg-blue-950/40 dark:border-blue-900/60 sm:mb-6">
+          <p className="text-sm text-blue-800 font-medium dark:text-blue-200 leading-snug">
             ✅ Post published successfully! Your TikTok content may take a few
             minutes to process and appear on your profile.
           </p>
         </div>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div>
-          <h2 className="text-3xl font-bold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 sm:gap-4 sm:mb-6">
+        <div className="min-w-0">
+          <h2 className="text-2xl font-bold font-serif tracking-tight text-foreground mb-1.5 landing flex items-center gap-2 sm:text-3xl sm:mb-2">
             All Posts
             <a
               href={DOCS_POSTS_URL}
@@ -108,13 +108,13 @@ export default async function PostsPage({
               </svg>
             </a>
           </h2>
-          <p className="text-text-muted mt-1 font-medium">
+          <p className="text-sm text-text-muted mt-1 font-medium sm:text-base">
             Your drafts, scheduled, and published posts
           </p>
         </div>
         <Link
           href="/dashboard/composer"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-lg hover:bg-accent-hover transition-colors"
+          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground shadow-lg hover:bg-accent-hover transition-colors touch-manipulation active:opacity-95 sm:py-2.5"
         >
           Create post
         </Link>
