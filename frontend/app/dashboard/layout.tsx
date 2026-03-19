@@ -56,7 +56,7 @@ export default async function DashboardLayout({
     >
       <SubscriptionSync tier={subscription.tier} />
       <DashboardSidebar user={session.user} planLabel={planLabel} />
-      <main className="flex flex-1 flex-col min-h-0 overflow-y-auto pb-80 lg:pb-0">
+      <main className="flex flex-1 flex-col min-h-0 overflow-y-auto pb-80 mb-20 lg:pb-0">
         <div className="mx-auto flex min-h-full w-full max-w-[1200px] 2xl:max-w-7xl flex-1 flex-col px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-12 sm:pl-4 sm:pr-6 sm:pt-6 sm:pb-6 lg:px-8 lg:py-8 lg:pb-8">
           {children}
         </div>
