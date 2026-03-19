@@ -27,6 +27,24 @@ async function handleSubscriptionActiveOrUpdated(payload: {
   data: DodoSubscriptionData;
 }) {
   const data = payload.data;
+  const status = data.status ?? "";
+
+  // CRITICAL: Only update tier when payment has actually succeeded.
+  // Dodo fires subscription.updated / subscription.plan_changed when changePlan
+  // is called, BEFORE payment succeeds. If payment fails, status becomes
+  // "on_hold" / "past_due" — we must NOT write the new tier in that case.
+  if (status === "cancelled" || status === "expired") {
+    await handleSubscriptionCancelledOrExpired(payload);
+    return;
+  }
+  if (status !== "active") {
+    console.log(
+      "[dodo webhook] Skipping tier update: subscription status is not active",
+      { status: status || "(empty)" },
+    );
+    return;
+  }
+
   const tier = getTierFromProductId(data.product_id ?? "");
 
   if (tier === "free") {
@@ -196,6 +214,11 @@ export async function POST(request: Request) {
     if (eventType === "subscription.renewed" && data) {
       await handleSubscriptionRenewed({ data });
       await handleSubscriptionActiveOrUpdated({ data });
+    } else if (eventType === "subscription.on_hold" && data) {
+      // Payment failed or not yet complete — do NOT change tier; user keeps previous tier.
+      console.log(
+        "[dodo webhook] Skipping tier update: subscription.on_hold (payment not complete)",
+      );
     } else if (
       eventType === "subscription.active" ||
       eventType === "subscription.updated" ||
