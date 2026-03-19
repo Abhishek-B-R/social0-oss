@@ -3,10 +3,22 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { userSettings, connectedAccounts } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSubscriptionForUser } from "@/lib/subscription";
+
+/** Defaults when creating a new user_settings row (avoids relying on DB defaults after migrations). */
+const NEW_USER_SETTINGS_DEFAULTS = {
+  timezone: "UTC" as const,
+  automationEmails: true,
+  use24HourTimeFormat: false,
+  dateFormat: "dd/MM/yyyy" as const,
+  subscriptionTier: "free" as const,
+  hasUsedTrial: false,
+  onboardingCompleted: false,
+  subscriptionCancelAtPeriodEnd: false,
+};
 
 export type OnboardingStatus = {
   onboardingCompleted: boolean;
@@ -63,20 +75,44 @@ export async function setOnboardingGoal(goal: string): Promise<void> {
   const userId = await getCurrentUserId();
   if (!userId) redirect("/");
 
-  await db.execute(sql`
-    INSERT INTO user_settings (user_id, onboarding_goal)
-    VALUES (${userId}, ${goal})
-    ON CONFLICT (user_id) DO UPDATE SET onboarding_goal = EXCLUDED.onboarding_goal
-  `);
+  const existing = await db.query.userSettings.findFirst({
+    where: eq(userSettings.userId, userId),
+    columns: { userId: true },
+  });
+
+  if (existing) {
+    await db
+      .update(userSettings)
+      .set({ onboardingGoal: goal })
+      .where(eq(userSettings.userId, userId));
+  } else {
+    await db.insert(userSettings).values({
+      userId,
+      ...NEW_USER_SETTINGS_DEFAULTS,
+      onboardingGoal: goal,
+    });
+  }
 }
 
 export async function setOnboardingCompleted(): Promise<void> {
   const userId = await getCurrentUserId();
   if (!userId) redirect("/");
 
-  await db.execute(sql`
-    INSERT INTO user_settings (user_id, onboarding_completed)
-    VALUES (${userId}, true)
-    ON CONFLICT (user_id) DO UPDATE SET onboarding_completed = true
-  `);
+  const existing = await db.query.userSettings.findFirst({
+    where: eq(userSettings.userId, userId),
+    columns: { userId: true },
+  });
+
+  if (existing) {
+    await db
+      .update(userSettings)
+      .set({ onboardingCompleted: true })
+      .where(eq(userSettings.userId, userId));
+  } else {
+    await db.insert(userSettings).values({
+      userId,
+      ...NEW_USER_SETTINGS_DEFAULTS,
+      onboardingCompleted: true,
+    });
+  }
 }

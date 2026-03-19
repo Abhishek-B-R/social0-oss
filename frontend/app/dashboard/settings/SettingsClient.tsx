@@ -896,6 +896,16 @@ export function SettingsClient({
     useState<(typeof SETTINGS_TABS)[number]["id"]>("profile");
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [changeEmailSuccess, setChangeEmailSuccess] = useState(false);
+  const [clientTimezone, setClientTimezone] = useState("");
+
+  useEffect(() => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (typeof tz === "string" && tz.trim()) setClientTimezone(tz.trim());
+    } catch {
+      // ignore
+    }
+  }, []);
 
   return (
     <div>
@@ -1059,6 +1069,13 @@ export function SettingsClient({
                 action={updatePlatformPreferences}
                 className="mt-4 space-y-4"
               >
+                {clientTimezone ? (
+                  <input
+                    type="hidden"
+                    name="clientTimezone"
+                    value={clientTimezone}
+                  />
+                ) : null}
                 <Toggle
                   id="use24HourTimeFormat"
                   name="use24HourTimeFormat"
@@ -1095,6 +1112,13 @@ export function SettingsClient({
                 Schedules, post times, and calendar are shown in this timezone.
               </p>
               <form action={updateTimezone} className="mt-4 space-y-4">
+                {clientTimezone ? (
+                  <input
+                    type="hidden"
+                    name="clientTimezone"
+                    value={clientTimezone}
+                  />
+                ) : null}
                 <div>
                   <label
                     htmlFor="timezone"
@@ -1130,6 +1154,13 @@ export function SettingsClient({
                 Notifications and reminders from the app.
               </p>
               <form action={updateAutomationEmails} className="mt-4 space-y-4">
+                {clientTimezone ? (
+                  <input
+                    type="hidden"
+                    name="clientTimezone"
+                    value={clientTimezone}
+                  />
+                ) : null}
                 <Toggle
                   id="automationEmails"
                   name="automationEmails"

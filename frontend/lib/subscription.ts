@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { userSettings } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { SubscriptionTier } from "@/lib/plans";
 
 export type SubscriptionState = {
@@ -90,6 +90,18 @@ export async function getSubscriptionForUser(
   };
 }
 
+/** Defaults when creating a new user_settings row (avoids relying on DB defaults after migrations). */
+const NEW_USER_SETTINGS_DEFAULTS = {
+  timezone: "UTC" as const,
+  automationEmails: true,
+  use24HourTimeFormat: false,
+  dateFormat: "dd/MM/yyyy" as const,
+  subscriptionTier: "free" as const,
+  hasUsedTrial: false,
+  onboardingCompleted: false,
+  subscriptionCancelAtPeriodEnd: false,
+};
+
 export async function setSubscription(
   userId: string,
   data: {
@@ -102,21 +114,33 @@ export async function setSubscription(
   const isPaidTier =
     data.tier === "starter" || data.tier === "growth" || data.tier === "pro";
 
-  await db.execute(sql`
-      INSERT INTO user_settings (user_id, subscription_tier, subscription_expires_at, subscription_id, customer_id, has_used_trial, subscription_cancel_at_period_end)
-      VALUES (${userId}, ${data.tier}, ${data.expiresAt}, ${data.subscriptionId}, ${data.customerId}, ${isPaidTier}, false)
-      ON CONFLICT (user_id) DO UPDATE SET
-        subscription_tier = EXCLUDED.subscription_tier,
-        subscription_expires_at = EXCLUDED.subscription_expires_at,
-        subscription_id = EXCLUDED.subscription_id,
-        customer_id = EXCLUDED.customer_id,
-        has_used_trial = user_settings.has_used_trial OR EXCLUDED.has_used_trial,
-        subscription_cancel_at_period_end = false
-      WHERE
-        user_settings.subscription_tier IS DISTINCT FROM EXCLUDED.subscription_tier
-        OR user_settings.subscription_expires_at IS DISTINCT FROM EXCLUDED.subscription_expires_at
-        OR user_settings.subscription_id IS DISTINCT FROM EXCLUDED.subscription_id
-        OR user_settings.customer_id IS DISTINCT FROM EXCLUDED.customer_id
-        OR user_settings.subscription_cancel_at_period_end IS DISTINCT FROM false
-    `);
+  const existing = await db.query.userSettings.findFirst({
+    where: eq(userSettings.userId, userId),
+    columns: { userId: true, hasUsedTrial: true },
+  });
+
+  if (existing) {
+    await db
+      .update(userSettings)
+      .set({
+        subscriptionTier: data.tier,
+        subscriptionExpiresAt: data.expiresAt,
+        subscriptionId: data.subscriptionId,
+        customerId: data.customerId,
+        hasUsedTrial: existing.hasUsedTrial || isPaidTier,
+        subscriptionCancelAtPeriodEnd: false,
+      })
+      .where(eq(userSettings.userId, userId));
+  } else {
+    await db.insert(userSettings).values({
+      userId,
+      ...NEW_USER_SETTINGS_DEFAULTS,
+      subscriptionTier: data.tier,
+      subscriptionExpiresAt: data.expiresAt,
+      subscriptionId: data.subscriptionId,
+      customerId: data.customerId,
+      hasUsedTrial: isPaidTier,
+      subscriptionCancelAtPeriodEnd: false,
+    });
+  }
 }

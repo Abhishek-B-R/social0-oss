@@ -13,9 +13,13 @@ import {
   posts,
   postPublications,
   userSettings,
+  subscriptionCancellations,
   platformRateLimits,
   queueSlots,
   queuedPosts,
+  resurfaceSchedules,
+  resurfaceEvents,
+  autoPlugs,
 } from "./schema";
 
 dotenv.config({ path: ".env.local" });
@@ -44,8 +48,12 @@ export const db = drizzle(pool, {
     posts,
     postPublications,
     userSettings,
+    subscriptionCancellations,
     platformRateLimits,
     queueSlots,
     queuedPosts,
+    resurfaceSchedules,
+    resurfaceEvents,
+    autoPlugs,
   },
 });

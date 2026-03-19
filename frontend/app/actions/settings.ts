@@ -23,6 +23,13 @@ const DEFAULT_SETTINGS: SettingsSnapshot = {
   timezone: "UTC",
 };
 
+/** Valid IANA timezone from client (e.g. from Intl); max length for safety. */
+function sanitizeClientTimezone(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const tz = value.trim();
+  return tz.length <= 60 ? tz : null;
+}
+
 async function getCurrentUserId() {
   const session = await auth.api.getSession({ headers: await headers() });
   return session?.user.id ?? null;
@@ -70,7 +77,10 @@ export async function getUserSettingsSnapshot(): Promise<SettingsSnapshot> {
   };
 }
 
-async function upsertSettings(values: Partial<SettingsSnapshot>): Promise<void> {
+async function upsertSettings(
+  values: Partial<SettingsSnapshot>,
+  clientTimezone?: string | null,
+): Promise<void> {
   const userId = await getCurrentUserId();
   if (!userId) {
     redirect("/");
@@ -81,6 +91,11 @@ async function upsertSettings(values: Partial<SettingsSnapshot>): Promise<void> 
     columns: { userId: true },
   });
 
+  const defaultTz =
+    values.timezone ??
+    sanitizeClientTimezone(clientTimezone) ??
+    DEFAULT_SETTINGS.timezone;
+
   if (existing) {
     await db
       .update(userSettings)
@@ -89,7 +104,7 @@ async function upsertSettings(values: Partial<SettingsSnapshot>): Promise<void> 
   } else {
     await db.insert(userSettings).values({
       userId,
-      timezone: DEFAULT_SETTINGS.timezone,
+      timezone: defaultTz,
       automationEmails: DEFAULT_SETTINGS.automationEmails,
       use24HourTimeFormat: DEFAULT_SETTINGS.use24HourTimeFormat,
       dateFormat: DEFAULT_SETTINGS.dateFormat,
@@ -183,9 +198,11 @@ export async function updateConnectionAvatar(
 }
 
 export async function updateAutomationEmails(formData: FormData): Promise<void> {
-  await upsertSettings({
-    automationEmails: formData.get("automationEmails") === "on",
-  });
+  const clientTimezone = formData.get("clientTimezone");
+  await upsertSettings(
+    { automationEmails: formData.get("automationEmails") === "on" },
+    typeof clientTimezone === "string" ? clientTimezone : undefined,
+  );
 }
 
 export async function updatePlatformPreferences(formData: FormData): Promise<void> {
@@ -196,17 +213,25 @@ export async function updatePlatformPreferences(formData: FormData): Promise<voi
     dateFormatRaw === "yyyy-MM-dd"
       ? dateFormatRaw
       : undefined;
-  await upsertSettings({
-    use24HourTimeFormat: formData.get("use24HourTimeFormat") === "on",
-    ...(dateFormat !== undefined && { dateFormat }),
-  });
+  const clientTimezone = formData.get("clientTimezone");
+  await upsertSettings(
+    {
+      use24HourTimeFormat: formData.get("use24HourTimeFormat") === "on",
+      ...(dateFormat !== undefined && { dateFormat }),
+    },
+    typeof clientTimezone === "string" ? clientTimezone : undefined,
+  );
 }
 
 export async function updateTimezone(formData: FormData): Promise<void> {
   const tz = formData.get("timezone");
   const timezone =
     typeof tz === "string" && tz.trim().length > 0 ? tz.trim() : "UTC";
-  await upsertSettings({ timezone });
+  const clientTimezone = formData.get("clientTimezone");
+  await upsertSettings(
+    { timezone },
+    typeof clientTimezone === "string" ? clientTimezone : undefined,
+  );
 }
 
 export async function signOutAllDevices(): Promise<void> {
