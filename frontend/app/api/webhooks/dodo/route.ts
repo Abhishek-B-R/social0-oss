@@ -13,6 +13,22 @@ const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
 const environment =
   (process.env.DODO_PAYMENTS_ENVIRONMENT as "test_mode" | "live_mode") ??
   "test_mode";
+const billingDebug = process.env.BILLING_DEBUG === "1";
+
+function tierRank(tier: string | null | undefined): number {
+  switch (tier) {
+    case "free":
+      return 0;
+    case "starter":
+      return 1;
+    case "growth":
+      return 2;
+    case "pro":
+      return 3;
+    default:
+      return -1;
+  }
+}
 
 type DodoSubscriptionData = {
   subscription_id?: string;
@@ -45,8 +61,10 @@ async function handleSubscriptionActiveOrUpdated(payload: {
     return;
   }
 
-  // Diagnostic: log full payload to find how Dodo signals payment cleared vs in progress
-  console.log("[dodo webhook] Full payload:", JSON.stringify(data, null, 2));
+  // Diagnostic: log full payload (only when debugging)
+  if (billingDebug) {
+    console.log("[dodo webhook] Full payload:", JSON.stringify(data, null, 2));
+  }
 
   const tier = getTierFromProductId(data.product_id ?? "");
 
@@ -84,6 +102,75 @@ async function handleSubscriptionActiveOrUpdated(payload: {
   }
   if (!userId) {
     console.warn("[dodo webhook] No user found for subscription (email/metadata redacted)");
+    return;
+  }
+
+  // CRITICAL MONEY GUARD:
+  // Dodo can mark subscription "active" immediately on changePlan even while payment is still processing.
+  // For upgrades only, verify the latest payment succeeded before upgrading tier.
+  try {
+    const current = await db.query.userSettings.findFirst({
+      where: eq(userSettings.userId, userId),
+      columns: { subscriptionTier: true },
+    });
+    const currentTier = (current?.subscriptionTier as string | null) ?? "free";
+    const isUpgrade = tierRank(tier) > tierRank(currentTier);
+
+    if (isUpgrade) {
+      if (!apiKey) {
+        console.error("[dodo webhook] Skipping upgrade: DODO_PAYMENTS_API_KEY missing");
+        return;
+      }
+      const subscriptionId = data.subscription_id ?? null;
+      if (!subscriptionId) {
+        console.error("[dodo webhook] Skipping upgrade: missing subscription_id");
+        return;
+      }
+
+      const client = new DodoPayments({ bearerToken: apiKey, environment });
+      let latestPayment: any = null;
+      try {
+        const list = await (client.payments as any).list({
+          subscription_id: subscriptionId,
+          limit: 1,
+        });
+        latestPayment = Array.isArray((list as any)?.items)
+          ? (list as any).items[0]
+          : null;
+      } catch (e) {
+        console.error("[dodo webhook] Payment verification failed:", e);
+        return;
+      }
+
+      const paymentStatus =
+        latestPayment && typeof latestPayment.status === "string"
+          ? String(latestPayment.status)
+          : null;
+      const paymentId =
+        latestPayment && latestPayment.payment_id != null
+          ? String(latestPayment.payment_id)
+          : null;
+
+      if (paymentStatus !== "succeeded") {
+        console.log("[dodo webhook] Skipping upgrade: latest payment not succeeded", {
+          paymentStatus: paymentStatus ?? "none",
+          paymentId: paymentId ?? "none",
+          currentTier,
+          newTier: tier,
+        });
+        return;
+      }
+
+      console.log("[dodo webhook] Upgrade verified by payment", {
+        paymentStatus,
+        paymentId: paymentId ?? "(missing)",
+        currentTier,
+        newTier: tier,
+      });
+    }
+  } catch (e) {
+    // If we can't read current tier or verify payment, be conservative: don't upgrade.
+    console.error("[dodo webhook] Error during upgrade verification; skipping tier update:", e);
     return;
   }
 
