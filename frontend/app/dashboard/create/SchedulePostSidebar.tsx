@@ -39,6 +39,9 @@ type SchedulePostSidebarProps = {
   hasAccountSelected: boolean;
   /** When submit is disabled, show this reason on hover (e.g. "Add a caption", "Add at least one image") */
   submitDisabledReason?: string | null;
+  /** When set, disables only the primary action (Post now / Schedule) with this tooltip; Save to Drafts stays enabled */
+  primaryActionDisabled?: boolean;
+  primaryActionDisabledReason?: string | null;
   /** When true, show times in 24h format */
   use24HourTimeFormat?: boolean;
   /** User's date format (dd/MM/yyyy, MM/dd/yyyy, yyyy-MM-dd) */
@@ -78,6 +81,8 @@ export function SchedulePostSidebar({
   submitDisabled,
   hasAccountSelected,
   submitDisabledReason,
+  primaryActionDisabled = false,
+  primaryActionDisabledReason = null,
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
   timezone = null,
@@ -299,15 +304,17 @@ export function SchedulePostSidebar({
             <button
               type="button"
               onClick={handlePostNow}
-              disabled={loading || !hasAccountSelected || submitDisabled}
+              disabled={loading || !hasAccountSelected || submitDisabled || primaryActionDisabled}
               title={
                 loading
                   ? undefined
-                  : !hasAccountSelected
-                    ? "Select at least one account to post"
-                    : submitDisabled
-                      ? (submitDisabledReason ?? "Complete the form to post")
-                      : undefined
+                  : primaryActionDisabled
+                    ? (primaryActionDisabledReason ?? undefined)
+                    : !hasAccountSelected
+                      ? "Select at least one account to post"
+                      : submitDisabled
+                        ? (submitDisabledReason ?? "Complete the form to post")
+                        : undefined
               }
               className="w-full rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-accent"
             >
@@ -416,19 +423,22 @@ export function SchedulePostSidebar({
                 loading ||
                 !hasAccountSelected ||
                 !combinedDateTime ||
-                submitDisabled
+                submitDisabled ||
+                primaryActionDisabled
               }
               title={
                 loading
                   ? undefined
-                  : !hasAccountSelected
-                    ? "Select at least one account to post"
-                    : !combinedDateTime
-                      ? "Pick a date and time to schedule"
-                      : submitDisabled
-                        ? (submitDisabledReason ??
-                          "Complete the form to schedule")
-                        : undefined
+                  : primaryActionDisabled
+                    ? (primaryActionDisabledReason ?? undefined)
+                    : !hasAccountSelected
+                      ? "Select at least one account to post"
+                      : !combinedDateTime
+                        ? "Pick a date and time to schedule"
+                        : submitDisabled
+                          ? (submitDisabledReason ??
+                            "Complete the form to schedule")
+                          : undefined
               }
               className="w-full rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-accent"
             >

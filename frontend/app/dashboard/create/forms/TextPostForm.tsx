@@ -79,6 +79,7 @@ export function TextPostForm({
   allowAutoRepost = true,
   allowAutoPlug = true,
   supportedPlatforms,
+  subscriptionTier = "free",
 }: {
   accounts: Account[];
   accountsLoading?: boolean;
@@ -91,6 +92,7 @@ export function TextPostForm({
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
+  subscriptionTier?: "free" | "starter" | "growth" | "pro";
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -828,6 +830,7 @@ export function TextPostForm({
             onRememberChange={setRemember}
             supportedPlatforms={supportedPlatforms}
             accountsLoading={accountsLoading}
+            showUpgradeCta={subscriptionTier === "free"}
           />
 
           <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
@@ -1028,6 +1031,8 @@ export function TextPostForm({
           }
           hasAccountSelected={selectedIds.size > 0}
           submitDisabledReason={submitDisabledReason}
+          primaryActionDisabled={subscriptionTier === "free" && mode !== "draft"}
+          primaryActionDisabledReason={subscriptionTier === "free" && mode !== "draft" ? "Subscribe to a plan to post" : null}
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
           timezone={timezone}

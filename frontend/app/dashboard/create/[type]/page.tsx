@@ -125,6 +125,7 @@ export default async function NewPostByTypePage({
         editId={editId ?? undefined}
         allowAutoRepost={planLimits.allowResurface}
         allowAutoPlug={planLimits.allowAutoPlug}
+        subscriptionTier={effectiveTier}
       />
     </div>
   );

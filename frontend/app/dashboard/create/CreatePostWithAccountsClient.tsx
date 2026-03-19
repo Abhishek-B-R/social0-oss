@@ -7,6 +7,7 @@ import { ThreadsPostForm } from "./forms/ThreadsPostForm";
 import { CollectionPostForm } from "./forms/CollectionPostForm";
 import { useAccountsForForm } from "./useAccountsForForm";
 import type { DateFormatKey } from "@/lib/date-format";
+import type { SubscriptionTier } from "@/lib/plans";
 
 const FORM_MAP = {
   text: TextPostForm,
@@ -29,6 +30,7 @@ export type CreatePostWithAccountsClientProps = {
   editId?: string;
   allowAutoRepost: boolean;
   allowAutoPlug: boolean;
+  subscriptionTier?: SubscriptionTier;
 };
 
 export function CreatePostWithAccountsClient({
@@ -42,6 +44,7 @@ export function CreatePostWithAccountsClient({
   editId,
   allowAutoRepost,
   allowAutoPlug,
+  subscriptionTier = "free",
 }: CreatePostWithAccountsClientProps) {
   const { accounts, loading } = useAccountsForForm(supportedPlatforms);
   const FormComponent = FORM_MAP[contentTypeSlug];
@@ -60,6 +63,7 @@ export function CreatePostWithAccountsClient({
         allowAutoRepost={allowAutoRepost}
         allowAutoPlug={allowAutoPlug}
         supportedPlatforms={supportedPlatforms}
+        subscriptionTier={subscriptionTier}
       />
     );
   }
@@ -76,6 +80,7 @@ export function CreatePostWithAccountsClient({
       allowAutoRepost={allowAutoRepost}
       allowAutoPlug={allowAutoPlug}
       supportedPlatforms={supportedPlatforms}
+      subscriptionTier={subscriptionTier}
     />
   );
 }

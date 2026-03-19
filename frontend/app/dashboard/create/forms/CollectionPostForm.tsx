@@ -97,6 +97,7 @@ export function CollectionPostForm({
   allowAutoRepost = true,
   allowAutoPlug = true,
   supportedPlatforms,
+  subscriptionTier = "free",
 }: {
   accounts: Account[];
   accountsLoading?: boolean;
@@ -109,6 +110,7 @@ export function CollectionPostForm({
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
+  subscriptionTier?: "free" | "starter" | "growth" | "pro";
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1469,6 +1471,7 @@ export function CollectionPostForm({
             accountsLoading={accountsLoading}
             disabledAccountIds={disabledAccountIds}
             disabledReasons={disabledReasons}
+            showUpgradeCta={subscriptionTier === "free"}
             disabledAccountDefaultReason="Media exceeds this platform's limit"
             warningAccountIds={videoLimitState.softAccountIds}
             warningReasons={videoLimitWarningReasons}
@@ -1821,6 +1824,8 @@ export function CollectionPostForm({
           }
           hasAccountSelected={selectedIds.size > 0}
           submitDisabledReason={submitDisabledReason}
+          primaryActionDisabled={subscriptionTier === "free" && mode !== "draft"}
+          primaryActionDisabledReason={subscriptionTier === "free" && mode !== "draft" ? "Subscribe to a plan to post" : null}
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
           timezone={timezone}

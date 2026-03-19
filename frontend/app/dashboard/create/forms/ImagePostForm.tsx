@@ -99,6 +99,7 @@ export function ImagePostForm({
   allowAutoRepost = true,
   allowAutoPlug = true,
   supportedPlatforms,
+  subscriptionTier = "free",
 }: {
   accounts: Account[];
   accountsLoading?: boolean;
@@ -111,6 +112,7 @@ export function ImagePostForm({
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
+  subscriptionTier?: "free" | "starter" | "growth" | "pro";
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1566,6 +1568,7 @@ export function ImagePostForm({
             disabledAccountIds={mediaSizeExceeded.accountIds}
             disabledReasons={mediaSizeExceeded.reasons}
             disabledAccountDefaultReason="Image exceeds this platform's size limit"
+            showUpgradeCta={subscriptionTier === "free"}
           />
 
           <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm space-y-4">
@@ -2189,6 +2192,8 @@ export function ImagePostForm({
           }
           hasAccountSelected={selectedIds.size > 0}
           submitDisabledReason={submitDisabledReason}
+          primaryActionDisabled={subscriptionTier === "free" && mode !== "draft"}
+          primaryActionDisabledReason={subscriptionTier === "free" && mode !== "draft" ? "Subscribe to a plan to post" : null}
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
           timezone={timezone}

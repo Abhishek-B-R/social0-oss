@@ -1,7 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { ScheduleDateTimePicker } from "@/components/ui/ScheduleDateTimePicker";
 import { AccountBubbleSelector } from "@/components/AccountBubbleSelector";
+import { Button } from "@/components/ui/button";
 import { PLATFORMS } from "@/lib/platforms";
 import type { PublishMode } from "@/app/actions/posts";
 
@@ -52,6 +54,8 @@ type PostFormOptionsProps = {
   warningAccountIds?: Set<string>;
   warningReasons?: Record<string, string>;
   warningLabel?: string;
+  /** When true, show upgrade CTA instead of account picker (free tier). */
+  showUpgradeCta?: boolean;
 };
 
 export function PostFormOptions({
@@ -81,7 +85,9 @@ export function PostFormOptions({
   warningAccountIds,
   warningReasons,
   warningLabel,
+  showUpgradeCta = false,
 }: PostFormOptionsProps) {
+  const router = useRouter();
   const platformName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
 
@@ -95,63 +101,82 @@ export function PostFormOptions({
   return (
     <>
       <section className="border-b border-border pt-5 pb-5 -mt-16">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-between">
-          <div className="flex items-center gap-5">
-            <button
-              type="button"
-              onClick={selectAll}
-              className="shrink-0 rounded-full border border-border bg-bg-elevated px-2 py-0.5 text-xs font-medium text-text-muted transition-colors hover:bg-bg-muted"
+        {showUpgradeCta ? (
+          <div className="rounded-xl border border-border p-5 space-y-3 text-center">
+            <p className="font-medium text-text">
+              Subscribe to start posting
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Connect your social accounts and publish across platforms.
+            </p>
+            <Button
+              onClick={() => router.push("/dashboard/billing")}
+              className="w-full sm:w-auto"
             >
-              {allSelected ? "Deselect all" : "Select all"}
-            </button>
-            {onRememberChange != null && (
-              <label className="flex shrink-0 items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => onRememberChange(e.target.checked)}
-                  className="rounded border-input bg-bg text-accent focus:ring-accent"
-                />
-                <span className="text-sm text-text">Remember</span>
-              </label>
-            )}
+              View plans
+            </Button>
           </div>
-          {searchSlot && (
-            <div className="min-w-0 flex-1 sm:max-w-[280px] [&_input]:h-9">
-              {searchSlot}
-            </div>
-          )}
-        </div>
-        <div className="mt-4">
-          {accountsLoading ? (
-            <div className="flex flex-wrap items-center gap-4">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <div key={i} className="flex flex-col items-center" aria-hidden>
-                  <div className="h-12 w-12 shrink-0 rounded-full bg-bg-muted animate-pulse border-2 border-transparent" />
-                  <div className="mt-1.5 h-3 w-14 rounded bg-bg-muted animate-pulse" />
-                  <div className="mt-1 h-3 w-10 rounded bg-bg-muted animate-pulse" />
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-between">
+              <div className="flex items-center gap-5">
+                <button
+                  type="button"
+                  onClick={selectAll}
+                  className="shrink-0 rounded-full border border-border bg-bg-elevated px-2 py-0.5 text-xs font-medium text-text-muted transition-colors hover:bg-bg-muted"
+                >
+                  {allSelected ? "Deselect all" : "Select all"}
+                </button>
+                {onRememberChange != null && (
+                  <label className="flex shrink-0 items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={remember}
+                      onChange={(e) => onRememberChange(e.target.checked)}
+                      className="rounded border-input bg-bg text-accent focus:ring-accent"
+                    />
+                    <span className="text-sm text-text">Remember</span>
+                  </label>
+                )}
+              </div>
+              {searchSlot && (
+                <div className="min-w-0 flex-1 sm:max-w-[280px] [&_input]:h-9">
+                  {searchSlot}
                 </div>
-              ))}
+              )}
             </div>
-          ) : (
-            <AccountBubbleSelector
-              accounts={accounts}
-              selectedIds={selectedIds}
-              onToggleAccount={onToggleAccount}
-              selectAll={selectAll}
-              platformName={platformName}
-              compact
-              hideSelectAll
-              supportedPlatforms={supportedPlatforms}
-              disabledAccountIds={disabledAccountIds}
-              disabledReasons={disabledReasons}
-              disabledAccountDefaultReason={disabledAccountDefaultReason}
-              warningAccountIds={warningAccountIds}
-              warningReasons={warningReasons}
-              warningLabel={warningLabel}
-            />
-          )}
-        </div>
+            <div className="mt-4">
+              {accountsLoading ? (
+                <div className="flex flex-wrap items-center gap-4">
+                  {Array.from({ length: 10 }).map((_, i) => (
+                    <div key={i} className="flex flex-col items-center" aria-hidden>
+                      <div className="h-12 w-12 shrink-0 rounded-full bg-bg-muted animate-pulse border-2 border-transparent" />
+                      <div className="mt-1.5 h-3 w-14 rounded bg-bg-muted animate-pulse" />
+                      <div className="mt-1 h-3 w-10 rounded bg-bg-muted animate-pulse" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <AccountBubbleSelector
+                  accounts={accounts}
+                  selectedIds={selectedIds}
+                  onToggleAccount={onToggleAccount}
+                  selectAll={selectAll}
+                  platformName={platformName}
+                  compact
+                  hideSelectAll
+                  supportedPlatforms={supportedPlatforms}
+                  disabledAccountIds={disabledAccountIds}
+                  disabledReasons={disabledReasons}
+                  disabledAccountDefaultReason={disabledAccountDefaultReason}
+                  warningAccountIds={warningAccountIds}
+                  warningReasons={warningReasons}
+                  warningLabel={warningLabel}
+                />
+              )}
+            </div>
+          </>
+        )}
       </section>
 
       {betweenScheduleAndActions}

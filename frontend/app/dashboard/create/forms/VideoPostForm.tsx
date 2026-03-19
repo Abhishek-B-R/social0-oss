@@ -122,6 +122,7 @@ export function VideoPostForm({
   allowAutoRepost = true,
   allowAutoPlug = true,
   supportedPlatforms,
+  subscriptionTier = "free",
 }: {
   accounts: Account[];
   accountsLoading?: boolean;
@@ -134,6 +135,7 @@ export function VideoPostForm({
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
+  subscriptionTier?: "free" | "starter" | "growth" | "pro";
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1547,6 +1549,7 @@ export function VideoPostForm({
             warningAccountIds={videoLimitState.softAccountIds}
             warningReasons={videoLimitWarningReasons}
             warningLabel="May limit reach"
+            showUpgradeCta={subscriptionTier === "free"}
           />
 
           {hasVideo &&
@@ -2295,6 +2298,8 @@ export function VideoPostForm({
           }
           hasAccountSelected={selectedIds.size > 0}
           submitDisabledReason={submitDisabledReason}
+          primaryActionDisabled={subscriptionTier === "free" && mode !== "draft"}
+          primaryActionDisabledReason={subscriptionTier === "free" && mode !== "draft" ? "Subscribe to a plan to post" : null}
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
           timezone={timezone}
