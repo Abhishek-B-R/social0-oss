@@ -76,16 +76,26 @@ async function upsertSettings(values: Partial<SettingsSnapshot>): Promise<void> 
     redirect("/");
   }
 
-  await db
-    .insert(userSettings)
-    .values({
+  const existing = await db.query.userSettings.findFirst({
+    where: eq(userSettings.userId, userId),
+    columns: { userId: true },
+  });
+
+  if (existing) {
+    await db
+      .update(userSettings)
+      .set(values)
+      .where(eq(userSettings.userId, userId));
+  } else {
+    await db.insert(userSettings).values({
       userId,
+      timezone: DEFAULT_SETTINGS.timezone,
+      automationEmails: DEFAULT_SETTINGS.automationEmails,
+      use24HourTimeFormat: DEFAULT_SETTINGS.use24HourTimeFormat,
+      dateFormat: DEFAULT_SETTINGS.dateFormat,
       ...values,
-    })
-    .onConflictDoUpdate({
-      target: userSettings.userId,
-      set: values,
     });
+  }
 
   revalidatePath("/dashboard/settings");
 }

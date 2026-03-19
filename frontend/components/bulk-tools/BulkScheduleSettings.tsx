@@ -38,6 +38,8 @@ type BulkScheduleSettingsProps = {
   onScheduleAll: () => void;
   scheduling: boolean;
   progressLabel?: string;
+  /** Rendered between "Apply This Schedule" button and schedule preview (e.g. auto features). */
+  childrenAfterApplySchedule?: React.ReactNode;
 };
 
 export function BulkScheduleSettings({
@@ -62,6 +64,7 @@ export function BulkScheduleSettings({
   onScheduleAll,
   scheduling,
   progressLabel,
+  childrenAfterApplySchedule,
 }: BulkScheduleSettingsProps) {
   const captionCount = bulkCaption.length;
 
@@ -186,6 +189,7 @@ export function BulkScheduleSettings({
           >
             Apply This Schedule
           </button>
+          {childrenAfterApplySchedule}
           {schedulePreview && (
             <div className="rounded-lg border border-border bg-muted px-3 py-2 text-xs text-foreground whitespace-pre-wrap">
               {schedulePreview}

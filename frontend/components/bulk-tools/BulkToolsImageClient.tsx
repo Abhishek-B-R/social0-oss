@@ -5,9 +5,14 @@ import Link from "next/link";
 import { AccountBubbleSelector } from "@/components/AccountBubbleSelector";
 import { PLATFORMS } from "@/lib/platforms";
 import { useRememberedAccounts } from "@/lib/remembered-accounts";
+import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { BulkUploadZone } from "./BulkUploadZone";
 import { ImageCard, type ImageItem } from "./ImageCard";
 import { BulkScheduleSettings } from "./BulkScheduleSettings";
+import {
+  BulkAutoFeaturesCard,
+  type BulkAutoFeaturesValue,
+} from "./BulkAutoFeaturesCard";
 import {
   computeBulkSchedule,
   formatSchedulePreview,
@@ -15,6 +20,8 @@ import {
 import { createPost } from "@/app/actions/posts";
 import { uploadFile } from "@/lib/upload-file";
 import { toast } from "sonner";
+import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
+import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 
 const LIMITS = {
   totalSize: 250 * 1024 * 1024, // 250MB total batch
@@ -72,6 +79,13 @@ export function BulkToolsImageClient({
   );
   const { remember, setRemember, getInitialSelectedIds, persistSelection } =
     useRememberedAccounts(REMEMBER_KEY_IMAGE);
+  const {
+    remember: rememberAutoFeatures,
+    setRemember: setRememberAutoFeatures,
+    persistAutoRepost,
+    persistAutoPlug,
+    getInitialState: getAutoFeaturesInitialState,
+  } = useRememberedAutoRepostAutoPlug();
 
   const [items, setItems] = useState<ImageItem[]>([]);
   const totalSelectedBytes = useMemo(
@@ -93,12 +107,63 @@ export function BulkToolsImageClient({
   const [success, setSuccess] = useState(false);
   const cancelledRef = useRef(false);
 
+  const [resurfaceConfig, setResurfaceConfig] =
+    useState<AutoResurfaceConfig | null>(null);
+  const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
+    null,
+  );
+  const hasRestoredAutoFeaturesRef = useRef(false);
+
   const platformName = (id: string) =>
     PLATFORMS.find((p) => p.id === id)?.name ?? id;
 
   useEffect(() => {
     if (remember) persistSelection(selectedIds);
   }, [remember, selectedIds, persistSelection]);
+
+  const selectedAccountIds = useMemo(
+    () => Array.from(selectedIds),
+    [selectedIds],
+  );
+  const selectedAccounts = useMemo(
+    () => accounts.filter((a) => selectedIds.has(a.id)),
+    [accounts, selectedIds],
+  );
+  const hasXForAutoFeatures = selectedAccounts.some(
+    (a) => a.platform === "twitter_x",
+  );
+
+  // Restore remembered auto features the first time X is selected.
+  useEffect(() => {
+    if (!hasXForAutoFeatures) return;
+    if (!rememberAutoFeatures) return;
+    if (hasRestoredAutoFeaturesRef.current) return;
+    const { autoRepostConfig, autoPlugConfig } = getAutoFeaturesInitialState();
+    if (autoRepostConfig) setResurfaceConfig(autoRepostConfig);
+    if (autoPlugConfig) setAutoPlugConfig(autoPlugConfig);
+    hasRestoredAutoFeaturesRef.current = true;
+  }, [hasXForAutoFeatures, rememberAutoFeatures, getAutoFeaturesInitialState]);
+
+  // Persist remembered auto features when enabled and X is selected.
+  useEffect(() => {
+    if (!rememberAutoFeatures || !hasXForAutoFeatures) return;
+    persistAutoRepost(!!resurfaceConfig, resurfaceConfig);
+    persistAutoPlug(!!autoPlugConfig, autoPlugConfig);
+  }, [
+    rememberAutoFeatures,
+    hasXForAutoFeatures,
+    resurfaceConfig,
+    autoPlugConfig,
+    persistAutoRepost,
+    persistAutoPlug,
+  ]);
+
+  // Clear auto features when X is deselected (they only apply to X).
+  useEffect(() => {
+    if (hasXForAutoFeatures) return;
+    setResurfaceConfig(null);
+    setAutoPlugConfig(null);
+  }, [hasXForAutoFeatures]);
 
   const filteredAccounts = useMemo(() => {
     if (!accountSearch.trim()) return accounts;
@@ -238,7 +303,22 @@ export function BulkToolsImageClient({
     setProgress(
       `Uploading ${items.length} image${items.length === 1 ? "" : "s"}… 0%`,
     );
-    const accountIds = Array.from(selectedIds);
+    const accountIds = selectedAccountIds;
+
+    const autoFeatures: BulkAutoFeaturesValue = {
+      autoRepost: hasXForAutoFeatures ? resurfaceConfig : null,
+      autoPlug: hasXForAutoFeatures ? autoPlugConfig : null,
+    };
+    const metadata =
+      autoFeatures.autoRepost || autoFeatures.autoPlug
+        ? {
+            contentType: "image",
+            bulkAutoFeatures: {
+              autoRepostConfig: autoFeatures.autoRepost,
+              autoPlugConfig: autoFeatures.autoPlug,
+            },
+          }
+        : { contentType: "image" };
 
     try {
       // Phase 1: upload all images in parallel
@@ -295,6 +375,7 @@ export function BulkToolsImageClient({
           "scheduled",
           item.scheduledAt,
           [result.value.id],
+          metadata,
         );
         if (!createResult.success) {
           throw new Error(createResult.error);
@@ -472,6 +553,24 @@ export function BulkToolsImageClient({
               onGapHoursChange={setGapHours}
               onApplyBulkSchedule={applyBulkSchedule}
               schedulePreview={schedulePreview}
+              childrenAfterApplySchedule={
+                hasXForAutoFeatures ? (
+                  <BulkAutoFeaturesCard
+                    selectedAccountIds={selectedAccountIds}
+                    allAccounts={accounts}
+                    value={{
+                      autoRepost: resurfaceConfig,
+                      autoPlug: autoPlugConfig,
+                    }}
+                    onChange={(next) => {
+                      setResurfaceConfig(next.autoRepost);
+                      setAutoPlugConfig(next.autoPlug);
+                    }}
+                    remember={rememberAutoFeatures}
+                    onRememberChange={setRememberAutoFeatures}
+                  />
+                ) : null
+              }
               totalItems={items.length}
               selectedAccountCount={selectedIds.size}
               onScheduleAll={handleScheduleAll}

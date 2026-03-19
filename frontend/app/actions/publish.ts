@@ -8,6 +8,9 @@ import {
   postPublications,
   connectedAccounts,
   mediaUploads,
+  resurfaceSchedules,
+  resurfaceEvents,
+  autoPlugs,
 } from "@/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
@@ -21,7 +24,11 @@ import {
 } from "@/lib/publish-validation";
 import { truncateCaptionForPlatform } from "@/lib/platform-limits";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
-import { checkTwitterTweetLimit } from "@/lib/plan-limits";
+import {
+  checkAutoPlugAllowed,
+  checkResurfaceAllowed,
+  checkTwitterTweetLimit,
+} from "@/lib/plan-limits";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { isActiveTier } from "@/lib/plans";
 import { logPublishBlocked } from "@/lib/plan-analytics";
@@ -1532,6 +1539,16 @@ export async function executePublish(
         .set({ status: newPostStatus, updatedAt: new Date() })
         .where(eq(posts.id, postId));
     }
+
+    // Bulk tools: optional auto features for scheduled posts, applied after publish.
+    // Do not block publish flow if setup fails.
+    if (overallStatus === "published") {
+      await setupBulkAutoFeaturesIfPresent({
+        postId,
+        userId: post.userId,
+        metadata: post.metadata,
+      });
+    }
   }
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/posts");
@@ -1550,6 +1567,204 @@ export async function executePublish(
     error: errorSummary,
     results,
   };
+}
+
+type BulkAutoFeaturesMetadata = {
+  bulkAutoFeatures?: {
+    autoRepostConfig?: {
+      intervalHours: number;
+      maxResurfaces: number;
+      plugComment?: string;
+    } | null;
+    autoPlugConfig?: {
+      metricType: "likes" | "retweets";
+      threshold: number;
+      plugComment: string;
+    } | null;
+  };
+};
+
+async function setupBulkAutoFeaturesIfPresent(args: {
+  postId: string;
+  userId: string;
+  metadata: unknown;
+}): Promise<void> {
+  const m = (args.metadata ?? null) as BulkAutoFeaturesMetadata | null;
+  const features = m?.bulkAutoFeatures;
+  if (!features) return;
+
+  const autoRepost = features.autoRepostConfig ?? null;
+  const autoPlug = features.autoPlugConfig ?? null;
+
+  if (autoRepost) {
+    try {
+      await trySetupResurface({
+        postId: args.postId,
+        userId: args.userId,
+        intervalHours: autoRepost.intervalHours,
+        maxResurfaces: autoRepost.maxResurfaces,
+        plugComment: (autoRepost.plugComment ?? "").trim() || null,
+      });
+    } catch (e) {
+      console.error("[bulk-auto-features] resurface setup failed:", e);
+    }
+  }
+  if (autoPlug) {
+    try {
+      await trySetupAutoPlug({
+        postId: args.postId,
+        userId: args.userId,
+        metricType: autoPlug.metricType,
+        threshold: autoPlug.threshold,
+        plugComment: autoPlug.plugComment,
+      });
+    } catch (e) {
+      console.error("[bulk-auto-features] auto-plug setup failed:", e);
+    }
+  }
+}
+
+async function trySetupResurface(args: {
+  postId: string;
+  userId: string;
+  intervalHours: number;
+  maxResurfaces: number;
+  plugComment: string | null;
+}): Promise<void> {
+  const allowed = await checkResurfaceAllowed(args.userId);
+  if (!allowed) return;
+
+  const [p] = await db
+    .select({ id: posts.id, status: posts.status })
+    .from(posts)
+    .where(and(eq(posts.id, args.postId), eq(posts.userId, args.userId)))
+    .limit(1);
+  if (!p || p.status !== "published") return;
+
+  const xPub = await db
+    .select({ id: postPublications.id })
+    .from(postPublications)
+    .innerJoin(
+      connectedAccounts,
+      eq(postPublications.connectedAccountId, connectedAccounts.id),
+    )
+    .where(
+      and(
+        eq(postPublications.postId, args.postId),
+        eq(postPublications.status, "published"),
+        eq(connectedAccounts.platform, "twitter_x"),
+        eq(connectedAccounts.userId, args.userId),
+      ),
+    )
+    .limit(1);
+  if (xPub.length === 0) return;
+
+  const existing = await db
+    .select({ id: resurfaceSchedules.id })
+    .from(resurfaceSchedules)
+    .where(eq(resurfaceSchedules.postId, args.postId))
+    .limit(1);
+  if (existing.length > 0) return;
+
+  const capped = Math.min(Math.max(1, Math.round(args.maxResurfaces)), 10);
+  const interval = Math.max(0.5, Math.round(args.intervalHours * 10) / 10);
+  const now = new Date();
+  const nextExecuteAt = new Date(now.getTime() + interval * 60 * 60 * 1000);
+
+  const [schedule] = await db
+    .insert(resurfaceSchedules)
+    .values({
+      postId: args.postId,
+      platform: "x",
+      intervalHours: interval,
+      maxResurfaces: capped,
+      plugComment: args.plugComment,
+      isActive: true,
+      resurfacesDone: 0,
+      updatedAt: now,
+    })
+    .returning({ id: resurfaceSchedules.id });
+  if (!schedule) return;
+
+  await db.insert(resurfaceEvents).values({
+    scheduleId: schedule.id,
+    platformReshareId: null,
+    plugCommentId: null,
+    executedAt: null,
+    nextExecuteAt,
+    status: "pending",
+  });
+}
+
+async function trySetupAutoPlug(args: {
+  postId: string;
+  userId: string;
+  metricType: "likes" | "retweets";
+  threshold: number;
+  plugComment: string;
+}): Promise<void> {
+  const allowed = await checkAutoPlugAllowed(args.userId);
+  if (!allowed) return;
+
+  const [p] = await db
+    .select({ id: posts.id, status: posts.status })
+    .from(posts)
+    .where(and(eq(posts.id, args.postId), eq(posts.userId, args.userId)))
+    .limit(1);
+  if (!p || p.status !== "published") return;
+
+  const xRow = await db
+    .select({
+      connectedAccountId: postPublications.connectedAccountId,
+      platformPostId: postPublications.platformPostId,
+      existingAutoPlugId: autoPlugs.id,
+    })
+    .from(postPublications)
+    .innerJoin(
+      connectedAccounts,
+      eq(postPublications.connectedAccountId, connectedAccounts.id),
+    )
+    .leftJoin(
+      autoPlugs,
+      and(
+        eq(autoPlugs.postId, args.postId),
+        eq(autoPlugs.connectedAccountId, postPublications.connectedAccountId),
+        inArray(autoPlugs.status, ["watching", "triggered"]),
+      ),
+    )
+    .where(
+      and(
+        eq(postPublications.postId, args.postId),
+        eq(postPublications.status, "published"),
+        eq(connectedAccounts.platform, "twitter_x"),
+        eq(connectedAccounts.userId, args.userId),
+      ),
+    )
+    .limit(1);
+
+  if (!xRow[0]?.connectedAccountId || !xRow[0].platformPostId) return;
+  if (xRow[0].existingAutoPlugId) return;
+
+  const plugComment = (args.plugComment ?? "").trim().slice(0, 280);
+  if (!plugComment) return;
+  const metricType = args.metricType === "retweets" ? "retweets" : "likes";
+  const threshold = Math.max(1, Math.round(args.threshold));
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  await db.insert(autoPlugs).values({
+    postId: args.postId,
+    connectedAccountId: xRow[0].connectedAccountId,
+    platform: "x",
+    metricType,
+    metricThreshold: threshold,
+    plugComment,
+    status: "watching",
+    platformPostId: xRow[0].platformPostId,
+    plugTweetId: null,
+    expiresAt,
+    updatedAt: now,
+  });
 }
 
 /**

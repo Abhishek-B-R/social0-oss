@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   getResurfacePlatforms,
   getResurfacePlatformLabels,
@@ -83,9 +83,11 @@ export function AutoResurfacePanel({
     supportedPlatforms.length > 0 &&
     (publishedAt === undefined || isWithinResurfaceWindow(publishedAt));
 
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
   useEffect(() => {
-    if (!visible && !modalMode) onChange(null);
-  }, [visible, modalMode, onChange]);
+    if (!visible && !modalMode) onChangeRef.current(null);
+  }, [visible, modalMode]);
 
   if (!visible && !modalMode) return null;
 
@@ -131,17 +133,20 @@ function AutoResurfacePanelInner({
   );
   const [extraIntervalHours, setExtraIntervalHours] = useState<number[]>([]);
 
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
   useEffect(() => {
+    const notify = onChangeRef.current;
     if (!enabled) {
-      onChange(null);
+      notify(null);
       return;
     }
-    onChange({
+    notify({
       intervalHours,
       maxResurfaces,
       plugComment: plugComment.trim(),
     });
-  }, [enabled, intervalHours, maxResurfaces, plugComment, onChange]);
+  }, [enabled, intervalHours, maxResurfaces, plugComment]);
 
   const addExtraInterval = () => {
     if (extraIntervalHours.length >= MAX_EXTRA_INTERVALS) return;
@@ -292,7 +297,7 @@ function AutoResurfacePanelInner({
               <button
                 type="button"
                 onClick={() => removeExtraInterval(index)}
-                className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400 text-sm"
+                className="rounded-md bg-red-600 px-2.5 py-1 text-sm font-medium text-white hover:bg-red-700 transition-colors"
                 aria-label="Remove interval"
               >
                 Remove
