@@ -45,6 +45,9 @@ async function handleSubscriptionActiveOrUpdated(payload: {
     return;
   }
 
+  // Diagnostic: log full payload to find how Dodo signals payment cleared vs in progress
+  console.log("[dodo webhook] Full payload:", JSON.stringify(data, null, 2));
+
   const tier = getTierFromProductId(data.product_id ?? "");
 
   if (tier === "free") {

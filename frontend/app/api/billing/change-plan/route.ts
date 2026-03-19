@@ -87,17 +87,10 @@ export async function POST(request: Request) {
       // locally; webhook handler will call changePlan on subscription.renewed.
       // Replace cancel with downgrade: clear cancel flag so only one intent applies.
       if (reason.length > 0) {
-        try {
-          await db
-            .update(userSettings)
-            .set({ downgradeReason: reason })
-            .where(eq(userSettings.userId, session.user.id));
-        } catch (reasonErr) {
-          const reasonMsg =
-            reasonErr instanceof Error ? reasonErr.message : String(reasonErr);
-          if (!reasonMsg.toLowerCase().includes("downgrade_reason"))
-            throw reasonErr;
-        }
+        await db
+          .update(userSettings)
+          .set({ downgradeReason: reason })
+          .where(eq(userSettings.userId, session.user.id));
       }
       await db
         .update(userSettings)

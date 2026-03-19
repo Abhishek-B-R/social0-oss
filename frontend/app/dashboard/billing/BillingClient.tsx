@@ -593,16 +593,20 @@ export function BillingClient({
           </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Button onClick={handleChangePlan} disabled={loading !== null}>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <Button
+            onClick={handleChangePlan}
+            disabled={loading !== null}
+            className="min-w-44 justify-center"
+          >
             {loading === "portal" ? (
-              <>
+              <span className="inline-flex items-center gap-2">
                 <IconLoader2
-                  className="h-4 w-4 animate-spin"
+                  className="h-4 w-4 shrink-0 animate-spin"
                   strokeWidth={1.5}
                 />
                 Opening…
-              </>
+              </span>
             ) : (
               "Manage Subscription"
             )}
@@ -613,7 +617,7 @@ export function BillingClient({
               variant="outline"
               onClick={() => setCancelStep(1)}
               disabled={loading !== null}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
             >
               Cancel Subscription
             </Button>
