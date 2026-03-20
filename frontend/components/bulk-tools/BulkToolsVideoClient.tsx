@@ -36,8 +36,8 @@ import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 
 const MAX_VIDEO_BATCH = 40;
 const LIMITS = {
-  /** Max combined size when all slots are full (40 × 500MB). */
-  totalSize: CLIENT_MAX_VIDEO_UPLOAD_BYTES * MAX_VIDEO_BATCH,
+  /** Combined size of all videos in this bulk session — same cap as a single upload. */
+  totalSize: CLIENT_MAX_VIDEO_UPLOAD_BYTES,
   perFile: CLIENT_MAX_VIDEO_UPLOAD_BYTES,
   maxCount: MAX_VIDEO_BATCH,
 };
@@ -156,6 +156,10 @@ export function BulkToolsVideoClient({
     () => accounts.filter((a) => selectedIds.has(a.id)),
     [accounts, selectedIds],
   );
+  const hasTikTokSelected = useMemo(
+    () => selectedAccounts.some((a) => a.platform === "tiktok"),
+    [selectedAccounts],
+  );
   const hasXForAutoFeatures = selectedAccounts.some(
     (a) => a.platform === "twitter_x",
   );
@@ -255,6 +259,8 @@ export function BulkToolsVideoClient({
             caption: "",
             scheduledAt: dates[prev.length + i] ?? new Date(),
             aspectRatio: row.m.ratio,
+            videoWidth: row.m.width,
+            videoHeight: row.m.height,
           }));
           return [...prev, ...newItems];
         });
@@ -551,14 +557,14 @@ export function BulkToolsVideoClient({
               currentTotalBytes={totalSelectedBytes}
               currentCount={items.length}
               maxSizeLabel={`MP4, MOV, AVI. Max ${CLIENT_MAX_VIDEO_UPLOAD_LABEL} each.`}
-              helperText={`Up to ${LIMITS.maxCount} videos · ${CLIENT_MAX_VIDEO_UPLOAD_LABEL} per file (${formatBytes(LIMITS.totalSize)} max batch total)`}
+              helperText={`Up to ${LIMITS.maxCount} videos · ${CLIENT_MAX_VIDEO_UPLOAD_LABEL} max per file · ${formatBytes(LIMITS.totalSize)} total combined`}
               onFilesSelected={addFiles}
               disabled={items.length >= LIMITS.maxCount}
             />
 
             <p className="text-xs text-muted-foreground">
-              {CLIENT_MAX_VIDEO_UPLOAD_LABEL} per file and{" "}
-              {formatBytes(LIMITS.totalSize)} max batch total are enforced
+              {CLIENT_MAX_VIDEO_UPLOAD_LABEL} max per file and{" "}
+              {formatBytes(LIMITS.totalSize)} total combined are enforced
               client-side.
             </p>
 
@@ -592,6 +598,7 @@ export function BulkToolsVideoClient({
                   <VideoCard
                     key={item.id}
                     item={item}
+                    tikTokSelected={hasTikTokSelected}
                     onCaptionChange={updateCaption}
                     onScheduleChange={updateSchedule}
                     onDelete={removeItem}
