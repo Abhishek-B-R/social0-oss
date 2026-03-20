@@ -18,13 +18,7 @@ import {
   formatSchedulePreview,
 } from "@/lib/bulk-schedule";
 import { createPost } from "@/app/actions/posts";
-import {
-  validateVideoAspectRatio,
-  formatAspectRatioLabel,
-  getAspectRatioDescriptor,
-  ASPECT_RATIO_MESSAGE,
-  type VideoAspectResult,
-} from "@/lib/video-aspect-ratio";
+import { measureVideoAspectRatio } from "@/lib/video-aspect-ratio";
 import {
   getVideoDuration,
   MAX_VIDEO_DURATION_SECONDS,
@@ -209,65 +203,62 @@ export function BulkToolsVideoClient({
     (files: File[]) => {
       toast.dismiss();
       if (files.length === 0) return;
-      Promise.all(files.map(validateVideoAspectRatio)).then(
-        (results: VideoAspectResult[]) => {
-          const validFiles: File[] = [];
-          let firstInvalid: VideoAspectResult | null = null;
-          files.forEach((file, i) => {
-            if (results[i].valid) validFiles.push(file);
-            else if (!firstInvalid) firstInvalid = results[i];
-          });
-          if (firstInvalid) {
-            const { ratio } = firstInvalid as VideoAspectResult;
-            toast.error(
-              `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(ratio)}${getAspectRatioDescriptor(ratio)}.`,
-            );
+      Promise.all(
+        files.map(async (file) => {
+          const [m, duration] = await Promise.all([
+            measureVideoAspectRatio(file),
+            getVideoDuration(file),
+          ]);
+          return { file, m, duration };
+        }),
+      ).then((rows) => {
+        const withinDuration: typeof rows = [];
+        let anyOverDuration = false;
+        for (const row of rows) {
+          if (row.duration > MAX_VIDEO_DURATION_SECONDS) {
+            anyOverDuration = true;
+          } else {
+            withinDuration.push(row);
           }
-          if (validFiles.length === 0) return;
-          Promise.all(validFiles.map(getVideoDuration)).then((durations) => {
-            const withinDuration: File[] = [];
-            const overDuration = durations.some(
-              (d) => d > MAX_VIDEO_DURATION_SECONDS,
-            );
-            validFiles.forEach((file, i) => {
-              if (durations[i] <= MAX_VIDEO_DURATION_SECONDS)
-                withinDuration.push(file);
-            });
-            if (overDuration) {
-              toast.error(VIDEO_DURATION_MESSAGE);
-            }
-            if (withinDuration.length === 0) return;
-            setItems((prev) => {
-              const toAdd = withinDuration.slice(
-                0,
-                Math.max(0, LIMITS.maxCount - prev.length),
-              );
-              if (toAdd.length === 0) return prev;
+        }
+        if (anyOverDuration) toast.error(VIDEO_DURATION_MESSAGE);
+        if (withinDuration.length === 0) return;
 
-              const [h, m] = startTime.split(":").map(Number);
-              const start = new Date(startDate + "T00:00:00");
-              const dates = computeBulkSchedule(
-                prev.length + toAdd.length,
-                start,
-                h ?? 0,
-                m ?? 0,
-                videosPerDay,
-                effectiveGapHours,
-              );
-              const newItems: VideoItem[] = toAdd.map((file, i) => ({
-                id: crypto.randomUUID(),
-                file,
-                previewUrl: URL.createObjectURL(file),
-                caption: "",
-                scheduledAt: dates[prev.length + i] ?? new Date(),
-              }));
-              return [...prev, ...newItems];
-            });
-          });
-        },
-      );
+        setItems((prev) => {
+          const toAdd = withinDuration.slice(
+            0,
+            Math.max(0, LIMITS.maxCount - prev.length),
+          );
+          if (toAdd.length === 0) return prev;
+
+          const [h, m] = startTime.split(":").map(Number);
+          const start = new Date(startDate + "T00:00:00");
+          const dates = computeBulkSchedule(
+            prev.length + toAdd.length,
+            start,
+            h ?? 0,
+            m ?? 0,
+            videosPerDay,
+            effectiveGapHours,
+          );
+          const newItems: VideoItem[] = toAdd.map((row, i) => ({
+            id: crypto.randomUUID(),
+            file: row.file,
+            previewUrl: URL.createObjectURL(row.file),
+            caption: "",
+            scheduledAt: dates[prev.length + i] ?? new Date(),
+            aspectRatio: row.m.ratio,
+          }));
+          return [...prev, ...newItems];
+        });
+      });
     },
-    [startDate, startTime, videosPerDay, effectiveGapHours],
+    [
+      startDate,
+      startTime,
+      videosPerDay,
+      effectiveGapHours,
+    ],
   );
 
   const updateCaption = (id: string, caption: string) => {
@@ -592,6 +583,9 @@ export function BulkToolsVideoClient({
                   <VideoCard
                     key={item.id}
                     item={item}
+                    tiktokSelected={selectedAccounts.some(
+                      (a) => a.platform === "tiktok",
+                    )}
                     onCaptionChange={updateCaption}
                     onScheduleChange={updateSchedule}
                     onDelete={removeItem}

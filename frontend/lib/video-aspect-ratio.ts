@@ -1,22 +1,120 @@
 /**
- * Allowed video aspect ratios (width/height) for social platforms.
- * Validated at file-select time in the browser.
+ * Client-side video dimensions / aspect ratio helpers.
+ * We do not block uploads by ratio — show guidance only (see getAspectRatioGuidance).
  */
-const ALLOWED_RATIOS = [16 / 9, 9 / 16, 4 / 3, 3 / 4, 1 / 1];
-const TOLERANCE = 0.05;
 
-export type VideoAspectResult = {
-  valid: boolean;
+/** ~5% relative tolerance when matching standard ratios */
+const REL_TOL = 0.05;
+
+export type VideoAspectMeasurement = {
   width: number;
   height: number;
+  /** width / height */
   ratio: number;
 };
 
+function matchesStandardRatio(ratio: number, w: number, h: number): boolean {
+  if (w <= 0 || h <= 0) return false;
+  const target = w / h;
+  if (!Number.isFinite(ratio) || !Number.isFinite(target)) return false;
+  return Math.abs(ratio - target) / target <= REL_TOL;
+}
+
+/** TikTok API commonly expects 9:16, 1:1, or 16:9 (width/height). */
+export function isTikTokAcceptedAspectRatio(ratio: number): boolean {
+  return (
+    matchesStandardRatio(ratio, 9, 16) ||
+    matchesStandardRatio(ratio, 16, 9) ||
+    matchesStandardRatio(ratio, 1, 1)
+  );
+}
+
+export type AspectRatioKind =
+  | "9:16"
+  | "16:9"
+  | "1:1"
+  | "4:5"
+  | "2:3"
+  | "other";
+
+/** Classify by first match (priority order). */
+export function classifyAspectRatioKind(ratio: number): AspectRatioKind {
+  if (matchesStandardRatio(ratio, 9, 16)) return "9:16";
+  if (matchesStandardRatio(ratio, 16, 9)) return "16:9";
+  if (matchesStandardRatio(ratio, 1, 1)) return "1:1";
+  if (matchesStandardRatio(ratio, 4, 5)) return "4:5";
+  if (matchesStandardRatio(ratio, 2, 3)) return "2:3";
+  return "other";
+}
+
+export type AspectGuidanceVariant = "success" | "info" | "tiktok";
+
+export type AspectRatioGuidance = {
+  variant: AspectGuidanceVariant;
+  message: string;
+};
+
 /**
- * Validate video aspect ratio using the browser's video element (client-only).
- * Returns dimensions and whether the ratio is allowed (16:9, 9:16, 4:3, 3:4, 1:1).
+ * User-facing copy for ratio guidance. TikTok gets a stronger warning when
+ * selected and ratio is outside 9:16 / 16:9 / 1:1.
  */
-export function validateVideoAspectRatio(file: File): Promise<VideoAspectResult> {
+export function getAspectRatioGuidance(
+  ratio: number,
+  opts?: { tiktokSelected?: boolean },
+): AspectRatioGuidance {
+  if (opts?.tiktokSelected && !isTikTokAcceptedAspectRatio(ratio)) {
+    return {
+      variant: "tiktok",
+      message:
+        "TikTok may reject this video. Recommended: 9:16 (vertical), 16:9, or 1:1.",
+    };
+  }
+
+  const kind = classifyAspectRatioKind(ratio);
+  switch (kind) {
+    case "9:16":
+      return {
+        variant: "success",
+        message: "Optimized for all platforms.",
+      };
+    case "16:9":
+      return {
+        variant: "info",
+        message:
+          "Best for YouTube, LinkedIn, Twitter. Other platforms will add black bars.",
+      };
+    case "1:1":
+      return {
+        variant: "info",
+        message:
+          "Works on all platforms. TikTok and Instagram will add black bars.",
+      };
+    case "4:5":
+      return {
+        variant: "info",
+        message:
+          "Great for Instagram feed. Other platforms may crop or pad.",
+      };
+    case "2:3":
+      return {
+        variant: "info",
+        message: "Ideal for Pinterest. Other platforms may crop or pad.",
+      };
+    default:
+      return {
+        variant: "info",
+        message:
+          "Non-standard ratio. Most platforms will auto-crop or add black bars. For best results, use 9:16 (vertical) or 16:9 (horizontal).",
+      };
+  }
+}
+
+/**
+ * Read video dimensions from a File (browser only).
+ */
+export function measureVideoAspectRatio(
+  file: File,
+): Promise<VideoAspectMeasurement> {
   return new Promise((resolve) => {
     const video = document.createElement("video");
     video.preload = "metadata";
@@ -27,28 +125,32 @@ export function validateVideoAspectRatio(file: File): Promise<VideoAspectResult>
       const width = video.videoWidth;
       const height = video.videoHeight;
       const ratio = height > 0 ? width / height : 0;
-      const valid = ALLOWED_RATIOS.some(
-        (r) => Math.abs(ratio - r) < TOLERANCE,
-      );
       cleanup();
-      resolve({ valid, width, height, ratio });
+      resolve({ width, height, ratio });
     };
     video.onerror = () => {
       cleanup();
-      resolve({ valid: false, width: 0, height: 0, ratio: 0 });
+      resolve({ width: 0, height: 0, ratio: 0 });
     };
     video.src = URL.createObjectURL(file);
   });
 }
 
-/** Format ratio for error message, e.g. "2.4:1" or "1:1.8" */
+/** @deprecated Use measureVideoAspectRatio — we no longer block on ratio */
+export function validateVideoAspectRatio(
+  file: File,
+): Promise<VideoAspectMeasurement & { valid: true }> {
+  return measureVideoAspectRatio(file).then((m) => ({ ...m, valid: true as const }));
+}
+
+/** Format ratio for debug copy, e.g. "1.8:1" or "1:1.8" */
 export function formatAspectRatioLabel(ratio: number): string {
   if (ratio <= 0 || !Number.isFinite(ratio)) return "unknown";
   if (ratio >= 1) return `${ratio.toFixed(1)}:1`;
   return `1:${(1 / ratio).toFixed(1)}`;
 }
 
-/** Optional short descriptor for invalid ratio (e.g. "ultrawide landscape") */
+/** Optional short descriptor (e.g. ultrawide) */
 export function getAspectRatioDescriptor(ratio: number): string {
   if (ratio <= 0 || !Number.isFinite(ratio)) return "";
   if (ratio > 2) return " (ultrawide landscape)";
@@ -58,5 +160,6 @@ export function getAspectRatioDescriptor(ratio: number): string {
   return "";
 }
 
+/** @deprecated Prefer getAspectRatioGuidance */
 export const ASPECT_RATIO_MESSAGE =
-  "Video must be 16:9, 9:16, 4:3, 3:4, or 1:1.";
+  "Video aspect ratio: use 9:16 or 16:9 for best results across platforms.";

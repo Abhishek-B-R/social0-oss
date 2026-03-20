@@ -2,6 +2,8 @@
 
 import { useRef, useEffect, useState } from "react";
 import { Trash2, Video, Play } from "lucide-react";
+import { getAspectRatioGuidance } from "@/lib/video-aspect-ratio";
+import { AspectRatioGuidanceBanner } from "@/components/AspectRatioGuidanceBanner";
 
 const MAX_CAPTION = 2200;
 
@@ -14,10 +16,14 @@ export type VideoItem = {
   /** Set after upload */
   mediaId?: string;
   mediaUrl?: string;
+  /** width / height from client measurement */
+  aspectRatio: number;
 };
 
 type VideoCardProps = {
   item: VideoItem;
+  /** When true, show stronger TikTok API ratio warning when applicable */
+  tiktokSelected: boolean;
   onCaptionChange: (id: string, caption: string) => void;
   onScheduleChange: (id: string, date: Date) => void;
   onDelete: (id: string) => void;
@@ -42,10 +48,15 @@ function formatTimeForInput(d: Date): string {
 
 export function VideoCard({
   item,
+  tiktokSelected,
   onCaptionChange,
   onScheduleChange,
   onDelete,
 }: VideoCardProps) {
+  const aspectGuidance =
+    item.aspectRatio > 0
+      ? getAspectRatioGuidance(item.aspectRatio, { tiktokSelected })
+      : null;
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -188,6 +199,9 @@ export function VideoCard({
           {item.file.name}
         </p>
         <p className="text-xs text-muted-foreground">{formatFileSize(item.file.size)}</p>
+        {aspectGuidance && (
+          <AspectRatioGuidanceBanner guidance={aspectGuidance} />
+        )}
         <textarea
           value={item.caption}
           onChange={(e) => onCaptionChange(item.id, e.target.value.slice(0, MAX_CAPTION))}
