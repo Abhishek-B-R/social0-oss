@@ -1,6 +1,12 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import {
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+  useTransition,
+} from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
@@ -713,6 +719,12 @@ function AvatarEditor({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [urlInput, setUrlInput] = useState("");
+  /** Local preview so the UI updates immediately; session props can lag behind DB after save. */
+  const [previewUrl, setPreviewUrl] = useState<string | null>(currentUrl);
+
+  useEffect(() => {
+    setPreviewUrl(currentUrl);
+  }, [currentUrl]);
 
   const sizeClass = size === "lg" ? "h-20 w-20 text-2xl" : "h-14 w-14 text-lg";
 
@@ -740,6 +752,7 @@ function AvatarEditor({
         toast.error(result.error);
         return;
       }
+      setPreviewUrl(imageUrl);
       router.refresh();
     } finally {
       setLoading(false);
@@ -758,6 +771,7 @@ function AvatarEditor({
         toast.error(result.error);
         return;
       }
+      setPreviewUrl(url);
       setUrlInput("");
       router.refresh();
     } finally {
@@ -768,10 +782,11 @@ function AvatarEditor({
   return (
     <div className="flex flex-wrap items-start gap-4">
       <div className="flex flex-col items-center gap-2">
-        {currentUrl ? (
+        {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={currentUrl}
+            key={previewUrl}
+            src={previewUrl}
             alt={displayLabel}
             className={`rounded-full object-cover shrink-0 ${sizeClass}`}
             referrerPolicy="no-referrer"
@@ -839,7 +854,14 @@ function getTimezoneLabel(tz: string): string {
   return tz;
 }
 
-function DetectTimezoneButton({ selectId }: { selectId: string }) {
+function DetectTimezoneButton({
+  selectId,
+  onDetected,
+}: {
+  selectId: string;
+  /** Keep controlled timezone state in sync when using "Use my location". */
+  onDetected?: (tz: string) => void;
+}) {
   return (
     <button
       type="button"
@@ -863,6 +885,7 @@ function DetectTimezoneButton({ selectId }: { selectId: string }) {
               select.appendChild(opt);
               select.value = tz;
             }
+            onDetected?.(tz);
           }
         } catch {
           // ignore
@@ -892,11 +915,19 @@ export function SettingsClient({
   timeZones: string[];
   isCredentialUser: boolean;
 }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] =
     useState<(typeof SETTINGS_TABS)[number]["id"]>("profile");
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [changeEmailSuccess, setChangeEmailSuccess] = useState(false);
   const [clientTimezone, setClientTimezone] = useState("");
+  /** Controlled so the select updates after save (uncontrolled defaultValue does not). */
+  const [timezoneValue, setTimezoneValue] = useState(settings.timezone ?? "UTC");
+  const [timezonePending, startTimezoneTransition] = useTransition();
+
+  useEffect(() => {
+    setTimezoneValue(settings.timezone ?? "UTC");
+  }, [settings.timezone]);
 
   useEffect(() => {
     try {
@@ -1111,7 +1142,24 @@ export function SettingsClient({
               <p className="mt-1 text-sm text-text-muted">
                 Schedules, post times, and calendar are shown in this timezone.
               </p>
-              <form action={updateTimezone} className="mt-4 space-y-4">
+              <form
+                className="mt-4 space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const fd = new FormData(e.currentTarget);
+                  startTimezoneTransition(async () => {
+                    try {
+                      await updateTimezone(fd);
+                      const tz =
+                        String(fd.get("timezone") ?? "").trim() || "UTC";
+                      setTimezoneValue(tz);
+                      router.refresh();
+                    } catch {
+                      toast.error("Failed to save timezone");
+                    }
+                  });
+                }}
+              >
                 {clientTimezone ? (
                   <input
                     type="hidden"
@@ -1130,8 +1178,10 @@ export function SettingsClient({
                     <select
                       id="timezone"
                       name="timezone"
-                      defaultValue={settings.timezone}
-                      className="min-w-[320px] rounded-xl border border-input bg-bg px-4 py-2.5 text-sm font-medium text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1"
+                      value={timezoneValue}
+                      onChange={(e) => setTimezoneValue(e.target.value)}
+                      disabled={timezonePending}
+                      className="min-w-[320px] rounded-xl border border-input bg-bg px-4 py-2.5 text-sm font-medium text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 disabled:opacity-60"
                     >
                       {timeZones.map((tz) => (
                         <option key={tz} value={tz}>
@@ -1139,10 +1189,19 @@ export function SettingsClient({
                         </option>
                       ))}
                     </select>
-                    <DetectTimezoneButton selectId="timezone" />
+                    <DetectTimezoneButton
+                      selectId="timezone"
+                      onDetected={setTimezoneValue}
+                    />
                   </div>
                 </div>
-                <SaveButton label="Save timezone" />
+                <button
+                  type="submit"
+                  disabled={timezonePending}
+                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {timezonePending ? "Saving..." : "Save timezone"}
+                </button>
               </form>
             </div>
             <div className="border-t border-border my-8" />
@@ -1177,7 +1236,7 @@ export function SettingsClient({
         {activeTab === "queue" && (
           <section>
             <QueueScheduleSection
-              timezone={settings.timezone ?? "UTC"}
+              timezone={timezoneValue}
               use24HourTimeFormat={settings.use24HourTimeFormat ?? false}
             />
           </section>
