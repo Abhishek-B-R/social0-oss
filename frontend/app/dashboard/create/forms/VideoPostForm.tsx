@@ -43,10 +43,9 @@ import {
 } from "@/lib/media-limits";
 import { uploadFile } from "@/lib/upload-file";
 import {
-  validateVideoAspectRatio,
-  formatAspectRatioLabel,
-  getAspectRatioDescriptor,
-  ASPECT_RATIO_MESSAGE,
+  measureVideoAspectRatio,
+  getAspectRatioGuidance,
+  type AspectRatioGuidance,
 } from "@/lib/video-aspect-ratio";
 import {
   getVideoDuration,
@@ -74,6 +73,7 @@ import {
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
 import { toast } from "sonner";
+import { AspectRatioGuidanceBanner } from "@/components/AspectRatioGuidanceBanner";
 
 type PlatformCaptionState = {
   overridden: boolean;
@@ -149,6 +149,8 @@ export function VideoPostForm({
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [existingVideoId, setExistingVideoId] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(0);
+  const [videoAspectGuidance, setVideoAspectGuidance] =
+    useState<AspectRatioGuidance | null>(null);
   const [isVertical, setIsVertical] = useState(false);
   const [, setCustomThumbnail] = useState<File | null>(null);
   const [customThumbnailPreview, setCustomThumbnailPreview] = useState<
@@ -324,6 +326,18 @@ export function VideoPostForm({
   );
 
   useEffect(() => {
+    if (!videoFile) {
+      setVideoAspectGuidance(null);
+      setIsVertical(false);
+      return;
+    }
+    measureVideoAspectRatio(videoFile).then((m) => {
+      setIsVertical(m.height > m.width);
+      setVideoAspectGuidance(getAspectRatioGuidance(m.ratio));
+    });
+  }, [videoFile]);
+
+  useEffect(() => {
     if (initialDraftId || initialEditId) return;
     if (searchParams.get("fromComposer") !== "1") return;
     const payload = consumeComposerPayload();
@@ -340,10 +354,6 @@ export function VideoPostForm({
       setTimeout(clearComposerPayload, 100);
     };
   }, [initialDraftId, initialEditId, searchParams]);
-
-  useEffect(() => {
-    if (!videoPreview) setIsVertical(false);
-  }, [videoPreview]);
 
   useEffect(() => {
     if (remember) persistSelection(selectedIds);
@@ -784,30 +794,21 @@ export function VideoPostForm({
         return;
       }
       toast.dismiss();
-      validateVideoAspectRatio(file).then((result) => {
-        if (!result.valid) {
-          toast.error(
-            `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(result.ratio)}${getAspectRatioDescriptor(result.ratio)}.`,
-          );
+      getVideoDuration(file).then((duration) => {
+        if (duration > MAX_VIDEO_DURATION_SECONDS) {
+          toast.error(VIDEO_DURATION_MESSAGE);
           return;
         }
-        setIsVertical(result.height > result.width);
-        getVideoDuration(file).then((duration) => {
-          if (duration > MAX_VIDEO_DURATION_SECONDS) {
-            toast.error(VIDEO_DURATION_MESSAGE);
-            return;
-          }
-          if (videoPreviewRef.current)
-            URL.revokeObjectURL(videoPreviewRef.current);
-          if (customThumbnailPreviewRef.current)
-            URL.revokeObjectURL(customThumbnailPreviewRef.current);
-          setVideoFile(file);
-          setVideoPreview(URL.createObjectURL(file));
-          setVideoDuration(duration);
-          setCustomThumbnail(null);
-          setCustomThumbnailPreview(null);
-          if (fileInputRef.current) fileInputRef.current.value = "";
-        });
+        if (videoPreviewRef.current)
+          URL.revokeObjectURL(videoPreviewRef.current);
+        if (customThumbnailPreviewRef.current)
+          URL.revokeObjectURL(customThumbnailPreviewRef.current);
+        setVideoFile(file);
+        setVideoPreview(URL.createObjectURL(file));
+        setVideoDuration(duration);
+        setCustomThumbnail(null);
+        setCustomThumbnailPreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
       });
     };
     window.addEventListener("paste", handlePaste);
@@ -845,27 +846,18 @@ export function VideoPostForm({
     }
     toast.dismiss();
     if (fileInputRef.current) fileInputRef.current.value = "";
-    validateVideoAspectRatio(file).then((result) => {
-      if (!result.valid) {
-        toast.error(
-          `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(result.ratio)}${getAspectRatioDescriptor(result.ratio)}.`,
-        );
+    getVideoDuration(file).then((duration) => {
+      if (duration > MAX_VIDEO_DURATION_SECONDS) {
+        toast.error(VIDEO_DURATION_MESSAGE);
         return;
       }
-      setIsVertical(result.height > result.width);
-      getVideoDuration(file).then((duration) => {
-        if (duration > MAX_VIDEO_DURATION_SECONDS) {
-          toast.error(VIDEO_DURATION_MESSAGE);
-          return;
-        }
-        if (videoPreview) URL.revokeObjectURL(videoPreview);
-        if (customThumbnailPreview) URL.revokeObjectURL(customThumbnailPreview);
-        setVideoFile(file);
-        setVideoPreview(URL.createObjectURL(file));
-        setVideoDuration(duration);
-        setCustomThumbnail(null);
-        setCustomThumbnailPreview(null);
-      });
+      if (videoPreview) URL.revokeObjectURL(videoPreview);
+      if (customThumbnailPreview) URL.revokeObjectURL(customThumbnailPreview);
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+      setVideoDuration(duration);
+      setCustomThumbnail(null);
+      setCustomThumbnailPreview(null);
     });
   };
 
@@ -875,6 +867,7 @@ export function VideoPostForm({
     setVideoFile(null);
     setVideoPreview(null);
     setVideoDuration(0);
+    setVideoAspectGuidance(null);
     setExistingVideoId(null);
     setCustomThumbnail(null);
     setCustomThumbnailPreview(null);
@@ -900,30 +893,21 @@ export function VideoPostForm({
     }
     toast.dismiss();
     if (fileInputRef.current) fileInputRef.current.value = "";
-    validateVideoAspectRatio(file).then((result) => {
-      if (!result.valid) {
-        toast.error(
-          `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(result.ratio)}${getAspectRatioDescriptor(result.ratio)}.`,
-        );
+    getVideoDuration(file).then((duration) => {
+      if (duration > MAX_VIDEO_DURATION_SECONDS) {
+        toast.error(VIDEO_DURATION_MESSAGE);
         return;
       }
-      setIsVertical(result.height > result.width);
-      getVideoDuration(file).then((duration) => {
-        if (duration > MAX_VIDEO_DURATION_SECONDS) {
-          toast.error(VIDEO_DURATION_MESSAGE);
-          return;
-        }
-        if (videoPreviewRef.current)
-          URL.revokeObjectURL(videoPreviewRef.current);
-        if (customThumbnailPreviewRef.current)
-          URL.revokeObjectURL(customThumbnailPreviewRef.current);
-        setVideoFile(file);
-        setVideoPreview(URL.createObjectURL(file));
-        setVideoDuration(duration);
-        setCustomThumbnail(null);
-        setCustomThumbnailPreview(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      });
+      if (videoPreviewRef.current)
+        URL.revokeObjectURL(videoPreviewRef.current);
+      if (customThumbnailPreviewRef.current)
+        URL.revokeObjectURL(customThumbnailPreviewRef.current);
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+      setVideoDuration(duration);
+      setCustomThumbnail(null);
+      setCustomThumbnailPreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     });
   };
 
@@ -1640,25 +1624,28 @@ export function VideoPostForm({
                 </span>
               </button>
             ) : (
-              <div className="flex items-center gap-2">
-                <div className="relative flex h-12 w-16 shrink-0 overflow-hidden rounded border border-border">
-                  <video
-                    src={videoPreview}
-                    muted
-                    playsInline
-                    className="h-full w-full object-cover"
-                    onLoadedMetadata={(e) =>
-                      setVideoDuration(e.currentTarget.duration)
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={removeVideo}
-                    className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 rounded text-white transition-opacity"
-                  >
-                    <MdClose className="w-3.5 h-3.5" />
-                  </button>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex h-12 w-16 shrink-0 overflow-hidden rounded border border-border">
+                    <video
+                      src={videoPreview}
+                      muted
+                      playsInline
+                      className="h-full w-full object-cover"
+                      onLoadedMetadata={(e) =>
+                        setVideoDuration(e.currentTarget.duration)
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={removeVideo}
+                      className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 rounded text-white transition-opacity"
+                    >
+                      <MdClose className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
+                <AspectRatioGuidanceBanner guidance={videoAspectGuidance} />
               </div>
             )}
             <AutoResizeTextarea

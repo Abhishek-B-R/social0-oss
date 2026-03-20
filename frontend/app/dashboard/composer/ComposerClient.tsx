@@ -9,7 +9,6 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  X,
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
@@ -18,16 +17,30 @@ import {
   type ComposerMediaItem,
 } from "@/lib/composer-bridge";
 import {
-  validateVideoAspectRatio,
-  formatAspectRatioLabel,
-  getAspectRatioDescriptor,
-  ASPECT_RATIO_MESSAGE,
-  type VideoAspectResult,
+  measureVideoAspectRatio,
+  getAspectRatioGuidance,
+  NON_STANDARD_VIDEO_ASPECT_GUIDANCE,
+  type AspectRatioGuidance,
 } from "@/lib/video-aspect-ratio";
+import {
+  getVideoDuration,
+  MAX_VIDEO_DURATION_SECONDS,
+  VIDEO_DURATION_MESSAGE,
+} from "@/lib/video-duration";
 import { DOCS_COMPOSER_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
+import { AspectRatioGuidanceBanner } from "@/components/AspectRatioGuidanceBanner";
+import { toast } from "sonner";
+import {
+  CLIENT_MAX_VIDEO_UPLOAD_BYTES,
+  CLIENT_MAX_VIDEO_UPLOAD_LABEL,
+} from "@/lib/media-limits";
 
 const THREAD_MAX_MEDIA_PER_POST = 4;
+
+function hasFileDrag(e: React.DragEvent): boolean {
+  return [...e.dataTransfer.types].includes("Files");
+}
 
 type ThreadSlot = {
   id: string;
@@ -53,7 +66,10 @@ export function ComposerClient() {
     left: false,
     right: false,
   });
-  const [mediaError, setMediaError] = useState<string | null>(null);
+  const [aspectGuidanceByMediaId, setAspectGuidanceByMediaId] = useState<
+    Record<string, AspectRatioGuidance>
+  >({});
+  const [isFileDragOver, setIsFileDragOver] = useState(false);
   const mediaStripRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const threadTextareaRefs = useRef<Record<string, HTMLTextAreaElement>>({});
@@ -182,7 +198,6 @@ export function ComposerClient() {
   const handleFiles = useCallback(
     (files: FileList | null) => {
       if (!files || files.length === 0) return;
-      setMediaError(null);
       const fileList = Array.from(files);
 
       const imageFiles: File[] = [];
@@ -213,43 +228,95 @@ export function ComposerClient() {
         });
       }
 
-      if (videoFiles.length === 0) return;
-
-      Promise.all(videoFiles.map(validateVideoAspectRatio)).then(
-        (results: VideoAspectResult[]) => {
-          const validItems: (ComposerMediaItem & { id: string })[] = [];
-          let firstInvalid: VideoAspectResult | null = null;
-          videoFiles.forEach((file, i) => {
-            const result = results[i];
-            if (result?.valid) {
-              validItems.push({
-                id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2)}`,
-                type: "video",
-                file,
-                previewUrl: URL.createObjectURL(file),
-              });
-            } else if (!firstInvalid && result) firstInvalid = result;
-          });
-          if (firstInvalid) {
-            const { ratio } = firstInvalid;
-            setMediaError(
-              `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(ratio)}${getAspectRatioDescriptor(ratio)}.`,
-            );
-          }
-          if (validItems.length > 0) {
-            setMedia((prev) => {
-              const maxNew = isThread
-                ? THREAD_MAX_MEDIA_PER_POST - prev.length
-                : validItems.length;
-              if (maxNew <= 0) return prev;
-              const toAdd = validItems.slice(0, maxNew);
-              return [...prev, ...toAdd];
-            });
-          }
-        },
+      const overSizeVideos = videoFiles.filter(
+        (f) => f.size > CLIENT_MAX_VIDEO_UPLOAD_BYTES,
       );
+      if (overSizeVideos.length > 0) {
+        toast.error(
+          `Video too large. Max upload size is ${CLIENT_MAX_VIDEO_UPLOAD_LABEL}. ${overSizeVideos.length} file(s) skipped.`,
+        );
+      }
+      const allowedVideos = videoFiles.filter(
+        (f) => f.size <= CLIENT_MAX_VIDEO_UPLOAD_BYTES,
+      );
+      if (allowedVideos.length === 0) return;
+
+      Promise.all(
+        allowedVideos.map(async (file) => {
+          const [m, duration] = await Promise.all([
+            measureVideoAspectRatio(file),
+            getVideoDuration(file),
+          ]);
+          return { file, m, duration };
+        }),
+      ).then((rows) => {
+        const validItems: (ComposerMediaItem & { id: string })[] = [];
+        const videoGuidanceById: Record<string, AspectRatioGuidance> = {};
+        let anyOverDuration = false;
+        for (const row of rows) {
+          if (row.duration > MAX_VIDEO_DURATION_SECONDS) {
+            anyOverDuration = true;
+            continue;
+          }
+          const id = `${Date.now()}-${row.file.name}-${Math.random().toString(36).slice(2)}`;
+          const g = getAspectRatioGuidance(row.m.ratio);
+          if (g) videoGuidanceById[id] = g;
+          validItems.push({
+            id,
+            type: "video",
+            file: row.file,
+            previewUrl: URL.createObjectURL(row.file),
+          });
+        }
+        if (anyOverDuration) toast.error(VIDEO_DURATION_MESSAGE);
+        if (validItems.length === 0) return;
+        setMedia((prev) => {
+          const maxNew = isThread
+            ? THREAD_MAX_MEDIA_PER_POST - prev.length
+            : validItems.length;
+          if (maxNew <= 0) return prev;
+          const n = Math.min(maxNew, validItems.length);
+          const toAdd = validItems.slice(0, n);
+          setAspectGuidanceByMediaId((gprev) => {
+            const next = { ...gprev };
+            for (const item of toAdd) {
+              const g = videoGuidanceById[item.id];
+              if (g) next[item.id] = g;
+            }
+            return next;
+          });
+          return [...prev, ...toAdd];
+        });
+      });
     },
     [isThread],
+  );
+
+  const handleComposerDragOver = useCallback((e: React.DragEvent) => {
+    if (!hasFileDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setIsFileDragOver(true);
+  }, []);
+
+  const handleComposerDragLeave = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      const related = e.relatedTarget as Node | null;
+      if (related && e.currentTarget.contains(related)) return;
+      setIsFileDragOver(false);
+    },
+    [],
+  );
+
+  const handleComposerDrop = useCallback(
+    (e: React.DragEvent) => {
+      if (!hasFileDrag(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setIsFileDragOver(false);
+      handleFiles(e.dataTransfer.files);
+    },
+    [handleFiles],
   );
 
   const onPaste: React.ClipboardEventHandler<HTMLTextAreaElement> = (event) => {
@@ -289,7 +356,26 @@ export function ComposerClient() {
   }, []);
 
   const removeThreadSlot = useCallback((slotId: string) => {
-    setThreadSlots((prev) => prev.filter((s) => s.id !== slotId));
+    setThreadSlots((prev) => {
+      const slot = prev.find((s) => s.id === slotId);
+      if (slot) {
+        slot.media.forEach((m) => {
+          if (m.previewUrl.startsWith("blob:"))
+            URL.revokeObjectURL(m.previewUrl);
+        });
+        const mediaIds = slot.media.map((m) => m.id);
+        if (mediaIds.length > 0) {
+          setAspectGuidanceByMediaId((gprev) => {
+            const next = { ...gprev };
+            mediaIds.forEach((id) => {
+              delete next[id];
+            });
+            return next;
+          });
+        }
+      }
+      return prev.filter((s) => s.id !== slotId);
+    });
   }, []);
 
   const updateThreadSlot = useCallback(
@@ -304,7 +390,6 @@ export function ComposerClient() {
   const handleThreadSlotFiles = useCallback(
     (slotId: string, files: FileList | null) => {
       if (!files || files.length === 0) return;
-      setMediaError(null);
       const fileList = Array.from(files);
 
       const imageFiles: File[] = [];
@@ -339,55 +424,100 @@ export function ComposerClient() {
         );
       }
 
-      if (videoFiles.length === 0) return;
-
-      Promise.all(videoFiles.map(validateVideoAspectRatio)).then(
-        (results: VideoAspectResult[]) => {
-          const validItems: (ComposerMediaItem & { id: string })[] = [];
-          let firstInvalid: VideoAspectResult | null = null;
-          videoFiles.forEach((file, i) => {
-            const result = results[i];
-            if (result?.valid) {
-              validItems.push({
-                id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2)}`,
-                type: "video",
-                file,
-                previewUrl: URL.createObjectURL(file),
-              });
-            } else if (!firstInvalid && result) firstInvalid = result;
-          });
-          if (firstInvalid) {
-            const { ratio } = firstInvalid;
-            setMediaError(
-              `${ASPECT_RATIO_MESSAGE} Yours is ${formatAspectRatioLabel(ratio)}${getAspectRatioDescriptor(ratio)}.`,
-            );
-          }
-          if (validItems.length > 0) {
-            setThreadSlots((prev) =>
-              prev.map((s) => {
-                if (s.id !== slotId) return s;
-                const maxNew = THREAD_MAX_MEDIA_PER_POST - s.media.length;
-                if (maxNew <= 0) return s;
-                const toAdd = validItems.slice(0, maxNew);
-                return { ...s, media: [...s.media, ...toAdd] };
-              }),
-            );
-          }
-        },
+      const overSizeVideos = videoFiles.filter(
+        (f) => f.size > CLIENT_MAX_VIDEO_UPLOAD_BYTES,
       );
+      if (overSizeVideos.length > 0) {
+        toast.error(
+          `Video too large. Max upload size is ${CLIENT_MAX_VIDEO_UPLOAD_LABEL}. ${overSizeVideos.length} file(s) skipped.`,
+        );
+      }
+      const allowedVideos = videoFiles.filter(
+        (f) => f.size <= CLIENT_MAX_VIDEO_UPLOAD_BYTES,
+      );
+      if (allowedVideos.length === 0) return;
+
+      Promise.all(
+        allowedVideos.map(async (file) => {
+          const [m, duration] = await Promise.all([
+            measureVideoAspectRatio(file),
+            getVideoDuration(file),
+          ]);
+          return { file, m, duration };
+        }),
+      ).then((rows) => {
+        const validItems: (ComposerMediaItem & { id: string })[] = [];
+        const videoGuidanceById: Record<string, AspectRatioGuidance> = {};
+        let anyOverDuration = false;
+        for (const row of rows) {
+          if (row.duration > MAX_VIDEO_DURATION_SECONDS) {
+            anyOverDuration = true;
+            continue;
+          }
+          const id = `${Date.now()}-${row.file.name}-${Math.random().toString(36).slice(2)}`;
+          const g = getAspectRatioGuidance(row.m.ratio);
+          if (g) videoGuidanceById[id] = g;
+          validItems.push({
+            id,
+            type: "video",
+            file: row.file,
+            previewUrl: URL.createObjectURL(row.file),
+          });
+        }
+        if (anyOverDuration) toast.error(VIDEO_DURATION_MESSAGE);
+        if (validItems.length === 0) return;
+        setThreadSlots((prev) =>
+          prev.map((s) => {
+            if (s.id !== slotId) return s;
+            const maxNew = THREAD_MAX_MEDIA_PER_POST - s.media.length;
+            if (maxNew <= 0) return s;
+            const n = Math.min(maxNew, validItems.length);
+            const toAdd = validItems.slice(0, n);
+            setAspectGuidanceByMediaId((gprev) => {
+              const next = { ...gprev };
+              for (const item of toAdd) {
+                const g = videoGuidanceById[item.id];
+                if (g) next[item.id] = g;
+              }
+              return next;
+            });
+            return { ...s, media: [...s.media, ...toAdd] };
+          }),
+        );
+      });
     },
     [],
+  );
+
+  const handleThreadSlotFileDrop = useCallback(
+    (slotId: string, e: React.DragEvent) => {
+      if (!hasFileDrag(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      handleThreadSlotFiles(slotId, e.dataTransfer.files);
+    },
+    [handleThreadSlotFiles],
   );
 
   const removeThreadSlotMedia = useCallback(
     (slotId: string, mediaId: string) => {
       setThreadSlots((prev) =>
-        prev.map((s) =>
-          s.id === slotId
-            ? { ...s, media: s.media.filter((m) => m.id !== mediaId) }
-            : s,
-        ),
+        prev.map((s) => {
+          if (s.id !== slotId) return s;
+          const removed = s.media.find((m) => m.id === mediaId);
+          if (removed?.previewUrl.startsWith("blob:"))
+            URL.revokeObjectURL(removed.previewUrl);
+          return {
+            ...s,
+            media: s.media.filter((m) => m.id !== mediaId),
+          };
+        }),
       );
+      setAspectGuidanceByMediaId((prev) => {
+        const next = { ...prev };
+        delete next[mediaId];
+        return next;
+      });
     },
     [],
   );
@@ -448,7 +578,14 @@ export function ComposerClient() {
 
   const removeMedia = (id: string) => {
     setMedia((prev) => {
-      const next = prev.filter((m) => m.id !== id);
+      const removed = prev.find((m) => m.id === id);
+      if (removed?.previewUrl.startsWith("blob:"))
+        URL.revokeObjectURL(removed.previewUrl);
+      return prev.filter((m) => m.id !== id);
+    });
+    setAspectGuidanceByMediaId((prev) => {
+      const next = { ...prev };
+      delete next[id];
       return next;
     });
   };
@@ -463,18 +600,38 @@ export function ComposerClient() {
           <DocsInfoIcon url={DOCS_COMPOSER_URL} />
         </div>
         <p className="text-sm leading-snug text-text-muted sm:leading-normal">
-          Type anything, paste/upload media, and we&apos;ll route you to the
-          right post flow. You can always adjust details on the next screen.
+          Type anything, paste, drag and drop, or upload images/videos — we&apos;ll
+          route you to the right post flow. You can always adjust details on the
+          next screen.
         </p>
       </div>
 
-      <div className="rounded-2xl border-2 border-border bg-bg-elevated p-4 shadow-sm transition-all duration-200 hover:border-muted-foreground/30 focus-within:border-emerald-200 dark:focus-within:border-emerald-800 focus-within:ring-2 focus-within:ring-emerald-500/20 sm:rounded-2xl sm:p-5 sm:focus-within:ring-1 sm:focus-within:ring-emerald-500/30">
+      <div
+        className={`rounded-2xl border-2 bg-bg-elevated p-4 shadow-sm transition-all duration-200 hover:border-muted-foreground/30 focus-within:border-emerald-200 dark:focus-within:border-emerald-800 focus-within:ring-2 focus-within:ring-emerald-500/20 sm:rounded-2xl sm:p-5 sm:focus-within:ring-1 sm:focus-within:ring-emerald-500/30 ${
+          isFileDragOver
+            ? "border-emerald-500 ring-2 ring-emerald-500/30"
+            : "border-border"
+        }`}
+        onDragEnter={(e) => {
+          if (!hasFileDrag(e)) return;
+          e.preventDefault();
+          setIsFileDragOver(true);
+        }}
+        onDragOver={handleComposerDragOver}
+        onDragLeave={handleComposerDragLeave}
+        onDrop={handleComposerDrop}
+      >
         <textarea
           ref={textareaRef}
           className="min-h-[88px] max-h-[400px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-base text-text outline-none placeholder:text-text-muted sm:min-h-[70px]"
           placeholder="Share what's on your mind..."
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onDragOver={(e) => {
+            if (!hasFileDrag(e)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+          }}
           onPaste={onPaste}
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -574,6 +731,16 @@ export function ComposerClient() {
                 </button>
               )}
             </div>
+            {media.some(
+              (m) =>
+                m.type === "video" && aspectGuidanceByMediaId[m.id],
+            ) && (
+              <div className="pt-1">
+                <AspectRatioGuidanceBanner
+                  guidance={NON_STANDARD_VIDEO_ASPECT_GUIDANCE}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -672,21 +839,6 @@ export function ComposerClient() {
             <span>{loading ? "Loading…" : "Continue"}</span>
           </button>
         </div>
-        {mediaError && (
-          <div className="flex items-center justify-between gap-2 pt-1 rounded-lg bg-red-500/10 px-3 py-2">
-            <p className="text-sm text-red-600 dark:text-red-400 flex-1 min-w-0">
-              {mediaError}
-            </p>
-            <button
-              type="button"
-              onClick={() => setMediaError(null)}
-              className="shrink-0 rounded-full p-1 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors"
-              aria-label="Dismiss error"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
       </div>
 
       {isThread && (
@@ -695,6 +847,12 @@ export function ComposerClient() {
             <div
               key={slot.id}
               className="rounded-2xl border border-border bg-bg-elevated p-4 sm:p-5 shadow-sm space-y-4"
+              onDragOver={(e) => {
+                if (!hasFileDrag(e)) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "copy";
+              }}
+              onDrop={(e) => handleThreadSlotFileDrop(slot.id, e)}
             >
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-text-muted">
@@ -721,6 +879,11 @@ export function ComposerClient() {
                   requestAnimationFrame(() =>
                     resizeThreadSlotTextarea(e.target as HTMLTextAreaElement),
                   );
+                }}
+                onDragOver={(e) => {
+                  if (!hasFileDrag(e)) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "copy";
                 }}
               />
               {slot.media.length > 0 && (
@@ -792,6 +955,16 @@ export function ComposerClient() {
                       </div>
                     ))}
                   </div>
+                  {slot.media.some(
+                    (m) =>
+                      m.type === "video" && aspectGuidanceByMediaId[m.id],
+                  ) && (
+                    <div className="pt-1">
+                      <AspectRatioGuidanceBanner
+                        guidance={NON_STANDARD_VIDEO_ASPECT_GUIDANCE}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
               <div className="flex items-center justify-between">

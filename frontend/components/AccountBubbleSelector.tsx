@@ -158,7 +158,8 @@ export function AccountBubbleSelector({
                     : selected
                       ? "border-emerald-500 opacity-100 grayscale-0"
                       : softWarn
-                        ? "border-amber-400/80 opacity-100 grayscale-0"
+                        ? // Warning-only: keep muted like unselected so it doesn’t look “selected”
+                          "border-amber-400/80 opacity-60 grayscale hover:opacity-80"
                         : "border-transparent opacity-60 grayscale hover:opacity-80",
               )}
               title={disabledTitle ?? warningTitle}
@@ -181,7 +182,12 @@ export function AccountBubbleSelector({
                     platform={acc.platform}
                     isTwitterPremium={acc.isTwitterPremium ?? false}
                     size="lg"
-                    className="h-full w-full border-2 border-emerald-400 rounded-full"
+                    className={cn(
+                      "h-full w-full border-2 rounded-full",
+                      selected && !disabled
+                        ? "border-emerald-400"
+                        : "border-border",
+                    )}
                   />
                 </div>
                 <span

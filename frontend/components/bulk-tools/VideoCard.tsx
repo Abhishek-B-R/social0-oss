@@ -2,6 +2,8 @@
 
 import { useRef, useEffect, useState } from "react";
 import { Trash2, Video, Play } from "lucide-react";
+import { getAspectRatioGuidance } from "@/lib/video-aspect-ratio";
+import { AspectRatioGuidanceBanner } from "@/components/AspectRatioGuidanceBanner";
 
 const MAX_CAPTION = 2200;
 
@@ -14,6 +16,8 @@ export type VideoItem = {
   /** Set after upload */
   mediaId?: string;
   mediaUrl?: string;
+  /** width / height from client measurement */
+  aspectRatio: number;
 };
 
 type VideoCardProps = {
@@ -46,6 +50,8 @@ export function VideoCard({
   onScheduleChange,
   onDelete,
 }: VideoCardProps) {
+  const aspectGuidance =
+    item.aspectRatio > 0 ? getAspectRatioGuidance(item.aspectRatio) : null;
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -188,6 +194,7 @@ export function VideoCard({
           {item.file.name}
         </p>
         <p className="text-xs text-muted-foreground">{formatFileSize(item.file.size)}</p>
+        <AspectRatioGuidanceBanner guidance={aspectGuidance} />
         <textarea
           value={item.caption}
           onChange={(e) => onCaptionChange(item.id, e.target.value.slice(0, MAX_CAPTION))}

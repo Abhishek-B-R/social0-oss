@@ -55,6 +55,11 @@ export function OAuthErrorHandler({
         case "no_facebook_pages":
           setMessage("No Facebook Pages found. You need a Page to connect.");
           break;
+        case "rate_limited":
+          setMessage(
+            "You have reached the rate limit for this platform. Please try again after a few minutes.",
+          );
+          break;
         default:
           setMessage("An error occurred during connection");
       }

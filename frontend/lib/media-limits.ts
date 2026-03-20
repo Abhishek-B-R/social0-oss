@@ -1,7 +1,12 @@
 /**
- * Platform-specific max file sizes for client-side validation before upload.
+ * Platform-specific max file sizes (reference for publish-time warnings / account UI).
+ * Client upload for videos uses CLIENT_MAX_VIDEO_UPLOAD_BYTES — not these.
  * Keys match platform ids (e.g. twitter_x, not twitter).
  */
+
+/** Single upload cap for videos in composer, create forms, and bulk tools (matches presign). */
+export const CLIENT_MAX_VIDEO_UPLOAD_BYTES = 500 * 1024 * 1024; // 500MB
+export const CLIENT_MAX_VIDEO_UPLOAD_LABEL = "500MB";
 
 export const IMAGE_LIMITS: Record<string, number> = {
   twitter_x: 5 * 1024 * 1024, // 5MB (web)
@@ -69,12 +74,13 @@ export type ValidateMediaResult =
   | { allowed: false; error: string };
 
 /**
- * Validate file size against selected platforms before upload.
- * Images: never block (server compresses per platform). Videos: enforce VIDEO_LIMITS.
+ * Validate file size before upload.
+ * Images: never block (server compresses per platform).
+ * Videos: enforce CLIENT_MAX_VIDEO_UPLOAD_BYTES only — platform limits apply at publish time.
  */
 export function validateMediaFile(
   file: File,
-  selectedPlatforms: string[],
+  _selectedPlatforms: string[],
 ): ValidateMediaResult {
   const isImage = file.type.startsWith("image/");
   const isVideo = file.type.startsWith("video/");
@@ -86,21 +92,10 @@ export function validateMediaFile(
     return { allowed: true };
   }
 
-  const platforms =
-    selectedPlatforms.length > 0
-      ? selectedPlatforms
-      : Object.keys(VIDEO_LIMITS);
-  const { limit, platform } = getStrictestLimit(platforms, VIDEO_LIMITS);
-  const platformName = getPlatformDisplayName(platform);
-
-  if (limit === Infinity) {
-    return { allowed: true };
-  }
-
-  if (file.size > limit) {
+  if (file.size > CLIENT_MAX_VIDEO_UPLOAD_BYTES) {
     return {
       allowed: false,
-      error: `File too large for ${platformName}. Max size is ${formatBytes(limit)}. Your file is ${formatBytes(file.size)}.`,
+      error: `Video too large. Max upload size is ${CLIENT_MAX_VIDEO_UPLOAD_LABEL}. Your file is ${formatBytes(file.size)}.`,
     };
   }
 
