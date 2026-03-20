@@ -60,6 +60,44 @@ export function getAspectRatioGuidance(ratio: number): AspectRatioGuidance | nul
   return NON_STANDARD_VIDEO_ASPECT_GUIDANCE;
 }
 
+/** Matches `picture_size_check_failed` copy in publish-platform (resolution, not file size). */
+export const TIKTOK_VIDEO_RESOLUTION_GUIDANCE_MESSAGE =
+  "Video resolution doesn't meet TikTok's requirements. Use a vertical 9:16 video at 720×1280 or higher.";
+
+const TIKTOK_MIN_WIDTH = 720;
+const TIKTOK_MIN_HEIGHT = 1280;
+/** Portrait 9:16 as width/height */
+const TIKTOK_NINE_SIXTEEN = 9 / 16;
+
+/**
+ * TikTok upload API expects vertical 9:16 at minimum 720×1280 (see TikTok Content Posting API).
+ * Client-side warning only — same intent as server `picture_size_check_failed`.
+ */
+export function meetsTikTokVideoResolution(width: number, height: number): boolean {
+  if (width <= 0 || height <= 0 || !Number.isFinite(width) || !Number.isFinite(height))
+    return false;
+  if (width >= height) return false;
+  const r = width / height;
+  if (
+    Math.abs(r - TIKTOK_NINE_SIXTEEN) / TIKTOK_NINE_SIXTEEN > REL_TOL
+  ) {
+    return false;
+  }
+  return width >= TIKTOK_MIN_WIDTH && height >= TIKTOK_MIN_HEIGHT;
+}
+
+/** Non-blocking TikTok-only banner when dimensions may fail TikTok’s resolution check. */
+export function getTikTokVideoResolutionGuidance(
+  width: number,
+  height: number,
+): AspectRatioGuidance | null {
+  if (meetsTikTokVideoResolution(width, height)) return null;
+  return {
+    level: "warn",
+    message: TIKTOK_VIDEO_RESOLUTION_GUIDANCE_MESSAGE,
+  };
+}
+
 /**
  * Read video dimensions from a File (browser only).
  */

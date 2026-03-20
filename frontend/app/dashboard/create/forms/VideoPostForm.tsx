@@ -45,6 +45,7 @@ import { uploadFile } from "@/lib/upload-file";
 import {
   measureVideoAspectRatio,
   getAspectRatioGuidance,
+  getTikTokVideoResolutionGuidance,
   type AspectRatioGuidance,
 } from "@/lib/video-aspect-ratio";
 import {
@@ -151,6 +152,10 @@ export function VideoPostForm({
   const [videoDuration, setVideoDuration] = useState<number>(0);
   const [videoAspectGuidance, setVideoAspectGuidance] =
     useState<AspectRatioGuidance | null>(null);
+  const [videoPixelSize, setVideoPixelSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
   const [isVertical, setIsVertical] = useState(false);
   const [, setCustomThumbnail] = useState<File | null>(null);
   const [customThumbnailPreview, setCustomThumbnailPreview] = useState<
@@ -325,14 +330,28 @@ export function VideoPostForm({
     (a) => selectedIds.has(a.id) && a.platform === "tiktok",
   );
 
+  const tiktokResolutionGuidance = useMemo(() => {
+    if (!hasTikTokSelected || !videoPixelSize) return null;
+    return getTikTokVideoResolutionGuidance(
+      videoPixelSize.width,
+      videoPixelSize.height,
+    );
+  }, [hasTikTokSelected, videoPixelSize]);
+
   useEffect(() => {
     if (!videoFile) {
       setVideoAspectGuidance(null);
+      setVideoPixelSize(null);
       setIsVertical(false);
       return;
     }
     measureVideoAspectRatio(videoFile).then((m) => {
       setIsVertical(m.height > m.width);
+      setVideoPixelSize(
+        m.width > 0 && m.height > 0
+          ? { width: m.width, height: m.height }
+          : null,
+      );
       setVideoAspectGuidance(getAspectRatioGuidance(m.ratio));
     });
   }, [videoFile]);
@@ -1646,6 +1665,9 @@ export function VideoPostForm({
                   </div>
                 </div>
                 <AspectRatioGuidanceBanner guidance={videoAspectGuidance} />
+                <AspectRatioGuidanceBanner
+                  guidance={tiktokResolutionGuidance}
+                />
               </div>
             )}
             <AutoResizeTextarea
