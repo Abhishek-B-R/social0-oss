@@ -23,6 +23,7 @@ import {
   IconCircleCheck,
   IconBrandX,
   IconBook2,
+  IconHome,
 } from "@tabler/icons-react";
 import { SignOutButton } from "@/components/SignOutButton";
 
@@ -268,6 +269,13 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
               <IconBook2 className="h-4 w-4 shrink-0 text-sidebar-text" />
               Docs
             </a>
+            <Link
+              href="/home"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-sidebar-text hover:bg-sidebar-active"
+            >
+              <IconHome className="h-4 w-4 shrink-0 text-sidebar-text" />
+              View landing page
+            </Link>
           </Section>
         </nav>
       </div>

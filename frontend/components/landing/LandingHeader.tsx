@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Menu, X, Moon, Sun } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
@@ -15,7 +16,16 @@ const navLinks = [
   { href: "/privacy", label: "Privacy" },
 ];
 
+/** On /home, same-page anchors must use /home#… so they don't hit / and redirect logged-in users. */
+function landingNavHref(href: string, pathname: string | null) {
+  if (pathname === "/home" && href.startsWith("/#")) {
+    return `/home${href.slice(1)}`;
+  }
+  return href;
+}
+
 export function LandingHeader() {
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const { data: session } = useSession();
@@ -67,7 +77,10 @@ export function LandingHeader() {
               className="rounded-full hidden dark:block absolute inset-0 border border-white"
             />
           </span>
-          <Link href="/" className="flex items-center gap-2">
+          <Link
+            href={pathname === "/home" ? "/home" : "/"}
+            className="flex items-center gap-2"
+          >
             <span className="font-serif text-[22px] tracking-tight text-foreground">
               Social0
             </span>
@@ -79,7 +92,7 @@ export function LandingHeader() {
           {navLinks.map((link) => (
             <Link
               key={link.href}
-              href={link.href}
+              href={landingNavHref(link.href, pathname)}
               className="text-[14px] text-muted-foreground transition-colors hover:text-foreground"
             >
               {link.label}
@@ -174,7 +187,7 @@ export function LandingHeader() {
             {navLinks.map((link) => (
               <Link
                 key={link.href}
-                href={link.href}
+                href={landingNavHref(link.href, pathname)}
                 className="text-[15px] text-muted-foreground transition-colors hover:text-foreground"
                 onClick={() => setMobileMenuOpen(false)}
               >

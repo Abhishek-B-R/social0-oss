@@ -468,7 +468,7 @@ export function ComposerClient() {
         </p>
       </div>
 
-      <div className="rounded-2xl border-2 border-border bg-bg-elevated p-4 shadow-sm transition-all duration-200 hover:border-muted-foreground/30 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 sm:rounded-2xl sm:p-5 sm:focus-within:ring-1 sm:focus-within:ring-emerald-500/30">
+      <div className="rounded-2xl border-2 border-border bg-bg-elevated p-4 shadow-sm transition-all duration-200 hover:border-muted-foreground/30 focus-within:border-emerald-200 dark:focus-within:border-emerald-800 focus-within:ring-2 focus-within:ring-emerald-500/20 sm:rounded-2xl sm:p-5 sm:focus-within:ring-1 sm:focus-within:ring-emerald-500/30">
         <textarea
           ref={textareaRef}
           className="min-h-[88px] max-h-[400px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-base text-text outline-none placeholder:text-text-muted sm:min-h-[70px]"
