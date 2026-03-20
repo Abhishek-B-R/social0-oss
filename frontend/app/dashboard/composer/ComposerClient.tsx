@@ -19,6 +19,7 @@ import {
 import {
   measureVideoAspectRatio,
   getAspectRatioGuidance,
+  NON_STANDARD_VIDEO_ASPECT_GUIDANCE,
   type AspectRatioGuidance,
 } from "@/lib/video-aspect-ratio";
 import {
@@ -30,8 +31,16 @@ import { DOCS_COMPOSER_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
 import { AspectRatioGuidanceBanner } from "@/components/AspectRatioGuidanceBanner";
 import { toast } from "sonner";
+import {
+  CLIENT_MAX_VIDEO_UPLOAD_BYTES,
+  CLIENT_MAX_VIDEO_UPLOAD_LABEL,
+} from "@/lib/media-limits";
 
 const THREAD_MAX_MEDIA_PER_POST = 4;
+
+function hasFileDrag(e: React.DragEvent): boolean {
+  return [...e.dataTransfer.types].includes("Files");
+}
 
 type ThreadSlot = {
   id: string;
@@ -60,6 +69,7 @@ export function ComposerClient() {
   const [aspectGuidanceByMediaId, setAspectGuidanceByMediaId] = useState<
     Record<string, AspectRatioGuidance>
   >({});
+  const [isFileDragOver, setIsFileDragOver] = useState(false);
   const mediaStripRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const threadTextareaRefs = useRef<Record<string, HTMLTextAreaElement>>({});
@@ -218,10 +228,21 @@ export function ComposerClient() {
         });
       }
 
-      if (videoFiles.length === 0) return;
+      const overSizeVideos = videoFiles.filter(
+        (f) => f.size > CLIENT_MAX_VIDEO_UPLOAD_BYTES,
+      );
+      if (overSizeVideos.length > 0) {
+        toast.error(
+          `Video too large. Max upload size is ${CLIENT_MAX_VIDEO_UPLOAD_LABEL}. ${overSizeVideos.length} file(s) skipped.`,
+        );
+      }
+      const allowedVideos = videoFiles.filter(
+        (f) => f.size <= CLIENT_MAX_VIDEO_UPLOAD_BYTES,
+      );
+      if (allowedVideos.length === 0) return;
 
       Promise.all(
-        videoFiles.map(async (file) => {
+        allowedVideos.map(async (file) => {
           const [m, duration] = await Promise.all([
             measureVideoAspectRatio(file),
             getVideoDuration(file),
@@ -230,7 +251,7 @@ export function ComposerClient() {
         }),
       ).then((rows) => {
         const validItems: (ComposerMediaItem & { id: string })[] = [];
-        const guidances: AspectRatioGuidance[] = [];
+        const videoGuidanceById: Record<string, AspectRatioGuidance> = {};
         let anyOverDuration = false;
         for (const row of rows) {
           if (row.duration > MAX_VIDEO_DURATION_SECONDS) {
@@ -238,11 +259,8 @@ export function ComposerClient() {
             continue;
           }
           const id = `${Date.now()}-${row.file.name}-${Math.random().toString(36).slice(2)}`;
-          guidances.push(
-            getAspectRatioGuidance(row.m.ratio, {
-              tiktokSelected: false,
-            }),
-          );
+          const g = getAspectRatioGuidance(row.m.ratio);
+          if (g) videoGuidanceById[id] = g;
           validItems.push({
             id,
             type: "video",
@@ -259,15 +277,46 @@ export function ComposerClient() {
           if (maxNew <= 0) return prev;
           const n = Math.min(maxNew, validItems.length);
           const toAdd = validItems.slice(0, n);
-          const guidanceUpdates = Object.fromEntries(
-            toAdd.map((item, i) => [item.id, guidances[i]]),
-          );
-          setAspectGuidanceByMediaId((gprev) => ({ ...gprev, ...guidanceUpdates }));
+          setAspectGuidanceByMediaId((gprev) => {
+            const next = { ...gprev };
+            for (const item of toAdd) {
+              const g = videoGuidanceById[item.id];
+              if (g) next[item.id] = g;
+            }
+            return next;
+          });
           return [...prev, ...toAdd];
         });
       });
     },
     [isThread],
+  );
+
+  const handleComposerDragOver = useCallback((e: React.DragEvent) => {
+    if (!hasFileDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setIsFileDragOver(true);
+  }, []);
+
+  const handleComposerDragLeave = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      const related = e.relatedTarget as Node | null;
+      if (related && e.currentTarget.contains(related)) return;
+      setIsFileDragOver(false);
+    },
+    [],
+  );
+
+  const handleComposerDrop = useCallback(
+    (e: React.DragEvent) => {
+      if (!hasFileDrag(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setIsFileDragOver(false);
+      handleFiles(e.dataTransfer.files);
+    },
+    [handleFiles],
   );
 
   const onPaste: React.ClipboardEventHandler<HTMLTextAreaElement> = (event) => {
@@ -375,10 +424,21 @@ export function ComposerClient() {
         );
       }
 
-      if (videoFiles.length === 0) return;
+      const overSizeVideos = videoFiles.filter(
+        (f) => f.size > CLIENT_MAX_VIDEO_UPLOAD_BYTES,
+      );
+      if (overSizeVideos.length > 0) {
+        toast.error(
+          `Video too large. Max upload size is ${CLIENT_MAX_VIDEO_UPLOAD_LABEL}. ${overSizeVideos.length} file(s) skipped.`,
+        );
+      }
+      const allowedVideos = videoFiles.filter(
+        (f) => f.size <= CLIENT_MAX_VIDEO_UPLOAD_BYTES,
+      );
+      if (allowedVideos.length === 0) return;
 
       Promise.all(
-        videoFiles.map(async (file) => {
+        allowedVideos.map(async (file) => {
           const [m, duration] = await Promise.all([
             measureVideoAspectRatio(file),
             getVideoDuration(file),
@@ -387,7 +447,7 @@ export function ComposerClient() {
         }),
       ).then((rows) => {
         const validItems: (ComposerMediaItem & { id: string })[] = [];
-        const guidances: AspectRatioGuidance[] = [];
+        const videoGuidanceById: Record<string, AspectRatioGuidance> = {};
         let anyOverDuration = false;
         for (const row of rows) {
           if (row.duration > MAX_VIDEO_DURATION_SECONDS) {
@@ -395,11 +455,8 @@ export function ComposerClient() {
             continue;
           }
           const id = `${Date.now()}-${row.file.name}-${Math.random().toString(36).slice(2)}`;
-          guidances.push(
-            getAspectRatioGuidance(row.m.ratio, {
-              tiktokSelected: false,
-            }),
-          );
+          const g = getAspectRatioGuidance(row.m.ratio);
+          if (g) videoGuidanceById[id] = g;
           validItems.push({
             id,
             type: "video",
@@ -416,19 +473,30 @@ export function ComposerClient() {
             if (maxNew <= 0) return s;
             const n = Math.min(maxNew, validItems.length);
             const toAdd = validItems.slice(0, n);
-            const guidanceUpdates = Object.fromEntries(
-              toAdd.map((item, i) => [item.id, guidances[i]]),
-            );
-            setAspectGuidanceByMediaId((gprev) => ({
-              ...gprev,
-              ...guidanceUpdates,
-            }));
+            setAspectGuidanceByMediaId((gprev) => {
+              const next = { ...gprev };
+              for (const item of toAdd) {
+                const g = videoGuidanceById[item.id];
+                if (g) next[item.id] = g;
+              }
+              return next;
+            });
             return { ...s, media: [...s.media, ...toAdd] };
           }),
         );
       });
     },
     [],
+  );
+
+  const handleThreadSlotFileDrop = useCallback(
+    (slotId: string, e: React.DragEvent) => {
+      if (!hasFileDrag(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      handleThreadSlotFiles(slotId, e.dataTransfer.files);
+    },
+    [handleThreadSlotFiles],
   );
 
   const removeThreadSlotMedia = useCallback(
@@ -532,18 +600,38 @@ export function ComposerClient() {
           <DocsInfoIcon url={DOCS_COMPOSER_URL} />
         </div>
         <p className="text-sm leading-snug text-text-muted sm:leading-normal">
-          Type anything, paste/upload media, and we&apos;ll route you to the
-          right post flow. You can always adjust details on the next screen.
+          Type anything, paste, drag and drop, or upload images/videos — we&apos;ll
+          route you to the right post flow. You can always adjust details on the
+          next screen.
         </p>
       </div>
 
-      <div className="rounded-2xl border-2 border-border bg-bg-elevated p-4 shadow-sm transition-all duration-200 hover:border-muted-foreground/30 focus-within:border-emerald-200 dark:focus-within:border-emerald-800 focus-within:ring-2 focus-within:ring-emerald-500/20 sm:rounded-2xl sm:p-5 sm:focus-within:ring-1 sm:focus-within:ring-emerald-500/30">
+      <div
+        className={`rounded-2xl border-2 bg-bg-elevated p-4 shadow-sm transition-all duration-200 hover:border-muted-foreground/30 focus-within:border-emerald-200 dark:focus-within:border-emerald-800 focus-within:ring-2 focus-within:ring-emerald-500/20 sm:rounded-2xl sm:p-5 sm:focus-within:ring-1 sm:focus-within:ring-emerald-500/30 ${
+          isFileDragOver
+            ? "border-emerald-500 ring-2 ring-emerald-500/30"
+            : "border-border"
+        }`}
+        onDragEnter={(e) => {
+          if (!hasFileDrag(e)) return;
+          e.preventDefault();
+          setIsFileDragOver(true);
+        }}
+        onDragOver={handleComposerDragOver}
+        onDragLeave={handleComposerDragLeave}
+        onDrop={handleComposerDrop}
+      >
         <textarea
           ref={textareaRef}
           className="min-h-[88px] max-h-[400px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-base text-text outline-none placeholder:text-text-muted sm:min-h-[70px]"
           placeholder="Share what's on your mind..."
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onDragOver={(e) => {
+            if (!hasFileDrag(e)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+          }}
           onPaste={onPaste}
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -643,17 +731,14 @@ export function ComposerClient() {
                 </button>
               )}
             </div>
-            {media.some((m) => m.type === "video") && (
-              <div className="space-y-2 pt-1">
-                {media
-                  .filter((m) => m.type === "video")
-                  .map((m) => {
-                    const g = aspectGuidanceByMediaId[m.id];
-                    if (!g) return null;
-                    return (
-                      <AspectRatioGuidanceBanner key={m.id} guidance={g} />
-                    );
-                  })}
+            {media.some(
+              (m) =>
+                m.type === "video" && aspectGuidanceByMediaId[m.id],
+            ) && (
+              <div className="pt-1">
+                <AspectRatioGuidanceBanner
+                  guidance={NON_STANDARD_VIDEO_ASPECT_GUIDANCE}
+                />
               </div>
             )}
           </div>
@@ -762,6 +847,12 @@ export function ComposerClient() {
             <div
               key={slot.id}
               className="rounded-2xl border border-border bg-bg-elevated p-4 sm:p-5 shadow-sm space-y-4"
+              onDragOver={(e) => {
+                if (!hasFileDrag(e)) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "copy";
+              }}
+              onDrop={(e) => handleThreadSlotFileDrop(slot.id, e)}
             >
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-text-muted">
@@ -788,6 +879,11 @@ export function ComposerClient() {
                   requestAnimationFrame(() =>
                     resizeThreadSlotTextarea(e.target as HTMLTextAreaElement),
                   );
+                }}
+                onDragOver={(e) => {
+                  if (!hasFileDrag(e)) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "copy";
                 }}
               />
               {slot.media.length > 0 && (
@@ -859,17 +955,14 @@ export function ComposerClient() {
                       </div>
                     ))}
                   </div>
-                  {slot.media.some((m) => m.type === "video") && (
-                    <div className="space-y-2 pt-1">
-                      {slot.media
-                        .filter((m) => m.type === "video")
-                        .map((m) => {
-                          const g = aspectGuidanceByMediaId[m.id];
-                          if (!g) return null;
-                          return (
-                            <AspectRatioGuidanceBanner key={m.id} guidance={g} />
-                          );
-                        })}
+                  {slot.media.some(
+                    (m) =>
+                      m.type === "video" && aspectGuidanceByMediaId[m.id],
+                  ) && (
+                    <div className="pt-1">
+                      <AspectRatioGuidanceBanner
+                        guidance={NON_STANDARD_VIDEO_ASPECT_GUIDANCE}
+                      />
                     </div>
                   )}
                 </div>

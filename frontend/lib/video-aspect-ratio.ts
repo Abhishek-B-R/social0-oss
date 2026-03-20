@@ -1,10 +1,21 @@
 /**
  * Client-side video dimensions / aspect ratio helpers.
- * We do not block uploads by ratio — show guidance only (see getAspectRatioGuidance).
+ * We do not block uploads by ratio — optional warning for non-standard ratios only.
  */
 
 /** ~5% relative tolerance when matching standard ratios */
 const REL_TOL = 0.05;
+
+/** Standard ratios (width : height), e.g. 9:16 → w=9, h=16 */
+const STANDARD_RATIO_PAIRS: readonly [number, number][] = [
+  [9, 16],
+  [16, 9],
+  [1, 1],
+  [4, 5],
+  [2, 3],
+  [3, 4],
+  [4, 3],
+];
 
 export type VideoAspectMeasurement = {
   width: number;
@@ -20,93 +31,33 @@ function matchesStandardRatio(ratio: number, w: number, h: number): boolean {
   return Math.abs(ratio - target) / target <= REL_TOL;
 }
 
-/** TikTok API commonly expects 9:16, 1:1, or 16:9 (width/height). */
-export function isTikTokAcceptedAspectRatio(ratio: number): boolean {
-  return (
-    matchesStandardRatio(ratio, 9, 16) ||
-    matchesStandardRatio(ratio, 16, 9) ||
-    matchesStandardRatio(ratio, 1, 1)
-  );
+/** True if ratio matches any common platform-safe ratio (~5% tolerance). */
+export function isStandardAspectRatio(ratio: number): boolean {
+  if (ratio <= 0 || !Number.isFinite(ratio)) return false;
+  return STANDARD_RATIO_PAIRS.some(([w, h]) => matchesStandardRatio(ratio, w, h));
 }
 
-export type AspectRatioKind =
-  | "9:16"
-  | "16:9"
-  | "1:1"
-  | "4:5"
-  | "2:3"
-  | "other";
-
-/** Classify by first match (priority order). */
-export function classifyAspectRatioKind(ratio: number): AspectRatioKind {
-  if (matchesStandardRatio(ratio, 9, 16)) return "9:16";
-  if (matchesStandardRatio(ratio, 16, 9)) return "16:9";
-  if (matchesStandardRatio(ratio, 1, 1)) return "1:1";
-  if (matchesStandardRatio(ratio, 4, 5)) return "4:5";
-  if (matchesStandardRatio(ratio, 2, 3)) return "2:3";
-  return "other";
-}
-
-export type AspectGuidanceVariant = "success" | "info" | "tiktok";
-
+/** Non-standard ratio warning shown in the UI (single copy). */
 export type AspectRatioGuidance = {
-  variant: AspectGuidanceVariant;
+  level: "warn";
   message: string;
 };
 
-/**
- * User-facing copy for ratio guidance. TikTok gets a stronger warning when
- * selected and ratio is outside 9:16 / 16:9 / 1:1.
- */
-export function getAspectRatioGuidance(
-  ratio: number,
-  opts?: { tiktokSelected?: boolean },
-): AspectRatioGuidance {
-  if (opts?.tiktokSelected && !isTikTokAcceptedAspectRatio(ratio)) {
-    return {
-      variant: "tiktok",
-      message:
-        "TikTok may reject this video. Recommended: 9:16 (vertical), 16:9, or 1:1.",
-    };
-  }
+const NON_STANDARD_MESSAGE =
+  "Not a standard ratio — some platforms may reject this video resulting in post failure.";
 
-  const kind = classifyAspectRatioKind(ratio);
-  switch (kind) {
-    case "9:16":
-      return {
-        variant: "success",
-        message: "Optimized for all platforms.",
-      };
-    case "16:9":
-      return {
-        variant: "info",
-        message:
-          "Best for YouTube, LinkedIn, Twitter. Other platforms will add black bars.",
-      };
-    case "1:1":
-      return {
-        variant: "info",
-        message:
-          "Works on all platforms. TikTok and Instagram will add black bars.",
-      };
-    case "4:5":
-      return {
-        variant: "info",
-        message:
-          "Great for Instagram feed. Other platforms may crop or pad.",
-      };
-    case "2:3":
-      return {
-        variant: "info",
-        message: "Ideal for Pinterest. Other platforms may crop or pad.",
-      };
-    default:
-      return {
-        variant: "info",
-        message:
-          "Non-standard ratio. Most platforms will auto-crop or add black bars. For best results, use 9:16 (vertical) or 16:9 (horizontal).",
-      };
-  }
+/** Use for consolidated UI (e.g. composer) when multiple videos share the same warning — show once. */
+export const NON_STANDARD_VIDEO_ASPECT_GUIDANCE: AspectRatioGuidance = {
+  level: "warn",
+  message: NON_STANDARD_MESSAGE,
+};
+
+/**
+ * Returns `null` for standard ratios (no banner). Otherwise one warning object.
+ */
+export function getAspectRatioGuidance(ratio: number): AspectRatioGuidance | null {
+  if (isStandardAspectRatio(ratio)) return null;
+  return NON_STANDARD_VIDEO_ASPECT_GUIDANCE;
 }
 
 /**
@@ -140,7 +91,10 @@ export function measureVideoAspectRatio(
 export function validateVideoAspectRatio(
   file: File,
 ): Promise<VideoAspectMeasurement & { valid: true }> {
-  return measureVideoAspectRatio(file).then((m) => ({ ...m, valid: true as const }));
+  return measureVideoAspectRatio(file).then((m) => ({
+    ...m,
+    valid: true as const,
+  }));
 }
 
 /** Format ratio for debug copy, e.g. "1.8:1" or "1:1.8" */
@@ -160,6 +114,6 @@ export function getAspectRatioDescriptor(ratio: number): string {
   return "";
 }
 
-/** @deprecated Prefer getAspectRatioGuidance */
+/** @deprecated Non-blocking guidance only; see getAspectRatioGuidance */
 export const ASPECT_RATIO_MESSAGE =
-  "Video aspect ratio: use 9:16 or 16:9 for best results across platforms.";
+  "Video aspect ratio: use a standard ratio for best results across platforms.";

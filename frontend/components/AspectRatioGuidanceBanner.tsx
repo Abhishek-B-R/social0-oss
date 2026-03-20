@@ -1,33 +1,25 @@
 "use client";
 
 import type { AspectRatioGuidance } from "@/lib/video-aspect-ratio";
-import { AlertTriangle, Check, Info } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
 export function AspectRatioGuidanceBanner({
   guidance,
 }: {
-  guidance: AspectRatioGuidance;
+  guidance: AspectRatioGuidance | null;
 }) {
-  const { variant, message } = guidance;
-  const cls =
-    variant === "success"
-      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100"
-      : variant === "tiktok"
-        ? "border-amber-500/50 bg-amber-500/10 text-amber-950 dark:text-amber-100"
-        : "border-sky-500/40 bg-sky-500/10 text-sky-950 dark:text-sky-100";
-  const Icon =
-    variant === "success"
-      ? Check
-      : variant === "tiktok"
-        ? AlertTriangle
-        : Info;
+  if (!guidance) return null;
+
   return (
     <div
-      className={`flex gap-2 rounded-lg border px-3 py-2 text-xs leading-snug ${cls}`}
-      role="status"
+      className="flex gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs leading-snug text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/40 dark:text-amber-100"
+      role="alert"
     >
-      <Icon className="h-4 w-4 shrink-0 mt-0.5" aria-hidden />
-      <span>{message}</span>
+      <AlertTriangle
+        className="h-4 w-4 shrink-0 mt-0.5 text-amber-700 dark:text-amber-300"
+        aria-hidden
+      />
+      <span>{guidance.message}</span>
     </div>
   );
 }

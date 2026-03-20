@@ -25,14 +25,21 @@ import {
   VIDEO_DURATION_MESSAGE,
 } from "@/lib/video-duration";
 import { uploadFile } from "@/lib/upload-file";
+import {
+  CLIENT_MAX_VIDEO_UPLOAD_BYTES,
+  CLIENT_MAX_VIDEO_UPLOAD_LABEL,
+  formatBytes,
+} from "@/lib/media-limits";
 import { toast } from "sonner";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 
+const MAX_VIDEO_BATCH = 40;
 const LIMITS = {
-  totalSize: 250 * 1024 * 1024, // 250MB total batch
-  perFile: 250 * 1024 * 1024, // 250MB per file
-  maxCount: 40, // 40 videos max at a time
+  /** Max combined size when all slots are full (40 × 500MB). */
+  totalSize: CLIENT_MAX_VIDEO_UPLOAD_BYTES * MAX_VIDEO_BATCH,
+  perFile: CLIENT_MAX_VIDEO_UPLOAD_BYTES,
+  maxCount: MAX_VIDEO_BATCH,
 };
 const VIDEO_ACCEPT = "video/mp4,video/quicktime,video/webm,video/x-msvideo";
 
@@ -543,14 +550,16 @@ export function BulkToolsVideoClient({
               maxTotalBytes={LIMITS.totalSize}
               currentTotalBytes={totalSelectedBytes}
               currentCount={items.length}
-              maxSizeLabel="MP4, MOV, AVI. Max 250MB each."
-              helperText="Up to 40 videos · 250MB total batch size"
+              maxSizeLabel={`MP4, MOV, AVI. Max ${CLIENT_MAX_VIDEO_UPLOAD_LABEL} each.`}
+              helperText={`Up to ${LIMITS.maxCount} videos · ${CLIENT_MAX_VIDEO_UPLOAD_LABEL} per file (${formatBytes(LIMITS.totalSize)} max batch total)`}
               onFilesSelected={addFiles}
               disabled={items.length >= LIMITS.maxCount}
             />
 
             <p className="text-xs text-muted-foreground">
-              The 250MB total batch size limit is enforced client-side.
+              {CLIENT_MAX_VIDEO_UPLOAD_LABEL} per file and{" "}
+              {formatBytes(LIMITS.totalSize)} max batch total are enforced
+              client-side.
             </p>
 
             {isUploading && !scheduling && (
@@ -583,9 +592,6 @@ export function BulkToolsVideoClient({
                   <VideoCard
                     key={item.id}
                     item={item}
-                    tiktokSelected={selectedAccounts.some(
-                      (a) => a.platform === "tiktok",
-                    )}
                     onCaptionChange={updateCaption}
                     onScheduleChange={updateSchedule}
                     onDelete={removeItem}

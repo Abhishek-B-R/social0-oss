@@ -404,6 +404,16 @@ export function UploadPublishOverlay({
                 ? "Scheduled posts will go out at the times you set."
                 : "Posts can take up to a few minutes to show on all platforms."}
             </p>
+            <p className="mt-2 text-xs text-text-muted">
+              You don&apos;t need to keep waiting here, feel free to{" "}
+              <Link
+                href="/dashboard/composer"
+                className="text-emerald-600 dark:text-emerald-400 hover:underline"
+              >
+                create/schedule another post
+              </Link>{" "}
+              while this one finishes.
+            </p>
           </>
         )}
       </div>

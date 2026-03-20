@@ -333,11 +333,9 @@ export function VideoPostForm({
     }
     measureVideoAspectRatio(videoFile).then((m) => {
       setIsVertical(m.height > m.width);
-      setVideoAspectGuidance(
-        getAspectRatioGuidance(m.ratio, { tiktokSelected: hasTikTokSelected }),
-      );
+      setVideoAspectGuidance(getAspectRatioGuidance(m.ratio));
     });
-  }, [videoFile, hasTikTokSelected]);
+  }, [videoFile]);
 
   useEffect(() => {
     if (initialDraftId || initialEditId) return;
@@ -816,7 +814,7 @@ export function VideoPostForm({
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isUploadZoneHovered, isCaptionFocused, hasTikTokSelected]);
+  }, [isUploadZoneHovered, isCaptionFocused]);
 
   useEffect(() => {
     if (!isUploading) return;
@@ -1647,9 +1645,7 @@ export function VideoPostForm({
                     </button>
                   </div>
                 </div>
-                {videoAspectGuidance && (
-                  <AspectRatioGuidanceBanner guidance={videoAspectGuidance} />
-                )}
+                <AspectRatioGuidanceBanner guidance={videoAspectGuidance} />
               </div>
             )}
             <AutoResizeTextarea
