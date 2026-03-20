@@ -2,6 +2,7 @@
 
 import DocsInfoIcon from "@/components/info-icon";
 import { DOCS_FEEDBACK_URL } from "@/lib/docs-url";
+import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 declare global {
@@ -14,6 +15,10 @@ const CANNY_SDK_URL = "https://sdk.canny.io/sdk.js";
 const CANNY_FALLBACK_URL = "https://social0.canny.io";
 
 export default function FeedbackPage() {
+  const { resolvedTheme } = useTheme();
+  // Match next-themes (same as the rest of the dashboard), not Canny theme: "auto".
+  const cannyTheme = resolvedTheme === "dark" ? "dark" : "light";
+
   const mountRef = useRef<HTMLDivElement>(null);
   const [ssoToken, setSsoToken] = useState<string | null>(null);
   const [sdkLoaded, setSdkLoaded] = useState(false);
@@ -61,13 +66,12 @@ export default function FeedbackPage() {
     };
   }, []);
 
-  // Render Canny when SDK and token are ready
+  // Render Canny when SDK and token are ready; re-run when app theme changes
   useEffect(() => {
     if (!sdkLoaded || !ssoToken || !mountRef.current) return;
 
     const boardToken = process.env.NEXT_PUBLIC_CANNY_BOARD_TOKEN;
     if (!boardToken) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       toast.error("Feedback board not configured");
       return;
     }
@@ -77,13 +81,20 @@ export default function FeedbackPage() {
       return;
     }
 
+    const node = mountRef.current;
+    node.innerHTML = "";
+
     window.Canny("render", {
       boardToken,
       basePath: "/dashboard/feedback",
       ssoToken,
-      theme: "auto",
+      theme: cannyTheme,
     });
-  }, [sdkLoaded, ssoToken]);
+
+    return () => {
+      if (node) node.innerHTML = "";
+    };
+  }, [sdkLoaded, ssoToken, cannyTheme]);
 
   return (
     <>
@@ -121,7 +132,14 @@ export default function FeedbackPage() {
           <p className="text-muted-foreground max-w-md">
             Vote on features, report bugs, and suggest improvements. We couldn’t
             load the feedback board here—you can share feedback directly on
-            Canny.
+            Canny. Or you can always email us at{" "}
+            <a
+              href="mailto:support@social0.app"
+              className="text-emerald-600 dark:text-emerald-400 hover:underline"
+            >
+              support@social0.app
+            </a>
+            .
           </p>
           <a
             href={CANNY_FALLBACK_URL}
@@ -143,13 +161,21 @@ export default function FeedbackPage() {
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               Vote on features, report bugs, and suggest improvements. Be the
-              first to suggest a feature or report an issue.
+              first to suggest a feature or report an issue. Or you can always
+              email us at{" "}
+              <a
+                href="mailto:support@social0.app"
+                className="text-emerald-600 dark:text-emerald-400 hover:underline"
+              >
+                support@social0.app
+              </a>
+              .
             </p>
           </header>
-          <div className="relative min-h-0 flex-1 mt-10">
+          <div className="relative min-h-0 flex-1 mt-6 rounded-xl border border-border bg-bg-elevated">
             {isLoading && (
               <div
-                className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-bg/80"
+                className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl bg-background/80 backdrop-blur-sm"
                 aria-label="Loading feedback board"
               >
                 <div
@@ -161,7 +187,11 @@ export default function FeedbackPage() {
                 </p>
               </div>
             )}
-            <div ref={mountRef} data-canny className="h-full min-h-[200px]" />
+            <div
+              ref={mountRef}
+              data-canny
+              className="h-full min-h-[min(70vh,560px)] min-w-0 p-2 sm:p-4"
+            />
           </div>
         </div>
       )}
