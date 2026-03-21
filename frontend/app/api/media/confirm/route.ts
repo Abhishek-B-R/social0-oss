@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { mediaUploads } from "@/db/schema";
 import { sanitizeFilename } from "@/lib/validation";
+import { env } from "@/lib/env";
 
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const base = (process.env.R2_PUBLIC_URL ?? "").replace(/\/$/, "");
+  const base = (env.R2_PUBLIC_URL ?? "").replace(/\/$/, "");
   const publicUrl = `${base}/${key}`;
 
   try {

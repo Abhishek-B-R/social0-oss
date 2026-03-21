@@ -11,6 +11,23 @@ export const DATE_FORMAT_OPTIONS: { value: DateFormatKey; label: string }[] = [
 
 const DEFAULT_DATE_FORMAT: DateFormatKey = "dd/MM/yyyy";
 
+/** Human-readable IANA timezone for UI (e.g. "Asia/Kolkata (GMT+5:30)"). */
+export function formatTimezoneLabel(tz: string | null | undefined): string {
+  const t = typeof tz === "string" ? tz.trim() : "";
+  if (!t) return "UTC";
+  try {
+    const parts = new Intl.DateTimeFormat("en", {
+      timeZone: t,
+      timeZoneName: "longOffset",
+    }).formatToParts(new Date());
+    const offsetPart = parts.find((p) => p.type === "timeZoneName")?.value;
+    if (offsetPart) return `${t} (${offsetPart})`;
+  } catch {
+    // invalid tz
+  }
+  return t;
+}
+
 export function normalizeDateFormat(
   value: string | null | undefined,
 ): DateFormatKey {

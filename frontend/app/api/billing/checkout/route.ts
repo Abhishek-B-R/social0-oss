@@ -3,9 +3,10 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import DodoPayments from "dodopayments";
 import { PLAN_IDS } from "@/lib/plans";
+import { env } from "@/lib/env";
 
-const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
-const environment = (process.env.DODO_PAYMENTS_ENVIRONMENT as "test_mode" | "live_mode") ?? "test_mode";
+const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
+const environment = env.DODO_PAYMENTS_ENVIRONMENT ?? "test_mode";
 const client = new DodoPayments({ bearerToken: apiKey, environment });
 
 export async function POST(request: Request) {
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000";
+  const appUrl = env.NEXT_PUBLIC_APP_URL;
   const returnUrl =
     successUrl && successUrl.startsWith("/")
       ? `${appUrl}${successUrl}`

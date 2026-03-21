@@ -19,6 +19,13 @@ const ALLOWED_VIDEO_TYPES = [
   "video/mov",
 ];
 
+// Explicit extension allowlist — derived from the content-type allowlists above.
+// Used to sanitize the storage filename and prevent double-extension tricks.
+const ALLOWED_EXTENSIONS = new Set([
+  "jpg", "jpeg", "png", "gif", "webp",
+  "mp4", "mov", "webm",
+]);
+
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
@@ -76,7 +83,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const ext = filename.split(".").pop() || "bin";
+  // Extract and validate the extension against the explicit allowlist.
+  // This prevents double-extension tricks (e.g. "malware.exe.jpg") and
+  // ensures the stored extension always matches a known safe type.
+  const rawExt = (filename.split(".").pop() ?? "").toLowerCase();
+  const ext = ALLOWED_EXTENSIONS.has(rawExt) ? rawExt : "bin";
   const storageFilename = `${crypto.randomUUID()}.${ext}`;
   const key = `uploads/${session.user.id}/${storageFilename}`;
 

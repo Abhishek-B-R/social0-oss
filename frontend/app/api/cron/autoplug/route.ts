@@ -7,6 +7,7 @@ import { decryptToken } from "@/lib/encryption";
 import { verifyCronAuth } from "@/lib/cron-auth";
 import { checkAutoPlugAllowed } from "@/lib/plan-limits";
 import { logCronSkipped } from "@/lib/plan-analytics";
+import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -26,8 +27,8 @@ export async function GET(request: Request) {
   let triggered = 0;
   let expired = 0;
 
-  const appKey = process.env.TWITTER_CONSUMER_KEY;
-  const appSecret = process.env.TWITTER_CONSUMER_SECRET;
+  const appKey = env.TWITTER_CONSUMER_KEY;
+  const appSecret = env.TWITTER_CONSUMER_SECRET;
 
   for (const plug of watching) {
     if (plug.expiresAt <= now) {

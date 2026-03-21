@@ -188,5 +188,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // NOTE: Using NextResponse.redirect() (not next/navigation redirect()) — this does NOT throw
+  // a NEXT_REDIRECT error, so no rethrowNextRedirect() guard is needed here.
+  // If you ever add a try/catch wrapping this line, use NextResponse.redirect() or
+  // call rethrowNextRedirect(err) at the top of the catch to avoid swallowing redirects.
   return NextResponse.redirect(new URL(redirectTo, req.url));
 }

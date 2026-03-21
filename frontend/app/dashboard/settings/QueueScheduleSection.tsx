@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { formatTimezoneLabel } from "@/lib/date-format";
 
 // Mon first for display (grid columns)
 const DAYS_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
@@ -237,7 +238,9 @@ export function QueueScheduleSection({
       </p>
       <p className="mt-1 text-sm text-text-muted">
         Timezone:{" "}
-        <span className="font-medium text-text">{timezone || "UTC"}</span>
+        <span className="font-medium text-text">
+          {formatTimezoneLabel(timezone)}
+        </span>
       </p>
 
       <p className="mt-3 text-xs text-text-muted">
@@ -431,9 +434,10 @@ export function QueueScheduleSection({
               <button
                 type="button"
                 onClick={handleAddTime}
-                className="mt-3 rounded-xl border border-dashed border-border bg-transparent px-4 py-2 text-sm font-medium text-text-muted hover:border-accent hover:text-accent hover:bg-accent/5 transition-colors"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border bg-bg-muted/40 px-3 py-2 text-sm font-medium text-text hover:border-accent/50 hover:bg-accent/5 hover:text-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent/20"
               >
-                + Add posting time
+                <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                Add posting time
               </button>
             )}
             {activeSlots.length === 0 && !showAddRow && (

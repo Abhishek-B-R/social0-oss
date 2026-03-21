@@ -8,7 +8,8 @@ function makeRedis(): Redis | null {
   return new Redis({ url, token });
 }
 
-const redis = makeRedis();
+// Exported so other modules (e.g. webhook idempotency) can reuse the same instance
+export const redis = makeRedis();
 
 // 200 uploads/hour per user (supports bulk sessions: ~50 images × 4 sessions)
 export const uploadLimiter = redis
@@ -46,11 +47,12 @@ export const twitterPremiumRefreshLimiter = redis
     })
   : null;
 
-// Check-email (for sign-in "email not found" message): limit per IP to reduce enumeration
+// Check-email (for sign-in "email not found" message): strict per-IP limit to reduce enumeration.
+// 5/hour is intentionally low — legitimate users rarely need to check more than once or twice.
 export const checkEmailLimiter = redis
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(30, "1 h"),
+      limiter: Ratelimit.slidingWindow(5, "1 h"),
       prefix: "rl:check_email",
     })
   : null;

@@ -47,11 +47,6 @@ export async function POST(req: NextRequest) {
     // Use com.atproto.server.createSession endpoint
     let userInfo;
     try {
-      console.log("🔍 Bluesky auth attempt:", {
-        handle,
-        passwordLength: validated.appPassword.length,
-        passwordPrefix: validated.appPassword.substring(0, 4), // First 4 chars only
-      });
       const sessionResponse = await fetch(
         "https://bsky.social/xrpc/com.atproto.server.createSession",
         {

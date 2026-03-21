@@ -7,13 +7,12 @@ import { db } from "@/db";
 import { userSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { PLAN_IDS } from "@/lib/plans";
+import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
-const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
-const environment =
-  (process.env.DODO_PAYMENTS_ENVIRONMENT as "test_mode" | "live_mode") ??
-  "test_mode";
+const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
+const environment = env.DODO_PAYMENTS_ENVIRONMENT ?? "test_mode";
 const client = new DodoPayments({ bearerToken: apiKey, environment });
 
 /**
@@ -149,7 +148,8 @@ export async function POST(request: Request) {
       },
     );
 
-    if (process.env.BILLING_DEBUG === "1") {
+    // Only log in non-production to avoid leaking billing data
+    if (process.env.BILLING_DEBUG === "1" && process.env.NODE_ENV !== "production") {
       console.log(
         "[billing/change-plan] UPGRADE RESPONSE:",
         JSON.stringify(dodoResponse, null, 2),

@@ -26,7 +26,12 @@ function makeSignedCookieValue(token: string, secret: string): string {
 // Creates a properly-signed Better Auth session for the real user and
 // redirects to /dashboard with the session cookie set.
 // Only active when ALLOW_TEST_SIGNIN=true (set in .env.test / .env.local).
+// Hard-blocked in production regardless of env var.
 export async function GET(req: NextRequest) {
+  // Hard production guard — never allow in production no matter what env vars say
+  if (process.env.NODE_ENV === "production") {
+    return new NextResponse(null, { status: 404 });
+  }
   if (process.env.ALLOW_TEST_SIGNIN !== "true") {
     return new NextResponse(null, { status: 404 });
   }

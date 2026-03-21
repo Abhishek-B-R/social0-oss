@@ -7,13 +7,15 @@ import { eq } from "drizzle-orm";
 import { setSubscription } from "@/lib/subscription";
 import { syncConnectedAccountsToLimit } from "@/lib/plan-limits";
 import { getTierFromProductId, PLAN_IDS } from "@/lib/plans";
+import { env } from "@/lib/env";
+import { redis } from "@/lib/ratelimit";
 
-const webhookSecret = process.env.DODO_PAYMENTS_WEBHOOK_SECRET ?? "";
-const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
-const environment =
-  (process.env.DODO_PAYMENTS_ENVIRONMENT as "test_mode" | "live_mode") ??
-  "test_mode";
-const billingDebug = process.env.BILLING_DEBUG === "1";
+const webhookSecret = env.DODO_PAYMENTS_WEBHOOK_SECRET ?? "";
+const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
+const environment = env.DODO_PAYMENTS_ENVIRONMENT ?? "test_mode";
+// Only enable debug logging in non-production environments to avoid leaking billing data
+const billingDebug =
+  process.env.BILLING_DEBUG === "1" && process.env.NODE_ENV !== "production";
 
 function tierRank(tier: string | null | undefined): number {
   switch (tier) {
@@ -295,6 +297,19 @@ export async function POST(request: Request) {
     const msg = e instanceof Error ? e.message : "Verification failed";
     console.error("[dodo webhook] Verification failed:", msg);
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
+
+  // Idempotency: skip re-processing webhooks already handled within the last 24 hours.
+  // This prevents duplicate tier changes if Dodo re-delivers the same event.
+  // Gracefully skipped when Redis is not configured.
+  if (redis && webhookId) {
+    const idempotencyKey = `dodo:wh:${webhookId}`;
+    // SET NX with 24h TTL — returns "OK" on first set, null if already exists
+    const wasSet = await redis.set(idempotencyKey, "1", { nx: true, ex: 86400 });
+    if (wasSet === null) {
+      // Already processed — return 200 so Dodo doesn't retry
+      return NextResponse.json({ received: true, duplicate: true });
+    }
   }
 
   const eventType = payload.type ?? "";

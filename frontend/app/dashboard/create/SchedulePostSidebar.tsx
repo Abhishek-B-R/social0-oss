@@ -5,7 +5,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import type { PublishMode } from "@/app/actions/posts";
-import { formatDateTime } from "@/lib/date-format";
+import { formatDateTime, formatTimezoneLabel } from "@/lib/date-format";
 import { Settings, ListOrdered } from "lucide-react";
 
 export type SidebarAutoRepost = {
@@ -154,8 +154,12 @@ export function SchedulePostSidebar({
 
   const scheduledReadable = useMemo(() => {
     if (!combinedDateTime) return null;
-    return `Scheduled for ${formatDateTime(combinedDateTime, { dateFormat, use24HourTimeFormat })}`;
-  }, [combinedDateTime, use24HourTimeFormat, dateFormat]);
+    return `Scheduled for ${formatDateTime(combinedDateTime, {
+      dateFormat,
+      use24HourTimeFormat,
+      timezone,
+    })}`;
+  }, [combinedDateTime, use24HourTimeFormat, dateFormat, timezone]);
 
   // Keep the parent `scheduledAt` in sync with our inputs while scheduled mode is on.
   useEffect(() => {
@@ -349,30 +353,29 @@ export function SchedulePostSidebar({
                 <span className="text-sm text-text-muted">Loading queue…</span>
               </div>
             ) : nextSlot ? (
-              <>
-                <button
-                  type="button"
-                  onClick={fillNextSlot}
-                  className="flex w-full items-center gap-2 rounded-xl border border-border bg-bg-muted/50 px-3 py-2.5 text-left text-sm font-medium text-text transition-colors hover:bg-bg-muted hover:border-accent/40 focus:outline-none focus:ring-2 focus:ring-accent/20"
-                >
-                  <ListOrdered
-                    className="h-4 w-4 shrink-0 text-accent"
-                    aria-hidden
-                  />
-                  <span>Next Queue Slot: {nextSlot.displayLabel}</span>
-                </button>
-                <p className="text-xs text-text-muted">
-                  Timezone: {nextSlot.timezoneLabel}
-                </p>
-              </>
+              <button
+                type="button"
+                onClick={fillNextSlot}
+                className="flex w-full items-center gap-2 rounded-xl border border-border bg-bg-muted/50 px-3 py-2.5 text-left text-sm font-medium text-text transition-colors hover:bg-bg-muted hover:border-accent/40 focus:outline-none focus:ring-2 focus:ring-accent/20"
+              >
+                <ListOrdered
+                  className="h-4 w-4 shrink-0 text-accent"
+                  aria-hidden
+                />
+                <span>Next Queue Slot: {nextSlot.displayLabel}</span>
+              </button>
             ) : (
               <Link
                 href="/dashboard/settings#queue"
-                className="text-sm text-accent hover:text-accent-hover hover:underline"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border bg-bg-muted/40 px-3 py-2 text-sm font-medium text-text hover:border-accent/50 hover:bg-accent/5 hover:text-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent/20"
               >
-                Set up queue in Settings →
+                <Settings className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                Set up queue in Settings
               </Link>
             )}
+            <p className="text-xs text-text-muted">
+              Timezone: {formatTimezoneLabel(timezone)}
+            </p>
             <div className="flex gap-3">
               <div className="min-w-0 flex-1">
                 <label

@@ -28,7 +28,7 @@ import {
 } from "@/app/actions/settings";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PLATFORMS } from "@/lib/platforms";
-import { DATE_FORMAT_OPTIONS } from "@/lib/date-format";
+import { DATE_FORMAT_OPTIONS, formatTimezoneLabel } from "@/lib/date-format";
 import { uploadFile } from "@/lib/upload-file";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import { QueueScheduleSection } from "./QueueScheduleSection";
@@ -840,20 +840,6 @@ function AvatarEditor({
   );
 }
 
-function getTimezoneLabel(tz: string): string {
-  try {
-    const parts = new Intl.DateTimeFormat("en", {
-      timeZone: tz,
-      timeZoneName: "longOffset",
-    }).formatToParts(new Date());
-    const offsetPart = parts.find((p) => p.type === "timeZoneName")?.value;
-    if (offsetPart) return `${tz} (${offsetPart})`;
-  } catch {
-    // ignore invalid timezone
-  }
-  return tz;
-}
-
 function DetectTimezoneButton({
   selectId,
   onDetected,
@@ -1185,7 +1171,7 @@ export function SettingsClient({
                     >
                       {timeZones.map((tz) => (
                         <option key={tz} value={tz}>
-                          {getTimezoneLabel(tz)}
+                          {formatTimezoneLabel(tz)}
                         </option>
                       ))}
                     </select>
