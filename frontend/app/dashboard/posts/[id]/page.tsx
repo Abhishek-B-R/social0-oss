@@ -509,11 +509,14 @@ export default async function PostDetailPage({
                   } else if (
                     pub.platform === "tiktok" &&
                     pub.status === "published" &&
-                    pub.platformPostId &&
-                    /^\d+$/.test(String(pub.platformPostId)) &&
                     pub.platformUsername
                   ) {
-                    viewUrl = `https://www.tiktok.com/@${pub.platformUsername}/video/${pub.platformPostId}`;
+                    const handle = String(pub.platformUsername).replace(
+                      /^@/,
+                      "",
+                    );
+                    // TikTok video ids from the API are not always numeric; profile always works.
+                    viewUrl = `https://www.tiktok.com/@${handle}`;
                   } else {
                     viewUrl = pub.platformPostUrl ?? null;
                   }

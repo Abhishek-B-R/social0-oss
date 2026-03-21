@@ -1,9 +1,10 @@
 /**
  * Process images for TikTok photo posts: download from R2, resize with sharp,
  * convert to JPEG, re-upload to R2 with -tiktok-processed suffix.
- * TikTok requires exactly 1080×1920. We output 1080×1920 with source image
- * centered on a black background; unique key per attempt so TikTok does not
- * serve cached stale images.
+ * TikTok photo/carousel API accepts ratios 9:16, 1:1, and 4:5 (not 16:9).
+ * We always output **1080×1920 (9:16)** with the source image centered on a
+ * dark gray letterbox — safest single output for the API.
+ * Unique key per attempt so TikTok does not serve cached stale images.
  */
 
 import sharp from "sharp";
@@ -20,6 +21,9 @@ const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20MB
 const JPEG_QUALITY = 90;
 const MIN_ASPECT = 1 / 3; // 1:3
 const MAX_ASPECT = 3; // 3:1
+
+/** Dark gray letterbox so black-on-black sources remain visible (not #000). */
+const CANVAS_BG = { r: 17, g: 17, b: 17 } as const; // #111111
 
 export class TikTokImageError extends Error {
   constructor(
@@ -53,7 +57,7 @@ function getProcessedKey(originalUrl: string): string {
 
 /**
  * Process a single image for TikTok: download from R2, produce exactly 1080×1920
- * (source centered on black background), convert to JPEG, re-upload to R2 with
+ * (source centered on dark gray), convert to JPEG, re-upload to R2 with
  * a unique key per attempt. Returns the public URL.
  */
 export async function processImageForTikTok(
@@ -103,19 +107,19 @@ export async function processImageForTikTok(
   const offsetX = Math.round((TIKTOK_PHOTO_W - fgW) / 2);
   const offsetY = Math.round((TIKTOK_PHOTO_H - fgH) / 2);
 
-  // Black canvas 1080×1920, composite foreground centered
-  const blackCanvas = await sharp({
+  // 1080×1920 canvas, composite foreground centered
+  const baseCanvas = await sharp({
     create: {
       width: TIKTOK_PHOTO_W,
       height: TIKTOK_PHOTO_H,
       channels: 3,
-      background: { r: 0, g: 0, b: 0 },
+      background: { ...CANVAS_BG },
     },
   })
     .jpeg()
     .toBuffer();
 
-  let outputBuffer = await sharp(blackCanvas)
+  let outputBuffer = await sharp(baseCanvas)
     .composite([
       { input: fgBuffer, left: offsetX, top: offsetY },
     ])
@@ -124,7 +128,7 @@ export async function processImageForTikTok(
 
   // 20MB check: re-encode at lower quality if over
   if (outputBuffer.length > MAX_FILE_BYTES) {
-    outputBuffer = await sharp(blackCanvas)
+    outputBuffer = await sharp(baseCanvas)
       .composite([{ input: fgBuffer, left: offsetX, top: offsetY }])
       .jpeg({ quality: 70 })
       .toBuffer();

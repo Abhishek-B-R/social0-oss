@@ -242,15 +242,10 @@ export function PostListCards({
         const showIcons = publicationsList.slice(0, MAX_PLATFORM_ICONS);
         const extraCount = publicationsList.length > MAX_PLATFORM_ICONS ? publicationsList.length - MAX_PLATFORM_ICONS : 0;
 
-        const isPublishing = uiStatus === "publishing";
-        const cardBorderClass = isPublishing
-          ? "border-l-4 border-l-amber-400 border border-border hover:border-emerald-500"
-          : "border border-border hover:border-emerald-500";
-
         return (
           <li
             key={post.id}
-            className={`rounded-[12px] bg-card transition-shadow hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)] ${cardBorderClass}`}
+            className="rounded-[12px] border border-border bg-card transition-shadow hover:border-emerald-500 hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
           >
             <Link
               href={`/dashboard/posts/${post.id}`}

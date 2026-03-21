@@ -32,7 +32,7 @@ export const publishLimiter = redis
 export const oauthLimiter = redis
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(10, "1 m"),
+      limiter: Ratelimit.slidingWindow(20, "1 m"),
       prefix: "rl:oauth",
     })
   : null;
