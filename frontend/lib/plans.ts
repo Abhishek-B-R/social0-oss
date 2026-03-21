@@ -29,7 +29,7 @@ const FREE_LIMITS: PlanLimits = {
 
 const STARTER_LIMITS: PlanLimits = {
   maxConnectedAccounts: 5,
-  tweetsPerMonth: 300,
+  tweetsPerMonth: 200,
   allowBulkTools: false,
   allowAutoPlug: false,
   allowResurface: false,
@@ -37,7 +37,7 @@ const STARTER_LIMITS: PlanLimits = {
 
 const GROWTH_LIMITS: PlanLimits = {
   maxConnectedAccounts: 15,
-  tweetsPerMonth: 1500,
+  tweetsPerMonth: 1000,
   allowBulkTools: true,
   allowAutoPlug: true,
   allowResurface: true,

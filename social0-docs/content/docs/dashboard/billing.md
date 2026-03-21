@@ -17,7 +17,7 @@ You’ll see your plan, limits, and buttons to upgrade or manage subscription.
 ## What you’ll see
 
 - **Current plan** — Free, Starter, Growth, or Pro.
-- **Usage** — For example: “5 of 5 accounts connected,” “120 of 300 tweets this month.” That helps you know when you’re near a limit.
+- **Usage** — For example: “5 of 5 accounts connected,” “80 of 200 tweets this month.” That helps you know when you’re near a limit.
 - **Upgrade / Change plan** — Buttons to pick a different plan. Clicking one sends you to our payment provider; when you’re done, you return and your plan updates.
 - **Cancel** — Option to cancel your subscription. You may be taken to the payment provider to confirm. After you cancel, you keep access until the end of the billing period; then you’re on Free.
 

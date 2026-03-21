@@ -40,7 +40,7 @@ const STARTER_BILLING_FEATURES = [
   "Schedule posts across platforms",
   "Carousel posts",
   "Threads & Collections support",
-  "300 tweets/month (Twitter/X)",
+  "200 tweets/month (Twitter/X)",
   "Human support",
 ];
 
@@ -51,9 +51,9 @@ const GROWTH_BILLING_FEATURES = [
   "Schedule posts across platforms",
   "Carousel posts",
   "Threads & Collections support",
-  "300 tweets/month (Twitter/X)",
+  "200 tweets/month (Twitter/X)",
   "Up to 15 connected accounts",
-  "1,500 tweets/month (Twitter/X)",
+  "1,000 tweets/month (Twitter/X)",
   "Auto-plug high performing tweets",
   "Auto-repost on autopilot",
   "Bulk scheduling tools",
@@ -1044,7 +1044,7 @@ export function BillingClient({
                   <ul className="space-y-2">
                     {[
                       "Up to 15 accounts (drops to 5)",
-                      "1,500 tweets/month (drops to 300)",
+                      "1,000 tweets/month (drops to 200)",
                       "Auto-plug high performing tweets",
                       "Auto-repost on autopilot",
                       "Bulk scheduling tools",
