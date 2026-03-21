@@ -5,68 +5,7 @@
  */
 
 import { TwitterApi } from "twitter-api-v2";
-
-/** Extract a readable message from Twitter SDK/API errors (v1/v2 and axios-style). */
-function getTwitterMediaErrorMessage(e: unknown, context: string): string {
-  const fallback = e instanceof Error ? e.message : "Unknown error";
-  if (e && typeof e === "object") {
-    const err = e as Record<string, unknown>;
-    // SDK sometimes attaches API response on .data
-    if (typeof err.data === "object" && err.data !== null) {
-      const data = err.data as Record<string, unknown>;
-      const msg =
-        data.error ??
-        data.message ??
-        (Array.isArray(data.errors)
-          ? (data.errors as Array<{ message?: string }>).map((x) => x.message ?? "").filter(Boolean).join(", ") || null
-          : null) ??
-        data.detail ??
-        data.title;
-      if (msg && typeof msg === "string") return `${context}: ${msg}`;
-    }
-    // Axios-style: response.data
-    const res = err.response as { data?: unknown; status?: number } | undefined;
-    if (res && typeof res === "object" && res.data != null) {
-      const data = res.data as Record<string, unknown>;
-      const msg =
-        data.error ??
-        data.message ??
-        data.detail ??
-        (Array.isArray(data.errors)
-          ? (data.errors as Array<{ message?: string }>).map((x) => x.message ?? "").filter(Boolean).join(", ") || null
-          : null);
-      if (msg && typeof msg === "string")
-        return res.status ? `${context}: ${msg} (HTTP ${res.status})` : `${context}: ${msg}`;
-      if (res.status) return `${context}: Request failed (HTTP ${res.status})`;
-    }
-    if (err.cause instanceof Error && err.cause.message)
-      return `${context}: ${err.cause.message}`;
-    if (typeof err.code === "string" && err.code) return `${context}: ${err.code}`;
-    if (typeof err.status === "number") return `${context}: Request failed (HTTP ${err.status})`;
-  }
-  if (fallback === "Request failed.") {
-    try {
-      const safeKeys = ["code", "status", "cause", "data", "response"];
-      const hint: Record<string, unknown> = {};
-      if (e && typeof e === "object") {
-        const o = e as Record<string, unknown>;
-        for (const k of safeKeys) {
-          if (k in o && o[k] !== undefined) {
-            if (typeof o[k] === "object" && o[k] !== null && "data" in (o[k] as object))
-              hint[k] = "(has data)";
-            else if (typeof o[k] === "object" && o[k] !== null && "status" in (o[k] as object))
-              hint[k] = { ...(o[k] as object), data: "(omitted)" };
-            else hint[k] = o[k];
-          }
-        }
-      }
-      console.error("[Twitter media] Generic Request failed — error hint:", JSON.stringify(hint));
-    } catch {
-      console.error("[Twitter media] Generic Request failed — raw error:", e);
-    }
-  }
-  return `${context}: ${fallback}`;
-}
+import { formatTwitterMediaError } from "@/lib/twitter-errors";
 
 function getTwitterClient(accessToken: string, accessSecret: string): TwitterApi {
   const appKey = process.env.TWITTER_CONSUMER_KEY;
@@ -106,7 +45,7 @@ export async function uploadTwitterImage(
     });
     return mediaId;
   } catch (e) {
-    throw new Error(getTwitterMediaErrorMessage(e, "Twitter image upload"));
+    throw new Error(formatTwitterMediaError(e, "Twitter image upload"));
   }
 }
 
@@ -155,7 +94,7 @@ export async function uploadTwitterVideo(
     }
     if (!mediaId)
       throw new Error(
-        getTwitterMediaErrorMessage(lastUploadError, "Twitter video upload"),
+        formatTwitterMediaError(lastUploadError, "Twitter video upload"),
       );
 
     let status = await client.v1.mediaInfo(mediaId);
@@ -185,6 +124,6 @@ export async function uploadTwitterVideo(
 
     return mediaId;
   } catch (e) {
-    throw new Error(getTwitterMediaErrorMessage(e, "Twitter video upload"));
+    throw new Error(formatTwitterMediaError(e, "Twitter video upload"));
   }
 }

@@ -28,6 +28,10 @@ import {
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { formatDateTime } from "@/lib/date-format";
 import { sortBySlowPlatformsLast } from "@/lib/publish-order";
+import {
+  enrichTwitterErrorForDisplay,
+  isTwitterPlatformId,
+} from "@/lib/twitter-errors";
 import { DOCS_POST_VIEW_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
 
@@ -552,8 +556,10 @@ export default async function PostDetailPage({
                             </p>
                           )}
                           {pub.lastError && pub.status === "failed" && (
-                            <p className="mt-0.5 text-[11px] text-red-600 dark:text-red-400 line-clamp-2">
-                              {pub.lastError}
+                            <p className="mt-0.5 text-[11px] text-red-600 dark:text-red-400 line-clamp-4">
+                              {isTwitterPlatformId(pub.platform)
+                                ? enrichTwitterErrorForDisplay(pub.lastError)
+                                : pub.lastError}
                             </p>
                           )}
                         </div>

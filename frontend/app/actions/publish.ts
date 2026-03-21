@@ -33,6 +33,7 @@ import { getSubscriptionForUser } from "@/lib/subscription";
 import { isActiveTier } from "@/lib/plans";
 import { logPublishBlocked } from "@/lib/plan-analytics";
 import { uploadTwitterImage, uploadTwitterVideo } from "@/lib/twitter-media";
+import { getTwitterErrorMessage } from "@/lib/twitter-errors";
 import { TwitterApi } from "twitter-api-v2";
 
 /** Extract a readable error from LinkedIn API response (status, message, serviceErrorCode). */
@@ -51,57 +52,6 @@ function parseLinkedInError(
   if (status != null) parts.push(`HTTP ${status}`);
   if (parts.length) return parts.join(" ");
   return `LinkedIn API error: ${fallbackStatus}`;
-}
-
-/** Extract a readable error from Twitter/X API response (v2 and v1 shapes) */
-function parseTwitterError(
-  data: Record<string, unknown>,
-  fallbackStatus: number,
-): string {
-  const title = data.title as string | undefined;
-  const detail = data.detail as string | undefined;
-  const message = data.message as string | undefined;
-  const errors = data.errors as
-    | Array<{ message?: string; code?: number }>
-    | undefined;
-  const error = data.error as string | undefined;
-  const parts: string[] = [];
-  if (title) parts.push(title);
-  if (detail) parts.push(detail);
-  if (message) parts.push(message);
-  if (error) parts.push(error);
-  if (errors && errors.length > 0) {
-    const errorMessages = errors
-      .map((e) => e.message || `Error ${e.code ?? ""}`)
-      .join(", ");
-    parts.push(errorMessages);
-  }
-  if (parts.length) return parts.join(" — ");
-  return `Twitter API error: ${fallbackStatus}`;
-}
-
-/** Get the best available message from a Twitter SDK/API error */
-function getTwitterErrorMessage(e: unknown): string {
-  if (e instanceof Error) {
-    const msg = e.message;
-    if (msg !== "Request failed.") return msg;
-  }
-  if (e && typeof e === "object") {
-    if ("data" in e) {
-      const data = (e as { data: Record<string, unknown> }).data;
-      if (data && typeof data === "object") {
-        const parsed = parseTwitterError(data as Record<string, unknown>, 0);
-        if (parsed && parsed !== "Twitter API error: 0") return parsed;
-      }
-    }
-    if ("cause" in e && (e as { cause: unknown }).cause instanceof Error) {
-      return (e as { cause: Error }).cause.message;
-    }
-    if ("error" in e && typeof (e as { error: unknown }).error === "string") {
-      return (e as { error: string }).error;
-    }
-  }
-  return "Failed to post tweet";
 }
 
 export type PublishResult = {
