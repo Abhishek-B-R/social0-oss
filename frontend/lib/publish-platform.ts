@@ -102,6 +102,26 @@ function threadsFormBody(
   return p.toString();
 }
 
+/**
+ * Published media id from POST .../threads_publish (Graph JSON).
+ * Prefer string ids — large numeric JSON ids can lose precision in JS.
+ */
+function parseThreadsPublishId(data: unknown): string | null {
+  if (data == null || typeof data !== "object") return null;
+  const o = data as Record<string, unknown>;
+  const id = o.id;
+  if (typeof id === "string" && id.trim().length > 0) return id.trim();
+  if (typeof id === "number" && Number.isFinite(id)) {
+    return String(Math.trunc(id));
+  }
+  const nested = o.data;
+  if (nested != null && typeof nested === "object") {
+    const inner = (nested as Record<string, unknown>).id;
+    if (typeof inner === "string" && inner.trim().length > 0) return inner.trim();
+  }
+  return null;
+}
+
 /** 64-char alphabet for base-64 style shortcode encoding. */
 const INSTAGRAM_SHORTCODE_CHARSET =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
@@ -2788,11 +2808,9 @@ async function publishThreadsThread(
     const imageUrl = images[0]?.url;
     const videoUrl = videos[0]?.url;
 
-    // reply_to_id must be the PUBLISHED post ID from threads_publish (step 2), never the container ID from threads (step 1).
+    // reply_to_id is set only after media fields are chosen, immediately before POST /me/threads
+    // (must be the published media id from the previous part's threads_publish, never the container id).
     const body: Record<string, string | boolean> = {};
-    if (i > 0 && previousPublishedId) {
-      body.reply_to_id = previousPublishedId;
-    }
 
     if (images.length > 1) {
       // Carousel: create item containers for this part only (not replies; they're children)
@@ -2841,7 +2859,19 @@ async function publishThreadsThread(
       body.text = safeText;
     }
 
-    // Step 1: Create container for this part only (with reply_to_id if not first).
+    if (i > 0) {
+      if (!previousPublishedId) {
+        const err = `Threads thread chain broken: missing previous published post id before part ${i + 1}`;
+        return {
+          status: "failed",
+          lastError: err,
+          error: "Chain broken",
+        };
+      }
+      body.reply_to_id = previousPublishedId;
+    }
+
+    // Step 1: Create container for this part (reply_to_id set above when i > 0).
     // Use /me/threads so reply_to_id is resolved in the token user's context (per Meta docs).
     const createRes = await fetch(
       `https://graph.threads.net/v1.0/me/threads?${threadParams}`,
@@ -2938,7 +2968,8 @@ async function publishThreadsThread(
         error_user_title?: string;
       };
     };
-    if (!publishRes.ok || !publishData.id) {
+    const publishedId = parseThreadsPublishId(publishData);
+    if (!publishRes.ok || !publishedId) {
       const err = publishData.error;
       const errMsg =
         err?.error_user_msg ??
@@ -2957,13 +2988,10 @@ async function publishThreadsThread(
         error: "Publish failed",
       };
     }
-    if (i === 0) {
-      console.log("[Threads] Part 1 publish response:", publishData);
-    }
 
-    // Step 3: reply_to_id must use the published post ID from threads_publish (publishData.id), NOT the container ID (createData.id).
-    previousPublishedId = publishData.id;
-    if (!firstPublishedId) firstPublishedId = publishData.id;
+    // Step 3: next part's reply_to_id must be this published media id, not the container id.
+    previousPublishedId = publishedId;
+    if (!firstPublishedId) firstPublishedId = publishedId;
     if (i < parts.length - 1) {
       await new Promise((r) => setTimeout(r, 2000));
     }
@@ -3313,9 +3341,15 @@ async function publishToThreads(
     const err = publishData.error?.message ?? `HTTP ${publishRes.status}`;
     return { status: "failed", lastError: err, error: err };
   }
-  const threadShortcode = publishData.id
-    ? threadsMediaIdToShortcode(publishData.id)
-    : "";
+  const publishedSingleId = parseThreadsPublishId(publishData);
+  if (!publishedSingleId) {
+    return {
+      status: "failed",
+      lastError: "Threads publish returned no media id",
+      error: "Publish failed",
+    };
+  }
+  const threadShortcode = threadsMediaIdToShortcode(publishedSingleId);
   const platformPostUrl =
     threadShortcode && pub.platformUsername
       ? `https://www.threads.net/@${pub.platformUsername}/post/${threadShortcode}`
@@ -3324,7 +3358,7 @@ async function publishToThreads(
         : null;
   return {
     status: "published",
-    platformPostId: publishData.id ?? null,
+    platformPostId: publishedSingleId,
     platformPostUrl,
     publishedAt: new Date(),
   };

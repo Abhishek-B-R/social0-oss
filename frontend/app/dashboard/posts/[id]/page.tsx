@@ -274,7 +274,7 @@ export default async function PostDetailPage({
                         <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">
                           Part {idx + 1}
                         </span>
-                        <p className="mt-2 text-sm text-text whitespace-pre-wrap break-words">
+                        <p className="mt-2 text-sm text-text whitespace-pre-wrap wrap-break-word">
                           {part.text || "(No caption)"}
                         </p>
                         {partMedia.length > 0 && (
@@ -331,7 +331,7 @@ export default async function PostDetailPage({
                   Caption
                 </label>
                 <div className="rounded-lg bg-neutral-100 dark:bg-neutral-900 p-4 min-h-[80px]">
-                  <p className="text-sm text-text whitespace-pre-wrap break-words">
+                  <p className="text-sm text-text whitespace-pre-wrap wrap-break-word">
                     {parts[0] ?? "(No caption)"}
                   </p>
                 </div>
@@ -589,18 +589,20 @@ export default async function PostDetailPage({
                     Autoplug:
                   </dt>
                   <dd>
-                    {autoPlug ? (() => {
-                      const badge = getAutoPlugBadge(autoPlug.status);
-                      return badge ? (
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
-                        >
-                          {badge.label}
-                        </span>
-                      ) : (
-                        <span className="text-text-muted">—</span>
-                      );
-                    })() : (
+                    {autoPlug ? (
+                      (() => {
+                        const badge = getAutoPlugBadge(autoPlug.status);
+                        return badge ? (
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
+                          >
+                            {badge.label}
+                          </span>
+                        ) : (
+                          <span className="text-text-muted">—</span>
+                        );
+                      })()
+                    ) : (
                       <span className="text-text-muted">—</span>
                     )}
                   </dd>
