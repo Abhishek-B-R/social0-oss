@@ -17,8 +17,11 @@ import {
 import {
   publishPost,
   getPostPublicationList,
-  publishSinglePublication,
 } from "@/app/actions/publish";
+import {
+  sortBySlowPlatformsLast,
+  publishEachPublicationInParallel,
+} from "@/lib/publish-order";
 import {
   createAutoPlug,
   createResurfaceSchedule,
@@ -501,7 +504,8 @@ export function TextPostForm({
           await setupAutoPlug(result.postId);
           return;
         }
-        const initial: PlatformResult[] = list.map((pub) => ({
+        const orderedList = sortBySlowPlatformsLast(list);
+        const initial: PlatformResult[] = orderedList.map((pub) => ({
           platform: pub.platform,
           accountId: pub.connectedAccountId,
           accountName: pub.platformUsername
@@ -512,38 +516,40 @@ export function TextPostForm({
         }));
         setPlatformStatuses(initial);
         setOverlayPhase("publishing");
-        for (let i = 0; i < list.length; i++) {
-          const pub = list[i];
-          setPlatformStatuses((prev) =>
-            prev.map((p) =>
-              p.accountId === pub.connectedAccountId
-                ? { ...p, status: "processing" as PlatformStatus }
-                : p,
-            ),
-          );
-          const singleResult = await publishSinglePublication(
-            result.postId,
-            pub.publicationId,
-          );
-          const res = singleResult.results?.[0];
-          setPlatformStatuses((prev) =>
-            prev.map((p) =>
-              p.accountId === pub.connectedAccountId
-                ? {
-                    ...p,
-                    status: (res?.status === "published"
-                      ? "published"
-                      : "failed") as PlatformStatus,
-                    error: res?.status === "failed" ? res?.error : undefined,
-                    postUrl:
-                      res?.status === "published"
-                        ? (res?.platformPostUrl ?? null)
-                        : undefined,
-                  }
-                : p,
-            ),
-          );
-        }
+        await publishEachPublicationInParallel(
+          result.postId,
+          orderedList,
+          undefined,
+          (connectedAccountId) => {
+            setPlatformStatuses((prev) =>
+              prev.map((p) =>
+                p.accountId === connectedAccountId
+                  ? { ...p, status: "processing" as PlatformStatus }
+                  : p,
+              ),
+            );
+          },
+          (connectedAccountId, singleResult) => {
+            const res = singleResult.results?.[0];
+            setPlatformStatuses((prev) =>
+              prev.map((p) =>
+                p.accountId === connectedAccountId
+                  ? {
+                      ...p,
+                      status: (res?.status === "published"
+                        ? "published"
+                        : "failed") as PlatformStatus,
+                      error: res?.status === "failed" ? res?.error : undefined,
+                      postUrl:
+                        res?.status === "published"
+                          ? (res?.platformPostUrl ?? null)
+                          : undefined,
+                    }
+                  : p,
+              ),
+            );
+          },
+        );
         await publishPost(result.postId);
         if (
           resurfaceConfig &&
@@ -636,7 +642,8 @@ export function TextPostForm({
           await setupAutoPlug(result.postId);
           return;
         }
-        const initial: PlatformResult[] = list.map((pub) => ({
+        const orderedList = sortBySlowPlatformsLast(list);
+        const initial: PlatformResult[] = orderedList.map((pub) => ({
           platform: pub.platform,
           accountId: pub.connectedAccountId,
           accountName: pub.platformUsername
@@ -647,38 +654,40 @@ export function TextPostForm({
         }));
         setPlatformStatuses(initial);
         setOverlayPhase("publishing");
-        for (let i = 0; i < list.length; i++) {
-          const pub = list[i];
-          setPlatformStatuses((prev) =>
-            prev.map((p) =>
-              p.accountId === pub.connectedAccountId
-                ? { ...p, status: "processing" as PlatformStatus }
-                : p,
-            ),
-          );
-          const singleResult = await publishSinglePublication(
-            result.postId,
-            pub.publicationId,
-          );
-          const res = singleResult.results?.[0];
-          setPlatformStatuses((prev) =>
-            prev.map((p) =>
-              p.accountId === pub.connectedAccountId
-                ? {
-                    ...p,
-                    status: (res?.status === "published"
-                      ? "published"
-                      : "failed") as PlatformStatus,
-                    error: res?.status === "failed" ? res?.error : undefined,
-                    postUrl:
-                      res?.status === "published"
-                        ? (res?.platformPostUrl ?? null)
-                        : undefined,
-                  }
-                : p,
-            ),
-          );
-        }
+        await publishEachPublicationInParallel(
+          result.postId,
+          orderedList,
+          undefined,
+          (connectedAccountId) => {
+            setPlatformStatuses((prev) =>
+              prev.map((p) =>
+                p.accountId === connectedAccountId
+                  ? { ...p, status: "processing" as PlatformStatus }
+                  : p,
+              ),
+            );
+          },
+          (connectedAccountId, singleResult) => {
+            const res = singleResult.results?.[0];
+            setPlatformStatuses((prev) =>
+              prev.map((p) =>
+                p.accountId === connectedAccountId
+                  ? {
+                      ...p,
+                      status: (res?.status === "published"
+                        ? "published"
+                        : "failed") as PlatformStatus,
+                      error: res?.status === "failed" ? res?.error : undefined,
+                      postUrl:
+                        res?.status === "published"
+                          ? (res?.platformPostUrl ?? null)
+                          : undefined,
+                    }
+                  : p,
+              ),
+            );
+          },
+        );
         await publishPost(result.postId);
         if (
           resurfaceConfig &&

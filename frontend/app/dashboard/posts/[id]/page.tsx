@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { formatDateTime } from "@/lib/date-format";
+import { sortBySlowPlatformsLast } from "@/lib/publish-order";
 import { DOCS_POST_VIEW_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
 
@@ -179,6 +180,7 @@ export default async function PostDetailPage({
   if (!data) redirect("/dashboard/posts");
 
   const { post, publications, queuedSlot, autoPlug, resurface } = data;
+  const publicationsSorted = sortBySlowPlatformsLast(publications);
 
   if (post.status === "draft") {
     const media =
@@ -495,13 +497,13 @@ export default async function PostDetailPage({
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-base font-semibold text-text">Platforms</h2>
             </div>
-            {publications.length === 0 ? (
+            {publicationsSorted.length === 0 ? (
               <p className="text-xs text-text-muted">
                 No platforms selected for this post.
               </p>
             ) : (
               <ul className="space-y-2">
-                {publications.map((pub, i) => {
+                {publicationsSorted.map((pub) => {
                   const badge = getPublicationStatusBadge(pub.status);
                   let viewUrl: string | null = null;
                   if (pub.platform === "instagram" && pub.platformUsername) {
@@ -522,7 +524,7 @@ export default async function PostDetailPage({
                   }
                   return (
                     <li
-                      key={`${pub.platform}-${i}`}
+                      key={pub.connectedAccountId ?? pub.platform}
                       className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg-subtle px-3 py-2 hover:border-emerald-500 transition-colors"
                     >
                       <div className="flex items-center gap-3 min-w-0">

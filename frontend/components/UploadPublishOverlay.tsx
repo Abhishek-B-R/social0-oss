@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import {
   Loader2,
@@ -14,6 +14,7 @@ import {
   Clock,
 } from "lucide-react";
 import { PlatformIcon } from "@/components/PlatformIcon";
+import { sortBySlowPlatformsLast } from "@/lib/publish-order";
 
 const PUBLISH_ESCAPE_MS = 2 * 60 * 1000; // 4 minutes
 
@@ -77,12 +78,6 @@ function mediaTypeLabel(type: "image" | "video" | "mixed"): string {
   if (type === "video") return "Video";
   return "Media";
 }
-
-const PLEASE_DONT_CLOSE = (
-  <p className="mt-3 text-xs text-text-muted">
-    Please don&apos;t close this window.
-  </p>
-);
 
 function PlatformStatusLabel({
   status,
@@ -148,6 +143,11 @@ export function UploadPublishOverlay({
   const showPlatformRows =
     phase === "publishing" && platformStatuses.length > 0 && !isScheduling;
   const isFinalizing = typeof uploadPercent === "number" && uploadPercent >= 95;
+
+  const displayPlatformStatuses = useMemo(
+    () => sortBySlowPlatformsLast(platformStatuses),
+    [platformStatuses],
+  );
 
   useEffect(() => {
     if (phase !== "publishing" || allDone) {
@@ -270,20 +270,35 @@ export function UploadPublishOverlay({
         ) : phase === "publishing" && showLongRunningEscape ? (
           <>
             <div className="w-full max-w-md rounded-xl border border-border bg-bg-elevated p-6 sm:p-8 shadow-sm text-center">
-              <p className="text-text">
-                Your post is being processed. This can take a few minutes — you
-                can check your post status in your posts list.
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/15 dark:bg-amber-500/20">
+                <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <h2 className="mt-4 text-lg font-semibold text-text">
+                Still publishing…
+              </h2>
+              <p className="mt-2 text-sm text-text-muted leading-relaxed">
+                Some platforms take a few minutes. You don&apos;t need to wait
+                here — we&apos;ll keep going in the background. Check status
+                anytime from your post.
               </p>
-              <Link
-                href={
-                  publishedPostId
-                    ? `/dashboard/posts/${publishedPostId}`
-                    : "/dashboard/posts"
-                }
-                className="mt-6 inline-block rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
-              >
-                Go to Posts
-              </Link>
+              <div className="mt-6 flex flex-col gap-3">
+                <Link
+                  href="/dashboard/composer"
+                  className="w-full rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors text-center"
+                >
+                  Create new post
+                </Link>
+                <Link
+                  href={
+                    publishedPostId
+                      ? `/dashboard/posts/${publishedPostId}`
+                      : "/dashboard/posts"
+                  }
+                  className="w-full rounded-xl border border-border bg-bg px-5 py-3 text-sm font-semibold text-text hover:bg-bg-muted transition-colors text-center"
+                >
+                  View post
+                </Link>
+              </div>
             </div>
           </>
         ) : showPlatformRows ? (
@@ -300,7 +315,7 @@ export function UploadPublishOverlay({
                     </h2>
                   </div>
                   <ul className="mt-6 space-y-4">
-                    {platformStatuses.map((p) => (
+                    {displayPlatformStatuses.map((p) => (
                       <li
                         key={p.accountId}
                         className="flex items-center justify-between gap-3"
@@ -359,7 +374,7 @@ export function UploadPublishOverlay({
                     Publishing to all platforms…
                   </h2>
                   <ul className="mt-6 space-y-4">
-                    {platformStatuses.map((p) => (
+                    {displayPlatformStatuses.map((p) => (
                       <li
                         key={p.accountId}
                         className="flex items-center justify-between gap-3"
@@ -381,7 +396,6 @@ export function UploadPublishOverlay({
                       </li>
                     ))}
                   </ul>
-                  {PLEASE_DONT_CLOSE}
                 </>
               )}
             </div>
