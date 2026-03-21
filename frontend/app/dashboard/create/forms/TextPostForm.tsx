@@ -38,6 +38,7 @@ import type {
 } from "@/components/autoplug/AutoPlugPanel";
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
+import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
 import { PLATFORMS } from "@/lib/platforms";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import {
@@ -405,6 +406,18 @@ export function TextPostForm({
     };
     if (Object.keys(accountCaptions).length > 0) {
       metadata.accountCaptions = accountCaptions;
+    }
+
+    if (effectiveMode === "scheduled") {
+      applyBulkAutoFeaturesToScheduledMetadata(metadata, {
+        hasTwitterXSelected: selectedAccounts.some(
+          (a) => a.platform === "twitter_x",
+        ),
+        resurfaceConfig,
+        autoPlugConfig,
+      });
+    } else {
+      delete metadata.bulkAutoFeatures;
     }
 
     if (initialScheduledId && effectiveMode === "scheduled") {

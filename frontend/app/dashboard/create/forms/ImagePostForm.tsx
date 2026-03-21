@@ -44,6 +44,7 @@ import {
   type PlatformResult,
   type PlatformStatus,
 } from "@/components/UploadPublishOverlay";
+import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
 import { PLATFORMS } from "@/lib/platforms";
 import {
   validateMediaFile,
@@ -1128,6 +1129,18 @@ export function ImagePostForm({
 
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
+
+    if (effectiveMode === "scheduled") {
+      applyBulkAutoFeaturesToScheduledMetadata(meta, {
+        hasTwitterXSelected: selectedAccounts.some(
+          (a) => a.platform === "twitter_x",
+        ),
+        resurfaceConfig,
+        autoPlugConfig,
+      });
+    } else {
+      delete meta.bulkAutoFeatures;
+    }
 
     if (initialScheduledId && effectiveMode === "scheduled") {
       const { updatePost } = await import("@/app/actions/posts");

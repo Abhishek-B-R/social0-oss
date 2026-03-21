@@ -32,6 +32,7 @@ import {
   type PlatformResult,
   type PlatformStatus,
 } from "@/components/UploadPublishOverlay";
+import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
 import { PLATFORMS } from "@/lib/platforms";
 import { IoMdAddCircleOutline } from "react-icons/io";
 import { MdClose } from "react-icons/md";
@@ -1409,8 +1410,8 @@ export function ThreadsPostForm({
     const effectiveMode = intendedModeRef.current ?? mode;
     intendedModeRef.current = null;
     const accountIds = Array.from(selectedIds);
-    const metadata = {
-      contentType: "threads" as const,
+    const metadata: Record<string, unknown> = {
+      contentType: "threads",
       twitterThread: {
         version: 1,
         separator: THREAD_SEPARATOR,
@@ -1420,6 +1421,18 @@ export function ThreadsPostForm({
         })),
       },
     };
+
+    if (effectiveMode === "scheduled") {
+      applyBulkAutoFeaturesToScheduledMetadata(metadata, {
+        hasTwitterXSelected: selectedAccounts.some(
+          (a) => a.platform === "twitter_x",
+        ),
+        resurfaceConfig,
+        autoPlugConfig,
+      });
+    } else {
+      delete metadata.bulkAutoFeatures;
+    }
 
     if (initialScheduledId && effectiveMode === "scheduled") {
       const { updatePost } = await import("@/app/actions/posts");
