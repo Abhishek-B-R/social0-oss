@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import {
@@ -15,7 +15,11 @@ import {
   createResurfaceSchedule,
   createAutoPlug,
 } from "@/app/actions/resurface";
-import { useRememberedAccounts } from "@/lib/remembered-accounts";
+import {
+  useRememberedAccounts,
+  useApplyRememberedSelectionWhenReady,
+  REMEMBERED_ACCOUNT_KEYS,
+} from "@/lib/remembered-accounts";
 import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
@@ -280,8 +284,12 @@ export function ThreadsPostForm({
     () => new Set(accounts.filter((a) => !a.tokenExpired).map((a) => a.id)),
     [accounts],
   );
-  const { remember, setRemember, getInitialSelectedIds, persistSelection } =
-    useRememberedAccounts("post-form-threads");
+  const {
+    remember,
+    setRememberAndSelection,
+    getInitialSelectedIds,
+    persistSelection,
+  } = useRememberedAccounts(REMEMBERED_ACCOUNT_KEYS.threadsPost);
   const [accountSearch, setAccountSearch] = useState("");
   const [posts, setPosts] = useState<ThreadPost[]>(() => [
     { id: 1, text: "", images: [], videos: [] },
@@ -668,9 +676,25 @@ export function ThreadsPostForm({
     };
   }, [initialEditId]);
 
+  const { isHydrated } = useApplyRememberedSelectionWhenReady({
+    skip: !!(initialDraftId || initialScheduledId || initialEditId),
+    accountsLoading,
+    accounts,
+    getInitialSelectedIds,
+    setSelectedIds,
+  });
+
   useEffect(() => {
+    if (!isHydrated) return;
     if (remember) persistSelection(selectedIds);
-  }, [remember, selectedIds, persistSelection]);
+  }, [isHydrated, remember, selectedIds, persistSelection]);
+
+  const handleRememberChange = useCallback(
+    (checked: boolean) => {
+      setRememberAndSelection(checked, selectedIds);
+    },
+    [setRememberAndSelection, selectedIds],
+  );
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -1802,7 +1826,7 @@ export function ThreadsPostForm({
               />
             }
             remember={remember}
-            onRememberChange={setRemember}
+            onRememberChange={handleRememberChange}
             supportedPlatforms={supportedPlatforms}
             accountsLoading={accountsLoading}
             disabledAccountIds={disabledAccountIds}

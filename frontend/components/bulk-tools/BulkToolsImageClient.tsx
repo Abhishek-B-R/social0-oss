@@ -4,7 +4,11 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { AccountBubbleSelector } from "@/components/AccountBubbleSelector";
 import { PLATFORMS } from "@/lib/platforms";
-import { useRememberedAccounts } from "@/lib/remembered-accounts";
+import {
+  useRememberedAccounts,
+  useApplyRememberedSelectionWhenReady,
+  REMEMBERED_ACCOUNT_KEYS,
+} from "@/lib/remembered-accounts";
 import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { BulkUploadZone } from "./BulkUploadZone";
 import { ImageCard, type ImageItem } from "./ImageCard";
@@ -61,8 +65,6 @@ function getNowTimeStr(): string {
   );
 }
 
-const REMEMBER_KEY_IMAGE = "bulk-image";
-
 export function BulkToolsImageClient({
   accounts,
   accountsLoading = false,
@@ -77,8 +79,12 @@ export function BulkToolsImageClient({
     () => new Set(selectableAccounts.map((a) => a.id)),
     [selectableAccounts],
   );
-  const { remember, setRemember, getInitialSelectedIds, persistSelection } =
-    useRememberedAccounts(REMEMBER_KEY_IMAGE);
+  const {
+    remember,
+    setRememberAndSelection,
+    getInitialSelectedIds,
+    persistSelection,
+  } = useRememberedAccounts(REMEMBERED_ACCOUNT_KEYS.bulkImage);
   const {
     remember: rememberAutoFeatures,
     setRemember: setRememberAutoFeatures,
@@ -117,9 +123,25 @@ export function BulkToolsImageClient({
   const platformName = (id: string) =>
     PLATFORMS.find((p) => p.id === id)?.name ?? id;
 
+  const { isHydrated } = useApplyRememberedSelectionWhenReady({
+    skip: false,
+    accountsLoading,
+    accounts,
+    getInitialSelectedIds,
+    setSelectedIds,
+  });
+
   useEffect(() => {
+    if (!isHydrated) return;
     if (remember) persistSelection(selectedIds);
-  }, [remember, selectedIds, persistSelection]);
+  }, [isHydrated, remember, selectedIds, persistSelection]);
+
+  const handleRememberChange = useCallback(
+    (checked: boolean) => {
+      setRememberAndSelection(checked, selectedIds);
+    },
+    [setRememberAndSelection, selectedIds],
+  );
 
   const selectedAccountIds = useMemo(
     () => Array.from(selectedIds),
@@ -438,7 +460,7 @@ export function BulkToolsImageClient({
                     <input
                       type="checkbox"
                       checked={remember}
-                      onChange={(e) => setRemember(e.target.checked)}
+                      onChange={(e) => handleRememberChange(e.target.checked)}
                       className="rounded border-input bg-bg text-accent focus:ring-accent"
                     />
                     <span className="text-sm text-foreground">Remember</span>

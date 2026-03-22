@@ -48,6 +48,11 @@ type ThreadSlot = {
   media: (ComposerMediaItem & { id: string })[];
 };
 
+/**
+ * Quick composer / bridge into create flows. No account picker here yet.
+ * If Remember is added, use `REMEMBERED_ACCOUNT_KEYS.composer` → `remembered-accounts-composer`.
+ * @see REMEMBERED_ACCOUNT_KEYS in `@/lib/remembered-accounts`
+ */
 export function ComposerClient() {
   const router = useRouter();
   const [text, setText] = useState("");

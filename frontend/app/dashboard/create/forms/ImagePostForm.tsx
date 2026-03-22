@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 
 const PREVIEW_MEDIA_MAX_H = 196;
 import { useRouter, useSearchParams } from "next/navigation";
@@ -21,7 +21,11 @@ import {
   createResurfaceSchedule,
   createAutoPlug,
 } from "@/app/actions/resurface";
-import { useRememberedAccounts } from "@/lib/remembered-accounts";
+import {
+  useRememberedAccounts,
+  useApplyRememberedSelectionWhenReady,
+  REMEMBERED_ACCOUNT_KEYS,
+} from "@/lib/remembered-accounts";
 import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { PostFormOptions } from "../PostFormOptions";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
@@ -132,8 +136,12 @@ export function ImagePostForm({
     () => new Set(accounts.filter((a) => !a.tokenExpired).map((a) => a.id)),
     [accounts],
   );
-  const { remember, setRemember, getInitialSelectedIds, persistSelection } =
-    useRememberedAccounts("post-form-image");
+  const {
+    remember,
+    setRememberAndSelection,
+    getInitialSelectedIds,
+    persistSelection,
+  } = useRememberedAccounts(REMEMBERED_ACCOUNT_KEYS.imagePost);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
     initialDraftId || initialScheduledId || initialEditId
       ? new Set()
@@ -576,9 +584,25 @@ export function ImagePostForm({
     };
   }, [initialScheduledId, initialDraftId, accounts]);
 
+  const { isHydrated } = useApplyRememberedSelectionWhenReady({
+    skip: !!(initialDraftId || initialScheduledId || initialEditId),
+    accountsLoading,
+    accounts,
+    getInitialSelectedIds,
+    setSelectedIds,
+  });
+
   useEffect(() => {
+    if (!isHydrated) return;
     if (remember) persistSelection(selectedIds);
-  }, [remember, selectedIds, persistSelection]);
+  }, [isHydrated, remember, selectedIds, persistSelection]);
+
+  const handleRememberChange = useCallback(
+    (checked: boolean) => {
+      setRememberAndSelection(checked, selectedIds);
+    },
+    [setRememberAndSelection, selectedIds],
+  );
 
   const addImageFromClipboard = (file: File) => {
     if (!file.type.startsWith("image/")) return;
@@ -1580,7 +1604,7 @@ export function ImagePostForm({
               />
             }
             remember={remember}
-            onRememberChange={setRemember}
+            onRememberChange={handleRememberChange}
             supportedPlatforms={supportedPlatforms}
             accountsLoading={accountsLoading}
             disabledAccountIds={mediaSizeExceeded.accountIds}

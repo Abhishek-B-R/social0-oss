@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   createPost,
@@ -26,7 +26,11 @@ import {
   createAutoPlug,
   createResurfaceSchedule,
 } from "@/app/actions/resurface";
-import { useRememberedAccounts } from "@/lib/remembered-accounts";
+import {
+  useRememberedAccounts,
+  useApplyRememberedSelectionWhenReady,
+  REMEMBERED_ACCOUNT_KEYS,
+} from "@/lib/remembered-accounts";
 import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
@@ -103,8 +107,12 @@ export function TextPostForm({
   const intendedModeRef = useRef<PublishMode | null>(null);
   const intendedQueueSlotIdRef = useRef<string | null>(null);
   const [content, setContent] = useState("");
-  const { remember, setRemember, getInitialSelectedIds, persistSelection } =
-    useRememberedAccounts("post-form-text");
+  const {
+    remember,
+    setRememberAndSelection,
+    getInitialSelectedIds,
+    persistSelection,
+  } = useRememberedAccounts(REMEMBERED_ACCOUNT_KEYS.textPost);
   const [accountSearch, setAccountSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
     if (initialDraftId || initialScheduledId || initialEditId) return new Set();
@@ -278,9 +286,25 @@ export function TextPostForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialDraftId, initialEditId, searchParams]);
 
+  const { isHydrated } = useApplyRememberedSelectionWhenReady({
+    skip: !!(initialDraftId || initialScheduledId || initialEditId),
+    accountsLoading,
+    accounts,
+    getInitialSelectedIds,
+    setSelectedIds,
+  });
+
   useEffect(() => {
+    if (!isHydrated) return;
     if (remember) persistSelection(selectedIds);
-  }, [remember, selectedIds, persistSelection]);
+  }, [isHydrated, remember, selectedIds, persistSelection]);
+
+  const handleRememberChange = useCallback(
+    (checked: boolean) => {
+      setRememberAndSelection(checked, selectedIds);
+    },
+    [setRememberAndSelection, selectedIds],
+  );
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
   const previewAccount =
@@ -849,7 +873,7 @@ export function TextPostForm({
               />
             }
             remember={remember}
-            onRememberChange={setRemember}
+            onRememberChange={handleRememberChange}
             supportedPlatforms={supportedPlatforms}
             accountsLoading={accountsLoading}
             showUpgradeCta={subscriptionTier === "free"}
