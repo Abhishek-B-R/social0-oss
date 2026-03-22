@@ -52,6 +52,10 @@ type UploadPublishOverlayProps = {
   isScheduling?: boolean;
   /** After publishing: show success state with links */
   showLinks?: boolean;
+  /**
+   * When true with showLinks, show "Post scheduled" + View scheduled post (vs published copy).
+   */
+  scheduleSuccess?: boolean;
   /** When showLinks and post was published to X, show Auto-Repost section */
   publishedPostId?: string | null;
   publishedToX?: boolean;
@@ -128,6 +132,7 @@ export function UploadPublishOverlay({
   mediaType = "image",
   isScheduling = false,
   showLinks = false,
+  scheduleSuccess = false,
   publishedPostId = null,
   platformStatuses = [],
   allDone = false,
@@ -179,33 +184,63 @@ export function UploadPublishOverlay({
     >
       <div className="relative mx-4 flex max-w-md flex-col items-center text-center">
         {showLinks && !(showPlatformRows && allDone) ? (
-          <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
-              <Send className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <h2 className="mt-4 text-xl font-semibold text-text">
-              Post published!
-            </h2>
-            <div className="mt-6 flex flex-col gap-3">
-              <Link
-                href="/dashboard/composer"
-                className="w-full rounded-xl bg-emerald-500 px-4 py-3.5 text-sm font-semibold text-white text-center transition hover:bg-emerald-600"
-              >
-                Create another post
-              </Link>
+          scheduleSuccess ? (
+            <>
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
+                <Clock className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h2 className="mt-4 text-xl font-semibold text-text">
+                Post scheduled
+              </h2>
+              <div className="mt-6 flex flex-col gap-3">
+                <Link
+                  href="/dashboard/composer"
+                  className="w-full rounded-xl bg-emerald-500 px-4 py-3.5 text-sm font-semibold text-white text-center transition hover:bg-emerald-600"
+                >
+                  Create another post
+                </Link>
 
-              <Link
-                href={
-                  publishedPostId
-                    ? `/dashboard/posts/${publishedPostId}`
-                    : "/dashboard/posts"
-                }
-                className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm font-semibold text-zinc-200 text-center transition hover:bg-zinc-900"
-              >
-                View post
-              </Link>
-            </div>
-          </>
+                <Link
+                  href={
+                    publishedPostId
+                      ? `/dashboard/posts/${publishedPostId}`
+                      : "/dashboard/posts/scheduled"
+                  }
+                  className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm font-semibold text-zinc-200 text-center transition hover:bg-zinc-900"
+                >
+                  View scheduled post
+                </Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
+                <Send className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h2 className="mt-4 text-xl font-semibold text-text">
+                Post published!
+              </h2>
+              <div className="mt-6 flex flex-col gap-3">
+                <Link
+                  href="/dashboard/composer"
+                  className="w-full rounded-xl bg-emerald-500 px-4 py-3.5 text-sm font-semibold text-white text-center transition hover:bg-emerald-600"
+                >
+                  Create another post
+                </Link>
+
+                <Link
+                  href={
+                    publishedPostId
+                      ? `/dashboard/posts/${publishedPostId}`
+                      : "/dashboard/posts"
+                  }
+                  className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm font-semibold text-zinc-200 text-center transition hover:bg-zinc-900"
+                >
+                  View post
+                </Link>
+              </div>
+            </>
+          )
         ) : isUploading ? (
           <>
             {onCancelUpload && (

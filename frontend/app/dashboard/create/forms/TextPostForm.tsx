@@ -133,6 +133,7 @@ export function TextPostForm({
     [],
   );
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
+  const [scheduledPostId, setScheduledPostId] = useState<string | null>(null);
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
@@ -399,6 +400,7 @@ export function TextPostForm({
       return;
     }
     setShowContentError(false);
+    setScheduledPostId(null);
     if ((intendedModeRef.current ?? mode) === "scheduled") {
       if (!scheduledAt) {
         toast.error("Please select a date and time.");
@@ -414,6 +416,7 @@ export function TextPostForm({
     intendedModeRef.current = null;
     if (effectiveMode === "now") setOverlayPhase("publishing");
     if (effectiveMode === "draft") setOverlayPhase("saving");
+    if (effectiveMode === "scheduled") setOverlayPhase("publishing");
     const accountIds = Array.from(selectedIds);
     const accountCaptions: Record<string, string> = {};
     for (const account of selectedAccounts) {
@@ -457,7 +460,8 @@ export function TextPostForm({
       if (scheduledAt) intendedQueueSlotIdRef.current = null;
       setLoading(false);
       if (result.success) {
-        router.push("/dashboard/posts/scheduled");
+        setScheduledPostId(initialScheduledId);
+        setOverlayPhase("done");
         router.refresh();
       } else {
         setOverlayPhase("idle");
@@ -621,7 +625,8 @@ export function TextPostForm({
         if (scheduledAt) intendedQueueSlotIdRef.current = null;
         setLoading(false);
         if (result.success) {
-          router.push("/dashboard/posts/scheduled");
+          setScheduledPostId(initialDraftId);
+          setOverlayPhase("done");
           router.refresh();
         } else {
           setOverlayPhase("idle");
@@ -745,8 +750,10 @@ export function TextPostForm({
         return;
       }
       if (effectiveMode === "draft") router.push("/dashboard/posts/drafts");
-      if (effectiveMode === "scheduled")
-        router.push("/dashboard/posts/scheduled");
+      if (effectiveMode === "scheduled" && result.postId) {
+        setScheduledPostId(result.postId);
+        setOverlayPhase("done");
+      }
       router.refresh();
     } else {
       setOverlayPhase("idle");
@@ -805,12 +812,13 @@ export function TextPostForm({
           phase={overlayPhase === "saving" ? "saving" : "publishing"}
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
-          publishedPostId={publishedPostId}
+          scheduleSuccess={!!scheduledPostId}
+          publishedPostId={scheduledPostId ?? publishedPostId}
           publishedToX={selectedAccounts.some(
             (a) => a.platform === "twitter_x",
           )}
           resurfacePreFill={
-            overlayPhase === "done" && resurfaceConfig
+            overlayPhase === "done" && resurfaceConfig && !scheduledPostId
               ? {
                   intervalHours: resurfaceConfig.intervalHours,
                   maxResurfaces: resurfaceConfig.maxResurfaces,
@@ -833,6 +841,7 @@ export function TextPostForm({
               router.push(`/dashboard/posts/${publishedPostId}`);
               router.refresh();
             } else {
+              setScheduledPostId(null);
               setOverlayPhase("idle");
             }
           }}

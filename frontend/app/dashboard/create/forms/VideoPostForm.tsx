@@ -197,6 +197,7 @@ export function VideoPostForm({
     Record<string, TikTokPostSettings>
   >({});
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
+  const [scheduledPostId, setScheduledPostId] = useState<string | null>(null);
   const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>(
     [],
   );
@@ -1088,6 +1089,7 @@ export function VideoPostForm({
     setPinterestError(null);
     setLoading(true);
     toast.dismiss();
+    setScheduledPostId(null);
     setOverlayPhase("uploading");
 
     const mediaIds: string[] = [];
@@ -1209,11 +1211,12 @@ export function VideoPostForm({
       );
       if (scheduledAt) intendedQueueSlotIdRef.current = null;
       setLoading(false);
-      setOverlayPhase("idle");
       if (result.success) {
-        router.push("/dashboard/posts/scheduled");
+        setScheduledPostId(initialScheduledId);
+        setOverlayPhase("done");
         router.refresh();
       } else {
+        setOverlayPhase("idle");
         toast.error(result.error);
       }
       return;
@@ -1291,11 +1294,12 @@ export function VideoPostForm({
         );
         if (scheduledAt) intendedQueueSlotIdRef.current = null;
         setLoading(false);
-        setOverlayPhase("idle");
         if (result.success) {
-          router.push("/dashboard/posts/scheduled");
+          setScheduledPostId(initialDraftId);
+          setOverlayPhase("done");
           router.refresh();
         } else {
+          setOverlayPhase("idle");
           toast.error(result.error);
         }
         return;
@@ -1433,9 +1437,9 @@ export function VideoPostForm({
       router.refresh();
       return;
     }
-    if (effectiveMode === "scheduled") {
-      setOverlayPhase("idle");
-      router.push("/dashboard/posts/scheduled");
+    if (effectiveMode === "scheduled" && result.postId) {
+      setScheduledPostId(result.postId);
+      setOverlayPhase("done");
       router.refresh();
       return;
     }
@@ -1521,12 +1525,13 @@ export function VideoPostForm({
           mediaType="video"
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
-          publishedPostId={publishedPostId}
+          scheduleSuccess={!!scheduledPostId}
+          publishedPostId={scheduledPostId ?? publishedPostId}
           publishedToX={selectedAccounts.some(
             (a) => a.platform === "twitter_x",
           )}
           resurfacePreFill={
-            overlayPhase === "done" && resurfaceConfig
+            overlayPhase === "done" && resurfaceConfig && !scheduledPostId
               ? {
                   intervalHours: resurfaceConfig.intervalHours,
                   maxResurfaces: resurfaceConfig.maxResurfaces,
@@ -1549,7 +1554,8 @@ export function VideoPostForm({
               router.push(`/dashboard/posts/${publishedPostId}`);
               router.refresh();
             } else {
-              setOverlayPhase("done");
+              setScheduledPostId(null);
+              setOverlayPhase("idle");
             }
           }}
         />
