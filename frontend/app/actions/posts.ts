@@ -20,6 +20,9 @@ import {
   type PostMediaRow,
 } from "@/app/dashboard/posts/posts-list-data";
 import { isValidUUID } from "@/lib/validation";
+import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
+import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 
 export type PostAgainResult =
   | { success: true; newPostId: string }
@@ -542,6 +545,83 @@ export async function updatePost(
     return {
       success: false,
       error: e instanceof Error ? e.message : "Failed to update post",
+    };
+  }
+}
+
+/**
+ * Persist Auto-Plug / Auto-Repost for a scheduled post via `metadata.bulkAutoFeatures`
+ * (queue-slot posts still use `posts.status === "scheduled"` — there is no separate `queued` status).
+ * Consumed at publish time by executePublish.
+ */
+export async function updateScheduledPostAutoFeatures(
+  postId: string,
+  opts: {
+    autoPlugConfig: AutoPlugConfig | null;
+    resurfaceConfig: AutoResurfaceConfig | null;
+  },
+): Promise<UpdatePostResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return { success: false, error: "Unauthorized" };
+  }
+  if (!isValidUUID(postId)) {
+    return { success: false, error: "Invalid post ID" };
+  }
+
+  try {
+    const [row] = await db
+      .select({ id: posts.id, metadata: posts.metadata, status: posts.status })
+      .from(posts)
+      .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
+
+    if (!row) {
+      return { success: false, error: "Post not found" };
+    }
+    if (row.status !== "scheduled") {
+      return {
+        success: false,
+        error: "Auto features can only be edited on scheduled posts",
+      };
+    }
+
+    const pubs = await db
+      .select({ platform: connectedAccounts.platform })
+      .from(postPublications)
+      .innerJoin(
+        connectedAccounts,
+        eq(postPublications.connectedAccountId, connectedAccounts.id),
+      )
+      .where(eq(postPublications.postId, postId));
+
+    const hasTwitterXSelected = pubs.some((p) => p.platform === "twitter_x");
+
+    const metadata = {
+      ...((row.metadata as Record<string, unknown> | null) ?? {}),
+    };
+    applyBulkAutoFeaturesToScheduledMetadata(metadata, {
+      hasTwitterXSelected,
+      resurfaceConfig: opts.resurfaceConfig,
+      autoPlugConfig: opts.autoPlugConfig,
+    });
+
+    await db
+      .update(posts)
+      .set({ metadata, updatedAt: new Date() })
+      .where(eq(posts.id, postId));
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/posts");
+    revalidatePath("/dashboard/posts/scheduled");
+    revalidatePath(`/dashboard/posts/${postId}`);
+    revalidatePath(`/dashboard/posts/${postId}/edit`);
+    return { success: true };
+  } catch (e) {
+    console.error("updateScheduledPostAutoFeatures error:", e);
+    return {
+      success: false,
+      error:
+        e instanceof Error ? e.message : "Failed to update scheduled auto features",
     };
   }
 }

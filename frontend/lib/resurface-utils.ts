@@ -48,11 +48,24 @@ export function getResurfacePlatformLabels(
 
 /**
  * Auto-repost can only be added within 1 day of the post going live.
+ * Same window is used to lock edits to Auto-Plug / Auto-Repost after this age.
  */
-const RESURFACE_WINDOW_MS = 24 * 60 * 60 * 1000;
+export const AUTO_FEATURES_EDIT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+const RESURFACE_WINDOW_MS = AUTO_FEATURES_EDIT_MAX_AGE_MS;
 
 export function isWithinResurfaceWindow(publishedAt: Date): boolean {
   return Date.now() - new Date(publishedAt).getTime() < RESURFACE_WINDOW_MS;
+}
+
+/** True when the post has been published for at least 24 hours (no further auto-feature edits). */
+export function isPostOlderThanAutoFeaturesEditWindow(
+  referenceDate: Date,
+): boolean {
+  return (
+    Date.now() - new Date(referenceDate).getTime() >=
+    AUTO_FEATURES_EDIT_MAX_AGE_MS
+  );
 }
 
 /**

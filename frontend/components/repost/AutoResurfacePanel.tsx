@@ -47,6 +47,10 @@ type AutoResurfacePanelProps = {
   modalMode?: boolean;
   /** When true, show times in 24h format */
   use24HourTimeFormat?: boolean;
+  /** Skip the 24h post-publish window (e.g. post detail page editing existing schedule). */
+  ignorePublicationTimeWindow?: boolean;
+  /** When set, overrides default enabled = !!initialConfig (e.g. paused schedule: false). */
+  initialEnabled?: boolean;
 };
 
 function formatFirstReshare(
@@ -74,6 +78,8 @@ export function AutoResurfacePanel({
   embedded = false,
   modalMode = false,
   use24HourTimeFormat = false,
+  ignorePublicationTimeWindow = false,
+  initialEnabled,
 }: AutoResurfacePanelProps) {
   const supportedPlatforms = getResurfacePlatforms(
     selectedAccountIds,
@@ -81,7 +87,9 @@ export function AutoResurfacePanel({
   );
   const visible =
     supportedPlatforms.length > 0 &&
-    (publishedAt === undefined || isWithinResurfaceWindow(publishedAt));
+    (ignorePublicationTimeWindow ||
+      publishedAt === undefined ||
+      isWithinResurfaceWindow(publishedAt));
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -98,6 +106,7 @@ export function AutoResurfacePanel({
     <AutoResurfacePanelInner
       subtitle={subtitle}
       initialConfig={initialConfig}
+      initialEnabled={initialEnabled}
       onChange={onChange}
       embedded={embedded}
       modalMode={modalMode}
@@ -109,6 +118,7 @@ export function AutoResurfacePanel({
 function AutoResurfacePanelInner({
   subtitle,
   initialConfig,
+  initialEnabled,
   onChange,
   embedded = false,
   modalMode = false,
@@ -116,12 +126,17 @@ function AutoResurfacePanelInner({
 }: {
   subtitle: string;
   initialConfig?: Partial<AutoResurfaceConfig> | null;
+  initialEnabled?: boolean;
   onChange: (config: AutoResurfaceConfig | null) => void;
   embedded?: boolean;
   modalMode?: boolean;
   use24HourTimeFormat?: boolean;
 }) {
-  const [enabled, setEnabled] = useState(modalMode || !!initialConfig);
+  const [enabled, setEnabled] = useState(() => {
+    if (modalMode) return true;
+    if (initialEnabled !== undefined) return initialEnabled;
+    return !!initialConfig;
+  });
   const [intervalHours, setIntervalHours] = useState(
     initialConfig?.intervalHours ?? 4,
   );

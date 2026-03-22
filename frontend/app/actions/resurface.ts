@@ -14,9 +14,56 @@ import {
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { isPostOlderThanAutoFeaturesEditWindow } from "@/lib/resurface-utils";
 
 const PLATFORM_X = "x";
 const MAX_RESURFACES_CAP = 10;
+
+/**
+ * Earliest X (Twitter) publish time for this post, scoped to the post owner.
+ * Call only after verifying the caller owns the post (e.g. via posts.userId).
+ */
+async function assertPostAutoFeaturesEditable(
+  postId: string,
+  userId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const rows = await db
+    .select({ publishedAt: postPublications.publishedAt })
+    .from(postPublications)
+    .innerJoin(posts, eq(postPublications.postId, posts.id))
+    .innerJoin(
+      connectedAccounts,
+      eq(postPublications.connectedAccountId, connectedAccounts.id),
+    )
+    .where(
+      and(
+        eq(postPublications.postId, postId),
+        eq(posts.userId, userId),
+        eq(postPublications.status, "published"),
+        eq(connectedAccounts.platform, "twitter_x"),
+      ),
+    );
+  const times = rows
+    .map((r) => r.publishedAt)
+    .filter((d): d is Date => d != null)
+    .map((d) => new Date(d).getTime());
+  if (times.length === 0) {
+    return {
+      ok: false,
+      error:
+        "No published X (Twitter) publication — Auto-Plug and Auto-Repost can’t be changed.",
+    };
+  }
+  const earliest = new Date(Math.min(...times));
+  if (isPostOlderThanAutoFeaturesEditWindow(earliest)) {
+    return {
+      ok: false,
+      error:
+        "This post is older than 24 hours — Auto-Plug and Auto-Repost can no longer be edited.",
+    };
+  }
+  return { ok: true };
+}
 
 export type AutoPlugConfig = {
   metricType: "likes" | "retweets";
@@ -54,8 +101,16 @@ export async function createAutoPlug(
     return { success: false, error: "Post not found" };
   }
 
-  if (post.status !== "published") {
+  if (post.status !== "published" && post.status !== "partial") {
     return { success: false, error: "Post must be published first" };
+  }
+
+  const editablePlug = await assertPostAutoFeaturesEditable(
+    postId,
+    session.user.id,
+  );
+  if (!editablePlug.ok) {
+    return { success: false, error: editablePlug.error };
   }
 
   const xPublications = await db
@@ -206,8 +261,16 @@ export async function createResurfaceSchedule(
     return { success: false, error: "Post not found" };
   }
 
-  if (post.status !== "published") {
+  if (post.status !== "published" && post.status !== "partial") {
     return { success: false, error: "Post must be published first" };
+  }
+
+  const editableResurface = await assertPostAutoFeaturesEditable(
+    postId,
+    session.user.id,
+  );
+  if (!editableResurface.ok) {
+    return { success: false, error: editableResurface.error };
   }
 
   const xPublication = await db
@@ -330,6 +393,303 @@ export async function disableResurfaceSchedule(
     return {
       success: false,
       error: e instanceof Error ? e.message : "Failed to disable",
+    };
+  }
+}
+
+export type UpdateAutoPlugResult =
+  | { success: true }
+  | { success: false; error: string };
+
+/** Update Auto-Plug while status is `watching`. */
+export async function updateAutoPlug(
+  postId: string,
+  config: AutoPlugConfig,
+): Promise<UpdateAutoPlugResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const autoPlugAllowed = await checkAutoPlugAllowed(session.user.id);
+  if (!autoPlugAllowed) {
+    return {
+      success: false,
+      error:
+        "Auto-plug is available on the Growth plan. Upgrade to use this feature.",
+    };
+  }
+
+  const threshold = Math.max(1, Math.round(config.threshold));
+  const metricType = config.metricType === "retweets" ? "retweets" : "likes";
+  const plugComment = (config.plugComment ?? "").trim().slice(0, 280);
+  if (!plugComment) {
+    return { success: false, error: "Auto-Plug message is required" };
+  }
+
+  const editableUpdatePlug = await assertPostAutoFeaturesEditable(
+    postId,
+    session.user.id,
+  );
+  if (!editableUpdatePlug.ok) {
+    return { success: false, error: editableUpdatePlug.error };
+  }
+
+  const [row] = await db
+    .select({ id: autoPlugs.id, status: autoPlugs.status })
+    .from(autoPlugs)
+    .innerJoin(posts, eq(autoPlugs.postId, posts.id))
+    .where(
+      and(
+        eq(autoPlugs.postId, postId),
+        eq(posts.userId, session.user.id),
+      ),
+    )
+    .orderBy(desc(autoPlugs.createdAt))
+    .limit(1);
+
+  if (!row) {
+    return { success: false, error: "Auto-Plug not found for this post" };
+  }
+  if (row.status !== "watching") {
+    return {
+      success: false,
+      error:
+        "Auto-Plug can’t be edited anymore (already triggered or finished).",
+    };
+  }
+
+  try {
+    await db
+      .update(autoPlugs)
+      .set({
+        metricType,
+        metricThreshold: threshold,
+        plugComment,
+        updatedAt: new Date(),
+      })
+      .where(eq(autoPlugs.id, row.id));
+    revalidatePath("/dashboard/posts");
+    revalidatePath(`/dashboard/posts/${postId}`);
+    return { success: true };
+  } catch (e) {
+    console.error("[updateAutoPlug]", e);
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Failed to update auto-plug",
+    };
+  }
+}
+
+/** Remove a watching Auto-Plug before it triggers (turn feature off). */
+export async function cancelAutoPlug(
+  postId: string,
+): Promise<UpdateAutoPlugResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  // Allow turning off even if the user downgraded — no Growth plan check.
+
+  const [row] = await db
+    .select({ id: autoPlugs.id })
+    .from(autoPlugs)
+    .innerJoin(posts, eq(autoPlugs.postId, posts.id))
+    .where(
+      and(
+        eq(autoPlugs.postId, postId),
+        eq(posts.userId, session.user.id),
+        eq(autoPlugs.status, "watching"),
+      ),
+    )
+    .orderBy(desc(autoPlugs.createdAt))
+    .limit(1);
+
+  if (!row) {
+    return { success: false, error: "No active Auto-Plug to turn off" };
+  }
+
+  try {
+    await db.delete(autoPlugs).where(eq(autoPlugs.id, row.id));
+    revalidatePath("/dashboard/posts");
+    revalidatePath(`/dashboard/posts/${postId}`);
+    return { success: true };
+  } catch (e) {
+    console.error("[cancelAutoPlug]", e);
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Failed to turn off Auto-Plug",
+    };
+  }
+}
+
+export type UpdateResurfaceScheduleResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export async function updateResurfaceSchedule(
+  scheduleId: string,
+  updates: {
+    intervalHours?: number;
+    maxResurfaces?: number;
+    plugComment?: string | null;
+    isActive?: boolean;
+  },
+): Promise<UpdateResurfaceScheduleResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const resurfaceAllowed = await checkResurfaceAllowed(session.user.id);
+  if (!resurfaceAllowed) {
+    return {
+      success: false,
+      error:
+        "Resurface / auto-repost is available on the Growth plan. Upgrade to use this feature.",
+    };
+  }
+
+  const [schedule] = await db
+    .select({
+      id: resurfaceSchedules.id,
+      postId: resurfaceSchedules.postId,
+      intervalHours: resurfaceSchedules.intervalHours,
+      maxResurfaces: resurfaceSchedules.maxResurfaces,
+      resurfacesDone: resurfaceSchedules.resurfacesDone,
+      isActive: resurfaceSchedules.isActive,
+      userId: posts.userId,
+    })
+    .from(resurfaceSchedules)
+    .innerJoin(posts, eq(resurfaceSchedules.postId, posts.id))
+    .where(eq(resurfaceSchedules.id, scheduleId));
+
+  if (!schedule || schedule.userId !== session.user.id) {
+    return { success: false, error: "Schedule not found" };
+  }
+
+  const requiresFreshPostWindow =
+    updates.intervalHours !== undefined ||
+    updates.maxResurfaces !== undefined ||
+    updates.plugComment !== undefined;
+
+  if (requiresFreshPostWindow) {
+    const editableUpdateSchedule = await assertPostAutoFeaturesEditable(
+      schedule.postId,
+      session.user.id,
+    );
+    if (!editableUpdateSchedule.ok) {
+      return { success: false, error: editableUpdateSchedule.error };
+    }
+  }
+
+  const done = schedule.resurfacesDone ?? 0;
+  let nextInterval =
+    updates.intervalHours !== undefined
+      ? Math.max(0.5, Math.round(updates.intervalHours * 10) / 10)
+      : (schedule.intervalHours ?? 4);
+  let nextMax =
+    updates.maxResurfaces !== undefined
+      ? Math.min(
+          Math.max(1, Math.round(updates.maxResurfaces)),
+          MAX_RESURFACES_CAP,
+        )
+      : (schedule.maxResurfaces ?? 1);
+
+  if (nextMax < done) {
+    return {
+      success: false,
+      error: `Number of reshares can’t be lower than already completed (${done}).`,
+    };
+  }
+
+  const plugComment =
+    updates.plugComment !== undefined
+      ? updates.plugComment === null
+        ? null
+        : updates.plugComment.trim() || null
+      : undefined;
+
+  const intervalChanged =
+    updates.intervalHours !== undefined &&
+    nextInterval !== schedule.intervalHours;
+  const maxIncreased =
+    updates.maxResurfaces !== undefined && nextMax > (schedule.maxResurfaces ?? 0);
+
+  const hitCapIncrease =
+    maxIncreased &&
+    done >= (schedule.maxResurfaces ?? 0) &&
+    done < nextMax;
+
+  const effectiveIsActive = hitCapIncrease
+    ? true
+    : updates.isActive !== undefined
+      ? updates.isActive
+      : schedule.isActive;
+
+  const now = new Date();
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(resurfaceSchedules)
+        .set({
+          ...(updates.intervalHours !== undefined
+            ? { intervalHours: nextInterval }
+            : {}),
+          ...(updates.maxResurfaces !== undefined ? { maxResurfaces: nextMax } : {}),
+          ...(plugComment !== undefined ? { plugComment } : {}),
+          ...(updates.isActive !== undefined || hitCapIncrease
+            ? { isActive: effectiveIsActive }
+            : {}),
+          updatedAt: now,
+        })
+        .where(eq(resurfaceSchedules.id, scheduleId));
+
+      if (intervalChanged) {
+        const nextAt = new Date(now.getTime() + nextInterval * 60 * 60 * 1000);
+        await tx
+          .update(resurfaceEvents)
+          .set({ nextExecuteAt: nextAt })
+          .where(
+            and(
+              eq(resurfaceEvents.scheduleId, scheduleId),
+              eq(resurfaceEvents.status, "pending"),
+            ),
+          );
+      }
+
+      if (effectiveIsActive && done < nextMax) {
+        const [pending] = await tx
+          .select({ id: resurfaceEvents.id })
+          .from(resurfaceEvents)
+          .where(
+            and(
+              eq(resurfaceEvents.scheduleId, scheduleId),
+              eq(resurfaceEvents.status, "pending"),
+            ),
+          )
+          .limit(1);
+        if (!pending) {
+          const nextAt = new Date(now.getTime() + nextInterval * 60 * 60 * 1000);
+          await tx.insert(resurfaceEvents).values({
+            scheduleId,
+            status: "pending",
+            nextExecuteAt: nextAt,
+          });
+        }
+      }
+    });
+
+    revalidatePath("/dashboard/posts");
+    revalidatePath(`/dashboard/posts/${schedule.postId}`);
+    return { success: true };
+  } catch (e) {
+    console.error("[updateResurfaceSchedule]", e);
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Failed to update schedule",
     };
   }
 }

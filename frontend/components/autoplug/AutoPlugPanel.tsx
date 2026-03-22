@@ -35,6 +35,8 @@ type AutoPlugPanelProps = {
   embedded?: boolean;
   /** When true, show only the form (no toggle); for use inside settings modal */
   modalMode?: boolean;
+  /** Skip the 6h post-publish window (e.g. post detail page editing existing Auto-Plug). */
+  ignorePublicationTimeWindow?: boolean;
 };
 
 export function AutoPlugPanel({
@@ -45,6 +47,7 @@ export function AutoPlugPanel({
   initialConfig,
   embedded = false,
   modalMode = false,
+  ignorePublicationTimeWindow = false,
 }: AutoPlugPanelProps) {
   const supportedPlatforms = getResurfacePlatforms(
     selectedAccountIds,
@@ -52,7 +55,9 @@ export function AutoPlugPanel({
   );
   const visible =
     supportedPlatforms.length > 0 &&
-    (publishedAt === undefined || isWithinAutoPlugWindow(publishedAt));
+    (ignorePublicationTimeWindow ||
+      publishedAt === undefined ||
+      isWithinAutoPlugWindow(publishedAt));
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;

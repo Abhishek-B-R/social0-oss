@@ -478,6 +478,17 @@ export type ResurfaceDetail = {
   isActive: boolean;
   resurfacesDone: number;
   maxResurfaces: number;
+  intervalHours: number;
+  plugComment: string | null;
+};
+
+/** Auto-Plug row for post detail (X published). */
+export type AutoPlugDetail = {
+  id: string;
+  status: string;
+  metricType: string;
+  metricThreshold: number;
+  plugComment: string;
 };
 
 export type PostDetailResult = {
@@ -485,8 +496,8 @@ export type PostDetailResult = {
   publications: PublicationRow[];
   /** Set when post is scheduled and has a pending queued_posts entry */
   queuedSlot: QueuedSlotInfo | null;
-  /** Set when post has Auto-Plug enabled (X published); latest status */
-  autoPlug: { status: string } | null;
+  /** Set when post has Auto-Plug enabled (X published); latest row */
+  autoPlug: AutoPlugDetail | null;
   /** Set when post has resurface/autorepost (X published); at most one schedule per post */
   resurface: ResurfaceDetail | null;
 };
@@ -541,16 +552,29 @@ export async function getPostDetail(
     const hasXPublished = pubs.some(
       (p) => p.platform === "twitter_x" && p.status === "published",
     );
-    let autoPlug: { status: string } | null = null;
+    let autoPlug: AutoPlugDetail | null = null;
     let resurface: ResurfaceDetail | null = null;
     if (hasXPublished) {
       const [plug] = await db
-        .select({ status: autoPlugs.status })
+        .select({
+          id: autoPlugs.id,
+          status: autoPlugs.status,
+          metricType: autoPlugs.metricType,
+          metricThreshold: autoPlugs.metricThreshold,
+          plugComment: autoPlugs.plugComment,
+        })
         .from(autoPlugs)
         .where(eq(autoPlugs.postId, postId))
         .orderBy(desc(autoPlugs.createdAt))
         .limit(1);
-      if (plug) autoPlug = { status: plug.status };
+      if (plug)
+        autoPlug = {
+          id: plug.id,
+          status: plug.status,
+          metricType: plug.metricType,
+          metricThreshold: plug.metricThreshold ?? 0,
+          plugComment: plug.plugComment ?? "",
+        };
 
       const [sched] = await db
         .select({
@@ -558,6 +582,8 @@ export async function getPostDetail(
           isActive: resurfaceSchedules.isActive,
           resurfacesDone: resurfaceSchedules.resurfacesDone,
           maxResurfaces: resurfaceSchedules.maxResurfaces,
+          intervalHours: resurfaceSchedules.intervalHours,
+          plugComment: resurfaceSchedules.plugComment,
         })
         .from(resurfaceSchedules)
         .where(eq(resurfaceSchedules.postId, postId))
@@ -568,6 +594,8 @@ export async function getPostDetail(
           isActive: sched.isActive ?? true,
           resurfacesDone: sched.resurfacesDone ?? 0,
           maxResurfaces: sched.maxResurfaces,
+          intervalHours: sched.intervalHours ?? 4,
+          plugComment: sched.plugComment ?? null,
         };
     }
 

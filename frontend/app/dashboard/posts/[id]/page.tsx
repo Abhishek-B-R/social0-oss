@@ -16,7 +16,6 @@ import {
   type PostDetailRow,
   type PostMediaRow,
 } from "../posts-list-data";
-import { getAutoPlugBadge } from "../autoplug-badge";
 import {
   Image as ImageIcon,
   Video,
@@ -26,6 +25,9 @@ import {
   Play,
 } from "lucide-react";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
+import { getSubscriptionForUser } from "@/lib/subscription";
+import { getPlanLimits } from "@/lib/plans";
+import { PostDetailAutoFeaturesSection } from "./PostDetailAutoFeaturesSection";
 import { formatDateTime } from "@/lib/date-format";
 import { sortBySlowPlatformsLast } from "@/lib/publish-order";
 import {
@@ -177,10 +179,12 @@ export default async function PostDetailPage({
     await getUserSettingsSnapshot();
 
   const { id } = await params;
-  const [data, showPaymentFailedBanner] = await Promise.all([
+  const [data, showPaymentFailedBanner, subscription] = await Promise.all([
     getPostDetail(id, session.user.id),
     hasPaymentFailedPosts(session.user.id),
+    getSubscriptionForUser(session.user.id),
   ]);
+  const planLimits = getPlanLimits(subscription.tier);
   if (!data) redirect("/dashboard/posts");
 
   const { post, publications, queuedSlot, autoPlug, resurface } = data;
@@ -217,6 +221,72 @@ export default async function PostDetailPage({
     publishedAts.length > 0
       ? new Date(Math.min(...publishedAts.map((d) => new Date(d).getTime())))
       : null;
+
+  /** X-only: Auto-Plug / Auto-Repost windows and 24h lock follow the tweet publish time. */
+  const xPublishedAts = publications
+    .filter((p) => p.platform === "twitter_x" && p.status === "published")
+    .map((p) => p.publishedAt)
+    .filter((d): d is Date => d != null);
+  const publishedAtForXAutoFeatures =
+    xPublishedAts.length > 0
+      ? new Date(Math.min(...xPublishedAts.map((d) => new Date(d).getTime())))
+      : null;
+
+  const hasXPublished = publicationsSorted.some(
+    (p) => p.platform === "twitter_x" && p.status === "published",
+  );
+  const xPublishedAccountIds = publicationsSorted
+    .filter((p) => p.platform === "twitter_x" && p.status === "published")
+    .map((p) => p.connectedAccountId)
+    .filter((cid): cid is string => !!cid);
+
+  const hasXSelected = publicationsSorted.some(
+    (p) => p.platform === "twitter_x",
+  );
+  const xSelectedAccountIds = [
+    ...new Set(
+      publicationsSorted
+        .filter((p) => p.platform === "twitter_x")
+        .map((p) => p.connectedAccountId)
+        .filter((cid): cid is string => !!cid),
+    ),
+  ];
+
+  const bulkMeta = post.metadata as
+    | {
+        bulkAutoFeatures?: {
+          autoRepostConfig?: {
+            intervalHours: number;
+            maxResurfaces: number;
+            plugComment?: string;
+          };
+          autoPlugConfig?: {
+            metricType: string;
+            threshold: number;
+            plugComment: string;
+          };
+        };
+      }
+    | null
+    | undefined;
+  const bulk = bulkMeta?.bulkAutoFeatures;
+  const pendingAutoPlugFromBulk = bulk?.autoPlugConfig
+    ? {
+        metricType:
+          bulk.autoPlugConfig.metricType === "retweets"
+            ? ("retweets" as const)
+            : ("likes" as const),
+        threshold: bulk.autoPlugConfig.threshold,
+        plugComment: bulk.autoPlugConfig.plugComment,
+      }
+    : null;
+  const pendingResurfaceFromBulk = bulk?.autoRepostConfig
+    ? {
+        intervalHours: bulk.autoRepostConfig.intervalHours,
+        maxResurfaces: bulk.autoRepostConfig.maxResurfaces,
+        plugComment: bulk.autoRepostConfig.plugComment ?? "",
+      }
+    : null;
 
   return (
     <div className="space-y-6">
@@ -586,61 +656,33 @@ export default async function PostDetailPage({
             )}
           </div>
 
-          {(autoPlug || resurface) && (
-            <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-3">
-              <h2 className="text-base font-semibold text-text">Status</h2>
-              <dl className="text-sm space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <dt className="font-medium text-text-muted shrink-0">
-                    Autoplug:
-                  </dt>
-                  <dd>
-                    {autoPlug ? (
-                      (() => {
-                        const badge = getAutoPlugBadge(autoPlug.status);
-                        return badge ? (
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
-                          >
-                            {badge.label}
-                          </span>
-                        ) : (
-                          <span className="text-text-muted">—</span>
-                        );
-                      })()
-                    ) : (
-                      <span className="text-text-muted">—</span>
-                    )}
-                  </dd>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <dt className="font-medium text-text-muted shrink-0">
-                    Autorepost:
-                  </dt>
-                  <dd>
-                    {resurface ? (
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          resurface.resurfacesDone >= resurface.maxResurfaces
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
-                            : resurface.isActive
-                              ? "bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-200"
-                              : "bg-gray-100 text-gray-700 dark:bg-bg-muted dark:text-text-muted"
-                        }`}
-                      >
-                        {resurface.resurfacesDone >= resurface.maxResurfaces
-                          ? `Done (${resurface.resurfacesDone}/${resurface.maxResurfaces})`
-                          : resurface.isActive
-                            ? `Active (${resurface.resurfacesDone}/${resurface.maxResurfaces})`
-                            : "Inactive"}
-                      </span>
-                    ) : (
-                      <span className="text-text-muted">—</span>
-                    )}
-                  </dd>
-                </div>
-              </dl>
-            </div>
+          {((hasXPublished &&
+            (post.status === "published" || post.status === "partial")) ||
+            (post.status === "scheduled" && hasXSelected)) && (
+            <PostDetailAutoFeaturesSection
+              key={`${post.id}-${post.status}-${autoPlug?.id ?? ""}-${resurface?.id ?? ""}-${resurface?.resurfacesDone ?? 0}-${resurface?.isActive ? 1 : 0}-${autoPlug?.status ?? ""}-${pendingAutoPlugFromBulk ? "p1" : "p0"}-${pendingResurfaceFromBulk ? "r1" : "r0"}`}
+              postId={post.id}
+              publishedAt={
+                post.status === "scheduled" ? null : publishedAtForXAutoFeatures
+              }
+              variant={post.status === "scheduled" ? "scheduled" : "published"}
+              pendingAutoPlugFromServer={
+                post.status === "scheduled" ? pendingAutoPlugFromBulk : null
+              }
+              pendingResurfaceFromServer={
+                post.status === "scheduled" ? pendingResurfaceFromBulk : null
+              }
+              use24HourTimeFormat={use24HourTimeFormat}
+              allowAutoPlug={planLimits.allowAutoPlug}
+              allowResurface={planLimits.allowResurface}
+              autoPlugDetail={autoPlug}
+              resurfaceDetail={resurface}
+              selectedAccountIds={
+                post.status === "scheduled"
+                  ? xSelectedAccountIds
+                  : xPublishedAccountIds
+              }
+            />
           )}
         </div>
       </div>
