@@ -308,7 +308,12 @@ export function SchedulePostSidebar({
             <button
               type="button"
               onClick={handlePostNow}
-              disabled={loading || !hasAccountSelected || submitDisabled || primaryActionDisabled}
+              disabled={
+                loading ||
+                !hasAccountSelected ||
+                submitDisabled ||
+                primaryActionDisabled
+              }
               title={
                 loading
                   ? undefined
@@ -367,7 +372,7 @@ export function SchedulePostSidebar({
             ) : (
               <Link
                 href="/dashboard/settings#queue"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border bg-bg-muted/40 px-3 py-2 text-sm font-medium text-text hover:border-accent/50 hover:bg-accent/5 hover:text-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent/20"
+                className="inline-flex w-full justify-center items-center gap-1.5 rounded-lg border border-border bg-bg-muted/40 px-3 py-2 text-sm font-medium text-text hover:border-accent/50 hover:bg-accent/5 hover:text-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent/20"
               >
                 <Settings className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Set up queue in Settings
@@ -375,6 +380,12 @@ export function SchedulePostSidebar({
             )}
             <p className="text-xs text-text-muted">
               Timezone: {formatTimezoneLabel(timezone)}
+              <Link
+                href="/dashboard/settings#preferences"
+                className="inline-flex items-center gap-1.5 rounded-lg text-emerald-500 ml-2"
+              >
+                Edit
+              </Link>
             </p>
             <div className="flex gap-3">
               <div className="min-w-0 flex-1">

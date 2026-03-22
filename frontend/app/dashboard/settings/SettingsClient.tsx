@@ -65,6 +65,25 @@ const SETTINGS_TABS = [
   { id: "connections", label: "Connections", icon: IconLink },
 ] as const;
 
+type SettingsTabId = (typeof SETTINGS_TABS)[number]["id"];
+
+function parseSettingsHash(hash: string): SettingsTabId {
+  const raw = hash.replace(/^#/, "").trim().toLowerCase();
+  if (!raw || raw === "profile") return "profile";
+  if (raw === "queues") return "queue";
+  const found = SETTINGS_TABS.find((t) => t.id === raw);
+  return found ? found.id : "profile";
+}
+
+function setSettingsUrlHash(tabId: SettingsTabId) {
+  const path = `${window.location.pathname}${window.location.search}`;
+  const next =
+    tabId === "profile" ? path : `${path}#${tabId}`;
+  if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== next) {
+    window.history.replaceState(null, "", next);
+  }
+}
+
 function SaveButton({ label = "Save" }: { label?: string }) {
   const { pending } = useFormStatus();
 
@@ -902,8 +921,7 @@ export function SettingsClient({
   isCredentialUser: boolean;
 }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] =
-    useState<(typeof SETTINGS_TABS)[number]["id"]>("profile");
+  const [activeTab, setActiveTab] = useState<SettingsTabId>("profile");
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [changeEmailSuccess, setChangeEmailSuccess] = useState(false);
   const [clientTimezone, setClientTimezone] = useState("");
@@ -922,6 +940,15 @@ export function SettingsClient({
     } catch {
       // ignore
     }
+  }, []);
+
+  useEffect(() => {
+    const syncFromHash = () => {
+      setActiveTab(parseSettingsHash(window.location.hash));
+    };
+    syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
   }, []);
 
   return (
@@ -943,7 +970,10 @@ export function SettingsClient({
           <button
             key={tab.id}
             type="button"
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setActiveTab(tab.id);
+              setSettingsUrlHash(tab.id);
+            }}
             className={cn(
               "flex items-center gap-2 px-4 py-2.5 text-sm transition-colors border-b-2 -mb-px",
               activeTab === tab.id
