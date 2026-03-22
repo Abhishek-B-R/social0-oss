@@ -22,7 +22,6 @@ import {
   FileText,
   Layers,
   LayoutGrid,
-  Play,
 } from "lucide-react";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { getSubscriptionForUser } from "@/lib/subscription";
@@ -361,13 +360,24 @@ export default async function PostDetailPage({
                                   className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-bg-muted"
                                 >
                                   {isVideo ? (
-                                    <video
-                                      src={m.url ?? undefined}
-                                      className="h-full w-full object-cover"
-                                      muted
-                                      playsInline
-                                      preload="metadata"
-                                    />
+                                    m.thumbnailUrl ? (
+                                      <NextImage
+                                        src={m.thumbnailUrl}
+                                        alt={m.originalFilename}
+                                        fill
+                                        sizes="80px"
+                                        className="object-cover"
+                                        unoptimized
+                                      />
+                                    ) : (
+                                      <video
+                                        src={m.url ?? undefined}
+                                        className="h-full w-full object-cover"
+                                        muted
+                                        playsInline
+                                        preload="metadata"
+                                      />
+                                    )
                                   ) : (
                                     <NextImage
                                       src={m.thumbnailUrl ?? m.url ?? ""}
@@ -377,17 +387,6 @@ export default async function PostDetailPage({
                                       className="object-cover"
                                       unoptimized
                                     />
-                                  )}
-                                  {isVideo && (
-                                    <span
-                                      className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-lg"
-                                      aria-hidden
-                                    >
-                                      <Play
-                                        className="h-8 w-8 text-white drop-shadow-sm fill-white"
-                                        strokeWidth={2}
-                                      />
-                                    </span>
                                   )}
                                 </div>
                               );
@@ -429,6 +428,8 @@ export default async function PostDetailPage({
                         controls
                         muted
                         playsInline
+                        preload="metadata"
+                        poster={m.thumbnailUrl ?? undefined}
                       />
                     ) : (
                       <NextImage

@@ -74,6 +74,7 @@ import {
   Clapperboard,
   ImagePlus,
   Info,
+  Play,
 } from "lucide-react";
 import {
   consumeComposerPayload,
@@ -1696,13 +1697,27 @@ export function VideoPostForm({
                   <div className="relative flex h-12 w-16 shrink-0 overflow-hidden rounded border border-border">
                     <video
                       src={videoPreview}
+                      poster={customThumbnailPreview ?? undefined}
                       muted
                       playsInline
+                      preload="metadata"
                       className="h-full w-full object-cover"
-                      onLoadedMetadata={(e) =>
-                        setVideoDuration(e.currentTarget.duration)
-                      }
+                      onLoadedMetadata={(e) => {
+                        const v = e.currentTarget;
+                        setVideoDuration(v.duration);
+                        try {
+                          v.currentTime = 0.001;
+                        } catch {
+                          /* ignore */
+                        }
+                      }}
                     />
+                    <span
+                      className="pointer-events-none absolute bottom-0.5 right-0.5 z-[1] flex h-4 w-4 items-center justify-center rounded-full bg-black/65 ring-1 ring-white/20 shadow-sm"
+                      aria-hidden
+                    >
+                      <Play className="h-2 w-2 translate-x-[0.5px] fill-current text-white" />
+                    </span>
                     <button
                       type="button"
                       onClick={removeVideo}
@@ -2492,20 +2507,11 @@ export function VideoPostForm({
                             poster={customThumbnailPreview ?? undefined}
                             className="h-full w-full object-cover"
                             muted
+                            autoPlay
+                            loop
                             playsInline
                             preload="auto"
                           />
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50">
-                              <svg
-                                className="h-5 w-5 ml-0.5 text-white fill-current"
-                                viewBox="0 0 24 24"
-                                aria-hidden
-                              >
-                                <path d="M8 5v14l11-7z" />
-                              </svg>
-                            </div>
-                          </div>
                         </div>
                       )}
                       <div className="mt-2 flex items-center gap-4 text-sm text-text-muted">
@@ -2546,6 +2552,8 @@ export function VideoPostForm({
                         <video
                           src={videoPreview}
                           controls
+                          muted
+                          autoPlay
                           playsInline
                           className={`h-full w-full ${isVertical ? "object-cover" : "object-contain"}`}
                           onLoadedMetadata={(e) => {

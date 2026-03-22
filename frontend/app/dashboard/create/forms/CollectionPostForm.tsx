@@ -55,7 +55,7 @@ import {
 } from "@/lib/composer-bridge";
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
-import { ChevronDown, ChevronUp, Circle } from "lucide-react";
+import { ChevronDown, ChevronUp, Circle, Play } from "lucide-react";
 import { uploadFile } from "@/lib/upload-file";
 import {
   getVideoDuration,
@@ -92,6 +92,92 @@ type VideoFile = {
   /** Duration in seconds; set when file is added so we can compute max for limit warnings. */
   durationSeconds?: number;
 };
+
+type TweetPreviewMediaItem = {
+  preview: string;
+  type: "image" | "video";
+};
+
+/** Twitter-style attachment layout: 1 = full width, 2 = half/half, 3 = half + two quarters, 4 = 2×2. */
+function TweetPreviewMediaGrid({ items }: { items: TweetPreviewMediaItem[] }) {
+  const slice = items.slice(0, 4);
+  const n = slice.length;
+  if (n === 0) return null;
+
+  const shell =
+    "mt-2 w-full gap-0.5 overflow-hidden rounded-lg bg-bg-muted min-h-0";
+
+  const MediaCell = ({
+    item,
+    className = "",
+  }: {
+    item: TweetPreviewMediaItem;
+    className?: string;
+  }) => (
+    <div
+      className={`relative min-h-0 min-w-0 h-full w-full overflow-hidden bg-black/10 ${className}`}
+    >
+      {item.type === "video" ? (
+        <video
+          src={item.preview}
+          className="absolute inset-0 h-full w-full object-cover"
+          muted
+          autoPlay
+          loop
+          playsInline
+          preload="auto"
+        />
+      ) : (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={item.preview}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      )}
+      {item.type === "video" && (
+        <div
+          className="pointer-events-none absolute bottom-0.5 left-0.5 z-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/70 ring-1 ring-white/15 shadow-sm"
+          aria-hidden
+        >
+          <Play className="h-2 w-2 translate-x-[0.5px] fill-current text-white" />
+        </div>
+      )}
+    </div>
+  );
+
+  if (n === 1) {
+    return (
+      <div className={`${shell} aspect-video`}>
+        <MediaCell item={slice[0]} />
+      </div>
+    );
+  }
+  if (n === 2) {
+    return (
+      <div className={`${shell} grid aspect-video grid-cols-2 grid-rows-1`}>
+        <MediaCell item={slice[0]} />
+        <MediaCell item={slice[1]} />
+      </div>
+    );
+  }
+  if (n === 3) {
+    return (
+      <div className={`${shell} grid aspect-video grid-cols-2 grid-rows-2`}>
+        <MediaCell item={slice[0]} className="row-span-2" />
+        <MediaCell item={slice[1]} />
+        <MediaCell item={slice[2]} />
+      </div>
+    );
+  }
+  return (
+    <div className={`${shell} grid aspect-video grid-cols-2 grid-rows-2`}>
+      {slice.map((item) => (
+        <MediaCell key={item.preview} item={item} />
+      ))}
+    </div>
+  );
+}
 
 export function CollectionPostForm({
   accounts,
@@ -1740,8 +1826,11 @@ export function CollectionPostForm({
                           />
                         )}
                         {isVideo && (
-                          <div className="absolute bottom-1 left-1 flex items-center gap-0.5 rounded-full bg-black/70 px-1.5 py-0.5">
-                            <MdOutlineVideocam className="h-3 w-3 text-white" />
+                          <div
+                            className="pointer-events-none absolute bottom-1 left-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 ring-1 ring-white/15 shadow-sm"
+                            aria-hidden
+                          >
+                            <Play className="h-2.5 w-2.5 translate-x-[0.5px] fill-current text-white" />
                           </div>
                         )}
                         <div className="absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center">
@@ -1969,6 +2058,7 @@ export function CollectionPostForm({
                         className="h-full w-full object-contain"
                         controls
                         muted
+                        autoPlay
                         playsInline
                         preload="auto"
                       />
@@ -2041,8 +2131,11 @@ export function CollectionPostForm({
                           />
                         )}
                         {item.type === "video" && (
-                          <div className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded-full bg-black/70 px-1 py-0.5">
-                            <MdOutlineVideocam className="h-2.5 w-2.5 text-white" />
+                          <div
+                            className="pointer-events-none absolute bottom-0.5 left-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/70 ring-1 ring-white/15 shadow-sm"
+                            aria-hidden
+                          >
+                            <Play className="h-2 w-2 translate-x-[0.5px] fill-current text-white" />
                           </div>
                         )}
                       </button>
@@ -2095,38 +2188,7 @@ export function CollectionPostForm({
                           </span>
                         )}
                       </p>
-                      {allItemsSorted.length > 0 && (
-                        <div className="mt-2 w-full max-h-[150px] grid grid-cols-2 grid-rows-2 gap-0.5 overflow-hidden rounded-lg bg-bg-muted">
-                          {allItemsSorted.slice(0, 4).map((item) => (
-                            <div
-                              key={item.preview}
-                              className="relative min-w-0 min-h-0 overflow-hidden"
-                            >
-                              {item.type === "video" ? (
-                                <video
-                                  src={item.preview}
-                                  className="h-full w-full object-cover"
-                                  muted
-                                  playsInline
-                                  preload="metadata"
-                                />
-                              ) : (
-                                /* eslint-disable-next-line @next/next/no-img-element */
-                                <img
-                                  src={item.preview}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                              )}
-                              {item.type === "video" && (
-                                <div className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded-full bg-black/70 px-1 py-0.5">
-                                  <MdOutlineVideocam className="h-2.5 w-2.5 text-white" />
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <TweetPreviewMediaGrid items={allItemsSorted} />
                       <div className="mt-2 flex items-center gap-4 text-sm text-text-muted">
                         <span>♡ 0</span>
                         <span>↺ 0</span>

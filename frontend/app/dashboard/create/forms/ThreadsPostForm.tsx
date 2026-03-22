@@ -41,7 +41,7 @@ import { PLATFORMS } from "@/lib/platforms";
 import { IoMdAddCircleOutline } from "react-icons/io";
 import { MdClose } from "react-icons/md";
 import { MdOutlinePhotoLibrary, MdOutlineVideocam } from "react-icons/md";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Play } from "lucide-react";
 import {
   validateMediaFile,
   getAccountsExceededByAttachments,
@@ -109,19 +109,6 @@ function ThreadPreviewMediaGrid({ items }: { items: PreviewMediaItem[] }) {
   const containerClass =
     "w-full max-h-[200px] flex gap-1 overflow-hidden rounded-lg";
   const imgClass = "w-full h-full object-cover rounded-lg";
-  const playOverlay = (
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50">
-        <svg
-          className="h-5 w-5 ml-0.5 text-white fill-current"
-          viewBox="0 0 24 24"
-          aria-hidden
-        >
-          <path d="M8 5v14l11-7z" />
-        </svg>
-      </div>
-    </div>
-  );
 
   const renderSlot = (item: PreviewMediaItem, key: string) => {
     if (item.type === "image") {
@@ -141,10 +128,17 @@ function ThreadPreviewMediaGrid({ items }: { items: PreviewMediaItem[] }) {
           poster={item.thumbnailUrl ?? undefined}
           className={imgClass}
           muted
+          autoPlay
+          loop
           playsInline
           preload="auto"
         />
-        {playOverlay}
+        <div
+          className="pointer-events-none absolute bottom-1 left-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 ring-1 ring-white/15 shadow-sm"
+          aria-hidden
+        >
+          <Play className="h-2.5 w-2.5 translate-x-[0.5px] fill-current text-white" />
+        </div>
       </div>
     );
   };
@@ -1994,7 +1988,7 @@ export function ThreadsPostForm({
                                 className="h-full w-full object-cover"
                                 muted
                                 playsInline
-                                preload="auto"
+                                preload="metadata"
                                 draggable={false}
                               />
                             ) : (
@@ -2005,6 +1999,14 @@ export function ThreadsPostForm({
                                 className="h-full w-full object-cover"
                                 draggable={false}
                               />
+                            )}
+                            {isVideo && (
+                              <div
+                                className="pointer-events-none absolute bottom-0.5 left-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/70 ring-1 ring-white/15 shadow-sm"
+                                aria-hidden
+                              >
+                                <Play className="h-2 w-2 translate-x-[0.5px] fill-current text-white" />
+                              </div>
                             )}
                             <div className="absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center">
                               <span className="text-xs font-bold text-white">
