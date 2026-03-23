@@ -5,10 +5,7 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
-import {
-  publishPost,
-  getPostPublicationList,
-} from "@/app/actions/publish";
+import { publishPost, getPostPublicationList } from "@/app/actions/publish";
 import {
   sortBySlowPlatformsLast,
   publishEachPublicationInParallel,
@@ -947,8 +944,7 @@ export function VideoPostForm({
         toast.error(VIDEO_DURATION_MESSAGE);
         return;
       }
-      if (videoPreviewRef.current)
-        URL.revokeObjectURL(videoPreviewRef.current);
+      if (videoPreviewRef.current) URL.revokeObjectURL(videoPreviewRef.current);
       if (customThumbnailPreviewRef.current)
         URL.revokeObjectURL(customThumbnailPreviewRef.current);
       setVideoFile(file);
@@ -1713,7 +1709,7 @@ export function VideoPostForm({
                       }}
                     />
                     <span
-                      className="pointer-events-none absolute bottom-0.5 right-0.5 z-[1] flex h-4 w-4 items-center justify-center rounded-full bg-black/65 ring-1 ring-white/20 shadow-sm"
+                      className="pointer-events-none absolute bottom-0.5 right-0.5 z-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/65 ring-1 ring-white/20 shadow-sm"
                       aria-hidden
                     >
                       <Play className="h-2 w-2 translate-x-[0.5px] fill-current text-white" />
@@ -2370,8 +2366,14 @@ export function VideoPostForm({
           }
           hasAccountSelected={selectedIds.size > 0}
           submitDisabledReason={submitDisabledReason}
-          primaryActionDisabled={subscriptionTier === "free" && mode !== "draft"}
-          primaryActionDisabledReason={subscriptionTier === "free" && mode !== "draft" ? "Subscribe to a plan to post" : null}
+          primaryActionDisabled={
+            subscriptionTier === "free" && mode !== "draft"
+          }
+          primaryActionDisabledReason={
+            subscriptionTier === "free" && mode !== "draft"
+              ? "Subscribe to a plan to post"
+              : null
+          }
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
           timezone={timezone}
