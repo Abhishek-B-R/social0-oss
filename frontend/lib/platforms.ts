@@ -82,8 +82,8 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "FACEBOOK_CLIENT_SECRET",
     authUrl: "https://www.facebook.com/dialog/oauth",
     tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
-    // pages_manage_metadata required for posting as Page; others for page list and feed
+    // pages_show_list: me/accounts; pages_manage_posts: feed/photos publish; pages_read_engagement if we read insights
     scope:
-      "pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata",
+      "pages_show_list,pages_read_engagement,pages_manage_posts",
   },
 };
