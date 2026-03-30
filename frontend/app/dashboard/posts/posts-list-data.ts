@@ -8,7 +8,7 @@ import {
   autoPlugs,
   queuedPosts,
 } from "@/db/schema";
-import { eq, desc, asc, inArray, and, sql } from "drizzle-orm";
+import { eq, desc, asc, inArray, and, sql, gte, exists } from "drizzle-orm";
 import { startOfWeek, startOfMonth } from "date-fns";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { isActiveTier } from "@/lib/plans";
@@ -75,25 +75,75 @@ export async function getPostsListData({
 }: PostsListParams) {
   const offset = offsetParam ?? (page - 1) * limit;
 
-  const whereClause = statusFilter
-    ? and(eq(posts.userId, userId), eq(posts.status, statusFilter))
-    : eq(posts.userId, userId);
+  // Build WHERE fully in DB — no in-memory filtering after this point
+  const timeFilterDate =
+    timeFilter === "week"
+      ? startOfWeek(new Date(), { weekStartsOn: 1 })
+      : timeFilter === "month"
+        ? startOfMonth(new Date())
+        : null;
 
-  let userPosts = await db
-    .select({
-      id: posts.id,
-      originalContent: posts.originalContent,
-      status: posts.status,
-      scheduledAt: posts.scheduledAt,
-      failureReason: posts.failureReason,
-      createdAt: posts.createdAt,
-      mediaIds: posts.mediaIds,
-      metadata: posts.metadata,
-    })
-    .from(posts)
-    .where(whereClause)
-    .orderBy(sort === "oldest" ? asc(posts.createdAt) : desc(posts.createdAt));
+  const whereClause = and(
+    eq(posts.userId, userId),
+    statusFilter ? eq(posts.status, statusFilter) : undefined,
+    timeFilterDate ? gte(posts.createdAt, timeFilterDate) : undefined,
+    platformFilter
+      ? exists(
+          db
+            .select({ v: sql`1` })
+            .from(postPublications)
+            .innerJoin(
+              connectedAccounts,
+              eq(postPublications.connectedAccountId, connectedAccounts.id),
+            )
+            .where(
+              and(
+                eq(postPublications.postId, posts.id),
+                sql`${connectedAccounts.platform} = ${platformFilter}`,
+              ),
+            ),
+        )
+      : undefined,
+    accountFilter
+      ? exists(
+          db
+            .select({ v: sql`1` })
+            .from(postPublications)
+            .where(
+              and(
+                eq(postPublications.postId, posts.id),
+                eq(postPublications.connectedAccountId, accountFilter),
+              ),
+            ),
+        )
+      : undefined,
+  );
 
+  // COUNT + paginated SELECT — two fast indexed queries instead of one full scan
+  const [[countRow], userPosts] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(posts)
+      .where(whereClause),
+    db
+      .select({
+        id: posts.id,
+        originalContent: posts.originalContent,
+        status: posts.status,
+        scheduledAt: posts.scheduledAt,
+        failureReason: posts.failureReason,
+        createdAt: posts.createdAt,
+        mediaIds: posts.mediaIds,
+        metadata: posts.metadata,
+      })
+      .from(posts)
+      .where(whereClause)
+      .orderBy(sort === "oldest" ? asc(posts.createdAt) : desc(posts.createdAt))
+      .limit(limit)
+      .offset(offset),
+  ]);
+
+  const totalCount = countRow?.count ?? 0;
   const postIds = userPosts.map((p) => p.id);
   const publications =
     postIds.length > 0
@@ -171,39 +221,8 @@ export async function getPostsListData({
     ),
   ];
 
-  if (platformFilter) {
-    userPosts = userPosts.filter((p) =>
-      (publicationsByPostId[p.id] ?? []).some(
-        (pub) => pub.platform === platformFilter,
-      ),
-    );
-  }
-  if (accountFilter) {
-    userPosts = userPosts.filter((p) =>
-      (publicationsByPostId[p.id] ?? []).some(
-        (pub) => pub.connectedAccountId === accountFilter,
-      ),
-    );
-  }
-  if (timeFilter === "week") {
-    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-    userPosts = userPosts.filter((p) => {
-      const d = p.createdAt ? new Date(p.createdAt) : null;
-      return d && d >= weekStart;
-    });
-  } else if (timeFilter === "month") {
-    const monthStart = startOfMonth(new Date());
-    userPosts = userPosts.filter((p) => {
-      const d = p.createdAt ? new Date(p.createdAt) : null;
-      return d && d >= monthStart;
-    });
-  }
-
-  const totalCount = userPosts.length;
-  const pagePosts = userPosts.slice(offset, offset + limit);
-
   // Use derived status: "publishing" -> "published" when all succeeded, "partial" when mixed
-  const userPostsWithStatus = pagePosts.map((p) => {
+  const userPostsWithStatus = userPosts.map((p) => {
     const pubs = publicationsByPostId[p.id] ?? [];
     let effectiveStatus = p.status;
     if (p.status === "publishing" && pubs.length > 0) {

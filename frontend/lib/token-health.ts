@@ -6,7 +6,7 @@
 
 import { db } from "@/db";
 import { connectedAccounts } from "@/db/schema";
-import { and, eq, or, lt, isNull } from "drizzle-orm";
+import { and, eq, or, lt, isNull, inArray } from "drizzle-orm";
 import { decryptToken } from "@/lib/encryption";
 import OAuth from "oauth-1.0a";
 import crypto from "crypto";
@@ -156,6 +156,10 @@ export async function runTokenHealthCheck(
   const tryRefresh = options.tryRefreshYouTubeTikTok ?? false;
   const twitterSecrets = options.twitterAccessSecretByAccountId;
 
+  // Collect results during API calls; write to DB in 2 batched updates at end
+  const toMarkActive: string[] = [];
+  const toMarkExpired: string[] = [];
+
   for (let i = 0; i < accounts.length; i++) {
     if (i > 0) await sleep(DELAY_MS);
 
@@ -173,17 +177,11 @@ export async function runTokenHealthCheck(
       else if (twitterSecrets?.has(account.id))
         accessSecret = twitterSecrets.get(account.id) ?? null;
     } catch {
-      await db
-        .update(connectedAccounts)
-        .set({
-          tokenStatus: "expired",
-          updatedAt: now,
-        })
-        .where(eq(connectedAccounts.id, account.id));
+      toMarkExpired.push(account.id);
       continue;
     }
 
-    // YouTube/TikTok: if expiring soon and we're allowed to refresh, try refresh first (caller injects refresh)
+    // YouTube/TikTok: if expiring soon and we're allowed to refresh, try refresh first
     if (
       tryRefresh &&
       (account.platform === "youtube" || account.platform === "tiktok")
@@ -196,22 +194,9 @@ export async function runTokenHealthCheck(
         try {
           const { getValidToken } = await import("@/lib/token-refresh");
           await getValidToken(account.id, account.platform);
-          await db
-            .update(connectedAccounts)
-            .set({
-              lastSyncedAt: now,
-              tokenStatus: "active",
-              updatedAt: now,
-            })
-            .where(eq(connectedAccounts.id, account.id));
+          toMarkActive.push(account.id);
         } catch {
-          await db
-            .update(connectedAccounts)
-            .set({
-              tokenStatus: "expired",
-              updatedAt: now,
-            })
-            .where(eq(connectedAccounts.id, account.id));
+          toMarkExpired.push(account.id);
         }
         continue;
       }
@@ -224,24 +209,25 @@ export async function runTokenHealthCheck(
     );
 
     if (status === 200) {
-      await db
-        .update(connectedAccounts)
-        .set({
-          lastSyncedAt: now,
-          tokenStatus: "active",
-          updatedAt: now,
-        })
-        .where(eq(connectedAccounts.id, account.id));
+      toMarkActive.push(account.id);
     } else if (status === 401 || status === 403) {
-      await db
-        .update(connectedAccounts)
-        .set({
-          tokenStatus: "expired",
-          updatedAt: now,
-        })
-        .where(eq(connectedAccounts.id, account.id));
+      toMarkExpired.push(account.id);
     }
     // Other statuses: leave tokenStatus/lastSyncedAt unchanged
+  }
+
+  // Batch writes — 2 queries max regardless of how many accounts were checked
+  if (toMarkActive.length > 0) {
+    await db
+      .update(connectedAccounts)
+      .set({ lastSyncedAt: now, tokenStatus: "active", updatedAt: now })
+      .where(inArray(connectedAccounts.id, toMarkActive));
+  }
+  if (toMarkExpired.length > 0) {
+    await db
+      .update(connectedAccounts)
+      .set({ tokenStatus: "expired", updatedAt: now })
+      .where(inArray(connectedAccounts.id, toMarkExpired));
   }
 }
 

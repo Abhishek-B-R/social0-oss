@@ -6,13 +6,14 @@ import {
   postPublications,
   connectedAccounts,
   posts,
+  userSettings,
 } from "@/db/schema";
-import { and, eq, lte, desc } from "drizzle-orm";
+import { and, eq, lte, desc, inArray } from "drizzle-orm";
 import { TwitterApi } from "twitter-api-v2";
 import { decryptToken } from "@/lib/encryption";
 import { verifyCronAuth } from "@/lib/cron-auth";
-import { checkResurfaceAllowed } from "@/lib/plan-limits";
 import { logCronSkipped } from "@/lib/plan-analytics";
+import { getPlanLimits, type SubscriptionTier } from "@/lib/plans";
 import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -37,29 +38,119 @@ export async function GET(request: Request) {
         eq(resurfaceEvents.status, "pending"),
         lte(resurfaceEvents.nextExecuteAt, now),
       ),
-    );
+    )
+    // Most overdue first — guarantees no event starves waiting behind newer ones.
+    // No explicit LIMIT — Vercel's maxDuration=60 is the natural execution cap.
+    .orderBy(resurfaceEvents.nextExecuteAt);
 
   let processed = 0;
   const appKey = env.TWITTER_CONSUMER_KEY;
   const appSecret = env.TWITTER_CONSUMER_SECRET;
 
+  if (pendingEvents.length === 0) {
+    return NextResponse.json({ processed });
+  }
+
+  // ── Batch pre-fetch: 3 queries instead of 3N ──────────────────────────────
+  const scheduleIds = [...new Set(pendingEvents.map((e) => e.scheduleId))];
+
+  const scheduleRows = await db
+    .select({
+      id: resurfaceSchedules.id,
+      postId: resurfaceSchedules.postId,
+      platform: resurfaceSchedules.platform,
+      intervalHours: resurfaceSchedules.intervalHours,
+      maxResurfaces: resurfaceSchedules.maxResurfaces,
+      plugComment: resurfaceSchedules.plugComment,
+      isActive: resurfaceSchedules.isActive,
+      resurfacesDone: resurfaceSchedules.resurfacesDone,
+      userId: posts.userId,
+    })
+    .from(resurfaceSchedules)
+    .innerJoin(posts, eq(resurfaceSchedules.postId, posts.id))
+    .where(inArray(resurfaceSchedules.id, scheduleIds));
+
+  const scheduleMap = new Map(scheduleRows.map((s) => [s.id, s]));
+
+  // Batch plan-limit check for all unique user IDs
+  const uniqueUserIds = [...new Set(scheduleRows.map((s) => s.userId).filter(Boolean))];
+  const subRows = uniqueUserIds.length > 0
+    ? await db
+        .select({
+          userId: userSettings.userId,
+          subscriptionTier: userSettings.subscriptionTier,
+          subscriptionExpiresAt: userSettings.subscriptionExpiresAt,
+        })
+        .from(userSettings)
+        .where(inArray(userSettings.userId, uniqueUserIds))
+    : [];
+
+  const allowedUserIds = new Set<string>();
+  for (const s of subRows) {
+    const isExpired = s.subscriptionExpiresAt && new Date(s.subscriptionExpiresAt) < now;
+    const tier = (isExpired ? "free" : (s.subscriptionTier ?? "free")) as SubscriptionTier;
+    if (getPlanLimits(tier).allowResurface) {
+      allowedUserIds.add(s.userId);
+    }
+  }
+
+  // Batch-fetch X publications for all relevant post IDs
+  const xPostIds = scheduleRows
+    .filter((s) => s.platform === "x" && s.isActive && s.resurfacesDone < s.maxResurfaces)
+    .map((s) => s.postId);
+
+  const xPubRows = xPostIds.length > 0
+    ? await db
+        .select({
+          postId: postPublications.postId,
+          platformPostId: postPublications.platformPostId,
+          connectedAccountId: postPublications.connectedAccountId,
+          encryptedAccessToken: connectedAccounts.encryptedAccessToken,
+          encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
+          platformUserId: connectedAccounts.platformUserId,
+        })
+        .from(postPublications)
+        .innerJoin(
+          connectedAccounts,
+          eq(postPublications.connectedAccountId, connectedAccounts.id),
+        )
+        .where(
+          and(
+            inArray(postPublications.postId, xPostIds),
+            eq(connectedAccounts.platform, "twitter_x"),
+            eq(postPublications.status, "published"),
+          ),
+        )
+    : [];
+
+  const xPubByPostId = new Map(xPubRows.map((x) => [x.postId, x]));
+
+  // Batch-fetch most recent "done" event per schedule (for previous plug deletion)
+  const prevDoneRows = await db
+    .select({
+      scheduleId: resurfaceEvents.scheduleId,
+      plugCommentId: resurfaceEvents.plugCommentId,
+    })
+    .from(resurfaceEvents)
+    .where(
+      and(
+        inArray(resurfaceEvents.scheduleId, scheduleIds),
+        eq(resurfaceEvents.status, "done"),
+      ),
+    )
+    .orderBy(desc(resurfaceEvents.executedAt));
+
+  const prevDoneByScheduleId = new Map<string, string | null>();
+  for (const row of prevDoneRows) {
+    if (!prevDoneByScheduleId.has(row.scheduleId)) {
+      prevDoneByScheduleId.set(row.scheduleId, row.plugCommentId?.trim() || null);
+    }
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   for (const ev of pendingEvents) {
     try {
-      const [scheduleRow] = await db
-        .select({
-          id: resurfaceSchedules.id,
-          postId: resurfaceSchedules.postId,
-          platform: resurfaceSchedules.platform,
-          intervalHours: resurfaceSchedules.intervalHours,
-          maxResurfaces: resurfaceSchedules.maxResurfaces,
-          plugComment: resurfaceSchedules.plugComment,
-          isActive: resurfaceSchedules.isActive,
-          resurfacesDone: resurfaceSchedules.resurfacesDone,
-          userId: posts.userId,
-        })
-        .from(resurfaceSchedules)
-        .innerJoin(posts, eq(resurfaceSchedules.postId, posts.id))
-        .where(eq(resurfaceSchedules.id, ev.scheduleId));
+      const scheduleRow = scheduleMap.get(ev.scheduleId);
 
       const schedule = scheduleRow
         ? {
@@ -89,40 +180,20 @@ export async function GET(request: Request) {
       if (schedule.platform !== "x") continue;
 
       const scheduleUserId = scheduleRow?.userId;
-      if (!scheduleUserId || !(await checkResurfaceAllowed(scheduleUserId))) {
+      if (!scheduleUserId || !allowedUserIds.has(scheduleUserId)) {
         if (scheduleUserId) {
           logCronSkipped("resurface", scheduleUserId, ev.scheduleId);
         }
         continue;
       }
 
-      const xPub = await db
-        .select({
-          platformPostId: postPublications.platformPostId,
-          connectedAccountId: postPublications.connectedAccountId,
-          encryptedAccessToken: connectedAccounts.encryptedAccessToken,
-          encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
-          platformUserId: connectedAccounts.platformUserId,
-        })
-        .from(postPublications)
-        .innerJoin(
-          connectedAccounts,
-          eq(postPublications.connectedAccountId, connectedAccounts.id),
-        )
-        .where(
-          and(
-            eq(postPublications.postId, schedule.postId),
-            eq(connectedAccounts.platform, "twitter_x"),
-            eq(postPublications.status, "published"),
-          ),
-        )
-        .limit(1);
+      const xPub = xPubByPostId.get(schedule.postId);
 
       if (
-        xPub.length === 0 ||
-        !xPub[0].platformPostId ||
-        !xPub[0].encryptedAccessToken ||
-        !xPub[0].connectedAccountId
+        !xPub ||
+        !xPub.platformPostId ||
+        !xPub.encryptedAccessToken ||
+        !xPub.connectedAccountId
       ) {
         await db
           .update(resurfaceEvents)
@@ -132,12 +203,12 @@ export async function GET(request: Request) {
       }
 
       const { platformPostId, connectedAccountId, encryptedRefreshToken, platformUserId } =
-        xPub[0];
+        xPub;
       let accessToken: string;
       let accessSecret: string | null = null;
       try {
         accessToken = decryptToken(
-          xPub[0].encryptedAccessToken,
+          xPub.encryptedAccessToken,
           connectedAccountId,
         );
         if (encryptedRefreshToken) {
@@ -180,20 +251,7 @@ export async function GET(request: Request) {
       }
 
       try {
-        const [previousDone] = await db
-          .select({ plugCommentId: resurfaceEvents.plugCommentId })
-          .from(resurfaceEvents)
-          .where(
-            and(
-              eq(resurfaceEvents.scheduleId, schedule.id),
-              eq(resurfaceEvents.status, "done"),
-            ),
-          )
-          .orderBy(desc(resurfaceEvents.executedAt))
-          .limit(1);
-
-        const previousPlugId =
-          previousDone?.plugCommentId?.trim() || null;
+        const previousPlugId = prevDoneByScheduleId.get(schedule.id) ?? null;
         if (previousPlugId) {
           try {
             await client.v2.deleteTweet(previousPlugId);

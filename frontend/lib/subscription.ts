@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { userSettings } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { SubscriptionTier } from "@/lib/plans";
 
 export type SubscriptionState = {
@@ -114,25 +114,10 @@ export async function setSubscription(
   const isPaidTier =
     data.tier === "starter" || data.tier === "growth" || data.tier === "pro";
 
-  const existing = await db.query.userSettings.findFirst({
-    where: eq(userSettings.userId, userId),
-    columns: { userId: true, hasUsedTrial: true },
-  });
-
-  if (existing) {
-    await db
-      .update(userSettings)
-      .set({
-        subscriptionTier: data.tier,
-        subscriptionExpiresAt: data.expiresAt,
-        subscriptionId: data.subscriptionId,
-        customerId: data.customerId,
-        hasUsedTrial: existing.hasUsedTrial || isPaidTier,
-        subscriptionCancelAtPeriodEnd: false,
-      })
-      .where(eq(userSettings.userId, userId));
-  } else {
-    await db.insert(userSettings).values({
+  // Single UPSERT — replaces a SELECT + conditional INSERT/UPDATE (was 2 queries)
+  await db
+    .insert(userSettings)
+    .values({
       userId,
       ...NEW_USER_SETTINGS_DEFAULTS,
       subscriptionTier: data.tier,
@@ -141,6 +126,17 @@ export async function setSubscription(
       customerId: data.customerId,
       hasUsedTrial: isPaidTier,
       subscriptionCancelAtPeriodEnd: false,
+    })
+    .onConflictDoUpdate({
+      target: userSettings.userId,
+      set: {
+        subscriptionTier: data.tier,
+        subscriptionExpiresAt: data.expiresAt,
+        subscriptionId: data.subscriptionId,
+        customerId: data.customerId,
+        // Preserve hasUsedTrial once set — never downgrade to false
+        hasUsedTrial: sql`GREATEST(${userSettings.hasUsedTrial}::int, ${isPaidTier ? 1 : 0}::int)::boolean`,
+        subscriptionCancelAtPeriodEnd: false,
+      },
     });
-  }
 }

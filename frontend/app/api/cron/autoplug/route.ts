@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { autoPlugs, connectedAccounts } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { autoPlugs, connectedAccounts, userSettings } from "@/db/schema";
+import { eq, inArray } from "drizzle-orm";
 import { TwitterApi } from "twitter-api-v2";
 import { decryptToken } from "@/lib/encryption";
 import { verifyCronAuth } from "@/lib/cron-auth";
-import { checkAutoPlugAllowed } from "@/lib/plan-limits";
 import { logCronSkipped } from "@/lib/plan-analytics";
+import { getPlanLimits, type SubscriptionTier } from "@/lib/plans";
 import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -18,10 +18,14 @@ export async function GET(request: Request) {
 
   const now = new Date();
 
+  // Order oldest-first so all plugs cycle through across runs as they resolve.
+  // No explicit LIMIT — Vercel's maxDuration=60 is the natural execution cap.
+  // Each Twitter API call + DELAY_MS ≈ 300-700ms, so ≈80-180 items/run in practice.
   const watching = await db
     .select()
     .from(autoPlugs)
-    .where(eq(autoPlugs.status, "watching"));
+    .where(eq(autoPlugs.status, "watching"))
+    .orderBy(autoPlugs.createdAt);
 
   let checked = 0;
   let triggered = 0;
@@ -30,30 +34,67 @@ export async function GET(request: Request) {
   const appKey = env.TWITTER_CONSUMER_KEY;
   const appSecret = env.TWITTER_CONSUMER_SECRET;
 
-  for (const plug of watching) {
-    if (plug.expiresAt <= now) {
-      await db
-        .update(autoPlugs)
-        .set({ status: "expired", updatedAt: now })
-        .where(eq(autoPlugs.id, plug.id));
-      expired++;
-      continue;
-    }
+  // ── Batch pre-fetch: 1 query instead of N ──────────────────────────────────
+  const nonExpiredPlugs = watching.filter((p) => p.expiresAt > now);
+  const expiredPlugs = watching.filter((p) => p.expiresAt <= now);
 
+  // Expire all at once
+  if (expiredPlugs.length > 0) {
+    await db
+      .update(autoPlugs)
+      .set({ status: "expired", updatedAt: now })
+      .where(inArray(autoPlugs.id, expiredPlugs.map((p) => p.id)));
+    expired += expiredPlugs.length;
+  }
+
+  if (nonExpiredPlugs.length === 0) {
+    return NextResponse.json({ checked, triggered, expired });
+  }
+
+  const plugAccountIds = nonExpiredPlugs.map((p) => p.connectedAccountId);
+
+  const accountRows = await db
+    .select({
+      id: connectedAccounts.id,
+      userId: connectedAccounts.userId,
+      encryptedAccessToken: connectedAccounts.encryptedAccessToken,
+      encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
+      platformUserId: connectedAccounts.platformUserId,
+    })
+    .from(connectedAccounts)
+    .where(inArray(connectedAccounts.id, plugAccountIds));
+
+  const accountMap = new Map(accountRows.map((a) => [a.id, a]));
+
+  // Batch-check plan limits — 1 query for all unique user IDs
+  const uniqueUserIds = [...new Set(accountRows.map((a) => a.userId))];
+  const subRows = uniqueUserIds.length > 0
+    ? await db
+        .select({
+          userId: userSettings.userId,
+          subscriptionTier: userSettings.subscriptionTier,
+          subscriptionExpiresAt: userSettings.subscriptionExpiresAt,
+        })
+        .from(userSettings)
+        .where(inArray(userSettings.userId, uniqueUserIds))
+    : [];
+
+  const allowedUserIds = new Set<string>();
+  for (const s of subRows) {
+    const isExpired = s.subscriptionExpiresAt && new Date(s.subscriptionExpiresAt) < now;
+    const tier = (isExpired ? "free" : (s.subscriptionTier ?? "free")) as SubscriptionTier;
+    if (getPlanLimits(tier).allowAutoPlug) {
+      allowedUserIds.add(s.userId);
+    }
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
+  for (const plug of nonExpiredPlugs) {
     checked++;
 
-    const [account] = await db
-      .select({
-        userId: connectedAccounts.userId,
-        encryptedAccessToken: connectedAccounts.encryptedAccessToken,
-        encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
-        platformUserId: connectedAccounts.platformUserId,
-      })
-      .from(connectedAccounts)
-      .where(eq(connectedAccounts.id, plug.connectedAccountId))
-      .limit(1);
+    const account = accountMap.get(plug.connectedAccountId);
 
-    if (!account?.userId || !(await checkAutoPlugAllowed(account.userId))) {
+    if (!account?.userId || !allowedUserIds.has(account.userId)) {
       if (account?.userId) {
         logCronSkipped("autoplug", account.userId, plug.id);
       }
