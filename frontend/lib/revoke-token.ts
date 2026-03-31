@@ -33,10 +33,11 @@ export async function revokeTokenOnPlatform(
         return;
       }
       case "youtube": {
-        const res = await fetch(
-          `https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(accessToken)}`,
-          { method: "POST" },
-        );
+        const res = await fetch("https://oauth2.googleapis.com/revoke", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ token: accessToken }).toString(),
+        });
         if (!res.ok) {
           console.warn("[revoke] Google revoke failed:", res.status);
         }

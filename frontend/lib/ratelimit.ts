@@ -47,6 +47,15 @@ export const twitterPremiumRefreshLimiter = redis
     })
   : null;
 
+// 5 checkout session creations per user per minute (prevents Dodo API quota abuse)
+export const checkoutLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(5, "1 m"),
+      prefix: "rl:checkout",
+    })
+  : null;
+
 // Check-email (for sign-in "email not found" message): strict per-IP limit to reduce enumeration.
 // 5/hour is intentionally low — legitimate users rarely need to check more than once or twice.
 export const checkEmailLimiter = redis
