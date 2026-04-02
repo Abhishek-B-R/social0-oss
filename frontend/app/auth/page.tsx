@@ -12,6 +12,74 @@ import { toast } from "sonner";
 
 const CALLBACK_URL = "/dashboard/composer";
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+const TIMEOUT_MS = 10_000;
+
+function Spinner() {
+  return (
+    <svg
+      className="h-4 w-4 animate-spin"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+      />
+    </svg>
+  );
+}
+
+function friendlyAuthError(err: unknown): string {
+  const msg =
+    typeof err === "string"
+      ? err
+      : err instanceof Error
+        ? err.message
+        : typeof err === "object" && err !== null && "message" in err
+          ? String((err as { message: unknown }).message)
+          : "";
+  const lower = msg.toLowerCase();
+  if (lower.includes("timeout") || lower.includes("aborted") || lower.includes("abort")) {
+    return "Request timed out. Please try again.";
+  }
+  if (
+    lower.includes("invalid") ||
+    lower.includes("incorrect") ||
+    lower.includes("wrong password") ||
+    lower.includes("credentials")
+  ) {
+    return "Invalid email or password.";
+  }
+  if (
+    lower.includes("already exists") ||
+    lower.includes("already registered") ||
+    lower.includes("email taken") ||
+    lower.includes("duplicate")
+  ) {
+    return "An account with this email already exists.";
+  }
+  if (
+    lower.includes("network") ||
+    lower.includes("fetch") ||
+    lower.includes("failed to fetch") ||
+    lower.includes("database") ||
+    lower.includes("internal")
+  ) {
+    return "Something went wrong. Please try again later.";
+  }
+  return "Something went wrong. Please try again later.";
+}
 
 function AuthPageContent() {
   const searchParams = useSearchParams();
@@ -25,13 +93,25 @@ function AuthPageContent() {
   const [name, setName] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleGoogleSignIn = () => {
-    signIn.social({
-      provider: "google",
-      callbackURL: CALLBACK_URL,
-    });
+    setGoogleLoading(true);
+    const timer = setTimeout(() => {
+      setGoogleLoading(false);
+      toast.error("Something went wrong. Please try again.");
+    }, 5000);
+    try {
+      signIn.social({
+        provider: "google",
+        callbackURL: CALLBACK_URL,
+      });
+    } catch {
+      clearTimeout(timer);
+      setGoogleLoading(false);
+      toast.error("Something went wrong. Please try again.");
+    }
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -39,10 +119,12 @@ function AuthPageContent() {
     toast.dismiss();
     setLoading(true);
     const normalizedEmail = email.trim().toLowerCase();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
       const checkRes = await fetch(
         `/api/auth/check-email?email=${encodeURIComponent(normalizedEmail)}`,
-        { credentials: "include" },
+        { credentials: "include", signal: controller.signal },
       );
       const checkData = (await checkRes.json().catch(() => ({}))) as {
         exists?: boolean;
@@ -57,13 +139,21 @@ function AuthPageContent() {
         callbackURL: CALLBACK_URL,
       });
       if (err) {
-        toast.error(err.message ?? "Invalid email or password");
+        toast.error(friendlyAuthError(err.message ?? err));
         return;
       }
       window.location.href = CALLBACK_URL;
-    } catch {
-      toast.error("Sign in failed");
+    } catch (err) {
+      const isTimeout =
+        err instanceof Error &&
+        (err.name === "AbortError" || err.message.toLowerCase().includes("abort"));
+      toast.error(
+        isTimeout
+          ? "Request timed out. Please try again."
+          : "Something went wrong. Please try again later.",
+      );
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -76,6 +166,8 @@ function AuthPageContent() {
       return;
     }
     setLoading(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
       const signUpUrl = TURNSTILE_SITE_KEY
         ? "/api/auth/sign-up-with-turnstile"
@@ -93,6 +185,7 @@ function AuthPageContent() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
       if (res.redirected && res.url) {
         window.location.href = res.url;
@@ -103,11 +196,11 @@ function AuthPageContent() {
           error?: string | { message?: string };
           message?: string;
         };
-        const msg =
+        const raw =
           typeof data.error === "string"
             ? data.error
-            : (data.error?.message ?? data.message ?? "Sign up failed");
-        toast.error(msg);
+            : (data.error?.message ?? data.message ?? "");
+        toast.error(friendlyAuthError(raw));
         return;
       }
       const data = await res.json().catch(() => ({}));
@@ -116,9 +209,17 @@ function AuthPageContent() {
       } else {
         window.location.href = `/auth/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`;
       }
-    } catch {
-      toast.error("Sign up failed");
+    } catch (err) {
+      const isTimeout =
+        err instanceof Error &&
+        (err.name === "AbortError" || err.message.toLowerCase().includes("abort"));
+      toast.error(
+        isTimeout
+          ? "Request timed out. Please try again."
+          : "Something went wrong. Please try again later.",
+      );
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -234,10 +335,20 @@ function AuthPageContent() {
             <button
               type="button"
               onClick={handleGoogleSignIn}
-              className="w-full inline-flex items-center justify-center gap-3 rounded-xl border border-border bg-background hover:bg-muted/50 text-foreground font-medium py-3 px-4 transition-colors"
+              disabled={googleLoading || loading}
+              className="w-full inline-flex items-center justify-center gap-3 rounded-xl border border-border bg-background hover:bg-muted/50 disabled:opacity-60 text-foreground font-medium py-3 px-4 transition-colors"
             >
-              <FcGoogle className="h-5 w-5 shrink-0" aria-hidden="true" />
-              <span>Continue with Google</span>
+              {googleLoading ? (
+                <>
+                  <Spinner />
+                  <span>Redirecting…</span>
+                </>
+              ) : (
+                <>
+                  <FcGoogle className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  <span>Continue with Google</span>
+                </>
+              )}
             </button>
 
             <div className="relative my-6">
@@ -314,10 +425,17 @@ function AuthPageContent() {
                 </div>
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-3 px-4 transition-colors"
+                  disabled={loading || googleLoading}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-3 px-4 transition-colors"
                 >
-                  {loading ? "Signing in…" : "Sign in"}
+                  {loading ? (
+                    <>
+                      <Spinner />
+                      <span>Signing in…</span>
+                    </>
+                  ) : (
+                    "Sign in"
+                  )}
                 </button>
               </form>
             ) : (
@@ -406,11 +524,18 @@ function AuthPageContent() {
                 <button
                   type="submit"
                   disabled={
-                    loading || (!!TURNSTILE_SITE_KEY && !turnstileToken)
+                    loading || googleLoading || (!!TURNSTILE_SITE_KEY && !turnstileToken)
                   }
-                  className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-3 px-4 transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-3 px-4 transition-colors"
                 >
-                  {loading ? "Creating account…" : "Create account"}
+                  {loading ? (
+                    <>
+                      <Spinner />
+                      <span>Creating account…</span>
+                    </>
+                  ) : (
+                    "Create account"
+                  )}
                 </button>
               </form>
             )}
