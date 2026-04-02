@@ -1308,7 +1308,7 @@ async function fetchPlatformUserInfo(
     case "tiktok": {
       try {
         const response = await fetch(
-          "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name,username",
+          "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name",
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -1321,16 +1321,11 @@ async function fetchPlatformUserInfo(
             const user = data.data.user;
             const raw = user.avatar_url;
             const profileImageUrl = isValidProfileImageUrl(raw) ? raw : null;
-            // username (handle) requires user.info.profile scope; display_name is fallback
-            const resolvedUsername = user.username || user.display_name || null;
-            console.log("TikTok user info:", { username: user.username, display_name: user.display_name, resolved: resolvedUsername });
             return {
               id: user.open_id || `tiktok-${Date.now()}`,
-              username: resolvedUsername,
+              username: user.display_name || null,
               profileImageUrl,
             };
-          } else {
-            console.error("TikTok userinfo unexpected response:", JSON.stringify(data));
           }
         } else {
           const errorText = await response.text();
