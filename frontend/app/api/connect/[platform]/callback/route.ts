@@ -1308,7 +1308,7 @@ async function fetchPlatformUserInfo(
     case "tiktok": {
       try {
         const response = await fetch(
-          "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name",
+          "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name,username",
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -1322,7 +1322,7 @@ async function fetchPlatformUserInfo(
             const profileImageUrl = isValidProfileImageUrl(raw) ? raw : null;
             return {
               id: data.data.user.open_id || `tiktok-${Date.now()}`,
-              username: data.data.user.display_name || null,
+              username: data.data.user.username || data.data.user.display_name || null,
               profileImageUrl,
             };
           }
