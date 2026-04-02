@@ -1318,13 +1318,19 @@ async function fetchPlatformUserInfo(
         if (response.ok) {
           const data = await response.json();
           if (data.data?.user) {
-            const raw = data.data.user.avatar_url;
+            const user = data.data.user;
+            const raw = user.avatar_url;
             const profileImageUrl = isValidProfileImageUrl(raw) ? raw : null;
+            // username (handle) requires user.info.profile scope; display_name is fallback
+            const resolvedUsername = user.username || user.display_name || null;
+            console.log("TikTok user info:", { username: user.username, display_name: user.display_name, resolved: resolvedUsername });
             return {
-              id: data.data.user.open_id || `tiktok-${Date.now()}`,
-              username: data.data.user.username || data.data.user.display_name || null,
+              id: user.open_id || `tiktok-${Date.now()}`,
+              username: resolvedUsername,
               profileImageUrl,
             };
+          } else {
+            console.error("TikTok userinfo unexpected response:", JSON.stringify(data));
           }
         } else {
           const errorText = await response.text();
