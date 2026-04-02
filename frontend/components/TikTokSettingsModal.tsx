@@ -56,6 +56,12 @@ export function TikTokSettingsModal({
       );
       return;
     }
+    if (!value.tiktok_post_consent) {
+      setLocalValidation(
+        "Confirm you agree to TikTok's Music Usage Confirmation (and Branded Content Policy if applicable) before saving.",
+      );
+      return;
+    }
     if (value.brand_content && value.privacy_level === "SELF_ONLY") {
       setLocalValidation(
         "Branded content cannot be set to private. Please select Public or Friends.",

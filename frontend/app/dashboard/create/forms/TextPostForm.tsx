@@ -14,10 +14,7 @@ import {
   updatePost,
   type PublishMode,
 } from "@/app/actions/posts";
-import {
-  publishPost,
-  getPostPublicationList,
-} from "@/app/actions/publish";
+import { publishPost, getPostPublicationList } from "@/app/actions/publish";
 import {
   sortBySlowPlatformsLast,
   publishEachPublicationInParallel,
@@ -1086,8 +1083,14 @@ export function TextPostForm({
           }
           hasAccountSelected={selectedIds.size > 0}
           submitDisabledReason={submitDisabledReason}
-          primaryActionDisabled={subscriptionTier === "free" && mode !== "draft"}
-          primaryActionDisabledReason={subscriptionTier === "free" && mode !== "draft" ? "Subscribe to a plan to post" : null}
+          primaryActionDisabled={
+            subscriptionTier === "free" && mode !== "draft"
+          }
+          primaryActionDisabledReason={
+            subscriptionTier === "free" && mode !== "draft"
+              ? "Subscribe to a plan to post"
+              : null
+          }
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
           timezone={timezone}

@@ -36,8 +36,11 @@ import {
   MdOutlineVideocam,
   MdClose,
 } from "react-icons/md";
-import { type TikTokPostSettings } from "@/components/TikTokSettings";
-import { TikTokSettings } from "@/components/TikTokSettings";
+import {
+  type TikTokPostSettings,
+  TikTokSettings,
+  DEFAULT_TIKTOK_POST_SETTINGS,
+} from "@/components/TikTokSettings";
 import {
   UploadPublishOverlay,
   type PlatformResult,
@@ -281,18 +284,8 @@ export function CollectionPostForm({
   const [showCaptionError, setShowCaptionError] = useState(false);
   const [fileProgresses, setFileProgresses] = useState<number[]>([]);
 
-  const defaultTiktokSettings: TikTokPostSettings = {
-    privacy_level: "",
-    video_title: "",
-    disable_comment: true,
-    disable_duet: true,
-    disable_stitch: true,
-    brand_content_toggle: false,
-    brand_organic: false,
-    brand_content: false,
-    post_as_draft: false,
-    mark_ai_generated: false,
-  };
+  const defaultTiktokSettings: TikTokPostSettings =
+    DEFAULT_TIKTOK_POST_SETTINGS;
 
   useEffect(() => {
     imagesRef.current = images;
@@ -1030,6 +1023,13 @@ export function CollectionPostForm({
         if (settings.brand_content && settings.privacy_level === "SELF_ONLY") {
           toast.error(
             `TikTok: Branded content visibility cannot be set to private. Please select Public or Friends.`,
+          );
+          return;
+        }
+
+        if (!settings.tiktok_post_consent) {
+          toast.error(
+            `TikTok: Confirm you agree to TikTok's terms (Music Usage Confirmation) before posting for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
           );
           return;
         }
@@ -1886,8 +1886,15 @@ export function CollectionPostForm({
                   )}
                 </button>
               </div>
-              {activeConfigPanel === "tiktok" && (
-                <div className="mt-2 border-t border-border pt-4">
+              {hasTikTok && (
+                <div
+                  className={
+                    activeConfigPanel === "tiktok"
+                      ? "mt-2 border-t border-border pt-4"
+                      : "hidden"
+                  }
+                  aria-hidden={activeConfigPanel !== "tiktok"}
+                >
                   {tiktokAccounts.length > 1 ? (
                     <>
                       <div className="flex rounded-lg border border-border bg-bg-muted/30 p-0.5 mb-4">
@@ -1924,6 +1931,10 @@ export function CollectionPostForm({
                             setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                         }}
                         onError={(err) => toast.error(err)}
+                        mediaType={
+                          videos.length > 0 ? "video" : "photo"
+                        }
+                        showPreviewHint
                       />
                     </>
                   ) : (
@@ -1939,6 +1950,8 @@ export function CollectionPostForm({
                           setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                       }}
                       onError={(err) => toast.error(err)}
+                      mediaType={videos.length > 0 ? "video" : "photo"}
+                      showPreviewHint
                     />
                   )}
                 </div>

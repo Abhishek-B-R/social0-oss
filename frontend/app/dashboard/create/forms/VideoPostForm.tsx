@@ -31,8 +31,11 @@ import type {
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
 import { MdOutlineVideoLibrary, MdClose } from "react-icons/md";
-import { type TikTokPostSettings } from "@/components/TikTokSettings";
-import { TikTokSettings } from "@/components/TikTokSettings";
+import {
+  type TikTokPostSettings,
+  TikTokSettings,
+  DEFAULT_TIKTOK_POST_SETTINGS,
+} from "@/components/TikTokSettings";
 import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
 import { PinterestConfigInline } from "@/components/PinterestConfigInline";
 import {
@@ -98,18 +101,7 @@ type Account = {
   platformMetadata?: Record<string, unknown>;
 };
 
-const defaultTiktokSettings: TikTokPostSettings = {
-  privacy_level: "",
-  video_title: "",
-  disable_comment: true,
-  disable_duet: true,
-  disable_stitch: true,
-  brand_content_toggle: false,
-  brand_organic: false,
-  brand_content: false,
-  post_as_draft: false,
-  mark_ai_generated: false,
-};
+const defaultTiktokSettings: TikTokPostSettings = DEFAULT_TIKTOK_POST_SETTINGS;
 
 // function formatDuration(seconds: number): string {
 //   const m = Math.floor(seconds / 60);
@@ -193,6 +185,9 @@ export function VideoPostForm({
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [tiktokSettings, setTiktokSettings] = useState<
     Record<string, TikTokPostSettings>
+  >({});
+  const [tiktokMaxDurationByAccount, setTiktokMaxDurationByAccount] = useState<
+    Record<string, number>
   >({});
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [scheduledPostId, setScheduledPostId] = useState<string | null>(null);
@@ -492,6 +487,7 @@ export function VideoPostForm({
                 brand_content: !!t.brand_content,
                 post_as_draft: !!(t as any).post_as_draft,
                 mark_ai_generated: !!(t as any).mark_ai_generated,
+                tiktok_post_consent: !!(t as any).tiktok_post_consent,
               };
             }
           }
@@ -574,6 +570,7 @@ export function VideoPostForm({
                 brand_content: !!t.brand_content,
                 post_as_draft: !!(t as any).post_as_draft,
                 mark_ai_generated: !!(t as any).mark_ai_generated,
+                tiktok_post_consent: !!(t as any).tiktok_post_consent,
               };
             }
           }
@@ -661,6 +658,7 @@ export function VideoPostForm({
                 brand_content: !!t.brand_content,
                 post_as_draft: !!(t as any).post_as_draft,
                 mark_ai_generated: !!(t as any).mark_ai_generated,
+                tiktok_post_consent: !!(t as any).tiktok_post_consent,
               };
             }
           }
@@ -975,11 +973,13 @@ export function VideoPostForm({
   const tiktokAccounts = selectedAccounts.filter(
     (a) => a.platform === "tiktok",
   );
-  const tiktokMissingPrivacy =
+  const tiktokSettingsIncomplete =
     hasTikTokSelected &&
     tiktokAccounts.some((acc) => {
       const s = tiktokSettings[acc.id] ?? defaultTiktokSettings;
-      return (s.privacy_level ?? "").trim() === "";
+      return (
+        (s.privacy_level ?? "").trim() === "" || !s.tiktok_post_consent
+      );
     });
   const hasPinterestSelected = selectedAccounts.some(
     (a) => a.platform === "pinterest",
@@ -1061,6 +1061,26 @@ export function VideoPostForm({
         if (settings.brand_content && settings.privacy_level === "SELF_ONLY") {
           toast.error(
             `TikTok: Branded content visibility cannot be set to private. Please select Public or Friends.`,
+          );
+          return;
+        }
+
+        if (!settings.tiktok_post_consent) {
+          toast.error(
+            `TikTok: Confirm you agree to TikTok's terms (Music Usage Confirmation) before posting for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
+          );
+          return;
+        }
+
+        const maxDur = tiktokMaxDurationByAccount[tiktokAccount.id];
+        if (
+          hasVideo &&
+          typeof maxDur === "number" &&
+          maxDur > 0 &&
+          videoDuration > maxDur
+        ) {
+          toast.error(
+            `TikTok: Video is longer than ${maxDur}s allowed for @${tiktokAccount.platformUsername ?? "TikTok"}. Shorten the video or pick another account.`,
           );
           return;
         }
@@ -1836,7 +1856,7 @@ export function VideoPostForm({
                         : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
                     }`}
                   >
-                    {tiktokMissingPrivacy ? (
+                    {tiktokSettingsIncomplete ? (
                       <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                     ) : (
                       <Circle className="h-3.5 w-3.5 text-text-muted shrink-0" />
@@ -2004,8 +2024,15 @@ export function VideoPostForm({
                 </div>
               )}
 
-              {activeConfigPanel === "tiktok" && (
-                <div className="mt-2 border-t border-border pt-4">
+              {hasTikTok && (
+                <div
+                  className={
+                    activeConfigPanel === "tiktok"
+                      ? "mt-2 border-t border-border pt-4"
+                      : "hidden"
+                  }
+                  aria-hidden={activeConfigPanel !== "tiktok"}
+                >
                   {tiktokAccounts.length > 1 ? (
                     <>
                       <div className="flex rounded-lg border border-border bg-bg-muted/30 p-0.5 mb-4">
@@ -2042,6 +2069,20 @@ export function VideoPostForm({
                             setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                         }}
                         onError={(err) => toast.error(err)}
+                        onCreatorInfoLoaded={(info) => {
+                          const id =
+                            tiktokAccounts[selectedTiktokAccountIndex]?.id ??
+                            "";
+                          if (id && info.max_video_duration != null) {
+                            setTiktokMaxDurationByAccount((prev) => ({
+                              ...prev,
+                              [id]: info.max_video_duration!,
+                            }));
+                          }
+                        }}
+                        mediaType="video"
+                        videoDurationSec={videoDuration > 0 ? videoDuration : null}
+                        showPreviewHint
                       />
                     </>
                   ) : (
@@ -2057,6 +2098,18 @@ export function VideoPostForm({
                           setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                       }}
                       onError={(err) => toast.error(err)}
+                      onCreatorInfoLoaded={(info) => {
+                        const id = tiktokAccounts[0]?.id ?? "";
+                        if (id && info.max_video_duration != null) {
+                          setTiktokMaxDurationByAccount((prev) => ({
+                            ...prev,
+                            [id]: info.max_video_duration!,
+                          }));
+                        }
+                      }}
+                      mediaType="video"
+                      videoDurationSec={videoDuration > 0 ? videoDuration : null}
+                      showPreviewHint
                     />
                   )}
                 </div>
@@ -2425,7 +2478,7 @@ export function VideoPostForm({
           rememberAutoFeatures={rememberAutoFeatures}
           onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
-          <div className="hidden lg:block rounded-xl border border-border bg-bg-elevated p-4 shadow-sm max-h-[55vh] overflow-y-auto">
+          <div className="hidden lg:block rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="flex rounded-full border border-border bg-bg-muted p-0.5">
                 <button

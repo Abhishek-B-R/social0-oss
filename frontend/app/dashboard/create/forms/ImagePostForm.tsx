@@ -40,6 +40,7 @@ import { MdClose, MdQuestionMark } from "react-icons/md";
 import {
   TikTokSettings,
   type TikTokPostSettings,
+  DEFAULT_TIKTOK_POST_SETTINGS,
 } from "@/components/TikTokSettings";
 import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
 import { PinterestConfigInline } from "@/components/PinterestConfigInline";
@@ -276,18 +277,8 @@ export function ImagePostForm({
   >({});
   const [fileProgresses, setFileProgresses] = useState<number[]>([]);
 
-  const defaultTiktokSettings: TikTokPostSettings = {
-    privacy_level: "",
-    video_title: "",
-    disable_comment: true,
-    disable_duet: true,
-    disable_stitch: true,
-    brand_content_toggle: false,
-    brand_organic: false,
-    brand_content: false,
-    post_as_draft: false,
-    mark_ai_generated: false,
-  };
+  const defaultTiktokSettings: TikTokPostSettings =
+    DEFAULT_TIKTOK_POST_SETTINGS;
 
   useEffect(() => {
     imagesRef.current = images;
@@ -377,6 +368,7 @@ export function ImagePostForm({
                 brand_content: !!t.brand_content,
                 post_as_draft: !!(t as any).post_as_draft,
                 mark_ai_generated: !!(t as any).mark_ai_generated,
+                tiktok_post_consent: !!(t as any).tiktok_post_consent,
               };
             }
           }
@@ -469,6 +461,7 @@ export function ImagePostForm({
                 brand_content: !!t.brand_content,
                 post_as_draft: !!(t as any).post_as_draft,
                 mark_ai_generated: !!(t as any).mark_ai_generated,
+                tiktok_post_consent: !!(t as any).tiktok_post_consent,
               };
             }
           }
@@ -569,6 +562,7 @@ export function ImagePostForm({
                 brand_content: !!t.brand_content,
                 post_as_draft: !!(t as any).post_as_draft,
                 mark_ai_generated: !!(t as any).mark_ai_generated,
+                tiktok_post_consent: !!(t as any).tiktok_post_consent,
               };
             }
           }
@@ -990,6 +984,13 @@ export function ImagePostForm({
         if (settings.brand_content && settings.privacy_level === "SELF_ONLY") {
           toast.error(
             `TikTok: Branded content visibility cannot be set to private. Please select Public or Friends.`,
+          );
+          return;
+        }
+
+        if (!settings.tiktok_post_consent) {
+          toast.error(
+            `TikTok: Confirm you agree to TikTok's terms (Music Usage Confirmation) before posting for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
           );
           return;
         }
@@ -1420,11 +1421,13 @@ export function ImagePostForm({
   const tiktokAccounts = selectedAccounts.filter(
     (a) => a.platform === "tiktok",
   );
-  const tiktokMissingPrivacy =
+  const tiktokSettingsIncomplete =
     hasTikTokSelected &&
     tiktokAccounts.some((acc) => {
       const s = tiktokSettings[acc.id] ?? defaultTiktokSettings;
-      return (s.privacy_level ?? "").trim() === "";
+      return (
+        (s.privacy_level ?? "").trim() === "" || !s.tiktok_post_consent
+      );
     });
   const hasPinterestSelected = selectedAccounts.some(
     (a) => a.platform === "pinterest",
@@ -1934,7 +1937,7 @@ export function ImagePostForm({
                         : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
                     }`}
                   >
-                    {tiktokMissingPrivacy ? (
+                    {tiktokSettingsIncomplete ? (
                       <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                     ) : (
                       <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />
@@ -2031,8 +2034,15 @@ export function ImagePostForm({
                 </div>
               )}
 
-              {activeConfigPanel === "tiktok" && (
-                <div className="mt-2 border-t border-border pt-4 space-y-4">
+              {hasTikTok && (
+                <div
+                  className={
+                    activeConfigPanel === "tiktok"
+                      ? "mt-2 border-t border-border pt-4 space-y-4"
+                      : "hidden"
+                  }
+                  aria-hidden={activeConfigPanel !== "tiktok"}
+                >
                   {tiktokAccounts.length > 1 ? (
                     <>
                       <div className="flex rounded-lg border border-border bg-bg-muted/30 p-0.5 mb-4">
@@ -2069,6 +2079,8 @@ export function ImagePostForm({
                             setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                         }}
                         onError={(err) => toast.error(err)}
+                        mediaType="photo"
+                        showPreviewHint
                       />
                     </>
                   ) : (
@@ -2084,6 +2096,8 @@ export function ImagePostForm({
                           setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                       }}
                       onError={(err) => toast.error(err)}
+                      mediaType="photo"
+                      showPreviewHint
                     />
                   )}
                   {/* Auto Add Music — TikTok photos only */}
