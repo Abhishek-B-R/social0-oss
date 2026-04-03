@@ -135,7 +135,7 @@ export function ConnectStepClient({
               const isConnected = platformAccounts.length > 0;
               const firstAccount = platformAccounts[0];
 
-              const isFacebookOnOnboarding = platform.id === "facebook";
+              const isComingSoon = platform.id === "facebook" || platform.id === "tiktok";
 
               return (
                 <div
@@ -162,6 +162,10 @@ export function ConnectStepClient({
                         <p className="text-xs text-muted-foreground truncate">
                           @{firstAccount.platformUsername ?? "connected"}
                         </p>
+                      ) : isComingSoon ? (
+                        <p className="text-xs text-muted-foreground">
+                          Coming soon
+                        </p>
                       ) : null}
                     </div>
                   </div>
@@ -169,12 +173,12 @@ export function ConnectStepClient({
                     <span className="shrink-0 text-xs font-medium text-green-600 bg-green-500/10 px-3 py-1 rounded-full">
                       ✓ Connected
                     </span>
-                  ) : isFacebookOnOnboarding ? (
+                  ) : isComingSoon ? (
                     <span
                       className="shrink-0 rounded-xl border border-border bg-muted px-4 py-2 text-sm font-semibold text-muted-foreground cursor-not-allowed"
-                      title="You can connect Facebook Pages from your dashboard after you finish setup."
+                      title={`${platform.name} is currently awaiting platform approval. It will be available in 1–2 weeks!`}
                     >
-                      Connect
+                      Soon
                     </span>
                   ) : (
                     <ConnectPlatformButton
