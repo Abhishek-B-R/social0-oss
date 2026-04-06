@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { PLATFORMS } from "@/lib/platforms";
 import { PRE_CONNECT } from "@/lib/preconnect";
 import { BlueskyByokModal } from "@/components/BlueskyByokModal";
@@ -24,6 +24,7 @@ export function ConnectPlatformButton({
   className,
   returnTo,
   disabled = false,
+  onDisabledClick,
 }: {
   platform: Platform;
   size?: "default" | "sm";
@@ -32,14 +33,21 @@ export function ConnectPlatformButton({
   returnTo?: string | null;
   /** When true, button is disabled (e.g. plan account limit reached) */
   disabled?: boolean;
+  /** Called when user clicks a disabled button, e.g. to show a plan-limit toast */
+  onDisabledClick?: () => void;
 }) {
   const [showBlueskyModal, setShowBlueskyModal] = useState(false);
   const [showPreConnectModal, setShowPreConnectModal] = useState(false);
   const [showInstagramModal, setShowInstagramModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const preConnect = PRE_CONNECT[platform.id];
+  const isNativeDisabled = isLoading || (disabled && !onDisabledClick);
 
   const handleConnect = () => {
-    if (disabled) return;
+    if (disabled) {
+      onDisabledClick?.();
+      return;
+    }
     if (platform.id === "bluesky") {
       setShowBlueskyModal(true);
       return;
@@ -52,6 +60,7 @@ export function ConnectPlatformButton({
       setShowPreConnectModal(true);
       return;
     }
+    setIsLoading(true);
     window.location.href = connectUrl(platform.id, returnTo);
   };
 
@@ -60,18 +69,26 @@ export function ConnectPlatformButton({
       <button
         type="button"
         onClick={handleConnect}
-        disabled={disabled}
+        disabled={isNativeDisabled}
         aria-label={`Connect ${platform.name}`}
         className={`shrink-0 rounded-lg border border-border bg-bg font-semibold text-text shadow-sm transition-colors ${
           disabled
             ? "cursor-not-allowed opacity-50"
-            : "hover:bg-bg-subtle"
+            : isLoading
+              ? "cursor-wait opacity-75"
+              : "hover:bg-bg-subtle"
         } ${
           size === "sm" ? "flex h-8 w-8 items-center justify-center p-0 sm:h-auto sm:w-auto sm:px-2 sm:py-1 text-xs" : "rounded-xl px-4 py-2 text-sm"
         } ${className ?? ""}`}
       >
-        <Plus className="h-4 w-4 sm:hidden" />
-        <span className="hidden sm:inline">Connect</span>
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <>
+            <Plus className="h-4 w-4 sm:hidden" />
+            <span className="hidden sm:inline">Connect</span>
+          </>
+        )}
       </button>
       {preConnect && (
         <PreConnectModal

@@ -10,6 +10,7 @@ import { AccountAvatar } from "@/components/AccountAvatar";
 import { ConnectPlatformButton } from "./ConnectPlatformButton";
 import { DisconnectAccountModal } from "./DisconnectAccountModal";
 import { AlertTriangle, X, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { IconCrown, IconLoader2 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import DocsInfoIcon from "../info-icon";
@@ -107,6 +108,23 @@ export function ConnectionsList({
 
   const atLimit =
     !!accountLimit && accountLimit.currentTotal >= accountLimit.limitTotal;
+
+  const handleLimitClick = () => {
+    if (!accountLimit) return;
+    const isFreePlan = accountLimit.limitTotal === 0;
+    const message = isFreePlan
+      ? accountLimit.hasUsedTrial
+        ? "Subscribe to a plan to connect accounts."
+        : "Start your free trial to connect accounts."
+      : `You've reached your ${accountLimit.limitTotal} account limit.`;
+    toast.warning(message, {
+      action: {
+        label: isFreePlan ? (accountLimit.hasUsedTrial ? "Subscribe" : "Start trial") : "Upgrade",
+        onClick: () => { window.location.href = "/dashboard/billing"; },
+      },
+    });
+  };
+
   const byPlatform = PLATFORMS.map((platform) => ({
     platform,
     accounts: accounts.filter((a) => a.platform === platform.id),
@@ -237,6 +255,7 @@ export function ConnectionsList({
                         size="sm"
                         className="w-full"
                         disabled={atLimit}
+                        onDisabledClick={atLimit ? handleLimitClick : undefined}
                       />
                     )}
                   </div>
