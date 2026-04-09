@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, MoreHorizontal } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/date-format";
 import { PlatformIcon } from "./PlatformIcon";
 import type { PublicationRow } from "./posts-list-data";
+import { publishPost } from "@/app/actions/publish";
+import { deletePost, postAgain } from "@/app/actions/posts";
+import { useState } from "react";
+import { toast } from "sonner";
 
 type PostRow = {
   id: string;
@@ -21,6 +26,16 @@ type ThreadPreview = {
   parts: string[];
   isThread: boolean;
 };
+
+type QuickActionStatus = "published" | "failed" | "scheduled" | "draft";
+
+function toComposerSlug(displayType: string): "text" | "image" | "video" | "threads" | "collection" {
+  if (displayType === "Thread") return "threads";
+  if (displayType === "Collection") return "collection";
+  if (displayType === "Image") return "image";
+  if (displayType === "Video") return "video";
+  return "text";
+}
 
 function getThreadPreview(post: PostRow): ThreadPreview {
   const meta = post.metadata as
@@ -148,6 +163,206 @@ function getStatusBadge(status: string | null): { label: string; className: stri
   }
 }
 
+function getFriendlyFailureReason(raw: string | null): string | null {
+  if (!raw || !raw.trim()) return null;
+  const lower = raw.toLowerCase();
+  if (
+    lower.includes("token") ||
+    lower.includes("oauth") ||
+    lower.includes("invalid_grant") ||
+    lower.includes("unauthorized")
+  ) {
+    return "Publishing failed due to an account authorization issue. Please reconnect and try again.";
+  }
+  if (
+    lower.includes("rate limit") ||
+    lower.includes("too many requests") ||
+    lower.includes("429")
+  ) {
+    return "Publishing failed due to temporary rate limits. Please try again shortly.";
+  }
+  return "Publishing failed. Please review your post settings and try again.";
+}
+
+function QuickActionsMenu({
+  postId,
+  status,
+  composerSlug,
+}: {
+  postId: string;
+  status: QuickActionStatus;
+  composerSlug: "text" | "image" | "video" | "threads" | "collection";
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const run = async (fn: () => Promise<void>) => {
+    setLoading(true);
+    try {
+      await fn();
+      setOpen(false);
+      router.refresh();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const menuClass =
+    "block w-full rounded-md px-3 py-2 text-left text-sm text-foreground hover:bg-muted disabled:opacity-60";
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+        aria-label="Open quick actions"
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+      {open && (
+        <div
+          className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-border bg-card p-1 shadow-lg"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
+          {status === "published" && (
+            <>
+              <button
+                type="button"
+                disabled={loading}
+                className={menuClass}
+                onClick={() =>
+                  void run(async () => {
+                    const result = await postAgain(postId);
+                    if (!result.success) {
+                      toast.error("Failed to post again. Please try again.");
+                      throw new Error("post_again_failed");
+                    }
+                  })
+                }
+              >
+                Post again
+              </button>
+              <Link
+                href={`/dashboard/create/${composerSlug}?edit=${postId}`}
+                className={menuClass}
+                onClick={() => setOpen(false)}
+              >
+                Edit and post
+              </Link>
+            </>
+          )}
+          {status === "failed" && (
+            <>
+              <button
+                type="button"
+                disabled={loading}
+                className={menuClass}
+                onClick={() =>
+                  void run(async () => {
+                    const result = await publishPost(postId);
+                    if (result.error) {
+                      toast.error("Failed to publish post. Please try again.");
+                      throw new Error("retry_failed");
+                    }
+                  })
+                }
+              >
+                Retry
+              </button>
+              <Link
+                href={`/dashboard/create/${composerSlug}?edit=${postId}`}
+                className={menuClass}
+                onClick={() => setOpen(false)}
+              >
+                Edit and post
+              </Link>
+            </>
+          )}
+          {status === "scheduled" && (
+            <>
+              <Link
+                href={`/dashboard/create/${composerSlug}?scheduled=${postId}`}
+                className={menuClass}
+                onClick={() => setOpen(false)}
+              >
+                Edit
+              </Link>
+              <button
+                type="button"
+                disabled={loading}
+                className={menuClass}
+                onClick={() =>
+                  void run(async () => {
+                    const result = await publishPost(postId);
+                    if (result.error) {
+                      toast.error("Failed to publish post. Please try again.");
+                      throw new Error("publish_now_failed");
+                    }
+                  })
+                }
+              >
+                Publish now
+              </button>
+              <button
+                type="button"
+                disabled={loading}
+                className={menuClass}
+                onClick={() =>
+                  void run(async () => {
+                    const result = await deletePost(postId);
+                    if (!result.success) {
+                      toast.error("Failed to cancel post. Please try again.");
+                      throw new Error("cancel_failed");
+                    }
+                  })
+                }
+              >
+                Cancel
+              </button>
+            </>
+          )}
+          {status === "draft" && (
+            <>
+              <Link
+                href={`/dashboard/create/${composerSlug}?draft=${postId}`}
+                className={menuClass}
+                onClick={() => setOpen(false)}
+              >
+                Edit
+              </Link>
+              <button
+                type="button"
+                disabled={loading}
+                className={menuClass}
+                onClick={() =>
+                  void run(async () => {
+                    const result = await deletePost(postId);
+                    if (!result.success) {
+                      toast.error("Failed to delete draft. Please try again.");
+                      throw new Error("delete_draft_failed");
+                    }
+                  })
+                }
+              >
+                Delete
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const MAX_PLATFORM_ICONS = 3;
 
 export type ResurfaceForPost = {
@@ -241,15 +456,32 @@ export function PostListCards({
           : getStatusBadge(uiStatus);
         const showIcons = publicationsList.slice(0, MAX_PLATFORM_ICONS);
         const extraCount = publicationsList.length > MAX_PLATFORM_ICONS ? publicationsList.length - MAX_PLATFORM_ICONS : 0;
+        const quickStatus: QuickActionStatus | null =
+          uiStatus === "published" ||
+          uiStatus === "failed" ||
+          uiStatus === "scheduled" ||
+          uiStatus === "draft"
+            ? uiStatus
+            : null;
+        const composerSlug = toComposerSlug(displayType);
 
         return (
           <li
             key={post.id}
-            className="rounded-[12px] border border-border bg-card transition-shadow hover:border-emerald-500 hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
+            className="relative rounded-[12px] border border-border bg-card transition-shadow hover:border-emerald-500 hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
           >
+            {quickStatus && (
+              <div className="absolute right-2 top-2 z-10">
+                <QuickActionsMenu
+                  postId={post.id}
+                  status={quickStatus}
+                  composerSlug={composerSlug}
+                />
+              </div>
+            )}
             <Link
               href={`/dashboard/posts/${post.id}`}
-              className="block p-4 active:opacity-95 touch-manipulation"
+              className="block p-4 pr-12 active:opacity-95 touch-manipulation"
             >
               {/* TOP ROW: [Post type badge] left, [Status badge] right */}
               <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -272,10 +504,10 @@ export function PostListCards({
               >
                 {preview}
               </p>
-              {uiStatus === "failed" && post.failureReason && (
+              {uiStatus === "failed" && getFriendlyFailureReason(post.failureReason) && (
                 <p className="text-xs text-red-600 dark:text-red-400 mt-2 flex items-center gap-1.5">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" strokeWidth={1.5} />
-                  {post.failureReason}
+                  {getFriendlyFailureReason(post.failureReason)}
                 </p>
               )}
               {/* BOTTOM ROW: [Platform icons left] [Date right muted] */}

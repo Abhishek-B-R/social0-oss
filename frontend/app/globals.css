@@ -223,6 +223,7 @@ html {
   input[type="checkbox"],
   input[type="radio"],
   select,
+  summary,
   label[for] {
     cursor: pointer;
   }

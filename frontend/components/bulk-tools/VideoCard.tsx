@@ -51,6 +51,16 @@ function formatTimeForInput(d: Date): string {
   return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
 }
 
+function getTodayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function getMaxDateStr(): string {
+  const d = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export function VideoCard({
   item,
   tikTokSelected = false,
@@ -255,6 +265,8 @@ export function VideoCard({
               type="date"
               value={dateStr}
               onChange={handleDateChange}
+              min={getTodayStr()}
+              max={getMaxDateStr()}
               className="rounded border border-input bg-background px-2 py-1.5 text-foreground"
             />
             <input

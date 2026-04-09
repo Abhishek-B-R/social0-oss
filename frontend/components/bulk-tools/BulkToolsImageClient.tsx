@@ -26,6 +26,8 @@ import { uploadFile } from "@/lib/upload-file";
 import { toast } from "sonner";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import { PinterestConfigInline } from "@/components/PinterestConfigInline";
+import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
 
 const LIMITS = {
   totalSize: 250 * 1024 * 1024, // 250MB total batch
@@ -112,6 +114,13 @@ export function BulkToolsImageClient({
   const [uploadPercent, setUploadPercent] = useState(0);
   const [success, setSuccess] = useState(false);
   const cancelledRef = useRef(false);
+  const [pinterestSettingsByAccount, setPinterestSettingsByAccount] = useState<
+    Record<string, PinterestPostSettings>
+  >({});
+  const [selectedPinterestAccountIndex, setSelectedPinterestAccountIndex] =
+    useState(0);
+  const [pinterestError, setPinterestError] = useState<string | null>(null);
+  const [showPinterestModal, setShowPinterestModal] = useState(false);
 
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
@@ -151,9 +160,32 @@ export function BulkToolsImageClient({
     () => accounts.filter((a) => selectedIds.has(a.id)),
     [accounts, selectedIds],
   );
+  const hasPinterestSelected = selectedAccounts.some(
+    (a) => a.platform === "pinterest",
+  );
+  const pinterestAccounts = selectedAccounts.filter(
+    (a) => a.platform === "pinterest",
+  );
   const hasXForAutoFeatures = selectedAccounts.some(
     (a) => a.platform === "twitter_x",
   );
+  useEffect(() => {
+    if (!hasPinterestSelected) {
+      if (pinterestError) setPinterestError(null);
+      return;
+    }
+    const missingBoard = pinterestAccounts.some(
+      (acc) => !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
+    );
+    if (!missingBoard && pinterestError) {
+      setPinterestError(null);
+    }
+  }, [
+    hasPinterestSelected,
+    pinterestAccounts,
+    pinterestSettingsByAccount,
+    pinterestError,
+  ]);
 
   // Restore remembered auto features the first time X is selected.
   useEffect(() => {
@@ -308,7 +340,7 @@ export function BulkToolsImageClient({
       ? formatSchedulePreview(items.length, startTime, videosPerDay, gapHours)
       : null;
 
-  const handleScheduleAll = async () => {
+  const runScheduleAll = async () => {
     if (selectedIds.size === 0 || items.length === 0) return;
 
     // Require a caption for every image before scheduling
@@ -316,6 +348,18 @@ export function BulkToolsImageClient({
     if (missingCaption) {
       toast.error("Caption is required for all images before scheduling.");
       return;
+    }
+    if (hasPinterestSelected) {
+      const missingBoard = pinterestAccounts.some(
+        (acc) => !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
+      );
+      if (missingBoard) {
+        setPinterestError(
+          "Please select a board for Pinterest before scheduling.",
+        );
+        toast.error("Please select a board for Pinterest before scheduling.");
+        return;
+      }
     }
 
     toast.dismiss();
@@ -331,7 +375,7 @@ export function BulkToolsImageClient({
       autoRepost: hasXForAutoFeatures ? resurfaceConfig : null,
       autoPlug: hasXForAutoFeatures ? autoPlugConfig : null,
     };
-    const metadata =
+    const metadata: Record<string, unknown> =
       autoFeatures.autoRepost || autoFeatures.autoPlug
         ? {
             contentType: "image",
@@ -341,6 +385,22 @@ export function BulkToolsImageClient({
             },
           }
         : { contentType: "image" };
+    if (hasPinterestSelected) {
+      metadata.pinterest = pinterestAccounts.reduce<
+        Record<string, { boardId: string; title?: string; link?: string }>
+      >((acc, account) => {
+        const settings = pinterestSettingsByAccount[account.id];
+        if (!settings?.boardId?.trim()) return acc;
+        acc[account.id] = {
+          boardId: settings.boardId.trim(),
+          ...(settings.title?.trim()
+            ? { title: settings.title.trim().slice(0, 100) }
+            : {}),
+          ...(settings.link?.trim() ? { link: settings.link.trim() } : {}),
+        };
+        return acc;
+      }, {});
+    }
 
     try {
       // Phase 1: upload all images in parallel
@@ -405,13 +465,23 @@ export function BulkToolsImageClient({
       }
 
       setSuccess(true);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to schedule");
+    } catch {
+      toast.error("Failed to schedule images. Please try again.");
     } finally {
       setScheduling(false);
       setProgress("");
       setUploadPercent(0);
     }
+  };
+
+  const handleScheduleAll = async () => {
+    if (selectedIds.size === 0 || items.length === 0) return;
+    if (hasPinterestSelected) {
+      setPinterestError(null);
+      setShowPinterestModal(true);
+      return;
+    }
+    await runScheduleAll();
   };
 
   return (
@@ -627,6 +697,134 @@ export function BulkToolsImageClient({
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {showPinterestModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div
+            className="w-full max-w-2xl rounded-2xl border border-border bg-card p-5 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulk-pinterest-settings-title"
+          >
+            <h3
+              id="bulk-pinterest-settings-title"
+              className="text-lg font-semibold text-foreground"
+            >
+              Pinterest Settings
+            </h3>
+            <div className="mt-4">
+              {pinterestAccounts.length > 1 ? (
+                <>
+                  <div className="mb-4 flex rounded-lg border border-border bg-bg-muted/30 p-0.5">
+                    {pinterestAccounts.map((acc, idx) => (
+                      <button
+                        key={acc.id}
+                        type="button"
+                        onClick={() => setSelectedPinterestAccountIndex(idx)}
+                        className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                          selectedPinterestAccountIndex === idx
+                            ? "bg-bg-elevated text-text shadow-sm"
+                            : "text-text-muted hover:text-text"
+                        }`}
+                      >
+                        {acc.platformUsername?.trim()
+                          ? `@${acc.platformUsername}`
+                          : `Account ${idx + 1}`}
+                      </button>
+                    ))}
+                  </div>
+                  <PinterestConfigInline
+                    accountId={
+                      pinterestAccounts[selectedPinterestAccountIndex]?.id ?? ""
+                    }
+                    value={
+                      pinterestSettingsByAccount[
+                        pinterestAccounts[selectedPinterestAccountIndex]?.id ?? ""
+                      ] ?? {
+                        boardId: "",
+                        title: "",
+                        link: "",
+                        rememberBoard: false,
+                        rememberLink: false,
+                      }
+                    }
+                    onChange={(s) => {
+                      const id =
+                        pinterestAccounts[selectedPinterestAccountIndex]?.id;
+                      if (id) {
+                        setPinterestSettingsByAccount((prev) => ({
+                          ...prev,
+                          [id]: s,
+                        }));
+                      }
+                    }}
+                    isVisible={true}
+                  />
+                </>
+              ) : (
+                <PinterestConfigInline
+                  accountId={pinterestAccounts[0]?.id ?? ""}
+                  value={
+                    pinterestSettingsByAccount[pinterestAccounts[0]?.id ?? ""] ?? {
+                      boardId: "",
+                      title: "",
+                      link: "",
+                      rememberBoard: false,
+                      rememberLink: false,
+                    }
+                  }
+                  onChange={(s) => {
+                    const id = pinterestAccounts[0]?.id;
+                    if (id) {
+                      setPinterestSettingsByAccount((prev) => ({
+                        ...prev,
+                        [id]: s,
+                      }));
+                    }
+                  }}
+                  isVisible={true}
+                />
+              )}
+              {pinterestError && (
+                <p className="mt-3 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+                  {pinterestError}
+                </p>
+              )}
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle"
+                onClick={() => {
+                  setShowPinterestModal(false);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                onClick={async () => {
+                  const missingBoard = pinterestAccounts.some(
+                    (acc) => !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
+                  );
+                  if (missingBoard) {
+                    setPinterestError(
+                      "Please select a board for Pinterest before scheduling.",
+                    );
+                    return;
+                  }
+                  setPinterestError(null);
+                  setShowPinterestModal(false);
+                  await runScheduleAll();
+                }}
+              >
+                Continue &amp; Schedule
+              </button>
+            </div>
           </div>
         </div>
       )}

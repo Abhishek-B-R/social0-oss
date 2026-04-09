@@ -42,6 +42,24 @@ type BulkScheduleSettingsProps = {
   childrenAfterApplySchedule?: React.ReactNode;
 };
 
+function getTodayStr(): string {
+  const d = new Date();
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function getMaxDateStr(): string {
+  const d = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
 export function BulkScheduleSettings({
   variant,
   bulkCaption,
@@ -129,6 +147,8 @@ export function BulkScheduleSettings({
               type="date"
               value={startDate}
               onChange={(e) => onStartDateChange(e.target.value)}
+              min={getTodayStr()}
+              max={getMaxDateStr()}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
             />
           </div>

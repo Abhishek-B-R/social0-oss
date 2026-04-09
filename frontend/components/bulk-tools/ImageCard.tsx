@@ -49,6 +49,16 @@ function formatScheduledLabel(d: Date): string {
   return `${date} ${time}`;
 }
 
+function getTodayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function getMaxDateStr(): string {
+  const d = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export function ImageCard({
   item,
   index,
@@ -167,6 +177,8 @@ export function ImageCard({
                   type="date"
                   value={dateStr}
                   onChange={handleDateChange}
+                  min={getTodayStr()}
+                  max={getMaxDateStr()}
                   className="rounded border border-input bg-background px-2 py-1.5 text-foreground"
                 />
                 <input

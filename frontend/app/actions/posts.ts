@@ -34,6 +34,20 @@ export type CreatePostResult =
 
 export type PublishMode = "draft" | "now" | "scheduled";
 
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+
+function validateScheduledAtWindow(scheduledAt: Date | null): string | null {
+  if (!scheduledAt) return "Please pick a date and time to schedule";
+  const now = Date.now();
+  const target = scheduledAt.getTime();
+  if (Number.isNaN(target)) return "Please pick a valid schedule date and time";
+  if (target < now) return "Scheduled time must be in the future";
+  if (target > now + ONE_YEAR_MS) {
+    return "Scheduled time must be within the next 1 year";
+  }
+  return null;
+}
+
 export async function createPost(
   content: string,
   selectedAccountIds: string[],
@@ -70,8 +84,11 @@ export async function createPost(
     };
   }
 
-  if (mode === "scheduled" && !scheduledAt) {
-    return { success: false, error: "Please pick a date and time to schedule" };
+  if (mode === "scheduled") {
+    const scheduleError = validateScheduledAtWindow(scheduledAt);
+    if (scheduleError) {
+      return { success: false, error: scheduleError };
+    }
   }
 
   // Ensure all selected accounts belong to the current user
@@ -202,7 +219,7 @@ export async function createPost(
     console.error("createPost error:", e);
     return {
       success: false,
-      error: e instanceof Error ? e.message : "Failed to create post",
+      error: "Something went wrong. Please try again.",
     };
   }
 }
@@ -244,7 +261,7 @@ export async function deletePost(postId: string): Promise<DeletePostResult> {
     console.error("deletePost error:", e);
     return {
       success: false,
-      error: e instanceof Error ? e.message : "Failed to delete post",
+      error: "Failed to delete post. Please try again.",
     };
   }
 }
@@ -365,7 +382,7 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
     console.error("postAgain error:", e);
     return {
       success: false,
-      error: e instanceof Error ? e.message : "Failed to post again",
+      error: "Failed to post again. Please try again.",
     };
   }
 }
@@ -434,6 +451,12 @@ export async function updatePost(
       success: false,
       error: "One or more selected accounts are invalid",
     };
+  }
+  if (scheduledAt) {
+    const scheduleError = validateScheduledAtWindow(scheduledAt);
+    if (scheduleError) {
+      return { success: false, error: scheduleError };
+    }
   }
 
   try {
@@ -544,7 +567,7 @@ export async function updatePost(
     console.error("updatePost error:", e);
     return {
       success: false,
-      error: e instanceof Error ? e.message : "Failed to update post",
+      error: "Failed to update post. Please try again.",
     };
   }
 }
@@ -831,7 +854,7 @@ export async function deleteDraft(postId: string): Promise<DeleteDraftResult> {
     console.error("deleteDraft error:", e);
     return {
       success: false,
-      error: e instanceof Error ? e.message : "Failed to delete draft",
+      error: "Failed to delete draft. Please try again.",
     };
   }
 }
