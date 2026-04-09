@@ -11,6 +11,7 @@ type ScheduleDateTimePickerProps = {
   onChange: (date: Date | null) => void;
   placeholder?: string;
   minDate?: Date;
+  maxDate?: Date;
   /** When true, show times in 24h (e.g. 09:00); when false, 12h with AM/PM */
   use24HourTimeFormat?: boolean;
   /** User's date format preference (dd/MM/yyyy, MM/dd/yyyy, yyyy-MM-dd) */
@@ -39,6 +40,7 @@ export function ScheduleDateTimePicker({
   onChange,
   placeholder = "Pick date & time",
   minDate = new Date(),
+  maxDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
 }: ScheduleDateTimePickerProps) {
@@ -71,6 +73,10 @@ export function ScheduleDateTimePicker({
     const earliestAllowed = isBefore(minDate, now) ? now : minDate;
     if (isBefore(combined, earliestAllowed)) {
       setTimeError("Scheduled time must be in the future.");
+      return;
+    }
+    if (isBefore(maxDate, combined)) {
+      setTimeError("Scheduled time must be within the next 1 year.");
       return;
     }
     setTimeError(null);
@@ -177,7 +183,10 @@ export function ScheduleDateTimePicker({
             mode="single"
             selected={selectedDate}
             onSelect={handleDateSelect}
-            disabled={(date) => startOfDay(date) < startOfDay(new Date())}
+            disabled={(date) =>
+              startOfDay(date) < startOfDay(new Date()) ||
+              startOfDay(date) > startOfDay(maxDate)
+            }
             defaultMonth={selectedDate || startOfToday()}
             classNames={{
               root: "rdp-root",

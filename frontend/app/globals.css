@@ -216,6 +216,16 @@ html {
   * {
     @apply border-border outline-ring/50;
   }
+  button,
+  [role="button"],
+  a,
+  [onclick],
+  input[type="checkbox"],
+  input[type="radio"],
+  select,
+  label[for] {
+    cursor: pointer;
+  }
   body {
     @apply bg-bg text-text;
   }

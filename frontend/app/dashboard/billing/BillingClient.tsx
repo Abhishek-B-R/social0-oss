@@ -185,6 +185,7 @@ export function BillingClient({
   const [waitingForWebhook, setWaitingForWebhook] = useState(
     Boolean(justSubscribed && subscription.tier === "free"),
   );
+  const showTrialInfo = subscription.tier === "free" && !accountLimit.hasUsedTrial;
 
   // After return from checkout (?success=1): verify plan actually changed by polling sync; stop after 3 attempts and clear URL
   useEffect(() => {
@@ -846,13 +847,14 @@ export function BillingClient({
                         Opening…
                       </>
                     ) : (
-                      "Upgrade to Starter"
+                      showTrialInfo ? "Start 7-day free trial" : "Upgrade to Starter"
                     )}
                   </Button>
-                  <p className="mt-2 text-center text-xs text-muted-foreground">
-                    Your card will only be charged after your 7-day free trial
-                    ends. You can cancel anytime.
-                  </p>
+                  {showTrialInfo && (
+                    <p className="mt-2 text-center text-xs text-muted-foreground">
+                      7-day free trial included — you won&apos;t be charged today.
+                    </p>
+                  )}
                 </>
               )}
             </div>
@@ -928,13 +930,14 @@ export function BillingClient({
                         Opening…
                       </>
                     ) : (
-                      "Upgrade to Growth"
+                      showTrialInfo ? "Start 7-day free trial" : "Upgrade to Growth"
                     )}
                   </Button>
-                  <p className="mt-2 text-center text-xs text-muted-foreground">
-                    Your card will only be charged after your 7-day free trial
-                    ends. You can cancel anytime.
-                  </p>
+                  {showTrialInfo && (
+                    <p className="mt-2 text-center text-xs text-muted-foreground">
+                      7-day free trial included — you won&apos;t be charged today.
+                    </p>
+                  )}
                 </>
               )}
             </div>

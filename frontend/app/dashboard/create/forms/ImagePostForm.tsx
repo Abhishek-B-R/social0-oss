@@ -71,6 +71,7 @@ import {
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
 import { DOCS_IMAGE_POST_TYPE_URL } from "@/lib/docs-url";
+import { getLimitForAccount } from "@/lib/platform-limits";
 import { toast } from "sonner";
 
 type PlatformCaptionState = {
@@ -1417,6 +1418,20 @@ export function ImagePostForm({
   const showPlatformCaptionsSection = selectedIds.size >= 2;
   const platformDisplayName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
+  const getPlatformCaptionPreview = (platformId: string, rawCaption: string) => {
+    const trimmed = rawCaption.trim();
+    if (!trimmed) return "";
+    const platformAccounts = selectedAccounts.filter(
+      (account) => account.platform === platformId,
+    );
+    const limit =
+      platformAccounts.length > 0
+        ? Math.min(...platformAccounts.map((account) => getLimitForAccount(account)))
+        : getLimitForAccount({ platform: platformId, isTwitterPremium: false });
+    if (trimmed.length <= limit) return trimmed;
+    if (limit <= 3) return "...";
+    return `${trimmed.slice(0, limit - 3)}...`;
+  };
   const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
   const tiktokAccounts = selectedAccounts.filter(
     (a) => a.platform === "tiktok",
@@ -1435,6 +1450,23 @@ export function ImagePostForm({
   const pinterestAccounts = selectedAccounts.filter(
     (a) => a.platform === "pinterest",
   );
+  useEffect(() => {
+    if (!hasPinterestSelected) {
+      if (pinterestError) setPinterestError(null);
+      return;
+    }
+    const missingBoard = pinterestAccounts.some(
+      (acc) => !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
+    );
+    if (!missingBoard && pinterestError) {
+      setPinterestError(null);
+    }
+  }, [
+    hasPinterestSelected,
+    pinterestAccounts,
+    pinterestSettingsByAccount,
+    pinterestError,
+  ]);
 
   const hasTwitterXSelected = selectedAccounts.some(
     (a) => a.platform === "twitter_x",
@@ -2149,6 +2181,11 @@ export function ImagePostForm({
                         value: "",
                       } as PlatformCaptionState);
                     const displayName = platformDisplayName(platformId);
+                    const effectiveCaption = state.overridden ? state.value : content;
+                    const previewCaption = getPlatformCaptionPreview(
+                      platformId,
+                      effectiveCaption,
+                    );
                     return (
                       <div
                         key={platformId}
@@ -2230,6 +2267,9 @@ export function ImagePostForm({
                           className="w-full rounded-lg border border-input bg-bg px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 disabled:opacity-70"
                           maxHeight={160}
                         />
+                        <p className="mt-2 text-xs text-text-muted">
+                          Preview: {previewCaption || "No caption"}
+                        </p>
                       </div>
                     );
                   })}
