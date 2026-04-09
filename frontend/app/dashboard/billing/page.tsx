@@ -11,14 +11,14 @@ import DocsInfoIcon from "@/components/info-icon";
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ upgrade?: string; success?: string }>;
+  searchParams: Promise<{ upgrade?: string; success?: string; status?: string }>;
 }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/");
 
   const params = await searchParams;
   const showUpgradeBanner = params.upgrade === "1";
-  const justSubscribed = params.success === "1";
+  const justSubscribed = params.success === "1" && params.status !== "failed";
 
   const { dateFormat, timezone } = await getUserSettingsSnapshot();
   const subscription = await getSubscriptionForUser(session.user.id);

@@ -75,6 +75,9 @@ export async function POST(request: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Preview failed";
     console.error("[billing/preview-plan-change] Dodo error:", msg);
-    return NextResponse.json({ error: msg }, { status: 502 });
+    return NextResponse.json(
+      { error: "Something went wrong. Please try again." },
+      { status: 502 },
+    );
   }
 }

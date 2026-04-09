@@ -10,6 +10,7 @@ const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/sit
  * Better Auth emailOTP plugin sends the verification OTP; we redirect to verify-email (email/password only).
  */
 export async function POST(request: Request) {
+  const GENERIC_AUTH_ERROR = "Something went wrong. Please try again.";
   const secret = env.TURNSTILE_SECRET_KEY;
   if (!secret) {
     return NextResponse.json(
@@ -64,13 +65,10 @@ export async function POST(request: Request) {
     }) as Response;
 
     if (!response.ok) {
-      const clone = response.clone();
-      try {
-        const body = await clone.json().catch(() => ({}));
-        return NextResponse.json(body, { status: response.status });
-      } catch {
-        return response;
-      }
+      return NextResponse.json(
+        { error: GENERIC_AUTH_ERROR },
+        { status: response.status },
+      );
     }
 
     // OTP is sent by Better Auth emailOTP plugin on sign-up (single send path); do not call sendVerificationOTP here to avoid duplicate emails.
@@ -84,10 +82,9 @@ export async function POST(request: Request) {
     }
     return res;
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Sign up failed";
     const status = e && typeof (e as { status?: number }).status === "number"
       ? (e as { status: number }).status
       : 500;
-    return NextResponse.json({ error: msg }, { status });
+    return NextResponse.json({ error: GENERIC_AUTH_ERROR }, { status });
   }
 }

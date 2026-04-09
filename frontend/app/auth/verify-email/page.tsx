@@ -73,7 +73,7 @@ function VerifyEmailContent() {
         type: "email-verification",
       });
       if (err) {
-        toast.error(err.message ?? "Failed to resend code.");
+        toast.error("Failed to resend code.");
         return;
       }
       setResendCooldown(RESEND_COOLDOWN_SEC);

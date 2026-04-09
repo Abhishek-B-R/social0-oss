@@ -55,7 +55,7 @@ function ResetPasswordContent() {
         password,
       });
       if (err) {
-        toast.error(err.message ?? "Invalid or expired code. Try again.");
+        toast.error("Invalid or expired code. Try again.");
         return;
       }
       router.push("/auth?reset=success");

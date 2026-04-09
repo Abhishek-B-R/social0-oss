@@ -22,6 +22,22 @@ import {
 import { DOCS_FAIR_USAGE_URL } from "@/lib/docs-url";
 
 const POLL_INTERVAL_MS = 2000;
+const PAYMENT_DECLINED_MESSAGE =
+  "Your payment could not be processed. Please check your card details or try a different payment method.";
+
+function toFriendlyBillingError(raw: unknown, fallback: string): string {
+  if (typeof raw !== "string") return fallback;
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) return fallback;
+  if (
+    normalized.includes("generic_decline") ||
+    normalized.includes("payment_declined") ||
+    normalized.includes("declined")
+  ) {
+    return PAYMENT_DECLINED_MESSAGE;
+  }
+  return fallback;
+}
 
 /** Dodo preview summary: `currency`/`total_amount` = customer charge (may be INR); `settlement_*` = merchant settlement (often USD). */
 type PreviewChargeSummary = {
@@ -335,7 +351,9 @@ export function BillingClient({
         window.location.href = data.url;
         return;
       }
-      toast.error(data.error ?? "Could not open billing portal. Try again.");
+      toast.error(
+        toFriendlyBillingError(data.error, "Could not open billing portal. Try again."),
+      );
     } finally {
       setLoading(null);
     }
@@ -361,7 +379,7 @@ export function BillingClient({
         router.push("/dashboard/feedback");
         return;
       }
-      toast.error(data.error ?? "Failed to pause subscription.");
+      toast.error(toFriendlyBillingError(data.error, "Failed to pause subscription."));
     } finally {
       setLoading(null);
     }
@@ -394,7 +412,12 @@ export function BillingClient({
         }
         return;
       }
-      toast.error(data.error ?? "Failed to cancel subscription. Please try again.");
+      toast.error(
+        toFriendlyBillingError(
+          data.error,
+          "Failed to cancel subscription. Please try again.",
+        ),
+      );
     } finally {
       setLoading(null);
     }
@@ -413,7 +436,12 @@ export function BillingClient({
         router.refresh();
         return;
       }
-      toast.error(data.error ?? "Failed to undo cancellation. Please try again.");
+      toast.error(
+        toFriendlyBillingError(
+          data.error,
+          "Failed to undo cancellation. Please try again.",
+        ),
+      );
     } finally {
       setLoading(null);
     }
@@ -448,7 +476,12 @@ export function BillingClient({
         const ok = await redirectToCheckoutForPlan(targetDowngradePlan);
         if (ok) return;
       }
-      toast.error(data.error ?? "Failed to schedule downgrade. Please try again.");
+      toast.error(
+        toFriendlyBillingError(
+          data.error,
+          "Failed to schedule downgrade. Please try again.",
+        ),
+      );
     } finally {
       setLoadingChangePlan(null);
     }
@@ -465,7 +498,12 @@ export function BillingClient({
         router.refresh();
       } else {
         const data = await res.json().catch(() => ({}));
-        toast.error(data.error ?? "Failed to cancel downgrade. Please try again.");
+        toast.error(
+          toFriendlyBillingError(
+            data.error,
+            "Failed to cancel downgrade. Please try again.",
+          ),
+        );
       }
     } catch {
       toast.error("Failed to cancel downgrade. Please try again.");
@@ -524,7 +562,9 @@ export function BillingClient({
         const ok = await redirectToCheckoutForPlan(plan);
         if (ok) return;
       }
-      toast.error(data.error ?? "Failed to change plan. Please try again.");
+      toast.error(
+        toFriendlyBillingError(data.error, "Failed to change plan. Please try again."),
+      );
     } finally {
       setLoadingChangePlan(null);
     }
@@ -571,7 +611,9 @@ export function BillingClient({
         const ok = await redirectToCheckoutForPlan(upgradeConfirmPlan);
         if (ok) return;
       }
-      toast.error(data.error ?? "Failed to change plan. Please try again.");
+      toast.error(
+        toFriendlyBillingError(data.error, "Failed to change plan. Please try again."),
+      );
     } finally {
       setLoadingChangePlan(null);
     }
@@ -789,23 +831,29 @@ export function BillingClient({
                   Downgrade to Starter
                 </Button>
               ) : (
-                <Button
-                  className="w-full"
-                  disabled={loadingChangePlan !== null}
-                  onClick={() => handleUpgradeFromFree("starter")}
-                >
-                  {loadingChangePlan === "starter" ? (
-                    <>
-                      <IconLoader2
-                        className="h-4 w-4 animate-spin"
-                        strokeWidth={1.5}
-                      />
-                      Opening…
-                    </>
-                  ) : (
-                    "Upgrade to Starter"
-                  )}
-                </Button>
+                <>
+                  <Button
+                    className="w-full"
+                    disabled={loadingChangePlan !== null}
+                    onClick={() => handleUpgradeFromFree("starter")}
+                  >
+                    {loadingChangePlan === "starter" ? (
+                      <>
+                        <IconLoader2
+                          className="h-4 w-4 animate-spin"
+                          strokeWidth={1.5}
+                        />
+                        Opening…
+                      </>
+                    ) : (
+                      "Upgrade to Starter"
+                    )}
+                  </Button>
+                  <p className="mt-2 text-center text-xs text-muted-foreground">
+                    Your card will only be charged after your 7-day free trial
+                    ends. You can cancel anytime.
+                  </p>
+                </>
               )}
             </div>
           </div>
@@ -865,23 +913,29 @@ export function BillingClient({
                   )}
                 </Button>
               ) : (
-                <Button
-                  className="w-full bg-accent hover:bg-accent/90 text-white"
-                  disabled={loadingChangePlan !== null}
-                  onClick={() => handleUpgradeFromFree("growth")}
-                >
-                  {loadingChangePlan === "growth" ? (
-                    <>
-                      <IconLoader2
-                        className="h-4 w-4 animate-spin"
-                        strokeWidth={1.5}
-                      />
-                      Opening…
-                    </>
-                  ) : (
-                    "Upgrade to Growth"
-                  )}
-                </Button>
+                <>
+                  <Button
+                    className="w-full bg-accent hover:bg-accent/90 text-white"
+                    disabled={loadingChangePlan !== null}
+                    onClick={() => handleUpgradeFromFree("growth")}
+                  >
+                    {loadingChangePlan === "growth" ? (
+                      <>
+                        <IconLoader2
+                          className="h-4 w-4 animate-spin"
+                          strokeWidth={1.5}
+                        />
+                        Opening…
+                      </>
+                    ) : (
+                      "Upgrade to Growth"
+                    )}
+                  </Button>
+                  <p className="mt-2 text-center text-xs text-muted-foreground">
+                    Your card will only be charged after your 7-day free trial
+                    ends. You can cancel anytime.
+                  </p>
+                </>
               )}
             </div>
           </div>

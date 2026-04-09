@@ -9,6 +9,22 @@ import { toast } from "sonner";
 
 const PAYMENT_FAILED_MESSAGE =
   "Payment failed. Please check your payment method and try again.";
+const PAYMENT_DECLINED_MESSAGE =
+  "Your payment could not be processed. Please check your card details or try a different payment method.";
+
+function toFriendlyCheckoutError(raw: unknown, fallback: string): string {
+  if (typeof raw !== "string") return fallback;
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) return fallback;
+  if (
+    normalized.includes("generic_decline") ||
+    normalized.includes("payment_declined") ||
+    normalized.includes("declined")
+  ) {
+    return PAYMENT_DECLINED_MESSAGE;
+  }
+  return fallback;
+}
 
 const STARTER_FEATURES = [
   "Connect up to 5 accounts",
@@ -86,7 +102,7 @@ function OnboardingPlanContent() {
         window.location.href = data.url;
         return;
       }
-      toast.error(data.error ?? "Failed to start checkout");
+      toast.error(toFriendlyCheckoutError(data.error, "Failed to start checkout"));
     } finally {
       setLoadingPlan(null);
     }
@@ -159,6 +175,10 @@ function OnboardingPlanContent() {
               "Choose Starter"
             )}
           </button>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            You won&apos;t be charged today. Your trial is free for 7 days -
+            cancel anytime before it ends.
+          </p>
         </div>
 
         <div className="rounded-2xl border-2 border-emerald-500 bg-emerald-500/5 p-6 shadow-sm relative">
@@ -199,6 +219,10 @@ function OnboardingPlanContent() {
               "Choose Growth"
             )}
           </button>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            You won&apos;t be charged today. Your trial is free for 7 days -
+            cancel anytime before it ends.
+          </p>
         </div>
 
         {/* Pro tier commented out for now — add back later

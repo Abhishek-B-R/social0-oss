@@ -229,9 +229,14 @@ export async function POST(request: Request) {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed to change plan";
+    const lowerMsg = String(msg).toLowerCase();
     const is409 =
       String(msg).includes("409") ||
-      String(msg).toLowerCase().includes("previous payment is not successful");
+      lowerMsg.includes("previous payment is not successful");
+    const isDecline =
+      lowerMsg.includes("generic_decline") ||
+      lowerMsg.includes("payment_declined") ||
+      lowerMsg.includes("declined");
     if (is409) {
       return NextResponse.json(
         {
@@ -241,7 +246,19 @@ export async function POST(request: Request) {
         { status: 409 },
       );
     }
+    if (isDecline) {
+      return NextResponse.json(
+        {
+          error:
+            "Your payment could not be processed. Please check your card details or try a different payment method.",
+        },
+        { status: 402 },
+      );
+    }
     console.error("[billing/change-plan] Dodo error:", msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json(
+      { error: "Something went wrong. Please try again." },
+      { status: 500 },
+    );
   }
 }

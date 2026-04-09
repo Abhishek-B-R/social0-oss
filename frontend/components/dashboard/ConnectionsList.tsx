@@ -185,7 +185,7 @@ export function ConnectionsList({
               <>
                 {accountLimit!.hasUsedTrial
                   ? "Upgrade to a plan to connect accounts and start posting."
-                  : "Start your 7-day free trial to connect accounts and start posting."}{" "}
+                  : "Start your 7-day free trial to connect accounts and start posting. No charge until the trial ends."}{" "}
                 <Link
                   href="/dashboard/billing"
                   className="font-medium underline underline-offset-2 hover:no-underline"

@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
         email: normalizedEmail,
       });
       if (err) {
-        toast.error(err.message ?? "Something went wrong. Try again.");
+        toast.error("Something went wrong. Try again.");
         return;
       }
       router.push(
