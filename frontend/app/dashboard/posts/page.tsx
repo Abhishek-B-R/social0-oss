@@ -4,7 +4,7 @@ import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 
 export default function PostsPage() {
   return (
-    <Suspense fallback={<DashboardPageSkeleton />}>
+    <Suspense fallback={<DashboardPageSkeleton message="Loading posts..." />}>
       <PostsPageClient />
     </Suspense>
   );

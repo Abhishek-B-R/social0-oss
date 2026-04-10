@@ -59,7 +59,7 @@ export function BillingPageClient() {
   }, [raw]);
 
   if (loading) {
-    return <DashboardPageSkeleton />;
+    return <DashboardPageSkeleton message="Loading billing..." />;
   }
 
   if (error || !raw || !subscription) {

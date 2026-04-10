@@ -41,7 +41,7 @@ export function ConnectionsPageClient() {
   }, [router]);
 
   if (loading) {
-    return <DashboardPageSkeleton />;
+    return <DashboardPageSkeleton message="Loading connections..." />;
   }
 
   if (error || !data) {

@@ -43,7 +43,7 @@ export function CalendarPageClient() {
   }, [router]);
 
   if (loading) {
-    return <DashboardPageSkeleton />;
+    return <DashboardPageSkeleton message="Loading calendar..." />;
   }
 
   if (error || !data) {

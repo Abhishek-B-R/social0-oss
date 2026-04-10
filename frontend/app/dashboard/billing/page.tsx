@@ -4,7 +4,7 @@ import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 
 export default function BillingPage() {
   return (
-    <Suspense fallback={<DashboardPageSkeleton />}>
+    <Suspense fallback={<DashboardPageSkeleton message="Loading billing..." />}>
       <BillingPageClient />
     </Suspense>
   );

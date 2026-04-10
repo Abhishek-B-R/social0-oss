@@ -137,7 +137,7 @@ export function PostsPageClient() {
   const hasActiveFilters = !!(platform || time || account);
 
   if (loading && !payload) {
-    return <DashboardPageSkeleton />;
+    return <DashboardPageSkeleton message="Loading posts..." />;
   }
 
   if (error || !payload?.ok || !hydrated) {
