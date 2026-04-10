@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   IconList,
   IconLink,
@@ -28,6 +29,11 @@ const NAV_ITEMS: Array<{
 
 export function DashboardBottomNav() {
   const pathname = usePathname();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
 
   const isActive = (href: string) => {
     if (href === "/dashboard/connections")
@@ -82,11 +88,15 @@ export function DashboardBottomNav() {
           <Link
             key={href}
             href={href}
+            prefetch
+            onClick={() => {
+              if (!active) setPendingHref(href);
+            }}
             className={`flex min-h-[56px] flex-1 shrink-0 flex-col items-center justify-center gap-0.5 py-3 pt-2 text-xs transition-colors touch-manipulation ${
               active
                 ? "text-accent"
                 : "text-text-muted hover:text-text active:text-text"
-            }`}
+            } ${pendingHref === href ? "opacity-60" : ""}`}
             aria-current={active ? "page" : undefined}
           >
             {Icon && <Icon className="h-5 w-5 shrink-0" />}

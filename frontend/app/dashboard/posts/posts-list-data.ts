@@ -12,8 +12,19 @@ import { eq, desc, asc, inArray, and, sql, gte, exists } from "drizzle-orm";
 import { startOfWeek, startOfMonth } from "date-fns";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { isActiveTier } from "@/lib/plans";
+import { POSTS_PAGE_SIZE } from "./posts-constants";
+import type {
+  PublicationRow,
+  PostsListParams,
+  StatusFilter,
+} from "./posts-list-types";
 
-export const POSTS_PAGE_SIZE = 18;
+export { POSTS_PAGE_SIZE } from "./posts-constants";
+export type {
+  PublicationRow,
+  PostsListParams,
+  StatusFilter,
+} from "./posts-list-types";
 
 /** True if the user has payment-failed posts and no active subscription (so banner should show). */
 export async function hasPaymentFailedPosts(userId: string): Promise<boolean> {
@@ -33,34 +44,6 @@ export async function hasPaymentFailedPosts(userId: string): Promise<boolean> {
     .limit(1);
   return !!row?.id;
 }
-
-export type StatusFilter = "draft" | "scheduled" | "published" | null;
-
-export type PostsListParams = {
-  userId: string;
-  statusFilter?: StatusFilter;
-  sort?: "newest" | "oldest";
-  platform?: string | null;
-  time?: string | null;
-  account?: string | null;
-  /** 1-based page number; used with limit/offset for pagination */
-  page?: number;
-  limit?: number;
-  offset?: number;
-};
-
-export type PublicationRow = {
-  connectedAccountId: string | null;
-  status: string | null;
-  platformPostUrl: string | null;
-  platformPostId: string | null;
-  platform: string;
-  lastError: string | null;
-  profileImageUrl: string | null;
-  platformUsername: string | null;
-  isTwitterPremium: boolean | null;
-  publishedAt: Date | null;
-};
 
 export async function getPostsListData({
   userId,

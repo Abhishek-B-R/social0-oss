@@ -5,7 +5,7 @@ import { AlertCircle, MoreHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/date-format";
 import { PlatformIcon } from "./PlatformIcon";
-import type { PublicationRow } from "./posts-list-data";
+import type { PublicationRow } from "./posts-list-types";
 import { publishPost } from "@/app/actions/publish";
 import { deletePost, postAgain } from "@/app/actions/posts";
 import { useState } from "react";

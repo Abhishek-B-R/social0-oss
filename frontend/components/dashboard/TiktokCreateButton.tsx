@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
 
 /** Brand-aligned floating create button: green core + subtle dual glow. Premium SaaS, not neon. */
 const TOKENS = {
@@ -30,10 +32,20 @@ export function TiktokCreateButton({
   label = "Create",
   "aria-label": ariaLabel,
 }: CreateButtonProps) {
+  const pathname = usePathname();
+  const [navPending, setNavPending] = useState(false);
+  useEffect(() => {
+    setNavPending(false);
+  }, [pathname]);
+
   return (
     <Link
       href={href}
-      className="absolute left-1/2 top-0 flex -translate-x-1/2 flex-col items-center justify-end touch-manipulation"
+      prefetch
+      onClick={() => {
+        if (!isActive) setNavPending(true);
+      }}
+      className={`absolute left-1/2 top-0 flex -translate-x-1/2 flex-col items-center justify-end touch-manipulation ${navPending ? "opacity-75" : ""}`}
       aria-label={ariaLabel}
       aria-current={isActive ? "page" : undefined}
     >

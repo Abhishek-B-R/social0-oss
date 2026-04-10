@@ -8,6 +8,8 @@ import { SubscriptionSync } from "@/components/dashboard/SubscriptionSync";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { getOnboardingStatus } from "@/app/actions/onboarding";
 
+export const dynamic = "force-dynamic";
+
 function getPlanLabel(tier: string): string {
   if (tier === "pro") return "Pro plan";
   if (tier === "growth") return "Growth plan";

@@ -39,12 +39,21 @@ function NavLink({
   icon: Icon,
   isActive,
 }: NavItem & { isActive: boolean }) {
+  const pathname = usePathname();
+  const [navPending, setNavPending] = useState(false);
+  useEffect(() => {
+    setNavPending(false);
+  }, [pathname]);
   return (
     <Link
       href={href}
+      prefetch
+      onClick={() => {
+        if (!isActive) setNavPending(true);
+      }}
       className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-sidebar-text hover:bg-sidebar-active ${
         isActive ? "bg-sidebar-active" : ""
-      }`}
+      } ${navPending ? "opacity-60" : ""}`}
     >
       <Icon className="h-4 w-4 shrink-0 text-sidebar-text" />
       {label}
@@ -84,11 +93,20 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
   const [mounted, setMounted] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const [logoPending, setLogoPending] = useState(false);
+  const [composerCtaPending, setComposerCtaPending] = useState(false);
+  const [landingPending, setLandingPending] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setLogoPending(false);
+    setComposerCtaPending(false);
+    setLandingPending(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!userMenuOpen) return;
@@ -122,7 +140,11 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
       <div className="flex shrink-0 flex-col gap-4 p-4">
         <Link
           href="/dashboard/composer"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 font-semibold text-lg text-sidebar-text hover:bg-sidebar-active transition-colors"
+          prefetch
+          onClick={() => {
+            if (!pathname.startsWith("/dashboard/composer")) setLogoPending(true);
+          }}
+          className={`flex items-center gap-3 rounded-lg px-3 py-2 font-semibold text-lg text-sidebar-text hover:bg-sidebar-active transition-colors ${logoPending ? "opacity-60" : ""}`}
         >
           <Image
             src={logoSrc}
@@ -144,7 +166,11 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
 
         <Link
           href="/dashboard/composer"
-          className="sidebar-create-post-cta flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-accent-hover transition-colors"
+          prefetch
+          onClick={() => {
+            if (!pathname.startsWith("/dashboard/composer")) setComposerCtaPending(true);
+          }}
+          className={`sidebar-create-post-cta flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-accent-hover transition-colors ${composerCtaPending ? "opacity-80" : ""}`}
         >
           <IconFilePlus className="h-4 w-4 shrink-0" size={16} />
           Create post
@@ -271,7 +297,11 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
             </a>
             <Link
               href="/home"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-sidebar-text hover:bg-sidebar-active"
+              prefetch
+              onClick={() => {
+                if (pathname !== "/home") setLandingPending(true);
+              }}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-sidebar-text hover:bg-sidebar-active ${landingPending ? "opacity-60" : ""}`}
             >
               <IconHome className="h-4 w-4 shrink-0 text-sidebar-text" />
               View landing page
