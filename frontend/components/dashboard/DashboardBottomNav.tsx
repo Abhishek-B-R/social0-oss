@@ -68,15 +68,11 @@ export function DashboardBottomNav() {
 
         if (isCreate) {
           return (
-            <div
-              key={href}
-              className="min-h-[56px] flex-1 shrink-0"
-              aria-hidden
-            >
+            <div key={href} className="flex min-h-[56px] flex-1 shrink-0">
               <TiktokCreateButton
                 href={href}
                 isActive={active}
-                aria-label={label}
+                label={label}
               />
             </div>
           );

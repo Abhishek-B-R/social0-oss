@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import {
   IconSettings,
   IconStack2,
@@ -13,6 +14,16 @@ import {
 } from "@tabler/icons-react";
 import { DOCS_MORE_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
+import { auth } from "@/lib/auth";
+import { getSubscriptionForUser } from "@/lib/subscription";
+import { MorePageAccountCollapsible } from "@/components/dashboard/MorePageAccountCollapsible";
+
+function getPlanLabel(tier: string): string {
+  if (tier === "pro") return "Pro plan";
+  if (tier === "growth") return "Growth plan";
+  if (tier === "starter") return "Starter (Lite) plan";
+  return "Free plan";
+}
 
 const MANUAL_POSTING_LINKS = [
   { href: "/dashboard/create", label: "Manual setup", icon: IconTool },
@@ -29,7 +40,14 @@ const MORE_LINKS = [
   { href: "/dashboard/billing", label: "Billing", icon: IconCreditCard },
 ] as const;
 
-export default function MorePage() {
+export default async function MorePage() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  const subscription = session?.user?.id
+    ? await getSubscriptionForUser(session.user.id)
+    : null;
+  const planLabel = getPlanLabel(subscription?.tier ?? "free");
+  const user = session?.user;
+
   return (
     <div>
       <div className="flex items-center gap-2">
@@ -41,6 +59,16 @@ export default function MorePage() {
       <p className="mt-1.5 text-sm text-text-muted sm:mt-2">
         Settings and the rest of the dashboard.
       </p>
+
+      {user && (
+        <MorePageAccountCollapsible
+          image={user.image}
+          name={user.name}
+          email={user.email}
+          planLabel={planLabel}
+        />
+      )}
+
 
       <section className="mt-6">
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-text-muted">

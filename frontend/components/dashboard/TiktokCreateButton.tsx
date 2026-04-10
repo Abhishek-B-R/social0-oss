@@ -14,6 +14,8 @@ const TOKENS = {
 type CreateButtonProps = {
   href: string;
   isActive?: boolean;
+  /** Visible label under the + button (matches other bottom-nav tabs). */
+  label?: string;
   "aria-label"?: string;
 };
 
@@ -25,7 +27,8 @@ type CreateButtonProps = {
 export function TiktokCreateButton({
   href,
   isActive = false,
-  "aria-label": ariaLabel = "Create post",
+  label = "Create",
+  "aria-label": ariaLabel,
 }: CreateButtonProps) {
   return (
     <Link
