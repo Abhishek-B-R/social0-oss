@@ -8,7 +8,7 @@ import { PlatformIcon } from "./PlatformIcon";
 import type { PublicationRow } from "./posts-list-types";
 import { publishPost } from "@/app/actions/publish";
 import { deletePost, postAgain } from "@/app/actions/posts";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 type PostRow = {
@@ -196,6 +196,20 @@ function QuickActionsMenu({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [open]);
 
   const run = async (fn: () => Promise<void>) => {
     setLoading(true);
@@ -212,7 +226,7 @@ function QuickActionsMenu({
     "block w-full rounded-md px-3 py-2 text-left text-sm text-foreground hover:bg-muted disabled:opacity-60";
 
   return (
-    <div className="relative">
+    <div ref={menuRef} className="relative">
       <button
         type="button"
         onClick={(e) => {

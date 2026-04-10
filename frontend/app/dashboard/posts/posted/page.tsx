@@ -23,33 +23,41 @@ export default async function PostedPostsPage({
     page?: string;
   }>;
 }) {
-  const params = await searchParams;
-  const session = await auth.api.getSession({ headers: await headers() });
+  const [params, session] = await Promise.all([
+    searchParams,
+    auth.api.getSession({ headers: await headers() }),
+  ]);
   if (!session) return null;
 
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
 
-  const {
-    userPosts,
-    publicationsByPostId,
-    firstMediaByPost,
-    platformOptions,
-    accountOptions,
-    resurfaceByPostId,
-    totalCount,
-  } = await getPostsListData({
-    userId: session.user.id,
-    statusFilter: "published",
-    sort: params.sort === "oldest" ? "oldest" : "newest",
-    platform: params.platform || null,
-    time: params.time || null,
-    account: params.account || null,
-    page,
-    limit: POSTS_PAGE_SIZE,
-  });
+  const [
+    {
+      userPosts,
+      publicationsByPostId,
+      firstMediaByPost,
+      platformOptions,
+      accountOptions,
+      resurfaceByPostId,
+      totalCount,
+    },
+    settings,
+  ] = await Promise.all([
+    getPostsListData({
+      userId: session.user.id,
+      statusFilter: "published",
+      sort: params.sort === "oldest" ? "oldest" : "newest",
+      platform: params.platform || null,
+      time: params.time || null,
+      account: params.account || null,
+      page,
+      limit: POSTS_PAGE_SIZE,
+    }),
+    getUserSettingsSnapshot(),
+  ]);
 
   const hasActiveFilters = !!(params.platform || params.time || params.account);
-  const { use24HourTimeFormat, dateFormat } = await getUserSettingsSnapshot();
+  const { use24HourTimeFormat, dateFormat } = settings;
 
   return (
     <div>

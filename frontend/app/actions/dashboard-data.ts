@@ -6,10 +6,13 @@ import {
   getPostsListData,
   hasPaymentFailedPosts,
   POSTS_PAGE_SIZE,
+  getPostDetail,
+  getPostMedia,
 } from "@/app/dashboard/posts/posts-list-data";
 import type { PublicationRow } from "@/app/dashboard/posts/posts-list-types";
-import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { getSubscriptionForUser } from "@/lib/subscription";
+import { getPlanLimits } from "@/lib/plans";
+import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import type { SubscriptionState } from "@/lib/subscription";
 import { checkAccountLimits, checkTwitterTweetLimit } from "@/lib/plan-limits";
 import type {
@@ -354,32 +357,34 @@ export async function loadCalendarPageData(): Promise<LoadCalendarPageDataResult
   }
   const userId = session.user.id;
 
-  const { use24HourTimeFormat, dateFormat, timezone } =
-    await getUserSettingsSnapshot();
   const now = new Date();
   const rangeStart = subMonths(now, 1);
   const rangeEnd = addMonths(now, 2);
 
-  const userPosts = await db
-    .select({
+  const [{ use24HourTimeFormat, dateFormat, timezone }, userPosts] =
+    await Promise.all([
+      getUserSettingsSnapshot(),
+      db
+        .select({
       id: posts.id,
       originalContent: posts.originalContent,
       status: posts.status,
       scheduledAt: posts.scheduledAt,
       createdAt: posts.createdAt,
     })
-    .from(posts)
-    .where(
-      and(
-        eq(posts.userId, userId),
-        or(
-          eq(posts.status, "scheduled"),
-          eq(posts.status, "published"),
-          eq(posts.status, "partial"),
-          eq(posts.status, "failed"),
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            or(
+              eq(posts.status, "scheduled"),
+              eq(posts.status, "published"),
+              eq(posts.status, "partial"),
+              eq(posts.status, "failed"),
+            ),
+          ),
         ),
-      ),
-    );
+    ]);
 
   const postIds = userPosts.map((p) => p.id);
 
@@ -471,4 +476,137 @@ export async function loadCalendarPageData(): Promise<LoadCalendarPageDataResult
       timezone,
     },
   };
+}
+
+type SerializedPostDetail = {
+  id: string;
+  originalContent: string | null;
+  status: string | null;
+  scheduledAt: string | null;
+  createdAt: string | null;
+  mediaIds: string[] | null;
+  metadata: Record<string, unknown> | null;
+  failureReason: string | null;
+};
+
+type SerializedQueuedSlot = {
+  slotId: string;
+  scheduledFor: string;
+} | null;
+
+type SerializedAutoPlug = {
+  id: string;
+  status: string;
+  metricType: string;
+  metricThreshold: number;
+  plugComment: string;
+} | null;
+
+type SerializedResurface = {
+  id: string;
+  isActive: boolean;
+  resurfacesDone: number;
+  maxResurfaces: number;
+  intervalHours: number;
+  plugComment: string | null;
+} | null;
+
+export type LoadPostDetailCoreDataResult =
+  | {
+      ok: true;
+      data: {
+        post: SerializedPostDetail;
+        publications: SerializedPublication[];
+        queuedSlot: SerializedQueuedSlot;
+        autoPlug: SerializedAutoPlug;
+        resurface: SerializedResurface;
+        showPaymentFailedBanner: boolean;
+        use24HourTimeFormat: boolean;
+        dateFormat: string | null;
+        timezone: string | null;
+        allowAutoPlug: boolean;
+        allowResurface: boolean;
+      };
+    }
+  | { ok: false; error: string };
+
+export async function loadPostDetailCoreData(
+  postId: string,
+): Promise<LoadPostDetailCoreDataResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user?.id) return { ok: false, error: "Unauthorized" };
+  const userId = session.user.id;
+
+  const [detail, settings, showPaymentFailedBanner, subscription] =
+    await Promise.all([
+      getPostDetail(postId, userId),
+      getUserSettingsSnapshot(),
+      hasPaymentFailedPosts(userId),
+      getSubscriptionForUser(userId),
+    ]);
+
+  if (!detail) return { ok: false, error: "NotFound" };
+  const planLimits = getPlanLimits(subscription.tier);
+
+  return {
+    ok: true,
+    data: {
+      post: {
+        ...detail.post,
+        scheduledAt: detail.post.scheduledAt
+          ? detail.post.scheduledAt.toISOString()
+          : null,
+        createdAt: detail.post.createdAt
+          ? detail.post.createdAt.toISOString()
+          : null,
+      },
+      publications: detail.publications.map((p) => ({
+        ...p,
+        publishedAt: p.publishedAt ? p.publishedAt.toISOString() : null,
+      })),
+      queuedSlot: detail.queuedSlot
+        ? {
+            slotId: detail.queuedSlot.slotId,
+            scheduledFor: detail.queuedSlot.scheduledFor.toISOString(),
+          }
+        : null,
+      autoPlug: detail.autoPlug,
+      resurface: detail.resurface,
+      showPaymentFailedBanner,
+      use24HourTimeFormat: settings.use24HourTimeFormat,
+      dateFormat: settings.dateFormat,
+      timezone: settings.timezone,
+      allowAutoPlug: planLimits.allowAutoPlug,
+      allowResurface: planLimits.allowResurface,
+    },
+  };
+}
+
+export type LoadPostDetailMediaDataResult =
+  | {
+      ok: true;
+      data: {
+        media: Array<{
+          id: string;
+          originalFilename: string;
+          mimeType: string;
+          url: string | null;
+          thumbnailUrl: string | null;
+        }>;
+      };
+    }
+  | { ok: false; error: string };
+
+export async function loadPostDetailMediaData(
+  postId: string,
+): Promise<LoadPostDetailMediaDataResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user?.id) return { ok: false, error: "Unauthorized" };
+  const userId = session.user.id;
+
+  const detail = await getPostDetail(postId, userId);
+  if (!detail) return { ok: false, error: "NotFound" };
+  const mediaIds = detail.post.mediaIds ?? [];
+  const media = mediaIds.length > 0 ? await getPostMedia(userId, mediaIds) : [];
+  return { ok: true, data: { media } };
 }

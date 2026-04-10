@@ -26,11 +26,12 @@ export default async function NewPostByTypePage({
   params: Promise<{ type: string }>;
   searchParams: Promise<{ draft?: string; scheduled?: string; edit?: string }>;
 }) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const [session, { type: typeSlug }, rawSearchParams] = await Promise.all([
+    auth.api.getSession({ headers: await headers() }),
+    params,
+    searchParams,
+  ]);
   if (!session) redirect("/");
-
-  const { type: typeSlug } = await params;
-  const rawSearchParams = await searchParams;
   const draftParam = rawSearchParams.draft;
   const draftId =
     typeof draftParam === "string"
