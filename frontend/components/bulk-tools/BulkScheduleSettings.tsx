@@ -4,6 +4,7 @@ import { DOCS_BULK_TOOLS_VIDEO_URL } from "@/lib/docs-url";
 import { HelpCircle } from "lucide-react";
 
 const CAPTION_MAX = 2200;
+const YOUTUBE_TITLE_MAX = 100;
 const VIDEOS_PER_DAY_OPTIONS = Array.from({ length: 24 }, (_, i) => i + 1);
 const GAP_HOURS_OPTIONS = [0.5, 1, 2, 3, 4, 6, 8, 12, 24] as const;
 // const COVER_FRAME_OPTIONS = [
@@ -40,6 +41,11 @@ type BulkScheduleSettingsProps = {
   progressLabel?: string;
   /** Rendered between "Apply This Schedule" button and schedule preview (e.g. auto features). */
   childrenAfterApplySchedule?: React.ReactNode;
+  /** Bulk video + YouTube selected: bulk YouTube title apply (optional). */
+  showYoutubeTitleSection?: boolean;
+  bulkYoutubeTitle?: string;
+  onBulkYoutubeTitleChange?: (v: string) => void;
+  onApplyYoutubeTitleToAll?: () => void;
 };
 
 function getTodayStr(): string {
@@ -83,8 +89,13 @@ export function BulkScheduleSettings({
   scheduling,
   progressLabel,
   childrenAfterApplySchedule,
+  showYoutubeTitleSection = false,
+  bulkYoutubeTitle = "",
+  onBulkYoutubeTitleChange,
+  onApplyYoutubeTitleToAll,
 }: BulkScheduleSettingsProps) {
   const captionCount = bulkCaption.length;
+  const youtubeTitleCount = bulkYoutubeTitle.length;
 
   return (
     <div className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm -mt-14">
@@ -132,6 +143,41 @@ export function BulkScheduleSettings({
           Apply Caption to All {variant === "video" ? "Videos" : "Images"}
         </button>
       </div>
+
+      {variant === "video" &&
+        showYoutubeTitleSection &&
+        onBulkYoutubeTitleChange &&
+        onApplyYoutubeTitleToAll && (
+          <div>
+            <div className="flex justify-between">
+              <h4 className="text-sm font-semibold text-foreground mb-2">
+                Bulk YouTube title
+              </h4>
+              <span className="text-xs text-muted-foreground ml-2">
+                {youtubeTitleCount} / {YOUTUBE_TITLE_MAX}
+              </span>
+            </div>
+            <input
+              type="text"
+              value={bulkYoutubeTitle}
+              onChange={(e) =>
+                onBulkYoutubeTitleChange(
+                  e.target.value.slice(0, YOUTUBE_TITLE_MAX),
+                )
+              }
+              placeholder="Title to apply to all videos (YouTube)…"
+              maxLength={YOUTUBE_TITLE_MAX}
+              className="mb-2 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+            <button
+              type="button"
+              onClick={onApplyYoutubeTitleToAll}
+              className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors w-full"
+            >
+              Apply YouTube Title to All Videos
+            </button>
+          </div>
+        )}
 
       {/* Section 2: Schedule Settings */}
       <div>

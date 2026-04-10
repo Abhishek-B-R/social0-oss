@@ -9,12 +9,15 @@ import {
 import { AspectRatioGuidanceBanner } from "@/components/AspectRatioGuidanceBanner";
 
 const MAX_CAPTION = 2200;
+const MAX_YOUTUBE_TITLE = 100;
 
 export type VideoItem = {
   id: string;
   file: File;
   previewUrl: string;
   caption: string;
+  /** Used when YouTube is among selected accounts (bulk video). */
+  youtubeTitle: string;
   scheduledAt: Date;
   /** Set after upload */
   mediaId?: string;
@@ -29,7 +32,10 @@ type VideoCardProps = {
   item: VideoItem;
   /** When true, show TikTok resolution warning (same copy as video post form / publish pipeline). */
   tikTokSelected?: boolean;
+  /** When true, show YouTube title input (bulk video + YouTube selected). */
+  showYoutubeTitle?: boolean;
   onCaptionChange: (id: string, caption: string) => void;
+  onYoutubeTitleChange?: (id: string, title: string) => void;
   onScheduleChange: (id: string, date: Date) => void;
   onDelete: (id: string) => void;
 };
@@ -64,7 +70,9 @@ function getMaxDateStr(): string {
 export function VideoCard({
   item,
   tikTokSelected = false,
+  showYoutubeTitle = false,
   onCaptionChange,
+  onYoutubeTitleChange,
   onScheduleChange,
   onDelete,
 }: VideoCardProps) {
@@ -256,6 +264,33 @@ export function VideoCard({
           rows={5}
           className="w-full resize-y min-h-[120px] rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
         />
+        {showYoutubeTitle && onYoutubeTitleChange && (
+          <div className="space-y-1">
+            <label
+              htmlFor={`youtube-title-${item.id}`}
+              className="text-xs font-medium text-muted-foreground"
+            >
+              YouTube title
+            </label>
+            <input
+              id={`youtube-title-${item.id}`}
+              type="text"
+              value={item.youtubeTitle}
+              onChange={(e) =>
+                onYoutubeTitleChange(
+                  item.id,
+                  e.target.value.slice(0, MAX_YOUTUBE_TITLE),
+                )
+              }
+              placeholder="Title for YouTube…"
+              maxLength={MAX_YOUTUBE_TITLE}
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+            <p className="text-xs text-muted-foreground">
+              {item.youtubeTitle.length} / {MAX_YOUTUBE_TITLE}
+            </p>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="text-muted-foreground">
             {item.caption.length} / {MAX_CAPTION}

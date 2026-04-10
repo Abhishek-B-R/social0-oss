@@ -41,6 +41,7 @@ import { PinterestConfigInline } from "@/components/PinterestConfigInline";
 import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
 
 const MAX_VIDEO_BATCH = 40;
+const YOUTUBE_TITLE_MAX = 100;
 const LIMITS = {
   /** Combined size of all videos in this bulk session — same cap as a single upload. */
   totalSize: CLIENT_MAX_VIDEO_UPLOAD_BYTES,
@@ -134,6 +135,12 @@ export function BulkToolsVideoClient({
     useState(0);
   const [pinterestError, setPinterestError] = useState<string | null>(null);
   const [showPinterestModal, setShowPinterestModal] = useState(false);
+  const [bulkYoutubeTitle, setBulkYoutubeTitle] = useState("");
+  const [showYoutubeModal, setShowYoutubeModal] = useState(false);
+  const [youtubeModalTitle, setYoutubeModalTitle] = useState("");
+  const [youtubeModalError, setYoutubeModalError] = useState<string | null>(
+    null,
+  );
 
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
@@ -195,6 +202,10 @@ export function BulkToolsVideoClient({
     () => selectedAccounts.filter((a) => a.platform === "pinterest"),
     [selectedAccounts],
   );
+  const hasYouTubeSelected = useMemo(
+    () => selectedAccounts.some((a) => a.platform === "youtube"),
+    [selectedAccounts],
+  );
   const hasTikTokSelected = useMemo(
     () => selectedAccounts.some((a) => a.platform === "tiktok"),
     [selectedAccounts],
@@ -219,6 +230,27 @@ export function BulkToolsVideoClient({
     pinterestSettingsByAccount,
     pinterestError,
   ]);
+
+  const openYoutubeModalForSchedule = useCallback(() => {
+    setYoutubeModalError(null);
+    const bulk = bulkYoutubeTitle.trim();
+    const nonEmptyTitles = items
+      .map((i) => i.youtubeTitle.trim())
+      .filter(Boolean);
+    const allSame =
+      items.length > 0 &&
+      nonEmptyTitles.length === items.length &&
+      new Set(nonEmptyTitles).size === 1;
+    const initial = (
+      bulk
+        ? bulk
+        : allSame
+          ? nonEmptyTitles[0]!
+          : items.find((i) => i.youtubeTitle.trim())?.youtubeTitle.trim() ?? ""
+    ).slice(0, YOUTUBE_TITLE_MAX);
+    setYoutubeModalTitle(initial);
+    setShowYoutubeModal(true);
+  }, [bulkYoutubeTitle, items]);
 
   // Restore remembered auto features the first time X is selected.
   useEffect(() => {
@@ -313,6 +345,7 @@ export function BulkToolsVideoClient({
             file: row.file,
             previewUrl: URL.createObjectURL(row.file),
             caption: "",
+            youtubeTitle: "",
             scheduledAt: dates[prev.length + i] ?? new Date(),
             aspectRatio: row.m.ratio,
             videoWidth: row.m.width,
@@ -335,6 +368,11 @@ export function BulkToolsVideoClient({
       prev.map((it) => (it.id === id ? { ...it, caption } : it)),
     );
   };
+  const updateYoutubeTitle = (id: string, youtubeTitle: string) => {
+    setItems((prev) =>
+      prev.map((it) => (it.id === id ? { ...it, youtubeTitle } : it)),
+    );
+  };
   const updateSchedule = (id: string, date: Date) => {
     setItems((prev) =>
       prev.map((it) => (it.id === id ? { ...it, scheduledAt: date } : it)),
@@ -351,6 +389,11 @@ export function BulkToolsVideoClient({
   const applyBulkCaption = () => {
     const capped = bulkCaption.slice(0, 2200);
     setItems((prev) => prev.map((it) => ({ ...it, caption: capped })));
+  };
+
+  const applyBulkYoutubeTitle = () => {
+    const capped = bulkYoutubeTitle.slice(0, YOUTUBE_TITLE_MAX);
+    setItems((prev) => prev.map((it) => ({ ...it, youtubeTitle: capped })));
   };
 
   const applyBulkSchedule = () => {
@@ -414,6 +457,15 @@ export function BulkToolsVideoClient({
           "Please select a board for Pinterest before scheduling.",
         );
         toast.error("Please select a board for Pinterest before scheduling.");
+        return;
+      }
+    }
+    if (hasYouTubeSelected) {
+      const missingYt = items.some((item) => !item.youtubeTitle.trim());
+      if (missingYt) {
+        toast.error(
+          "YouTube title is required for all videos before scheduling.",
+        );
         return;
       }
     }
@@ -506,13 +558,19 @@ export function BulkToolsVideoClient({
       for (const { result, index } of successfulUploads) {
         if (cancelledRef.current) break;
         const item = items[index];
+        const postMetadata: Record<string, unknown> = { ...metadata };
+        if (hasYouTubeSelected) {
+          postMetadata.youtube = {
+            title: item.youtubeTitle.trim().slice(0, YOUTUBE_TITLE_MAX),
+          };
+        }
         const createResult = await createPost(
           item.caption.trim() || "No caption",
           accountIds,
           "scheduled",
           item.scheduledAt,
           [result.value.id],
-          metadata,
+          postMetadata,
         );
         if (!createResult.success) {
           throw new Error(createResult.error);
@@ -535,6 +593,10 @@ export function BulkToolsVideoClient({
     if (hasPinterestSelected) {
       setPinterestError(null);
       setShowPinterestModal(true);
+      return;
+    }
+    if (hasYouTubeSelected) {
+      openYoutubeModalForSchedule();
       return;
     }
     await runScheduleAll();
@@ -693,7 +755,9 @@ export function BulkToolsVideoClient({
                     key={item.id}
                     item={item}
                     tikTokSelected={hasTikTokSelected}
+                    showYoutubeTitle={hasYouTubeSelected}
                     onCaptionChange={updateCaption}
+                    onYoutubeTitleChange={updateYoutubeTitle}
                     onScheduleChange={updateSchedule}
                     onDelete={removeItem}
                   />
@@ -709,6 +773,10 @@ export function BulkToolsVideoClient({
               bulkCaption={bulkCaption}
               onBulkCaptionChange={setBulkCaption}
               onApplyCaption={applyBulkCaption}
+              showYoutubeTitleSection={hasYouTubeSelected}
+              bulkYoutubeTitle={bulkYoutubeTitle}
+              onBulkYoutubeTitleChange={setBulkYoutubeTitle}
+              onApplyYoutubeTitleToAll={applyBulkYoutubeTitle}
               startDate={startDate}
               startTime={startTime}
               videosPerDay={videosPerDay}
@@ -895,6 +963,100 @@ export function BulkToolsVideoClient({
                   }
                   setPinterestError(null);
                   setShowPinterestModal(false);
+                  if (hasYouTubeSelected) {
+                    openYoutubeModalForSchedule();
+                  } else {
+                    await runScheduleAll();
+                  }
+                }}
+              >
+                Continue &amp; Schedule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showYoutubeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div
+            className="w-full max-w-lg rounded-2xl border border-border bg-card p-5 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulk-youtube-settings-title"
+          >
+            <h3
+              id="bulk-youtube-settings-title"
+              className="text-lg font-semibold text-foreground"
+            >
+              YouTube Settings
+            </h3>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Enter one title to apply to every video, or leave this blank if
+              each video already has a title below (max {YOUTUBE_TITLE_MAX}{" "}
+              characters).
+            </p>
+            <div className="mt-4">
+              <label
+                htmlFor="bulk-youtube-modal-title"
+                className="mb-1 block text-sm font-medium text-foreground"
+              >
+                YouTube title
+              </label>
+              <input
+                id="bulk-youtube-modal-title"
+                type="text"
+                value={youtubeModalTitle}
+                maxLength={YOUTUBE_TITLE_MAX}
+                onChange={(e) => {
+                  setYoutubeModalTitle(
+                    e.target.value.slice(0, YOUTUBE_TITLE_MAX),
+                  );
+                  if (youtubeModalError) setYoutubeModalError(null);
+                }}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                placeholder="Enter YouTube title…"
+                autoComplete="off"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                {youtubeModalTitle.length} / {YOUTUBE_TITLE_MAX}
+              </p>
+              {youtubeModalError && (
+                <p className="mt-3 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+                  {youtubeModalError}
+                </p>
+              )}
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle"
+                onClick={() => setShowYoutubeModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                onClick={async () => {
+                  const t = youtubeModalTitle.trim();
+                  if (t) {
+                    const capped = t.slice(0, YOUTUBE_TITLE_MAX);
+                    setItems((prev) =>
+                      prev.map((it) => ({ ...it, youtubeTitle: capped })),
+                    );
+                    setBulkYoutubeTitle(capped);
+                  } else {
+                    const missing = items.some((it) => !it.youtubeTitle.trim());
+                    if (missing) {
+                      setYoutubeModalError(
+                        "Enter a YouTube title here to apply to all videos, or fill a title on every video card.",
+                      );
+                      return;
+                    }
+                  }
+                  setYoutubeModalError(null);
+                  setShowYoutubeModal(false);
                   await runScheduleAll();
                 }}
               >
