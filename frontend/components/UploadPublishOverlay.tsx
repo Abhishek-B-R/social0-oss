@@ -12,6 +12,7 @@ import {
   Check,
   X,
   Clock,
+  FileText,
 } from "lucide-react";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import { sortBySlowPlatformsLast } from "@/lib/publish-order";
@@ -56,6 +57,12 @@ type UploadPublishOverlayProps = {
    * When true with showLinks, show "Post scheduled" + View scheduled post (vs published copy).
    */
   scheduleSuccess?: boolean;
+  /**
+   * When true with showLinks, show "Draft saved!" + View draft (vs scheduled/published).
+   */
+  draftSuccess?: boolean;
+  /** Draft post id for "View draft" when draftSuccess */
+  draftPostId?: string | null;
   /** When showLinks and post was published to X, show Auto-Repost section */
   publishedPostId?: string | null;
   publishedToX?: boolean;
@@ -133,6 +140,8 @@ export function UploadPublishOverlay({
   isScheduling = false,
   showLinks = false,
   scheduleSuccess = false,
+  draftSuccess = false,
+  draftPostId = null,
   publishedPostId = null,
   platformStatuses = [],
   allDone = false,
@@ -184,7 +193,35 @@ export function UploadPublishOverlay({
     >
       <div className="relative mx-4 flex max-w-md flex-col items-center text-center">
         {showLinks && !(showPlatformRows && allDone) ? (
-          scheduleSuccess ? (
+          draftSuccess ? (
+            <>
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
+                <FileText className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h2 className="mt-4 text-xl font-semibold text-text">
+                Draft saved!
+              </h2>
+              <div className="mt-6 flex flex-col gap-3">
+                <Link
+                  href="/dashboard/composer"
+                  className="w-full rounded-xl bg-emerald-500 px-4 py-3.5 text-sm font-semibold text-white text-center transition hover:bg-emerald-600"
+                >
+                  Create another post
+                </Link>
+
+                <Link
+                  href={
+                    draftPostId
+                      ? `/dashboard/posts/${draftPostId}`
+                      : "/dashboard/posts/drafts"
+                  }
+                  className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm font-semibold text-zinc-200 text-center transition hover:bg-zinc-900"
+                >
+                  View draft
+                </Link>
+              </div>
+            </>
+          ) : scheduleSuccess ? (
             <>
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
                 <Clock className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />

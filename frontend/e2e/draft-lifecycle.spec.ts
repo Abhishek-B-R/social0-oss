@@ -37,14 +37,17 @@ test.describe("Draft lifecycle", () => {
     await expect(saveDraftButton).toBeVisible({ timeout: 10000 });
     await saveDraftButton.click();
 
-    // Should redirect to posts or drafts list
-    await page.waitForURL(/\/(dashboard\/posts\/drafts|dashboard\/posts)(?:\/|$)/, { timeout: 10000 });
+    await expect(
+      page.getByRole("heading", { name: "Draft saved!" }),
+    ).toBeVisible({ timeout: 10000 });
+    await page.getByRole("link", { name: "View draft" }).click();
+    await page.waitForURL(
+      /\/dashboard\/posts\/(?!drafts|scheduled|posted)[^/]+$/,
+      { timeout: 10000 },
+    );
     await page.waitForLoadState("networkidle");
-    // If we landed on /dashboard/posts, go to drafts to find our draft
-    if (page.url().includes("/dashboard/posts") && !page.url().includes("/drafts")) {
-      await page.goto("/dashboard/posts/drafts");
-      await page.waitForLoadState("networkidle");
-    }
+    await page.goto("/dashboard/posts/drafts");
+    await page.waitForLoadState("networkidle");
 
     // Our draft caption should be visible in the list
     await expect(page.getByText(uniqueCaption)).toBeVisible({ timeout: 10000 });

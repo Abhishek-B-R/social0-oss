@@ -79,7 +79,7 @@ test.describe("Create forms – ImagePostForm", () => {
     await expect(saveDraftBtn).toBeVisible({ timeout: 5000 });
   });
 
-  test("Save to Drafts – selects accounts, adds image, fills caption, saves draft, redirects to drafts", async ({
+  test("Save to Drafts – selects accounts, adds image, fills caption, saves draft, shows success overlay", async ({
     page,
   }) => {
     test.setTimeout(useManualMedia ? 60000 : 35000);
@@ -103,18 +103,15 @@ test.describe("Create forms – ImagePostForm", () => {
     await expect(saveDraftBtn).toBeVisible({ timeout: 5000 });
     await saveDraftBtn.click();
 
+    await expect(
+      page.getByRole("heading", { name: "Draft saved!" }),
+    ).toBeVisible({ timeout: 25000 });
+    await page.getByRole("link", { name: "View draft" }).click();
     await page.waitForURL(
-      /\/(dashboard\/posts\/drafts|dashboard\/posts)(?:\/|$)/,
+      /\/dashboard\/posts\/(?!drafts|scheduled|posted)[^/]+$/,
       { timeout: 25000 },
     );
     await page.waitForLoadState("networkidle");
-    if (
-      page.url().includes("/dashboard/posts") &&
-      !page.url().includes("/drafts")
-    ) {
-      await page.goto("/dashboard/posts/drafts");
-      await page.waitForLoadState("networkidle");
-    }
 
     await expect(page.getByText(uniqueCaption)).toBeVisible({
       timeout: 10000,

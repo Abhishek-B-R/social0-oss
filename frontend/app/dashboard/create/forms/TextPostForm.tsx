@@ -131,6 +131,7 @@ export function TextPostForm({
   );
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [scheduledPostId, setScheduledPostId] = useState<string | null>(null);
+  const [draftSavedPostId, setDraftSavedPostId] = useState<string | null>(null);
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
@@ -398,6 +399,7 @@ export function TextPostForm({
     }
     setShowContentError(false);
     setScheduledPostId(null);
+    setDraftSavedPostId(null);
     if ((intendedModeRef.current ?? mode) === "scheduled") {
       if (!scheduledAt) {
         toast.error("Please select a date and time.");
@@ -478,7 +480,8 @@ export function TextPostForm({
         );
         setLoading(false);
         if (result.success) {
-          router.push("/dashboard/posts/drafts");
+          setDraftSavedPostId(initialDraftId);
+          setOverlayPhase("done");
           router.refresh();
         } else {
           setOverlayPhase("idle");
@@ -746,7 +749,10 @@ export function TextPostForm({
         router.refresh();
         return;
       }
-      if (effectiveMode === "draft") router.push("/dashboard/posts/drafts");
+      if (effectiveMode === "draft" && result.postId) {
+        setDraftSavedPostId(result.postId);
+        setOverlayPhase("done");
+      }
       if (effectiveMode === "scheduled" && result.postId) {
         setScheduledPostId(result.postId);
         setOverlayPhase("done");
@@ -809,13 +815,18 @@ export function TextPostForm({
           phase={overlayPhase === "saving" ? "saving" : "publishing"}
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
+          draftSuccess={!!draftSavedPostId}
+          draftPostId={draftSavedPostId}
           scheduleSuccess={!!scheduledPostId}
           publishedPostId={scheduledPostId ?? publishedPostId}
           publishedToX={selectedAccounts.some(
             (a) => a.platform === "twitter_x",
           )}
           resurfacePreFill={
-            overlayPhase === "done" && resurfaceConfig && !scheduledPostId
+            overlayPhase === "done" &&
+            resurfaceConfig &&
+            !scheduledPostId &&
+            !draftSavedPostId
               ? {
                   intervalHours: resurfaceConfig.intervalHours,
                   maxResurfaces: resurfaceConfig.maxResurfaces,
@@ -839,6 +850,7 @@ export function TextPostForm({
               router.refresh();
             } else {
               setScheduledPostId(null);
+              setDraftSavedPostId(null);
               setOverlayPhase("idle");
             }
           }}

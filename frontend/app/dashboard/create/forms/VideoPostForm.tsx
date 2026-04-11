@@ -192,6 +192,7 @@ export function VideoPostForm({
   >({});
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [scheduledPostId, setScheduledPostId] = useState<string | null>(null);
+  const [draftSavedPostId, setDraftSavedPostId] = useState<string | null>(null);
   const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>(
     [],
   );
@@ -1139,6 +1140,7 @@ export function VideoPostForm({
     setLoading(true);
     toast.dismiss();
     setScheduledPostId(null);
+    setDraftSavedPostId(null);
     setOverlayPhase("uploading");
 
     const mediaIds: string[] = [];
@@ -1283,11 +1285,12 @@ export function VideoPostForm({
           meta,
         );
         setLoading(false);
-        setOverlayPhase("idle");
         if (result.success) {
-          router.push("/dashboard/posts/drafts");
+          setDraftSavedPostId(initialDraftId);
+          setOverlayPhase("done");
           router.refresh();
         } else {
+          setOverlayPhase("idle");
           toast.error(result.error);
         }
         return;
@@ -1480,9 +1483,9 @@ export function VideoPostForm({
       router.refresh();
       return;
     }
-    if (effectiveMode === "draft") {
-      setOverlayPhase("idle");
-      router.push("/dashboard/posts/drafts");
+    if (effectiveMode === "draft" && result.postId) {
+      setDraftSavedPostId(result.postId);
+      setOverlayPhase("done");
       router.refresh();
       return;
     }
@@ -1574,13 +1577,18 @@ export function VideoPostForm({
           mediaType="video"
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
+          draftSuccess={!!draftSavedPostId}
+          draftPostId={draftSavedPostId}
           scheduleSuccess={!!scheduledPostId}
           publishedPostId={scheduledPostId ?? publishedPostId}
           publishedToX={selectedAccounts.some(
             (a) => a.platform === "twitter_x",
           )}
           resurfacePreFill={
-            overlayPhase === "done" && resurfaceConfig && !scheduledPostId
+            overlayPhase === "done" &&
+            resurfaceConfig &&
+            !scheduledPostId &&
+            !draftSavedPostId
               ? {
                   intervalHours: resurfaceConfig.intervalHours,
                   maxResurfaces: resurfaceConfig.maxResurfaces,
@@ -1604,6 +1612,7 @@ export function VideoPostForm({
               router.refresh();
             } else {
               setScheduledPostId(null);
+              setDraftSavedPostId(null);
               setOverlayPhase("idle");
             }
           }}

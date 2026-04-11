@@ -324,6 +324,7 @@ export function ThreadsPostForm({
   const threadUploadAbortRef = useRef<AbortController | null>(null);
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [scheduledPostId, setScheduledPostId] = useState<string | null>(null);
+  const [draftSavedPostId, setDraftSavedPostId] = useState<string | null>(null);
   const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>(
     [],
   );
@@ -1255,6 +1256,7 @@ export function ThreadsPostForm({
     e.preventDefault();
     toast.dismiss();
     setScheduledPostId(null);
+    setDraftSavedPostId(null);
     if (!firstPostText) {
       setShowFirstTextError(true);
       return;
@@ -1490,11 +1492,12 @@ export function ThreadsPostForm({
           metadata,
         );
         setLoading(false);
-        setOverlayPhase("idle");
         if (result.success) {
-          router.push("/dashboard/posts/drafts");
+          setDraftSavedPostId(initialDraftId);
+          setOverlayPhase("done");
           router.refresh();
         } else {
+          setOverlayPhase("idle");
           toast.error(result.error);
         }
         return;
@@ -1669,9 +1672,9 @@ export function ThreadsPostForm({
       router.refresh();
       return;
     }
-    if (effectiveMode === "draft") {
-      setOverlayPhase("idle");
-      router.push("/dashboard/posts/drafts");
+    if (effectiveMode === "draft" && result.postId) {
+      setDraftSavedPostId(result.postId);
+      setOverlayPhase("done");
       router.refresh();
       return;
     }
@@ -1756,13 +1759,18 @@ export function ThreadsPostForm({
           mediaType={overlayMediaType}
           isScheduling={mode === "scheduled"}
           showLinks={overlayPhase === "done"}
+          draftSuccess={!!draftSavedPostId}
+          draftPostId={draftSavedPostId}
           scheduleSuccess={!!scheduledPostId}
           publishedPostId={scheduledPostId ?? publishedPostId}
           publishedToX={selectedAccounts.some(
             (a) => a.platform === "twitter_x",
           )}
           resurfacePreFill={
-            overlayPhase === "done" && resurfaceConfig && !scheduledPostId
+            overlayPhase === "done" &&
+            resurfaceConfig &&
+            !scheduledPostId &&
+            !draftSavedPostId
               ? {
                   intervalHours: resurfaceConfig.intervalHours,
                   maxResurfaces: resurfaceConfig.maxResurfaces,
@@ -1786,6 +1794,7 @@ export function ThreadsPostForm({
               router.refresh();
             } else {
               setScheduledPostId(null);
+              setDraftSavedPostId(null);
               setOverlayPhase("idle");
             }
           }}
