@@ -424,13 +424,19 @@ export async function getPostMedia(
     .where(
       and(eq(mediaUploads.userId, userId), inArray(mediaUploads.id, mediaIds)),
     );
-  return rows.map((r) => ({
-    id: r.id,
-    originalFilename: r.originalFilename,
-    mimeType: r.mimeType,
-    url: r.url,
-    thumbnailUrl: r.thumbnailUrl,
-  }));
+  const byId = new Map(
+    rows.map((r) => [
+      r.id,
+      {
+        id: r.id,
+        originalFilename: r.originalFilename,
+        mimeType: r.mimeType,
+        url: r.url,
+        thumbnailUrl: r.thumbnailUrl,
+      } satisfies PostMediaRow,
+    ]),
+  );
+  return mediaIds.map((id) => byId.get(id)).filter((row): row is PostMediaRow => row != null);
 }
 
 export type PostDetailRow = {
