@@ -103,8 +103,13 @@ export function SchedulePostSidebar({
 
   const defaultScheduledAt = useMemo(() => {
     const d = new Date();
-    d.setDate(d.getDate() + 1);
     d.setHours(21, 0, 0, 0);
+    const now = new Date();
+    if (d <= now) {
+      const soon = new Date(now);
+      soon.setMinutes(soon.getMinutes() + 5);
+      return soon;
+    }
     return d;
   }, []);
 
@@ -170,7 +175,7 @@ export function SchedulePostSidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScheduled, combinedDateTime]);
 
-  // If scheduled mode is enabled and no datetime exists yet, initialize to tomorrow 21:00 (9 PM).
+  // If scheduled mode is enabled and no datetime exists yet, initialize to today 21:00 (9 PM), or soon if that has passed.
   useEffect(() => {
     if (!isScheduled) return;
     if (scheduledAt) return;
@@ -179,7 +184,9 @@ export function SchedulePostSidebar({
     const mm = String(defaultScheduledAt.getMonth() + 1).padStart(2, "0");
     const dd = String(defaultScheduledAt.getDate()).padStart(2, "0");
     setDateValue(`${yyyy}-${mm}-${dd}`);
-    setTimeValue("21:00");
+    const hh = String(defaultScheduledAt.getHours()).padStart(2, "0");
+    const mi = String(defaultScheduledAt.getMinutes()).padStart(2, "0");
+    setTimeValue(`${hh}:${mi}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScheduled]);
 
@@ -269,7 +276,9 @@ export function SchedulePostSidebar({
       const mm = String(defaultScheduledAt.getMonth() + 1).padStart(2, "0");
       const dd = String(defaultScheduledAt.getDate()).padStart(2, "0");
       setDateValue(`${yyyy}-${mm}-${dd}`);
-      setTimeValue("21:00");
+      const hh = String(defaultScheduledAt.getHours()).padStart(2, "0");
+      const mi = String(defaultScheduledAt.getMinutes()).padStart(2, "0");
+      setTimeValue(`${hh}:${mi}`);
     }
   };
 
