@@ -119,6 +119,8 @@ export function TextPostForm({
     return getInitialSelectedIds(validIds);
   });
   const [mode, setMode] = useState<PublishMode>("now");
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(
@@ -162,6 +164,8 @@ export function TextPostForm({
       const form = formRef.current;
       if (!form || !form.contains(e.target as Node)) return;
       e.preventDefault();
+      // Cmd/Ctrl+Enter: align with sidebar buttons (otherwise intendedModeRef is null).
+      intendedModeRef.current = modeRef.current;
       form.requestSubmit();
     };
     document.addEventListener("keydown", handler);

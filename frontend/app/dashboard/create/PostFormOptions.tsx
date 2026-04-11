@@ -192,7 +192,10 @@ export function PostFormOptions({
                 type="radio"
                 name="publishMode"
                 checked={mode === "now"}
-                onChange={() => setMode("now")}
+                onChange={() => {
+                  setMode("now");
+                  setScheduledAt(null);
+                }}
                 className="mt-0.5 size-4 border-input bg-bg text-accent focus:ring-accent"
               />
               <div>
@@ -242,7 +245,10 @@ export function PostFormOptions({
                 Or{" "}
                 <button
                   type="button"
-                  onClick={() => setMode("draft")}
+                  onClick={() => {
+                    setMode("draft");
+                    setScheduledAt(null);
+                  }}
                   className="font-medium text-accent hover:text-accent-hover"
                 >
                   save as draft

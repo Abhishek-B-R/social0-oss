@@ -35,13 +35,17 @@ export type CreatePostResult =
 export type PublishMode = "draft" | "now" | "scheduled";
 
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+/** Allow a few minutes of client/server clock skew and network delay (was causing false failures). */
+const SCHEDULE_FUTURE_GRACE_MS = 120_000;
 
 function validateScheduledAtWindow(scheduledAt: Date | null): string | null {
   if (!scheduledAt) return "Please pick a date and time to schedule";
   const now = Date.now();
   const target = scheduledAt.getTime();
   if (Number.isNaN(target)) return "Please pick a valid schedule date and time";
-  if (target < now) return "Scheduled time must be in the future";
+  if (target < now - SCHEDULE_FUTURE_GRACE_MS) {
+    return "Scheduled time must be in the future";
+  }
   if (target > now + ONE_YEAR_MS) {
     return "Scheduled time must be within the next 1 year";
   }
@@ -893,11 +897,14 @@ export async function updateAndPublish(
   if (!session) {
     return { success: false, error: "Unauthorized" };
   }
+  // Pass null for scheduledAt: we are publishing now, not scheduling. Using `new Date()`
+  // caused flaky failures — the client timestamp can be slightly in the past relative to
+  // the server when validateScheduledAtWindow runs after network latency.
   const result = await updatePost(
     draftId,
     content,
     selectedAccountIds,
-    new Date(),
+    null,
     mediaIds.length > 0 ? mediaIds : undefined,
     metadata,
   );

@@ -177,6 +177,8 @@ export function VideoPostForm({
       : getInitialSelectedIds(validIds),
   );
   const [mode, setMode] = useState<PublishMode>("now");
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(
@@ -314,6 +316,7 @@ export function VideoPostForm({
       const form = formRef.current;
       if (!form || !form.contains(e.target as Node)) return;
       e.preventDefault();
+      intendedModeRef.current = modeRef.current;
       form.requestSubmit();
     };
     document.addEventListener("keydown", handler);

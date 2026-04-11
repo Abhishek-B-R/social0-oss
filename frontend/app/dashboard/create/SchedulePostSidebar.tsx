@@ -193,6 +193,7 @@ export function SchedulePostSidebar({
   const handlePostNow = () => {
     intendedModeRef.current = "now";
     setMode("now");
+    setScheduledAt(null);
     formRef.current?.requestSubmit();
   };
 
@@ -266,6 +267,7 @@ export function SchedulePostSidebar({
   const toggleScheduled = () => {
     if (isScheduled) {
       setMode("now");
+      setScheduledAt(null);
       return;
     }
     // Turn on scheduling and ensure we have a sane default.

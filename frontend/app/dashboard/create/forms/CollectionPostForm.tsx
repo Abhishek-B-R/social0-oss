@@ -242,6 +242,8 @@ export function CollectionPostForm({
       : getInitialSelectedIds(validIds),
   );
   const [mode, setMode] = useState<PublishMode>("now");
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [draftLoading, setDraftLoading] = useState(
@@ -520,6 +522,7 @@ export function CollectionPostForm({
       const form = formRef.current;
       if (!form || !form.contains(e.target as Node)) return;
       e.preventDefault();
+      intendedModeRef.current = modeRef.current;
       form.requestSubmit();
     };
     document.addEventListener("keydown", handler);
@@ -986,6 +989,17 @@ export function CollectionPostForm({
       return;
     }
     setShowCaptionError(false);
+
+    if ((intendedModeRef.current ?? mode) === "scheduled") {
+      if (!scheduledAt) {
+        toast.error("Please select a date and time.");
+        return;
+      }
+      if (scheduledAt <= new Date()) {
+        toast.error("Scheduled time must be in the future.");
+        return;
+      }
+    }
 
     const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
     const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
