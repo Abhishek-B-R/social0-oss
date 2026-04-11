@@ -38,6 +38,33 @@ import {
 
 const THREAD_MAX_MEDIA_PER_POST = 4;
 
+/** Play icon: dark circle + white triangle, bottom-right (matches typical video thumb UI). */
+function VideoPlayBadge({ compact }: { compact?: boolean }) {
+  return (
+    <div
+      className={`pointer-events-none absolute flex items-center justify-center rounded-full bg-black/60 text-white shadow-sm ${
+        compact
+          ? "bottom-0.5 right-0.5 h-6 w-6"
+          : "bottom-1 right-1 h-7 w-7"
+      }`}
+      role="img"
+      aria-label="Video"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        className={`fill-current ${
+          compact
+            ? "h-3 w-3 translate-x-[1.5px]"
+            : "h-4 w-4 translate-x-[1px]"
+        }`}
+        aria-hidden
+      >
+        <path d="M8 5v14l11-7z" />
+      </svg>
+    </div>
+  );
+}
+
 function hasFileDrag(e: React.DragEvent): boolean {
   return [...e.dataTransfer.types].includes("Files");
 }
@@ -695,6 +722,7 @@ export function ComposerClient() {
                           preload="metadata"
                           draggable={false}
                         />
+                        <VideoPlayBadge />
                       </>
                     )}
                     <div className="absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center pointer-events-none">
@@ -917,6 +945,7 @@ export function ComposerClient() {
                               preload="metadata"
                               draggable={false}
                             />
+                            <VideoPlayBadge compact />
                           </>
                         )}
                         <div className="absolute left-0 right-0 top-0 bg-black/60 px-1 py-0.5 text-center pointer-events-none">
