@@ -96,21 +96,26 @@ function AuthPageContent() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
+    // Safety timeout: stop spinner if popup/redirect is blocked, but avoid noisy false errors.
     const timer = setTimeout(() => {
       setGoogleLoading(false);
-      toast.error("Something went wrong. Please try again.");
-    }, 5000);
+    }, 15000);
     try {
-      signIn.social({
+      const { error } = await signIn.social({
         provider: "google",
         callbackURL: CALLBACK_URL,
       });
-    } catch {
+      // If we actually got an error payload (no redirect happened), show it.
+      if (error) {
+        toast.error(friendlyAuthError(error.message ?? error));
+      }
+    } catch (err) {
+      toast.error(friendlyAuthError(err));
+    } finally {
       clearTimeout(timer);
       setGoogleLoading(false);
-      toast.error("Something went wrong. Please try again.");
     }
   };
 
