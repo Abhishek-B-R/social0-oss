@@ -4,8 +4,6 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-
-const PREVIEW_MEDIA_MAX_H = 196;
 import { useRouter, useSearchParams } from "next/navigation";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
@@ -44,6 +42,12 @@ import {
 } from "@/components/TikTokSettings";
 import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
 import { PinterestConfigInline } from "@/components/PinterestConfigInline";
+import {
+  XPostSettingsInline,
+  type XPostSettings,
+} from "@/components/XPostSettingsInline";
+
+const PREVIEW_MEDIA_MAX_H = 196;
 import {
   UploadPublishOverlay,
   type PlatformResult,
@@ -174,6 +178,10 @@ export function ImagePostForm({
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [scheduledPostId, setScheduledPostId] = useState<string | null>(null);
   const [draftSavedPostId, setDraftSavedPostId] = useState<string | null>(null);
+  const [xPostSettings, setXPostSettings] = useState<XPostSettings>({
+    madeWithAi: false,
+    paidPartnership: false,
+  });
   const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>(
     [],
   );
@@ -256,7 +264,7 @@ export function ImagePostForm({
 
   const [pinterestError, setPinterestError] = useState<string | null>(null);
   const pinterestSectionRef = useRef<HTMLDivElement>(null);
-  type ConfigPanel = "platform-captions" | "pinterest" | "tiktok" | null;
+  type ConfigPanel = "platform-captions" | "pinterest" | "tiktok" | "x" | null;
   const [activeConfigPanel, setActiveConfigPanel] = useState<ConfigPanel>(null);
   const [selectedPinterestAccountIndex, setSelectedPinterestAccountIndex] =
     useState(0);
@@ -330,6 +338,15 @@ export function ImagePostForm({
           })),
         );
         const meta = draft.metadata as Record<string, unknown> | null;
+        if (meta?.x && typeof meta.x === "object") {
+          const x = meta.x as Record<string, unknown>;
+          setXPostSettings({
+            madeWithAi: x.madeWithAi === true,
+            paidPartnership: x.paidPartnership === true,
+          });
+        } else {
+          setXPostSettings({ madeWithAi: false, paidPartnership: false });
+        }
         if (meta?.pinterest && typeof meta.pinterest === "object") {
           const pinterest = meta.pinterest as Record<
             string,
@@ -423,6 +440,15 @@ export function ImagePostForm({
           })),
         );
         const meta = toEdit.metadata as Record<string, unknown> | null;
+        if (meta?.x && typeof meta.x === "object") {
+          const x = meta.x as Record<string, unknown>;
+          setXPostSettings({
+            madeWithAi: x.madeWithAi === true,
+            paidPartnership: x.paidPartnership === true,
+          });
+        } else {
+          setXPostSettings({ madeWithAi: false, paidPartnership: false });
+        }
         if (meta?.pinterest && typeof meta.pinterest === "object") {
           const pinterest = meta.pinterest as Record<
             string,
@@ -524,6 +550,15 @@ export function ImagePostForm({
           imagesRef.current = mapped;
         }
         const meta = scheduled.metadata as Record<string, unknown> | null;
+        if (meta?.x && typeof meta.x === "object") {
+          const x = meta.x as Record<string, unknown>;
+          setXPostSettings({
+            madeWithAi: x.madeWithAi === true,
+            paidPartnership: x.paidPartnership === true,
+          });
+        } else {
+          setXPostSettings({ madeWithAi: false, paidPartnership: false });
+        }
         if (meta?.pinterest && typeof meta.pinterest === "object") {
           const pinterest = meta.pinterest as Record<
             string,
@@ -1145,6 +1180,14 @@ export function ImagePostForm({
         return acc;
       }, {});
     }
+    if (hasXSelected) {
+      metadata.x = {
+        madeWithAi: xPostSettings.madeWithAi,
+        paidPartnership: xPostSettings.paidPartnership,
+      };
+    } else {
+      delete metadata.x;
+    }
     const accountCaptions: Record<string, string> = {};
     for (const account of selectedAccounts) {
       const platformState = platformCaptions[account.platform] ?? {
@@ -1453,6 +1496,7 @@ export function ImagePostForm({
   const hasPinterestSelected = selectedAccounts.some(
     (a) => a.platform === "pinterest",
   );
+  const hasXSelected = selectedAccounts.some((a) => a.platform === "twitter_x");
   const pinterestAccounts = selectedAccounts.filter(
     (a) => a.platform === "pinterest",
   );
@@ -1905,7 +1949,8 @@ export function ImagePostForm({
 
           {(showPlatformCaptionsSection ||
             hasPinterestSelected ||
-            hasTikTokSelected) && (
+            hasTikTokSelected ||
+            hasXSelected) && (
             <div
               ref={pinterestSectionRef}
               className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm"
@@ -1988,6 +2033,27 @@ export function ImagePostForm({
                     )}
                     <span>TikTok Config</span>
                     {activeConfigPanel === "tiktok" ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                )}
+                {hasXSelected && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveConfigPanel((p) => (p === "x" ? null : "x"))
+                    }
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
+                      activeConfigPanel === "x"
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
+                    }`}
+                  >
+                    <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                    <span>X Settings</span>
+                    {activeConfigPanel === "x" ? (
                       <ChevronUp className="h-3.5 w-3.5" />
                     ) : (
                       <ChevronDown className="h-3.5 w-3.5" />
@@ -2180,6 +2246,16 @@ export function ImagePostForm({
                       />
                     </button>
                   </div>
+                </div>
+              )}
+
+              {activeConfigPanel === "x" && (
+                <div className="mt-2 border-t border-border pt-4">
+                  <XPostSettingsInline
+                    value={xPostSettings}
+                    onChange={setXPostSettings}
+                    isVisible={activeConfigPanel === "x"}
+                  />
                 </div>
               )}
 

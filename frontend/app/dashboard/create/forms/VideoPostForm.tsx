@@ -39,6 +39,10 @@ import {
 import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
 import { PinterestConfigInline } from "@/components/PinterestConfigInline";
 import {
+  XPostSettingsInline,
+  type XPostSettings,
+} from "@/components/XPostSettingsInline";
+import {
   UploadPublishOverlay,
   type PlatformResult,
   type PlatformStatus,
@@ -103,6 +107,10 @@ type Account = {
 };
 
 const defaultTiktokSettings: TikTokPostSettings = DEFAULT_TIKTOK_POST_SETTINGS;
+const defaultXPostSettings: XPostSettings = {
+  madeWithAi: false,
+  paidPartnership: false,
+};
 
 // function formatDuration(seconds: number): string {
 //   const m = Math.floor(seconds / 60);
@@ -195,6 +203,9 @@ export function VideoPostForm({
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [scheduledPostId, setScheduledPostId] = useState<string | null>(null);
   const [draftSavedPostId, setDraftSavedPostId] = useState<string | null>(null);
+  const [xPostSettings, setXPostSettings] = useState<XPostSettings>(
+    defaultXPostSettings,
+  );
   const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>(
     [],
   );
@@ -214,6 +225,7 @@ export function VideoPostForm({
     | "platform-captions"
     | "pinterest"
     | "tiktok"
+    | "x"
     | "youtube"
     | "instagram"
     | null;
@@ -485,6 +497,15 @@ export function VideoPostForm({
           setVideoPreview(videoMedia.url ?? videoMedia.thumbnailUrl ?? null);
         }
         const meta = scheduled.metadata as Record<string, unknown> | null;
+        if (meta?.x && typeof meta.x === "object") {
+          const x = meta.x as Record<string, unknown>;
+          setXPostSettings({
+            madeWithAi: x.madeWithAi === true,
+            paidPartnership: x.paidPartnership === true,
+          });
+        } else {
+          setXPostSettings(defaultXPostSettings);
+        }
         if (meta?.tiktok && typeof meta.tiktok === "object") {
           const tiktok = meta.tiktok as Record<string, TikTokPostSettings>;
           const next: Record<string, TikTokPostSettings> = {};
@@ -568,6 +589,15 @@ export function VideoPostForm({
           setVideoPreview(videoMedia.url ?? videoMedia.thumbnailUrl ?? null);
         }
         const meta = draft.metadata as Record<string, unknown> | null;
+        if (meta?.x && typeof meta.x === "object") {
+          const x = meta.x as Record<string, unknown>;
+          setXPostSettings({
+            madeWithAi: x.madeWithAi === true,
+            paidPartnership: x.paidPartnership === true,
+          });
+        } else {
+          setXPostSettings(defaultXPostSettings);
+        }
         if (meta?.tiktok && typeof meta.tiktok === "object") {
           const tiktok = meta.tiktok as Record<string, TikTokPostSettings>;
           const next: Record<string, TikTokPostSettings> = {};
@@ -656,6 +686,15 @@ export function VideoPostForm({
           setVideoPreview(videoMedia.url ?? videoMedia.thumbnailUrl ?? null);
         }
         const meta = toEdit.metadata as Record<string, unknown> | null;
+        if (meta?.x && typeof meta.x === "object") {
+          const x = meta.x as Record<string, unknown>;
+          setXPostSettings({
+            madeWithAi: x.madeWithAi === true,
+            paidPartnership: x.paidPartnership === true,
+          });
+        } else {
+          setXPostSettings(defaultXPostSettings);
+        }
         if (meta?.tiktok && typeof meta.tiktok === "object") {
           const tiktok = meta.tiktok as Record<string, TikTokPostSettings>;
           const next: Record<string, TikTokPostSettings> = {};
@@ -1003,6 +1042,7 @@ export function VideoPostForm({
   const hasPinterestSelected = selectedAccounts.some(
     (a) => a.platform === "pinterest",
   );
+  const hasXSelected = selectedAccounts.some((a) => a.platform === "twitter_x");
   const pinterestAccounts = selectedAccounts.filter(
     (a) => a.platform === "pinterest",
   );
@@ -1207,6 +1247,14 @@ export function VideoPostForm({
         };
         return acc;
       }, {});
+    }
+    if (hasXSelected) {
+      metadata.x = {
+        madeWithAi: xPostSettings.madeWithAi,
+        paidPartnership: xPostSettings.paidPartnership,
+      };
+    } else {
+      delete metadata.x;
     }
     const accountCaptions: Record<string, string> = {};
     for (const account of selectedAccounts) {
@@ -1823,6 +1871,7 @@ export function VideoPostForm({
           {(showPlatformCaptionsSection ||
             hasPinterestSelected ||
             hasTikTokSelected ||
+            hasXSelected ||
             hasYouTubeSelected ||
             hasInstagramSelected) && (
             <div
@@ -1907,6 +1956,27 @@ export function VideoPostForm({
                     )}
                     <span>TikTok Config</span>
                     {activeConfigPanel === "tiktok" ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                )}
+                {hasXSelected && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveConfigPanel((p) => (p === "x" ? null : "x"))
+                    }
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
+                      activeConfigPanel === "x"
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
+                    }`}
+                  >
+                    <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                    <span>X Settings</span>
+                    {activeConfigPanel === "x" ? (
                       <ChevronUp className="h-3.5 w-3.5" />
                     ) : (
                       <ChevronDown className="h-3.5 w-3.5" />
@@ -2156,6 +2226,16 @@ export function VideoPostForm({
                       showPreviewHint
                     />
                   )}
+                </div>
+              )}
+
+              {activeConfigPanel === "x" && (
+                <div className="mt-2 border-t border-border pt-4">
+                  <XPostSettingsInline
+                    value={xPostSettings}
+                    onChange={setXPostSettings}
+                    isVisible={activeConfigPanel === "x"}
+                  />
                 </div>
               )}
 

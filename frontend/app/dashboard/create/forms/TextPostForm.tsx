@@ -53,6 +53,10 @@ import {
 } from "@/lib/composer-bridge";
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
+import {
+  XPostSettingsInline,
+  type XPostSettings,
+} from "@/components/XPostSettingsInline";
 import { toast } from "sonner";
 
 const TWITTER_THREAD_SEP = "---";
@@ -134,6 +138,10 @@ export function TextPostForm({
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [scheduledPostId, setScheduledPostId] = useState<string | null>(null);
   const [draftSavedPostId, setDraftSavedPostId] = useState<string | null>(null);
+  const [xPostSettings, setXPostSettings] = useState<XPostSettings>({
+    madeWithAi: false,
+    paidPartnership: false,
+  });
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
@@ -193,6 +201,16 @@ export function TextPostForm({
         setContent(draft.originalContent ?? "");
         setSelectedIds(new Set(restoredIds));
         setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
+        const draftMeta = draft.metadata as Record<string, unknown> | null;
+        if (draftMeta?.x && typeof draftMeta.x === "object") {
+          const x = draftMeta.x as Record<string, unknown>;
+          setXPostSettings({
+            madeWithAi: x.madeWithAi === true,
+            paidPartnership: x.paidPartnership === true,
+          });
+        } else {
+          setXPostSettings({ madeWithAi: false, paidPartnership: false });
+        }
         if (draft.scheduledAt) setMode("scheduled");
       } catch {
         if (!cancelled) toast.error("Failed to load draft");
@@ -229,6 +247,16 @@ export function TextPostForm({
         setScheduledAt(
           scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null,
         );
+        const scheduledMeta = scheduled.metadata as Record<string, unknown> | null;
+        if (scheduledMeta?.x && typeof scheduledMeta.x === "object") {
+          const x = scheduledMeta.x as Record<string, unknown>;
+          setXPostSettings({
+            madeWithAi: x.madeWithAi === true,
+            paidPartnership: x.paidPartnership === true,
+          });
+        } else {
+          setXPostSettings({ madeWithAi: false, paidPartnership: false });
+        }
         setMode("scheduled");
         if (scheduled.queueSlotId)
           intendedQueueSlotIdRef.current = scheduled.queueSlotId;
@@ -264,6 +292,16 @@ export function TextPostForm({
         );
         setContent(toEdit.originalContent ?? "");
         setSelectedIds(new Set(restoredIds));
+        const editMeta = toEdit.metadata as Record<string, unknown> | null;
+        if (editMeta?.x && typeof editMeta.x === "object") {
+          const x = editMeta.x as Record<string, unknown>;
+          setXPostSettings({
+            madeWithAi: x.madeWithAi === true,
+            paidPartnership: x.paidPartnership === true,
+          });
+        } else {
+          setXPostSettings({ madeWithAi: false, paidPartnership: false });
+        }
       } catch {
         if (!cancelled) toast.error("Failed to load post");
       } finally {
@@ -310,6 +348,7 @@ export function TextPostForm({
   );
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+  const hasXSelected = selectedAccounts.some((a) => a.platform === "twitter_x");
   const previewAccount =
     selectedAccounts.length > 0
       ? selectedAccounts[selectedAccounts.length - 1]
@@ -434,6 +473,12 @@ export function TextPostForm({
     const metadata: Record<string, unknown> = {
       contentType: "text",
     };
+    if (hasXSelected) {
+      metadata.x = {
+        madeWithAi: xPostSettings.madeWithAi,
+        paidPartnership: xPostSettings.paidPartnership,
+      };
+    }
     if (Object.keys(accountCaptions).length > 0) {
       metadata.accountCaptions = accountCaptions;
     }
@@ -1082,6 +1127,16 @@ export function TextPostForm({
                   })}
                 </div>
               )}
+            </div>
+          )}
+          {hasXSelected && (
+            <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
+              <p className="mb-3 text-xs text-text-muted">Post configurations & tools</p>
+              <XPostSettingsInline
+                value={xPostSettings}
+                onChange={setXPostSettings}
+                isVisible={true}
+              />
             </div>
           )}
         </div>

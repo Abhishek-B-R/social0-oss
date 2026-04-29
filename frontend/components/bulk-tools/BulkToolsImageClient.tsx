@@ -28,6 +28,10 @@ import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 import { PinterestConfigInline } from "@/components/PinterestConfigInline";
 import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
+import {
+  XPostSettingsInline,
+  type XPostSettings,
+} from "@/components/XPostSettingsInline";
 
 const LIMITS = {
   totalSize: 250 * 1024 * 1024, // 250MB total batch
@@ -121,6 +125,11 @@ export function BulkToolsImageClient({
     useState(0);
   const [pinterestError, setPinterestError] = useState<string | null>(null);
   const [showPinterestModal, setShowPinterestModal] = useState(false);
+  const [showXModal, setShowXModal] = useState(false);
+  const [xPostSettings, setXPostSettings] = useState<XPostSettings>({
+    madeWithAi: false,
+    paidPartnership: false,
+  });
 
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
@@ -163,6 +172,7 @@ export function BulkToolsImageClient({
   const hasPinterestSelected = selectedAccounts.some(
     (a) => a.platform === "pinterest",
   );
+  const hasXSelected = selectedAccounts.some((a) => a.platform === "twitter_x");
   const pinterestAccounts = selectedAccounts.filter(
     (a) => a.platform === "pinterest",
   );
@@ -401,6 +411,12 @@ export function BulkToolsImageClient({
         return acc;
       }, {});
     }
+    if (hasXSelected) {
+      metadata.x = {
+        madeWithAi: xPostSettings.madeWithAi,
+        paidPartnership: xPostSettings.paidPartnership,
+      };
+    }
 
     try {
       // Phase 1: upload all images in parallel
@@ -479,6 +495,10 @@ export function BulkToolsImageClient({
     if (hasPinterestSelected) {
       setPinterestError(null);
       setShowPinterestModal(true);
+      return;
+    }
+    if (hasXSelected) {
+      setShowXModal(true);
       return;
     }
     await runScheduleAll();
@@ -819,6 +839,53 @@ export function BulkToolsImageClient({
                   }
                   setPinterestError(null);
                   setShowPinterestModal(false);
+                  if (hasXSelected) {
+                    setShowXModal(true);
+                  } else {
+                    await runScheduleAll();
+                  }
+                }}
+              >
+                Continue &amp; Schedule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showXModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div
+            className="w-full max-w-xl rounded-2xl border border-border bg-card p-5 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulk-x-settings-title"
+          >
+            <h3
+              id="bulk-x-settings-title"
+              className="text-lg font-semibold text-foreground"
+            >
+              X Settings
+            </h3>
+            <div className="mt-4">
+              <XPostSettingsInline
+                value={xPostSettings}
+                onChange={setXPostSettings}
+                isVisible={true}
+              />
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle"
+                onClick={() => setShowXModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                onClick={async () => {
+                  setShowXModal(false);
                   await runScheduleAll();
                 }}
               >

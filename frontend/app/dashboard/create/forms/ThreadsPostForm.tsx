@@ -63,6 +63,10 @@ import {
   type VideoLimitWarning,
 } from "@/lib/platform-limits";
 import { toast } from "sonner";
+import {
+  XPostSettingsInline,
+  type XPostSettings,
+} from "@/components/XPostSettingsInline";
 
 const PREVIEW_MEDIA_MAX_H = 200;
 const MAX_ATTACHMENTS_PER_POST = 4;
@@ -327,6 +331,10 @@ export function ThreadsPostForm({
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [scheduledPostId, setScheduledPostId] = useState<string | null>(null);
   const [draftSavedPostId, setDraftSavedPostId] = useState<string | null>(null);
+  const [xPostSettings, setXPostSettings] = useState<XPostSettings>({
+    madeWithAi: false,
+    paidPartnership: false,
+  });
   const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>(
     [],
   );
@@ -442,6 +450,15 @@ export function ThreadsPostForm({
         if (scheduled.queueSlotId)
           intendedQueueSlotIdRef.current = scheduled.queueSlotId;
         const meta = scheduled.metadata as Record<string, unknown> | null;
+        if (meta?.x && typeof meta.x === "object") {
+          const x = meta.x as Record<string, unknown>;
+          setXPostSettings({
+            madeWithAi: x.madeWithAi === true,
+            paidPartnership: x.paidPartnership === true,
+          });
+        } else {
+          setXPostSettings({ madeWithAi: false, paidPartnership: false });
+        }
         const twitterThread = meta?.twitterThread as
           | { parts?: Array<{ text?: string; mediaIds?: string[] }> }
           | undefined;
@@ -518,6 +535,15 @@ export function ThreadsPostForm({
         }
         const { draft } = result;
         const metadata = draft.metadata as Record<string, unknown> | null;
+        if (metadata?.x && typeof metadata.x === "object") {
+          const x = metadata.x as Record<string, unknown>;
+          setXPostSettings({
+            madeWithAi: x.madeWithAi === true,
+            paidPartnership: x.paidPartnership === true,
+          });
+        } else {
+          setXPostSettings({ madeWithAi: false, paidPartnership: false });
+        }
         const twitterThread = metadata?.twitterThread as
           | { parts?: Array<{ text?: string; mediaIds?: string[] }> }
           | undefined;
@@ -605,6 +631,15 @@ export function ThreadsPostForm({
         }
         const { post: toEdit } = result;
         const metadata = toEdit.metadata as Record<string, unknown> | null;
+        if (metadata?.x && typeof metadata.x === "object") {
+          const x = metadata.x as Record<string, unknown>;
+          setXPostSettings({
+            madeWithAi: x.madeWithAi === true,
+            paidPartnership: x.paidPartnership === true,
+          });
+        } else {
+          setXPostSettings({ madeWithAi: false, paidPartnership: false });
+        }
         const twitterThread = metadata?.twitterThread as
           | { parts?: Array<{ text?: string; mediaIds?: string[] }> }
           | undefined;
@@ -1203,6 +1238,7 @@ export function ThreadsPostForm({
   };
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+  const hasXSelected = selectedAccounts.some((a) => a.platform === "twitter_x");
   const previewAccount =
     selectedAccounts.length > 0
       ? selectedAccounts[selectedAccounts.length - 1]
@@ -1458,6 +1494,12 @@ export function ThreadsPostForm({
         })),
       },
     };
+    if (hasXSelected) {
+      metadata.x = {
+        madeWithAi: xPostSettings.madeWithAi,
+        paidPartnership: xPostSettings.paidPartnership,
+      };
+    }
 
     if (effectiveMode === "scheduled") {
       applyBulkAutoFeaturesToScheduledMetadata(metadata, {
@@ -2132,6 +2174,16 @@ export function ThreadsPostForm({
               <IoMdAddCircleOutline className="w-5 h-5" />
               Add another post
             </button>
+            {hasXSelected && (
+              <div className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm">
+                <p className="mb-3 text-xs text-text-muted">Post configurations & tools</p>
+                <XPostSettingsInline
+                  value={xPostSettings}
+                  onChange={setXPostSettings}
+                  isVisible={true}
+                />
+              </div>
+            )}
           </div>
         </div>
 

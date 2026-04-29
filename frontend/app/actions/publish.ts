@@ -769,6 +769,46 @@ export async function executePublish(
         accessToken,
         accessSecret,
       });
+      const xPostSettings = (() => {
+        const md = post.metadata;
+        if (!md || typeof md !== "object") return null;
+        const x = (md as Record<string, unknown>)["x"];
+        if (!x || typeof x !== "object") return null;
+        const madeWithAi = (x as Record<string, unknown>)["madeWithAi"] === true;
+        const paidPartnership =
+          (x as Record<string, unknown>)["paidPartnership"] === true;
+        if (!madeWithAi && !paidPartnership) return null;
+        return { madeWithAi, paidPartnership };
+      })();
+      const isUnsupportedXFlagError = (error: unknown) => {
+        const message = getTwitterErrorMessage(error).toLowerCase();
+        return (
+          message.includes("made_with_ai") ||
+          message.includes("paid_partnership") ||
+          message.includes("not recognized") ||
+          message.includes("unsupported") ||
+          message.includes("unknown parameter")
+        );
+      };
+      const sendTweet = async (
+        payload: Parameters<(typeof client.v2)["tweet"]>[0],
+      ) => {
+        if (!xPostSettings) {
+          return client.v2.tweet(payload);
+        }
+        const payloadWithFlags = {
+          ...payload,
+          ...(xPostSettings.madeWithAi ? { made_with_ai: true } : {}),
+          ...(xPostSettings.paidPartnership ? { paid_partnership: true } : {}),
+        } as Parameters<(typeof client.v2)["tweet"]>[0];
+        try {
+          return await client.v2.tweet(payloadWithFlags);
+        } catch (error) {
+          if (!isUnsupportedXFlagError(error)) throw error;
+          // Graceful fallback in case the connected app tier/endpoint does not support these new fields yet.
+          return client.v2.tweet(payload);
+        }
+      };
 
       const twitterThreadMeta = (() => {
         const md = post.metadata;
@@ -981,7 +1021,7 @@ export async function executePublish(
               payload.reply = { in_reply_to_tweet_id: previousTweetId };
             }
 
-            const tweetData = await client.v2.tweet(
+            const tweetData = await sendTweet(
               payload as Parameters<typeof client.v2.tweet>[0],
             );
             const id = tweetData.data?.id;
@@ -1155,7 +1195,7 @@ export async function executePublish(
             text: tweetText,
           };
           if (mediaTuple) payload.media = { media_ids: mediaTuple };
-          const tweetData = await client.v2.tweet(
+          const tweetData = await sendTweet(
             payload as Parameters<typeof client.v2.tweet>[0],
           );
           firstTweetId = tweetData.data?.id ?? undefined;
@@ -1180,7 +1220,7 @@ export async function executePublish(
             if (!isFirst && previousTweetId) {
               payload.reply = { in_reply_to_tweet_id: previousTweetId };
             }
-            const tweetData = await client.v2.tweet(
+            const tweetData = await sendTweet(
               payload as Parameters<typeof client.v2.tweet>[0],
             );
             const id = tweetData.data?.id;
