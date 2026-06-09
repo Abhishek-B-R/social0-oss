@@ -241,30 +241,15 @@ export function ConnectionsList({
                     </span>
                   </div>
                   <div className="w-9 shrink-0 sm:w-20">
-                    {platform.id === "facebook" || platform.id === "tiktok" ? (
-                      <span
-                        className="flex h-8 w-full items-center justify-center rounded-lg border border-border bg-bg-muted px-2 text-[10px] font-medium text-text-muted cursor-default sm:text-xs"
-                        title={`${platform.name} is currently under development — we're awaiting the required platform permissions. Should be available in 1–2 weeks!`}
-                      >
-                        <span className="hidden sm:inline">Coming soon</span>
-                        <span className="sm:hidden">·</span>
-                      </span>
-                    ) : (
-                      <ConnectPlatformButton
-                        platform={platform}
-                        size="sm"
-                        className="w-full"
-                        disabled={atLimit}
-                        onDisabledClick={atLimit ? handleLimitClick : undefined}
-                      />
-                    )}
+                    <ConnectPlatformButton
+                      platform={platform}
+                      size="sm"
+                      className="w-full"
+                      disabled={atLimit}
+                      onDisabledClick={atLimit ? handleLimitClick : undefined}
+                    />
                   </div>
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1.5">
-                    {(platform.id === "facebook" || platform.id === "tiktok") && platformAccounts.length === 0 && (
-                      <span className="text-xs text-text-muted italic">
-                        Awaiting platform approval — available soon
-                      </span>
-                    )}
                     {platformAccounts.map((account) => {
                       const isInactive = account.isActive === false;
                       const isExpired = account.tokenStatus === "expired";

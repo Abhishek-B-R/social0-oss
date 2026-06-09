@@ -135,8 +135,6 @@ export function ConnectStepClient({
               const isConnected = platformAccounts.length > 0;
               const firstAccount = platformAccounts[0];
 
-              const isComingSoon = platform.id === "facebook" || platform.id === "tiktok";
-
               return (
                 <div
                   key={platform.id}
@@ -162,23 +160,12 @@ export function ConnectStepClient({
                         <p className="text-xs text-muted-foreground truncate">
                           @{firstAccount.platformUsername ?? "connected"}
                         </p>
-                      ) : isComingSoon ? (
-                        <p className="text-xs text-muted-foreground">
-                          Coming soon
-                        </p>
                       ) : null}
                     </div>
                   </div>
                   {isConnected ? (
                     <span className="shrink-0 text-xs font-medium text-green-600 bg-green-500/10 px-3 py-1 rounded-full">
                       ✓ Connected
-                    </span>
-                  ) : isComingSoon ? (
-                    <span
-                      className="shrink-0 rounded-xl border border-border bg-muted px-4 py-2 text-sm font-semibold text-muted-foreground cursor-not-allowed"
-                      title={`${platform.name} is currently awaiting platform approval. It will be available in 1–2 weeks!`}
-                    >
-                      Soon
                     </span>
                   ) : (
                     <ConnectPlatformButton
