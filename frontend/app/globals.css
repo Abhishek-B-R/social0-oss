@@ -54,6 +54,16 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/* Brand-colored text selection (replaces default blue).
+   Translucent emerald keeps the original text color readable in both themes. */
+::selection {
+  background-color: rgba(16, 185, 129, 0.25);
+}
+
+.dark ::selection {
+  background-color: rgba(16, 185, 129, 0.4);
+}
+
 @keyframes bannerSlideUp {
   from {
     opacity: 0;
