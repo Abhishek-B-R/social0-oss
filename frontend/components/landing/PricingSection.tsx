@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { Info } from "lucide-react";
-import { DOCS_FAIR_USAGE_URL } from "@/lib/docs-url";
 
 const starterFeatures = [
   "Up to 5 connected accounts",
@@ -99,23 +97,6 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                   </span>
                 </li>
               ))}
-              <li className="flex items-start gap-3 text-[13px] text-muted-foreground">
-                <span className="mt-0.5 shrink-0 text-[14px] text-emerald-600 dark:text-emerald-400">
-                  ✓
-                </span>
-                <span className="text-[14px] leading-snug text-muted-foreground">
-                  Twitter/X posting limits apply
-                </span>
-                <a
-                  href={DOCS_FAIR_USAGE_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label="Twitter/X posting limits (API constraints)"
-                >
-                  <Info className="h-3.5 w-3.5 shrink-0" />
-                </a>
-              </li>
             </ul>
 
             <Link
@@ -187,23 +168,6 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                   </span>
                 </li>
               ))}
-              <li className="flex items-start gap-3 text-[13px] text-muted-foreground">
-                <span className="mt-0.5 shrink-0 text-[14px] text-emerald-500/70 dark:text-emerald-600/70">
-                  ✓
-                </span>
-                <span className="text-white/50 dark:text-[#0A0A0A]/60">
-                  Twitter/X posting limits apply
-                </span>
-                <a
-                  href={DOCS_FAIR_USAGE_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label="Twitter/X posting limits (API constraints)"
-                >
-                  <Info className="h-3.5 w-3.5 shrink-0" />
-                </a>
-              </li>
             </ul>
 
             <Link

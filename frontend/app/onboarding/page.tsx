@@ -33,8 +33,6 @@ const STARTER_FEATURES = [
   "Schedule posts across platforms",
   "Carousel posts",
   "Threads & Collections support",
-  "200 tweets/month (Twitter/X)",
-  "Fair usage policy",
   "Human support",
 ];
 
@@ -45,11 +43,9 @@ const GROWTH_FEATURES = [
   "Schedule posts across platforms",
   "Carousel posts",
   "Threads & Collections support",
-  "1,000 tweets/month (Twitter/X)",
   "Auto-plug high performing tweets",
   "Auto-repost on autopilot",
   "Bulk scheduling tools",
-  "Fair usage policy",
   "Human support",
 ];
 

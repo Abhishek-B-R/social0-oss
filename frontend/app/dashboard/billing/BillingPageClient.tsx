@@ -91,7 +91,6 @@ export function BillingPageClient() {
         <BillingClient
           subscription={subscription}
           accountLimit={raw.accountLimit}
-          twitterTweetLimit={raw.twitterTweetLimit}
           justSubscribed={justSubscribed}
           dateFormat={raw.dateFormat}
           timezone={raw.timezone}

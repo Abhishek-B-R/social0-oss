@@ -8,7 +8,7 @@ export const DOCS_BASE_URL =
 
 // ─── Billing & plans ───────────────────────────────────────────────────────
 
-/** Fair usage policy (Twitter/X tweet limits per plan). */
+/** Fair usage policy (platform posting guidelines). */
 export const DOCS_FAIR_USAGE_URL = `${DOCS_BASE_URL}/docs/billing/fair-usage`;
 
 /** Billing (dashboard). */

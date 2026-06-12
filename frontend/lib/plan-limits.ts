@@ -1,10 +1,11 @@
 "use server";
 
 import { db } from "@/db";
-import { connectedAccounts, postPublications, userSettings } from "@/db/schema";
-import { eq, and, sql, gte, asc, inArray } from "drizzle-orm";
+import { connectedAccounts, userSettings } from "@/db/schema";
+import { eq, and, sql, asc, inArray } from "drizzle-orm";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { getPlanLimits, isActiveTier } from "@/lib/plans";
+import { twitterPublishLimiter } from "@/lib/ratelimit";
 
 /**
  * Sync connected_accounts.isActive to plan limit.
@@ -106,57 +107,33 @@ export async function checkResurfaceAllowed(userId: string): Promise<boolean> {
   return getPlanLimits(sub.tier).allowResurface;
 }
 
-/** Twitter tweets published this month (UTC) for the user. */
-export async function getTwitterTweetsThisMonth(
-  userId: string,
-): Promise<number> {
-  const startOfMonth = new Date();
-  startOfMonth.setUTCDate(1);
-  startOfMonth.setUTCHours(0, 0, 0, 0);
-
-  const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(postPublications)
-    .innerJoin(
-      connectedAccounts,
-      eq(postPublications.connectedAccountId, connectedAccounts.id),
-    )
-    .where(
-      and(
-        eq(connectedAccounts.userId, userId),
-        eq(connectedAccounts.platform, "twitter_x"),
-        eq(postPublications.status, "published"),
-        gte(postPublications.publishedAt, startOfMonth),
-      ),
-    );
-
-  return row?.count ?? 0;
-}
-
-export type TwitterTweetLimitResult = {
+export type TwitterPublishRateLimitResult = {
   allowed: boolean;
-  used: number;
-  limit: number;
   reason?: string;
 };
 
-export async function checkTwitterTweetLimit(
+/** Short-window X posting cap to catch automation; normal users should not hit this. */
+export async function checkTwitterPublishRateLimit(
   userId: string,
-): Promise<TwitterTweetLimitResult> {
-  const sub = await getSubscriptionForUser(userId);
-  const limits = getPlanLimits(sub.tier);
-  const used = await getTwitterTweetsThisMonth(userId);
+  pendingTweetCount: number,
+): Promise<TwitterPublishRateLimitResult> {
+  if (!twitterPublishLimiter || pendingTweetCount <= 0) {
+    return { allowed: true };
+  }
 
-  if (used >= limits.tweetsPerMonth) {
+  const { success } = await twitterPublishLimiter.limit(userId, {
+    rate: pendingTweetCount,
+  });
+
+  if (!success) {
     return {
       allowed: false,
-      used,
-      limit: limits.tweetsPerMonth,
-      reason: `Twitter limit: ${limits.tweetsPerMonth} tweets per month. Resets next month or upgrade for more.`,
+      reason:
+        "You're posting to X too quickly. Please wait a few minutes and try again.",
     };
   }
 
-  return { allowed: true, used, limit: limits.tweetsPerMonth };
+  return { allowed: true };
 }
 
 export async function getFreePostsUsed(userId: string): Promise<number> {

@@ -12,12 +12,21 @@ export const uploadLimiter = redis
     })
   : null;
 
-// 60 publishes/hour per user
+// 60 publish actions/hour per user (one action may fan out to several platforms)
 export const publishLimiter = redis
   ? new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(60, "1 h"),
       prefix: "rl:publish",
+    })
+  : null;
+
+// 120 X/Twitter tweet publications/hour per user — anti-automation only; normal usage stays well below this
+export const twitterPublishLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(120, "1 h"),
+      prefix: "rl:twitter_publish",
     })
   : null;
 

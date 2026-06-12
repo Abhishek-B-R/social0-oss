@@ -28,7 +28,7 @@ import {
   checkAutoPlugAllowed,
   checkFreePostLimit,
   checkResurfaceAllowed,
-  checkTwitterTweetLimit,
+  checkTwitterPublishRateLimit,
   incrementFreePostsUsed,
 } from "@/lib/plan-limits";
 import { getSubscriptionForUser } from "@/lib/subscription";
@@ -253,19 +253,19 @@ export async function executePublish(
     return { success: true, results: [] };
   }
 
-  const hasPendingTwitter = publicationsWithAccounts.some(
+  const pendingTwitterCount = publicationsWithAccounts.filter(
     (p) => p.publicationStatus === "pending" && p.platform === "twitter_x",
-  );
-  if (hasPendingTwitter && post.userId) {
-    const tweetLimit = await checkTwitterTweetLimit(post.userId);
-    if (!tweetLimit.allowed) {
-      logPublishBlocked("tweet_limit", post.userId, post.id, {
-        used: tweetLimit.used,
-        limit: tweetLimit.limit,
-      });
+  ).length;
+  if (pendingTwitterCount > 0 && post.userId) {
+    const rateLimit = await checkTwitterPublishRateLimit(
+      post.userId,
+      pendingTwitterCount,
+    );
+    if (!rateLimit.allowed) {
+      logPublishBlocked("twitter_rate_limit", post.userId, post.id);
       const failureReason =
-        tweetLimit.reason ??
-        "Twitter monthly limit reached. Resets next month or upgrade for more.";
+        rateLimit.reason ??
+        "You're posting to X too quickly. Please wait a few minutes and try again.";
       await db
         .update(posts)
         .set({
@@ -276,7 +276,7 @@ export async function executePublish(
         .where(eq(posts.id, postId));
       return {
         success: false,
-        error: tweetLimit.reason ?? "Twitter monthly limit reached",
+        error: failureReason,
         results: [],
       };
     }

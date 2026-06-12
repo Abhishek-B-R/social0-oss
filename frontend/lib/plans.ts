@@ -15,7 +15,6 @@ export interface PlanLimits {
   maxConnectedAccounts: number;
   /** Lifetime free posts before subscription is required (free tier only). */
   maxFreePosts: number;
-  tweetsPerMonth: number;
   allowBulkTools: boolean;
   allowAutoPlug: boolean;
   allowResurface: boolean;
@@ -24,7 +23,6 @@ export interface PlanLimits {
 const FREE_LIMITS: PlanLimits = {
   maxConnectedAccounts: 3,
   maxFreePosts: 10,
-  tweetsPerMonth: 0,
   allowBulkTools: false,
   allowAutoPlug: false,
   allowResurface: false,
@@ -33,7 +31,6 @@ const FREE_LIMITS: PlanLimits = {
 const STARTER_LIMITS: PlanLimits = {
   maxConnectedAccounts: 5,
   maxFreePosts: 0,
-  tweetsPerMonth: 200,
   allowBulkTools: false,
   allowAutoPlug: false,
   allowResurface: false,
@@ -42,7 +39,6 @@ const STARTER_LIMITS: PlanLimits = {
 const GROWTH_LIMITS: PlanLimits = {
   maxConnectedAccounts: 15,
   maxFreePosts: 0,
-  tweetsPerMonth: 1000,
   allowBulkTools: true,
   allowAutoPlug: true,
   allowResurface: true,
@@ -51,7 +47,6 @@ const GROWTH_LIMITS: PlanLimits = {
 const PRO_LIMITS: PlanLimits = {
   maxConnectedAccounts: 999, // effectively unlimited
   maxFreePosts: 0,
-  tweetsPerMonth: 1500,
   allowBulkTools: true,
   allowAutoPlug: true,
   allowResurface: true,

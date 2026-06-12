@@ -2,13 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { IconLoader2, IconInfoCircle, IconX } from "@tabler/icons-react";
+import { IconLoader2, IconX } from "@tabler/icons-react";
 import { toast } from "sonner";
 import type { SubscriptionState } from "@/lib/subscription";
-import type {
-  AccountLimitResult,
-  TwitterTweetLimitResult,
-} from "@/lib/plan-limits";
+import type { AccountLimitResult } from "@/lib/plan-limits";
 import { formatDate } from "@/lib/date-format";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,8 +16,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { DOCS_FAIR_USAGE_URL } from "@/lib/docs-url";
-
 const POLL_INTERVAL_MS = 2000;
 const PAYMENT_DECLINED_MESSAGE =
   "Your payment could not be processed. Please check your card details or try a different payment method.";
@@ -113,20 +108,16 @@ const STARTER_BILLING_FEATURES = [
   "Schedule posts across platforms",
   "Carousel posts",
   "Threads & Collections support",
-  "200 tweets/month (Twitter/X)",
   "Human support",
 ];
 
 const GROWTH_BILLING_FEATURES = [
-  "Connect up to 5 accounts",
+  "Connect up to 15 accounts",
   "Multiple accounts per platform",
   "Unlimited posts",
   "Schedule posts across platforms",
   "Carousel posts",
   "Threads & Collections support",
-  "200 tweets/month (Twitter/X)",
-  "Up to 15 connected accounts",
-  "1,000 tweets/month (Twitter/X)",
   "Auto-plug high performing tweets",
   "Auto-repost on autopilot",
   "Bulk scheduling tools",
@@ -137,7 +128,6 @@ const POLL_MAX_ATTEMPTS = 45; // ~1.5 min
 type BillingClientProps = {
   subscription: SubscriptionState;
   accountLimit: AccountLimitResult;
-  twitterTweetLimit: TwitterTweetLimitResult;
   justSubscribed?: boolean;
   dateFormat?: string | null;
   timezone?: string | null;
@@ -150,7 +140,6 @@ function redirectToComposer() {
 export function BillingClient({
   subscription,
   accountLimit,
-  twitterTweetLimit,
   justSubscribed = false,
   dateFormat = "dd/MM/yyyy",
   timezone,
@@ -676,21 +665,11 @@ export function BillingClient({
           · {pricePerMonth > 0 ? `$${pricePerMonth}/month` : "$0/month"}
         </p>
 
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs text-muted-foreground">Connected accounts</p>
-            <p className="text-2xl font-medium text-foreground">
-              {accountLimit.currentTotal} / {accountLimit.limitTotal}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">
-              Twitter posts this month
-            </p>
-            <p className="text-2xl font-medium text-foreground">
-              {twitterTweetLimit.used}
-            </p>
-          </div>
+        <div className="mt-4">
+          <p className="text-xs text-muted-foreground">Connected accounts</p>
+          <p className="text-2xl font-medium text-foreground">
+            {accountLimit.currentTotal} / {accountLimit.limitTotal}
+          </p>
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -796,19 +775,6 @@ export function BillingClient({
                   {f}
                 </li>
               ))}
-              <li className="flex items-center gap-2">
-                <span className="text-emerald-500 shrink-0">✓</span>
-                <a
-                  href={DOCS_FAIR_USAGE_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                  aria-label="Fair usage (opens docs)"
-                >
-                  Fair usage policy
-                  <IconInfoCircle className="h-3.5 w-3.5" strokeWidth={1.5} />
-                </a>
-              </li>
             </ul>
             <div className="mt-6">
               {subscription.tier === "starter" ? (
@@ -1155,7 +1121,6 @@ export function BillingClient({
                   <ul className="space-y-2">
                     {[
                       "Up to 15 accounts (drops to 5)",
-                      "1,000 tweets/month (drops to 200)",
                       "Auto-plug high performing tweets",
                       "Auto-repost on autopilot",
                       "Bulk scheduling tools",

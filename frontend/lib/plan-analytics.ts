@@ -14,9 +14,9 @@ function logEvent(
   console.log(line);
 }
 
-/** Publish was blocked (free tier or tweet limit). */
+/** Publish was blocked (free tier, X rate limit, etc.). */
 export function logPublishBlocked(
-  reason: "subscription" | "tweet_limit" | "free_post_limit",
+  reason: "subscription" | "twitter_rate_limit" | "free_post_limit",
   userId: string,
   postId?: string,
   extra?: { used?: number; limit?: number },

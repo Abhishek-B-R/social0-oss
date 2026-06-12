@@ -17,11 +17,9 @@ import type { SubscriptionState } from "@/lib/subscription";
 import {
   checkAccountLimits,
   checkFreePostLimit,
-  checkTwitterTweetLimit,
 } from "@/lib/plan-limits";
 import type {
   AccountLimitResult,
-  TwitterTweetLimitResult,
 } from "@/lib/plan-limits";
 import { db } from "@/db";
 import { posts, postPublications, connectedAccounts } from "@/db/schema";
@@ -297,7 +295,6 @@ export type LoadBillingPageDataResult =
       data: {
         subscription: SerializedSubscriptionState;
         accountLimit: AccountLimitResult;
-        twitterTweetLimit: TwitterTweetLimitResult;
         dateFormat: string | null;
         timezone: string | null;
       };
@@ -311,12 +308,11 @@ export async function loadBillingPageData(): Promise<LoadBillingPageDataResult> 
   }
   const userId = session.user.id;
 
-  const [{ dateFormat, timezone }, subscription, accountLimit, twitterTweetLimit] =
+  const [{ dateFormat, timezone }, subscription, accountLimit] =
     await Promise.all([
       getUserSettingsSnapshot(),
       getSubscriptionForUser(userId),
       checkAccountLimits(userId, "linkedin"),
-      checkTwitterTweetLimit(userId),
     ]);
 
   const serialized: SerializedSubscriptionState = {
@@ -331,7 +327,6 @@ export async function loadBillingPageData(): Promise<LoadBillingPageDataResult> 
     data: {
       subscription: serialized,
       accountLimit,
-      twitterTweetLimit,
       dateFormat,
       timezone,
     },
