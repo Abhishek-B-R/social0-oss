@@ -352,11 +352,6 @@ export function TikTokSettings({
                   : 'Your post will be labeled "Promotional content".'}
               </p>
             )}
-            {settings.brand_content && (
-              <p className="text-xs text-amber-700 dark:text-amber-400">
-                Branded content can&apos;t be posted as &quot;Only me&quot;.
-              </p>
-            )}
           </div>
         )}
       </div>
