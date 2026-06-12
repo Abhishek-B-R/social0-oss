@@ -1261,6 +1261,8 @@ export function ThreadsPostForm({
   const setupAutoPlug = async (postId: string) => {
     if (!autoPlugConfig) return true;
     const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
+    // Stale config can linger (e.g. remembered settings) after X is deselected
+    if (!xAccount) return true;
     const autoPlugResult = await createAutoPlug(
       postId,
       xAccount?.id ?? null,

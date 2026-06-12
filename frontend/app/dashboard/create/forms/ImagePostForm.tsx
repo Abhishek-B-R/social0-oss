@@ -1013,12 +1013,6 @@ export function ImagePostForm({
       for (const tiktokAccount of tiktokAccounts) {
         const settings =
           tiktokSettings[tiktokAccount.id] ?? defaultTiktokSettings;
-        if (!settings.video_title?.trim()) {
-          toast.error(
-            `TikTok: A video title is required for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
-          );
-          return;
-        }
         if (!settings.privacy_level?.trim()) {
           toast.error(
             `TikTok: Privacy level is required. Please select a privacy level for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
@@ -1040,13 +1034,6 @@ export function ImagePostForm({
         if (settings.brand_content && settings.privacy_level === "SELF_ONLY") {
           toast.error(
             `TikTok: Branded content visibility cannot be set to private. Please select Public or Friends.`,
-          );
-          return;
-        }
-
-        if (!settings.tiktok_post_consent) {
-          toast.error(
-            `TikTok: Confirm you agree to TikTok's terms (Music Usage Confirmation) before posting for @${tiktokAccount.platformUsername ?? "TikTok"}.`,
           );
           return;
         }
@@ -1505,9 +1492,7 @@ export function ImagePostForm({
     hasTikTokSelected &&
     tiktokAccounts.some((acc) => {
       const s = tiktokSettings[acc.id] ?? defaultTiktokSettings;
-      return (
-        (s.privacy_level ?? "").trim() === "" || !s.tiktok_post_consent
-      );
+      return (s.privacy_level ?? "").trim() === "";
     });
   const hasPinterestSelected = selectedAccounts.some(
     (a) => a.platform === "pinterest",
@@ -1540,6 +1525,8 @@ export function ImagePostForm({
   const setupAutoPlug = async (postId: string) => {
     if (!autoPlugConfig) return true;
     const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
+    // Stale config can linger (e.g. remembered settings) after X is deselected
+    if (!xAccount) return true;
     const autoPlugResult = await createAutoPlug(
       postId,
       xAccount?.id ?? null,

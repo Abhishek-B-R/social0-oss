@@ -38,27 +38,13 @@ export function TikTokSettingsModal({
   const displayError = localValidation ?? validationError ?? null;
 
   const handleSave = () => {
-    if (!value.video_title?.trim()) {
-      setLocalValidation("Please enter a video title.");
-      return;
-    }
-    if (!value.privacy_level?.trim()) {
-      setLocalValidation("Please select a privacy level.");
-      return;
-    }
     if (
       value.brand_content_toggle &&
       !value.brand_organic &&
       !value.brand_content
     ) {
       setLocalValidation(
-        "Select at least one option (Your brand or Branded content) when promoting a brand.",
-      );
-      return;
-    }
-    if (!value.tiktok_post_consent) {
-      setLocalValidation(
-        "Confirm you agree to TikTok's Music Usage Confirmation (and Branded Content Policy if applicable) before saving.",
+        "Select at least one option (Your Brand or Branded Content) when disclosing commercial content.",
       );
       return;
     }
@@ -126,7 +112,7 @@ export function TikTokSettingsModal({
               setLocalValidation(null);
               onChange(s);
             }}
-            onError={(err) => setLocalValidation(err)}
+            mediaType={mediaType}
           />
         </div>
 

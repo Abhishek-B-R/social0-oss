@@ -2399,7 +2399,6 @@ async function publishToTikTok(
   }
 
   if (accountSettings.brand_content_toggle) {
-    basePostInfo.brand_content_toggle = true;
     const hasOrganic =
       accountSettings.brand_organic ??
       accountSettings.brand_organic_toggle === true;
@@ -2407,11 +2406,10 @@ async function publishToTikTok(
       accountSettings.brand_content ??
       (accountSettings.brand_organic_toggle === false &&
         accountSettings.brand_content_toggle);
-    if (hasOrganic && !hasBranded) {
-      basePostInfo.brand_organic_toggle = true;
-    } else if (hasBranded) {
-      basePostInfo.brand_organic_toggle = false;
-    }
+    // TikTok treats these as independent flags:
+    // brand_content_toggle = paid partnership (third party), brand_organic_toggle = own brand
+    if (hasBranded) basePostInfo.brand_content_toggle = true;
+    if (hasOrganic) basePostInfo.brand_organic_toggle = true;
   }
 
   if (markAiGenerated) {
@@ -2507,15 +2505,9 @@ async function publishToTikTok(
         (accountSettings.brand_organic_toggle === false &&
           accountSettings.brand_content_toggle);
 
-      if (hasBranded) {
-        // "Branded content" selected: third-party paid partnership
-        photoPostInfo.brand_content_toggle = true;
-        photoPostInfo.brand_organic_toggle = false;
-      } else if (hasOrganic) {
-        // "Your brand" selected: creator's own business
-        photoPostInfo.brand_organic_toggle = true;
-        photoPostInfo.brand_content_toggle = false;
-      }
+      // Independent flags: both can be true (labeled "Paid partnership")
+      photoPostInfo.brand_content_toggle = hasBranded;
+      photoPostInfo.brand_organic_toggle = hasOrganic;
     }
 
     if (markAiGenerated) {
