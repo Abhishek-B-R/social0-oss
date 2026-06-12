@@ -5,7 +5,14 @@ const baseUrl =
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: [{ userAgent: "*", allow: "/" }],
+    rules: [
+      {
+        userAgent: "*",
+        allow: ["/", "/features", "/alternatives", "/llms.txt"],
+        disallow: ["/dashboard/", "/api/", "/onboarding/"],
+      },
+    ],
     sitemap: `${baseUrl}/sitemap.xml`,
+    host: baseUrl.replace(/\/$/, ""),
   };
 }

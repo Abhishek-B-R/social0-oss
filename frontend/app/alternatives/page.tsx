@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
+import { PseoJsonLd } from "@/components/seo/PseoJsonLd";
 import { ALTERNATIVES } from "@/lib/content/alternatives";
 import {
   buildItemListJsonLd,
@@ -40,10 +41,7 @@ export default function AlternativesIndexPage() {
 
   return (
     <MarketingPageLayout>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <PseoJsonLd graphs={jsonLd} />
       <section className="px-6 py-16 lg:px-8 lg:py-20">
         <div className="mx-auto max-w-[1100px]">
           <p className="mb-3 text-[11px] uppercase tracking-widest text-emerald-700">

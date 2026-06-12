@@ -28,6 +28,7 @@ export function buildPageMetadata({
     description,
     keywords,
     alternates: { canonical: url },
+    robots: { index: true, follow: true },
     openGraph: {
       title,
       description,
@@ -143,6 +144,74 @@ export function buildSoftwareApplicationJsonLd() {
       "OAuth-secured account connections",
     ],
   };
+}
+
+export const homePageTitle =
+  "Social0 — Post and Schedule to All Your Socials from One Place";
+
+export const homePageDescription =
+  "Social0 lets you write once and publish everywhere. Schedule posts to Twitter, Instagram, LinkedIn, TikTok, YouTube, Pinterest, Bluesky, Threads, and Facebook from one dashboard. 7-day free trial.";
+
+export function buildHomeMetadata(path: "/" | "/home" = "/"): Metadata {
+  const url = absoluteUrl(path);
+  const canonical = absoluteUrl("/");
+
+  return {
+    title: homePageTitle,
+    description: homePageDescription,
+    keywords: [
+      "social media scheduler",
+      "social media management",
+      "schedule tweets",
+      "instagram scheduler",
+      "tiktok scheduler",
+      "social media publishing",
+      "buffer alternative",
+      "threads scheduler",
+      "bluesky scheduling tool",
+    ],
+    alternates: { canonical },
+    robots:
+      path === "/home"
+        ? { index: false, follow: true }
+        : { index: true, follow: true },
+    openGraph: {
+      title: homePageTitle,
+      description:
+        "Write once. Publish everywhere. Schedule posts to 9 platforms from one dashboard.",
+      url,
+      siteName: "Social0",
+      type: "website",
+      images: [
+        {
+          url: absoluteUrl("/og-image.png"),
+          width: 1200,
+          height: 630,
+          alt: "Social0 — Social Media Scheduling Dashboard",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: homePageTitle,
+      description:
+        "Write once. Publish everywhere. Schedule posts to 9 platforms from one dashboard.",
+      images: [absoluteUrl("/og-image.png")],
+      creator: "@social0_app",
+    },
+  };
+}
+
+export function buildHomeJsonLd(path: "/" | "/home" = "/") {
+  return [
+    buildWebPageJsonLd({
+      name: homePageTitle,
+      description: homePageDescription,
+      path,
+    }),
+    buildSoftwareApplicationJsonLd(),
+    buildOrganizationJsonLd(),
+  ];
 }
 
 export function buildOrganizationJsonLd() {

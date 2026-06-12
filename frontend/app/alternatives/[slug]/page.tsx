@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
+import { PseoJsonLd } from "@/components/seo/PseoJsonLd";
 import { PseoFaq } from "@/components/landing/PseoFaq";
 import { PseoRelatedLinks } from "@/components/landing/PseoRelatedLinks";
 import {
@@ -73,10 +74,7 @@ export default async function AlternativePage({ params }: PageProps) {
 
   return (
     <MarketingPageLayout>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <PseoJsonLd graphs={jsonLd} />
 
       <section className="border-b border-border px-6 pb-16 pt-12 lg:px-8 lg:pt-16">
         <div className="mx-auto max-w-[1100px]">
