@@ -55,10 +55,13 @@ export function ConnectionsList({
   accounts,
   accountLimit,
   requireAuth = false,
+  onAccountsChanged,
 }: {
   accounts: Account[];
   accountLimit?: AccountLimit;
   requireAuth?: boolean;
+  /** Called after an account is disconnected or tokens change so the parent can refetch. */
+  onAccountsChanged?: () => void;
 }) {
   const [disconnectAccountId, setDisconnectAccountId] = useState<string | null>(
     null,
@@ -98,6 +101,7 @@ export function ConnectionsList({
         setPremiumRefreshError(message);
         return;
       }
+      onAccountsChanged?.();
       router.refresh();
     } catch (err) {
       setPremiumRefreshError(
@@ -450,6 +454,7 @@ export function ConnectionsList({
         onClose={() => setDisconnectAccountId(null)}
         accountId={disconnectAccountId}
         accountLabel={disconnectLabel}
+        onDisconnected={onAccountsChanged}
       />
     </>
   );

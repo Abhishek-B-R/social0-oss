@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { loadConnectionsPageData } from "@/app/actions/dashboard-data";
 import { OAuthErrorHandler } from "@/components/OAuthErrorHandler";
 import { ConnectionsList } from "@/components/dashboard/ConnectionsList";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 
 export function ConnectionsPageClient() {
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(false);
@@ -18,29 +18,49 @@ export function ConnectionsPageClient() {
       { ok: true }
     >["data"] | null
   >(null);
+  const fetchSeq = useRef(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const result = await loadConnectionsPageData();
-      if (cancelled) return;
-      if (!result.ok) {
-        if (result.error === "Unauthorized") {
-          setIsGuest(true);
-          setLoading(false);
-          return;
-        }
-        setError(result.error);
+  /** Re-pulls accounts; silent (no skeleton) unless it's the initial load. */
+  const refetch = useCallback(async () => {
+    const seq = ++fetchSeq.current;
+    const result = await loadConnectionsPageData();
+    if (seq !== fetchSeq.current) return; // a newer fetch superseded this one
+    if (!result.ok) {
+      if (result.error === "Unauthorized") {
+        setIsGuest(true);
         setLoading(false);
         return;
       }
-      setData(result.data);
+      setError(result.error);
       setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
+      return;
+    }
+    setIsGuest(false);
+    setError(null);
+    setData(result.data);
+    setLoading(false);
+  }, []);
+
+  // Initial load, plus refetch whenever OAuth flows land back here with
+  // query params (?connected=..., ?reauth=..., ?error=...).
+  useEffect(() => {
+    void refetch();
+  }, [refetch, searchParams]);
+
+  // Refetch when the tab regains focus — covers OAuth completed in another
+  // tab/window and token refreshes done elsewhere.
+  useEffect(() => {
+    const onFocus = () => void refetch();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void refetch();
     };
-  }, [router]);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [refetch]);
 
   if (loading) {
     return <DashboardPageSkeleton message="Loading connections..." />;
@@ -70,6 +90,7 @@ export function ConnectionsPageClient() {
       <ConnectionsList
         accounts={data.accounts}
         accountLimit={data.accountLimit}
+        onAccountsChanged={refetch}
       />
       <p className="mt-4 text-sm text-text-muted">
         Having trouble connecting your accounts?{" "}
