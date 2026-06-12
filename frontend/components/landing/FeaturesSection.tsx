@@ -1,15 +1,15 @@
 import type React from "react";
 import {
-  Zap,
-  Target,
+  GitBranch,
+  PenLine,
   CalendarDays,
-  Lock,
-  MessageSquareText,
+  ShieldCheck,
+  Layers,
   RefreshCw,
 } from "lucide-react";
 
 type Feature = {
-  icon: typeof Zap;
+  icon: typeof GitBranch;
   title: string;
   tag: string;
   desc: React.ReactNode;
@@ -17,13 +17,13 @@ type Feature = {
 
 const features: Feature[] = [
   {
-    icon: Zap,
+    icon: GitBranch,
     title: "Parallel publishing",
     tag: "Fast",
     desc: "All platforms receive your post at the same time. If one fails, the others still go through — and you'll see exactly which.",
   },
   {
-    icon: Target,
+    icon: PenLine,
     title: "Per-platform captions",
     tag: "Flexible",
     desc: (
@@ -41,13 +41,13 @@ const features: Feature[] = [
     desc: "Pick a date and time. View everything in a calendar. Reschedule if needed.",
   },
   {
-    icon: Lock,
+    icon: ShieldCheck,
     title: "Encrypted token storage",
     tag: "Secure",
     desc: "Your accounts stay secure. OAuth tokens are encrypted and we never store passwords.",
   },
   {
-    icon: MessageSquareText,
+    icon: Layers,
     title: "Threads & carousels",
     tag: "Rich content",
     desc: (
@@ -66,8 +66,7 @@ const features: Feature[] = [
       <>
         Automatically repost evergreen content to extend its reach.
         <br />
-        Add a plug to your best-performing posts to capture leads and
-        opportunities.
+        Add a call-to-action to top-performing posts to capture leads.
       </>
     ),
   },
@@ -94,12 +93,12 @@ export function FeaturesSection() {
         {/* 2-column bordered grid */}
         <div className="grid gap-px overflow-hidden rounded-2xl bg-border md:grid-cols-2">
           {features.map((f) => (
-            <div
-              key={f.title}
-              className="group bg-background p-8 transition-colors hover:bg-muted/40 dark:hover:bg-muted/20 md:p-10"
-            >
-              <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/50 dark:bg-muted/30">
-                <f.icon className="h-5 w-5 text-foreground" strokeWidth={1.5} />
+            <div key={f.title} className="group bg-background p-8 md:p-10">
+              <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/50 transition-all duration-300 group-hover:border-emerald-500/40 group-hover:shadow-[0_0_18px_rgba(16,185,129,0.2)] dark:bg-muted/30 dark:group-hover:shadow-[0_0_18px_rgba(16,185,129,0.25)]">
+                <f.icon
+                  className="h-5 w-5 text-foreground transition-colors duration-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400"
+                  strokeWidth={1.5}
+                />
               </div>
               <h3 className="mb-2 text-[17px] font-semibold tracking-tight text-foreground">
                 {f.title}
@@ -108,7 +107,7 @@ export function FeaturesSection() {
                 {f.desc}
               </p>
               {f.tag && (
-                <span className="mt-4 inline-block rounded bg-emerald-50 px-2 py-1 text-[11px] font-medium uppercase tracking-widest text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                <span className="mt-4 inline-block rounded bg-emerald-50 px-2 py-1 text-[11px] font-medium uppercase tracking-widest text-emerald-700 transition-colors duration-300 group-hover:bg-emerald-100 group-hover:text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 dark:group-hover:bg-emerald-950/80 dark:group-hover:text-emerald-300">
                   {f.tag}
                 </span>
               )}

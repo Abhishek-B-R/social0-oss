@@ -46,7 +46,7 @@ const faqs = [
   {
     question: "Who built Social0?",
     answer:
-      "Social0 is built by an independent developer who posts online and wanted a faster way to publish across multiple platforms. The product is being continuously improved based on user feedback.",
+      "Social0 is built by Abhishek (@abhitwt on X), an independent developer who posts online and wanted a faster way to publish across multiple platforms. The product is being continuously improved based on user feedback.",
   },
 ];
 
