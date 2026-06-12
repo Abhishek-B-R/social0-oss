@@ -12,7 +12,7 @@ import {
   resurfaceEvents,
   autoPlugs,
 } from "@/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { decryptToken } from "@/lib/encryption";
 import { revalidatePath } from "next/cache";
@@ -26,13 +26,9 @@ import { truncateCaptionForPlatform } from "@/lib/platform-limits";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import {
   checkAutoPlugAllowed,
-  checkFreePostLimit,
   checkResurfaceAllowed,
   checkTwitterPublishRateLimit,
-  incrementFreePostsUsed,
 } from "@/lib/plan-limits";
-import { getSubscriptionForUser } from "@/lib/subscription";
-import { isActiveTier } from "@/lib/plans";
 import { logPublishBlocked } from "@/lib/plan-analytics";
 import { uploadTwitterImage, uploadTwitterVideo } from "@/lib/twitter-media";
 import { getTwitterErrorMessage } from "@/lib/twitter-errors";
@@ -193,32 +189,10 @@ export async function executePublish(
     };
   }
 
-  const subscription = await getSubscriptionForUser(post.userId);
-  if (!isActiveTier(subscription.tier)) {
-    const freePostLimit = await checkFreePostLimit(post.userId);
-    if (!freePostLimit.allowed) {
-      logPublishBlocked("free_post_limit", post.userId, post.id, {
-        used: freePostLimit.used,
-        limit: freePostLimit.limit,
-      });
-      const failureReason =
-        freePostLimit.reason ??
-        "You've used your free posts. Subscribe to continue posting.";
-      await db
-        .update(posts)
-        .set({
-          status: "failed",
-          failureReason,
-          updatedAt: new Date(),
-        })
-        .where(eq(posts.id, postId));
-      return {
-        success: false,
-        error: failureReason,
-        results: [],
-      };
-    }
-  }
+  // Free-tier quota is charged once when the user submits the post
+  // (createPost / updatePost / updateAndPublish / postAgain) — never here.
+  // This function runs multiple times per post (per-platform progress calls,
+  // safety-net republish, retries, cron) and must not gate or count quota.
 
   let publicationsWithAccounts = await db
     .select({
@@ -282,11 +256,19 @@ export async function executePublish(
     }
   }
 
-  // Mark post and pending publications as "publishing" so UI shows progress and we avoid double-publish
+  // Mark post and pending publications as "publishing" so UI shows progress and we avoid double-publish.
+  // Never demote an already published/partial post — follow-up calls on finished publications
+  // (per-platform progress, safety-net republish) would otherwise erase the status that
+  // marks the post as already counted against the free quota.
   await db
     .update(posts)
     .set({ status: "publishing", updatedAt: new Date() })
-    .where(eq(posts.id, postId));
+    .where(
+      and(
+        eq(posts.id, postId),
+        notInArray(posts.status, ["published", "partial"]),
+      ),
+    );
   const pendingPublicationIds = publicationsWithAccounts
     .filter((p) => p.publicationStatus === "pending")
     .map((p) => p.publicationId);
@@ -1547,9 +1529,6 @@ export async function executePublish(
       });
     }
 
-    if (succeeded > 0 && !isActiveTier(subscription.tier)) {
-      await incrementFreePostsUsed(post.userId);
-    }
   }
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/posts");

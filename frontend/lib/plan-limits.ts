@@ -186,9 +186,9 @@ export async function incrementFreePostsUsed(userId: string): Promise<void> {
   const sub = await getSubscriptionForUser(userId);
   if (isActiveTier(sub.tier)) return;
 
-  const used = await getFreePostsUsed(userId);
+  // Atomic increment — concurrent publishes must not read-modify-write.
   await db
     .update(userSettings)
-    .set({ freePostsUsed: used + 1 })
+    .set({ freePostsUsed: sql`${userSettings.freePostsUsed} + 1` })
     .where(eq(userSettings.userId, userId));
 }

@@ -21,8 +21,36 @@ import {
 } from "@/app/dashboard/posts/posts-list-data";
 import { isValidUUID } from "@/lib/validation";
 import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
+import {
+  checkFreePostLimit,
+  incrementFreePostsUsed,
+} from "@/lib/plan-limits";
+import { logPublishBlocked } from "@/lib/plan-analytics";
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
+
+/**
+ * Free-tier quota: exactly one free post is consumed when the user hits
+ * "Publish now" or "Schedule" (the submission actions below). The publish
+ * pipeline itself never counts — it may run many times per post (per-platform
+ * progress, safety-net republish, retries, cron).
+ * Returns an error message when the user is out of free posts, else null.
+ */
+async function gateFreePostQuota(
+  userId: string,
+  postId?: string,
+): Promise<string | null> {
+  const limit = await checkFreePostLimit(userId);
+  if (limit.allowed) return null;
+  logPublishBlocked("free_post_limit", userId, postId, {
+    used: limit.used,
+    limit: limit.limit,
+  });
+  return (
+    limit.reason ??
+    "You've used your free posts. Upgrade to continue posting."
+  );
+}
 
 export type PostAgainResult =
   | { success: true; newPostId: string }
@@ -138,6 +166,14 @@ export async function createPost(
     }
   }
 
+  // Charge one free post per "Publish now" / "Schedule" submission (drafts are free).
+  if (mode !== "draft") {
+    const quotaError = await gateFreePostQuota(session.user.id);
+    if (quotaError) {
+      return { success: false, error: quotaError };
+    }
+  }
+
   const status = mode === "draft" ? "draft" : "scheduled";
   const resolvedScheduledAt =
     mode === "now" ? new Date() : mode === "scheduled" ? scheduledAt : null;
@@ -167,6 +203,10 @@ export async function createPost(
         status: "pending" as const,
       })),
     );
+
+    if (mode !== "draft") {
+      await incrementFreePostsUsed(session.user.id);
+    }
 
     if (mode === "now") {
       const skipPublish =
@@ -341,6 +381,12 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
 
   const mediaIds = post.mediaIds ?? [];
 
+  // "Post again" publishes a brand-new post — costs one free post.
+  const quotaError = await gateFreePostQuota(session.user.id, postId);
+  if (quotaError) {
+    return { success: false, error: quotaError };
+  }
+
   try {
     const [newPost] = await db
       .insert(posts)
@@ -366,6 +412,8 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
         status: "pending" as const,
       })),
     );
+
+    await incrementFreePostsUsed(session.user.id);
 
     const publishResult = await executePublish(newPost.id, session.user.id);
 
@@ -478,6 +526,16 @@ export async function updatePost(
       };
     }
 
+    // Scheduling a draft is a "Schedule" submission — costs one free post.
+    // Rescheduling an already-scheduled post (already charged) is free.
+    const chargesQuota = !!scheduledAt && existing.status === "draft";
+    if (chargesQuota) {
+      const quotaError = await gateFreePostQuota(session.user.id, postId);
+      if (quotaError) {
+        return { success: false, error: quotaError };
+      }
+    }
+
     if (finalMediaIds.length > 0) {
       const ownedMedia = await db
         .select({ id: mediaUploads.id })
@@ -559,6 +617,10 @@ export async function updatePost(
             eq(queuedPosts.userId, session.user.id),
           ),
         );
+    }
+
+    if (chargesQuota) {
+      await incrementFreePostsUsed(session.user.id);
     }
 
     revalidatePath("/dashboard");
@@ -911,6 +973,15 @@ export async function updateAndPublish(
   if (!result.success) {
     return result;
   }
+
+  // Publishing a draft now is a "Publish now" submission — costs one free post.
+  // (The updatePost call above ran with scheduledAt=null, so it charged nothing.)
+  const quotaError = await gateFreePostQuota(session.user.id, draftId);
+  if (quotaError) {
+    return { success: false, error: quotaError };
+  }
+  await incrementFreePostsUsed(session.user.id);
+
   try {
     const publishResult = await executePublish(draftId, session.user.id);
     const succeededCount =
