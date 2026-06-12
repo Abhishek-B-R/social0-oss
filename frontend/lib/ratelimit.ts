@@ -1,15 +1,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
+import { redis } from "@/lib/redis";
 
-function makeRedis(): Redis | null {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
-  return new Redis({ url, token });
-}
-
-// Exported so other modules (e.g. webhook idempotency) can reuse the same instance
-export const redis = makeRedis();
+export { redis };
 
 // 400 uploads/hour per user (supports bulk sessions: ~50 images × 8 sessions)
 export const uploadLimiter = redis

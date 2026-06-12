@@ -2,9 +2,13 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP } from "better-auth/plugins";
 import { db } from "@/db";
+import { createAuthSecondaryStorage } from "@/lib/auth-secondary-storage";
 import { env } from "@/lib/env";
 import { sendEmail } from "@/lib/mail";
+import { redis } from "@/lib/redis";
 import { user, session, account, verification } from "@/db/schema";
+
+const secondaryStorage = redis ? createAuthSecondaryStorage(redis) : undefined;
 
 const subjects: Record<string, string> = {
   "sign-in": "Your Social0 sign-in code",
@@ -58,4 +62,21 @@ export const auth = betterAuth({
       // Better Auth maps Google profile (name, email, image) to the user record by default on sign-in.
     },
   },
+  ...(secondaryStorage
+    ? {
+        secondaryStorage,
+        session: {
+          // Keep Postgres as source of truth; Redis serves hot session reads.
+          storeSessionInDatabase: true,
+          cookieCache: {
+            enabled: true,
+            maxAge: 5 * 60,
+            strategy: "jwe" as const,
+          },
+        },
+        rateLimit: {
+          storage: "secondary-storage" as const,
+        },
+      }
+    : {}),
 });

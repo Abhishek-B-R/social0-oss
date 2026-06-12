@@ -35,7 +35,7 @@ const envSchema = z.object({
   R2_BUCKET_NAME: z.string().optional(),
   R2_PUBLIC_URL: z.string().url().optional(),
   R2_ENDPOINT: z.string().url().optional(),
-  // Upstash Redis for rate limiting (optional — rate limiting is skipped if not set)
+  // Upstash Redis for session cache, rate limiting, and webhooks (optional)
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
   // Resend (OTP / transactional email)
