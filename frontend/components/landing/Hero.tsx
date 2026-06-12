@@ -2,14 +2,7 @@
 
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
-import { XIcon, BlueskyIcon, LinkedInIcon, ThreadsIcon } from "./PlatformIcons";
-
-const targetPlatforms = [
-  { icon: XIcon, name: "Twitter" },
-  { icon: BlueskyIcon, name: "Bluesky" },
-  { icon: LinkedInIcon, name: "LinkedIn" },
-  { icon: ThreadsIcon, name: "Threads" },
-];
+import { FlowAnimation } from "./FlowAnimation";
 
 export function Hero({ signedIn = false }: { signedIn?: boolean }) {
   return (
@@ -52,12 +45,12 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
                   href="/dashboard"
                   className="inline-flex items-center gap-2 rounded-[10px] bg-foreground px-7 py-3.5 text-[15px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
                 >
-                  {signedIn ? "Go to dashboard" : "Start for free"}
+                  {signedIn ? "Go to dashboard" : "Start posting"}
                   <span aria-hidden="true">→</span>
                 </Link>
                 <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <CheckCircle className="h-3.5 w-3.5" /> 7-day free trial ·
-                  Cancel anytime
+                  <CheckCircle className="h-3.5 w-3.5" /> 10 free posts · No
+                  credit card required
                 </span>
               </div>
               {/* Social proof — under CTA to reinforce action */}
@@ -68,64 +61,10 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
             </div>
           </div>
 
-          {/* Right column - Mini Dashboard Mockup */}
-          {/* Dark mode: light mockup for contrast | Light mode: dark mockup */}
-          <div className="hidden overflow-hidden rounded-2xl border border-white/8 bg-[#0A0A0A] shadow-[0_40px_80px_rgba(0,0,0,0.18)] dark:border-border dark:bg-[#FAFAF8] dark:shadow-[0_40px_80px_rgba(0,0,0,0.12)] lg:block">
-            {/* Fake browser bar */}
-            <div className="flex items-center gap-2 border-b border-white/6 bg-[#141414] px-4 py-3 dark:border-border dark:bg-[#F0EEE9]">
-              <div className="flex gap-1.5">
-                <div className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]" />
-                <div className="h-2.5 w-2.5 rounded-full bg-[#FFBD2E]" />
-                <div className="h-2.5 w-2.5 rounded-full bg-[#28CA41]" />
-              </div>
-              <div className="ml-3 rounded bg-white/5 px-3 py-1 font-mono text-[11px] text-white/25 dark:bg-black/4 dark:text-black/30">
-                social0.app/compose
-              </div>
-            </div>
-
-            {/* Composer */}
-            <div className="p-5">
-              <div className="rounded-xl border border-white/6 bg-[#141414] p-5 dark:border-transparent dark:bg-white dark:shadow-sm">
-                <p className="mb-4 text-[14px] leading-relaxed text-white/80 dark:text-[#0A0A0A]/80">
-                  I used to spend 40 minutes copy-pasting every post into 4
-                  different apps 😩
-                  <br />
-                  <br />
-                  Now I write it once, hit publish, and it&apos;s everywhere.
-                  <br />
-                  <br />
-                  Best part? My reach tripled — same content, every platform.
-                  <br />
-                  #buildinpublic #indiehacker
-                </p>
-
-                {/* Platform target pills with real icons */}
-                <div className="mb-4 flex flex-wrap gap-2">
-                  {targetPlatforms.map((platform) => (
-                    <span
-                      key={platform.name}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-white/8 px-2.5 py-1 text-[11px] font-medium text-white/60 dark:bg-black/5 dark:text-[#0A0A0A]/60"
-                    >
-                      <platform.icon className="h-3 w-3" />
-                      {platform.name}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Bottom row */}
-                <div className="flex items-center justify-between">
-                  <span className="rounded bg-white/15 px-2.5 py-1 font-mono text-[11px] text-white/50 dark:bg-black/4 dark:text-black/50">
-                    Tomorrow 9:00 AM
-                  </span>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-emerald-500"
-                  >
-                    Publish now
-                  </button>
-                </div>
-              </div>
-            </div>
+          {/* Right column - Animated beam: you → Social0 → every platform */}
+          {/* Inverted vs page theme: dark card on light theme, light card on dark */}
+          <div className="hidden self-center lg:block">
+            <FlowAnimation className="shadow-[0_40px_80px_rgba(0,0,0,0.18)] dark:shadow-[0_40px_80px_rgba(0,0,0,0.12)]" />
           </div>
         </div>
       </div>
