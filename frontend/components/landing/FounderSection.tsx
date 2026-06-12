@@ -94,7 +94,7 @@ export function FounderSection() {
               </div>
               <div className="hidden h-10 w-px bg-border md:block" />
               <div className="flex items-center gap-2 text-[14px] text-muted-foreground">
-                <span className="font-semibold text-foreground">6,500+</span>
+                <span className="font-semibold text-foreground">7,500+</span>
                 <span>people following the journey</span>
               </div>
             </div>

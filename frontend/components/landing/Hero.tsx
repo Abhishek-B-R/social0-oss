@@ -83,99 +83,44 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
               </div>
             </div>
 
-            {/* Composer — mirrors the real /dashboard/create form */}
+            {/* Composer */}
             <div className="p-5">
               <div className="rounded-xl border border-white/6 bg-[#141414] p-5 dark:border-transparent dark:bg-white dark:shadow-sm">
-                {/* Header row, like the real composer card */}
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-[13px] font-semibold text-white/90 dark:text-[#0A0A0A]/90">
-                    What do you want to post?
-                  </span>
-                  <span className="text-[11px] text-emerald-400/80 dark:text-emerald-600/80">
-                    Draft saved ✓
-                  </span>
-                </div>
+                <p className="mb-4 text-[14px] leading-relaxed text-white/80 dark:text-[#0A0A0A]/80">
+                  Just shipped Social0 🚀
+                  <br />
+                  <br />
+                  Post to X, LinkedIn, Threads, Bluesky and more at once.
+                  <br />
+                  <br />
+                  No tab switching. No copy-paste. <br />
+                  #buildinpublic #indiehacker
+                </p>
 
-                {/* Textarea look-alike */}
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 dark:border-black/10 dark:bg-black/[0.02]">
-                  <p className="text-[14px] leading-relaxed text-white/85 dark:text-[#0A0A0A]/85">
-                    Just shipped Social0 🚀
-                    <br />
-                    <br />
-                    Post to X, LinkedIn, Threads, Bluesky and more at once.
-                    <br />
-                    <br />
-                    No tab switching. No copy-paste.
-                    <br />
-                    #buildinpublic #indiehacker
-                    <span className="ml-0.5 inline-block h-[14px] w-[2px] animate-pulse bg-emerald-400 align-middle dark:bg-emerald-600" />
-                  </p>
-                </div>
-
-                {/* Character counter, like CaptionCounter */}
-                <div className="mt-1.5 mb-4 flex justify-end">
-                  <span className="font-mono text-[10px] text-white/30 dark:text-black/35">
-                    142 / 280 — fits every platform ✓
-                  </span>
-                </div>
-
-                {/* Selected accounts */}
-                <div className="mb-2 text-[10px] font-medium uppercase tracking-widest text-white/30 dark:text-black/35">
-                  Posting to
-                </div>
+                {/* Platform target pills with real icons */}
                 <div className="mb-4 flex flex-wrap gap-2">
                   {targetPlatforms.map((platform) => (
                     <span
                       key={platform.name}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-white/75 dark:border-emerald-600/30 dark:bg-emerald-600/10 dark:text-[#0A0A0A]/70"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white/8 px-2.5 py-1 text-[11px] font-medium text-white/60 dark:bg-black/5 dark:text-[#0A0A0A]/60"
                     >
                       <platform.icon className="h-3 w-3" />
                       {platform.name}
-                      <span className="text-[9px] text-emerald-400 dark:text-emerald-600">
-                        ✓
-                      </span>
                     </span>
                   ))}
-                  <span className="inline-flex items-center rounded-full border border-dashed border-white/15 px-2.5 py-1 text-[11px] font-medium text-white/40 dark:border-black/15 dark:text-black/40">
-                    +5 more
-                  </span>
                 </div>
 
                 {/* Bottom row */}
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/6 pt-4 dark:border-black/8">
-                  <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-white/10 px-2 py-1.5 font-mono text-[10px] text-white/50 dark:border-black/10 dark:text-black/50">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 dark:bg-emerald-600" />
+                <div className="flex items-center justify-between">
+                  <span className="rounded bg-white/15 px-2.5 py-1 font-mono text-[11px] text-white/50 dark:bg-black/4 dark:text-black/50">
                     Tomorrow 9:00 AM
                   </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="whitespace-nowrap rounded-lg border border-white/10 px-3 py-2 text-[12px] font-medium text-white/60 transition-colors hover:bg-white/5 dark:border-black/10 dark:text-black/55 dark:hover:bg-black/5"
-                    >
-                      Schedule
-                    </button>
-                    <button
-                      type="button"
-                      className="whitespace-nowrap rounded-lg bg-emerald-600 px-3.5 py-2 text-[12px] font-semibold text-white shadow-[0_4px_14px_rgba(16,185,129,0.35)] transition-colors hover:bg-emerald-500"
-                    >
-                      Publish now
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Success toast — the payoff moment */}
-              <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 dark:border-emerald-600/20 dark:bg-emerald-600/8">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white">
-                  ✓
-                </span>
-                <div>
-                  <p className="text-[12px] font-medium text-white/85 dark:text-[#0A0A0A]/85">
-                    Published to 4 platforms
-                  </p>
-                  <p className="text-[11px] text-white/35 dark:text-black/40">
-                    X · Bluesky · LinkedIn · Threads — just now
-                  </p>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-emerald-500"
+                  >
+                    Publish now
+                  </button>
                 </div>
               </div>
             </div>
