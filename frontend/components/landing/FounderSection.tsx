@@ -100,27 +100,6 @@ export function FounderSection() {
             </div>
           </div>
         </div>
-
-        {/* Stats strip */}
-        <div className="mt-14 flex flex-wrap items-center justify-center gap-10 border-t border-border pt-10 text-center md:justify-start">
-          <div>
-            <div className="text-3xl font-semibold tracking-tight text-foreground">
-              9
-            </div>
-            <div className="text-[13px] text-muted-foreground">
-              platforms supported
-            </div>
-          </div>
-          <div className="h-10 w-px bg-border" />
-          <div>
-            <div className="text-3xl font-semibold tracking-tight text-foreground">
-              1
-            </div>
-            <div className="text-[13px] text-muted-foreground">
-              Built by a solo founder
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );

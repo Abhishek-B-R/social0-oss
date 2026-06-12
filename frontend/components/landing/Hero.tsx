@@ -87,13 +87,15 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
             <div className="p-5">
               <div className="rounded-xl border border-white/6 bg-[#141414] p-5 dark:border-transparent dark:bg-white dark:shadow-sm">
                 <p className="mb-4 text-[14px] leading-relaxed text-white/80 dark:text-[#0A0A0A]/80">
-                  Just shipped Social0 🚀
+                  I used to spend 40 minutes copy-pasting every post into 4
+                  different apps 😩
                   <br />
                   <br />
-                  Post to X, LinkedIn, Threads, Bluesky and more at once.
+                  Now I write it once, hit publish, and it&apos;s everywhere.
                   <br />
                   <br />
-                  No tab switching. No copy-paste. <br />
+                  Best part? My reach tripled — same content, every platform.
+                  <br />
                   #buildinpublic #indiehacker
                 </p>
 
