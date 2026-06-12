@@ -14,7 +14,11 @@ import { getSubscriptionForUser } from "@/lib/subscription";
 import { getPlanLimits } from "@/lib/plans";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import type { SubscriptionState } from "@/lib/subscription";
-import { checkAccountLimits, checkTwitterTweetLimit } from "@/lib/plan-limits";
+import {
+  checkAccountLimits,
+  checkFreePostLimit,
+  checkTwitterTweetLimit,
+} from "@/lib/plan-limits";
 import type {
   AccountLimitResult,
   TwitterTweetLimitResult,
@@ -270,14 +274,11 @@ export async function loadConnectionsPageData(): Promise<LoadConnectionsPageData
     ok: true,
     data: {
       accounts: mapped,
-      accountLimit:
-        accountLimit.currentTotal >= accountLimit.limitTotal
-          ? {
-              currentTotal: accountLimit.currentTotal,
-              limitTotal: accountLimit.limitTotal,
-              hasUsedTrial: accountLimit.hasUsedTrial,
-            }
-          : undefined,
+      accountLimit: {
+        currentTotal: accountLimit.currentTotal,
+        limitTotal: accountLimit.limitTotal,
+        hasUsedTrial: accountLimit.hasUsedTrial,
+      },
       hasUsedTrial: accountLimit.hasUsedTrial,
     },
   };

@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { signInUrl } from "@/lib/sign-in-url";
 import { db } from "@/db";
 import { connectedAccounts, account } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -50,7 +51,7 @@ export default async function SettingsPage() {
   const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session) {
-    redirect("/");
+    redirect(signInUrl("/dashboard/settings"));
   }
 
   const rawTimeZones =

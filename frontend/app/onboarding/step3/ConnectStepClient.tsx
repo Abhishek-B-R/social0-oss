@@ -93,31 +93,22 @@ export function ConnectStepClient({
           Link a social account to schedule and publish from Social0.
         </p>
 
+        {limitTotal > 0 && (
+          <p className="text-center text-sm text-muted-foreground mb-4">
+            <span className="font-medium text-foreground">
+              {activeAccounts.length}/{limitTotal} accounts connected
+            </span>
+          </p>
+        )}
         {atLimit && (
           <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 text-center mb-4">
-            {limitTotal === 0 ? (
-              <>
-                {hasUsedTrial
-                  ? "Upgrade to a plan to connect accounts and start posting."
-                  : "Start your 7-day free trial to connect accounts and start posting. No charge until the trial ends."}{" "}
-                <Link
-                  href="/dashboard/billing"
-                  className="font-medium underline underline-offset-2 hover:no-underline"
-                >
-                  {hasUsedTrial ? "Upgrade" : "Start trial"} →
-                </Link>
-              </>
-            ) : (
-              <>
-                You&apos;ve reached your {limitTotal} account limit.{" "}
-                <Link
-                  href="/dashboard/billing"
-                  className="font-medium underline underline-offset-2 hover:no-underline"
-                >
-                  Upgrade →
-                </Link>
-              </>
-            )}
+            You&apos;ve reached your {limitTotal} account limit.{" "}
+            <Link
+              href="/dashboard/billing"
+              className="font-medium underline underline-offset-2 hover:no-underline"
+            >
+              Upgrade →
+            </Link>
           </div>
         )}
 

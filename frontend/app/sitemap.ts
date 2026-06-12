@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { ALTERNATIVE_SLUGS } from "@/lib/content/alternatives";
 import { FEATURE_SLUGS } from "@/lib/content/features";
+import { PSEO_PAGES_ENABLED } from "@/lib/content/pseo-enabled";
 import { siteUrl } from "@/lib/seo";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -14,18 +15,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 1,
     },
-    {
-      url: `${base}/alternatives`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${base}/features`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
+    ...(PSEO_PAGES_ENABLED
+      ? [
+          {
+            url: `${base}/alternatives`,
+            lastModified: now,
+            changeFrequency: "weekly" as const,
+            priority: 0.8,
+          },
+          {
+            url: `${base}/features`,
+            lastModified: now,
+            changeFrequency: "weekly" as const,
+            priority: 0.8,
+          },
+        ]
+      : []),
     {
       url: `${base}/privacy`,
       lastModified: now,
@@ -46,21 +51,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
-  const alternativePages: MetadataRoute.Sitemap = ALTERNATIVE_SLUGS.map(
-    (slug) => ({
-      url: `${base}/alternatives/${slug}`,
-      lastModified: now,
-      changeFrequency: "monthly" as const,
-      priority: 0.7,
-    }),
-  );
+  const alternativePages: MetadataRoute.Sitemap = PSEO_PAGES_ENABLED
+    ? ALTERNATIVE_SLUGS.map((slug) => ({
+        url: `${base}/alternatives/${slug}`,
+        lastModified: now,
+        changeFrequency: "monthly" as const,
+        priority: 0.7,
+      }))
+    : [];
 
-  const featurePages: MetadataRoute.Sitemap = FEATURE_SLUGS.map((slug) => ({
-    url: `${base}/features/${slug}`,
-    lastModified: now,
-    changeFrequency: "monthly" as const,
-    priority: 0.7,
-  }));
+  const featurePages: MetadataRoute.Sitemap = PSEO_PAGES_ENABLED
+    ? FEATURE_SLUGS.map((slug) => ({
+        url: `${base}/features/${slug}`,
+        lastModified: now,
+        changeFrequency: "monthly" as const,
+        priority: 0.7,
+      }))
+    : [];
 
   const llmsPage: MetadataRoute.Sitemap = [
     {

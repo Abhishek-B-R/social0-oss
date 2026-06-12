@@ -183,6 +183,55 @@
       "when": 1773400000000,
       "tag": "0026_publications_set_null_on_account_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1773500000000,
+      "tag": "0027_user_email_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1773600000000,
+      "tag": "0028_add_has_used_trial",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1773700000000,
+      "tag": "0029_add_subscription_cancellations",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1773800000000,
+      "tag": "0030_add_pending_plan_tier",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1773900000000,
+      "tag": "0031_add_downgrade_reason",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1774000000000,
+      "tag": "0033_add_subscription_cancel_at_period_end",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1774100000000,
+      "tag": "0034_add_free_posts_used",
+      "breakpoints": true
     }
   ]
 }

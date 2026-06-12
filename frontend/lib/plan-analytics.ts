@@ -16,7 +16,7 @@ function logEvent(
 
 /** Publish was blocked (free tier or tweet limit). */
 export function logPublishBlocked(
-  reason: "subscription" | "tweet_limit",
+  reason: "subscription" | "tweet_limit" | "free_post_limit",
   userId: string,
   postId?: string,
   extra?: { used?: number; limit?: number },

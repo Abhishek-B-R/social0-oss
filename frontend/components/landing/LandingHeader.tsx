@@ -16,42 +16,16 @@ const landingNavLinks: NavLink[] = [
   { href: "/#faq", label: "FAQ" },
 ];
 
-const marketingNavLinks: NavLink[] = [
-  { href: "/features", label: "Schedulers" },
-  { href: "/alternatives", label: "Alternatives" },
-  { href: "/#pricing", label: "Pricing" },
-  { href: "/#faq", label: "FAQ" },
-];
-
-function isMarketingPath(pathname: string | null): boolean {
-  return (
-    pathname === "/features" ||
-    pathname === "/alternatives" ||
-    pathname?.startsWith("/features/") === true ||
-    pathname?.startsWith("/alternatives/") === true
-  );
-}
-
 /** On /home, same-page anchors must use /home#… so they don't hit / and redirect logged-in users. */
 function landingNavHref(href: string, pathname: string | null) {
   if (pathname === "/home" && href.startsWith("/#")) {
     return `/home${href.slice(1)}`;
   }
-  if (isMarketingPath(pathname) && href.startsWith("/#")) {
-    return href;
-  }
   return href;
 }
 
-function navLinksForPath(pathname: string | null): NavLink[] {
-  if (isMarketingPath(pathname)) {
-    return marketingNavLinks;
-  }
-  return [
-    ...landingNavLinks,
-    { href: "/features", label: "Guides" },
-    { href: "/alternatives", label: "Compare" },
-  ];
+function navLinksForPath(_pathname: string | null): NavLink[] {
+  return landingNavLinks;
 }
 
 export function LandingHeader() {
@@ -109,13 +83,7 @@ export function LandingHeader() {
             />
           </span>
           <Link
-            href={
-              isMarketingPath(pathname)
-                ? "/"
-                : pathname === "/home"
-                  ? "/home"
-                  : "/"
-            }
+            href={pathname === "/home" ? "/home" : "/"}
             className="flex items-center gap-2"
           >
             <span className="font-serif text-[22px] tracking-tight text-foreground">
@@ -177,7 +145,7 @@ export function LandingHeader() {
             </Link>
           ) : (
             <Link
-              href="/auth"
+              href="/dashboard"
               className="inline-flex items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-[14px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
             >
               Get started
@@ -256,7 +224,7 @@ export function LandingHeader() {
               </Link>
             ) : (
               <Link
-                href="/auth"
+                href="/dashboard"
                 className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-[14px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
                 onClick={() => setMobileMenuOpen(false)}
               >

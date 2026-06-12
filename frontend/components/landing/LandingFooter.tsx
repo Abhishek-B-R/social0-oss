@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const footerLinks = [
-  { href: "/features", label: "Features" },
-  { href: "/alternatives", label: "Alternatives" },
+  // { href: "/features", label: "Features" },
+  // { href: "/alternatives", label: "Alternatives" },
   { href: "/#platforms", label: "Platforms" },
   { href: "/#pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },

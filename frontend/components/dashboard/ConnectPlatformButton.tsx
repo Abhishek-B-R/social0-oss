@@ -7,6 +7,7 @@ import { PRE_CONNECT } from "@/lib/preconnect";
 import { BlueskyByokModal } from "@/components/BlueskyByokModal";
 import { PreConnectModal } from "@/components/PreConnectModal";
 import { InstagramConnectionModal } from "@/components/InstagramConnectionModal";
+import { signInUrl } from "@/lib/sign-in-url";
 
 type Platform = (typeof PLATFORMS)[number];
 
@@ -25,6 +26,7 @@ export function ConnectPlatformButton({
   returnTo,
   disabled = false,
   onDisabledClick,
+  requireAuth = false,
 }: {
   platform: Platform;
   size?: "default" | "sm";
@@ -35,6 +37,8 @@ export function ConnectPlatformButton({
   disabled?: boolean;
   /** Called when user clicks a disabled button, e.g. to show a plan-limit toast */
   onDisabledClick?: () => void;
+  /** When true, redirect to sign-in instead of starting OAuth */
+  requireAuth?: boolean;
 }) {
   const [showBlueskyModal, setShowBlueskyModal] = useState(false);
   const [showPreConnectModal, setShowPreConnectModal] = useState(false);
@@ -44,6 +48,14 @@ export function ConnectPlatformButton({
   const isNativeDisabled = isLoading || (disabled && !onDisabledClick);
 
   const handleConnect = () => {
+    if (requireAuth) {
+      const callback =
+        returnTo && returnTo.startsWith("/")
+          ? returnTo
+          : "/dashboard/connections";
+      window.location.href = signInUrl(callback);
+      return;
+    }
     if (disabled) {
       onDisabledClick?.();
       return;

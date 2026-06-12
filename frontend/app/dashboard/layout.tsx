@@ -5,8 +5,12 @@ import { DevScheduledPostPoller } from "@/components/DevScheduledPostPoller";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardBottomNav } from "@/components/dashboard/DashboardBottomNav";
 import { SubscriptionSync } from "@/components/dashboard/SubscriptionSync";
+import { GuestBanner } from "@/components/dashboard/GuestBanner";
+import { FreePostsBanner } from "@/components/dashboard/FreePostsBanner";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { getOnboardingStatus } from "@/app/actions/onboarding";
+import { checkFreePostLimit } from "@/lib/plan-limits";
+import { isActiveTier } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -22,49 +26,74 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  let session: Awaited<ReturnType<typeof auth.api.getSession>>;
+  let session: Awaited<ReturnType<typeof auth.api.getSession>> | null = null;
   try {
     session = await auth.api.getSession({ headers: await headers() });
   } catch (e) {
     console.error("[DashboardLayout] Session lookup failed:", e);
-    redirect("/");
+    session = null;
   }
 
-  if (!session) {
-    redirect("/");
-  }
+  const isGuest = !session;
 
-  if (session.user.emailVerified === false) {
+  if (session?.user.emailVerified === false) {
     redirect(
       `/auth/verify-email?email=${encodeURIComponent(session.user.email ?? "")}`,
     );
   }
 
-  const onboarding = await getOnboardingStatus();
-  // Allow connect flow (e.g. Instagram page selection) so users can complete OAuth and return to onboarding/step3 or connections
-  const pathname = (await headers()).get("x-pathname") ?? "";
-  const isConnectFlow = pathname.startsWith("/dashboard/connect");
-  if (onboarding?.shouldOnboard && !isConnectFlow) {
-    redirect("/onboarding");
-  }
+  let planLabel = "Guest";
+  let subscriptionTier: string | null = null;
+  let freePostsBanner: { remaining: number; limit: number } | null = null;
 
-  const subscription = await getSubscriptionForUser(session.user.id);
-  const planLabel = getPlanLabel(subscription.tier);
+  if (session) {
+    const onboarding = await getOnboardingStatus();
+    const pathname = (await headers()).get("x-pathname") ?? "";
+    const isConnectFlow = pathname.startsWith("/dashboard/connect");
+    if (onboarding?.shouldOnboard && !isConnectFlow) {
+      redirect("/onboarding");
+    }
+
+    const subscription = await getSubscriptionForUser(session.user.id);
+    subscriptionTier = subscription.tier;
+    planLabel = getPlanLabel(subscription.tier);
+
+    if (!isActiveTier(subscription.tier)) {
+      const freeLimit = await checkFreePostLimit(session.user.id);
+      freePostsBanner = {
+        remaining: freeLimit.remaining,
+        limit: freeLimit.limit,
+      };
+    }
+  }
 
   return (
     <div
       suppressHydrationWarning
       className="flex h-screen overflow-hidden bg-bg"
     >
-      <SubscriptionSync tier={subscription.tier} />
-      <DashboardSidebar user={session.user} planLabel={planLabel} />
+      {session && subscriptionTier && (
+        <SubscriptionSync tier={subscriptionTier} />
+      )}
+      <DashboardSidebar
+        user={session?.user ?? null}
+        planLabel={planLabel}
+        isGuest={isGuest}
+      />
       <main className="flex flex-1 flex-col min-h-0 overflow-y-auto pb-80 mb-20 lg:mb-0 lg:pb-0">
         <div className="mx-auto flex min-h-full w-full max-w-[1200px] 2xl:max-w-7xl flex-1 flex-col px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-12 sm:pl-4 sm:pr-6 sm:pt-6 sm:pb-6 lg:px-8 lg:py-8 lg:pb-8">
+          {isGuest && <GuestBanner />}
+          {freePostsBanner && (
+            <FreePostsBanner
+              remaining={freePostsBanner.remaining}
+              limit={freePostsBanner.limit}
+            />
+          )}
           {children}
         </div>
       </main>
       <DashboardBottomNav />
-      <DevScheduledPostPoller />
+      {session && <DevScheduledPostPoller />}
     </div>
   );
 }

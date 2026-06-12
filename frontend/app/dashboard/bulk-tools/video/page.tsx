@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { signInUrl } from "@/lib/sign-in-url";
 import { BulkToolsVideoWithAccounts } from "../BulkToolsVideoWithAccounts";
 import { CONTENT_TYPES } from "@/lib/content-types";
 import { checkBulkToolsAllowed } from "@/lib/plan-limits";
@@ -11,7 +12,7 @@ const VIDEO_PLATFORMS =
 
 export default async function BulkToolsVideoPage() {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/");
+  if (!session) redirect(signInUrl("/dashboard/bulk-tools/video"));
 
   const bulkAllowed = await checkBulkToolsAllowed(session.user.id);
   if (!bulkAllowed) redirect("/dashboard/billing?upgrade=1");

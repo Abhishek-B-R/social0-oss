@@ -5,6 +5,12 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import {
+  freePublishBlockReason,
+  getFreePostsRemaining,
+  isFreePublishBlocked,
+} from "@/lib/free-tier-publish";
+import { signInUrl } from "@/lib/sign-in-url";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import {
@@ -114,6 +120,8 @@ export function ImagePostForm({
   allowAutoPlug = true,
   supportedPlatforms,
   subscriptionTier = "free",
+  freePostsUsed = 0,
+  isGuest = false,
 }: {
   accounts: Account[];
   accountsLoading?: boolean;
@@ -127,6 +135,8 @@ export function ImagePostForm({
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
   subscriptionTier?: "free" | "starter" | "growth" | "pro";
+  freePostsUsed?: number;
+  isGuest?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -975,6 +985,12 @@ export function ImagePostForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     toast.dismiss();
+    if (isGuest) {
+      window.location.href = signInUrl(
+        window.location.pathname + window.location.search,
+      );
+      return;
+    }
 
     if (!content.trim()) {
       setShowCaptionError(true);
@@ -1707,7 +1723,12 @@ export function ImagePostForm({
             disabledAccountIds={mediaSizeExceeded.accountIds}
             disabledReasons={mediaSizeExceeded.reasons}
             disabledAccountDefaultReason="Image exceeds this platform's size limit"
-            showUpgradeCta={subscriptionTier === "free"}
+            isGuest={isGuest}
+            freePostsRemaining={
+              !isGuest && subscriptionTier === "free"
+                ? getFreePostsRemaining(subscriptionTier, freePostsUsed)
+                : null
+            }
           />
 
           <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm space-y-4">
@@ -2382,8 +2403,22 @@ export function ImagePostForm({
           }
           hasAccountSelected={selectedIds.size > 0}
           submitDisabledReason={submitDisabledReason}
-          primaryActionDisabled={subscriptionTier === "free" && mode !== "draft"}
-          primaryActionDisabledReason={subscriptionTier === "free" && mode !== "draft" ? "Subscribe to a plan to post" : null}
+          primaryActionDisabled={isFreePublishBlocked(
+            subscriptionTier,
+            freePostsUsed,
+            mode,
+          )}
+          primaryActionDisabledReason={freePublishBlockReason(
+            subscriptionTier,
+            freePostsUsed,
+            mode,
+          )}
+          isGuest={isGuest}
+          freePostsRemaining={
+            !isGuest && subscriptionTier === "free"
+              ? getFreePostsRemaining(subscriptionTier, freePostsUsed)
+              : null
+          }
           use24HourTimeFormat={use24HourTimeFormat}
           dateFormat={dateFormat}
           timezone={timezone}

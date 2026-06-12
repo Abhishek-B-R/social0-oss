@@ -12,6 +12,7 @@ import { PostListCards } from "./PostListCards";
 import { Pagination } from "@/components/ui/Pagination";
 import { DOCS_POSTS_URL } from "@/lib/docs-url";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
+import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 
 type PostRow = {
   id: string;
@@ -88,6 +89,7 @@ export function PostsPageClient() {
   const [payload, setPayload] = useState<Awaited<
     ReturnType<typeof loadPostsPageData>
   > | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
 
   const sort = searchParams.get("sort") || "newest";
   const platform = searchParams.get("platform");
@@ -108,7 +110,9 @@ export function PostsPageClient() {
     });
     if (!result.ok) {
       if (result.error === "Unauthorized") {
-        router.replace("/");
+        setIsGuest(true);
+        setPayload(null);
+        setLoading(false);
         return;
       }
       setError(result.error);
@@ -136,8 +140,17 @@ export function PostsPageClient() {
 
   const hasActiveFilters = !!(platform || time || account);
 
-  if (loading && !payload) {
+  if (loading && !payload && !isGuest) {
     return <DashboardPageSkeleton message="Loading posts..." />;
+  }
+
+  if (isGuest) {
+    return (
+      <GuestPostsPageView
+        pageTitle="Posts"
+        pageDescription="View and manage your drafts, scheduled posts, and published content."
+      />
+    );
   }
 
   if (error || !payload?.ok || !hydrated) {

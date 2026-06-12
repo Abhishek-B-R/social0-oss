@@ -127,7 +127,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
             </ul>
 
             <Link
-              href={signedIn ? "/dashboard" : "/auth"}
+              href="/dashboard"
               className="block w-full rounded-[10px] border-2 border-foreground/10 bg-background py-3.5 text-center text-[14px] font-medium text-foreground transition-all hover:border-foreground/25 hover:bg-muted dark:border-white/10 dark:hover:border-white/20 dark:hover:bg-muted/50"
             >
               {signedIn
@@ -215,7 +215,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
             </ul>
 
             <Link
-              href={signedIn ? "/dashboard" : "/auth"}
+              href="/dashboard"
               className="relative z-10 block w-full rounded-[10px] bg-emerald-600 py-3.5 text-center text-[14px] font-medium text-white transition-all hover:-translate-y-px hover:bg-emerald-500 hover:shadow-[0_6px_20px_rgba(34,145,79,0.35)]"
             >
               {signedIn
@@ -273,7 +273,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
             </ul>
 
             <Link
-              href="/auth"
+              href="/dashboard"
               className="block w-full rounded-[10px] border-2 border-foreground/10 bg-background py-3.5 text-center text-[14px] font-medium text-foreground transition-all hover:border-foreground/25 hover:bg-muted dark:border-white/10 dark:hover:border-white/20 dark:hover:bg-muted/50"
             >
               Get started — 7-day free trial

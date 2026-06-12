@@ -29,9 +29,7 @@ export function OAuthErrorHandler({
           setMessage(
             messageParam
               ? decodeURIComponent(messageParam)
-              : hasUsedTrial
-                ? "Upgrade to a plan to connect accounts and start posting."
-                : "Start your 7-day free trial to connect accounts and start posting.",
+              : "You've reached your account limit. Upgrade to connect more accounts.",
           );
           break;
         case "oauth_failed":

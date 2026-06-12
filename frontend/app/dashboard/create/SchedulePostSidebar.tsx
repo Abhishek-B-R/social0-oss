@@ -2,10 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { format } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import type { PublishMode } from "@/app/actions/posts";
 import { formatDateTime, formatTimezoneLabel } from "@/lib/date-format";
+import { signInUrl } from "@/lib/sign-in-url";
+import { getPlanLimits } from "@/lib/plans";
 import { Settings, ListOrdered } from "lucide-react";
 
 export type SidebarAutoRepost = {
@@ -69,6 +72,10 @@ type SchedulePostSidebarProps = {
   /** Remember Auto-Repost & Auto-Plug: when checked, persist settings to localStorage */
   rememberAutoFeatures?: boolean;
   onRememberAutoFeaturesChange?: (checked: boolean) => void;
+  /** Guest browsing — show sign-in instead of publish actions. */
+  isGuest?: boolean;
+  /** Free-tier posts remaining (shown above actions for signed-in free users). */
+  freePostsRemaining?: number | null;
 };
 
 export function SchedulePostSidebar({
@@ -98,7 +105,10 @@ export function SchedulePostSidebar({
   onDeleteDraft,
   rememberAutoFeatures = false,
   onRememberAutoFeaturesChange,
+  isGuest = false,
+  freePostsRemaining = null,
 }: SchedulePostSidebarProps) {
+  const pathname = usePathname();
   const isScheduled = mode === "scheduled";
 
   const defaultScheduledAt = useMemo(() => {
@@ -316,43 +326,76 @@ export function SchedulePostSidebar({
 
         {!isScheduled ? (
           <div className="space-y-2">
-            <button
-              type="button"
-              onClick={handlePostNow}
-              disabled={
-                loading ||
-                !hasAccountSelected ||
-                submitDisabled ||
-                primaryActionDisabled
-              }
-              title={
-                loading
-                  ? undefined
-                  : primaryActionDisabled
-                    ? (primaryActionDisabledReason ?? undefined)
-                    : !hasAccountSelected
-                      ? "Select at least one account to post"
-                      : submitDisabled
-                        ? (submitDisabledReason ?? "Complete the form to post")
-                        : undefined
-              }
-              className="w-full rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-accent"
-            >
-              {loading ? "Saving..." : "Post now"}
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveDraft}
-              disabled={loading || submitDisabled}
-              className="w-full rounded-xl border border-border bg-bg-elevated py-3 font-medium text-text transition-colors hover:bg-bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Save to Drafts
-            </button>
-            {!hasAccountSelected && (
-              <p className="text-xs text-text-muted">
-                Select an account to post
-              </p>
+            {isGuest ? (
+              <>
+                <Link
+                  href={signInUrl(pathname)}
+                  className="flex w-full items-center justify-center rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover"
+                >
+                  Sign in to post
+                </Link>
+                <p className="text-xs text-center text-text-muted">
+                  Write your post now — sign in when you&apos;re ready to
+                  publish or save drafts.
+                </p>
+              </>
+            ) : (
+              <>
+                {typeof freePostsRemaining === "number" && (
+                  <p className="text-xs text-text-muted">
+                    {freePostsRemaining}/{getPlanLimits("free").maxFreePosts}{" "}
+                    free posts remaining
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={handlePostNow}
+                  disabled={
+                    loading ||
+                    !hasAccountSelected ||
+                    submitDisabled ||
+                    primaryActionDisabled
+                  }
+                  title={
+                    loading
+                      ? undefined
+                      : primaryActionDisabled
+                        ? (primaryActionDisabledReason ?? undefined)
+                        : !hasAccountSelected
+                          ? "Select at least one account to post"
+                          : submitDisabled
+                            ? (submitDisabledReason ??
+                              "Complete the form to post")
+                            : undefined
+                  }
+                  className="w-full rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-accent"
+                >
+                  {loading ? "Saving..." : "Post now"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  disabled={loading || submitDisabled}
+                  className="w-full rounded-xl border border-border bg-bg-elevated py-3 font-medium text-text transition-colors hover:bg-bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Save to Drafts
+                </button>
+                {!hasAccountSelected && (
+                  <p className="text-xs text-text-muted">
+                    Select an account to post
+                  </p>
+                )}
+              </>
             )}
+          </div>
+        ) : isGuest ? (
+          <div className="space-y-2">
+            <Link
+              href={signInUrl(pathname)}
+              className="flex w-full items-center justify-center rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover"
+            >
+              Sign in to schedule
+            </Link>
           </div>
         ) : (
           <div className="space-y-4">

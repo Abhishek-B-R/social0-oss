@@ -1,14 +1,8 @@
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { NewPostTypeSelector } from "./NewPostTypeSelector";
 import { DOCS_CREATE_TYPE_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
 
 export default async function NewPostPage() {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/");
-
   return (
     <div className="px-10">
       <div className="flex items-center gap-2">

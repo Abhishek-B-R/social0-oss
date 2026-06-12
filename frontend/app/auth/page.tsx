@@ -8,9 +8,8 @@ import { FcGoogle } from "react-icons/fc";
 import { IconEye, IconEyeOff } from "@tabler/icons-react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { signIn } from "@/lib/auth-client";
+import { resolveCallbackUrl } from "@/lib/sign-in-url";
 import { toast } from "sonner";
-
-const CALLBACK_URL = "/dashboard/composer";
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 const TIMEOUT_MS = 10_000;
 
@@ -83,6 +82,7 @@ function friendlyAuthError(err: unknown): string {
 
 function AuthPageContent() {
   const searchParams = useSearchParams();
+  const callbackUrl = resolveCallbackUrl(searchParams.get("callbackUrl"));
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [resetSuccess, setResetSuccess] = useState(false);
   useEffect(() => {
@@ -105,7 +105,7 @@ function AuthPageContent() {
     try {
       const { error } = await signIn.social({
         provider: "google",
-        callbackURL: CALLBACK_URL,
+        callbackURL: callbackUrl,
       });
       // If we actually got an error payload (no redirect happened), show it.
       if (error) {
@@ -141,13 +141,13 @@ function AuthPageContent() {
       const { error: err } = await signIn.email({
         email: normalizedEmail,
         password,
-        callbackURL: CALLBACK_URL,
+        callbackURL: callbackUrl,
       });
       if (err) {
         toast.error(friendlyAuthError(err.message ?? err));
         return;
       }
-      window.location.href = CALLBACK_URL;
+      window.location.href = callbackUrl;
     } catch (err) {
       const isTimeout =
         err instanceof Error &&

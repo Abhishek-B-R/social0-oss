@@ -17,6 +17,10 @@ export function useAccountsForForm(allowedPlatforms?: string[] | null) {
     toast.dismiss();
     try {
       const res = await fetch("/api/accounts", { credentials: "include" });
+      if (res.status === 401) {
+        setAccounts([]);
+        return;
+      }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? "Failed to load accounts");

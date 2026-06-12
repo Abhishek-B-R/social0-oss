@@ -31,6 +31,8 @@ export type CreatePostWithAccountsClientProps = {
   allowAutoRepost: boolean;
   allowAutoPlug: boolean;
   subscriptionTier?: SubscriptionTier;
+  freePostsUsed?: number;
+  isGuest?: boolean;
 };
 
 export function CreatePostWithAccountsClient({
@@ -45,6 +47,8 @@ export function CreatePostWithAccountsClient({
   allowAutoRepost,
   allowAutoPlug,
   subscriptionTier = "free",
+  freePostsUsed = 0,
+  isGuest = false,
 }: CreatePostWithAccountsClientProps) {
   const { accounts, loading } = useAccountsForForm(supportedPlatforms);
   const FormComponent = FORM_MAP[contentTypeSlug];
@@ -64,6 +68,8 @@ export function CreatePostWithAccountsClient({
         allowAutoPlug={allowAutoPlug}
         supportedPlatforms={supportedPlatforms}
         subscriptionTier={subscriptionTier}
+        freePostsUsed={freePostsUsed}
+        isGuest={isGuest}
       />
     );
   }
@@ -81,6 +87,8 @@ export function CreatePostWithAccountsClient({
       allowAutoPlug={allowAutoPlug}
       supportedPlatforms={supportedPlatforms}
       subscriptionTier={subscriptionTier}
+      freePostsUsed={freePostsUsed}
+      isGuest={isGuest}
     />
   );
 }

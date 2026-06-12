@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { PSEO_PAGES_ENABLED } from "@/lib/content/pseo-enabled";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { PseoJsonLd } from "@/components/seo/PseoJsonLd";
 import { FEATURES } from "@/lib/content/features";
@@ -24,6 +26,8 @@ export const metadata: Metadata = buildPageMetadata({
 });
 
 export default function FeaturesIndexPage() {
+  if (!PSEO_PAGES_ENABLED) notFound();
+
   const jsonLd = [
     buildWebPageJsonLd({
       name: "Social Media Scheduling Features | Social0",

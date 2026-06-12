@@ -9,6 +9,7 @@ import { PostListCards } from "../PostListCards";
 import { Pagination } from "@/components/ui/Pagination";
 import { MdQuestionMark } from "react-icons/md";
 import { DOCS_POSTS_POSTED_URL } from "@/lib/docs-url";
+import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,16 @@ export default async function PostedPostsPage({
     searchParams,
     auth.api.getSession({ headers: await headers() }),
   ]);
-  if (!session) return null;
+  if (!session) {
+    return (
+      <GuestPostsPageView
+        pageTitle="Posted"
+        pageDescription="Published posts"
+        promptTitle="Sign in to see your posted content"
+        promptDescription="Your published posts will appear here after you sign in."
+      />
+    );
+  }
 
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
 

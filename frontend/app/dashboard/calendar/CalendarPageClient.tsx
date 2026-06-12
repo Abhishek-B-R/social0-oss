@@ -7,11 +7,13 @@ import { CalendarClient, type PostForCalendar } from "./CalendarClient";
 import { DOCS_CALENDAR_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
+import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 
 export function CalendarPageClient() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [data, setData] = useState<{
     posts: PostForCalendar[];
     initialMonth: string;
@@ -27,7 +29,8 @@ export function CalendarPageClient() {
       if (cancelled) return;
       if (!result.ok) {
         if (result.error === "Unauthorized") {
-          router.replace("/");
+          setIsGuest(true);
+          setLoading(false);
           return;
         }
         setError(result.error);
@@ -42,8 +45,19 @@ export function CalendarPageClient() {
     };
   }, [router]);
 
-  if (loading) {
+  if (loading && !isGuest) {
     return <DashboardPageSkeleton message="Loading calendar..." />;
+  }
+
+  if (isGuest) {
+    return (
+      <GuestPostsPageView
+        pageTitle="Calendar"
+        pageDescription="View your scheduled and published posts by month, week, or day."
+        promptTitle="Sign in to see your calendar"
+        promptDescription="Your calendar will show scheduled and published posts once you sign in."
+      />
+    );
   }
 
   if (error || !data) {

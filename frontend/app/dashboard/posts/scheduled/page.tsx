@@ -10,6 +10,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { QueueSuccessBanner } from "./QueueSuccessBanner";
 import { MdQuestionMark } from "react-icons/md";
 import { DOCS_POSTS_SCHEDULED_URL } from "@/lib/docs-url";
+import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,16 @@ export default async function ScheduledPostsPage({
     searchParams,
     auth.api.getSession({ headers: await headers() }),
   ]);
-  if (!session) return null;
+  if (!session) {
+    return (
+      <GuestPostsPageView
+        pageTitle="Scheduled"
+        pageDescription="Posts scheduled for later"
+        promptTitle="Sign in to see scheduled posts"
+        promptDescription="Your scheduled posts will appear here after you sign in."
+      />
+    );
+  }
 
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
 

@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
+import { signInUrl } from "@/lib/sign-in-url";
 import Link from "next/link";
 import { getPostForEdit, getPostMedia } from "../../posts-list-data";
 import { EditPostWithAccountsClient } from "../../EditPostWithAccountsClient";
@@ -11,10 +12,11 @@ export default async function EditPostPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/");
-
-  const { id } = await params;
+  const [{ id }, session] = await Promise.all([
+    params,
+    auth.api.getSession({ headers: await headers() }),
+  ]);
+  if (!session) redirect(signInUrl(`/dashboard/posts/${id}/edit`));
   const post = await getPostForEdit(id, session.user.id);
   if (!post) notFound();
 

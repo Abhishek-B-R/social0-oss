@@ -11,6 +11,7 @@ export function ConnectionsPageClient() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [data, setData] = useState<
     Extract<
       Awaited<ReturnType<typeof loadConnectionsPageData>>,
@@ -25,7 +26,8 @@ export function ConnectionsPageClient() {
       if (cancelled) return;
       if (!result.ok) {
         if (result.error === "Unauthorized") {
-          router.replace("/");
+          setIsGuest(true);
+          setLoading(false);
           return;
         }
         setError(result.error);
@@ -44,11 +46,21 @@ export function ConnectionsPageClient() {
     return <DashboardPageSkeleton message="Loading connections..." />;
   }
 
-  if (error || !data) {
+  if (error) {
     return (
       <div className="rounded-xl border border-border bg-card p-6 text-sm text-foreground">
-        {error ?? "Could not load connections."}
+        {error}
       </div>
+    );
+  }
+
+  if (isGuest || !data) {
+    return (
+      <ConnectionsList
+        accounts={[]}
+        accountLimit={undefined}
+        requireAuth
+      />
     );
   }
 

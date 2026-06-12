@@ -285,6 +285,8 @@ export const userSettings = pgTable("user_settings", {
   downgradeReason: text("downgrade_reason"),
   /** True when user cancelled; access until subscription_expires_at. Cleared when sub ends or user undoes cancel. */
   subscriptionCancelAtPeriodEnd: boolean("subscription_cancel_at_period_end").default(false),
+  /** Lifetime posts used on the free tier (no reset). */
+  freePostsUsed: integer("free_posts_used").default(0).notNull(),
 });
 
 // ===== SUBSCRIPTION CANCELLATION FEEDBACK =====

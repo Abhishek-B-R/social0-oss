@@ -5,6 +5,7 @@ import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { PseoJsonLd } from "@/components/seo/PseoJsonLd";
 import { PseoFaq } from "@/components/landing/PseoFaq";
 import { PseoRelatedLinks } from "@/components/landing/PseoRelatedLinks";
+import { PSEO_PAGES_ENABLED } from "@/lib/content/pseo-enabled";
 import {
   ALTERNATIVE_SLUGS,
   getAlternative,
@@ -21,6 +22,7 @@ import {
 type PageProps = { params: Promise<{ slug: string }> };
 
 export async function generateStaticParams() {
+  if (!PSEO_PAGES_ENABLED) return [];
   return ALTERNATIVE_SLUGS.map((slug) => ({ slug }));
 }
 
@@ -42,6 +44,8 @@ export async function generateMetadata({
 }
 
 export default async function AlternativePage({ params }: PageProps) {
+  if (!PSEO_PAGES_ENABLED) notFound();
+
   const { slug } = await params;
   const page = getAlternative(slug);
   if (!page) notFound();

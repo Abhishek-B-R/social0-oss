@@ -26,8 +26,10 @@ import { truncateCaptionForPlatform } from "@/lib/platform-limits";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import {
   checkAutoPlugAllowed,
+  checkFreePostLimit,
   checkResurfaceAllowed,
   checkTwitterTweetLimit,
+  incrementFreePostsUsed,
 } from "@/lib/plan-limits";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { isActiveTier } from "@/lib/plans";
@@ -191,26 +193,31 @@ export async function executePublish(
     };
   }
 
-  // Free tier cannot publish (0 accounts allowed; block even if they had accounts from before)
   const subscription = await getSubscriptionForUser(post.userId);
   if (!isActiveTier(subscription.tier)) {
-    logPublishBlocked("subscription", post.userId, post.id);
-    const failureReason =
-      "Payment required — your free trial has ended. Upgrade to publish or schedule posts.";
-    await db
-      .update(posts)
-      .set({
-        status: "failed",
-        failureReason,
-        updatedAt: new Date(),
-      })
-      .where(eq(posts.id, postId));
-    return {
-      success: false,
-      error:
-        "An active subscription is required to publish. Upgrade in Billing.",
-      results: [],
-    };
+    const freePostLimit = await checkFreePostLimit(post.userId);
+    if (!freePostLimit.allowed) {
+      logPublishBlocked("free_post_limit", post.userId, post.id, {
+        used: freePostLimit.used,
+        limit: freePostLimit.limit,
+      });
+      const failureReason =
+        freePostLimit.reason ??
+        "You've used your free posts. Subscribe to continue posting.";
+      await db
+        .update(posts)
+        .set({
+          status: "failed",
+          failureReason,
+          updatedAt: new Date(),
+        })
+        .where(eq(posts.id, postId));
+      return {
+        success: false,
+        error: failureReason,
+        results: [],
+      };
+    }
   }
 
   let publicationsWithAccounts = await db
@@ -1538,6 +1545,10 @@ export async function executePublish(
         userId: post.userId,
         metadata: post.metadata,
       });
+    }
+
+    if (succeeded > 0 && !isActiveTier(subscription.tier)) {
+      await incrementFreePostsUsed(post.userId);
     }
   }
   revalidatePath("/dashboard");

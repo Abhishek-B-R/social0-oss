@@ -26,6 +26,7 @@ import {
   IconHome,
 } from "@tabler/icons-react";
 import { SignOutButton } from "@/components/SignOutButton";
+import { signInUrl } from "@/lib/sign-in-url";
 
 type NavItem = {
   href: string;
@@ -83,11 +84,16 @@ type DashboardSidebarProps = {
     name?: string | null;
     email?: string | null;
     image?: string | null;
-  };
+  } | null;
   planLabel: string;
+  isGuest?: boolean;
 };
 
-export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
+export function DashboardSidebar({
+  user,
+  planLabel,
+  isGuest = false,
+}: DashboardSidebarProps) {
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -310,46 +316,59 @@ export function DashboardSidebar({ user, planLabel }: DashboardSidebarProps) {
         </nav>
       </div>
 
-      {/* Sticky bottom: user menu (closed by default; Sign out on click) */}
+      {/* Sticky bottom: user menu or sign-in for guests */}
       <div
         ref={userMenuRef}
         className="shrink-0 border-t border-sidebar-border bg-sidebar-bg p-4"
       >
-        <button
-          type="button"
-          onClick={() => setUserMenuOpen((o) => !o)}
-          className="sidebar-user-block flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-sidebar-active"
-          aria-expanded={userMenuOpen}
-          aria-haspopup="true"
-          aria-label={userMenuOpen ? "Close account menu" : "Open account menu"}
-        >
-          {user.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={user.image}
-              alt={user.name || "User"}
-              className="h-9 w-9 rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent">
-              {(user.name || user.email || "U").charAt(0).toUpperCase()}
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-sidebar-text">
-              {user.name || user.email || "User"}
-            </p>
-            <p className="truncate text-xs text-sidebar-text">{planLabel}</p>
-          </div>
-          <IconChevronDown
-            className={`h-4 w-4 shrink-0 text-sidebar-text transition-transform ${userMenuOpen ? "rotate-180" : ""}`}
-            size={16}
-          />
-        </button>
-        {userMenuOpen && (
-          <div className="mt-2">
-            <SignOutButton />
-          </div>
+        {isGuest || !user ? (
+          <Link
+            href={signInUrl(pathname)}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover"
+          >
+            Sign in
+          </Link>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setUserMenuOpen((o) => !o)}
+              className="sidebar-user-block flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-sidebar-active"
+              aria-expanded={userMenuOpen}
+              aria-haspopup="true"
+              aria-label={
+                userMenuOpen ? "Close account menu" : "Open account menu"
+              }
+            >
+              {user.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.image}
+                  alt={user.name || "User"}
+                  className="h-9 w-9 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent">
+                  {(user.name || user.email || "U").charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-sidebar-text">
+                  {user.name || user.email || "User"}
+                </p>
+                <p className="truncate text-xs text-sidebar-text">{planLabel}</p>
+              </div>
+              <IconChevronDown
+                className={`h-4 w-4 shrink-0 text-sidebar-text transition-transform ${userMenuOpen ? "rotate-180" : ""}`}
+                size={16}
+              />
+            </button>
+            {userMenuOpen && (
+              <div className="mt-2">
+                <SignOutButton />
+              </div>
+            )}
+          </>
         )}
       </div>
     </aside>

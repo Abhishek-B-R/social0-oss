@@ -1,10 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ScheduleDateTimePicker } from "@/components/ui/ScheduleDateTimePicker";
 import { AccountBubbleSelector } from "@/components/AccountBubbleSelector";
-import { Button } from "@/components/ui/button";
 import { PLATFORMS } from "@/lib/platforms";
+import { signInUrl } from "@/lib/sign-in-url";
+import { getPlanLimits } from "@/lib/plans";
 import type { PublishMode } from "@/app/actions/posts";
 
 type Account = {
@@ -54,8 +56,10 @@ type PostFormOptionsProps = {
   warningAccountIds?: Set<string>;
   warningReasons?: Record<string, string>;
   warningLabel?: string;
-  /** When true, show upgrade CTA instead of account picker (free tier). */
-  showUpgradeCta?: boolean;
+  /** Guest browsing — show sign-in CTA instead of account picker. */
+  isGuest?: boolean;
+  /** Free-tier posts remaining; shows a small usage banner when set. */
+  freePostsRemaining?: number | null;
 };
 
 export function PostFormOptions({
@@ -85,9 +89,10 @@ export function PostFormOptions({
   warningAccountIds,
   warningReasons,
   warningLabel,
-  showUpgradeCta = false,
+  isGuest = false,
+  freePostsRemaining = null,
 }: PostFormOptionsProps) {
-  const router = useRouter();
+  const pathname = usePathname();
   const platformName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
 
@@ -101,23 +106,69 @@ export function PostFormOptions({
   return (
     <>
       <section className="border-b border-border pt-5 pb-5 -mt-16">
-        {showUpgradeCta ? (
-          <div className="rounded-xl border border-border p-5 space-y-3 text-center">
+        {isGuest ? (
+          <div className="rounded-xl border border-dashed border-border bg-bg-muted/30 p-5 space-y-3 text-center">
             <p className="font-medium text-text">
-              Subscribe to start posting
+              Sign in to connect accounts and post
             </p>
             <p className="text-sm text-muted-foreground">
-              Connect your social accounts and publish across platforms.
+              You can write your post below — sign in when you&apos;re ready to
+              publish.
             </p>
-            <Button
-              onClick={() => router.push("/dashboard/billing")}
-              className="w-full sm:w-auto"
+            <Link
+              href={signInUrl(pathname)}
+              className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover"
             >
-              View plans
-            </Button>
+              Sign in
+            </Link>
+          </div>
+        ) : accountsLoading ? (
+          <div className="flex flex-wrap items-center gap-4">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="flex flex-col items-center" aria-hidden>
+                <div className="h-12 w-12 shrink-0 rounded-full bg-bg-muted animate-pulse border-2 border-transparent" />
+                <div className="mt-1.5 h-3 w-14 rounded bg-bg-muted animate-pulse" />
+                <div className="mt-1 h-3 w-10 rounded bg-bg-muted animate-pulse" />
+              </div>
+            ))}
+          </div>
+        ) : accounts.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border bg-bg-muted/30 p-5 space-y-3 text-center">
+            <p className="font-medium text-text">Connect accounts to post</p>
+            <p className="text-sm text-muted-foreground">
+              Free plan includes up to {getPlanLimits("free").maxConnectedAccounts}{" "}
+              connected accounts and {getPlanLimits("free").maxFreePosts} lifetime
+              posts.
+            </p>
+            <Link
+              href="/dashboard/connections"
+              className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover"
+            >
+              Connect accounts
+            </Link>
           </div>
         ) : (
           <>
+            {typeof freePostsRemaining === "number" && (
+              <p className="mb-3 text-sm text-text-muted">
+                <span className="font-medium text-foreground">
+                  {freePostsRemaining}/{getPlanLimits("free").maxFreePosts} free
+                  posts remaining
+                </span>
+                {freePostsRemaining <= 0 && (
+                  <>
+                    {" "}
+                    —{" "}
+                    <Link
+                      href="/dashboard/billing"
+                      className="font-medium text-accent underline underline-offset-2 hover:no-underline"
+                    >
+                      Upgrade to keep posting
+                    </Link>
+                  </>
+                )}
+              </p>
+            )}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-between">
               <div className="flex items-center gap-5">
                 <button
@@ -146,34 +197,22 @@ export function PostFormOptions({
               )}
             </div>
             <div className="mt-4">
-              {accountsLoading ? (
-                <div className="flex flex-wrap items-center gap-4">
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <div key={i} className="flex flex-col items-center" aria-hidden>
-                      <div className="h-12 w-12 shrink-0 rounded-full bg-bg-muted animate-pulse border-2 border-transparent" />
-                      <div className="mt-1.5 h-3 w-14 rounded bg-bg-muted animate-pulse" />
-                      <div className="mt-1 h-3 w-10 rounded bg-bg-muted animate-pulse" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <AccountBubbleSelector
-                  accounts={accounts}
-                  selectedIds={selectedIds}
-                  onToggleAccount={onToggleAccount}
-                  selectAll={selectAll}
-                  platformName={platformName}
-                  compact
-                  hideSelectAll
-                  supportedPlatforms={supportedPlatforms}
-                  disabledAccountIds={disabledAccountIds}
-                  disabledReasons={disabledReasons}
-                  disabledAccountDefaultReason={disabledAccountDefaultReason}
-                  warningAccountIds={warningAccountIds}
-                  warningReasons={warningReasons}
-                  warningLabel={warningLabel}
-                />
-              )}
+              <AccountBubbleSelector
+                accounts={accounts}
+                selectedIds={selectedIds}
+                onToggleAccount={onToggleAccount}
+                selectAll={selectAll}
+                platformName={platformName}
+                compact
+                hideSelectAll
+                supportedPlatforms={supportedPlatforms}
+                disabledAccountIds={disabledAccountIds}
+                disabledReasons={disabledReasons}
+                disabledAccountDefaultReason={disabledAccountDefaultReason}
+                warningAccountIds={warningAccountIds}
+                warningReasons={warningReasons}
+                warningLabel={warningLabel}
+              />
             </div>
           </>
         )}

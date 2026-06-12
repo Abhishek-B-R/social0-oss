@@ -49,7 +49,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
             <div className="flex flex-col gap-4">
               <div className="flex flex-wrap items-center gap-4">
                 <Link
-                  href={signedIn ? "/dashboard" : "/auth"}
+                  href="/dashboard"
                   className="inline-flex items-center gap-2 rounded-[10px] bg-foreground px-7 py-3.5 text-[15px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
                 >
                   {signedIn ? "Go to dashboard" : "Start for free"}

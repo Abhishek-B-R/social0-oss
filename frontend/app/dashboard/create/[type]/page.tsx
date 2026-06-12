@@ -31,7 +31,7 @@ export default async function NewPostByTypePage({
     params,
     searchParams,
   ]);
-  if (!session) redirect("/");
+  const isGuest = !session;
   const draftParam = rawSearchParams.draft;
   const draftId =
     typeof draftParam === "string"
@@ -56,16 +56,19 @@ export default async function NewPostByTypePage({
   const contentType = getContentTypeBySlug(typeSlug);
   if (!contentType) notFound();
 
-  const settingsRow = await db.query.userSettings.findFirst({
-    where: eq(userSettings.userId, session.user.id),
-    columns: {
-      use24HourTimeFormat: true,
-      dateFormat: true,
-      timezone: true,
-      subscriptionTier: true,
-      subscriptionExpiresAt: true,
-    },
-  });
+  const settingsRow = session
+    ? await db.query.userSettings.findFirst({
+        where: eq(userSettings.userId, session.user.id),
+        columns: {
+          use24HourTimeFormat: true,
+          dateFormat: true,
+          timezone: true,
+          subscriptionTier: true,
+          subscriptionExpiresAt: true,
+          freePostsUsed: true,
+        },
+      })
+    : null;
 
   const rawDateFormat = settingsRow?.dateFormat as
     | DateFormatKey
@@ -93,6 +96,7 @@ export default async function NewPostByTypePage({
         ? rawTier
         : "free";
   const planLimits = getPlanLimits(effectiveTier);
+  const freePostsUsed = settingsRow?.freePostsUsed ?? 0;
 
   const url =
     contentType.slug === "collection"
@@ -127,6 +131,8 @@ export default async function NewPostByTypePage({
         allowAutoRepost={planLimits.allowResurface}
         allowAutoPlug={planLimits.allowAutoPlug}
         subscriptionTier={effectiveTier}
+        freePostsUsed={freePostsUsed}
+        isGuest={isGuest}
       />
     </div>
   );

@@ -13,7 +13,7 @@ export function FinalCTA({ signedIn = false }: { signedIn?: boolean }) {
           Join early. Lock in launch pricing before it increases.
         </p>
         <Link
-          href={signedIn ? "/dashboard" : "/auth"}
+          href="/dashboard"
           className="inline-flex items-center gap-2 rounded-[10px] bg-background px-8 py-3.5 text-[15px] font-medium text-foreground transition-all hover:-translate-y-px hover:text-foreground hover:shadow-[0_8px_32px_rgba(74,222,128,0.25)] dark:bg-white dark:text-black"
         >
           {signedIn ? "Go to dashboard" : "Get started free"}

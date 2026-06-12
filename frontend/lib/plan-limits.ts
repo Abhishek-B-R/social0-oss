@@ -1,10 +1,10 @@
 "use server";
 
 import { db } from "@/db";
-import { connectedAccounts, postPublications } from "@/db/schema";
+import { connectedAccounts, postPublications, userSettings } from "@/db/schema";
 import { eq, and, sql, gte, asc, inArray } from "drizzle-orm";
 import { getSubscriptionForUser } from "@/lib/subscription";
-import { getPlanLimits } from "@/lib/plans";
+import { getPlanLimits, isActiveTier } from "@/lib/plans";
 
 /**
  * Sync connected_accounts.isActive to plan limit.
@@ -73,12 +73,7 @@ export async function checkAccountLimits(
   const currentTotal = totalRow?.count ?? 0;
 
   if (currentTotal >= limits.maxConnectedAccounts) {
-    const reason =
-      limits.maxConnectedAccounts === 0
-        ? sub.hasUsedTrial
-          ? "Upgrade to a plan to connect accounts and start posting."
-          : "Start your 7-day free trial to connect accounts and start posting."
-        : `Plan limit: up to ${limits.maxConnectedAccounts} connected accounts. Upgrade to add more.`;
+    const reason = `Plan limit: up to ${limits.maxConnectedAccounts} connected accounts. Upgrade to add more.`;
     return {
       allowed: false,
       reason,
@@ -162,4 +157,61 @@ export async function checkTwitterTweetLimit(
   }
 
   return { allowed: true, used, limit: limits.tweetsPerMonth };
+}
+
+export async function getFreePostsUsed(userId: string): Promise<number> {
+  const row = await db.query.userSettings.findFirst({
+    where: eq(userSettings.userId, userId),
+    columns: { freePostsUsed: true },
+  });
+  return row?.freePostsUsed ?? 0;
+}
+
+export type FreePostLimitResult = {
+  allowed: boolean;
+  used: number;
+  limit: number;
+  remaining: number;
+  reason?: string;
+};
+
+export async function checkFreePostLimit(
+  userId: string,
+): Promise<FreePostLimitResult> {
+  const sub = await getSubscriptionForUser(userId);
+  if (isActiveTier(sub.tier)) {
+    return {
+      allowed: true,
+      used: 0,
+      limit: 0,
+      remaining: Number.POSITIVE_INFINITY,
+    };
+  }
+
+  const limit = getPlanLimits("free").maxFreePosts;
+  const used = await getFreePostsUsed(userId);
+  const remaining = Math.max(0, limit - used);
+
+  if (used >= limit) {
+    return {
+      allowed: false,
+      used,
+      limit,
+      remaining: 0,
+      reason: `You've used your ${limit} free posts. Subscribe to continue posting.`,
+    };
+  }
+
+  return { allowed: true, used, limit, remaining };
+}
+
+export async function incrementFreePostsUsed(userId: string): Promise<void> {
+  const sub = await getSubscriptionForUser(userId);
+  if (isActiveTier(sub.tier)) return;
+
+  const used = await getFreePostsUsed(userId);
+  await db
+    .update(userSettings)
+    .set({ freePostsUsed: used + 1 })
+    .where(eq(userSettings.userId, userId));
 }

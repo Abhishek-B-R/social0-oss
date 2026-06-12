@@ -4,6 +4,12 @@
 
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import {
+  freePublishBlockReason,
+  getFreePostsRemaining,
+  isFreePublishBlocked,
+} from "@/lib/free-tier-publish";
+import { signInUrl } from "@/lib/sign-in-url";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { publishPost, getPostPublicationList } from "@/app/actions/publish";
 import {
@@ -131,6 +137,8 @@ export function VideoPostForm({
   allowAutoPlug = true,
   supportedPlatforms,
   subscriptionTier = "free",
+  freePostsUsed = 0,
+  isGuest = false,
 }: {
   accounts: Account[];
   accountsLoading?: boolean;
@@ -144,6 +152,8 @@ export function VideoPostForm({
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
   subscriptionTier?: "free" | "starter" | "growth" | "pro";
+  freePostsUsed?: number;
+  isGuest?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1081,6 +1091,12 @@ export function VideoPostForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     toast.dismiss();
+    if (isGuest) {
+      window.location.href = signInUrl(
+        window.location.pathname + window.location.search,
+      );
+      return;
+    }
 
     if (!content.trim()) {
       setShowCaptionError(true);
@@ -1709,7 +1725,12 @@ export function VideoPostForm({
             warningAccountIds={videoLimitState.softAccountIds}
             warningReasons={videoLimitWarningReasons}
             warningLabel="May limit reach"
-            showUpgradeCta={subscriptionTier === "free"}
+            isGuest={isGuest}
+            freePostsRemaining={
+              !isGuest && subscriptionTier === "free"
+                ? getFreePostsRemaining(subscriptionTier, freePostsUsed)
+                : null
+            }
           />
 
           {hasVideo &&
@@ -2551,12 +2572,20 @@ export function VideoPostForm({
           }
           hasAccountSelected={selectedIds.size > 0}
           submitDisabledReason={submitDisabledReason}
-          primaryActionDisabled={
-            subscriptionTier === "free" && mode !== "draft"
-          }
-          primaryActionDisabledReason={
-            subscriptionTier === "free" && mode !== "draft"
-              ? "Subscribe to a plan to post"
+          primaryActionDisabled={isFreePublishBlocked(
+            subscriptionTier,
+            freePostsUsed,
+            mode,
+          )}
+          primaryActionDisabledReason={freePublishBlockReason(
+            subscriptionTier,
+            freePostsUsed,
+            mode,
+          )}
+          isGuest={isGuest}
+          freePostsRemaining={
+            !isGuest && subscriptionTier === "free"
+              ? getFreePostsRemaining(subscriptionTier, freePostsUsed)
               : null
           }
           use24HourTimeFormat={use24HourTimeFormat}

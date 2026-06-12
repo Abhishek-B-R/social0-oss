@@ -54,9 +54,11 @@ type AccountLimit = {
 export function ConnectionsList({
   accounts,
   accountLimit,
+  requireAuth = false,
 }: {
   accounts: Account[];
   accountLimit?: AccountLimit;
+  requireAuth?: boolean;
 }) {
   const [disconnectAccountId, setDisconnectAccountId] = useState<string | null>(
     null,
@@ -111,16 +113,13 @@ export function ConnectionsList({
 
   const handleLimitClick = () => {
     if (!accountLimit) return;
-    const isFreePlan = accountLimit.limitTotal === 0;
-    const message = isFreePlan
-      ? accountLimit.hasUsedTrial
-        ? "Subscribe to a plan to connect accounts."
-        : "Start your free trial to connect accounts."
-      : `You've reached your ${accountLimit.limitTotal} account limit.`;
+    const message = `You've reached your ${accountLimit.limitTotal} account limit.`;
     toast.warning(message, {
       action: {
-        label: isFreePlan ? (accountLimit.hasUsedTrial ? "Subscribe" : "Start trial") : "Upgrade",
-        onClick: () => { window.location.href = "/dashboard/billing"; },
+        label: "Upgrade",
+        onClick: () => {
+          window.location.href = "/dashboard/billing";
+        },
       },
     });
   };
@@ -179,32 +178,35 @@ export function ConnectionsList({
           Link your social accounts to publish from one place. You can connect
           multiple accounts per platform.
         </p>
-        {atLimit && (
-          <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-            {accountLimit!.limitTotal === 0 ? (
+        {accountLimit && accountLimit.limitTotal > 0 && (
+          <p className="text-sm text-text-muted">
+            <span className="font-medium text-foreground">
+              {accountLimit.currentTotal}/{accountLimit.limitTotal} accounts
+              connected
+            </span>
+            {atLimit && (
               <>
-                {accountLimit!.hasUsedTrial
-                  ? "Upgrade to a plan to connect accounts and start posting."
-                  : "Start your 7-day free trial to connect accounts and start posting. No charge until the trial ends."}{" "}
+                {" "}
+                —{" "}
                 <Link
                   href="/dashboard/billing"
-                  className="font-medium underline underline-offset-2 hover:no-underline"
+                  className="font-medium text-accent underline underline-offset-2 hover:no-underline"
                 >
-                  {accountLimit!.hasUsedTrial ? "Upgrade" : "Start trial"} →
-                </Link>
-              </>
-            ) : (
-              <>
-                You&apos;ve reached your {accountLimit!.limitTotal} account
-                limit.{" "}
-                <Link
-                  href="/dashboard/billing"
-                  className="font-medium underline underline-offset-2 hover:no-underline"
-                >
-                  Upgrade →
+                  Upgrade for more
                 </Link>
               </>
             )}
+          </p>
+        )}
+        {atLimit && (
+          <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+            You&apos;ve reached your {accountLimit!.limitTotal} account limit.{" "}
+            <Link
+              href="/dashboard/billing"
+              className="font-medium underline underline-offset-2 hover:no-underline"
+            >
+              Upgrade →
+            </Link>
           </div>
         )}
         <div className="min-w-0 overflow-x-auto rounded-2xl border border-border bg-bg-elevated p-3 shadow-sm">
@@ -247,6 +249,8 @@ export function ConnectionsList({
                       className="w-full"
                       disabled={atLimit}
                       onDisabledClick={atLimit ? handleLimitClick : undefined}
+                      requireAuth={requireAuth}
+                      returnTo="/dashboard/connections"
                     />
                   </div>
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1.5">
