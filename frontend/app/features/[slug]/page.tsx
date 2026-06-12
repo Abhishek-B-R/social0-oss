@@ -7,8 +7,10 @@ import { PseoRelatedLinks } from "@/components/landing/PseoRelatedLinks";
 import { FEATURE_SLUGS, getFeature } from "@/lib/content/features";
 import { getAlternative } from "@/lib/content/alternatives";
 import {
+  buildBreadcrumbJsonLd,
   buildFaqJsonLd,
   buildPageMetadata,
+  buildSoftwareApplicationJsonLd,
   buildWebPageJsonLd,
 } from "@/lib/seo";
 
@@ -54,6 +56,15 @@ export default async function FeaturePage({ params }: PageProps) {
       description: page.metaDescription,
       path: `/features/${slug}`,
     }),
+    buildBreadcrumbJsonLd([
+      { name: "Home", path: "/" },
+      { name: "Features", path: "/features" },
+      {
+        name: page.platformLabel ?? page.heroHeadline.split("—")[0].trim(),
+        path: `/features/${slug}`,
+      },
+    ]),
+    buildSoftwareApplicationJsonLd(),
     buildFaqJsonLd(page.faq),
   ];
 

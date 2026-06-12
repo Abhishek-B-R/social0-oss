@@ -248,6 +248,114 @@ export const ALTERNATIVES: AlternativePage[] = [
     ],
     relatedFeatureSlugs: ["multi-platform-scheduler", "twitter-scheduler"],
   },
+  {
+    slug: "publer",
+    competitorName: "Publer",
+    metaTitle: "Publer Alternative — Social0 | Multi-Platform Scheduling",
+    metaDescription:
+      "Publer alternative with a compose-once workflow for X, LinkedIn, Instagram, TikTok, YouTube, Threads, Bluesky, and more.",
+    keywords: ["publer alternative", "publer vs social0", "social media scheduler"],
+    heroHeadline: "A Publer alternative with parallel publishing",
+    heroSubheadline:
+      "Publer handles many networks well. Social0 focuses on one composer and simultaneous publishing to every account you select.",
+    intro:
+      "Publer is a capable scheduler with workspaces and analytics. Social0 is leaner: connect accounts, compose once, publish in parallel, and see per-platform results — ideal when speed matters more than agency-style workspaces.",
+    whySwitch: [
+      "Parallel publish to all selected accounts at once",
+      "No workspace complexity for solo creators",
+      "Threads and Bluesky native support",
+      "7-day free trial on every plan",
+      "Clear per-platform publish feedback",
+    ],
+    comparisonRows: [
+      {
+        feature: "Compose once",
+        social0: "Yes — parallel publish",
+        competitor: "Yes — per-network queues",
+      },
+      {
+        feature: "Threads & Bluesky",
+        social0: "Native",
+        competitor: "Supported",
+      },
+      {
+        feature: "Analytics focus",
+        social0: "Publish-first",
+        competitor: "Scheduling + analytics",
+      },
+      {
+        feature: "Best for",
+        social0: "Indie creators & small teams",
+        competitor: "Teams wanting workspaces",
+      },
+    ],
+    faq: [
+      {
+        question: "Is Social0 a good Publer alternative?",
+        answer:
+          "If you want a faster compose-once workflow without workspace overhead, Social0 is a strong Publer alternative for multi-platform publishing.",
+      },
+    ],
+    relatedFeatureSlugs: ["multi-platform-scheduler", "threads-scheduler"],
+  },
+  {
+    slug: "sprout-social",
+    competitorName: "Sprout Social",
+    metaTitle: "Sprout Social Alternative — Social0 | Affordable Scheduling",
+    metaDescription:
+      "Sprout Social alternative for creators who need scheduling and publishing without enterprise pricing or analytics suites.",
+    keywords: [
+      "sprout social alternative",
+      "sprout social vs social0",
+      "cheap social media scheduler",
+    ],
+    heroHeadline: "A Sprout Social alternative without enterprise pricing",
+    heroSubheadline:
+      "Sprout Social is built for large teams and analytics. Social0 is built for getting content published across every platform you use.",
+    intro:
+      "Sprout Social offers inbox management, listening, and reporting at a premium price point. Social0 deliberately focuses on the publish path — scheduling, drafts, calendar, and multi-platform posting — at a fraction of the cost for solo creators and small teams.",
+    whySwitch: [
+      "Affordable plans with 7-day free trial",
+      "No per-seat enterprise pricing",
+      "Publish-first UX without analytics clutter",
+      "9+ platforms including Bluesky and Threads",
+      "Minutes to first scheduled post",
+    ],
+    comparisonRows: [
+      {
+        feature: "Primary focus",
+        social0: "Scheduling & publishing",
+        competitor: "Enterprise social suite",
+      },
+      {
+        feature: "Pricing",
+        social0: "Creator-friendly tiers",
+        competitor: "Higher per-seat cost",
+      },
+      {
+        feature: "Social listening",
+        social0: "Not included",
+        competitor: "Included",
+      },
+      {
+        feature: "Time to value",
+        social0: "Minutes",
+        competitor: "Longer onboarding",
+      },
+    ],
+    faq: [
+      {
+        question: "Who should choose Social0 over Sprout Social?",
+        answer:
+          "Creators and small teams who need reliable multi-platform scheduling without paying for enterprise analytics, listening, or inbox tools.",
+      },
+    ],
+    relatedFeatureSlugs: [
+      "multi-platform-scheduler",
+      "linkedin-scheduler",
+      "social-media-calendar",
+    ],
+  },
 ];
 
 export const ALTERNATIVE_SLUGS = ALTERNATIVES.map((a) => a.slug);

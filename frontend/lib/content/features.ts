@@ -497,6 +497,195 @@ export const FEATURES: FeaturePage[] = [
     ],
     relatedAlternativeSlugs: ["buffer", "later"],
   },
+  {
+    slug: "youtube-scheduler",
+    platformLabel: "YouTube",
+    metaTitle: "YouTube Scheduler — Schedule Shorts & Videos | Social0",
+    metaDescription:
+      "YouTube scheduler for Shorts and videos. Upload, set title and visibility, and schedule YouTube content from Social0 alongside your other platforms.",
+    keywords: [
+      "youtube scheduler",
+      "schedule youtube shorts",
+      "youtube video scheduler",
+      "social media scheduler youtube",
+    ],
+    heroHeadline: "YouTube scheduler for Shorts and long-form video",
+    heroSubheadline:
+      "Connect your channel, upload video, and schedule YouTube posts without a separate workflow.",
+    intro:
+      "YouTube publishing usually means opening Studio or a dedicated tool. Social0 connects via Google OAuth, supports video uploads within platform limits, and lets you schedule Shorts and videos on the same calendar as Instagram Reels and TikTok.",
+    benefits: [
+      {
+        title: "Google OAuth connection",
+        description:
+          "Connect your YouTube channel securely. Tokens are encrypted and refreshed automatically.",
+      },
+      {
+        title: "Shorts and video support",
+        description:
+          "Publish vertical Shorts and standard videos from the same composer.",
+      },
+      {
+        title: "Unified calendar",
+        description:
+          "Line up YouTube releases with launches on X, LinkedIn, and TikTok.",
+      },
+    ],
+    howItWorks: [
+      {
+        step: 1,
+        title: "Connect YouTube",
+        description: "Authorize with Google from the Connections page.",
+      },
+      {
+        step: 2,
+        title: "Upload video",
+        description: "Add your video file and write title and description.",
+      },
+      {
+        step: 3,
+        title: "Schedule or publish",
+        description: "Pick a time or post immediately.",
+      },
+    ],
+    faq: [
+      {
+        question: "Can I schedule YouTube Shorts with Social0?",
+        answer:
+          "Yes. Upload vertical video and schedule it like any other platform in Social0.",
+      },
+      {
+        question: "Does Social0 replace YouTube Studio?",
+        answer:
+          "Social0 handles scheduling and publishing. Advanced Studio features like end screens remain in YouTube Studio.",
+      },
+    ],
+    relatedAlternativeSlugs: ["buffer", "metricool"],
+  },
+  {
+    slug: "pinterest-scheduler",
+    platformLabel: "Pinterest",
+    metaTitle: "Pinterest Scheduler — Schedule Pins & Idea Pins | Social0",
+    metaDescription:
+      "Pinterest scheduler to publish pins to boards you choose. Schedule images and video pins from Social0's multi-platform composer.",
+    keywords: [
+      "pinterest scheduler",
+      "schedule pinterest pins",
+      "pinterest pin scheduler",
+    ],
+    heroHeadline: "Pinterest scheduler with board selection",
+    heroSubheadline:
+      "Pick your board, add your pin, and schedule alongside Instagram and TikTok.",
+    intro:
+      "Pinterest needs the right board and image specs. Social0 connects via Pinterest OAuth, lets you select boards at compose time, and schedules pins on your content calendar next to every other network.",
+    benefits: [
+      {
+        title: "Board picker",
+        description:
+          "Choose which board each pin lands on without leaving the composer.",
+      },
+      {
+        title: "Image and video pins",
+        description:
+          "Publish supported pin formats with per-platform validation.",
+      },
+      {
+        title: "Part of one stack",
+        description:
+          "Schedule Pinterest with the same post workflow you use for X and LinkedIn.",
+      },
+    ],
+    howItWorks: [
+      {
+        step: 1,
+        title: "Connect Pinterest",
+        description: "Authorize via Pinterest OAuth from Connections.",
+      },
+      {
+        step: 2,
+        title: "Select board and media",
+        description: "Upload your pin image or video and pick a destination board.",
+      },
+      {
+        step: 3,
+        title: "Schedule",
+        description: "Queue for later or publish now.",
+      },
+    ],
+    faq: [
+      {
+        question: "Can I schedule to multiple Pinterest boards?",
+        answer:
+          "Each publish targets the board you select in the composer for that post.",
+      },
+    ],
+    relatedAlternativeSlugs: ["later", "buffer"],
+  },
+  {
+    slug: "facebook-scheduler",
+    platformLabel: "Facebook",
+    metaTitle: "Facebook Page Scheduler — Schedule Page Posts | Social0",
+    metaDescription:
+      "Facebook Page scheduler for text, images, and video. Connect your Page via Meta OAuth and schedule posts from Social0.",
+    keywords: [
+      "facebook scheduler",
+      "facebook page scheduler",
+      "schedule facebook posts",
+      "meta page scheduling",
+    ],
+    heroHeadline: "Facebook Page scheduler built into Social0",
+    heroSubheadline:
+      "Schedule posts to Facebook Pages — not personal profiles — from the same dashboard as Instagram and Threads.",
+    intro:
+      "Facebook Page publishing requires Meta permissions and the right account type. Social0 connects Facebook Pages via official OAuth, supports text, images, and video posts, and schedules them on your unified calendar.",
+    benefits: [
+      {
+        title: "Page-only publishing",
+        description:
+          "Built for Facebook Pages — the format businesses and creators actually use.",
+      },
+      {
+        title: "Multi-photo and video",
+        description:
+          "Publish image carousels and video posts supported by the Graph API.",
+      },
+      {
+        title: "Works with Instagram",
+        description:
+          "Manage Meta properties alongside Instagram from one composer.",
+      },
+    ],
+    howItWorks: [
+      {
+        step: 1,
+        title: "Connect your Page",
+        description: "Authorize via Facebook OAuth and select your Page.",
+      },
+      {
+        step: 2,
+        title: "Compose",
+        description: "Write your post and attach images or video.",
+      },
+      {
+        step: 3,
+        title: "Schedule or publish",
+        description: "Set a time or post immediately.",
+      },
+    ],
+    faq: [
+      {
+        question: "Does Social0 support personal Facebook profiles?",
+        answer:
+          "No. Social0 publishes to Facebook Pages only, per Meta API requirements.",
+      },
+      {
+        question: "Can I schedule Facebook and Instagram together?",
+        answer:
+          "Yes. Select both accounts in the composer and publish or schedule in one action.",
+      },
+    ],
+    relatedAlternativeSlugs: ["buffer", "hootsuite"],
+  },
 ];
 
 export const FEATURE_SLUGS = FEATURES.map((f) => f.slug);

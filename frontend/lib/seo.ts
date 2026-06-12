@@ -88,3 +88,75 @@ export function buildWebPageJsonLd(input: {
     },
   };
 }
+
+export function buildBreadcrumbJsonLd(
+  items: readonly { name: string; path: string }[],
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      item: absoluteUrl(item.path),
+    })),
+  };
+}
+
+export function buildItemListJsonLd(
+  items: readonly { name: string; path: string }[],
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      url: absoluteUrl(item.path),
+    })),
+  };
+}
+
+export function buildSoftwareApplicationJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Social0",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    url: siteUrl,
+    description:
+      "Multi-platform social media scheduler. Compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest.",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+      description: "7-day free trial on all plans",
+    },
+    featureList: [
+      "Multi-platform scheduling",
+      "Compose once, publish everywhere",
+      "Content calendar",
+      "Drafts and bulk scheduling tools",
+      "OAuth-secured account connections",
+    ],
+  };
+}
+
+export function buildOrganizationJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Social0",
+    url: siteUrl,
+    logo: absoluteUrl("/og-image.png"),
+    sameAs: ["https://x.com/social0_app"],
+    contactPoint: {
+      "@type": "ContactPoint",
+      email: "support@social0.app",
+      contactType: "customer support",
+    },
+  };
+}

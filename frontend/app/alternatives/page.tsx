@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { ALTERNATIVES } from "@/lib/content/alternatives";
-import { buildPageMetadata } from "@/lib/seo";
+import {
+  buildItemListJsonLd,
+  buildPageMetadata,
+  buildSoftwareApplicationJsonLd,
+  buildWebPageJsonLd,
+} from "@/lib/seo";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "Social Media Scheduler Alternatives | Social0",
@@ -17,8 +22,28 @@ export const metadata: Metadata = buildPageMetadata({
 });
 
 export default function AlternativesIndexPage() {
+  const jsonLd = [
+    buildWebPageJsonLd({
+      name: "Social Media Scheduler Alternatives | Social0",
+      description:
+        "Compare Social0 to Buffer, Hootsuite, Later, Metricool, and other social media schedulers.",
+      path: "/alternatives",
+    }),
+    buildItemListJsonLd(
+      ALTERNATIVES.map((alt) => ({
+        name: `${alt.competitorName} alternative`,
+        path: `/alternatives/${alt.slug}`,
+      })),
+    ),
+    buildSoftwareApplicationJsonLd(),
+  ];
+
   return (
     <MarketingPageLayout>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <section className="px-6 py-16 lg:px-8 lg:py-20">
         <div className="mx-auto max-w-[1100px]">
           <p className="mb-3 text-[11px] uppercase tracking-widest text-emerald-700">

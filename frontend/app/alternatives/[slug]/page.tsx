@@ -10,8 +10,10 @@ import {
 } from "@/lib/content/alternatives";
 import { getFeature } from "@/lib/content/features";
 import {
+  buildBreadcrumbJsonLd,
   buildFaqJsonLd,
   buildPageMetadata,
+  buildSoftwareApplicationJsonLd,
   buildWebPageJsonLd,
 } from "@/lib/seo";
 
@@ -57,6 +59,15 @@ export default async function AlternativePage({ params }: PageProps) {
       description: page.metaDescription,
       path: `/alternatives/${slug}`,
     }),
+    buildBreadcrumbJsonLd([
+      { name: "Home", path: "/" },
+      { name: "Alternatives", path: "/alternatives" },
+      {
+        name: `${page.competitorName} alternative`,
+        path: `/alternatives/${slug}`,
+      },
+    ]),
+    buildSoftwareApplicationJsonLd(),
     buildFaqJsonLd(page.faq),
   ];
 

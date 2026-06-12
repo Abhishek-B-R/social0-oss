@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { FEATURES } from "@/lib/content/features";
-import { buildPageMetadata } from "@/lib/seo";
+import {
+  buildItemListJsonLd,
+  buildPageMetadata,
+  buildSoftwareApplicationJsonLd,
+  buildWebPageJsonLd,
+} from "@/lib/seo";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "Social Media Scheduling Features | Social0",
@@ -18,8 +23,30 @@ export const metadata: Metadata = buildPageMetadata({
 });
 
 export default function FeaturesIndexPage() {
+  const jsonLd = [
+    buildWebPageJsonLd({
+      name: "Social Media Scheduling Features | Social0",
+      description:
+        "Platform schedulers and tools: Threads, Bluesky, TikTok, Instagram, LinkedIn, X, multi-platform publishing, and content calendar.",
+      path: "/features",
+    }),
+    buildItemListJsonLd(
+      FEATURES.map((feature) => ({
+        name: feature.platformLabel
+          ? `${feature.platformLabel} scheduler`
+          : feature.heroHeadline.split("—")[0].trim(),
+        path: `/features/${feature.slug}`,
+      })),
+    ),
+    buildSoftwareApplicationJsonLd(),
+  ];
+
   return (
     <MarketingPageLayout>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <section className="px-6 py-16 lg:px-8 lg:py-20">
         <div className="mx-auto max-w-[1100px]">
           <p className="mb-3 text-[11px] uppercase tracking-widest text-emerald-700">

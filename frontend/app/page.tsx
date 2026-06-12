@@ -3,6 +3,11 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { LandingPageView } from "@/components/landing/LandingPageView";
+import {
+  buildOrganizationJsonLd,
+  buildSoftwareApplicationJsonLd,
+  buildWebPageJsonLd,
+} from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Social0 — Post and Schedule to All Your Socials from One Place",
@@ -50,5 +55,24 @@ export default async function RootPage() {
     redirect("/dashboard");
   }
 
-  return <LandingPageView signedIn={false} />;
+  const jsonLd = [
+    buildWebPageJsonLd({
+      name: "Social0 — Post and Schedule to All Your Socials from One Place",
+      description:
+        "Social0 lets you write once and publish everywhere. Schedule posts to Twitter, Instagram, LinkedIn, TikTok, YouTube, Pinterest, Bluesky, Threads, and Facebook from one dashboard.",
+      path: "/",
+    }),
+    buildSoftwareApplicationJsonLd(),
+    buildOrganizationJsonLd(),
+  ];
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <LandingPageView signedIn={false} />
+    </>
+  );
 }
