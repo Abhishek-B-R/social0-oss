@@ -142,12 +142,10 @@ function OnboardingPlanContent() {
       <div className="grid gap-6 sm:grid-cols-2 mb-8">
         <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-sm">
           <h2 className="font-semibold text-foreground">
-            Starter (Lite) —{" "}
-            <span className="line-through text-muted-foreground">$9</span>{" "}
-            <span className="text-foreground">$6</span>/month
+            Starter (Lite) — <span className="text-foreground">$9</span>/month
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Early adopter pricing
+            For creators getting started
           </p>
           <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">
             {STARTER_FEATURES.map((f, i) => (

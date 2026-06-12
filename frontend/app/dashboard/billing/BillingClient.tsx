@@ -785,9 +785,6 @@ export function BillingClient({
             </div>
             <div className="mb-2 flex items-baseline gap-2">
               <span className="font-serif text-2xl font-bold text-foreground">
-                $6
-              </span>
-              <span className="text-sm text-muted-foreground line-through">
                 $9
               </span>
               <span className="text-xs text-muted-foreground">/month</span>
@@ -1142,7 +1139,7 @@ export function BillingClient({
                 <p className="mt-2 text-sm text-muted-foreground text-center">
                   You&apos;ll stay on Growth until{" "}
                   {renewalDate ?? "your renewal date"}. After that, your plan
-                  switches to Starter ($6/month). You won&apos;t be charged now.
+                  switches to Starter ($9/month). You won&apos;t be charged now.
                 </p>
                 {subscription.cancelAtPeriodEnd && (
                   <p className="mt-2 text-sm text-amber-700 dark:text-amber-300 text-center">

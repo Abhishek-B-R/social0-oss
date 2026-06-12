@@ -1,6 +1,6 @@
 /**
  * Subscription plan limits and feature flags.
- * Starter (Lite): $9/mo (early adopter $6). Growth: $29/mo (early adopter $19). Pro: $49/mo (early adopter $35).
+ * Starter (Lite): $9/mo. Growth: $29/mo (early adopter $19). Pro: $49/mo (early adopter $35).
  */
 
 export type SubscriptionTier = "free" | "starter" | "growth" | "pro";

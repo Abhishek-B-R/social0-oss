@@ -75,19 +75,11 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
               Starter
             </div>
 
-            <div className="mb-2 flex items-baseline gap-3">
+            <div className="mb-2 flex items-baseline gap-2">
               <div className="font-serif text-[64px] leading-none tracking-tight text-foreground">
-                $6
+                $9
               </div>
-              <div>
-                <div className="text-[18px] font-medium text-muted-foreground line-through decoration-red-500 decoration-2">
-                  $9
-                </div>
-                <div className="text-[13px] text-muted-foreground">/month</div>
-              </div>
-              <span className="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-                Save 33%
-              </span>
+              <div className="text-[13px] text-muted-foreground">/month</div>
             </div>
 
             <p className="mb-8 text-[14px] leading-relaxed text-muted-foreground">
