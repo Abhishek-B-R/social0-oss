@@ -12,6 +12,10 @@ import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { TwitterApi } from "twitter-api-v2";
 import { oauthLimiter } from "@/lib/ratelimit";
+import {
+  buildFacebookOAuthUrl,
+  getFacebookLoginConfigId,
+} from "@/lib/facebook-oauth";
 
 export async function GET(
   req: NextRequest,
@@ -179,6 +183,18 @@ export async function GET(
       ...(isReauth && { reauth: true }),
     });
     url.searchParams.set("client_id", clientId);
+  }
+
+  if (platform === "facebook") {
+    return redirect(
+      buildFacebookOAuthUrl({
+        clientId,
+        redirectUri,
+        state,
+        configId: getFacebookLoginConfigId(),
+        scope: config.scope,
+      }),
+    );
   }
   
   url.searchParams.set("redirect_uri", redirectUri);

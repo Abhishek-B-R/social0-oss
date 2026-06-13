@@ -5,6 +5,11 @@ import { redirect } from "next/navigation";
 import { encrypt } from "@/lib/encryption";
 import { normalizeAppUrl } from "@/lib/url-utils";
 import { NextRequest } from "next/server";
+import {
+  buildFacebookOAuthUrl,
+  FACEBOOK_INSTAGRAM_PAGE_SCOPES,
+  getFacebookInstagramLoginConfigId,
+} from "@/lib/facebook-oauth";
 
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -13,7 +18,6 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Get Facebook client ID and secret (same as Facebook OAuth)
   const clientId = env.FACEBOOK_CLIENT_ID;
   const clientSecret = env.FACEBOOK_CLIENT_SECRET;
 
@@ -24,17 +28,8 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Construct redirect URI
   const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
   const redirectUri = `${baseUrl}/api/connect/instagram-facebook/callback`;
-
-  // Facebook OAuth URL for Instagram via Pages
-  // Note: Some Instagram scopes require using the base OAuth URL without version
-  const authUrl = "https://www.facebook.com/dialog/oauth";
-
-  // Facebook dialog OAuth: page access token from these scopes grants Instagram publishing via Graph API (no instagram_* scopes)
-  const scope =
-    "pages_show_list,pages_read_engagement,pages_manage_posts,business_management";
 
   const returnTo = req.nextUrl.searchParams.get("returnTo");
   const validReturnTo =
@@ -42,26 +37,19 @@ export async function GET(req: NextRequest) {
     returnTo.startsWith("/") &&
     !returnTo.startsWith("//");
 
-  // Encrypt state with userId and platform identifier
   const state = encrypt({
     userId: session.user.id,
-    platform: "instagram-facebook", // Special identifier for this flow
+    platform: "instagram-facebook",
     ...(validReturnTo && { returnTo }),
   });
 
-  const url = new URL(authUrl);
-  url.searchParams.set("client_id", clientId);
-  url.searchParams.set("redirect_uri", redirectUri);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", scope);
-  url.searchParams.set("state", state);
-
-  const finalUrl = url.toString();
-
-  console.log("🔍 Instagram-Facebook OAuth URL:", finalUrl);
-  console.log("🔍 Client ID:", clientId);
-  console.log("🔍 Redirect URI:", redirectUri);
-  console.log("🔍 Scopes:", scope);
+  const finalUrl = buildFacebookOAuthUrl({
+    clientId,
+    redirectUri,
+    state,
+    configId: getFacebookInstagramLoginConfigId(),
+    scope: FACEBOOK_INSTAGRAM_PAGE_SCOPES,
+  });
 
   return redirect(finalUrl);
 }

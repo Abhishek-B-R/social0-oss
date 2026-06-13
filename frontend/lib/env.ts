@@ -26,6 +26,10 @@ const envSchema = z.object({
   TIKTOK_CLIENT_SECRET: z.string().optional(),
   FACEBOOK_CLIENT_ID: z.string().optional(),
   FACEBOOK_CLIENT_SECRET: z.string().optional(),
+  /** Facebook Login for Business configuration ID (Meta App Dashboard → Facebook Login for Business → Configurations). */
+  FACEBOOK_LOGIN_CONFIG_ID: z.string().optional(),
+  /** Optional separate config for Instagram-via-Facebook flow; falls back to FACEBOOK_LOGIN_CONFIG_ID. */
+  FACEBOOK_INSTAGRAM_LOGIN_CONFIG_ID: z.string().optional(),
   // Encryption key for OAuth state and tokens
   ENCRYPTION_KEY: z.string().min(32), // 32-byte key (64 hex chars)
   // Cloudflare R2 (S3-compatible)
