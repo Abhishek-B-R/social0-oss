@@ -93,24 +93,24 @@ export function FeaturesSection() {
         {/* 2-column bordered grid */}
         <div className="grid gap-px overflow-hidden rounded-2xl bg-border md:grid-cols-2">
           {features.map((f) => (
-            <div key={f.title} className="group bg-background p-8 md:p-10">
-              <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/50 transition-all duration-300 group-hover:border-emerald-500/40 group-hover:shadow-[0_0_18px_rgba(16,185,129,0.2)] dark:bg-muted/30 dark:group-hover:shadow-[0_0_18px_rgba(16,185,129,0.25)]">
-                <f.icon
-                  className="h-5 w-5 text-foreground transition-colors duration-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400"
-                  strokeWidth={1.5}
-                />
-              </div>
-              <h3 className="mb-2 text-[17px] font-semibold tracking-tight text-foreground">
-                {f.title}
-              </h3>
-              <p className="text-[14px] leading-relaxed text-muted-foreground">
-                {f.desc}
-              </p>
-              {f.tag && (
-                <span className="mt-4 inline-block rounded bg-emerald-50 px-2 py-1 text-[11px] font-medium uppercase tracking-widest text-emerald-700 transition-colors duration-300 group-hover:bg-emerald-100 group-hover:text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 dark:group-hover:bg-emerald-950/80 dark:group-hover:text-emerald-300">
+            <div key={f.title} className="bg-background p-3 md:p-4">
+              <div className="group flex h-full flex-col rounded-2xl p-5 transition-colors duration-300 ease-out hover:bg-[#EBE6DE] md:p-6 dark:hover:bg-white/[0.06]">
+                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/50 transition-all duration-300 group-hover:border-emerald-500/35 group-hover:shadow-[0_0_14px_rgba(16,185,129,0.18)] dark:bg-muted/30 dark:group-hover:shadow-[0_0_14px_rgba(16,185,129,0.22)]">
+                  <f.icon
+                    className="h-5 w-5 text-foreground transition-colors duration-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-400"
+                    strokeWidth={1.5}
+                  />
+                </div>
+                <h3 className="mb-2 text-[17px] font-semibold tracking-tight text-foreground">
+                  {f.title}
+                </h3>
+                <p className="text-[14px] leading-relaxed text-muted-foreground">
+                  {f.desc}
+                </p>
+                <span className="mt-4 w-fit self-start rounded px-2 py-1 text-[11px] font-medium uppercase tracking-widest text-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-400">
                   {f.tag}
                 </span>
-              )}
+              </div>
             </div>
           ))}
         </div>

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
 import { IconEye, IconEyeOff } from "@tabler/icons-react";
@@ -10,6 +9,7 @@ import { Turnstile } from "@marsidev/react-turnstile";
 import { signIn } from "@/lib/auth-client";
 import { resolveCallbackUrl } from "@/lib/sign-in-url";
 import { toast } from "sonner";
+import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 const TIMEOUT_MS = 10_000;
 
@@ -49,7 +49,11 @@ function friendlyAuthError(err: unknown): string {
           ? String((err as { message: unknown }).message)
           : "";
   const lower = msg.toLowerCase();
-  if (lower.includes("timeout") || lower.includes("aborted") || lower.includes("abort")) {
+  if (
+    lower.includes("timeout") ||
+    lower.includes("aborted") ||
+    lower.includes("abort")
+  ) {
     return "Request timed out. Please try again.";
   }
   if (
@@ -151,7 +155,8 @@ function AuthPageContent() {
     } catch (err) {
       const isTimeout =
         err instanceof Error &&
-        (err.name === "AbortError" || err.message.toLowerCase().includes("abort"));
+        (err.name === "AbortError" ||
+          err.message.toLowerCase().includes("abort"));
       toast.error(
         isTimeout
           ? "Request timed out. Please try again."
@@ -217,7 +222,8 @@ function AuthPageContent() {
     } catch (err) {
       const isTimeout =
         err instanceof Error &&
-        (err.name === "AbortError" || err.message.toLowerCase().includes("abort"));
+        (err.name === "AbortError" ||
+          err.message.toLowerCase().includes("abort"));
       toast.error(
         isTimeout
           ? "Request timed out. Please try again."
@@ -230,71 +236,21 @@ function AuthPageContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background font-sans text-foreground">
-      <header className="sticky top-0 z-50 border-b border-border bg-background/80 shadow-sm backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <span className="relative h-9 w-9 block">
-              <Image
-                src="/logo.png"
-                alt="Social0"
-                width={36}
-                height={36}
-                className="rounded-lg dark:hidden"
-              />
-              <Image
-                src="/logo-dark.png"
-                alt="Social0"
-                width={36}
-                height={36}
-                className="rounded-full hidden dark:block absolute inset-0 border border-white"
-              />
-            </span>
-            <span className="font-serif text-[22px] tracking-tight text-foreground landing">
-              Social0
-            </span>
-          </Link>
-          <nav className="hidden sm:flex items-center gap-8 landing">
-            <Link
-              href="/#features"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Features
-            </Link>
-            <Link
-              href="/#pricing"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Pricing
-            </Link>
-            <Link
-              href="/terms"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Terms
-            </Link>
-            <Link
-              href="/privacy"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Privacy
-            </Link>
-          </nav>
-        </div>
-      </header>
+    <div className="flex min-h-screen flex-col">
+      <AuthBrandHeader showNav />
 
-      <main className="flex-1 relative flex items-center justify-center px-4 py-12">
+      <main className="relative flex flex-1 items-center justify-center px-4 py-12">
         <h1 className="sr-only">Sign in to Social0</h1>
         <div className="absolute inset-0 bg-gradient-radial from-emerald-100/50 via-emerald-50/30 to-transparent pointer-events-none dark:from-emerald-950/30 dark:via-emerald-950/15" />
         <div className="relative z-10 w-full max-w-md">
           <div className="rounded-2xl border border-border bg-card shadow-xl p-8 sm:p-10">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-foreground mb-2">
+            <div className="mb-6 text-center">
+              <h2 className="mb-2 font-serif text-[clamp(24px,3vw,32px)] leading-tight tracking-tight text-foreground">
                 {mode === "signin" ? "Sign in to Social0" : "Create an account"}
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-[15px] leading-relaxed text-muted-foreground">
                 {mode === "signin"
-                  ? "Plan, schedule, and publish to all your social accounts."
+                  ? "Plan, schedule, and publish to all your social accounts from one place."
                   : "Get started with email or continue with Google."}
               </p>
             </div>
@@ -360,7 +316,7 @@ function AuthPageContent() {
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-border" />
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
+              <div className="relative flex justify-center text-[11px] uppercase tracking-widest">
                 <span className="bg-card px-2 text-muted-foreground">
                   OR CONTINUE WITH EMAIL
                 </span>
@@ -396,7 +352,7 @@ function AuthPageContent() {
                     </label>
                     <Link
                       href="/auth/forgot-password"
-                      className="text-sm text-emerald-600 hover:text-emerald-700"
+                      className="text-sm text-accent hover:opacity-80"
                     >
                       Forgot password?
                     </Link>
@@ -431,7 +387,7 @@ function AuthPageContent() {
                 <button
                   type="submit"
                   disabled={loading || googleLoading}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-3 px-4 transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-[10px] bg-accent hover:bg-accent-hover disabled:opacity-50 text-white font-medium py-3 px-4 transition-colors"
                 >
                   {loading ? (
                     <>
@@ -529,9 +485,11 @@ function AuthPageContent() {
                 <button
                   type="submit"
                   disabled={
-                    loading || googleLoading || (!!TURNSTILE_SITE_KEY && !turnstileToken)
+                    loading ||
+                    googleLoading ||
+                    (!!TURNSTILE_SITE_KEY && !turnstileToken)
                   }
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-3 px-4 transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-[10px] bg-accent hover:bg-accent-hover disabled:opacity-50 text-white font-medium py-3 px-4 transition-colors"
                 >
                   {loading ? (
                     <>
@@ -612,8 +570,8 @@ function AuthPageContent() {
 
 function AuthPageFallback() {
   return (
-    <div className="min-h-screen flex flex-col bg-background font-sans text-foreground">
-      <main className="flex-1 flex items-center justify-center px-4 py-12">
+    <div className="flex min-h-screen flex-col">
+      <main className="flex flex-1 items-center justify-center px-4 py-12">
         <p className="text-muted-foreground">Loading…</p>
       </main>
     </div>

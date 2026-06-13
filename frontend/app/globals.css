@@ -387,6 +387,7 @@ html {
   --muted-foreground: #5c5750;
   --accent: #1a6b4a;
   --accent-light: #22914f;
+  --accent-hover: #22914f;
   --accent-foreground: #fafaf8;
   --destructive: #dc2626;
   --destructive-foreground: #fef2f2;
@@ -416,6 +417,7 @@ html {
   --muted-foreground: #a3a3a3;
   --accent: #1a6b4a;
   --accent-light: #22914f;
+  --accent-hover: #22914f;
   --accent-foreground: #fafaf8;
   --hero-everywhere: #82e8b9;
   --destructive: #dc2626;

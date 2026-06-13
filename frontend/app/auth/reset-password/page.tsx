@@ -2,10 +2,10 @@
 
 import { useState, useCallback, Suspense } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
+import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 
 const OTP_LENGTH = 6;
 
@@ -68,13 +68,13 @@ function ResetPasswordContent() {
 
   if (!email) {
     return (
-      <div className="min-h-screen flex flex-col bg-background font-sans text-foreground">
-        <main className="flex-1 flex items-center justify-center px-4">
+      <div className="flex min-h-screen flex-col">
+        <main className="flex flex-1 items-center justify-center px-4">
           <p className="text-muted-foreground">
             Missing email.{" "}
             <Link
               href="/auth/forgot-password"
-              className="text-emerald-600 hover:underline"
+              className="text-accent hover:opacity-80 hover:underline"
             >
               Request a reset
             </Link>
@@ -133,42 +133,18 @@ function ResetPasswordContent() {
   ));
 
   return (
-    <div className="min-h-screen flex flex-col bg-background font-sans text-foreground">
-      <header className="sticky top-0 z-50 border-b border-border bg-background/80 shadow-sm backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <span className="relative h-9 w-9 block">
-              <Image
-                src="/logo.png"
-                alt="Social0"
-                width={36}
-                height={36}
-                className="rounded-lg dark:hidden"
-              />
-              <Image
-                src="/logo-dark.png"
-                alt="Social0"
-                width={36}
-                height={36}
-                className="rounded-full hidden dark:block absolute inset-0 border border-white"
-              />
-            </span>
-            <span className="font-semibold text-lg text-foreground">
-              Social0
-            </span>
-          </Link>
-        </div>
-      </header>
+    <div className="flex min-h-screen flex-col">
+      <AuthBrandHeader />
 
-      <main className="flex-1 relative flex items-center justify-center px-4 py-12">
+      <main className="relative flex flex-1 items-center justify-center px-4 py-12">
         <div className="absolute inset-0 bg-gradient-radial from-emerald-100/50 via-emerald-50/30 to-transparent pointer-events-none dark:from-emerald-950/30 dark:via-emerald-950/15" />
         <div className="relative z-10 w-full max-w-md">
           <div className="rounded-2xl border border-border bg-card shadow-xl p-8 sm:p-10">
-            <div className="text-center mb-6">
-              <h1 className="text-2xl font-bold text-foreground mb-2">
+            <div className="mb-6 text-center">
+              <h1 className="mb-2 font-serif text-[clamp(24px,3vw,32px)] leading-tight tracking-tight text-foreground">
                 Reset password
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-[15px] leading-relaxed text-muted-foreground">
                 Enter the 6-digit code we sent to{" "}
                 <strong className="text-foreground">{email}</strong> and choose
                 a new password.
@@ -229,7 +205,7 @@ function ResetPasswordContent() {
                   password.length < 8 ||
                   password !== confirmPassword
                 }
-                className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-3 px-4 transition-colors"
+                className="w-full rounded-[10px] bg-accent hover:bg-accent-hover disabled:opacity-50 text-white font-medium py-3 px-4 transition-colors"
               >
                 {loading ? "Resetting…" : "Reset password"}
               </button>
@@ -238,7 +214,7 @@ function ResetPasswordContent() {
             <p className="mt-6 text-center text-sm text-muted-foreground">
               <Link
                 href="/auth"
-                className="text-emerald-600 hover:text-emerald-700"
+                className="text-accent hover:opacity-80"
               >
                 Back to sign in
               </Link>
@@ -252,8 +228,8 @@ function ResetPasswordContent() {
 
 function ResetPasswordFallback() {
   return (
-    <div className="min-h-screen flex flex-col bg-background font-sans text-foreground">
-      <main className="flex-1 flex items-center justify-center px-4 py-12">
+    <div className="flex min-h-screen flex-col">
+      <main className="flex flex-1 items-center justify-center px-4 py-12">
         <p className="text-muted-foreground">Loading…</p>
       </main>
     </div>
