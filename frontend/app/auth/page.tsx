@@ -6,8 +6,13 @@ import { useSearchParams } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
 import { IconEye, IconEyeOff } from "@tabler/icons-react";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
+import { isTurnstileTestSiteKey } from "@/lib/turnstile";
 import { signIn } from "@/lib/auth-client";
 import { resolveCallbackUrl } from "@/lib/sign-in-url";
+import {
+  EMAIL_ALREADY_EXISTS_MESSAGE,
+  GENERIC_SIGN_UP_ERROR,
+} from "@/lib/sign-up-errors";
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
@@ -68,9 +73,11 @@ function friendlyAuthError(err: unknown): string {
     lower.includes("already exists") ||
     lower.includes("already registered") ||
     lower.includes("email taken") ||
-    lower.includes("duplicate")
+    lower.includes("duplicate") ||
+    lower.includes("user_already") ||
+    lower.includes("email_already")
   ) {
-    return "An account with this email already exists.";
+    return EMAIL_ALREADY_EXISTS_MESSAGE;
   }
   if (
     lower.includes("network") ||
@@ -79,9 +86,9 @@ function friendlyAuthError(err: unknown): string {
     lower.includes("database") ||
     lower.includes("internal")
   ) {
-    return "Something went wrong. Please try again later.";
+    return GENERIC_SIGN_UP_ERROR;
   }
-  return "Something went wrong. Please try again later.";
+  return GENERIC_SIGN_UP_ERROR;
 }
 
 function AuthPageContent() {
@@ -100,6 +107,8 @@ function AuthPageContent() {
     "passive" | "interactive"
   >("passive");
   const turnstileRef = useRef<TurnstileInstance | null>(null);
+  const [turnstileFailed, setTurnstileFailed] = useState(false);
+  const [turnstileWidgetKey, setTurnstileWidgetKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -175,17 +184,29 @@ function AuthPageContent() {
   const resetTurnstileChallenge = () => {
     setTurnstileToken(null);
     setTurnstileChallenge("passive");
+    setTurnstileFailed(false);
+    setTurnstileWidgetKey((k) => k + 1);
     turnstileRef.current?.reset();
+  };
+
+  const markTurnstileNeedsRetry = () => {
+    setTurnstileToken(null);
+    setTurnstileChallenge("interactive");
+    setTurnstileFailed(true);
+  };
+
+  const retryTurnstileVerification = () => {
+    setTurnstileToken(null);
+    setTurnstileFailed(false);
+    setTurnstileChallenge("interactive");
+    setTurnstileWidgetKey((k) => k + 1);
   };
 
   const requireInteractiveTurnstile = (message?: string) => {
     setTurnstileToken(null);
-    setTurnstileChallenge((prev) => {
-      if (prev === "interactive") {
-        turnstileRef.current?.reset();
-      }
-      return "interactive";
-    });
+    setTurnstileFailed(false);
+    setTurnstileChallenge("interactive");
+    setTurnstileWidgetKey((k) => k + 1);
     toast.error(
       message ??
         "Please complete the verification challenge below, then try again.",
@@ -240,6 +261,10 @@ function AuthPageContent() {
               ? data.error
               : "Please complete the verification challenge below, then try again.",
           );
+          return;
+        }
+        if (data.code === "EMAIL_ALREADY_EXISTS") {
+          toast.error(EMAIL_ALREADY_EXISTS_MESSAGE);
           return;
         }
         const raw =
@@ -511,38 +536,74 @@ function AuthPageContent() {
                   </div>
                 </div>
                 {TURNSTILE_SITE_KEY && (
-                  <div className="space-y-2">
-                    {turnstileChallenge === "interactive" && (
-                      <p className="text-center text-sm text-muted-foreground">
-                        Complete the verification challenge to create your
-                        account.
-                      </p>
+                  <div className="space-y-3">
+                    {turnstileFailed ? (
+                      <div
+                        className="rounded-xl border border-border bg-muted/30 p-4 text-center"
+                        role="alert"
+                      >
+                        <p className="text-sm font-medium text-foreground">
+                          Couldn&apos;t verify this browser
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                          Privacy extensions, VPNs, and some test browsers can
+                          block verification. Retry below or sign up with
+                          Google.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={retryTurnstileVerification}
+                          className="mt-3 rounded-[10px] bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+                        >
+                          Try verification again
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {turnstileChallenge === "interactive" && (
+                          <p className="text-center text-sm text-muted-foreground">
+                            Complete the verification challenge to create your
+                            account.
+                          </p>
+                        )}
+                        {isTurnstileTestSiteKey(TURNSTILE_SITE_KEY) && (
+                          <p className="text-center text-[11px] text-muted-foreground">
+                            Turnstile test key active — for local/Playwright
+                            use only.
+                          </p>
+                        )}
+                        <div className="flex justify-center overflow-hidden rounded-lg">
+                          <Turnstile
+                            key={`${turnstileChallenge}-${turnstileWidgetKey}`}
+                            ref={turnstileRef}
+                            siteKey={TURNSTILE_SITE_KEY}
+                            options={{
+                              appearance:
+                                turnstileChallenge === "interactive"
+                                  ? "always"
+                                  : "interaction-only",
+                              retry: "never",
+                              theme: "auto",
+                              refreshExpired: "auto",
+                              feedbackEnabled: false,
+                            }}
+                            onSuccess={(token) => {
+                              setTurnstileToken(token);
+                              setTurnstileFailed(false);
+                            }}
+                            onExpire={() => {
+                              setTurnstileToken(null);
+                            }}
+                            onError={() => {
+                              markTurnstileNeedsRetry();
+                            }}
+                            onTimeout={() => {
+                              markTurnstileNeedsRetry();
+                            }}
+                          />
+                        </div>
+                      </>
                     )}
-                    <div className="flex justify-center">
-                      <Turnstile
-                        key={turnstileChallenge}
-                        ref={turnstileRef}
-                        siteKey={TURNSTILE_SITE_KEY}
-                        options={{
-                          appearance:
-                            turnstileChallenge === "interactive"
-                              ? "always"
-                              : "interaction-only",
-                          retry: "auto",
-                          theme: "auto",
-                        }}
-                        onSuccess={(token) => {
-                          setTurnstileToken(token);
-                        }}
-                        onExpire={() => {
-                          setTurnstileToken(null);
-                        }}
-                        onError={() => {
-                          setTurnstileToken(null);
-                          setTurnstileChallenge("interactive");
-                        }}
-                      />
-                    </div>
                   </div>
                 )}
                 <button

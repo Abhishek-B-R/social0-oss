@@ -1,5 +1,9 @@
 import { auth } from "@/lib/auth";
 import { env } from "@/lib/env";
+import {
+  mapSignUpError,
+  mapSignUpErrorFromResponse,
+} from "@/lib/sign-up-errors";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -7,7 +11,6 @@ import { NextResponse } from "next/server";
  * Email/password sign-up. Better Auth emailOTP plugin sends the verification OTP; we redirect to verify-email (no Turnstile).
  */
 export async function POST(request: Request) {
-  const GENERIC_AUTH_ERROR = "Something went wrong. Please try again.";
   const body = await request.json().catch(() => ({}));
   const { name, email, password } = body as {
     name?: string;
@@ -40,10 +43,8 @@ export async function POST(request: Request) {
     }) as Response;
 
     if (!response.ok) {
-      return NextResponse.json(
-        { error: GENERIC_AUTH_ERROR },
-        { status: response.status },
-      );
+      const mapped = await mapSignUpErrorFromResponse(response);
+      return NextResponse.json(mapped, { status: response.status });
     }
 
     // OTP is sent by Better Auth emailOTP plugin on sign-up (single send path); do not call sendVerificationOTP here to avoid duplicate emails.
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
       e && typeof (e as { status?: number }).status === "number"
         ? (e as { status: number }).status
         : 500;
-    return NextResponse.json({ error: GENERIC_AUTH_ERROR }, { status });
+    const mapped = mapSignUpError(e);
+    return NextResponse.json(mapped, { status });
   }
 }

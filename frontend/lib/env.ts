@@ -41,7 +41,8 @@ const envSchema = z.object({
   // Resend (OTP / transactional email)
   RESEND_API_KEY: z.string().min(1),
   RESEND_FROM_EMAIL: z.string(),
-  // Cloudflare Turnstile (sign-up only)
+  // Cloudflare Turnstile (sign-up only). For Playwright/local automation use dummy keys:
+  // site 1x00000000000000000000AA + secret 1x0000000000000000000000000000000AA (always pass)
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().optional(),
   TURNSTILE_SECRET_KEY: z.string().optional(),
   // Dodo Payments billing
