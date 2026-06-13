@@ -1,6 +1,6 @@
 /**
  * Pre-connect messages shown before OAuth for each platform.
- * Used by PlatformCard and ConnectPlatformButton.
+ * Used by ConnectPlatformButton.
  */
 export const PRE_CONNECT: Record<
   string,

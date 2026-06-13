@@ -136,22 +136,6 @@ export async function getPostPublicationList(
 }
 
 /**
- * Publishes a post to a single publication (for per-platform progress).
- * Returns the same shape as executePublish but with at most one result.
- */
-export async function publishSinglePublication(
-  postId: string,
-  publicationId: string,
-  options?: PublishOptions,
-): Promise<PublishResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized", results: [] };
-  }
-  return executePublish(postId, session.user.id, publicationId, options);
-}
-
-/**
  * Core publish logic: fetches post + publications, posts to each platform, updates DB.
  * When userId is provided, verifies post belongs to that user.
  * When publicationIdFilter is provided, only that publication is processed (for per-platform progress).

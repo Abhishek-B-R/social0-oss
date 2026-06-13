@@ -38,7 +38,7 @@ import { toast } from "sonner";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 import { PinterestConfigInline } from "@/components/PinterestConfigInline";
-import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
+import type { PinterestPostSettings } from "@/lib/pinterest-settings";
 import {
   XPostSettingsInline,
   type XPostSettings,

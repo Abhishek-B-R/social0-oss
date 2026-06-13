@@ -11,7 +11,6 @@ import { PricingSection } from "@/components/landing/PricingSection";
 import { FAQ } from "@/components/landing/FAQ";
 import { FinalCTA } from "@/components/landing/FinalCTA";
 import { LandingFooter } from "@/components/landing/LandingFooter";
-// import { PseoDiscoverSection } from "@/components/landing/PseoDiscoverSection";
 
 export function LandingPageView({ signedIn }: { signedIn: boolean }) {
   return (
@@ -27,7 +26,6 @@ export function LandingPageView({ signedIn }: { signedIn: boolean }) {
         <SupportedPlatforms />
         <FounderSection />
         <PricingSection signedIn={signedIn} />
-        {/* <PseoDiscoverSection /> — hidden until pSEO pages are polished */}
         <FAQ />
         <FinalCTA signedIn={signedIn} />
       </main>

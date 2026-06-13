@@ -46,7 +46,7 @@ import {
   type TikTokPostSettings,
   DEFAULT_TIKTOK_POST_SETTINGS,
 } from "@/components/TikTokSettings";
-import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
+import type { PinterestPostSettings } from "@/lib/pinterest-settings";
 import { PinterestConfigInline } from "@/components/PinterestConfigInline";
 import {
   XPostSettingsInline,

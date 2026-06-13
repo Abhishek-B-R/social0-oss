@@ -8,7 +8,7 @@ import {
   setRememberedLink,
   savePinterestDefaultBoardToDb,
 } from "@/lib/pinterest-remembered";
-import type { PinterestPostSettings } from "@/components/PinterestSettingsModal";
+import type { PinterestPostSettings } from "@/lib/pinterest-settings";
 
 type Board = { id: string; name: string };
 
