@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
 import { IconEye, IconEyeOff } from "@tabler/icons-react";
-import { Turnstile } from "@marsidev/react-turnstile";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { signIn } from "@/lib/auth-client";
 import { resolveCallbackUrl } from "@/lib/sign-in-url";
 import { toast } from "sonner";
@@ -96,6 +96,10 @@ function AuthPageContent() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileChallenge, setTurnstileChallenge] = useState<
+    "passive" | "interactive"
+  >("passive");
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -168,11 +172,33 @@ function AuthPageContent() {
     }
   };
 
+  const resetTurnstileChallenge = () => {
+    setTurnstileToken(null);
+    setTurnstileChallenge("passive");
+    turnstileRef.current?.reset();
+  };
+
+  const requireInteractiveTurnstile = (message?: string) => {
+    setTurnstileToken(null);
+    setTurnstileChallenge((prev) => {
+      if (prev === "interactive") {
+        turnstileRef.current?.reset();
+      }
+      return "interactive";
+    });
+    toast.error(
+      message ??
+        "Please complete the verification challenge below, then try again.",
+    );
+  };
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     toast.dismiss();
     if (TURNSTILE_SITE_KEY && !turnstileToken) {
-      toast.error("Please complete the verification");
+      requireInteractiveTurnstile(
+        "Complete the verification challenge below, then try again.",
+      );
       return;
     }
     setLoading(true);
@@ -205,7 +231,17 @@ function AuthPageContent() {
         const data = (await res.json().catch(() => ({}))) as {
           error?: string | { message?: string };
           message?: string;
+          code?: string;
+          retry?: boolean;
         };
+        if (data.code === "turnstile_failed" || data.retry) {
+          requireInteractiveTurnstile(
+            typeof data.error === "string"
+              ? data.error
+              : "Please complete the verification challenge below, then try again.",
+          );
+          return;
+        }
         const raw =
           typeof data.error === "string"
             ? data.error
@@ -261,6 +297,7 @@ function AuthPageContent() {
                 onClick={() => {
                   setMode("signin");
                   toast.dismiss();
+                  resetTurnstileChallenge();
                 }}
                 className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
                   mode === "signin"
@@ -275,6 +312,7 @@ function AuthPageContent() {
                 onClick={() => {
                   setMode("signup");
                   toast.dismiss();
+                  resetTurnstileChallenge();
                 }}
                 className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
                   mode === "signup"
@@ -473,13 +511,38 @@ function AuthPageContent() {
                   </div>
                 </div>
                 {TURNSTILE_SITE_KEY && (
-                  <div className="flex justify-center">
-                    <Turnstile
-                      siteKey={TURNSTILE_SITE_KEY}
-                      onSuccess={(token) => setTurnstileToken(token)}
-                      onExpire={() => setTurnstileToken(null)}
-                      onError={() => setTurnstileToken(null)}
-                    />
+                  <div className="space-y-2">
+                    {turnstileChallenge === "interactive" && (
+                      <p className="text-center text-sm text-muted-foreground">
+                        Complete the verification challenge to create your
+                        account.
+                      </p>
+                    )}
+                    <div className="flex justify-center">
+                      <Turnstile
+                        key={turnstileChallenge}
+                        ref={turnstileRef}
+                        siteKey={TURNSTILE_SITE_KEY}
+                        options={{
+                          appearance:
+                            turnstileChallenge === "interactive"
+                              ? "always"
+                              : "interaction-only",
+                          retry: "auto",
+                          theme: "auto",
+                        }}
+                        onSuccess={(token) => {
+                          setTurnstileToken(token);
+                        }}
+                        onExpire={() => {
+                          setTurnstileToken(null);
+                        }}
+                        onError={() => {
+                          setTurnstileToken(null);
+                          setTurnstileChallenge("interactive");
+                        }}
+                      />
+                    </div>
                   </div>
                 )}
                 <button

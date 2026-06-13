@@ -39,12 +39,19 @@ export async function POST(request: Request) {
     method: "POST",
     body: formData,
   });
-  const verifyData = (await verifyRes.json()) as { success?: boolean };
+  const verifyData = (await verifyRes.json()) as {
+    success?: boolean;
+    "error-codes"?: string[];
+  };
 
   if (!verifyData.success) {
     return NextResponse.json(
-      { error: "Bot detected" },
-      { status: 403 },
+      {
+        error: "Please complete the verification challenge and try again.",
+        code: "turnstile_failed",
+        retry: true,
+      },
+      { status: 422 },
     );
   }
 
