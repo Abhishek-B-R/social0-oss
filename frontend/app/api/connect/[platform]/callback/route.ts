@@ -14,6 +14,11 @@ import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import OAuth from "oauth-1.0a";
 import { TwitterApi } from "twitter-api-v2";
+import {
+  buildTikTokProfileUrl,
+  isLikelyTikTokHandle,
+  parseTikTokHandleFromProfileUrl,
+} from "@/lib/platform-view-url";
 
 /** Validate URL is http/https before storing as profile image. */
 function isValidProfileImageUrl(url: unknown): url is string {
@@ -948,6 +953,12 @@ export async function GET(
           connectionMethod: "direct",
         };
       }
+      if (platform === "tiktok" && userInfo.platformMetadata) {
+        updateData.platformMetadata = {
+          ...((existing.platformMetadata as Record<string, unknown>) || {}),
+          ...userInfo.platformMetadata,
+        };
+      }
 
       await db
         .update(connectedAccounts)
@@ -965,9 +976,15 @@ export async function GET(
     // Generate UUID for account ID (needed for encryption)
     const accountId = crypto.randomUUID();
 
-    // Prepare metadata for Instagram direct OAuth
-    const platformMetadata: Record<string, unknown> | undefined =
+    // Prepare metadata for Instagram direct OAuth / TikTok profile URL
+    let platformMetadata: Record<string, unknown> | undefined =
       platform === "instagram" ? { connectionMethod: "direct" } : undefined;
+    if (userInfo.platformMetadata) {
+      platformMetadata = {
+        ...(platformMetadata ?? {}),
+        ...userInfo.platformMetadata,
+      };
+    }
 
     if (platform === "threads") {
       console.log("Saving Threads account:", {
@@ -1046,6 +1063,7 @@ async function fetchPlatformUserInfo(
   id: string;
   username: string | null;
   profileImageUrl: string | null;
+  platformMetadata?: Record<string, unknown>;
 }> {
   switch (platform) {
     case "linkedin": {
@@ -1308,7 +1326,7 @@ async function fetchPlatformUserInfo(
     case "tiktok": {
       try {
         const response = await fetch(
-          "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name",
+          "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name,username,profile_deep_link",
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -1321,10 +1339,30 @@ async function fetchPlatformUserInfo(
             const user = data.data.user;
             const raw = user.avatar_url;
             const profileImageUrl = isValidProfileImageUrl(raw) ? raw : null;
+            const displayName =
+              typeof user.display_name === "string" ? user.display_name : null;
+            let handle: string | null = null;
+            if (
+              typeof user.username === "string" &&
+              isLikelyTikTokHandle(user.username)
+            ) {
+              handle = user.username.replace(/^@/, "").trim();
+            } else if (typeof user.profile_deep_link === "string") {
+              handle = parseTikTokHandleFromProfileUrl(user.profile_deep_link);
+            }
+            const profileUrl = handle
+              ? buildTikTokProfileUrl(handle)
+              : typeof user.profile_deep_link === "string"
+                ? user.profile_deep_link
+                : null;
             return {
               id: user.open_id || `tiktok-${Date.now()}`,
-              username: user.display_name || null,
+              username: handle,
               profileImageUrl,
+              platformMetadata: {
+                displayName,
+                profileUrl,
+              },
             };
           }
         } else {

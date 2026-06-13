@@ -542,6 +542,7 @@ export async function getPostDetail(
         lastError: postPublications.lastError,
         profileImageUrl: connectedAccounts.profileImageUrl,
         platformUsername: connectedAccounts.platformUsername,
+        platformMetadata: connectedAccounts.platformMetadata,
         isTwitterPremium: connectedAccounts.isTwitterPremium,
         publishedAt: postPublications.publishedAt,
       })

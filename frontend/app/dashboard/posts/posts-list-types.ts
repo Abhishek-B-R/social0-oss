@@ -11,6 +11,7 @@ export type PublicationRow = {
   platformUsername: string | null;
   isTwitterPremium: boolean | null;
   publishedAt: Date | null;
+  platformMetadata?: Record<string, unknown> | null;
 };
 
 export type StatusFilter = "draft" | "scheduled" | "published" | null;

@@ -74,7 +74,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     authUrl: "https://www.tiktok.com/v2/auth/authorize/",
     tokenUrl: "https://open.tiktokapis.com/v2/oauth/token/",
     // user.info.basic: open_id, union_id, avatar_url, display_name
-    // NOTE: user.info.profile (for username/handle) requires separate TikTok app approval
+    // username is returned when user.info.profile is approved; otherwise display_name is used as fallback
     // video.upload + video.publish: Content Posting API (Direct Post with PULL_FROM_URL)
     // TikTok Login Kit for Web requires comma-separated scopes.
     scope: "user.info.basic,video.upload,video.publish",

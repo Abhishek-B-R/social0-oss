@@ -23,7 +23,7 @@ import {
 import { publishPost, getPostPublicationList } from "@/app/actions/publish";
 import {
   sortBySlowPlatformsLast,
-  publishEachPublicationInParallel,
+  publishPostWithParallelProgress,
 } from "@/lib/publish-order";
 import {
   createAutoPlug,
@@ -624,41 +624,38 @@ export function TextPostForm({
         }));
         setPlatformStatuses(initial);
         setOverlayPhase("publishing");
-        await publishEachPublicationInParallel(
+        await publishPostWithParallelProgress(
           result.postId,
-          orderedList,
           undefined,
-          (connectedAccountId) => {
+          (rows) => {
             setPlatformStatuses((prev) =>
-              prev.map((p) =>
-                p.accountId === connectedAccountId
-                  ? { ...p, status: "processing" as PlatformStatus }
-                  : p,
-              ),
-            );
-          },
-          (connectedAccountId, singleResult) => {
-            const res = singleResult.results?.[0];
-            setPlatformStatuses((prev) =>
-              prev.map((p) =>
-                p.accountId === connectedAccountId
-                  ? {
-                      ...p,
-                      status: (res?.status === "published"
-                        ? "published"
-                        : "failed") as PlatformStatus,
-                      error: res?.status === "failed" ? res?.error : undefined,
-                      postUrl:
-                        res?.status === "published"
-                          ? (res?.platformPostUrl ?? null)
-                          : undefined,
-                    }
-                  : p,
-              ),
+              prev.map((p) => {
+                const row = rows.find((r) => r.connectedAccountId === p.accountId);
+                if (!row) return p;
+                const status: PlatformStatus =
+                  row.publicationStatus === "published"
+                    ? "published"
+                    : row.publicationStatus === "failed"
+                      ? "failed"
+                      : row.publicationStatus === "publishing"
+                        ? "processing"
+                        : p.status;
+                return {
+                  ...p,
+                  status,
+                  error:
+                    row.publicationStatus === "failed"
+                      ? (row.lastError ?? undefined)
+                      : undefined,
+                  postUrl:
+                    row.publicationStatus === "published"
+                      ? (row.platformPostUrl ?? undefined)
+                      : undefined,
+                };
+              }),
             );
           },
         );
-        await publishPost(result.postId);
         if (
           resurfaceConfig &&
           selectedAccounts.some((a) => a.platform === "twitter_x")
@@ -763,41 +760,38 @@ export function TextPostForm({
         }));
         setPlatformStatuses(initial);
         setOverlayPhase("publishing");
-        await publishEachPublicationInParallel(
+        await publishPostWithParallelProgress(
           result.postId,
-          orderedList,
           undefined,
-          (connectedAccountId) => {
+          (rows) => {
             setPlatformStatuses((prev) =>
-              prev.map((p) =>
-                p.accountId === connectedAccountId
-                  ? { ...p, status: "processing" as PlatformStatus }
-                  : p,
-              ),
-            );
-          },
-          (connectedAccountId, singleResult) => {
-            const res = singleResult.results?.[0];
-            setPlatformStatuses((prev) =>
-              prev.map((p) =>
-                p.accountId === connectedAccountId
-                  ? {
-                      ...p,
-                      status: (res?.status === "published"
-                        ? "published"
-                        : "failed") as PlatformStatus,
-                      error: res?.status === "failed" ? res?.error : undefined,
-                      postUrl:
-                        res?.status === "published"
-                          ? (res?.platformPostUrl ?? null)
-                          : undefined,
-                    }
-                  : p,
-              ),
+              prev.map((p) => {
+                const row = rows.find((r) => r.connectedAccountId === p.accountId);
+                if (!row) return p;
+                const status: PlatformStatus =
+                  row.publicationStatus === "published"
+                    ? "published"
+                    : row.publicationStatus === "failed"
+                      ? "failed"
+                      : row.publicationStatus === "publishing"
+                        ? "processing"
+                        : p.status;
+                return {
+                  ...p,
+                  status,
+                  error:
+                    row.publicationStatus === "failed"
+                      ? (row.lastError ?? undefined)
+                      : undefined,
+                  postUrl:
+                    row.publicationStatus === "published"
+                      ? (row.platformPostUrl ?? undefined)
+                      : undefined,
+                };
+              }),
             );
           },
         );
-        await publishPost(result.postId);
         if (
           resurfaceConfig &&
           selectedAccounts.some((a) => a.platform === "twitter_x")

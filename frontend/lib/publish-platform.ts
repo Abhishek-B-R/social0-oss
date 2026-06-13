@@ -20,6 +20,7 @@ import {
   processImageForTikTok,
   TikTokImageError,
 } from "@/lib/tiktok-photo-process";
+import { fetchTikTokProfileUrl, resolveTikTokProfileUrl } from "@/lib/platform-view-url";
 import sharp from "sharp";
 
 export type PublishPlatformResult = {
@@ -2285,6 +2286,19 @@ type TikTokPlatformOptions = {
   autoAddMusic?: boolean;
 };
 
+async function resolveTikTokPublishedProfileUrl(
+  pub: Pub,
+  accessToken: string,
+): Promise<string | null> {
+  return (
+    (await fetchTikTokProfileUrl(accessToken)) ??
+    resolveTikTokProfileUrl({
+      platformUsername: pub.platformUsername,
+      platformMetadata: pub.platformMetadata,
+    })
+  );
+}
+
 async function publishToTikTok(
   pub: Pub,
   post: Post,
@@ -2663,9 +2677,10 @@ async function publishToTikTok(
         Array.isArray(postIds) && postIds.length > 0 ? postIds[0] : undefined;
       const videoId = firstId !== undefined ? String(firstId) : undefined;
       if (videoId) {
-        const platformPostUrl = pub.platformUsername
-          ? `https://www.tiktok.com/@${pub.platformUsername}`
-          : null;
+        const platformPostUrl = await resolveTikTokPublishedProfileUrl(
+          pub,
+          accessToken,
+        );
         return {
           status: "published",
           platformPostId: videoId,
@@ -2747,9 +2762,10 @@ async function publishToTikTok(
       Array.isArray(postIds) && postIds.length > 0 ? postIds[0] : undefined;
     const videoId = firstId !== undefined ? String(firstId) : undefined;
     if (videoId) {
-      const platformPostUrl = pub.platformUsername
-        ? `https://www.tiktok.com/@${pub.platformUsername}`
-        : null;
+      const platformPostUrl = await resolveTikTokPublishedProfileUrl(
+        pub,
+        accessToken,
+      );
       return {
         status: "published",
         platformPostId: videoId,

@@ -20,6 +20,7 @@ import {
 import { PostDetailAutoFeaturesSection } from "./PostDetailAutoFeaturesSection";
 import { formatDateTime } from "@/lib/date-format";
 import { sortBySlowPlatformsLast } from "@/lib/publish-order";
+import { getPublicationViewUrl } from "@/lib/platform-view-url";
 import {
   enrichTwitterErrorForDisplay,
   isTwitterPlatformId,
@@ -580,19 +581,7 @@ export function PostDetailPageClient({ postId }: { postId: string }) {
               <ul className="space-y-2">
                 {publicationsSorted.map((pub) => {
                   const badge = getPublicationStatusBadge(pub.status);
-                  let viewUrl: string | null = null;
-                  if (pub.platform === "instagram" && pub.platformUsername) {
-                    viewUrl = `https://www.instagram.com/${pub.platformUsername}/`;
-                  } else if (
-                    pub.platform === "tiktok" &&
-                    pub.status === "published" &&
-                    pub.platformUsername
-                  ) {
-                    const handle = String(pub.platformUsername).replace(/^@/, "");
-                    viewUrl = `https://www.tiktok.com/@${handle}`;
-                  } else {
-                    viewUrl = pub.platformPostUrl ?? null;
-                  }
+                  const viewUrl = getPublicationViewUrl(pub);
                   return (
                     <li
                       key={pub.connectedAccountId ?? pub.platform}

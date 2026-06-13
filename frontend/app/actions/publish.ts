@@ -32,6 +32,7 @@ import {
 import { logPublishBlocked } from "@/lib/plan-analytics";
 import { uploadTwitterImage, uploadTwitterVideo } from "@/lib/twitter-media";
 import { getTwitterErrorMessage } from "@/lib/twitter-errors";
+import { parseTikTokHandleFromProfileUrl } from "@/lib/platform-view-url";
 import { TwitterApi } from "twitter-api-v2";
 
 /** Extract a readable error from LinkedIn API response (status, message, serviceErrorCode). */
@@ -88,6 +89,9 @@ export async function getPostPublicationList(
     connectedAccountId: string;
     platform: string;
     platformUsername: string | null;
+    publicationStatus: string;
+    platformPostUrl: string | null;
+    lastError: string | null;
   }[]
 > {
   try {
@@ -106,6 +110,9 @@ export async function getPostPublicationList(
         connectedAccountId: connectedAccounts.id,
         platform: connectedAccounts.platform,
         platformUsername: connectedAccounts.platformUsername,
+        publicationStatus: postPublications.status,
+        platformPostUrl: postPublications.platformPostUrl,
+        lastError: postPublications.lastError,
       })
       .from(postPublications)
       .innerJoin(
@@ -118,6 +125,9 @@ export async function getPostPublicationList(
       connectedAccountId: r.connectedAccountId,
       platform: r.platform,
       platformUsername: r.platformUsername,
+      publicationStatus: r.publicationStatus,
+      platformPostUrl: r.platformPostUrl,
+      lastError: r.lastError,
     }));
   } catch (err) {
     console.error("[getPostPublicationList] failed, returning empty:", err);
@@ -1457,6 +1467,30 @@ export async function executePublish(
             updatedAt: new Date(),
           })
           .where(eq(postPublications.id, pub.publicationId));
+        if (
+          pub.platform === "tiktok" &&
+          isPublished &&
+          platformPostResult.platformPostUrl?.includes("tiktok.com/@")
+        ) {
+          const handle = parseTikTokHandleFromProfileUrl(
+            platformPostResult.platformPostUrl,
+          );
+          if (handle) {
+            const existingMeta =
+              (pub.platformMetadata as Record<string, unknown> | null) ?? {};
+            await db
+              .update(connectedAccounts)
+              .set({
+                platformUsername: handle,
+                platformMetadata: {
+                  ...existingMeta,
+                  profileUrl: platformPostResult.platformPostUrl,
+                },
+                updatedAt: new Date(),
+              })
+              .where(eq(connectedAccounts.id, pub.connectedAccountId));
+          }
+        }
         results.push({
           platform: pub.platform,
           connectedAccountId: pub.connectedAccountId,

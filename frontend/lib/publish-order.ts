@@ -1,9 +1,9 @@
 import type { PublishOptions, PublishResult } from "@/app/actions/publish";
-import { publishSinglePublication } from "@/app/actions/publish";
+import { getPostPublicationList, publishPost } from "@/app/actions/publish";
 
 /**
- * TikTok / Threads are slow; run them last so faster platforms finish first.
- * Stable: preserves original order within each group.
+ * TikTok / Threads are slow; list them last in the progress UI only.
+ * Server-side publish runs all platforms in parallel regardless of order.
  */
 export function sortKeyForSlowPlatformsLast(platform: string): number {
   if (platform === "tiktok") return 1;
@@ -32,39 +32,43 @@ export type PublicationListRow = {
   platform: string;
 };
 
+export type PublicationProgressRow = PublicationListRow & {
+  publicationStatus: string;
+  platformPostUrl: string | null;
+  lastError: string | null;
+};
+
+const PROGRESS_POLL_MS = 1200;
+
 /**
- * Fire one server action per publication in parallel (UI was previously awaiting
- * each call in a loop, which made publishing look sequential).
+ * One server action — executePublish runs all platforms in parallel via
+ * Promise.allSettled. Polls publication rows for per-platform progress UI.
  */
-export async function publishEachPublicationInParallel(
+export async function publishPostWithParallelProgress(
   postId: string,
-  orderedList: PublicationListRow[],
   options: PublishOptions | undefined,
-  onStart: (connectedAccountId: string) => void,
-  onDone: (connectedAccountId: string, result: PublishResult) => void,
-): Promise<void> {
-  await Promise.allSettled(
-    orderedList.map((pub) => {
-      onStart(pub.connectedAccountId);
-      return publishSinglePublication(postId, pub.publicationId, options)
-        .then((singleResult) => {
-          onDone(pub.connectedAccountId, singleResult);
-        })
-        .catch((err: unknown) => {
-          const message = err instanceof Error ? err.message : String(err);
-          onDone(pub.connectedAccountId, {
-            success: false,
-            error: message,
-            results: [
-              {
-                platform: pub.platform,
-                connectedAccountId: pub.connectedAccountId,
-                status: "failed" as const,
-                error: message,
-              },
-            ],
-          });
-        });
-    }),
-  );
+  onPoll: (rows: PublicationProgressRow[]) => void,
+): Promise<PublishResult> {
+  let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  const pollOnce = async () => {
+    try {
+      const rows = await getPostPublicationList(postId);
+      onPoll(rows);
+    } catch {
+      // ignore transient poll errors
+    }
+  };
+
+  pollTimer = setInterval(() => {
+    void pollOnce();
+  }, PROGRESS_POLL_MS);
+
+  try {
+    await pollOnce();
+    return await publishPost(postId, options);
+  } finally {
+    if (pollTimer) clearInterval(pollTimer);
+    await pollOnce();
+  }
 }
