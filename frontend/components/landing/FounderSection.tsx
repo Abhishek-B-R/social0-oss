@@ -27,54 +27,66 @@ export function FounderSection() {
           {/* Content */}
           <div className="flex-1 text-center md:text-left">
             <h2 className="mb-4 font-serif text-[clamp(24px,3vw,32px)] tracking-tight text-foreground">
-              Why I built Social0
+              I don&apos;t think posting on social media should require project
+              management skills.
             </h2>
-            <div className="mb-6 space-y-2 text-[16px] leading-relaxed text-muted-foreground">
-              <p>Every morning I opened the same tabs.</p>
-              <p className="text-muted-foreground/80 dark:text-muted-foreground/80">
-                Twitter. LinkedIn. Threads. Bluesky.
+            <div className="mb-6 space-y-4 text-[16px] leading-relaxed text-muted-foreground">
+              <p>
+                I&apos;d post on Twitter. Then remember LinkedIn. Then remember
+                Threads. Then remember that I told everyone I was &ldquo;trying
+                Bluesky seriously this time.&rdquo;
               </p>
               <p>
-                Just to post the{" "}
-                <strong className="font-semibold text-foreground">
-                  same update again and again
-                </strong>
+                Twenty minutes later, I&apos;d still be copy pasting the same
+                post into different text boxes.
+              </p>
+              <p>
+                At some point I realized I had accidentally become an unpaid
+                intern for my own social media accounts.
+              </p>
+              <p>
+                I searched for tools. The good ones were expensive. The cheap
+                ones tested my patience. The rest somehow had 147 features and
+                still couldn&apos;t do the one thing I wanted.
+              </p>
+              <p className="font-semibold text-foreground">
+                So I built Social0.
+              </p>
+              <div className="space-y-2 pl-0 md:pl-1">
+                <p>For creators trying to stay consistent.</p>
+                <p>For agencies juggling multiple accounts.</p>
+                <p>For businesses that have better things to do.</p>
+                <p>
+                  For anyone who&apos;s ever thought:{" "}
+                  <span className="italic text-foreground">
+                    &ldquo;Why am I still copy pasting the same post in
+                    2026?&rdquo;
+                  </span>
+                </p>
+              </div>
+              <p>
+                If you run into a bug, something feels confusing, or you have an
+                idea that would make Social0 better,{" "}
+                <a
+                  href="https://x.com/social0_app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-foreground underline underline-offset-2 transition-colors hover:text-emerald-700 dark:hover:text-emerald-400"
+                >
+                  send me a DM on X
+                </a>{" "}
+                or{" "}
+                <a
+                  href="mailto:support@social0.app"
+                  className="font-medium text-foreground underline underline-offset-2 transition-colors hover:text-emerald-700 dark:hover:text-emerald-400"
+                >
+                  shoot me an email
+                </a>
                 .
               </p>
               <p>
-                Sometimes it meant opening{" "}
-                <strong className="font-semibold text-foreground">
-                  4–6 different tabs
-                </strong>{" "}
-                just to share one post.
-              </p>
-              <p>
-                Most tools started at{" "}
-                <strong className="font-semibold text-foreground">
-                  $50–$100/month
-                </strong>{" "}
-                or were packed with features I didn’t actually need.
-              </p>
-              <p>
-                The cheaper ones were{" "}
-                <strong className="font-semibold text-foreground">
-                  slow, buggy, or missing basic functionality
-                </strong>
-                .
-              </p>
-              <p>
-                I wanted something{" "}
-                <strong className="font-semibold text-emerald-700 dark:text-emerald-400">
-                  simple, fast, and affordable
-                </strong>
-                .
-              </p>
-              <p className="text-foreground">
-                So I built Social0 — a way to{" "}
-                <strong className="font-semibold text-emerald-700 dark:text-emerald-400">
-                  write once and publish everywhere
-                </strong>
-                .
+                I read every message myself, and if it&apos;s broken, I&apos;ll
+                do my best to fix it within 48 hours.
               </p>
             </div>
 
@@ -84,7 +96,7 @@ export function FounderSection() {
                   Abhishek
                 </div>
                 <a
-                  href="https://twitter.com/abhitwt"
+                  href="https://x.com/abhitwt"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[14px] text-muted-foreground transition-colors hover:text-foreground"
