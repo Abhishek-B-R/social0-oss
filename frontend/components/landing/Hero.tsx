@@ -49,8 +49,8 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
                   <span aria-hidden="true">→</span>
                 </Link>
                 <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <CheckCircle className="h-3.5 w-3.5" /> 10 free posts · No
-                  credit card required
+                  <CheckCircle className="h-3.5 w-3.5" /> Start free · No credit
+                  card required
                 </span>
               </div>
               {/* Social proof — under CTA to reinforce action */}

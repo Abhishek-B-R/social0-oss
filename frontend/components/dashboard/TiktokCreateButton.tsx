@@ -45,7 +45,7 @@ export function TiktokCreateButton({
       onClick={() => {
         if (!isActive) setNavPending(true);
       }}
-      className={`absolute left-1/2 top-0 flex -translate-x-1/2 flex-col items-center justify-end touch-manipulation ${navPending ? "opacity-75" : ""}`}
+      className={`absolute left-1/2 top-0.5 flex -translate-x-1/2 flex-col items-center justify-end touch-manipulation ${navPending ? "opacity-75" : ""}`}
       aria-label={ariaLabel}
       aria-current={isActive ? "page" : undefined}
     >

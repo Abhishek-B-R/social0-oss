@@ -57,15 +57,15 @@ export function DashboardBottomNav() {
         pathname === "/dashboard/more" ||
         pathname.startsWith("/dashboard/settings") ||
         pathname.startsWith("/dashboard/billing") ||
-        pathname.startsWith("/dashboard/bulk-tools") ||
-        pathname.startsWith("/dashboard/teams")
+        pathname.startsWith("/dashboard/bulk-tools")
+        // || pathname.startsWith("/dashboard/teams") // hidden until Teams ships
       );
     return pathname.startsWith(href);
   };
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-border bg-bg-elevated pb-[env(safe-area-inset-bottom)] lg:hidden"
+      className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-border bg-bg-elevated py-0.5 pb-[calc(env(safe-area-inset-bottom)+2px)] lg:hidden"
       aria-label="Main navigation"
     >
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
@@ -74,7 +74,7 @@ export function DashboardBottomNav() {
 
         if (isCreate) {
           return (
-            <div key={href} className="flex min-h-[56px] flex-1 shrink-0">
+            <div key={href} className="relative flex min-h-[60px] flex-1 shrink-0">
               <TiktokCreateButton
                 href={href}
                 isActive={active}
@@ -92,7 +92,7 @@ export function DashboardBottomNav() {
             onClick={() => {
               if (!active) setPendingHref(href);
             }}
-            className={`flex min-h-[56px] flex-1 shrink-0 flex-col items-center justify-center gap-0.5 py-3 pt-2 text-xs transition-colors touch-manipulation ${
+            className={`flex min-h-[60px] flex-1 shrink-0 flex-col items-center justify-center gap-0.5 px-1 pb-2.5 pt-2 text-xs transition-colors touch-manipulation ${
               active
                 ? "text-accent"
                 : "text-text-muted hover:text-text active:text-text"

@@ -41,7 +41,7 @@ export default function TermsPage() {
           Terms and Conditions
         </h1>
         <p className="text-sm text-muted-foreground mb-10">
-          Last updated: March 2026
+          Last updated: May 2026
         </p>
 
         <div className="prose prose-zinc dark:prose-invert max-w-none space-y-8 text-base leading-relaxed">

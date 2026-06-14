@@ -7,7 +7,7 @@ import {
   IconClock,
   IconCircleCheck,
   IconFileText,
-  IconUsers,
+  // IconUsers, // Teams — re-enable when /dashboard/teams ships
   IconCreditCard,
   IconMessageCircle,
   IconTool,
@@ -35,7 +35,7 @@ const MORE_LINKS = [
   { href: "/dashboard/posts/scheduled", label: "Scheduled", icon: IconClock },
   { href: "/dashboard/posts/posted", label: "Posted", icon: IconCircleCheck },
   { href: "/dashboard/posts/drafts", label: "Drafts", icon: IconFileText },
-  { href: "/dashboard/teams", label: "Teams", icon: IconUsers },
+  // { href: "/dashboard/teams", label: "Teams", icon: IconUsers },
   { href: "/dashboard/settings", label: "Settings", icon: IconSettings },
   { href: "/dashboard/billing", label: "Billing", icon: IconCreditCard },
 ] as const;

@@ -13,7 +13,7 @@ import {
   IconFileText,
   IconCalendar,
   IconLink,
-  IconUsers,
+  // IconUsers, // Teams — re-enable when /dashboard/teams ships
   IconSettings,
   IconWallet,
   IconMessageCircle,
@@ -250,12 +250,14 @@ export function DashboardSidebar({
               icon={IconLink}
               isActive={pathname === "/dashboard/connections"}
             />
+            {/* Teams — hidden until feature is ready
             <NavLink
               href="/dashboard/teams"
               label="Teams"
               icon={IconUsers}
               isActive={isActive("/dashboard/teams")}
             />
+            */}
           </Section>
 
           <Section title="Configuration">
