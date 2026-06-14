@@ -64,6 +64,7 @@ import {
   type XPostSettings,
 } from "@/components/XPostSettingsInline";
 import { toast } from "sonner";
+import { ChevronDown, ChevronUp, Check, Circle } from "lucide-react";
 
 const TWITTER_THREAD_SEP = "---";
 
@@ -170,7 +171,8 @@ export function TextPostForm({
     persistAutoPlug,
   } = useRememberedAutoRepostAutoPlug();
   const [showContentError, setShowContentError] = useState(false);
-  const [customCaptionsExpanded, setCustomCaptionsExpanded] = useState(false);
+  type ConfigPanel = "platform-captions" | "x" | null;
+  const [activeConfigPanel, setActiveConfigPanel] = useState<ConfigPanel>(null);
   const [accountCaptionsState, setAccountCaptionsState] = useState<
     Record<string, AccountCaptionState>
   >({});
@@ -1005,22 +1007,60 @@ export function TextPostForm({
             )}
           </div>
 
-          {showCustomCaptionsSection && (
-            <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
-              <button
-                type="button"
-                onClick={() => setCustomCaptionsExpanded((prev) => !prev)}
-                className="flex w-full items-center justify-between text-left"
-              >
-                <span className="text-sm font-semibold text-text">
-                  Custom Captions
-                </span>
-                <span className="text-text-muted">
-                  {customCaptionsExpanded ? "▼" : "▶"}
-                </span>
-              </button>
-              {customCaptionsExpanded && (
-                <div className="mt-4 space-y-4">
+          {(showCustomCaptionsSection || hasXSelected) && (
+            <div className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm">
+              <p className="mb-3 text-xs text-text-muted">
+                Post configurations & tools
+              </p>
+              <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1 min-h-[44px] sm:min-h-0 -mx-1 px-1 scrollbar-thin">
+                {showCustomCaptionsSection && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveConfigPanel((p) =>
+                        p === "platform-captions" ? null : "platform-captions",
+                      )
+                    }
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
+                      activeConfigPanel === "platform-captions"
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
+                    }`}
+                  >
+                    <Circle className="h-3.5 w-3.5 text-text-muted" />
+                    <span>Platform Captions</span>
+                    {activeConfigPanel === "platform-captions" ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                )}
+                {hasXSelected && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveConfigPanel((p) => (p === "x" ? null : "x"))
+                    }
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
+                      activeConfigPanel === "x"
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
+                    }`}
+                  >
+                    <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                    <span>X Settings</span>
+                    {activeConfigPanel === "x" ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {activeConfigPanel === "platform-captions" && (
+                <div className="mt-2 space-y-4 border-t border-border pt-4">
                   {selectedAccounts.map((account) => {
                     const state =
                       accountCaptionsState[account.id] ??
@@ -1144,16 +1184,16 @@ export function TextPostForm({
                   })}
                 </div>
               )}
-            </div>
-          )}
-          {hasXSelected && (
-            <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
-              <p className="mb-3 text-xs text-text-muted">Post configurations & tools</p>
-              <XPostSettingsInline
-                value={xPostSettings}
-                onChange={setXPostSettings}
-                isVisible={true}
-              />
+
+              {activeConfigPanel === "x" && (
+                <div className="mt-2 border-t border-border pt-4">
+                  <XPostSettingsInline
+                    value={xPostSettings}
+                    onChange={setXPostSettings}
+                    isVisible={activeConfigPanel === "x"}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
