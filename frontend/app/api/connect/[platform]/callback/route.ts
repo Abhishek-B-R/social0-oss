@@ -792,6 +792,7 @@ export async function GET(
       id: string;
       username: string | null;
       profileImageUrl: string | null;
+      platformMetadata?: Record<string, unknown>;
     };
 
     // Instagram/Threads return user_id in token response, use it if available

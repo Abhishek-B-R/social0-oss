@@ -126,7 +126,7 @@ export async function getPostPublicationList(
       connectedAccountId: r.connectedAccountId,
       platform: r.platform,
       platformUsername: r.platformUsername,
-      publicationStatus: r.publicationStatus,
+      publicationStatus: r.publicationStatus ?? "pending",
       platformPostUrl: r.platformPostUrl,
       lastError: r.lastError,
     }));
