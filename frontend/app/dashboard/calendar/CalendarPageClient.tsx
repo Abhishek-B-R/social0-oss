@@ -69,16 +69,18 @@ export function CalendarPageClient() {
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <div className="flex items-center gap-2">
-        <h1 className="mb-2 font-serif text-2xl font-semibold tracking-tight text-foreground landing flex items-center gap-2 sm:text-3xl">
-          Calendar
-        </h1>
-        <DocsInfoIcon url={DOCS_CALENDAR_URL} />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0">
+        <div className="flex items-center gap-2">
+          <h1 className="mb-2 font-serif text-2xl font-semibold tracking-tight text-foreground landing flex items-center gap-2 sm:text-3xl">
+            Calendar
+          </h1>
+          <DocsInfoIcon url={DOCS_CALENDAR_URL} />
+        </div>
+        <p className="mt-1.5 text-sm text-text-muted sm:mt-2">
+          View your scheduled and published posts by month, week, or day.
+        </p>
       </div>
-      <p className="mt-1.5 text-sm text-text-muted sm:mt-2">
-        View your scheduled and published posts by month, week, or day.
-      </p>
       <div className="mt-4 flex min-h-0 flex-1 flex-col sm:mt-6">
         <CalendarClient
           posts={data.posts}
