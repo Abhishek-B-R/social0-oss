@@ -14,8 +14,8 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
           <div>
             {/* Eyebrow badge */}
             <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-              Public Beta
+              {/* <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> */}
+              {/* Public Beta */}
             </div>
 
             {/* Headline: only "all your socials" in serif italic emerald (1–2 words) */}
