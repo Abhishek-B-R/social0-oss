@@ -41,7 +41,7 @@ export default function PrivacyPage() {
           Privacy Policy
         </h1>
         <p className="text-sm text-muted-foreground mb-10">
-          Last updated: February 2026
+          Last updated: March 2026
         </p>
 
         <div className="prose prose-zinc dark:prose-invert max-w-none space-y-8 text-base leading-relaxed">
@@ -109,9 +109,9 @@ export default function PrivacyPage() {
               4. Data storage and security
             </h2>
             <p>
-              OAuth tokens and other credentials are encrypted at rest using
-              AES-256-GCM. We use per-account key derivation (HKDF) and do not
-              expose tokens to your browser or to frontend code. Tokens are used
+              We use industry-standard security measures to protect credentials
+              and sensitive information. OAuth tokens and other credentials are
+              not exposed to your browser or to frontend code. Tokens are used
               only on the server to perform actions you request (e.g. posting to
               a platform). We follow industry practices to protect data in
               transit and at rest. If a platform supports PKCE or similar

@@ -41,7 +41,7 @@ export default function TermsPage() {
           Terms and Conditions
         </h1>
         <p className="text-sm text-muted-foreground mb-10">
-          Last updated: February 2026
+          Last updated: March 2026
         </p>
 
         <div className="prose prose-zinc dark:prose-invert max-w-none space-y-8 text-base leading-relaxed">
@@ -71,7 +71,20 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-2xl font-semibold font-serif text-[22px]  text-foreground mb-2">
-              3. Account and third-party connections
+              3. Eligibility
+            </h2>
+            <p>
+              You must be at least 13 years old, or the minimum age required in
+              your jurisdiction to use online services and connect to social
+              media platforms, whichever is higher. By using the Service, you
+              represent that you meet this requirement and have the legal
+              capacity to enter into these Terms.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold font-serif text-[22px]  text-foreground mb-2">
+              4. Account and third-party connections
             </h2>
             <p>
               You may sign in with a third-party provider (e.g. Google). When
@@ -79,44 +92,103 @@ export default function TermsPage() {
               official OAuth (or equivalent) flow. You authorize us to access
               only the permissions (scopes) necessary to publish and manage
               content on your behalf. We do not store your social network
-              passwords. Access tokens we receive are encrypted and stored
-              securely; we request only the minimum scopes required for posting
-              and related functionality. You may disconnect any connected
-              account at any time from your dashboard.
+              passwords. Access tokens we receive are stored securely; we
+              request only the minimum scopes required for posting and related
+              functionality. You may disconnect any connected account at any
+              time from your dashboard.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold font-serif text-[22px]  text-foreground mb-2">
-              4. Your content and conduct
+              5. Your content, conduct, and copyright
             </h2>
-            <p>
+            <p className="mb-3">
               You are responsible for the content you create and publish through
-              the Service. You must comply with each platform’s terms and
-              policies and with applicable law. You may not use the Service for
-              spam, impersonation, or illegal activity. We may suspend or
-              terminate access if we reasonably believe you have violated these
-              terms or any platform policies.
+              the Service. You represent and warrant that you own or have the
+              necessary rights, licenses, and permissions to any content you
+              upload, create, or publish through the Service, including text,
+              images, video, and other media.
+            </p>
+            <p className="mb-3">
+              You must comply with each platform’s terms and policies and with
+              applicable law. You may not use the Service for spam,
+              impersonation, infringement of others’ intellectual property, or
+              illegal activity. We may suspend or terminate access if we
+              reasonably believe you have violated these terms or any platform
+              policies.
+            </p>
+            <p>
+              If you believe content on the Service infringes your copyright,
+              contact us at{" "}
+              <a
+                href="mailto:legal@social0.app"
+                className="text-emerald-600 hover:text-emerald-700 underline dark:text-emerald-400 dark:hover:text-emerald-300"
+              >
+                legal@social0.app
+              </a>{" "}
+              with sufficient detail to identify the material and your claim. We
+              may remove content that we reasonably believe infringes
+              third-party rights.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold font-serif text-[22px]  text-foreground mb-2">
-              5. Data handling and security
+              6. Subscriptions and refunds
+            </h2>
+            <p className="mb-3">
+              Some features require a paid subscription. Subscription fees are
+              billed in advance on a recurring basis according to the plan you
+              select. Prices and billing intervals are shown at checkout and on
+              the Billing page.
+            </p>
+            <p className="mb-3">
+              Subscription fees are non-refundable except where required by
+              applicable law. You may cancel your subscription at any time from
+              your account settings or billing portal. After cancellation, your
+              paid features remain available until the end of the current
+              billing period, unless otherwise stated at checkout.
+            </p>
+            <p>
+              We may change subscription prices or plans. If a price change
+              applies to your subscription, we will provide notice as required
+              by law before it takes effect.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold font-serif text-[22px]  text-foreground mb-2">
+              7. Data handling and security
             </h2>
             <p>
-              We process and store data as described in our Privacy Policy.
-              OAuth tokens and other sensitive credentials are encrypted
-              (AES-256-GCM) and are not exposed to your browser or to third
-              parties except as needed to perform the Service (e.g. sending
-              posts to the respective platforms). We do not sell your personal
-              data.
+              We process and store data as described in our Privacy Policy. We
+              use industry-standard security measures to protect credentials and
+              sensitive information. OAuth tokens and other sensitive data are
+              not exposed to your browser or to third parties except as needed
+              to perform the Service (e.g. sending posts to the respective
+              platforms). We do not sell your personal data.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold font-serif text-[22px]  text-foreground mb-2">
-              6. Termination and data deletion
+              8. Service availability and third-party platforms
+            </h2>
+            <p>
+              Social0 depends on third-party platforms and APIs (including Meta,
+              Google, X, TikTok, LinkedIn, and others). Features may change,
+              become unavailable, or stop functioning due to actions taken by
+              those platforms, including API changes, policy updates, account
+              restrictions, or outages. We are not responsible for interruptions
+              or failures caused by third-party services outside our reasonable
+              control.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold font-serif text-[22px]  text-foreground mb-2">
+              9. Termination and data deletion
             </h2>
             <p>
               You may stop using the Service at any time. You may disconnect
@@ -130,7 +202,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-2xl font-semibold font-serif text-[22px]  text-foreground mb-2">
-              7. Changes to the service and terms
+              10. Changes to the service and terms
             </h2>
             <p>
               We may change the Service or these terms. We will post updated
@@ -143,20 +215,36 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-2xl font-semibold font-serif text-[22px]  text-foreground mb-2">
-              8. Disclaimers and limitation of liability
+              11. Disclaimers and limitation of liability
             </h2>
             <p>
               The Service is provided “as is.” We do not guarantee uninterrupted
               or error-free operation or compatibility with every platform at
               all times. To the maximum extent permitted by law, we are not
               liable for indirect, incidental, or consequential damages arising
-              from your use of the Service.
+              from your use of the Service, including losses related to
+              third-party platform availability or changes.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold font-serif text-[22px]  text-foreground mb-2">
-              9. Contact
+              12. Governing law
+            </h2>
+            <p>
+              These Terms are governed by the laws of India, without regard to
+              conflict-of-law principles, except where mandatory consumer
+              protection laws in your country of residence require otherwise.
+              Any dispute arising from these Terms or the Service shall be
+              subject to the exclusive jurisdiction of the courts located in
+              Bengaluru, Karnataka, India, unless applicable law requires a
+              different forum.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold font-serif text-[22px]  text-foreground mb-2">
+              13. Contact
             </h2>
             <p>
               For questions about these Terms and Conditions, please contact us
