@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+
 /** True when a string looks like a TikTok @handle (not a display name). */
 export function isLikelyTikTokHandle(value: string): boolean {
   const handle = value.replace(/^@/, "").trim();
@@ -59,9 +61,12 @@ export async function fetchTikTokProfileUrl(
   accessToken: string,
 ): Promise<string | null> {
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       "https://open.tiktokapis.com/v2/user/info/?fields=username,profile_deep_link,display_name",
-      { headers: { Authorization: `Bearer ${accessToken}` } },
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        timeoutMs: 10_000,
+      },
     );
     if (!response.ok) return null;
     const data = (await response.json()) as {

@@ -10,7 +10,6 @@ import {
 import { signInUrl } from "@/lib/sign-in-url";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import {
-  publishPost,
   getPostPublicationList,
 } from "@/app/actions/publish";
 import {
@@ -1299,6 +1298,7 @@ export function CollectionPostForm({
           return;
         }
         if (result.allPlatformsFailed && result.postId) {
+          setOverlayPhase("idle");
           router.push(`/dashboard/posts/${result.postId}`);
           router.refresh();
           return;
@@ -1375,11 +1375,16 @@ export function CollectionPostForm({
         // Proceed with empty list so publish still runs (e.g. after ETIMEDOUT)
       }
       if (list.length === 0) {
-        const publishResult = await publishPost(result.postId);
+        const publishResult = await publishPostWithParallelProgress(
+          result.postId,
+          undefined,
+          () => {},
+        );
         const succeededCount =
           publishResult?.results?.filter((r) => r.status === "published")
             .length ?? 0;
         if (succeededCount === 0) {
+          setOverlayPhase("idle");
           router.push(`/dashboard/posts/${result.postId}`);
           router.refresh();
           return;

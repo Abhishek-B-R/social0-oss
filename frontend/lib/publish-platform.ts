@@ -21,6 +21,7 @@ import {
   TikTokImageError,
 } from "@/lib/tiktok-photo-process";
 import { fetchTikTokProfileUrl, resolveTikTokProfileUrl } from "@/lib/platform-view-url";
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import sharp from "sharp";
 
 export type PublishPlatformResult = {
@@ -2286,6 +2287,48 @@ type TikTokPlatformOptions = {
   autoAddMusic?: boolean;
 };
 
+const TIKTOK_FETCH_TIMEOUT_MS = 15_000;
+const TIKTOK_POLL_INTERVAL_MS = 4_000;
+/** Keep total TikTok wait under typical server-action limits (Vercel ~60s incl. init). */
+const TIKTOK_MAX_POLLS = 10;
+
+const TIKTOK_ACCEPTED_STATUSES = new Set([
+  "PUBLISH_COMPLETE",
+  "SEND_TO_USER_INBOX",
+]);
+
+async function tiktokApiFetch(
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
+  return fetchWithTimeout(url, {
+    ...init,
+    timeoutMs: TIKTOK_FETCH_TIMEOUT_MS,
+  });
+}
+
+async function buildTikTokPublishedResult(
+  pub: Pub,
+  accessToken: string,
+  platformPostId?: string | null,
+): Promise<PublishPlatformResult> {
+  let platformPostUrl: string | null = null;
+  try {
+    platformPostUrl = await resolveTikTokPublishedProfileUrl(pub, accessToken);
+  } catch {
+    platformPostUrl = resolveTikTokProfileUrl({
+      platformUsername: pub.platformUsername,
+      platformMetadata: pub.platformMetadata,
+    });
+  }
+  return {
+    status: "published",
+    platformPostId: platformPostId ?? null,
+    platformPostUrl,
+    publishedAt: new Date(),
+  };
+}
+
 async function resolveTikTokPublishedProfileUrl(
   pub: Pub,
   accessToken: string,
@@ -2544,7 +2587,7 @@ async function publishToTikTok(
       JSON.stringify(requestBody, null, 2),
     );
 
-    initRes = await fetch(
+    initRes = await tiktokApiFetch(
       "https://open.tiktokapis.com/v2/post/publish/content/init/",
       {
         method: "POST",
@@ -2576,7 +2619,7 @@ async function publishToTikTok(
           },
         };
 
-    initRes = await fetch(videoInitUrl, {
+    initRes = await tiktokApiFetch(videoInitUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json; charset=UTF-8",
@@ -2632,10 +2675,32 @@ async function publishToTikTok(
     };
   }
 
-  // Poll status; TikTok returns publicaly_available_post_id only after moderation (often within 1 min)
-  for (let i = 0; i < 24; i++) {
-    await new Promise((r) => setTimeout(r, 5000));
-    const statusRes = await fetch(
+  const failReasonMessages: Record<string, string> = {
+    picture_size_check_failed:
+      "Video resolution doesn't meet TikTok's requirements. Use a vertical 9:16 video at 720×1280 or higher.",
+    video_size_check_failed:
+      "Video file size exceeds TikTok's limit. Please use a smaller video.",
+    video_duration_check_failed:
+      "Video duration doesn't meet TikTok's requirements (3 seconds minimum, 10 minutes maximum).",
+    video_format_check_failed:
+      "Video format not supported by TikTok. Please use MP4 or MOV.",
+    url_ownership_unverified:
+      "Video URL domain is not verified in your TikTok app.",
+    spam: "TikTok flagged this post as spam. Try again later.",
+  };
+
+  function tiktokFailReasonMessage(failReason?: string): string {
+    if (failReason && failReasonMessages[failReason]) {
+      return failReasonMessages[failReason];
+    }
+    if (failReason) {
+      return `TikTok rejected the post: ${failReason.replace(/_/g, " ")}`;
+    }
+    return `TikTok failed to process the ${isPhotoPost ? "photo" : "video"}.`;
+  }
+
+  async function fetchTikTokPublishStatus(publishId: string) {
+    const statusRes = await tiktokApiFetch(
       "https://open.tiktokapis.com/v2/post/publish/status/fetch/",
       {
         method: "POST",
@@ -2657,6 +2722,22 @@ async function publishToTikTok(
       };
       error?: { code?: string; message?: string };
     };
+    return { statusRes, statusData };
+  }
+
+  // Poll status; TikTok moderation can take a minute — cap wait so server actions finish.
+  for (let i = 0; i < TIKTOK_MAX_POLLS; i++) {
+    if (i > 0) {
+      await new Promise((r) => setTimeout(r, TIKTOK_POLL_INTERVAL_MS));
+    }
+    let statusRes: Response;
+    let statusData: Awaited<ReturnType<typeof fetchTikTokPublishStatus>>["statusData"];
+    try {
+      ({ statusRes, statusData } = await fetchTikTokPublishStatus(publishId));
+    } catch (err) {
+      console.error("TikTok publish/status: request failed", err);
+      continue;
+    }
     const status = statusData.data?.status;
 
     if (
@@ -2671,116 +2752,27 @@ async function publishToTikTok(
       });
     }
 
-    if (status === "PUBLISH_COMPLETE") {
+    if (status === "FAILED") {
+      const failReason = statusData.data?.fail_reason as string | undefined;
+      const lastError = tiktokFailReasonMessage(failReason);
+      return { status: "failed", lastError, error: "Publish failed" };
+    }
+
+    if (status && TIKTOK_ACCEPTED_STATUSES.has(status)) {
       const postIds = statusData.data?.publicaly_available_post_id;
       const firstId =
         Array.isArray(postIds) && postIds.length > 0 ? postIds[0] : undefined;
       const videoId = firstId !== undefined ? String(firstId) : undefined;
-      if (videoId) {
-        const platformPostUrl = await resolveTikTokPublishedProfileUrl(
-          pub,
-          accessToken,
-        );
-        return {
-          status: "published",
-          platformPostId: videoId,
-          platformPostUrl,
-          publishedAt: new Date(),
-        };
-      }
-    }
-    if (status === "FAILED") {
-      const failReason = statusData.data?.fail_reason as string | undefined;
-      const failReasonMessages: Record<string, string> = {
-        picture_size_check_failed:
-          "Video resolution doesn't meet TikTok's requirements. Use a vertical 9:16 video at 720×1280 or higher.",
-        video_size_check_failed:
-          "Video file size exceeds TikTok's limit. Please use a smaller video.",
-        video_duration_check_failed:
-          "Video duration doesn't meet TikTok's requirements (3 seconds minimum, 10 minutes maximum).",
-        video_format_check_failed:
-          "Video format not supported by TikTok. Please use MP4 or MOV.",
-        url_ownership_unverified:
-          "Video URL domain is not verified in your TikTok app.",
-        spam: "TikTok flagged this post as spam. Try again later.",
-      };
-      const lastError =
-        failReason && failReasonMessages[failReason]
-          ? failReasonMessages[failReason]
-          : failReason
-            ? `TikTok rejected the post: ${failReason.replace(/_/g, " ")}`
-            : `TikTok failed to process the ${isPhotoPost ? "photo" : "video"}.`;
-      return { status: "failed", lastError, error: "Publish failed" };
+      return buildTikTokPublishedResult(pub, accessToken, videoId);
     }
   }
 
-  // One final status check (TikTok may return the public post ID shortly after COMPLETE)
-  const finalRes = await fetch(
-    "https://open.tiktokapis.com/v2/post/publish/status/fetch/",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json; charset=UTF-8",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ publish_id: publishId }),
-    },
+  // TikTok accepted the upload but is still processing — don't block the UI/server action.
+  console.warn(
+    "[TikTok] Publish status still processing after poll cap; marking published",
+    { publishId },
   );
-  const finalData = (await finalRes.json().catch(() => ({}))) as {
-    data?: {
-      status?: string;
-      fail_reason?: string;
-      publicaly_available_post_id?: (string | number)[];
-    };
-  };
-  if (finalData.data?.status === "FAILED") {
-    const failReason = finalData.data?.fail_reason as string | undefined;
-    const failReasonMessages: Record<string, string> = {
-      picture_size_check_failed:
-        "Video resolution doesn't meet TikTok's requirements. Use a vertical 9:16 video at 720×1280 or higher.",
-      video_size_check_failed:
-        "Video file size exceeds TikTok's limit. Please use a smaller video.",
-      video_duration_check_failed:
-        "Video duration doesn't meet TikTok's requirements (3 seconds minimum, 10 minutes maximum).",
-      video_format_check_failed:
-        "Video format not supported by TikTok. Please use MP4 or MOV.",
-      url_ownership_unverified:
-        "Video URL domain is not verified in your TikTok app.",
-      spam: "TikTok flagged this post as spam. Try again later.",
-    };
-    const lastError =
-      failReason && failReasonMessages[failReason]
-        ? failReasonMessages[failReason]
-        : failReason
-          ? `TikTok rejected the post: ${failReason.replace(/_/g, " ")}`
-          : `TikTok failed to process the ${isPhotoPost ? "photo" : "video"}.`;
-    return { status: "failed", lastError, error: "Publish failed" };
-  }
-  if (finalData.data?.status === "PUBLISH_COMPLETE") {
-    const postIds = finalData.data.publicaly_available_post_id;
-    const firstId =
-      Array.isArray(postIds) && postIds.length > 0 ? postIds[0] : undefined;
-    const videoId = firstId !== undefined ? String(firstId) : undefined;
-    if (videoId) {
-      const platformPostUrl = await resolveTikTokPublishedProfileUrl(
-        pub,
-        accessToken,
-      );
-      return {
-        status: "published",
-        platformPostId: videoId,
-        platformPostUrl,
-        publishedAt: new Date(),
-      };
-    }
-  }
-
-  return {
-    status: "published",
-    platformPostId: null,
-    platformPostUrl: null,
-    publishedAt: new Date(),
-  };
+  return buildTikTokPublishedResult(pub, accessToken, null);
 }
 
 /**

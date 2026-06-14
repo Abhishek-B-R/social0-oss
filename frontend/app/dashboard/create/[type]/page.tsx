@@ -19,6 +19,8 @@ import {
 import DocsInfoIcon from "@/components/info-icon";
 import { CreatePostWithAccountsClient } from "../CreatePostWithAccountsClient";
 
+export const maxDuration = 300;
+
 export default async function NewPostByTypePage({
   params,
   searchParams,

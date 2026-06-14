@@ -14,7 +14,6 @@ import { signInUrl } from "@/lib/sign-in-url";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import {
-  publishPost,
   getPostPublicationList,
 } from "@/app/actions/publish";
 import {
@@ -1282,6 +1281,7 @@ export function ImagePostForm({
           return;
         }
         if (result.allPlatformsFailed && result.postId) {
+          setOverlayPhase("idle");
           router.push(`/dashboard/posts/${result.postId}`);
           router.refresh();
           return;
@@ -1360,11 +1360,16 @@ export function ImagePostForm({
         ? { tiktokConfig: { autoAddMusic: tiktokConfig.autoAddMusic } }
         : undefined;
       if (list.length === 0) {
-        const publishResult = await publishPost(result.postId, publishOptions);
+        const publishResult = await publishPostWithParallelProgress(
+          result.postId,
+          publishOptions,
+          () => {},
+        );
         const succeededCount =
           publishResult?.results?.filter((r) => r.status === "published")
             .length ?? 0;
         if (succeededCount === 0) {
+          setOverlayPhase("idle");
           router.push(`/dashboard/posts/${result.postId}`);
           router.refresh();
           return;

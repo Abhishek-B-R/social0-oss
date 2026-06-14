@@ -39,6 +39,8 @@ export type PublicationProgressRow = PublicationListRow & {
 };
 
 const PROGRESS_POLL_MS = 1200;
+/** Client safety net when a server action hangs (e.g. platform API stall). */
+const PUBLISH_SERVER_ACTION_TIMEOUT_MS = 90_000;
 
 /**
  * One server action — executePublish runs all platforms in parallel via
@@ -64,9 +66,40 @@ export async function publishPostWithParallelProgress(
     void pollOnce();
   }, PROGRESS_POLL_MS);
 
+  const publishWithTimeout = async (): Promise<PublishResult> => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        publishPost(postId, options),
+        new Promise<PublishResult>((resolve) => {
+          timeoutId = setTimeout(() => {
+            console.warn(
+              "[publishPostWithParallelProgress] publish timed out on client",
+              { postId },
+            );
+            resolve({
+              success: true,
+              results: [],
+            });
+          }, PUBLISH_SERVER_ACTION_TIMEOUT_MS);
+        }),
+      ]);
+    } catch (err) {
+      console.error("[publishPostWithParallelProgress] publish failed:", err);
+      return {
+        success: false,
+        error:
+          err instanceof Error ? err.message : "Publish failed unexpectedly",
+        results: [],
+      };
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  };
+
   try {
     await pollOnce();
-    return await publishPost(postId, options);
+    return await publishWithTimeout();
   } finally {
     if (pollTimer) clearInterval(pollTimer);
     await pollOnce();
