@@ -33,6 +33,7 @@ import { logPublishBlocked } from "@/lib/plan-analytics";
 import { uploadTwitterImage, uploadTwitterVideo } from "@/lib/twitter-media";
 import { getTwitterErrorMessage } from "@/lib/twitter-errors";
 import { parseTikTokHandleFromProfileUrl } from "@/lib/platform-view-url";
+import { maybeSendPostFailureEmail } from "@/lib/post-failure-email";
 import { TwitterApi } from "twitter-api-v2";
 
 /** Extract a readable error from LinkedIn API response (status, message, serviceErrorCode). */
@@ -1520,6 +1521,7 @@ export async function executePublish(
   console.log("Failed:", results.filter((r) => r.status === "failed").length);
   const succeeded = results.filter((r) => r.status === "published").length;
   const failed = results.filter((r) => r.status === "failed").length;
+  const failedList = results.filter((r) => r.status === "failed");
   const anyFailed = failed > 0;
 
   const overallStatus =
@@ -1547,12 +1549,29 @@ export async function executePublish(
       });
     }
 
+    if (failedList.length > 0) {
+      const failureItems = failedList.map((r) => {
+        const pub = publicationsWithAccounts.find(
+          (p) => p.connectedAccountId === r.connectedAccountId,
+        );
+        return {
+          platform: r.platform,
+          platformUsername: pub?.platformUsername ?? null,
+          error: r.error ?? null,
+        };
+      });
+      void maybeSendPostFailureEmail({
+        userId: post.userId,
+        postId,
+        failures: failureItems,
+      });
+    }
+
   }
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/posts");
   revalidatePath(`/dashboard/posts/${postId}`);
 
-  const failedList = results.filter((r) => r.status === "failed");
   const errorSummary =
     failedList.length > 0
       ? failedList

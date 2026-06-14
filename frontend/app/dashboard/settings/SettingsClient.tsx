@@ -1240,8 +1240,15 @@ export function SettingsClient({
                   id="automationEmails"
                   name="automationEmails"
                   defaultChecked={settings.automationEmails}
-                  label="Automation Emails"
+                  label="Automation emails"
                   description="Helpful reminders when you haven't posted or connected accounts"
+                />
+                <Toggle
+                  id="emailOnPostFailed"
+                  name="emailOnPostFailed"
+                  defaultChecked={settings.emailOnPostFailed}
+                  label="Email if post failed"
+                  description="Get an email when a publish fails, with the account, platform, and a link to view the post"
                 />
                 <SaveButton />
               </form>

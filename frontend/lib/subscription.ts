@@ -94,6 +94,7 @@ export async function getSubscriptionForUser(
 const NEW_USER_SETTINGS_DEFAULTS = {
   timezone: "UTC" as const,
   automationEmails: true,
+  emailOnPostFailed: true,
   use24HourTimeFormat: false,
   dateFormat: "dd/MM/yyyy" as const,
   subscriptionTier: "free" as const,

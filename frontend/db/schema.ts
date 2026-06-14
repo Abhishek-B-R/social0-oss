@@ -268,6 +268,7 @@ export const userSettings = pgTable("user_settings", {
   defaultPlatforms: platformEnum("default_platforms").array(),
   emailNotifications: boolean("email_notifications").default(true),
   automationEmails: boolean("automation_emails").default(true),
+  emailOnPostFailed: boolean("email_on_post_failed").default(true),
   useFilenameAsCaption: boolean("use_filename_as_caption").default(false),
   use24HourTimeFormat: boolean("use_24_hour_time_format").default(false),
   dateFormat: text("date_format").default("dd/MM/yyyy"), // dd/MM/yyyy | MM/dd/yyyy | yyyy-MM-dd

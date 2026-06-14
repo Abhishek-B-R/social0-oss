@@ -11,6 +11,7 @@ import type { DateFormatKey } from "@/lib/date-format";
 
 export type SettingsSnapshot = {
   automationEmails: boolean;
+  emailOnPostFailed: boolean;
   use24HourTimeFormat: boolean;
   dateFormat: DateFormatKey;
   timezone: string;
@@ -18,6 +19,7 @@ export type SettingsSnapshot = {
 
 const DEFAULT_SETTINGS: SettingsSnapshot = {
   automationEmails: true,
+  emailOnPostFailed: true,
   use24HourTimeFormat: false,
   dateFormat: "dd/MM/yyyy",
   timezone: "UTC",
@@ -45,6 +47,7 @@ export async function getUserSettingsSnapshot(): Promise<SettingsSnapshot> {
     where: eq(userSettings.userId, userId),
     columns: {
       automationEmails: true,
+      emailOnPostFailed: true,
       use24HourTimeFormat: true,
       dateFormat: true,
       timezone: true,
@@ -70,6 +73,8 @@ export async function getUserSettingsSnapshot(): Promise<SettingsSnapshot> {
 
   return {
     automationEmails: row.automationEmails ?? DEFAULT_SETTINGS.automationEmails,
+    emailOnPostFailed:
+      row.emailOnPostFailed ?? DEFAULT_SETTINGS.emailOnPostFailed,
     use24HourTimeFormat:
       row.use24HourTimeFormat ?? DEFAULT_SETTINGS.use24HourTimeFormat,
     dateFormat: validDateFormat,
@@ -106,6 +111,7 @@ async function upsertSettings(
       userId,
       timezone: defaultTz,
       automationEmails: DEFAULT_SETTINGS.automationEmails,
+      emailOnPostFailed: DEFAULT_SETTINGS.emailOnPostFailed,
       use24HourTimeFormat: DEFAULT_SETTINGS.use24HourTimeFormat,
       dateFormat: DEFAULT_SETTINGS.dateFormat,
       ...values,
@@ -200,7 +206,10 @@ export async function updateConnectionAvatar(
 export async function updateAutomationEmails(formData: FormData): Promise<void> {
   const clientTimezone = formData.get("clientTimezone");
   await upsertSettings(
-    { automationEmails: formData.get("automationEmails") === "on" },
+    {
+      automationEmails: formData.get("automationEmails") === "on",
+      emailOnPostFailed: formData.get("emailOnPostFailed") === "on",
+    },
     typeof clientTimezone === "string" ? clientTimezone : undefined,
   );
 }

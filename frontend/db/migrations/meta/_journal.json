@@ -232,6 +232,13 @@
       "when": 1774100000000,
       "tag": "0034_add_free_posts_used",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1774200000000,
+      "tag": "0035_add_email_on_post_failed",
+      "breakpoints": true
     }
   ]
 }

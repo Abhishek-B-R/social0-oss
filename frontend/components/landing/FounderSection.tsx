@@ -85,8 +85,8 @@ export function FounderSection() {
                 .
               </p>
               <p>
-                I read every message myself, and if it&apos;s broken, I&apos;ll
-                do my best to fix it within 48 hours.
+                I read every message myself, and if something is broken,
+                I&apos;ll do my best to fix it within 48 hours.
               </p>
             </div>
 
