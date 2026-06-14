@@ -75,7 +75,7 @@ export default function PrivacyPage() {
               <li>
                 <strong>Connected account (OAuth) data:</strong> When you
                 connect a social platform (LinkedIn, Instagram, YouTube,
-                Pinterest, TikTok, X, Threads, Bluesky), we receive access
+                Pinterest, TikTok, X, Threads, Bluesky, etc.), we receive access
                 tokens and related data from that platform. We request only the
                 minimum scopes necessary to publish and manage content on your
                 behalf. We do not receive or store your passwords for these
