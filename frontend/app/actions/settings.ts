@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { user, userSettings, connectedAccounts } from "@/db/schema";
+import { userSettings, connectedAccounts } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -122,8 +122,9 @@ async function upsertSettings(
 }
 
 export async function updateDisplayName(formData: FormData): Promise<void> {
-  const userId = await getCurrentUserId();
-  if (!userId) {
+  const sessionHeaders = await headers();
+  const session = await auth.api.getSession({ headers: sessionHeaders });
+  if (!session) {
     redirect("/");
   }
 
@@ -132,20 +133,19 @@ export async function updateDisplayName(formData: FormData): Promise<void> {
     return;
   }
 
-  await db
-    .update(user)
-    .set({
-      name: displayName,
-      updatedAt: new Date(),
-    })
-    .where(eq(user.id, userId));
+  await auth.api.updateUser({
+    headers: sessionHeaders,
+    body: { name: displayName },
+  });
 
   revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard", "layout");
 }
 
 export async function updateUserImage(imageUrl: string): Promise<{ error?: string }> {
-  const userId = await getCurrentUserId();
-  if (!userId) {
+  const sessionHeaders = await headers();
+  const session = await auth.api.getSession({ headers: sessionHeaders });
+  if (!session) {
     return { error: "Unauthorized" };
   }
   const url = String(imageUrl ?? "").trim();
@@ -153,14 +153,12 @@ export async function updateUserImage(imageUrl: string): Promise<{ error?: strin
     return { error: "Image URL is required" };
   }
   try {
-    await db
-      .update(user)
-      .set({
-        image: url,
-        updatedAt: new Date(),
-      })
-      .where(eq(user.id, userId));
+    await auth.api.updateUser({
+      headers: sessionHeaders,
+      body: { image: url },
+    });
     revalidatePath("/dashboard/settings");
+    revalidatePath("/dashboard", "layout");
     return {};
   } catch {
     return { error: "Failed to update avatar" };

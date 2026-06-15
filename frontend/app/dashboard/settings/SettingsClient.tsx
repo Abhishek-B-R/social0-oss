@@ -19,10 +19,8 @@ import {
 import {
   signOutAllDevices,
   updateAutomationEmails,
-  updateDisplayName,
   updatePlatformPreferences,
   updateTimezone,
-  updateUserImage,
   updateConnectionAvatar,
   type SettingsSnapshot,
 } from "@/app/actions/settings";
@@ -95,6 +93,114 @@ function SaveButton({ label = "Save" }: { label?: string }) {
     >
       {pending ? "Saving..." : label}
     </button>
+  );
+}
+
+function ProfileSettingsSection({
+  initialDisplayName,
+  initialImage,
+  email,
+  isCredentialUser,
+}: {
+  initialDisplayName: string;
+  initialImage: string | null;
+  email: string;
+  isCredentialUser: boolean;
+}) {
+  const router = useRouter();
+  const [displayName, setDisplayName] = useState(initialDisplayName);
+  const [savingName, setSavingName] = useState(false);
+
+  useEffect(() => {
+    setDisplayName(initialDisplayName);
+  }, [initialDisplayName]);
+
+  const saveProfileImage = async (url: string): Promise<{ error?: string }> => {
+    const { error } = await authClient.updateUser({ image: url });
+    if (error) {
+      return { error: error.message ?? "Failed to update profile picture" };
+    }
+    toast.success("Profile picture updated");
+    router.refresh();
+    return {};
+  };
+
+  const handleSaveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.dismiss();
+    const trimmed = displayName.trim();
+    if (!trimmed) {
+      toast.error("Display name is required");
+      return;
+    }
+    setSavingName(true);
+    try {
+      const { error } = await authClient.updateUser({ name: trimmed });
+      if (error) {
+        toast.error(error.message ?? "Failed to update display name");
+        return;
+      }
+      toast.success("Display name updated");
+      router.refresh();
+    } catch {
+      toast.error("Failed to update display name");
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 space-y-6">
+      <div>
+        <p className="text-sm font-medium text-text mb-2">Profile picture</p>
+        <AvatarEditor
+          currentUrl={initialImage}
+          displayLabel={displayName || email || "User"}
+          onSave={saveProfileImage}
+          size="lg"
+        />
+      </div>
+      <form onSubmit={handleSaveName} className="space-y-4">
+        <div>
+          <label htmlFor="displayName" className="text-sm font-medium text-text">
+            Display Name
+          </label>
+          <input
+            id="displayName"
+            name="displayName"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            className="mt-1 w-full rounded-xl border border-input bg-bg px-4 py-2.5 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+          />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-text mb-2">Email Address</p>
+          {isCredentialUser ? (
+            <>
+              <p className="mt-1 text-sm text-text">{email}</p>
+              <p className="mt-1 text-xs text-text-muted">
+                To change your email, use the Security section below.
+              </p>
+            </>
+          ) : (
+            <p
+              className="mt-1 rounded-xl border border-border bg-bg-muted px-4 py-2.5 text-sm text-text-muted select-none cursor-not-allowed"
+              tabIndex={-1}
+              aria-readonly="true"
+            >
+              {email}
+            </p>
+          )}
+        </div>
+        <button
+          type="submit"
+          disabled={savingName}
+          className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {savingName ? "Saving..." : "Save"}
+        </button>
+      </form>
+    </div>
   );
 }
 
@@ -997,57 +1103,12 @@ export function SettingsClient({
                   ? "Your Social0 profile. You can change your display name and avatar below."
                   : "Your Google account profile. You can change your display name and avatar below."}
               </p>
-              <div className="mt-4 space-y-6">
-                <div>
-                  <p className="text-sm font-medium text-text mb-2">
-                    Profile picture
-                  </p>
-                  <AvatarEditor
-                    currentUrl={image}
-                    displayLabel={displayName || email || "User"}
-                    onSave={updateUserImage}
-                    size="lg"
-                  />
-                </div>
-                <form action={updateDisplayName} className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="displayName"
-                      className="text-sm font-medium text-text"
-                    >
-                      Display Name
-                    </label>
-                    <input
-                      id="displayName"
-                      name="displayName"
-                      defaultValue={displayName}
-                      className="mt-1 w-full rounded-xl border border-input bg-bg px-4 py-2.5 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-                    />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-text mb-2">
-                      Email Address
-                    </p>
-                    {isCredentialUser ? (
-                      <>
-                        <p className="mt-1 text-sm text-text">{email}</p>
-                        <p className="mt-1 text-xs text-text-muted">
-                          To change your email, use the Security section below.
-                        </p>
-                      </>
-                    ) : (
-                      <p
-                        className="mt-1 rounded-xl border border-border bg-bg-muted px-4 py-2.5 text-sm text-text-muted select-none cursor-not-allowed"
-                        tabIndex={-1}
-                        aria-readonly="true"
-                      >
-                        {email}
-                      </p>
-                    )}
-                  </div>
-                  <SaveButton />
-                </form>
-              </div>
+              <ProfileSettingsSection
+                initialDisplayName={displayName}
+                initialImage={image}
+                email={email}
+                isCredentialUser={isCredentialUser}
+              />
             </div>
             <div className="mt-10">
               <h2 className="text-lg font-semibold text-text">Appearance</h2>
