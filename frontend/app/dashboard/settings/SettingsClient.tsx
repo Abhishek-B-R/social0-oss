@@ -766,7 +766,10 @@ function ChangeEmailModal({
               setOtp(v);
               toast.dismiss();
             }}
-            onError={toast.error}
+            onError={(msg) => {
+              if (msg) toast.error(msg);
+              else toast.dismiss();
+            }}
             onSuccess={() => {
               onSuccess();
               handleOpenChange(false);
