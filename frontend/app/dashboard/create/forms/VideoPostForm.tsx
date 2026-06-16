@@ -94,6 +94,10 @@ import {
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
 import { toast } from "sonner";
+import {
+  getPinterestBoardRequiredMessage,
+  hasMissingPinterestBoard,
+} from "@/lib/pinterest-board-validation";
 import { AspectRatioGuidanceBanner } from "@/components/AspectRatioGuidanceBanner";
 
 type PlatformCaptionState = {
@@ -1061,10 +1065,13 @@ export function VideoPostForm({
       if (pinterestError) setPinterestError(null);
       return;
     }
-    const missingBoard = pinterestAccounts.some(
-      (acc) => !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
-    );
-    if (!missingBoard && pinterestError) {
+    if (
+      !hasMissingPinterestBoard(
+        pinterestAccounts,
+        pinterestSettingsByAccount,
+      ) &&
+      pinterestError
+    ) {
       setPinterestError(null);
     }
   }, [
@@ -1167,14 +1174,15 @@ export function VideoPostForm({
     }
 
     if (hasPinterestSelected) {
-      const missingBoard = pinterestAccounts.some(
-        (acc) => !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
+      const boardMessage = getPinterestBoardRequiredMessage(
+        pinterestAccounts,
+        pinterestSettingsByAccount,
+        (intendedModeRef.current ?? mode) === "scheduled" ? "schedule" : "post",
       );
-      if (missingBoard) {
-        setPinterestError(
-          "Please select a board for Pinterest before posting.",
-        );
-        toast.dismiss();
+      if (boardMessage) {
+        setPinterestError(boardMessage);
+        toast.error(boardMessage);
+        setActiveConfigPanel("pinterest");
         pinterestSectionRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "center",
