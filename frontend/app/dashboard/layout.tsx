@@ -48,7 +48,7 @@ export default async function DashboardLayout({
   let planLabel = "Guest";
   let subscriptionTier: string | null = null;
   let freePostsBanner: { remaining: number; limit: number } | null = null;
-  let profileRow: { name: string; image: string | null } | null = null;
+  let profileRow: { name: string | null; image: string | null } | null = null;
 
   if (session) {
     const [onboarding, userProfile] = await Promise.all([
@@ -58,7 +58,7 @@ export default async function DashboardLayout({
         columns: { name: true, image: true },
       }),
     ]);
-    profileRow = userProfile;
+    profileRow = userProfile ?? null;
     const pathname = (await headers()).get("x-pathname") ?? "";
     const isConnectFlow = pathname.startsWith("/dashboard/connect");
     if (onboarding?.shouldOnboard && !isConnectFlow) {
