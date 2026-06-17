@@ -24,6 +24,10 @@ import {
 import { createPost } from "@/app/actions/posts";
 import { uploadFile } from "@/lib/upload-file";
 import { toast } from "sonner";
+import {
+  getPinterestBoardRequiredMessage,
+  hasMissingPinterestBoard,
+} from "@/lib/pinterest-board-validation";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 import { PinterestConfigInline } from "@/components/PinterestConfigInline";
@@ -184,10 +188,13 @@ export function BulkToolsImageClient({
       if (pinterestError) setPinterestError(null);
       return;
     }
-    const missingBoard = pinterestAccounts.some(
-      (acc) => !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
-    );
-    if (!missingBoard && pinterestError) {
+    if (
+      !hasMissingPinterestBoard(
+        pinterestAccounts,
+        pinterestSettingsByAccount,
+      ) &&
+      pinterestError
+    ) {
       setPinterestError(null);
     }
   }, [
@@ -360,14 +367,14 @@ export function BulkToolsImageClient({
       return;
     }
     if (hasPinterestSelected) {
-      const missingBoard = pinterestAccounts.some(
-        (acc) => !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
+      const boardMessage = getPinterestBoardRequiredMessage(
+        pinterestAccounts,
+        pinterestSettingsByAccount,
+        "schedule",
       );
-      if (missingBoard) {
-        setPinterestError(
-          "Please select a board for Pinterest before scheduling.",
-        );
-        toast.error("Please select a board for Pinterest before scheduling.");
+      if (boardMessage) {
+        setPinterestError(boardMessage);
+        toast.error(boardMessage);
         return;
       }
     }
@@ -828,13 +835,14 @@ export function BulkToolsImageClient({
                 type="button"
                 className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
                 onClick={async () => {
-                  const missingBoard = pinterestAccounts.some(
-                    (acc) => !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
+                  const boardMessage = getPinterestBoardRequiredMessage(
+                    pinterestAccounts,
+                    pinterestSettingsByAccount,
+                    "schedule",
                   );
-                  if (missingBoard) {
-                    setPinterestError(
-                      "Please select a board for Pinterest before scheduling.",
-                    );
+                  if (boardMessage) {
+                    setPinterestError(boardMessage);
+                    toast.error(boardMessage);
                     return;
                   }
                   setPinterestError(null);

@@ -82,6 +82,10 @@ import { CaptionCounter } from "@/components/caption-counter";
 import { DOCS_IMAGE_POST_TYPE_URL } from "@/lib/docs-url";
 import { getLimitForAccount } from "@/lib/platform-limits";
 import { toast } from "sonner";
+import {
+  getPinterestBoardRequiredMessage,
+  hasMissingPinterestBoard,
+} from "@/lib/pinterest-board-validation";
 
 type PlatformCaptionState = {
   overridden: boolean;
@@ -1040,14 +1044,15 @@ export function ImagePostForm({
     }
 
     if (hasPinterestSelected) {
-      const missingBoard = pinterestAccounts.some(
-        (acc) => !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
+      const boardMessage = getPinterestBoardRequiredMessage(
+        pinterestAccounts,
+        pinterestSettingsByAccount,
+        (intendedModeRef.current ?? mode) === "scheduled" ? "schedule" : "post",
       );
-      if (missingBoard) {
-        setPinterestError(
-          "Please select a board for Pinterest before posting.",
-        );
-        toast.dismiss();
+      if (boardMessage) {
+        setPinterestError(boardMessage);
+        toast.error(boardMessage);
+        setActiveConfigPanel("pinterest");
         pinterestSectionRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "center",
@@ -1507,10 +1512,13 @@ export function ImagePostForm({
       if (pinterestError) setPinterestError(null);
       return;
     }
-    const missingBoard = pinterestAccounts.some(
-      (acc) => !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
-    );
-    if (!missingBoard && pinterestError) {
+    if (
+      !hasMissingPinterestBoard(
+        pinterestAccounts,
+        pinterestSettingsByAccount,
+      ) &&
+      pinterestError
+    ) {
       setPinterestError(null);
     }
   }, [

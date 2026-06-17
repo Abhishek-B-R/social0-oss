@@ -95,12 +95,12 @@ export async function POST(request: Request) {
 
       await tx
         .update(user)
-        .set({ email, emailVerified: true })
+        .set({ email, emailVerified: true, updatedAt: new Date() })
         .where(eq(user.id, session.user.id));
 
       await tx
         .update(account)
-        .set({ accountId: email })
+        .set({ accountId: email, updatedAt: new Date() })
         .where(
           and(
             eq(account.userId, session.user.id),
@@ -114,11 +114,16 @@ export async function POST(request: Request) {
     if (err && typeof err === "object" && (err as { code?: string }).code === "EMAIL_IN_USE") {
       return emailInUseResponse();
     }
-    const pgCode = err && typeof err === "object" ? (err as { code?: string }).code : undefined;
+    const pgCode =
+      err && typeof err === "object" ? (err as { code?: string }).code : undefined;
     if (pgCode === "23505") {
       return emailInUseResponse();
     }
-    throw err;
+    console.error("[change-email] Failed to update email:", err);
+    return NextResponse.json(
+      { error: "Could not update email. Please try again." },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({ success: true });

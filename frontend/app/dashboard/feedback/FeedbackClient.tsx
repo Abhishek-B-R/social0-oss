@@ -83,6 +83,7 @@ export function FeedbackClient() {
 
     const boardToken = process.env.NEXT_PUBLIC_CANNY_BOARD_TOKEN;
     if (!boardToken) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoadFailed(true);
       toast.error("Feedback board not configured");
       return;
@@ -207,7 +208,7 @@ function FeedbackHeader() {
     <header className="shrink-0 border-b border-border bg-bg-elevated px-4 py-4 sm:px-6">
       <div className="flex items-center gap-2">
         <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
-          Feedback
+          Feedback or Feature Request
         </h1>
         <DocsInfoIcon url={DOCS_FEEDBACK_URL} />
       </div>
