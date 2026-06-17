@@ -11,6 +11,9 @@ import { getSubscriptionForUser } from "@/lib/subscription";
 import { getOnboardingStatus } from "@/app/actions/onboarding";
 import { checkFreePostLimit } from "@/lib/plan-limits";
 import { isActiveTier } from "@/lib/plans";
+import { db } from "@/db";
+import { user } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -45,9 +48,17 @@ export default async function DashboardLayout({
   let planLabel = "Guest";
   let subscriptionTier: string | null = null;
   let freePostsBanner: { remaining: number; limit: number } | null = null;
+  let profileRow: { name: string | null; image: string | null } | null = null;
 
   if (session) {
-    const onboarding = await getOnboardingStatus();
+    const [onboarding, userProfile] = await Promise.all([
+      getOnboardingStatus(),
+      db.query.user.findFirst({
+        where: eq(user.id, session.user.id),
+        columns: { name: true, image: true },
+      }),
+    ]);
+    profileRow = userProfile ?? null;
     const pathname = (await headers()).get("x-pathname") ?? "";
     const isConnectFlow = pathname.startsWith("/dashboard/connect");
     if (onboarding?.shouldOnboard && !isConnectFlow) {
@@ -67,6 +78,15 @@ export default async function DashboardLayout({
     }
   }
 
+  const sidebarUser =
+    session && profileRow
+      ? {
+          ...session.user,
+          name: profileRow.name ?? session.user.name,
+          image: profileRow.image ?? session.user.image,
+        }
+      : session?.user ?? null;
+
   return (
     <div
       suppressHydrationWarning
@@ -76,7 +96,7 @@ export default async function DashboardLayout({
         <SubscriptionSync tier={subscriptionTier} />
       )}
       <DashboardSidebar
-        user={session?.user ?? null}
+        user={sidebarUser}
         planLabel={planLabel}
         isGuest={isGuest}
       />

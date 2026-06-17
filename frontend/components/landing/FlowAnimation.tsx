@@ -116,7 +116,7 @@ export function FlowAnimation({ className }: { className?: string }) {
       </div>
 
       {/* Subtle dot grid fills the canvas so the diagram doesn't float in emptiness */}
-      <div className="pointer-events-none absolute inset-0 top-[42px] bg-[radial-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:20px_20px] dark:bg-[radial-gradient(rgba(0,0,0,0.05)_1px,transparent_1px)]" />
+      <div className="pointer-events-none absolute inset-0 top-[42px] bg-[radial-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] bg-size-[20px_20px] dark:bg-[radial-gradient(rgba(0,0,0,0.05)_1px,transparent_1px)]" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(26,107,74,0.14),transparent_60%)] dark:bg-[radial-gradient(circle_at_50%_0%,rgba(26,107,74,0.07),transparent_60%)]" />
 
       <div

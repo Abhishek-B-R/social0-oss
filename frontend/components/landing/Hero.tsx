@@ -12,14 +12,8 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
         <div className="grid items-start gap-12 lg:grid-cols-[1fr_420px] lg:gap-16">
           {/* Left column - Copy */}
           <div>
-            {/* Eyebrow badge */}
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
-              {/* <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> */}
-              {/* Public Beta */}
-            </div>
-
             {/* Headline: only "all your socials" in serif italic emerald (1–2 words) */}
-            <h1 className="mb-6 text-[clamp(44px,6vw,72px)] leading-[1.05] tracking-tight text-foreground">
+            <h1 className="mb-6 mt-10 text-[clamp(44px,6vw,72px)] leading-[1.05] tracking-tight text-foreground">
               <span className="font-serif text-[clamp(44px,6vw,72px)] leading-[1.05] tracking-tight text-foreground">
                 Post and schedule to{" "}
               </span>

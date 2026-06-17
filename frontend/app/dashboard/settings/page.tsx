@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { signInUrl } from "@/lib/sign-in-url";
 import { db } from "@/db";
-import { connectedAccounts, account } from "@/db/schema";
+import { connectedAccounts, account, user } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getUserSettingsSnapshot } from "@/app/actions/settings";
 import { SettingsClient } from "./SettingsClient";
@@ -72,7 +72,7 @@ export default async function SettingsPage() {
 
   const timeZones = sortTimezonesByOffset(rawTimeZones);
 
-  const [settings, connections, credentialAccount] = await Promise.all([
+  const [settings, connections, credentialAccount, profileRow] = await Promise.all([
     getUserSettingsSnapshot(),
     db.query.connectedAccounts.findMany({
       where: and(
@@ -94,6 +94,10 @@ export default async function SettingsPage() {
       ),
       columns: { id: true },
     }),
+    db.query.user.findFirst({
+      where: eq(user.id, session.user.id),
+      columns: { name: true, image: true },
+    }),
   ]);
 
   const isCredentialUser = !!credentialAccount;
@@ -108,9 +112,9 @@ export default async function SettingsPage() {
 
   return (
     <SettingsClient
-      displayName={session.user.name ?? ""}
+      displayName={profileRow?.name ?? session.user.name ?? ""}
       email={session.user.email}
-      image={session.user.image ?? null}
+      image={profileRow?.image ?? session.user.image ?? null}
       settings={settings}
       connections={connectionsForClient}
       timeZones={timeZones}
