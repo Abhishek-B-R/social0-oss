@@ -1,7 +1,7 @@
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Hero } from "@/components/landing/Hero";
 import { PlatformStrip } from "@/components/landing/PlatformStrip";
-import { DashboardMockup } from "@/components/landing/DashboardMockup";
+import { DemoVideoSection } from "@/components/landing/DemoVideoSection";
 import { WhoIsItFor } from "@/components/landing/WhoIsItFor";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
@@ -19,7 +19,7 @@ export function LandingPageView({ signedIn }: { signedIn: boolean }) {
       <main>
         <Hero signedIn={signedIn} />
         <PlatformStrip />
-        <DashboardMockup />
+        <DemoVideoSection />
         <WhoIsItFor />
         <HowItWorks />
         <FeaturesSection />
