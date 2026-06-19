@@ -74,72 +74,100 @@ export function resolveTikTokHandleFromUser(user: {
   return null;
 }
 
-/** Fetch TikTok open_id, avatar, and @handle for OAuth connect. */
+type TikTokUserInfoBody = {
+  data?: {
+    user?: {
+      open_id?: string;
+      union_id?: string;
+      avatar_url?: string;
+      display_name?: string;
+      username?: string;
+      profile_deep_link?: string;
+    };
+  };
+  error?: { code?: string; message?: string };
+};
+
+async function fetchTikTokUserInfoFields(
+  accessToken: string,
+  fields: string,
+): Promise<TikTokUserInfoBody | null> {
+  try {
+    const response = await fetchWithTimeout(
+      `https://open.tiktokapis.com/v2/user/info/?fields=${encodeURIComponent(fields)}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        timeoutMs: 10_000,
+      },
+    );
+    return (await response.json().catch(() => ({}))) as TikTokUserInfoBody;
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch TikTok open_id, avatar, display name, and optional @handle for OAuth connect. */
 export async function fetchTikTokConnectAccount(accessToken: string): Promise<{
   id: string;
   username: string | null;
   profileImageUrl: string | null;
   platformMetadata?: Record<string, unknown>;
 } | null> {
-  const fieldSets = [
-    "open_id,avatar_url,username,profile_deep_link",
-    "open_id,avatar_url",
-  ] as const;
-
-  for (const fields of fieldSets) {
-    try {
-      const response = await fetchWithTimeout(
-        `https://open.tiktokapis.com/v2/user/info/?fields=${encodeURIComponent(fields)}`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-          timeoutMs: 10_000,
-        },
+  // Basic-scope fields first — requesting profile fields in the same call causes
+  // scope_not_authorized when user.info.profile is not granted (common default).
+  const basicBody = await fetchTikTokUserInfoFields(
+    accessToken,
+    "open_id,union_id,avatar_url,display_name",
+  );
+  const basicUser = basicBody?.data?.user;
+  const openId =
+    typeof basicUser?.open_id === "string" ? basicUser.open_id.trim() : "";
+  if (!openId) {
+    if (basicBody?.error) {
+      console.error(
+        "TikTok userinfo error:",
+        basicBody.error.code ?? "unknown",
+        basicBody.error,
       );
-      const body = (await response.json().catch(() => ({}))) as {
-        data?: {
-          user?: {
-            open_id?: string;
-            avatar_url?: string;
-            username?: string;
-            profile_deep_link?: string;
-          };
-        };
-        error?: { code?: string; message?: string };
-      };
+    }
+    return null;
+  }
 
-      if (body.error?.code === "scope_not_authorized") {
-        continue;
-      }
-      if (!response.ok || !body.data?.user) {
-        continue;
-      }
+  const rawAvatar = basicUser?.avatar_url;
+  const profileImageUrl =
+    typeof rawAvatar === "string" &&
+    (rawAvatar.startsWith("http://") || rawAvatar.startsWith("https://"))
+      ? rawAvatar
+      : null;
+  const displayName =
+    typeof basicUser?.display_name === "string"
+      ? basicUser.display_name.trim() || null
+      : null;
 
-      const user = body.data.user;
-      const openId =
-        typeof user.open_id === "string" ? user.open_id.trim() : "";
-      if (!openId) continue;
-
-      const rawAvatar = user.avatar_url;
-      const profileImageUrl =
-        typeof rawAvatar === "string" &&
-        (rawAvatar.startsWith("http://") || rawAvatar.startsWith("https://"))
-          ? rawAvatar
-          : null;
-      const handle = resolveTikTokHandleFromUser(user);
-      const profileUrl = handle ? buildTikTokProfileUrl(handle) : null;
-
-      return {
-        id: openId,
-        username: handle,
-        profileImageUrl,
-        ...(profileUrl ? { platformMetadata: { profileUrl } } : {}),
-      };
-    } catch {
-      // try next field set
+  // Best-effort @handle when user.info.profile is approved on the TikTok app.
+  let handle: string | null = null;
+  const profileBody = await fetchTikTokUserInfoFields(
+    accessToken,
+    "username,profile_deep_link",
+  );
+  if (profileBody?.error?.code !== "scope_not_authorized") {
+    const profileUser = profileBody?.data?.user;
+    if (profileUser) {
+      handle = resolveTikTokHandleFromUser(profileUser);
     }
   }
 
-  return null;
+  const profileUrl = handle ? buildTikTokProfileUrl(handle) : null;
+  const platformMetadata: Record<string, unknown> = {};
+  if (displayName) platformMetadata.displayName = displayName;
+  if (profileUrl) platformMetadata.profileUrl = profileUrl;
+
+  return {
+    id: openId,
+    username: handle,
+    profileImageUrl,
+    ...(Object.keys(platformMetadata).length > 0 ? { platformMetadata } : {}),
+  };
 }
 
 /** Fetch the creator's TikTok profile URL using their access token. */
@@ -162,7 +190,9 @@ export async function fetchTikTokProfileUrl(
           profile_deep_link?: string;
         };
       };
+      error?: { code?: string };
     };
+    if (data.error?.code === "scope_not_authorized") return null;
     const user = data.data?.user;
     if (!user) return null;
 

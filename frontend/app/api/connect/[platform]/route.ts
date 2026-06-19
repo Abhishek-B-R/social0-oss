@@ -219,14 +219,7 @@ export async function GET(
   
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("response_type", "code");
-  if (platform === "tiktok") {
-    // Basic scope at connect (profile); full scopes on reauth for posting.
-    const tiktokScope =
-      isReauth || !config.connectScope ? config.scope : config.connectScope;
-    url.searchParams.set("scope", tiktokScope);
-  } else {
-    url.searchParams.set("scope", config.scope);
-  }
+  url.searchParams.set("scope", config.scope);
   url.searchParams.set("state", state);
 
   // Google OAuth specific parameters (for YouTube)

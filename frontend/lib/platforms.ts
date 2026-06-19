@@ -77,9 +77,10 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "TIKTOK_CLIENT_SECRET",
     authUrl: "https://www.tiktok.com/v2/auth/authorize/",
     tokenUrl: "https://open.tiktokapis.com/v2/oauth/token/",
-    // Connect: basic + profile (@handle). Reauth adds video scopes for posting.
-    connectScope: "user.info.basic,user.info.profile",
-    scope: "user.info.basic,user.info.profile,video.upload,video.publish",
+    // user.info.basic: open_id, avatar_url, display_name (always available on Login Kit)
+    // user.info.profile (username/@handle) requires separate TikTok app approval — fetched best-effort after connect
+    // video.upload + video.publish: Content Posting API
+    scope: "user.info.basic,video.upload,video.publish",
   },
   facebook: {
     clientIdEnv: "FACEBOOK_CLIENT_ID",
