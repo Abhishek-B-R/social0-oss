@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { normalizeAppUrl } from "@/lib/url-utils";
 import { env } from "@/lib/env";
+import { enforceRateLimit, oauthLimiter } from "@/lib/ratelimit";
 
 const VALID_PLATFORMS = [
   "linkedin",
@@ -26,6 +27,13 @@ export async function GET(
   if (!session) {
     return NextResponse.redirect(
       new URL("/dashboard/connections", req.url),
+    );
+  }
+
+  const rate = await enforceRateLimit(oauthLimiter, session.user.id);
+  if (!rate.allowed) {
+    return NextResponse.redirect(
+      new URL("/dashboard/connections?error=rate_limited", req.url),
     );
   }
 

@@ -52,6 +52,14 @@ export async function POST(request: Request) {
   const parts = row.value.split(":");
   const storedOtp = parts[0] ?? "";
   const attempts = Math.min(MAX_OTP_ATTEMPTS + 1, parseInt(parts[1] ?? "0", 10));
+  const otpUserId = parts[2] ?? "";
+
+  if (!otpUserId || otpUserId !== session.user.id) {
+    return NextResponse.json(
+      { error: "Invalid or expired code." },
+      { status: 400 },
+    );
+  }
 
   if (
     storedOtp.length !== otpTrimmed.length ||
@@ -67,7 +75,7 @@ export async function POST(request: Request) {
     }
     await db
       .update(verification)
-      .set({ value: `${storedOtp}:${newAttempts}` })
+      .set({ value: `${storedOtp}:${newAttempts}:${session.user.id}` })
       .where(eq(verification.id, row.id));
     return NextResponse.json(
       { error: "Invalid or expired code." },

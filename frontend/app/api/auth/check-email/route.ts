@@ -2,7 +2,11 @@ import { db } from "@/db";
 import { user } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-import { checkEmailLimiter } from "@/lib/ratelimit";
+import {
+  checkEmailLimiter,
+  checkEmailPerEmailLimiter,
+  enforceRateLimit,
+} from "@/lib/ratelimit";
 
 /**
  * Check if an email is registered. Used on sign-in to show "No account found — sign up first" when appropriate.
@@ -15,12 +19,25 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing email" }, { status: 400 });
   }
 
-  if (checkEmailLimiter) {
-    const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "anonymous";
-    const { success } = await checkEmailLimiter.limit(`check_email:${ip}`);
-    if (!success) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-    }
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-real-ip") ??
+    "anonymous";
+
+  const ipRate = await enforceRateLimit(checkEmailLimiter, `check_email:${ip}`);
+  if (!ipRate.allowed) {
+    return NextResponse.json({ error: ipRate.error }, { status: ipRate.status });
+  }
+
+  const emailRate = await enforceRateLimit(
+    checkEmailPerEmailLimiter,
+    `check_email_addr:${normalized}`,
+  );
+  if (!emailRate.allowed) {
+    return NextResponse.json(
+      { error: emailRate.error },
+      { status: emailRate.status },
+    );
   }
 
   const [row] = await db

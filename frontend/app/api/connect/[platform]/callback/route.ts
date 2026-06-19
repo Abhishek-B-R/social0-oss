@@ -6,7 +6,10 @@ import { logConnectBlocked } from "@/lib/plan-analytics";
 import { syncSubscriptionForUserId } from "@/lib/billing-sync";
 import { eq, and } from "drizzle-orm";
 import { env } from "@/lib/env";
+import { auth } from "@/lib/auth";
 import { decrypt, encryptToken } from "@/lib/encryption";
+import { assertOAuthCallbackSession } from "@/lib/oauth-callback-session";
+import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 import crypto from "crypto";
 import { normalizeAppUrl } from "@/lib/url-utils";
 import { safeRedirect, rethrowNextRedirect } from "@/lib/redirect";
@@ -96,6 +99,8 @@ export async function GET(
       const requestTokenSecret = secretDecrypted.oauth_token_secret;
       const userId = secretDecrypted.userId;
       cookieStore.delete("twitter_oauth1_request_secret");
+
+      await assertOAuthCallbackSession(userId, platform);
 
       if (!requestTokenSecret) {
         return safeRedirect(
@@ -266,11 +271,8 @@ export async function GET(
         // Best effort — don't block redirect
       }
       let twitterRedirect =
-        secretDecrypted.returnTo &&
-        typeof secretDecrypted.returnTo === "string" &&
-        secretDecrypted.returnTo.startsWith("/")
-          ? secretDecrypted.returnTo
-          : "/dashboard/connections?connected=twitter_x";
+        sanitizeReturnToPath(secretDecrypted.returnTo) ??
+        "/dashboard/connections?connected=twitter_x";
       if (secretDecrypted.reauth) {
         twitterRedirect = twitterRedirect.includes("?")
           ? `${twitterRedirect}&reauth=success`
@@ -310,13 +312,11 @@ export async function GET(
   try {
     const decrypted = decrypt(state);
     userId = decrypted.userId;
+    await assertOAuthCallbackSession(userId, platform);
     isReauth = decrypted.reauth === true;
-    if (
-      decrypted.returnTo &&
-      typeof decrypted.returnTo === "string" &&
-      decrypted.returnTo.startsWith("/")
-    ) {
-      successRedirect = decrypted.returnTo;
+    const returnTo = sanitizeReturnToPath(decrypted.returnTo);
+    if (returnTo) {
+      successRedirect = returnTo;
     }
 
     if (decrypted.platform !== platform) {

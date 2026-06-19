@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { publishLimiter } from "@/lib/ratelimit";
+import { publishLimiter, enforceRateLimit } from "@/lib/ratelimit";
 import { db } from "@/db";
 import {
   posts,
@@ -1801,15 +1801,16 @@ export async function publishPost(
     };
   }
 
-  if (publishLimiter) {
-    const { success } = await publishLimiter.limit(session.user.id);
-    if (!success) {
-      return {
-        success: false,
-        error: "Publish rate limit exceeded. Try again later.",
-        results: [],
-      };
-    }
+  const rate = await enforceRateLimit(publishLimiter, session.user.id);
+  if (!rate.allowed) {
+    return {
+      success: false,
+      error:
+        rate.status === 503
+          ? "Publish is temporarily unavailable. Try again later."
+          : "Publish rate limit exceeded. Try again later.",
+      results: [],
+    };
   }
 
   if (!isValidPostId(postId)) {

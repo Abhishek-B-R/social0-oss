@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import DodoPayments from "dodopayments";
 import { PLAN_IDS } from "@/lib/plans";
 import { env } from "@/lib/env";
-import { checkoutLimiter } from "@/lib/ratelimit";
+import { checkoutLimiter, enforceRateLimit } from "@/lib/ratelimit";
 
 const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
 const environment = env.DODO_PAYMENTS_ENVIRONMENT ?? "test_mode";
@@ -16,11 +16,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (checkoutLimiter) {
-    const { success } = await checkoutLimiter.limit(session.user.id);
-    if (!success) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-    }
+  const rate = await enforceRateLimit(checkoutLimiter, session.user.id);
+  if (!rate.allowed) {
+    return NextResponse.json({ error: rate.error }, { status: rate.status });
   }
 
   const body = await request.json().catch(() => ({}));

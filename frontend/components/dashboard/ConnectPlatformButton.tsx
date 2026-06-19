@@ -8,13 +8,15 @@ import { BlueskyByokModal } from "@/components/BlueskyByokModal";
 import { PreConnectModal } from "@/components/PreConnectModal";
 import { InstagramConnectionModal } from "@/components/InstagramConnectionModal";
 import { signInUrl } from "@/lib/sign-in-url";
+import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 
 type Platform = (typeof PLATFORMS)[number];
 
 function connectUrl(platformId: string, returnTo?: string | null): string {
   const base = `/api/connect/${platformId}`;
-  if (returnTo && returnTo.startsWith("/")) {
-    return `${base}?returnTo=${encodeURIComponent(returnTo)}`;
+  const safe = sanitizeReturnToPath(returnTo);
+  if (safe) {
+    return `${base}?returnTo=${encodeURIComponent(safe)}`;
   }
   return base;
 }
@@ -50,9 +52,7 @@ export function ConnectPlatformButton({
   const handleConnect = () => {
     if (requireAuth) {
       const callback =
-        returnTo && returnTo.startsWith("/")
-          ? returnTo
-          : "/dashboard/connections";
+        sanitizeReturnToPath(returnTo) ?? "/dashboard/connections";
       window.location.href = signInUrl(callback);
       return;
     }
@@ -132,8 +132,9 @@ export function ConnectPlatformButton({
           }}
           onSelectFacebookPage={() => {
             setShowInstagramModal(false);
-            window.location.href = returnTo && returnTo.startsWith("/")
-              ? `/api/connect/instagram-facebook?returnTo=${encodeURIComponent(returnTo)}`
+            const safe = sanitizeReturnToPath(returnTo);
+            window.location.href = safe
+              ? `/api/connect/instagram-facebook?returnTo=${encodeURIComponent(safe)}`
               : "/api/connect/instagram-facebook";
           }}
         />

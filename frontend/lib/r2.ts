@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, HeadObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 function getR2Config() {
@@ -107,4 +107,54 @@ export async function getPresignedUploadUrl(
   // Type assertion: client-s3 and s3-request-presigner bundle different @smithy/types, so Client/Command types are incompatible at compile time. Runtime is correct.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return getSignedUrl(client as any, command as any, { expiresIn });
+}
+
+function getR2BucketName(): string {
+  const config = getR2Config();
+  if (!config) {
+    throw new Error("R2 is not configured");
+  }
+  return config.bucketName;
+}
+
+/** Metadata for an uploaded object; null if missing. */
+export async function getR2ObjectMetadata(
+  key: string,
+): Promise<{ contentLength: number; contentType?: string } | null> {
+  const client = getR2Client();
+  const bucket = getR2BucketName();
+  try {
+    const head = await client.send(
+      new HeadObjectCommand({ Bucket: bucket, Key: key }),
+    );
+    if (head.ContentLength == null) return null;
+    return {
+      contentLength: head.ContentLength,
+      contentType: head.ContentType,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Read a byte range from an R2 object (inclusive end). */
+export async function getR2ObjectByteRange(
+  key: string,
+  start: number,
+  end: number,
+): Promise<Uint8Array> {
+  const client = getR2Client();
+  const bucket = getR2BucketName();
+  const response = await client.send(
+    new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Range: `bytes=${start}-${end}`,
+    }),
+  );
+  if (!response.Body) {
+    throw new Error("Empty object body");
+  }
+  const bytes = await response.Body.transformToByteArray();
+  return bytes;
 }

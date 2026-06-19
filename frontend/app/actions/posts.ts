@@ -13,6 +13,7 @@ import { eq, inArray, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { executePublish } from "@/app/actions/publish";
+import { userOwnsQueueSlot } from "@/lib/queue-slot-validation";
 import {
   getPostForEdit,
   getPostMedia,
@@ -244,10 +245,14 @@ export async function createPost(
     }
 
     if (mode === "scheduled" && scheduledAt && queueSlotId?.trim()) {
+      const slotId = queueSlotId.trim();
+      if (!(await userOwnsQueueSlot(session.user.id, slotId))) {
+        return { success: false, error: "Invalid queue slot" };
+      }
       await db.insert(queuedPosts).values({
         userId: session.user.id,
         postId: postRow.id,
-        slotId: queueSlotId.trim(),
+        slotId,
         scheduledFor: scheduledAt,
         status: "pending",
       });
@@ -593,6 +598,10 @@ export async function updatePost(
     );
 
     if (scheduledAt && queueSlotId?.trim()) {
+      const slotId = queueSlotId.trim();
+      if (!(await userOwnsQueueSlot(session.user.id, slotId))) {
+        return { success: false, error: "Invalid queue slot" };
+      }
       await db
         .delete(queuedPosts)
         .where(
@@ -604,7 +613,7 @@ export async function updatePost(
       await db.insert(queuedPosts).values({
         userId: session.user.id,
         postId,
-        slotId: queueSlotId.trim(),
+        slotId,
         scheduledFor: scheduledAt,
         status: "pending",
       });

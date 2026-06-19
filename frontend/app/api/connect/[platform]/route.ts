@@ -11,11 +11,12 @@ import { verification, connectedAccounts } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { TwitterApi } from "twitter-api-v2";
-import { oauthLimiter } from "@/lib/ratelimit";
+import { oauthLimiter, enforceRateLimit } from "@/lib/ratelimit";
 import {
   buildFacebookOAuthUrl,
   getFacebookLoginConfigId,
 } from "@/lib/facebook-oauth";
+import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 
 export async function GET(
   req: NextRequest,
@@ -36,20 +37,16 @@ export async function GET(
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (oauthLimiter) {
-    const { success } = await oauthLimiter.limit(session.user.id);
-    if (!success) {
-      return NextResponse.redirect(
-        new URL("/dashboard/connections?error=rate_limited", req.url),
-      );
-    }
+  const rate = await enforceRateLimit(oauthLimiter, session.user.id);
+  if (!rate.allowed) {
+    return NextResponse.redirect(
+      new URL("/dashboard/connections?error=rate_limited", req.url),
+    );
   }
 
-  const returnToForConnect = req.nextUrl.searchParams.get("returnTo");
-  const validReturnToConnect =
-    typeof returnToForConnect === "string" &&
-    returnToForConnect.startsWith("/") &&
-    !returnToForConnect.startsWith("//");
+  const returnToForConnect = sanitizeReturnToPath(
+    req.nextUrl.searchParams.get("returnTo"),
+  );
 
   const reauthParam = req.nextUrl.searchParams.get("reauth");
   const accountIdParam = req.nextUrl.searchParams.get("accountId");
@@ -90,7 +87,7 @@ export async function GET(
       userId: session.user.id,
       platform: "twitter_x",
       oauth_token_secret: oauth_token_secret,
-      ...(validReturnToConnect && { returnTo: returnToForConnect }),
+      ...(returnToForConnect && { returnTo: returnToForConnect }),
       ...(isReauth && { reauth: true }),
     });
     cookieStore.set("twitter_oauth1_request_secret", state, {
@@ -165,7 +162,7 @@ export async function GET(
       userId: session.user.id,
       platform: platform,
       stateId: stateId, // Reference to verifier in DB
-      ...(validReturnToConnect && { returnTo: returnToForConnect }),
+      ...(returnToForConnect && { returnTo: returnToForConnect }),
       ...(isReauth && { reauth: true }),
     });
 
@@ -179,7 +176,7 @@ export async function GET(
     state = encrypt({
       userId: session.user.id,
       platform: platform,
-      ...(validReturnToConnect && { returnTo: returnToForConnect }),
+      ...(returnToForConnect && { returnTo: returnToForConnect }),
       ...(isReauth && { reauth: true }),
     });
     url.searchParams.set("client_id", clientId);

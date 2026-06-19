@@ -3,6 +3,8 @@ import { env } from "@/lib/env";
 import { mapSignUpError, mapSignUpErrorFromResponse } from "@/lib/sign-up-errors";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { enforceRateLimit, signUpIpLimiter } from "@/lib/ratelimit";
+import { clientIp } from "@/lib/client-ip";
 
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
@@ -17,6 +19,11 @@ export async function POST(request: Request) {
       { error: "Turnstile not configured" },
       { status: 503 },
     );
+  }
+
+  const ipRate = await enforceRateLimit(signUpIpLimiter, `sign_up:${clientIp(request)}`);
+  if (!ipRate.allowed) {
+    return NextResponse.json({ error: ipRate.error }, { status: ipRate.status });
   }
 
   const body = await request.json().catch(() => ({}));
