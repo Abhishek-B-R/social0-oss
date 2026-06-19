@@ -58,6 +58,11 @@ export function OAuthErrorHandler({
             "You have reached the rate limit for this platform. Please try again after a few minutes.",
           );
           break;
+        case "oauth_session_mismatch":
+          setMessage(
+            "Connection session expired. Please click Connect again while logged in to the same browser.",
+          );
+          break;
         default:
           setMessage("An error occurred during connection");
       }

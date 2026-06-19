@@ -9,7 +9,6 @@ import { env } from "@/lib/env";
 import { auth } from "@/lib/auth";
 import { decrypt, encryptToken } from "@/lib/encryption";
 import { assertOAuthCallbackSession } from "@/lib/oauth-callback-session";
-import { clearOAuthConnectBinding } from "@/lib/oauth-connect-binding";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 import crypto from "crypto";
 import { normalizeAppUrl } from "@/lib/url-utils";
@@ -22,6 +21,7 @@ import {
   buildTikTokProfileUrl,
   isLikelyTikTokHandle,
   parseTikTokHandleFromProfileUrl,
+  fetchTikTokProfileUrl,
 } from "@/lib/platform-view-url";
 
 /** Validate URL is http/https before storing as profile image. */
@@ -102,7 +102,6 @@ export async function GET(
       cookieStore.delete("twitter_oauth1_request_secret");
 
       await assertOAuthCallbackSession(req, userId, platform);
-      await clearOAuthConnectBinding();
 
       if (!requestTokenSecret) {
         return safeRedirect(
@@ -315,7 +314,6 @@ export async function GET(
     const decrypted = decrypt(state);
     userId = decrypted.userId;
     await assertOAuthCallbackSession(req, userId, platform);
-    await clearOAuthConnectBinding();
     isReauth = decrypted.reauth === true;
     const returnTo = sanitizeReturnToPath(decrypted.returnTo);
     if (returnTo) {
@@ -340,6 +338,14 @@ export async function GET(
         return safeRedirect(
           `/dashboard?error=verifier_expired&platform=${platform}`,
           "/dashboard",
+        );
+      }
+
+      const expectedPkceId = `pkce_${userId}_${platform}`;
+      if (verifierRecord.identifier !== expectedPkceId) {
+        return safeRedirect(
+          `/dashboard/connections?error=oauth_session_mismatch&platform=${encodeURIComponent(platform)}`,
+          "/dashboard/connections",
         );
       }
 
@@ -831,6 +837,29 @@ export async function GET(
           username: null,
           profileImageUrl: null,
         };
+      }
+    }
+
+    if (platform === "tiktok") {
+      const openId = userInfo.id;
+      if (!openId || openId.startsWith("tiktok-") || openId.startsWith("unknown-")) {
+        return safeRedirect(
+          `/dashboard/connections?error=oauth_failed&platform=tiktok`,
+          "/dashboard/connections",
+        );
+      }
+      if (!userInfo.username && tokens.access_token) {
+        const profileUrl = await fetchTikTokProfileUrl(tokens.access_token);
+        if (profileUrl) {
+          const handle = parseTikTokHandleFromProfileUrl(profileUrl);
+          if (handle && isLikelyTikTokHandle(handle)) {
+            userInfo.username = handle.replace(/^@/, "").trim();
+            userInfo.platformMetadata = {
+              ...(userInfo.platformMetadata ?? {}),
+              profileUrl: buildTikTokProfileUrl(userInfo.username),
+            };
+          }
+        }
       }
     }
 
