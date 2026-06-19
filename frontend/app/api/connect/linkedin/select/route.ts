@@ -8,6 +8,7 @@ import { checkAccountLimits } from "@/lib/plan-limits";
 import { logConnectBlocked } from "@/lib/plan-analytics";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 
 type LinkedInPayload = {
   userId: string;
@@ -90,13 +91,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const validReturnTo =
-    typeof returnTo === "string" &&
-    returnTo.startsWith("/") &&
-    !returnTo.startsWith("//");
+  const safeReturnTo = sanitizeReturnToPath(returnTo);
   const baseUrl = new URL(req.url).origin;
-  const redirectTo = validReturnTo
-    ? `${baseUrl}${returnTo}${returnTo.includes("?") ? "&" : "?"}success=linkedin`
+  const redirectTo = safeReturnTo
+    ? `${baseUrl}${safeReturnTo}${safeReturnTo.includes("?") ? "&" : "?"}success=linkedin`
     : `${baseUrl}/dashboard/connections?success=linkedin`;
 
   const record = await db.query.verification.findFirst({
@@ -225,6 +223,8 @@ export async function POST(req: NextRequest) {
       });
     }
   }
+
+  await db.delete(verification).where(eq(verification.id, token));
 
   return NextResponse.redirect(new URL(redirectTo, req.url));
 }

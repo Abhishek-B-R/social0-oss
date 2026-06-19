@@ -3,6 +3,9 @@ import { connectedAccounts, verification } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { decrypt, encryptToken } from "@/lib/encryption";
+import { assertOAuthCallbackSession } from "@/lib/oauth-callback-session";
+import { clearOAuthConnectBinding } from "@/lib/oauth-connect-binding";
+import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 import crypto from "crypto";
 import { normalizeAppUrl } from "@/lib/url-utils";
 import { safeRedirect, rethrowNextRedirect } from "@/lib/redirect";
@@ -39,12 +42,11 @@ export async function GET(
   try {
     const decrypted = decrypt(state);
     userId = decrypted.userId;
-    if (
-      decrypted.returnTo &&
-      typeof decrypted.returnTo === "string" &&
-      decrypted.returnTo.startsWith("/")
-    ) {
-      successRedirect = decrypted.returnTo;
+    await assertOAuthCallbackSession(req, userId, "instagram-facebook");
+    await clearOAuthConnectBinding();
+    const returnTo = sanitizeReturnToPath(decrypted.returnTo);
+    if (returnTo) {
+      successRedirect = returnTo;
     }
 
     if (decrypted.platform !== "instagram-facebook") {

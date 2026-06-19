@@ -7,6 +7,7 @@ import { decryptToken, encryptToken } from "@/lib/encryption";
 import { getRemainingSlots } from "@/lib/connections";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -80,13 +81,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const validReturnTo =
-    typeof returnTo === "string" &&
-    returnTo.startsWith("/") &&
-    !returnTo.startsWith("//");
+  const safeReturnTo = sanitizeReturnToPath(returnTo);
   const baseUrl = new URL(req.url).origin;
-  const redirectTo = validReturnTo
-    ? `${baseUrl}${returnTo}${returnTo.includes("?") ? "&" : "?"}success=facebook`
+  const redirectTo = safeReturnTo
+    ? `${baseUrl}${safeReturnTo}${safeReturnTo.includes("?") ? "&" : "?"}success=facebook`
     : `${baseUrl}/dashboard/connections?success=facebook`;
 
   const record = await db.query.verification.findFirst({
@@ -177,6 +175,8 @@ export async function POST(req: NextRequest) {
       isActive: true,
     });
   }
+
+  await db.delete(verification).where(eq(verification.id, token));
 
   return NextResponse.redirect(new URL(redirectTo, req.url));
 }

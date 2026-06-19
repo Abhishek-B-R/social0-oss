@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { refreshTwitterPremiumStatus } from "@/lib/twitter-premium";
-import { twitterPremiumRefreshLimiter } from "@/lib/ratelimit";
+import { twitterPremiumRefreshLimiter, enforceRateLimit } from "@/lib/ratelimit";
 
 export async function POST() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -13,14 +13,20 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (twitterPremiumRefreshLimiter) {
-    const { success } = await twitterPremiumRefreshLimiter.limit(session.user.id);
-    if (!success) {
-      return NextResponse.json(
-        { error: "Please wait a few minutes before refreshing again." },
-        { status: 429 },
-      );
-    }
+  const rate = await enforceRateLimit(
+    twitterPremiumRefreshLimiter,
+    session.user.id,
+  );
+  if (!rate.allowed) {
+    return NextResponse.json(
+      {
+        error:
+          rate.status === 503
+            ? "Service temporarily unavailable. Try again later."
+            : "Please wait a few minutes before refreshing again.",
+      },
+      { status: rate.status },
+    );
   }
 
   const accounts = await db

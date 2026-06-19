@@ -7,6 +7,7 @@ import { decryptToken, encryptToken } from "@/lib/encryption";
 import { getRemainingSlots } from "@/lib/connections";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -83,13 +84,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const validReturnTo =
-    typeof returnTo === "string" &&
-    returnTo.startsWith("/") &&
-    !returnTo.startsWith("//");
+  const safeReturnTo = sanitizeReturnToPath(returnTo);
   const baseUrl = new URL(req.url).origin;
-  const redirectTo = validReturnTo
-    ? `${baseUrl}${returnTo}${returnTo.includes("?") ? "&" : "?"}success=instagram`
+  const redirectTo = safeReturnTo
+    ? `${baseUrl}${safeReturnTo}${safeReturnTo.includes("?") ? "&" : "?"}success=instagram`
     : `${baseUrl}/dashboard/connections?success=instagram`;
 
   const record = await db.query.verification.findFirst({
@@ -187,6 +185,8 @@ export async function POST(req: NextRequest) {
       },
     });
   }
+
+  await db.delete(verification).where(eq(verification.id, token));
 
   // NOTE: Using NextResponse.redirect() (not next/navigation redirect()) — this does NOT throw
   // a NEXT_REDIRECT error, so no rethrowNextRedirect() guard is needed here.

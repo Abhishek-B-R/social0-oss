@@ -8,6 +8,7 @@ import { checkAccountLimits } from "@/lib/plan-limits";
 import crypto from "crypto";
 import { z } from "zod";
 import { NextRequest } from "next/server";
+import { blueskyByokLimiter, enforceRateLimit } from "@/lib/ratelimit";
 
 const byokSchema = z.object({
   handle: z
@@ -26,6 +27,11 @@ export async function POST(req: NextRequest) {
 
     if (!session) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rate = await enforceRateLimit(blueskyByokLimiter, session.user.id);
+    if (!rate.allowed) {
+      return Response.json({ error: rate.error }, { status: rate.status });
     }
 
     const body = await req.json();

@@ -10,6 +10,9 @@ import {
   FACEBOOK_INSTAGRAM_PAGE_SCOPES,
   getFacebookInstagramLoginConfigId,
 } from "@/lib/facebook-oauth";
+import { enforceRateLimit, oauthLimiter } from "@/lib/ratelimit";
+import { sanitizeReturnToPath } from "@/lib/safe-return-to";
+import { setOAuthConnectBinding } from "@/lib/oauth-connect-binding";
 
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -17,6 +20,15 @@ export async function GET(req: NextRequest) {
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rate = await enforceRateLimit(oauthLimiter, session.user.id, {
+    failClosedWhenUnavailable: false,
+  });
+  if (!rate.allowed) {
+    return Response.json({ error: rate.error }, { status: rate.status });
+  }
+
+  await setOAuthConnectBinding(session.user.id, "instagram-facebook");
 
   const clientId = env.FACEBOOK_CLIENT_ID;
   const clientSecret = env.FACEBOOK_CLIENT_SECRET;
@@ -31,16 +43,12 @@ export async function GET(req: NextRequest) {
   const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
   const redirectUri = `${baseUrl}/api/connect/instagram-facebook/callback`;
 
-  const returnTo = req.nextUrl.searchParams.get("returnTo");
-  const validReturnTo =
-    typeof returnTo === "string" &&
-    returnTo.startsWith("/") &&
-    !returnTo.startsWith("//");
+  const returnTo = sanitizeReturnToPath(req.nextUrl.searchParams.get("returnTo"));
 
   const state = encrypt({
     userId: session.user.id,
     platform: "instagram-facebook",
-    ...(validReturnTo && { returnTo }),
+    ...(returnTo && { returnTo }),
   });
 
   const finalUrl = buildFacebookOAuthUrl({

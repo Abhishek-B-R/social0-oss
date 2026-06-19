@@ -1,13 +1,10 @@
 import { redirect } from "next/navigation";
+import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 
-/** Ensure we only ever redirect to a string URL. Passing an object (e.g. from state/callbackUrl) would 404. */
+/** Redirect only to a safe in-app relative path. External URLs are rejected. */
 export function safeRedirect(url: unknown, fallback: string): never {
-  const s =
-    typeof url === "string" &&
-    url.trim().length > 0 &&
-    (url.startsWith("/") || url.startsWith("http"))
-      ? url.trim()
-      : fallback;
+  const fallbackSafe = sanitizeReturnToPath(fallback) ?? "/dashboard";
+  const s = sanitizeReturnToPath(url) ?? fallbackSafe;
   return redirect(s);
 }
 

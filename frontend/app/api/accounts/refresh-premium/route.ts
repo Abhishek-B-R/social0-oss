@@ -5,11 +5,23 @@ import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { refreshTwitterPremiumStatus } from "@/lib/twitter-premium";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  enforceRateLimit,
+  twitterPremiumRefreshLimiter,
+} from "@/lib/ratelimit";
 
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rate = await enforceRateLimit(
+    twitterPremiumRefreshLimiter,
+    session.user.id,
+  );
+  if (!rate.allowed) {
+    return NextResponse.json({ error: rate.error }, { status: rate.status });
   }
 
   let body: { accountId?: string };

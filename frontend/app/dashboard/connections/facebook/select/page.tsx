@@ -8,11 +8,14 @@ import {
   type AccountPickerAccount,
 } from "@/components/AccountPicker";
 import { toast } from "sonner";
+import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 
 export default function FacebookSelectPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const returnTo = searchParams.get("returnTo") ?? "/dashboard/connections";
+  const returnTo =
+    sanitizeReturnToPath(searchParams.get("returnTo")) ??
+    "/dashboard/connections";
 
   const [accounts, setAccounts] = useState<AccountPickerAccount[]>([]);
   const [loading, setLoading] = useState(true);

@@ -5,7 +5,7 @@ import { connectedAccounts, userSettings } from "@/db/schema";
 import { eq, and, sql, asc, inArray } from "drizzle-orm";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { getPlanLimits, isActiveTier } from "@/lib/plans";
-import { twitterPublishLimiter } from "@/lib/ratelimit";
+import { twitterPublishLimiter, enforceRateLimit } from "@/lib/ratelimit";
 
 /**
  * Sync connected_accounts.isActive to plan limit.
@@ -117,19 +117,20 @@ export async function checkTwitterPublishRateLimit(
   userId: string,
   pendingTweetCount: number,
 ): Promise<TwitterPublishRateLimitResult> {
-  if (!twitterPublishLimiter || pendingTweetCount <= 0) {
+  if (pendingTweetCount <= 0) {
     return { allowed: true };
   }
 
-  const { success } = await twitterPublishLimiter.limit(userId, {
+  const rate = await enforceRateLimit(twitterPublishLimiter, userId, {
     rate: pendingTweetCount,
   });
-
-  if (!success) {
+  if (!rate.allowed) {
     return {
       allowed: false,
       reason:
-        "You're posting to X too quickly. Please wait a few minutes and try again.",
+        rate.status === 503
+          ? "Publishing is temporarily unavailable. Try again later."
+          : "You're posting to X too quickly. Please wait a few minutes and try again.",
     };
   }
 

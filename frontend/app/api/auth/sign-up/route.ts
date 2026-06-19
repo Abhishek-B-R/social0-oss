@@ -6,11 +6,25 @@ import {
 } from "@/lib/sign-up-errors";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { enforceRateLimit, signUpIpLimiter } from "@/lib/ratelimit";
+import { clientIp } from "@/lib/client-ip";
 
 /**
  * Email/password sign-up. Better Auth emailOTP plugin sends the verification OTP; we redirect to verify-email (no Turnstile).
  */
 export async function POST(request: Request) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      { error: "Sign-up requires verification. Use the sign-up form." },
+      { status: 403 },
+    );
+  }
+
+  const ipRate = await enforceRateLimit(signUpIpLimiter, `sign_up:${clientIp(request)}`);
+  if (!ipRate.allowed) {
+    return NextResponse.json({ error: ipRate.error }, { status: ipRate.status });
+  }
+
   const body = await request.json().catch(() => ({}));
   const { name, email, password } = body as {
     name?: string;

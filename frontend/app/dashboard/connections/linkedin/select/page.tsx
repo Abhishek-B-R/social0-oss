@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 
 type PersonalProfile = {
   id: string;
@@ -20,7 +21,9 @@ type CompanyPage = {
 export default function LinkedInSelectPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const returnTo = searchParams.get("returnTo") ?? "/dashboard/connections";
+  const returnTo =
+    sanitizeReturnToPath(searchParams.get("returnTo")) ??
+    "/dashboard/connections";
 
   const [personalProfile, setPersonalProfile] =
     useState<PersonalProfile | null>(null);

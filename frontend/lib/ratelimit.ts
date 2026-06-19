@@ -3,6 +3,47 @@ import { redis } from "@/lib/redis";
 
 export { redis };
 
+export function isRateLimitingEnabled(): boolean {
+  return redis !== null;
+}
+
+/** In production, rate limits must be backed by Redis (fail closed). */
+export function isRateLimitingRequired(): boolean {
+  return process.env.NODE_ENV === "production";
+}
+
+export type RateLimitResult =
+  | { allowed: true }
+  | { allowed: false; status: 429 | 503; error: string };
+
+export async function enforceRateLimit(
+  limiter: Ratelimit | null,
+  key: string,
+  options?: { rate?: number; failClosedWhenUnavailable?: boolean },
+): Promise<RateLimitResult> {
+  const failClosed = options?.failClosedWhenUnavailable !== false;
+  if (!limiter) {
+    if (isRateLimitingRequired() && failClosed) {
+      return {
+        allowed: false,
+        status: 503,
+        error: "Rate limiting is unavailable. Try again later.",
+      };
+    }
+    return { allowed: true };
+  }
+
+  const { success } = await limiter.limit(key, options);
+  if (!success) {
+    return {
+      allowed: false,
+      status: 429,
+      error: "Too many requests. Try again later.",
+    };
+  }
+  return { allowed: true };
+}
+
 // 400 uploads/hour per user (supports bulk sessions: ~50 images × 8 sessions)
 export const uploadLimiter = redis
   ? new Ratelimit({
@@ -58,11 +99,71 @@ export const checkoutLimiter = redis
   : null;
 
 // Check-email (for sign-in "email not found" message): strict per-IP limit to reduce enumeration.
-// 10/hour is intentionally low — legitimate users rarely need to check more than once or twice.
 export const checkEmailLimiter = redis
   ? new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(10, "1 h"),
       prefix: "rl:check_email",
+    })
+  : null;
+
+// Per-IP cap on check-email for the same address (slows enumeration of a target inbox).
+export const checkEmailPerEmailLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(5, "1 h"),
+      prefix: "rl:check_email_addr",
+    })
+  : null;
+
+// Change-email OTP: per user + per IP (prevents email bombing via OTP sends).
+export const changeEmailOtpLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(5, "1 h"),
+      prefix: "rl:change_email_otp_user",
+    })
+  : null;
+
+export const changeEmailOtpIpLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(10, "1 h"),
+      prefix: "rl:change_email_otp_ip",
+    })
+  : null;
+
+export const changeEmailOtpTargetLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(3, "1 h"),
+      prefix: "rl:change_email_otp_target",
+    })
+  : null;
+
+// Sign-up attempts per IP (applies to both Turnstile and non-Turnstile routes).
+export const signUpIpLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(10, "1 h"),
+      prefix: "rl:sign_up_ip",
+    })
+  : null;
+
+// Bluesky BYOK credential validation per user.
+export const blueskyByokLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(10, "1 h"),
+      prefix: "rl:bluesky_byok",
+    })
+  : null;
+
+// Billing sync from Dodo per user.
+export const billingSyncLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(5, "1 m"),
+      prefix: "rl:billing_sync",
     })
   : null;
