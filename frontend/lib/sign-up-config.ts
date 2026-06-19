@@ -1,5 +1,3 @@
-import { env } from "@/lib/env";
-
 export type SignUpConfig = {
   turnstileSiteKey: string;
   signUpEndpoint: "/api/auth/sign-up-with-turnstile" | "/api/auth/sign-up";
@@ -29,15 +27,7 @@ export function buildSignUpConfig(input: {
   };
 }
 
-export function getSignUpConfig(): SignUpConfig {
-  return buildSignUpConfig({
-    turnstileSiteKey: env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
-    turnstileSecretKey: env.TURNSTILE_SECRET_KEY,
-    isProduction: process.env.NODE_ENV === "production",
-  });
-}
-
-/** Client-safe helper (no server secrets). */
+/** Safe for client components — does not import server env validation. */
 export function getClientSignUpConfig(): SignUpConfig {
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   const isProduction = process.env.NODE_ENV === "production";
