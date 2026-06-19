@@ -6,7 +6,6 @@ import { logConnectBlocked } from "@/lib/plan-analytics";
 import { syncSubscriptionForUserId } from "@/lib/billing-sync";
 import { eq, and } from "drizzle-orm";
 import { env } from "@/lib/env";
-import { auth } from "@/lib/auth";
 import { decrypt, encryptToken } from "@/lib/encryption";
 import { assertOAuthCallbackSession } from "@/lib/oauth-callback-session";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
@@ -17,12 +16,6 @@ import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import OAuth from "oauth-1.0a";
 import { TwitterApi } from "twitter-api-v2";
-import {
-  buildTikTokProfileUrl,
-  isLikelyTikTokHandle,
-  parseTikTokHandleFromProfileUrl,
-  fetchTikTokConnectUserInfo,
-} from "@/lib/platform-view-url";
 
 /** Validate URL is http/https before storing as profile image. */
 function isValidProfileImageUrl(url: unknown): url is string {
@@ -313,7 +306,6 @@ export async function GET(
   try {
     const decrypted = decrypt(state);
     userId = decrypted.userId;
-    await assertOAuthCallbackSession(req, userId, platform);
     isReauth = decrypted.reauth === true;
     const returnTo = sanitizeReturnToPath(decrypted.returnTo);
     if (returnTo) {
@@ -328,15 +320,7 @@ export async function GET(
     }
 
     // TikTok: Retrieve verifier from DB using stateId
-    if (platform === "tiktok") {
-      if (!decrypted.stateId) {
-        console.error("TikTok PKCE: stateId missing from OAuth state");
-        return safeRedirect(
-          `/dashboard/connections?error=verifier_expired&platform=${platform}`,
-          "/dashboard/connections",
-        );
-      }
-
+    if (platform === "tiktok" && decrypted.stateId) {
       const verifierRecord = await db.query.verification.findFirst({
         where: eq(verification.id, decrypted.stateId),
       });
@@ -349,14 +333,6 @@ export async function GET(
         );
       }
 
-      const expectedPkceId = `pkce_${userId}_${platform}`;
-      if (verifierRecord.identifier !== expectedPkceId) {
-        return safeRedirect(
-          `/dashboard/connections?error=oauth_session_mismatch&platform=${encodeURIComponent(platform)}`,
-          "/dashboard/connections",
-        );
-      }
-
       codeVerifier = verifierRecord.value;
 
       // Clean up verifier from DB (one-time use)
@@ -364,6 +340,8 @@ export async function GET(
         .delete(verification)
         .where(eq(verification.id, decrypted.stateId));
     }
+
+    await assertOAuthCallbackSession(req, userId, platform);
   } catch (err) {
     rethrowNextRedirect(err);
     console.error("OAuth state decryption failed");
@@ -816,22 +794,8 @@ export async function GET(
       platformMetadata?: Record<string, unknown>;
     };
 
-    if (platform === "tiktok") {
-      const tokenOpenId =
-        typeof tokens.open_id === "string" ? tokens.open_id : null;
-      const tiktokInfo = await fetchTikTokConnectUserInfo(
-        tokens.access_token,
-        tokenOpenId,
-      );
-      if (!tiktokInfo?.id || !tokens.access_token) {
-        console.error("TikTok connect: missing open_id after token exchange");
-        return safeRedirect(
-          `/dashboard/connections?error=oauth_failed&platform=tiktok`,
-          "/dashboard/connections",
-        );
-      }
-      userInfo = tiktokInfo;
-    } else if (
+    // Instagram/Threads return user_id in token response, use it if available
+    if (
       (platform === "instagram" || platform === "threads") &&
       tokens.user_id
     ) {
@@ -862,6 +826,19 @@ export async function GET(
           username: null,
           profileImageUrl: null,
         };
+      }
+    }
+
+    if (platform === "tiktok") {
+      const tokenOpenId =
+        typeof tokens.open_id === "string" ? tokens.open_id.trim() : "";
+      if (
+        tokenOpenId &&
+        (!userInfo.id ||
+          userInfo.id.startsWith("tiktok-") ||
+          userInfo.id.startsWith("unknown-"))
+      ) {
+        userInfo.id = tokenOpenId;
       }
     }
 
@@ -1359,8 +1336,35 @@ async function fetchPlatformUserInfo(
     }
 
     case "tiktok": {
-      const info = await fetchTikTokConnectUserInfo(accessToken);
-      if (info) return info;
+      try {
+        const response = await fetch(
+          "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name",
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          },
+        );
+        if (response.ok) {
+          const data = await response.json();
+          if (data.data?.user) {
+            const user = data.data.user;
+            const raw = user.avatar_url;
+            const profileImageUrl = isValidProfileImageUrl(raw) ? raw : null;
+            return {
+              id: user.open_id || `tiktok-${Date.now()}`,
+              username: user.display_name || null,
+              profileImageUrl,
+            };
+          }
+        } else {
+          const errorText = await response.text();
+          console.error("TikTok userinfo error:", errorText);
+        }
+      } catch (err) {
+        rethrowNextRedirect(err);
+        console.error("TikTok user info fetch failed:", err);
+      }
       break;
     }
 

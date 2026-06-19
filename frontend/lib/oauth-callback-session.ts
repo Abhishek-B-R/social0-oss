@@ -1,9 +1,18 @@
 import { auth } from "@/lib/auth";
 import { safeRedirect } from "@/lib/redirect";
+import { headers } from "next/headers";
 import {
   clearOAuthConnectBinding,
   verifyOAuthConnectBinding,
 } from "@/lib/oauth-connect-binding";
+
+async function readCallbackSession(request: Request) {
+  const fromRequest = await auth.api.getSession({ headers: request.headers });
+  if (fromRequest?.user?.id) return fromRequest;
+
+  const headerList = await headers();
+  return auth.api.getSession({ headers: headerList });
+}
 
 /**
  * OAuth callbacks must match the user who started the connect flow.
@@ -14,7 +23,7 @@ export async function assertOAuthCallbackSession(
   expectedUserId: string,
   platform: string,
 ): Promise<void> {
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await readCallbackSession(request);
   if (session?.user?.id === expectedUserId) {
     await clearOAuthConnectBinding(request);
     return;
