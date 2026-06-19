@@ -319,8 +319,7 @@ export function ConnectionsList({
                             className="shrink-0"
                           />
                           <div className="min-w-0 flex flex-col justify-center">
-                            {account.platformDisplayName &&
-                            account.platformUsername ? (
+                            {account.platformDisplayName ? (
                               <>
                                 <span
                                   className="flex items-center gap-1 truncate text-xs font-medium text-text"
@@ -336,12 +335,14 @@ export function ConnectionsList({
                                       />
                                     )}
                                 </span>
-                                <span
-                                  className="truncate text-[10px] text-text-muted"
-                                  title={account.platformUsername}
-                                >
-                                  @{account.platformUsername}
-                                </span>
+                                {account.platformUsername ? (
+                                  <span
+                                    className="truncate text-[10px] text-text-muted"
+                                    title={account.platformUsername}
+                                  >
+                                    @{account.platformUsername}
+                                  </span>
+                                ) : null}
                               </>
                             ) : (
                               <span

@@ -2,7 +2,6 @@ import { auth } from "@/lib/auth";
 import { PLATFORM_OAUTH_CONFIG, Platform } from "@/lib/platforms";
 import { env } from "@/lib/env";
 import { headers, cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { encrypt } from "@/lib/encryption";
 import { normalizeAppUrl } from "@/lib/url-utils";
 import crypto from "crypto";
@@ -17,7 +16,7 @@ import {
   getFacebookLoginConfigId,
 } from "@/lib/facebook-oauth";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
-import { setOAuthConnectBinding } from "@/lib/oauth-connect-binding";
+import { redirectWithOAuthConnectBinding } from "@/lib/oauth-connect-binding";
 
 export async function GET(
   req: NextRequest,
@@ -46,8 +45,6 @@ export async function GET(
       new URL("/dashboard/connections?error=rate_limited", req.url),
     );
   }
-
-  await setOAuthConnectBinding(session.user.id, platform);
 
   const returnToForConnect = sanitizeReturnToPath(
     req.nextUrl.searchParams.get("returnTo"),
@@ -104,7 +101,11 @@ export async function GET(
     // State for CSRF: userId + platform (callback will verify)
     const csrfState = encrypt({ userId: session.user.id, platform: "twitter_x" });
     const finalUrl = `${authUrl}&state=${encodeURIComponent(csrfState)}`;
-    return redirect(finalUrl);
+    return redirectWithOAuthConnectBinding(
+      finalUrl,
+      session.user.id,
+      "twitter_x",
+    );
   }
 
   // Check if platform uses OAuth (not BYOK)
@@ -188,7 +189,7 @@ export async function GET(
   }
 
   if (platform === "facebook") {
-    return redirect(
+    return redirectWithOAuthConnectBinding(
       buildFacebookOAuthUrl({
         clientId,
         redirectUri,
@@ -196,6 +197,8 @@ export async function GET(
         configId: getFacebookLoginConfigId(),
         scope: config.scope,
       }),
+      session.user.id,
+      platform,
     );
   }
   
@@ -211,5 +214,5 @@ export async function GET(
   }
 
   const finalUrl = url.toString();
-  return redirect(finalUrl);
+  return redirectWithOAuthConnectBinding(finalUrl, session.user.id, platform);
 }

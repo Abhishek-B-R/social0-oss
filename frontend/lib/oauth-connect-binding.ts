@@ -1,10 +1,14 @@
-import { cookies } from "next/headers";
-import { decrypt, encrypt } from "@/lib/encryption";
-import { env } from "@/lib/env";
+import { db } from "@/db";
+import { verification } from "@/db/schema";
+import { and, eq, gt } from "drizzle-orm";
+import { randomBytes } from "crypto";
+import { NextResponse } from "next/server";
 import { normalizeAppUrl } from "@/lib/url-utils";
+import { env } from "@/lib/env";
 
 const COOKIE_NAME = "oauth_connect_binding";
 const MAX_AGE_SEC = 600;
+const IDENTIFIER = "oauth_connect_binding";
 
 function cookieOptions() {
   const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
@@ -18,47 +22,79 @@ function cookieOptions() {
   };
 }
 
-/** Set when the user starts an OAuth connect flow (same browser must complete callback). */
-export async function setOAuthConnectBinding(
+/** Persist a short-lived connect intent in DB; cookie holds only the token id. */
+export async function createOAuthConnectBinding(
   userId: string,
   platform: string,
-): Promise<void> {
-  const cookieStore = await cookies();
-  const value = encrypt({ userId, platform });
-  cookieStore.set(COOKIE_NAME, value, cookieOptions());
+): Promise<string> {
+  const token = randomBytes(24).toString("hex");
+  await db.insert(verification).values({
+    id: token,
+    identifier: IDENTIFIER,
+    value: `${userId}:${platform}`,
+    expiresAt: new Date(Date.now() + MAX_AGE_SEC * 1000),
+  });
+  return token;
 }
 
-function readBindingCookie(request: Request): string | null {
+export function attachOAuthConnectBindingCookie(
+  response: NextResponse,
+  token: string,
+): NextResponse {
+  response.cookies.set(COOKIE_NAME, token, cookieOptions());
+  return response;
+}
+
+/** Redirect to an external OAuth provider and set the connect-binding cookie on the response. */
+export async function redirectWithOAuthConnectBinding(
+  url: string,
+  userId: string,
+  platform: string,
+): Promise<NextResponse> {
+  const token = await createOAuthConnectBinding(userId, platform);
+  const response = NextResponse.redirect(url);
+  return attachOAuthConnectBindingCookie(response, token);
+}
+
+function readBindingToken(request: Request): string | null {
   const header = request.headers.get("cookie");
   if (!header) return null;
   for (const part of header.split(";")) {
     const trimmed = part.trim();
     if (trimmed.startsWith(`${COOKIE_NAME}=`)) {
-      return decodeURIComponent(trimmed.slice(COOKIE_NAME.length + 1));
+      return trimmed.slice(COOKIE_NAME.length + 1);
     }
   }
   return null;
 }
 
-export function verifyOAuthConnectBinding(
+export async function verifyOAuthConnectBinding(
   request: Request,
   expectedUserId: string,
   expectedPlatform: string,
-): boolean {
-  const raw = readBindingCookie(request);
-  if (!raw) return false;
-  try {
-    const decrypted = decrypt(raw);
-    return (
-      decrypted.userId === expectedUserId &&
-      decrypted.platform === expectedPlatform
-    );
-  } catch {
-    return false;
-  }
+): Promise<boolean> {
+  const token = readBindingToken(request);
+  if (!token) return false;
+
+  const row = await db.query.verification.findFirst({
+    where: and(
+      eq(verification.id, token),
+      eq(verification.identifier, IDENTIFIER),
+      gt(verification.expiresAt, new Date()),
+    ),
+    columns: { value: true },
+  });
+  if (!row) return false;
+
+  const colon = row.value.indexOf(":");
+  if (colon === -1) return false;
+  const userId = row.value.slice(0, colon);
+  const platform = row.value.slice(colon + 1);
+  return userId === expectedUserId && platform === expectedPlatform;
 }
 
-export async function clearOAuthConnectBinding(): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
+export async function clearOAuthConnectBinding(request: Request): Promise<void> {
+  const token = readBindingToken(request);
+  if (!token) return;
+  await db.delete(verification).where(eq(verification.id, token));
 }
