@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { verification } from "@/db/schema";
 import { and, eq, gt } from "drizzle-orm";
 import { randomBytes } from "crypto";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { normalizeAppUrl } from "@/lib/url-utils";
 import { env } from "@/lib/env";
@@ -52,8 +53,9 @@ export async function redirectWithOAuthConnectBinding(
   platform: string,
 ): Promise<NextResponse> {
   const token = await createOAuthConnectBinding(userId, platform);
-  const response = NextResponse.redirect(url);
-  return attachOAuthConnectBindingCookie(response, token);
+  const cookieStore = await cookies();
+  cookieStore.set(COOKIE_NAME, token, cookieOptions());
+  return NextResponse.redirect(url);
 }
 
 function readBindingToken(request: Request): string | null {

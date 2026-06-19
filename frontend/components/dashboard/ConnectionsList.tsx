@@ -348,12 +348,14 @@ export function ConnectionsList({
                               <span
                                 className="flex items-center gap-1 truncate text-xs font-medium text-text max-w-[120px] sm:max-w-[160px]"
                                 title={
-                                  account.platformUsername
+                                  account.platformDisplayName ??
+                                  (account.platformUsername
                                     ? `@${account.platformUsername}`
-                                    : undefined
+                                    : undefined)
                                 }
                               >
-                                @{account.platformUsername || "user"}
+                                {account.platformDisplayName ??
+                                  `@${account.platformUsername || "user"}`}
                                 {account.platform === "twitter_x" &&
                                   account.isTwitterPremium && (
                                     <img

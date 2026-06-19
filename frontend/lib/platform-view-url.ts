@@ -62,7 +62,7 @@ export async function fetchTikTokProfileUrl(
 ): Promise<string | null> {
   try {
     const response = await fetchWithTimeout(
-      "https://open.tiktokapis.com/v2/user/info/?fields=username,profile_deep_link,display_name",
+      "https://open.tiktokapis.com/v2/user/info/?fields=username,profile_deep_link",
       {
         headers: { Authorization: `Bearer ${accessToken}` },
         timeoutMs: 10_000,
@@ -74,7 +74,6 @@ export async function fetchTikTokProfileUrl(
         user?: {
           username?: string;
           profile_deep_link?: string;
-          display_name?: string;
         };
       };
     };
