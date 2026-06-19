@@ -63,6 +63,11 @@ export function OAuthErrorHandler({
             "Connection session expired. Please click Connect again while logged in to the same browser.",
           );
           break;
+        case "tiktok_scope_required":
+          setMessage(
+            "TikTok did not grant profile access. Remove the connection, then connect again and approve all permissions on TikTok's screen.",
+          );
+          break;
         default:
           setMessage("An error occurred during connection");
       }

@@ -16,7 +16,7 @@ import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import OAuth from "oauth-1.0a";
 import { TwitterApi } from "twitter-api-v2";
-import { fetchTikTokConnectProfile } from "@/lib/platform-view-url";
+import { fetchTikTokConnectProfile, tiktokTokenIncludesBasicScope } from "@/lib/platform-view-url";
 
 /** Validate URL is http/https before storing as profile image. */
 function isValidProfileImageUrl(url: unknown): url is string {
@@ -594,6 +594,8 @@ export async function GET(
             typeof tokens.data.open_id === "string"
               ? tokens.data.open_id
               : null,
+          scope:
+            typeof tokens.data.scope === "string" ? tokens.data.scope : null,
         };
       }
     } else if (platform === "pinterest") {
@@ -801,6 +803,8 @@ export async function GET(
     if (platform === "tiktok") {
       const tokenOpenId =
         typeof tokens.open_id === "string" ? tokens.open_id.trim() : "";
+      const grantedScope =
+        typeof tokens.scope === "string" ? tokens.scope : null;
       const profile = await fetchTikTokConnectProfile(tokens.access_token);
       if (profile) {
         userInfo = profile;
@@ -809,7 +813,23 @@ export async function GET(
           id: tokenOpenId,
           username: null,
           profileImageUrl: null,
+          platformMetadata: {
+            ...(grantedScope ? { grantedScopes: grantedScope } : {}),
+          },
         };
+        if (
+          grantedScope &&
+          !tiktokTokenIncludesBasicScope(grantedScope)
+        ) {
+          console.error(
+            "TikTok connect: token missing user.info.basic scope:",
+            grantedScope,
+          );
+          return safeRedirect(
+            `/dashboard/connections?error=tiktok_scope_required&platform=tiktok`,
+            "/dashboard/connections",
+          );
+        }
       } else {
         console.error("TikTok connect: missing open_id after token exchange");
         return safeRedirect(
@@ -1009,6 +1029,12 @@ export async function GET(
       platformMetadata = {
         ...(platformMetadata ?? {}),
         ...userInfo.platformMetadata,
+      };
+    }
+    if (platform === "tiktok" && typeof tokens.scope === "string") {
+      platformMetadata = {
+        ...(platformMetadata ?? {}),
+        grantedScopes: tokens.scope,
       };
     }
 

@@ -28,7 +28,7 @@ import { format, subMonths, addMonths } from "date-fns";
 import { syncConnectedAccountsToLimit } from "@/lib/plan-limits";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import { getValidToken } from "@/lib/token-refresh";
-import { fetchTikTokConnectProfile } from "@/lib/platform-view-url";
+import { fetchTikTokConnectProfile, tiktokTokenIncludesBasicScope } from "@/lib/platform-view-url";
 
 /** Mirrors `PostForCalendar` in CalendarClient (kept here to avoid server importing client module). */
 type CalendarPostPayload = {
@@ -247,6 +247,13 @@ async function backfillTikTokProfileLabels(
   await Promise.all(
     stale.map(async (account) => {
       try {
+        const meta =
+          (account.platformMetadata as Record<string, unknown> | null) ?? {};
+        const grantedScopes =
+          typeof meta.grantedScopes === "string" ? meta.grantedScopes : null;
+        if (grantedScopes && !tiktokTokenIncludesBasicScope(grantedScopes)) {
+          return;
+        }
         const accessToken = await getValidToken(account.id, "tiktok");
         const profile = await fetchTikTokConnectProfile(accessToken);
         if (!profile?.username && !profile?.profileImageUrl) return;
