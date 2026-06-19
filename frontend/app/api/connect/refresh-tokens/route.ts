@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { getValidToken } from "@/lib/token-refresh";
 import { PLATFORMS, type Platform } from "@/lib/platforms";
-import { enforceRateLimit, oauthLimiter } from "@/lib/ratelimit";
+import { enforceRateLimit, tokenRefreshLimiter } from "@/lib/ratelimit";
 
 const VALID_PLATFORM_IDS = new Set<string>(
   PLATFORMS.map((p) => p.id),
@@ -27,7 +27,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const rate = await enforceRateLimit(oauthLimiter, session.user.id);
+  const rate = await enforceRateLimit(tokenRefreshLimiter, session.user.id, {
+    failClosedWhenUnavailable: false,
+  });
   if (!rate.allowed) {
     return NextResponse.json({ error: rate.error }, { status: rate.status });
   }

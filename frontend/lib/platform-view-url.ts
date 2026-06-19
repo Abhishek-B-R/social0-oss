@@ -56,6 +56,63 @@ export function resolveTikTokProfileUrl(input: {
   return null;
 }
 
+/** TikTok OAuth connect profile — matches user.info.basic fields from Login Kit. */
+export async function fetchTikTokConnectProfile(
+  accessToken: string,
+): Promise<{
+  id: string;
+  username: string | null;
+  profileImageUrl: string | null;
+  platformMetadata?: Record<string, unknown>;
+} | null> {
+  try {
+    const response = await fetchWithTimeout(
+      "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name",
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        timeoutMs: 10_000,
+      },
+    );
+    const data = (await response.json().catch(() => ({}))) as {
+      data?: {
+        user?: {
+          open_id?: string;
+          avatar_url?: string;
+          display_name?: string;
+        };
+      };
+      error?: { code?: string; message?: string };
+    };
+    if (!response.ok || !data.data?.user) {
+      console.error("TikTok userinfo error:", response.status, data);
+      return null;
+    }
+    const user = data.data.user;
+    const openId =
+      typeof user.open_id === "string" ? user.open_id.trim() : "";
+    if (!openId) return null;
+    const rawAvatar = user.avatar_url;
+    const profileImageUrl =
+      typeof rawAvatar === "string" &&
+      (rawAvatar.startsWith("http://") || rawAvatar.startsWith("https://"))
+        ? rawAvatar
+        : null;
+    const displayName =
+      typeof user.display_name === "string" ? user.display_name.trim() : "";
+    return {
+      id: openId,
+      username: displayName || null,
+      profileImageUrl,
+      ...(displayName
+        ? { platformMetadata: { displayName } }
+        : {}),
+    };
+  } catch (err) {
+    console.error("TikTok connect profile fetch failed:", err);
+    return null;
+  }
+}
+
 /** Fetch the creator's TikTok profile URL using their access token. */
 export async function fetchTikTokProfileUrl(
   accessToken: string,

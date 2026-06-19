@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
   const rate = await enforceRateLimit(
     twitterPremiumRefreshLimiter,
     session.user.id,
+    { failClosedWhenUnavailable: false },
   );
   if (!rate.allowed) {
     return NextResponse.json({ error: rate.error }, { status: rate.status });
