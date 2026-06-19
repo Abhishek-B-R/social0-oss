@@ -3,14 +3,13 @@
 import { Check } from "lucide-react";
 
 const STEPS = [
-  { num: 1, label: "Choose plan", path: "/onboarding" },
-  { num: 2, label: "Your goal", path: "/onboarding/step2" },
-  { num: 3, label: "Connect", path: "/onboarding/step3" },
-  { num: 4, label: "All set", path: "/onboarding/step4" },
+  { num: 1, label: "Welcome" },
+  { num: 2, label: "Connect" },
+  { num: 3, label: "All set" },
 ] as const;
 
 type OnboardingProgressProps = {
-  currentStep: number; // 1–4
+  currentStep: number; // 1–3
 };
 
 export function OnboardingProgress({ currentStep }: OnboardingProgressProps) {
@@ -38,7 +37,9 @@ export function OnboardingProgress({ currentStep }: OnboardingProgressProps) {
                 aria-label={`${step.num}. ${step.label} (completed)`}
               >
                 <Check className="h-3.5 w-3.5" aria-hidden />
-                <span className="sr-only sm:not-sr-only">{step.num}. {step.label}</span>
+                <span className="sr-only sm:not-sr-only">
+                  {step.num}. {step.label}
+                </span>
               </span>
             ) : isCurrent ? (
               <span

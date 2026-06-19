@@ -96,7 +96,7 @@ export default function OnboardingGoalPage() {
   }
 
   return (
-    <div className="w-full max-w-xl mx-auto">
+    <div className="w-full max-w-3xl mx-auto">
       <a
         href={DOCS_ONBOARDING_GOAL_URL}
         target="_blank"
@@ -118,11 +118,11 @@ export default function OnboardingGoalPage() {
           />
         </svg>
       </a>
-      <h1 className="text-2xl sm:text-3xl font-bold text-center text-foreground mb-2">
+      <h1 className="mb-2 text-center font-serif text-2xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-3xl">
         What&apos;s your goal?
       </h1>
       <p className="text-center text-muted-foreground mb-8">
-        Help us tailor your experience — choose one to continue.
+        Optional — helps us personalize your experience. You can skip this.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
@@ -142,7 +142,7 @@ export default function OnboardingGoalPage() {
         ))}
       </div>
 
-      <div className="flex justify-center mb-10">
+      <div className="flex flex-col items-center gap-3 mb-10">
         <button
           type="button"
           onClick={handleNext}
@@ -150,6 +150,13 @@ export default function OnboardingGoalPage() {
           className="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? "…" : "Next →"}
+        </button>
+        <button
+          type="button"
+          onClick={() => router.push("/onboarding/step3")}
+          className="text-sm text-muted-foreground hover:text-foreground underline"
+        >
+          Skip for now
         </button>
       </div>
 

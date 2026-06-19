@@ -1,12 +1,10 @@
 "use server";
 
-import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { userSettings, connectedAccounts } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { getSubscriptionForUser } from "@/lib/subscription";
+import { requireSessionUserId } from "@/lib/require-session-user";
 
 /** Defaults when creating a new user_settings row (avoids relying on DB defaults after migrations). */
 const NEW_USER_SETTINGS_DEFAULTS = {
@@ -19,7 +17,35 @@ const NEW_USER_SETTINGS_DEFAULTS = {
   hasUsedTrial: false,
   onboardingCompleted: false,
   subscriptionCancelAtPeriodEnd: false,
+  freePostsUsed: 0,
 };
+
+async function upsertUserSettings(
+  userId: string,
+  patch: Partial<typeof NEW_USER_SETTINGS_DEFAULTS> & {
+    onboardingGoal?: string | null;
+    onboardingCompleted?: boolean;
+  },
+): Promise<void> {
+  const { onboardingGoal, onboardingCompleted, ...defaultsPatch } = patch;
+
+  await db
+    .insert(userSettings)
+    .values({
+      userId,
+      ...NEW_USER_SETTINGS_DEFAULTS,
+      ...defaultsPatch,
+      ...(onboardingGoal !== undefined ? { onboardingGoal } : {}),
+      ...(onboardingCompleted !== undefined ? { onboardingCompleted } : {}),
+    })
+    .onConflictDoUpdate({
+      target: userSettings.userId,
+      set: {
+        ...(onboardingGoal !== undefined ? { onboardingGoal } : {}),
+        ...(onboardingCompleted !== undefined ? { onboardingCompleted } : {}),
+      },
+    });
+}
 
 export type OnboardingStatus = {
   onboardingCompleted: boolean;
@@ -30,14 +56,8 @@ export type OnboardingStatus = {
   shouldOnboard: boolean;
 };
 
-async function getCurrentUserId(): Promise<string | null> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  return session?.user.id ?? null;
-}
-
 export async function getOnboardingStatus(): Promise<OnboardingStatus | null> {
-  const userId = await getCurrentUserId();
-  if (!userId) return null;
+  const userId = await requireSessionUserId();
 
   const [settingsRow, sub, accounts] = await Promise.all([
     db.query.userSettings.findFirst({
@@ -73,47 +93,13 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus | null> {
 }
 
 export async function setOnboardingGoal(goal: string): Promise<void> {
-  const userId = await getCurrentUserId();
-  if (!userId) redirect("/");
+  const userId = await requireSessionUserId();
 
-  const existing = await db.query.userSettings.findFirst({
-    where: eq(userSettings.userId, userId),
-    columns: { userId: true },
-  });
-
-  if (existing) {
-    await db
-      .update(userSettings)
-      .set({ onboardingGoal: goal })
-      .where(eq(userSettings.userId, userId));
-  } else {
-    await db.insert(userSettings).values({
-      userId,
-      ...NEW_USER_SETTINGS_DEFAULTS,
-      onboardingGoal: goal,
-    });
-  }
+  await upsertUserSettings(userId, { onboardingGoal: goal });
 }
 
 export async function setOnboardingCompleted(): Promise<void> {
-  const userId = await getCurrentUserId();
-  if (!userId) redirect("/");
+  const userId = await requireSessionUserId();
 
-  const existing = await db.query.userSettings.findFirst({
-    where: eq(userSettings.userId, userId),
-    columns: { userId: true },
-  });
-
-  if (existing) {
-    await db
-      .update(userSettings)
-      .set({ onboardingCompleted: true })
-      .where(eq(userSettings.userId, userId));
-  } else {
-    await db.insert(userSettings).values({
-      userId,
-      ...NEW_USER_SETTINGS_DEFAULTS,
-      onboardingCompleted: true,
-    });
-  }
+  await upsertUserSettings(userId, { onboardingCompleted: true });
 }

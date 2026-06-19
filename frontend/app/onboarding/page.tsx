@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { IconLoader2 } from "@tabler/icons-react";
+import { setOnboardingCompleted } from "@/app/actions/onboarding";
 import { DOCS_ONBOARDING_URL } from "@/lib/docs-url";
 import { toast } from "sonner";
 
@@ -26,52 +27,43 @@ function toFriendlyCheckoutError(raw: unknown, fallback: string): string {
   return fallback;
 }
 
+const FREE_FEATURES = [
+  {
+    title: "3 accounts",
+    description: "Connect LinkedIn, Instagram, TikTok, X, and more.",
+  },
+  {
+    title: "10 free posts",
+    description: "Try scheduling and publishing before you upgrade.",
+  },
+  {
+    title: "All post types",
+    description: "Text, image, video, threads, and collections.",
+  },
+];
+
 const STARTER_FEATURES = [
   "Connect up to 5 accounts",
-  "Multiple accounts per platform",
   "Unlimited posts",
   "Schedule posts across platforms",
-  "Carousel posts",
   "Threads & Collections support",
-  "Human support",
 ];
 
 const GROWTH_FEATURES = [
+  "All features from Lite plan",
   "Up to 15 connected accounts",
-  "Multiple accounts per platform",
   "Unlimited posts",
-  "Schedule posts across platforms",
-  "Carousel posts",
-  "Threads & Collections support",
-  "Auto-plug high performing tweets",
-  "Auto-repost on autopilot",
+  "Auto-plug & auto-repost",
   "Bulk scheduling tools",
-  "Human support",
 ];
 
-// const PRO_FEATURES = [
-//   "Unlimited connected accounts",
-//   "Multiple accounts per platform",
-//   "Unlimited posts",
-//   "Schedule posts across platforms",
-//   "Carousel posts",
-//   "Threads & Collections support",
-//   "1,000 tweets/month (Twitter/X)",
-//   "Auto-plug high performing tweets",
-//   "Auto-repost on autopilot",
-//   "Bulk scheduling tools",
-//   "Fair usage policy",
-//   "Human support",
-//   "Priority support",
-//   "Early access to new features",
-// ];
-
-function OnboardingPlanContent() {
+function OnboardingWelcomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [loadingPlan, setLoadingPlan] = useState<
     "starter" | "growth" | "pro" | null
   >(null);
+  const [skipping, setSkipping] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("payment_failed") === "1") {
@@ -79,6 +71,16 @@ function OnboardingPlanContent() {
       router.replace("/onboarding", { scroll: false });
     }
   }, [searchParams, router]);
+
+  async function handleExploreDashboard() {
+    setSkipping(true);
+    try {
+      await setOnboardingCompleted();
+      router.push("/dashboard");
+    } finally {
+      setSkipping(false);
+    }
+  }
 
   async function handleSelectPlan(plan: "starter" | "growth" | "pro") {
     toast.dismiss();
@@ -105,17 +107,17 @@ function OnboardingPlanContent() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="relative flex w-full flex-1 flex-col">
       <a
         href={DOCS_ONBOARDING_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        className="absolute right-0 top-0 z-10 rounded-full p-1.5 text-text-muted hover:bg-muted hover:text-text transition-colors"
         title="Documentation for this page"
         aria-label="Documentation for this page"
       >
         <svg
-          className="w-4 h-4"
+          className="h-4 w-4"
           fill="currentColor"
           viewBox="0 0 20 20"
           aria-hidden
@@ -127,135 +129,130 @@ function OnboardingPlanContent() {
           />
         </svg>
       </a>
-      <h1 className="text-2xl sm:text-3xl font-bold text-center text-foreground mb-2">
-        Choose your plan
-      </h1>
-      <p className="text-center text-muted-foreground mb-8">
-        Early adopter pricing. Lock in before price increases.
-      </p>
 
-      {/* Pro tier commented out for now — add back later */}
-      <div className="grid gap-6 sm:grid-cols-2 mb-8">
-        <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-sm">
-          <h2 className="font-semibold text-foreground">
-            Starter (Lite) — <span className="text-foreground">$9</span>/month
-          </h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            For creators getting started
+      <div className="grid w-full flex-1 gap-8 lg:grid-cols-2 lg:gap-12 xl:gap-16">
+        {/* Left — hero + free tier */}
+        <div className="flex flex-col justify-center lg:py-4">
+          <p className="mb-3 text-sm font-medium uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+            Free to start
           </p>
-          <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">
-            {STARTER_FEATURES.map((f, i) => (
-              <li key={i} className="flex items-center gap-2">
-                <span className="text-emerald-500 shrink-0">✓</span>
-                {f}
-              </li>
+          <h1 className="font-serif text-3xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-4xl lg:text-5xl">
+            Welcome to Social0
+          </h1>
+          <p className="mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
+            Schedule and publish to all your socials from one place. No credit
+            card needed to try it.
+          </p>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+            {FREE_FEATURES.map((f) => (
+              <div
+                key={f.title}
+                className="rounded-xl border border-border bg-card p-4 shadow-sm"
+              >
+                <p className="font-semibold text-foreground">{f.title}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {f.description}
+                </p>
+              </div>
             ))}
-          </ul>
-          <button
-            type="button"
-            onClick={() => handleSelectPlan("starter")}
-            disabled={loadingPlan !== null}
-            className="mt-6 w-full rounded-xl border-2 border-emerald-500 bg-transparent px-4 py-3 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 transition-colors inline-flex items-center justify-center gap-2"
-          >
-            {loadingPlan === "starter" ? (
-              <>
-                <IconLoader2
-                  className="h-4 w-4 shrink-0 animate-spin"
-                  strokeWidth={1.5}
-                />
-                Redirecting to checkout…
-              </>
-            ) : (
-              "Choose Starter"
-            )}
-          </button>
-          <p className="mt-2 text-center text-xs text-muted-foreground">
-            You won&apos;t be charged today. Your trial is free for 7 days -
-            cancel anytime before it ends.
-          </p>
+          </div>
+
+          <div className="mt-10 flex flex-col gap-3 sm:flex-row lg:max-w-lg">
+            <Link
+              href="/onboarding/step3"
+              className="inline-flex flex-1 items-center justify-center rounded-xl bg-emerald-500 px-6 py-3.5 text-sm font-semibold text-white hover:bg-emerald-600 transition-colors"
+            >
+              Connect your first account →
+            </Link>
+            <button
+              type="button"
+              onClick={handleExploreDashboard}
+              disabled={skipping}
+              className="inline-flex flex-1 items-center justify-center rounded-xl border border-border px-6 py-3.5 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+            >
+              {skipping ? (
+                <>
+                  <IconLoader2
+                    className="mr-2 h-4 w-4 animate-spin"
+                    strokeWidth={1.5}
+                  />
+                  Opening…
+                </>
+              ) : (
+                "Explore dashboard"
+              )}
+            </button>
+          </div>
         </div>
 
-        <div className="rounded-2xl border-2 border-emerald-500 bg-emerald-500/5 p-6 shadow-sm relative">
-          <span className="absolute top-4 right-4 rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-            Most popular
-          </span>
-          <h2 className="font-semibold text-foreground">
-            Growth —{" "}
-            <span className="line-through text-muted-foreground">$29</span>{" "}
-            <span className="text-foreground">$19</span>/month
+        {/* Right — paid plans */}
+        <div className="flex flex-col justify-center rounded-2xl border border-border bg-muted/30 p-6 sm:p-8 lg:p-10">
+          <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            Need more? Upgrade anytime
           </h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Early adopter pricing
+          <p className="mt-2 text-sm text-muted-foreground">
+            7-day free trial · cancel anytime · lock in early-adopter pricing
           </p>
-          <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">
-            {GROWTH_FEATURES.map((f, i) => (
-              <li key={i} className="flex items-center gap-2">
-                <span className="text-emerald-500 shrink-0">✓</span>
-                {f}
-              </li>
-            ))}
-          </ul>
-          <button
-            type="button"
-            onClick={() => handleSelectPlan("growth")}
-            disabled={loadingPlan !== null}
-            className="mt-6 w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors inline-flex items-center justify-center gap-2"
-          >
-            {loadingPlan === "growth" ? (
-              <>
-                <IconLoader2
-                  className="h-4 w-4 shrink-0 animate-spin"
-                  strokeWidth={1.5}
-                />
-                Redirecting to checkout…
-              </>
-            ) : (
-              "Choose Growth"
-            )}
-          </button>
-          <p className="mt-2 text-center text-xs text-muted-foreground">
-            You won&apos;t be charged today. Your trial is free for 7 days -
-            cancel anytime before it ends.
-          </p>
-        </div>
 
-        {/* Pro tier commented out for now — add back later
-        <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-sm">
-          <h2 className="font-semibold text-foreground">
-            Pro — <span className="line-through text-muted-foreground">$49</span>{" "}
-            <span className="text-foreground">$35</span>/month
-          </h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Early adopter pricing · Save 33%
-          </p>
-          <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">
-            {PRO_FEATURES.map((f, i) => (
-              <li key={i} className="flex items-center gap-2">
-                <span className="text-emerald-500 shrink-0">✓</span>
-                {f}
-              </li>
-            ))}
-          </ul>
-          <button
-            type="button"
-            onClick={() => handleSelectPlan("pro")}
-            disabled={loadingPlan !== null}
-            className="mt-6 w-full rounded-xl border-2 border-emerald-500 bg-transparent px-4 py-3 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 transition-colors"
-          >
-            {loadingPlan === "pro" ? "Redirecting…" : "Choose Pro"}
-          </button>
+          <div className="mt-8 grid flex-1 gap-5 sm:grid-cols-2">
+            <div className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <h3 className="font-semibold text-foreground">
+                Starter — <span className="text-foreground">$9</span>/mo
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                For creators getting started
+              </p>
+              <ul className="mt-5 flex-1 space-y-2 text-sm text-muted-foreground">
+                {STARTER_FEATURES.map((f) => (
+                  <li key={f} className="flex items-start gap-2">
+                    <span className="text-emerald-500 shrink-0">✓</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={() => handleSelectPlan("starter")}
+                disabled={loadingPlan !== null}
+                className="mt-6 w-full rounded-xl border-2 border-emerald-500 px-4 py-3 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 transition-colors"
+              >
+                {loadingPlan === "starter" ? "Redirecting…" : "Start free trial"}
+              </button>
+            </div>
+
+            <div className="relative flex flex-col rounded-2xl border-2 border-emerald-500 bg-emerald-500/5 p-5 shadow-sm">
+              <span className="absolute top-4 right-4 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                Popular
+              </span>
+              <h3 className="font-semibold text-foreground">
+                Growth —{" "}
+                <span className="line-through text-muted-foreground">$29</span>{" "}
+                <span className="text-foreground">$19</span>/mo
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Early adopter pricing
+              </p>
+              <ul className="mt-5 flex-1 space-y-2 text-sm text-muted-foreground">
+                {GROWTH_FEATURES.map((f) => (
+                  <li key={f} className="flex items-start gap-2">
+                    <span className="text-emerald-500 shrink-0">✓</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={() => handleSelectPlan("growth")}
+                disabled={loadingPlan !== null}
+                className="mt-6 w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+              >
+                {loadingPlan === "growth" ? "Redirecting…" : "Start free trial"}
+              </button>
+            </div>
+          </div>
         </div>
-        */}
       </div>
-
-      <p className="text-center text-sm text-muted-foreground">
-        <Link
-          href="/onboarding/step2"
-          className="font-medium text-foreground hover:underline"
-        >
-          I&apos;ll decide later →
-        </Link>
-      </p>
     </div>
   );
 }
@@ -263,7 +260,7 @@ function OnboardingPlanContent() {
 export default function OnboardingPlanPage() {
   return (
     <Suspense fallback={null}>
-      <OnboardingPlanContent />
+      <OnboardingWelcomeContent />
     </Suspense>
   );
 }

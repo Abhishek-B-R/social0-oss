@@ -98,6 +98,9 @@ function AuthPageContent() {
   const [resetSuccess, setResetSuccess] = useState(false);
   useEffect(() => {
     if (searchParams.get("reset") === "success") setResetSuccess(true);
+    if (searchParams.get("session") === "expired") {
+      toast.error("Your session expired. Please sign in again.");
+    }
   }, [searchParams]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

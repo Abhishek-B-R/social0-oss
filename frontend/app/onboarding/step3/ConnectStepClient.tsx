@@ -48,7 +48,7 @@ export function ConnectStepClient({
   hasUsedTrial,
 }: ConnectStepClientProps) {
   const router = useRouter();
-  const [showSkipModal, setShowSkipModal] = useState(false);
+  const [skipping, setSkipping] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>(initialAccounts);
   const pollStopped = useRef(initialAccounts.length >= 1);
 
@@ -83,15 +83,31 @@ export function ConnectStepClient({
     if (activeAccounts.length >= 1) pollStopped.current = true;
   }, [activeAccounts.length]);
 
+  async function handleSkip() {
+    setSkipping(true);
+    try {
+      await setOnboardingCompleted();
+      router.push("/dashboard");
+    } finally {
+      setSkipping(false);
+    }
+  }
+
   return (
     <>
-      <div className="w-full max-w-2xl mx-auto">
-        <h1 className="text-2xl sm:text-3xl font-bold text-center text-foreground mb-2">
-          Connect your first account
+      <div className="flex w-full flex-1 flex-col">
+        <h1 className="mb-2 text-center font-serif text-2xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-3xl">
+          Connect a social account
         </h1>
-        <p className="text-center text-muted-foreground mb-8">
-          Link a social account to schedule and publish from Social0.
+        <p className="text-center text-muted-foreground mb-2">
+          Pick one platform to get started — you can add more anytime.
         </p>
+        {limitTotal > 0 && limitTotal <= 3 && (
+          <p className="text-center text-xs text-muted-foreground mb-6">
+            Free plan: up to {limitTotal} accounts · 10 posts included
+          </p>
+        )}
+        {(!limitTotal || limitTotal > 3) && <div className="mb-6" />}
 
         {limitTotal > 0 && (
           <p className="text-center text-sm text-muted-foreground mb-4">
@@ -112,8 +128,8 @@ export function ConnectStepClient({
           </div>
         )}
 
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm mb-8">
-          <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm mb-8">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {PLATFORMS.map((platform) => {
               const ui = PLATFORM_UI[platform.id] ?? {
                 name: platform.name,
@@ -183,7 +199,7 @@ export function ConnectStepClient({
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+        <div className="flex flex-col items-center justify-center gap-3">
           {hasConnected ? (
             <Link
               href="/onboarding/step4"
@@ -192,68 +208,23 @@ export function ConnectStepClient({
               Continue →
             </Link>
           ) : (
-            <button
-              type="button"
-              onClick={() => setShowSkipModal(true)}
-              className="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-600 transition-colors"
-            >
-              Continue →
-            </button>
-          )}
-          {!hasConnected && (
-            <button
-              type="button"
-              onClick={() => setShowSkipModal(true)}
-              className="text-sm text-muted-foreground hover:text-foreground underline"
-            >
-              Skip
-            </button>
+            <>
+              <p className="text-xs text-center text-muted-foreground max-w-sm">
+                You can connect later from the dashboard — nothing is lost if
+                you skip this step.
+              </p>
+              <button
+                type="button"
+                onClick={handleSkip}
+                disabled={skipping}
+                className="inline-flex items-center justify-center rounded-xl border border-border px-6 py-3 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+              >
+                {skipping ? "Opening dashboard…" : "Skip for now — go to dashboard"}
+              </button>
+            </>
           )}
         </div>
       </div>
-
-      {showSkipModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
-          onClick={() => setShowSkipModal(false)}
-        >
-          <div
-            className="rounded-2xl border border-border bg-card p-6 shadow-xl max-w-md w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-bold text-foreground mb-2">
-              Wait, are you sure? 🚨
-            </h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Connecting your first account unlocks most features in Social0.
-              Without it, you can&apos;t schedule posts or use bulk tools.
-            </p>
-            <p className="text-xs text-muted-foreground mb-6">
-              Safe & secure — your passwords are never stored.
-            </p>
-            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
-              <button
-                type="button"
-                onClick={async () => {
-                  setShowSkipModal(false);
-                  await setOnboardingCompleted();
-                  router.push("/dashboard");
-                }}
-                className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
-              >
-                Yes, Skip for Now
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowSkipModal(false)}
-                className="rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600"
-              >
-                Connect My Account
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

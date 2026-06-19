@@ -61,11 +61,11 @@ export function OnboardingStep4Client() {
   }, []);
 
   return (
-    <div className="w-full max-w-lg mx-auto text-center">
+    <div className="flex w-full flex-1 flex-col items-center justify-center max-w-2xl mx-auto text-center">
       <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-500 text-white mb-6">
         <Check className="w-10 h-10" strokeWidth={3} />
       </div>
-      <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+      <h1 className="mb-3 font-serif text-3xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-4xl">
         You&apos;re all set! 🎉
       </h1>
       <p className="text-muted-foreground mb-8">

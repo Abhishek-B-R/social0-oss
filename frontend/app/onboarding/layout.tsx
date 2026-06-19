@@ -1,18 +1,16 @@
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
 import { getOnboardingStatus } from "@/app/actions/onboarding";
 import { OnboardingProgressClient } from "@/components/onboarding/OnboardingProgressClient";
+import { requireSessionUser } from "@/lib/require-session-user";
 
 export default async function OnboardingLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    redirect("/");
-  }
+  const session = await requireSessionUser();
 
   if (session.user.emailVerified === false) {
     redirect(
@@ -26,13 +24,34 @@ export default async function OnboardingLayout({
   }
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col">
-      <header className="border-b border-border bg-card/50 backdrop-blur py-4 px-4">
-        <div className="max-w-2xl mx-auto flex flex-col items-center gap-4">
+    <div className="landing flex min-h-screen flex-col bg-background">
+      <header className="sticky top-0 z-50 shrink-0 border-b border-border bg-background/80 backdrop-blur-md">
+        <div className="flex w-full items-center justify-between gap-4 px-5 py-4 sm:px-8 lg:px-12">
+          <Link href="/onboarding" className="flex items-center gap-2">
+            <span className="relative block h-9 w-9">
+              <Image
+                src="/logo-circular.png"
+                alt="Social0"
+                width={36}
+                height={36}
+                className="rounded-lg dark:hidden"
+              />
+              <Image
+                src="/logo-dark.png"
+                alt="Social0"
+                width={36}
+                height={36}
+                className="absolute inset-0 hidden rounded-full border border-white dark:block"
+              />
+            </span>
+            <span className="font-serif text-[22px] font-semibold tracking-tight text-foreground">
+              Social0
+            </span>
+          </Link>
           <OnboardingProgressClient />
         </div>
       </header>
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-12">
+      <main className="flex flex-1 flex-col w-full px-5 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12">
         {children}
       </main>
     </div>
