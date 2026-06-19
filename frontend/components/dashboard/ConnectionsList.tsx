@@ -31,6 +31,18 @@ const PLATFORM_UI: Record<string, { name: string; color: string }> = {
   threads: { name: "Threads", color: "bg-[#000000]" },
 };
 
+function connectionHandleLabel(
+  platform: string,
+  platformUsername: string | null,
+): string {
+  const name = platformUsername?.trim();
+  if (!name) {
+    return platform === "tiktok" ? "TikTok account" : "@user";
+  }
+  if (platform === "tiktok" && /\s/.test(name)) return name;
+  return `@${name}`;
+}
+
 type Account = {
   id: string;
   platform: string;
@@ -279,7 +291,10 @@ export function ConnectionsList({
                             />
                             <div className="min-w-0 flex flex-col justify-center">
                               <span className="truncate text-xs font-medium text-muted-foreground max-w-[120px] sm:max-w-[160px]">
-                                @{account.platformUsername || "user"}
+                                {connectionHandleLabel(
+                                  account.platform,
+                                  account.platformUsername,
+                                )}
                               </span>
                             </div>
                             <Link
@@ -348,12 +363,18 @@ export function ConnectionsList({
                               <span
                                 className="flex items-center gap-1 truncate text-xs font-medium text-text max-w-[120px] sm:max-w-[160px]"
                                 title={
-                                  account.platformUsername
-                                    ? `@${account.platformUsername}`
+                                  account.platformUsername?.trim()
+                                    ? connectionHandleLabel(
+                                        account.platform,
+                                        account.platformUsername,
+                                      )
                                     : undefined
                                 }
                               >
-                                @{account.platformUsername || "user"}
+                                {connectionHandleLabel(
+                                  account.platform,
+                                  account.platformUsername,
+                                )}
                                 {account.platform === "twitter_x" &&
                                   account.isTwitterPremium && (
                                     <img

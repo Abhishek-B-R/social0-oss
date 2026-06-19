@@ -16,6 +16,12 @@ import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import OAuth from "oauth-1.0a";
 import { TwitterApi } from "twitter-api-v2";
+import {
+  isLikelyTikTokOpenId,
+  parseTikTokTokenResponse,
+  resolveTikTokConnectUser,
+} from "@/lib/tiktok-connect";
+
 /** Validate URL is http/https before storing as profile image. */
 function isValidProfileImageUrl(url: unknown): url is string {
   if (typeof url !== "string" || !url.trim()) return false;
@@ -583,13 +589,12 @@ export async function GET(
       }
 
       tokens = await tokenResponse.json();
-      if (tokens.data?.access_token) {
-        tokens = {
-          access_token: tokens.data.access_token,
-          refresh_token: tokens.data.refresh_token ?? null,
-          expires_in: tokens.data.expires_in ?? 24 * 3600,
-        };
+      const parsedTikTok = parseTikTokTokenResponse(tokens);
+      if (!parsedTikTok) {
+        console.error("TikTok token exchange: missing access_token in response", tokens);
+        throw new Error("TikTok: invalid token response");
       }
+      tokens = parsedTikTok;
     } else if (platform === "pinterest") {
       // Pinterest: Basic Auth + form body only (no client_id/client_secret in body)
       // Using sandbox API for trial access
@@ -792,7 +797,20 @@ export async function GET(
       platformMetadata?: Record<string, unknown>;
     };
 
-    if (
+    if (platform === "tiktok") {
+      const resolved = await resolveTikTokConnectUser(tokens);
+      if (!resolved.ok) {
+        const errParam =
+          resolved.reason === "missing_basic_scope"
+            ? "tiktok_scope_required"
+            : "tiktok_profile_failed";
+        return safeRedirect(
+          `/dashboard/connections?error=${errParam}&platform=tiktok`,
+          "/dashboard/connections",
+        );
+      }
+      userInfo = resolved.profile;
+    } else if (
       (platform === "instagram" || platform === "threads") &&
       tokens.user_id
     ) {
@@ -943,11 +961,15 @@ export async function GET(
           : null,
         tokenExpiresAt,
         tokenStatus: "active",
-        platformUsername: userInfo.username ?? existing.platformUsername,
-        profileImageUrl: userInfo.profileImageUrl ?? existing.profileImageUrl,
+        platformUsername:
+          userInfo.username != null && userInfo.username !== ""
+            ? userInfo.username
+            : existing.platformUsername,
+        profileImageUrl:
+          userInfo.profileImageUrl ?? existing.profileImageUrl,
         isActive: true,
         updatedAt: new Date(),
-        ...(platform === "tiktok"
+        ...(platform === "tiktok" && isLikelyTikTokOpenId(userInfo.id)
           ? { platformUserId: userInfo.id }
           : {}),
       };
@@ -1321,38 +1343,9 @@ async function fetchPlatformUserInfo(
       break;
     }
 
-    case "tiktok": {
-      try {
-        const response = await fetch(
-          "https://open.tiktokapis.com/v2/user/info/?fields=open_id,avatar_url,display_name",
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          },
-        );
-        if (response.ok) {
-          const data = await response.json();
-          if (data.data?.user) {
-            const user = data.data.user;
-            const raw = user.avatar_url;
-            const profileImageUrl = isValidProfileImageUrl(raw) ? raw : null;
-            return {
-              id: user.open_id || `tiktok-${Date.now()}`,
-              username: user.display_name || null,
-              profileImageUrl,
-            };
-          }
-        } else {
-          const errorText = await response.text();
-          console.error("TikTok userinfo error:", response.status, errorText);
-        }
-      } catch (err) {
-        rethrowNextRedirect(err);
-        console.error("TikTok user info fetch failed:", err);
-      }
+    case "tiktok":
+      // Handled in resolveTikTokConnectUser before fetchPlatformUserInfo.
       break;
-    }
 
     // Add other platforms as needed
   }
