@@ -1324,7 +1324,7 @@ async function fetchPlatformUserInfo(
     case "tiktok": {
       try {
         const response = await fetch(
-          "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name",
+          "https://open.tiktokapis.com/v2/user/info/?fields=open_id,avatar_url,display_name",
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,

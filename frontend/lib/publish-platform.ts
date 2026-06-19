@@ -20,7 +20,7 @@ import {
   processImageForTikTok,
   TikTokImageError,
 } from "@/lib/tiktok-photo-process";
-import { fetchTikTokProfileUrl, resolveTikTokProfileUrl } from "@/lib/platform-view-url";
+import { resolveTikTokProfileUrl } from "@/lib/platform-view-url";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import sharp from "sharp";
 
@@ -2331,15 +2331,12 @@ async function buildTikTokPublishedResult(
 
 async function resolveTikTokPublishedProfileUrl(
   pub: Pub,
-  accessToken: string,
+  _accessToken: string,
 ): Promise<string | null> {
-  return (
-    (await fetchTikTokProfileUrl(accessToken)) ??
-    resolveTikTokProfileUrl({
-      platformUsername: pub.platformUsername,
-      platformMetadata: pub.platformMetadata,
-    })
-  );
+  return resolveTikTokProfileUrl({
+    platformUsername: pub.platformUsername,
+    platformMetadata: pub.platformMetadata,
+  });
 }
 
 async function publishToTikTok(

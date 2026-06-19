@@ -23,8 +23,6 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     authUrl: string;
     tokenUrl: string;
     scope: string;
-    /** Narrower scope for initial connect (TikTok profile vs posting). */
-    connectScope?: string;
   } | null
 > = {
   linkedin: {
@@ -77,9 +75,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "TIKTOK_CLIENT_SECRET",
     authUrl: "https://www.tiktok.com/v2/auth/authorize/",
     tokenUrl: "https://open.tiktokapis.com/v2/oauth/token/",
-    // user.info.basic: open_id, avatar_url, display_name (always available on Login Kit)
-    // user.info.profile (username/@handle) requires separate TikTok app approval — fetched best-effort after connect
-    // video.upload + video.publish: Content Posting API
+    // Login Kit + Content Posting API only — do not add user.info.profile (separate 2-week review).
     scope: "user.info.basic,video.upload,video.publish",
   },
   facebook: {

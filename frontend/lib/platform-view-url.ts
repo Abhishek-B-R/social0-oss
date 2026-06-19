@@ -1,5 +1,3 @@
-import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
-
 /** True when a string looks like a TikTok @handle (not a display name). */
 export function isLikelyTikTokHandle(value: string): boolean {
   const handle = value.replace(/^@/, "").trim();
@@ -54,68 +52,6 @@ export function resolveTikTokProfileUrl(input: {
   }
 
   return null;
-}
-
-/** Resolve @handle from TikTok user/info (never display_name). */
-export function resolveTikTokHandleFromUser(user: {
-  username?: unknown;
-  profile_deep_link?: unknown;
-}): string | null {
-  if (
-    typeof user.username === "string" &&
-    isLikelyTikTokHandle(user.username)
-  ) {
-    return user.username.replace(/^@/, "").trim();
-  }
-  if (typeof user.profile_deep_link === "string") {
-    const fromUrl = parseTikTokHandleFromProfileUrl(user.profile_deep_link);
-    if (fromUrl && isLikelyTikTokHandle(fromUrl)) return fromUrl;
-  }
-  return null;
-}
-
-/** Fetch the creator's TikTok profile URL using their access token. */
-export async function fetchTikTokProfileUrl(
-  accessToken: string,
-): Promise<string | null> {
-  try {
-    const response = await fetchWithTimeout(
-      "https://open.tiktokapis.com/v2/user/info/?fields=username,profile_deep_link",
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        timeoutMs: 10_000,
-      },
-    );
-    if (!response.ok) return null;
-    const data = (await response.json()) as {
-      data?: {
-        user?: {
-          username?: string;
-          profile_deep_link?: string;
-        };
-      };
-      error?: { code?: string };
-    };
-    if (data.error?.code === "scope_not_authorized") return null;
-    const user = data.data?.user;
-    if (!user) return null;
-
-    if (typeof user.profile_deep_link === "string") {
-      const handle = parseTikTokHandleFromProfileUrl(user.profile_deep_link);
-      if (handle && isLikelyTikTokHandle(handle)) {
-        return buildTikTokProfileUrl(handle);
-      }
-    }
-    if (
-      typeof user.username === "string" &&
-      isLikelyTikTokHandle(user.username)
-    ) {
-      return buildTikTokProfileUrl(user.username);
-    }
-    return null;
-  } catch {
-    return null;
-  }
 }
 
 /** Resolve the "View on platform" link for a publication row. */
