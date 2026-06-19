@@ -56,7 +56,7 @@ export function resolveTikTokProfileUrl(input: {
   return null;
 }
 
-/** TikTok OAuth connect profile — matches user.info.basic fields from Login Kit. */
+/** TikTok OAuth connect profile — requires user.info.basic on the access token. */
 export async function fetchTikTokConnectProfile(
   accessToken: string,
 ): Promise<{
@@ -65,52 +65,79 @@ export async function fetchTikTokConnectProfile(
   profileImageUrl: string | null;
   platformMetadata?: Record<string, unknown>;
 } | null> {
-  try {
-    const response = await fetchWithTimeout(
-      "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name",
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        timeoutMs: 10_000,
-      },
-    );
-    const data = (await response.json().catch(() => ({}))) as {
-      data?: {
-        user?: {
-          open_id?: string;
-          avatar_url?: string;
-          display_name?: string;
+  const fieldSets = [
+    "open_id,display_name,avatar_url",
+    "open_id,display_name",
+    "open_id",
+  ] as const;
+
+  for (const fields of fieldSets) {
+    try {
+      const response = await fetchWithTimeout(
+        `https://open.tiktokapis.com/v2/user/info/?fields=${encodeURIComponent(fields)}`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          timeoutMs: 10_000,
+        },
+      );
+      const data = (await response.json().catch(() => ({}))) as {
+        data?: {
+          user?: {
+            open_id?: string;
+            avatar_url?: string;
+            display_name?: string;
+          };
         };
+        error?: { code?: string; message?: string };
       };
-      error?: { code?: string; message?: string };
-    };
-    if (!response.ok || !data.data?.user) {
-      console.error("TikTok userinfo error:", response.status, data);
-      return null;
+
+      if (data.error?.code === "scope_not_authorized") {
+        console.error("TikTok userinfo scope_not_authorized:", fields, data.error);
+        continue;
+      }
+
+      if (!response.ok || !data.data?.user) {
+        console.error("TikTok userinfo error:", response.status, fields, data);
+        continue;
+      }
+
+      const user = data.data.user;
+      const openId =
+        typeof user.open_id === "string" ? user.open_id.trim() : "";
+      if (!openId) continue;
+
+      const rawAvatar = user.avatar_url;
+      const profileImageUrl =
+        typeof rawAvatar === "string" &&
+        (rawAvatar.startsWith("http://") || rawAvatar.startsWith("https://"))
+          ? rawAvatar
+          : null;
+      const displayName =
+        typeof user.display_name === "string" ? user.display_name.trim() : "";
+
+      return {
+        id: openId,
+        username: displayName || null,
+        profileImageUrl,
+        ...(displayName
+          ? { platformMetadata: { displayName } }
+          : {}),
+      };
+    } catch (err) {
+      console.error("TikTok connect profile fetch failed:", fields, err);
     }
-    const user = data.data.user;
-    const openId =
-      typeof user.open_id === "string" ? user.open_id.trim() : "";
-    if (!openId) return null;
-    const rawAvatar = user.avatar_url;
-    const profileImageUrl =
-      typeof rawAvatar === "string" &&
-      (rawAvatar.startsWith("http://") || rawAvatar.startsWith("https://"))
-        ? rawAvatar
-        : null;
-    const displayName =
-      typeof user.display_name === "string" ? user.display_name.trim() : "";
-    return {
-      id: openId,
-      username: displayName || null,
-      profileImageUrl,
-      ...(displayName
-        ? { platformMetadata: { displayName } }
-        : {}),
-    };
-  } catch (err) {
-    console.error("TikTok connect profile fetch failed:", err);
-    return null;
   }
+
+  return null;
+}
+
+export function tiktokTokenIncludesBasicScope(scope: string | null | undefined): boolean {
+  if (!scope?.trim()) return false;
+  return scope
+    .split(/[,\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .includes("user.info.basic");
 }
 
 /** Fetch the creator's TikTok profile URL using their access token. */

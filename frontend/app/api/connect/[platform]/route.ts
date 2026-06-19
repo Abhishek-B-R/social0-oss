@@ -176,6 +176,8 @@ export async function GET(
     url.searchParams.set("client_key", clientId);
     url.searchParams.set("code_challenge", codeChallenge);
     url.searchParams.set("code_challenge_method", "S256");
+    // Force consent so user.info.basic is re-granted (auto-auth can skip profile scope).
+    url.searchParams.set("disable_auto_auth", "1");
 
   } else {
     // Standard OAuth flow - encrypt userId + platform in state
