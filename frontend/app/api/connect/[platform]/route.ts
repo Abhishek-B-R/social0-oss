@@ -17,6 +17,7 @@ import {
   getFacebookLoginConfigId,
 } from "@/lib/facebook-oauth";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
+import { setOAuthConnectBinding } from "@/lib/oauth-connect-binding";
 
 export async function GET(
   req: NextRequest,
@@ -37,12 +38,16 @@ export async function GET(
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const rate = await enforceRateLimit(oauthLimiter, session.user.id);
+  const rate = await enforceRateLimit(oauthLimiter, session.user.id, {
+    failClosedWhenUnavailable: false,
+  });
   if (!rate.allowed) {
     return NextResponse.redirect(
       new URL("/dashboard/connections?error=rate_limited", req.url),
     );
   }
+
+  await setOAuthConnectBinding(session.user.id, platform);
 
   const returnToForConnect = sanitizeReturnToPath(
     req.nextUrl.searchParams.get("returnTo"),

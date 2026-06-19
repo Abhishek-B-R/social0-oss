@@ -9,6 +9,7 @@ import { env } from "@/lib/env";
 import { auth } from "@/lib/auth";
 import { decrypt, encryptToken } from "@/lib/encryption";
 import { assertOAuthCallbackSession } from "@/lib/oauth-callback-session";
+import { clearOAuthConnectBinding } from "@/lib/oauth-connect-binding";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 import crypto from "crypto";
 import { normalizeAppUrl } from "@/lib/url-utils";
@@ -100,7 +101,8 @@ export async function GET(
       const userId = secretDecrypted.userId;
       cookieStore.delete("twitter_oauth1_request_secret");
 
-      await assertOAuthCallbackSession(userId, platform);
+      await assertOAuthCallbackSession(req, userId, platform);
+      await clearOAuthConnectBinding();
 
       if (!requestTokenSecret) {
         return safeRedirect(
@@ -312,7 +314,8 @@ export async function GET(
   try {
     const decrypted = decrypt(state);
     userId = decrypted.userId;
-    await assertOAuthCallbackSession(userId, platform);
+    await assertOAuthCallbackSession(req, userId, platform);
+    await clearOAuthConnectBinding();
     isReauth = decrypted.reauth === true;
     const returnTo = sanitizeReturnToPath(decrypted.returnTo);
     if (returnTo) {

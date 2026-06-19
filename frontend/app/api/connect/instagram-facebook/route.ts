@@ -12,6 +12,7 @@ import {
 } from "@/lib/facebook-oauth";
 import { enforceRateLimit, oauthLimiter } from "@/lib/ratelimit";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
+import { setOAuthConnectBinding } from "@/lib/oauth-connect-binding";
 
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -20,10 +21,14 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const rate = await enforceRateLimit(oauthLimiter, session.user.id);
+  const rate = await enforceRateLimit(oauthLimiter, session.user.id, {
+    failClosedWhenUnavailable: false,
+  });
   if (!rate.allowed) {
     return Response.json({ error: rate.error }, { status: rate.status });
   }
+
+  await setOAuthConnectBinding(session.user.id, "instagram-facebook");
 
   const clientId = env.FACEBOOK_CLIENT_ID;
   const clientSecret = env.FACEBOOK_CLIENT_SECRET;

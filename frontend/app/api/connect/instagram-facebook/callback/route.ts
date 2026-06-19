@@ -4,6 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { decrypt, encryptToken } from "@/lib/encryption";
 import { assertOAuthCallbackSession } from "@/lib/oauth-callback-session";
+import { clearOAuthConnectBinding } from "@/lib/oauth-connect-binding";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 import crypto from "crypto";
 import { normalizeAppUrl } from "@/lib/url-utils";
@@ -41,7 +42,8 @@ export async function GET(
   try {
     const decrypted = decrypt(state);
     userId = decrypted.userId;
-    await assertOAuthCallbackSession(userId, "instagram");
+    await assertOAuthCallbackSession(req, userId, "instagram-facebook");
+    await clearOAuthConnectBinding();
     const returnTo = sanitizeReturnToPath(decrypted.returnTo);
     if (returnTo) {
       successRedirect = returnTo;

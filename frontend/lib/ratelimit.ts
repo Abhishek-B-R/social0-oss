@@ -19,10 +19,11 @@ export type RateLimitResult =
 export async function enforceRateLimit(
   limiter: Ratelimit | null,
   key: string,
-  options?: { rate?: number },
+  options?: { rate?: number; failClosedWhenUnavailable?: boolean },
 ): Promise<RateLimitResult> {
+  const failClosed = options?.failClosedWhenUnavailable !== false;
   if (!limiter) {
-    if (isRateLimitingRequired()) {
+    if (isRateLimitingRequired() && failClosed) {
       return {
         allowed: false,
         status: 503,

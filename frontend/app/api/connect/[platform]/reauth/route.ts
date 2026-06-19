@@ -30,7 +30,9 @@ export async function GET(
     );
   }
 
-  const rate = await enforceRateLimit(oauthLimiter, session.user.id);
+  const rate = await enforceRateLimit(oauthLimiter, session.user.id, {
+    failClosedWhenUnavailable: false,
+  });
   if (!rate.allowed) {
     return NextResponse.redirect(
       new URL("/dashboard/connections?error=rate_limited", req.url),
