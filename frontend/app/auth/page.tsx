@@ -15,7 +15,9 @@ import {
 } from "@/lib/sign-up-errors";
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
-const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+import { getClientSignUpConfig } from "@/lib/sign-up-config";
+
+const SIGN_UP = getClientSignUpConfig();
 const TIMEOUT_MS = 10_000;
 
 function Spinner() {
@@ -219,7 +221,13 @@ function AuthPageContent() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     toast.dismiss();
-    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+    if (SIGN_UP.misconfigured) {
+      toast.error(
+        "Email sign-up is temporarily unavailable. Continue with Google or try again later.",
+      );
+      return;
+    }
+    if (SIGN_UP.requiresTurnstileToken && !turnstileToken) {
       requireInteractiveTurnstile(
         "Complete the verification challenge below, then try again.",
       );
@@ -229,22 +237,24 @@ function AuthPageContent() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const signUpUrl = TURNSTILE_SITE_KEY
-        ? "/api/auth/sign-up-with-turnstile"
-        : "/api/auth/sign-up";
-      const body = TURNSTILE_SITE_KEY
-        ? {
-            name: name.trim(),
-            email: email.trim().toLowerCase(),
-            password,
-            turnstileToken,
-          }
-        : { name: name.trim(), email: email.trim().toLowerCase(), password };
-      const res = await fetch(signUpUrl, {
+      const res = await fetch(SIGN_UP.signUpEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(body),
+        body: JSON.stringify(
+          SIGN_UP.requiresTurnstileToken
+            ? {
+                name: name.trim(),
+                email: email.trim().toLowerCase(),
+                password,
+                turnstileToken,
+              }
+            : {
+                name: name.trim(),
+                email: email.trim().toLowerCase(),
+                password,
+              },
+        ),
         signal: controller.signal,
       });
       if (res.redirected && res.url) {
@@ -538,7 +548,17 @@ function AuthPageContent() {
                     </button>
                   </div>
                 </div>
-                {TURNSTILE_SITE_KEY && (
+                {SIGN_UP.misconfigured && (
+                  <div
+                    className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-foreground"
+                    role="alert"
+                  >
+                    Email sign-up is not configured on this deployment. Use
+                    Google to create an account, or contact support if this
+                    persists.
+                  </div>
+                )}
+                {SIGN_UP.turnstileSiteKey && (
                   <div className="space-y-3">
                     {turnstileFailed ? (
                       <div
@@ -569,7 +589,7 @@ function AuthPageContent() {
                             account.
                           </p>
                         )}
-                        {isTurnstileTestSiteKey(TURNSTILE_SITE_KEY) && (
+                        {isTurnstileTestSiteKey(SIGN_UP.turnstileSiteKey) && (
                           <p className="text-center text-[11px] text-muted-foreground">
                             Turnstile test key active — for local/Playwright
                             use only.
@@ -579,7 +599,7 @@ function AuthPageContent() {
                           <Turnstile
                             key={`${turnstileChallenge}-${turnstileWidgetKey}`}
                             ref={turnstileRef}
-                            siteKey={TURNSTILE_SITE_KEY}
+                            siteKey={SIGN_UP.turnstileSiteKey}
                             options={{
                               appearance:
                                 turnstileChallenge === "interactive"
@@ -614,7 +634,8 @@ function AuthPageContent() {
                   disabled={
                     loading ||
                     googleLoading ||
-                    (!!TURNSTILE_SITE_KEY && !turnstileToken)
+                    SIGN_UP.misconfigured ||
+                    (SIGN_UP.requiresTurnstileToken && !turnstileToken)
                   }
                   className="w-full inline-flex items-center justify-center gap-2 rounded-[10px] bg-accent hover:bg-accent-hover disabled:opacity-50 text-white font-medium py-3 px-4 transition-colors"
                 >

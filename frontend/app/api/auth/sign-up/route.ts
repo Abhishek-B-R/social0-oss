@@ -15,7 +15,11 @@ import { clientIp } from "@/lib/client-ip";
 export async function POST(request: Request) {
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json(
-      { error: "Sign-up requires verification. Use the sign-up form." },
+      {
+        error:
+          "Email sign-up must use the Turnstile-protected endpoint in production.",
+        code: "USE_TURNSTILE_SIGNUP",
+      },
       { status: 403 },
     );
   }

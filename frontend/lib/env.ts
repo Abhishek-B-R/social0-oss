@@ -59,6 +59,24 @@ const envSchema = z.object({
   // Canny feedback
   CANNY_PRIVATE_KEY: z.string(),
   NEXT_PUBLIC_CANNY_BOARD_TOKEN: z.string(),
+}).superRefine((data, ctx) => {
+  if (process.env.NODE_ENV !== "production") return;
+  if (!data.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "NEXT_PUBLIC_TURNSTILE_SITE_KEY is required in production for email sign-up.",
+      path: ["NEXT_PUBLIC_TURNSTILE_SITE_KEY"],
+    });
+  }
+  if (!data.TURNSTILE_SECRET_KEY?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "TURNSTILE_SECRET_KEY is required in production for email sign-up.",
+      path: ["TURNSTILE_SECRET_KEY"],
+    });
+  }
 });
 
 export const env = envSchema.parse(process.env);
