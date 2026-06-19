@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as dotenv from "dotenv";
+import { normalizeDatabaseUrl } from "@/lib/database-url";
 import {
   // Better Auth tables
   user,
@@ -29,7 +30,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: normalizeDatabaseUrl(process.env.DATABASE_URL),
 });
 
 // Create drizzle instance with tables only
