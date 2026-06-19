@@ -214,5 +214,9 @@ export async function GET(
   }
 
   const finalUrl = url.toString();
+  // TikTok: plain redirect (matches pre-security flow; state + PKCE bind the callback).
+  if (platform === "tiktok") {
+    return NextResponse.redirect(finalUrl);
+  }
   return redirectWithOAuthConnectBinding(finalUrl, session.user.id, platform);
 }

@@ -71,20 +71,29 @@ export const twitterPublishLimiter = redis
     })
   : null;
 
-// 40 OAuth initiations/minute per user (per platform key)
+// Connect/reauth on dashboard/connections — generous for multi-platform setup + retries.
 export const oauthLimiter = redis
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(40, "1 m"),
+      limiter: Ratelimit.slidingWindow(120, "10 m"),
       prefix: "rl:oauth",
     })
   : null;
 
-// 2 Twitter Premium refreshes per user per 5 minutes (user-triggered, calls Twitter API)
+// Manual token refresh per platform (separate from OAuth connect quota).
+export const tokenRefreshLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(60, "1 h"),
+      prefix: "rl:token_refresh",
+    })
+  : null;
+
+// Twitter Premium status refresh (user-triggered, calls Twitter API).
 export const twitterPremiumRefreshLimiter = redis
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(2, "5 m"),
+      limiter: Ratelimit.slidingWindow(15, "5 m"),
       prefix: "rl:twitter_premium_refresh",
     })
   : null;
@@ -150,11 +159,11 @@ export const signUpIpLimiter = redis
     })
   : null;
 
-// Bluesky BYOK credential validation per user.
+// Bluesky BYOK credential validation per user (connections page).
 export const blueskyByokLimiter = redis
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(10, "1 h"),
+      limiter: Ratelimit.slidingWindow(40, "1 h"),
       prefix: "rl:bluesky_byok",
     })
   : null;

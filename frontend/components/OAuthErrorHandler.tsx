@@ -55,7 +55,7 @@ export function OAuthErrorHandler({
           break;
         case "rate_limited":
           setMessage(
-            "You have reached the rate limit for this platform. Please try again after a few minutes.",
+            "Too many connect attempts in a short time. Wait a few minutes, then try again.",
           );
           break;
         case "oauth_session_mismatch":
