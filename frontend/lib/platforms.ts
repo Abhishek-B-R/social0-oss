@@ -23,6 +23,8 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     authUrl: string;
     tokenUrl: string;
     scope: string;
+    /** Narrower scope for initial connect (TikTok profile vs posting). */
+    connectScope?: string;
   } | null
 > = {
   linkedin: {
@@ -75,11 +77,9 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "TIKTOK_CLIENT_SECRET",
     authUrl: "https://www.tiktok.com/v2/auth/authorize/",
     tokenUrl: "https://open.tiktokapis.com/v2/oauth/token/",
-    // user.info.basic: open_id, union_id, avatar_url, display_name
-    // username is returned when user.info.profile is approved; otherwise display_name is used as fallback
-    // video.upload + video.publish: Content Posting API (Direct Post with PULL_FROM_URL)
-    // TikTok Login Kit for Web requires comma-separated scopes.
-    scope: "user.info.basic,video.upload,video.publish",
+    // Connect: basic + profile (@handle). Reauth adds video scopes for posting.
+    connectScope: "user.info.basic,user.info.profile",
+    scope: "user.info.basic,user.info.profile,video.upload,video.publish",
   },
   facebook: {
     clientIdEnv: "FACEBOOK_CLIENT_ID",

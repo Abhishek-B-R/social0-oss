@@ -15,7 +15,6 @@ import { IconCrown, IconLoader2 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import DocsInfoIcon from "../info-icon";
 import { DOCS_CONNECTIONS_URL } from "@/lib/docs-url";
-import { isLikelyTikTokHandle } from "@/lib/platform-view-url";
 
 const PLATFORM_UI: Record<string, { name: string; color: string }> = {
   linkedin: { name: "LinkedIn", color: "bg-[#0A66C2]" },
@@ -336,18 +335,7 @@ export function ConnectionsList({
                                       />
                                     )}
                                 </span>
-                                {account.platformUsername &&
-                                account.platform === "tiktok" &&
-                                isLikelyTikTokHandle(account.platformUsername) &&
-                                account.platformUsername !== account.platformDisplayName ? (
-                                  <span
-                                    className="truncate text-[10px] text-text-muted"
-                                    title={account.platformUsername}
-                                  >
-                                    @{account.platformUsername}
-                                  </span>
-                                ) : account.platformUsername &&
-                                  account.platform !== "tiktok" ? (
+                                {account.platformUsername ? (
                                   <span
                                     className="truncate text-[10px] text-text-muted"
                                     title={account.platformUsername}
@@ -360,17 +348,12 @@ export function ConnectionsList({
                               <span
                                 className="flex items-center gap-1 truncate text-xs font-medium text-text max-w-[120px] sm:max-w-[160px]"
                                 title={
-                                  account.platformDisplayName ??
-                                  (account.platformUsername
+                                  account.platformUsername
                                     ? `@${account.platformUsername}`
-                                    : undefined)
+                                    : undefined
                                 }
                               >
-                                {account.platformDisplayName ??
-                                  (account.platform === "tiktok" &&
-                                  !account.platformUsername
-                                    ? "TikTok connected"
-                                    : `@${account.platformUsername || "user"}`)}
+                                @{account.platformUsername || "user"}
                                 {account.platform === "twitter_x" &&
                                   account.isTwitterPremium && (
                                     <img

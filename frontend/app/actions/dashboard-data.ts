@@ -27,8 +27,6 @@ import { eq, inArray, and, or } from "drizzle-orm";
 import { format, subMonths, addMonths } from "date-fns";
 import { syncConnectedAccountsToLimit } from "@/lib/plan-limits";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
-import { getValidToken } from "@/lib/token-refresh";
-import { fetchTikTokConnectProfile, tiktokTokenIncludesBasicScope } from "@/lib/platform-view-url";
 
 /** Mirrors `PostForCalendar` in CalendarClient (kept here to avoid server importing client module). */
 type CalendarPostPayload = {
@@ -226,79 +224,6 @@ export type LoadConnectionsPageDataResult =
     }
   | { ok: false; error: string };
 
-async function backfillTikTokProfileLabels(
-  userId: string,
-  accounts: Array<{
-    id: string;
-    platform: string;
-    platformUsername: string | null;
-    platformMetadata: unknown;
-    profileImageUrl: string | null;
-  }>,
-): Promise<void> {
-  const stale = accounts.filter(
-    (a) =>
-      a.platform === "tiktok" &&
-      !a.platformUsername?.trim() &&
-      !(a.platformMetadata as Record<string, unknown> | null)?.displayName,
-  );
-  if (stale.length === 0) return;
-
-  await Promise.all(
-    stale.map(async (account) => {
-      try {
-        const meta =
-          (account.platformMetadata as Record<string, unknown> | null) ?? {};
-        const grantedScopes =
-          typeof meta.grantedScopes === "string" ? meta.grantedScopes : null;
-        if (grantedScopes && !tiktokTokenIncludesBasicScope(grantedScopes)) {
-          return;
-        }
-        const accessToken = await getValidToken(account.id, "tiktok");
-        const profile = await fetchTikTokConnectProfile(accessToken);
-        if (!profile?.username && !profile?.profileImageUrl) return;
-        const existingMeta =
-          (account.platformMetadata as Record<string, unknown> | null) ?? {};
-        await db
-          .update(connectedAccounts)
-          .set({
-            ...(profile.username ? { platformUsername: profile.username } : {}),
-            ...(profile.profileImageUrl
-              ? { profileImageUrl: profile.profileImageUrl }
-              : {}),
-            ...(profile.username || profile.platformMetadata
-              ? {
-                  platformMetadata: {
-                    ...existingMeta,
-                    ...(profile.platformMetadata ?? {}),
-                    ...(profile.username ? { displayName: profile.username } : {}),
-                  },
-                }
-              : {}),
-            updatedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(connectedAccounts.id, account.id),
-              eq(connectedAccounts.userId, userId),
-            ),
-          );
-        if (profile.username) account.platformUsername = profile.username;
-        if (profile.profileImageUrl) account.profileImageUrl = profile.profileImageUrl;
-        if (profile.username || profile.platformMetadata) {
-          account.platformMetadata = {
-            ...existingMeta,
-            ...(profile.platformMetadata ?? {}),
-            ...(profile.username ? { displayName: profile.username } : {}),
-          };
-        }
-      } catch {
-        // Best effort — stale label is non-fatal.
-      }
-    }),
-  );
-}
-
 export async function loadConnectionsPageData(): Promise<LoadConnectionsPageDataResult> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
@@ -326,8 +251,6 @@ export async function loadConnectionsPageData(): Promise<LoadConnectionsPageData
     checkAccountLimits(userId, "linkedin"),
   ]);
 
-  await backfillTikTokProfileLabels(userId, accounts);
-
   const mapped = accounts.map((a) => {
     const status = getTokenStatus(
       a.tokenStatus ?? null,
@@ -335,15 +258,7 @@ export async function loadConnectionsPageData(): Promise<LoadConnectionsPageData
       a.platform,
     );
     const expiresInDays = getExpiresInDays(a.tokenExpiresAt ?? null);
-    const meta = (a.platformMetadata ?? null) as Record<string, unknown> | null;
-    const displayNameFromMeta =
-      typeof meta?.displayName === "string" ? meta.displayName.trim() : "";
-    const tiktokLabel =
-      a.platform === "tiktok"
-        ? displayNameFromMeta || a.platformUsername?.trim() || ""
-        : "";
-    const platformDisplayName =
-      a.platform === "tiktok" && tiktokLabel ? tiktokLabel : null;
+    const platformDisplayName = null;
     return {
       id: a.id,
       platform: a.platform,

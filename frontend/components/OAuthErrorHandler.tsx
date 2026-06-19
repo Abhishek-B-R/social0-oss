@@ -65,7 +65,7 @@ export function OAuthErrorHandler({
           break;
         case "tiktok_scope_required":
           setMessage(
-            "TikTok did not grant profile access. Remove the connection, then connect again and approve all permissions on TikTok's screen.",
+            "TikTok profile access was not granted. Remove the connection, reconnect, then use the refresh icon to enable posting.",
           );
           break;
         default:

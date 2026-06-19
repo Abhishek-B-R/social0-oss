@@ -56,19 +56,34 @@ export function resolveTikTokProfileUrl(input: {
   return null;
 }
 
-/** TikTok OAuth connect profile — requires user.info.basic on the access token. */
-export async function fetchTikTokConnectProfile(
-  accessToken: string,
-): Promise<{
+/** Resolve @handle from TikTok user/info (never display_name). */
+export function resolveTikTokHandleFromUser(user: {
+  username?: unknown;
+  profile_deep_link?: unknown;
+}): string | null {
+  if (
+    typeof user.username === "string" &&
+    isLikelyTikTokHandle(user.username)
+  ) {
+    return user.username.replace(/^@/, "").trim();
+  }
+  if (typeof user.profile_deep_link === "string") {
+    const fromUrl = parseTikTokHandleFromProfileUrl(user.profile_deep_link);
+    if (fromUrl && isLikelyTikTokHandle(fromUrl)) return fromUrl;
+  }
+  return null;
+}
+
+/** Fetch TikTok open_id, avatar, and @handle for OAuth connect. */
+export async function fetchTikTokConnectAccount(accessToken: string): Promise<{
   id: string;
   username: string | null;
   profileImageUrl: string | null;
   platformMetadata?: Record<string, unknown>;
 } | null> {
   const fieldSets = [
-    "open_id,display_name,avatar_url",
-    "open_id,display_name",
-    "open_id",
+    "open_id,avatar_url,username,profile_deep_link",
+    "open_id,avatar_url",
   ] as const;
 
   for (const fields of fieldSets) {
@@ -80,28 +95,26 @@ export async function fetchTikTokConnectProfile(
           timeoutMs: 10_000,
         },
       );
-      const data = (await response.json().catch(() => ({}))) as {
+      const body = (await response.json().catch(() => ({}))) as {
         data?: {
           user?: {
             open_id?: string;
             avatar_url?: string;
-            display_name?: string;
+            username?: string;
+            profile_deep_link?: string;
           };
         };
         error?: { code?: string; message?: string };
       };
 
-      if (data.error?.code === "scope_not_authorized") {
-        console.error("TikTok userinfo scope_not_authorized:", fields, data.error);
+      if (body.error?.code === "scope_not_authorized") {
+        continue;
+      }
+      if (!response.ok || !body.data?.user) {
         continue;
       }
 
-      if (!response.ok || !data.data?.user) {
-        console.error("TikTok userinfo error:", response.status, fields, data);
-        continue;
-      }
-
-      const user = data.data.user;
+      const user = body.data.user;
       const openId =
         typeof user.open_id === "string" ? user.open_id.trim() : "";
       if (!openId) continue;
@@ -112,32 +125,21 @@ export async function fetchTikTokConnectProfile(
         (rawAvatar.startsWith("http://") || rawAvatar.startsWith("https://"))
           ? rawAvatar
           : null;
-      const displayName =
-        typeof user.display_name === "string" ? user.display_name.trim() : "";
+      const handle = resolveTikTokHandleFromUser(user);
+      const profileUrl = handle ? buildTikTokProfileUrl(handle) : null;
 
       return {
         id: openId,
-        username: displayName || null,
+        username: handle,
         profileImageUrl,
-        ...(displayName
-          ? { platformMetadata: { displayName } }
-          : {}),
+        ...(profileUrl ? { platformMetadata: { profileUrl } } : {}),
       };
-    } catch (err) {
-      console.error("TikTok connect profile fetch failed:", fields, err);
+    } catch {
+      // try next field set
     }
   }
 
   return null;
-}
-
-export function tiktokTokenIncludesBasicScope(scope: string | null | undefined): boolean {
-  if (!scope?.trim()) return false;
-  return scope
-    .split(/[,\s]+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .includes("user.info.basic");
 }
 
 /** Fetch the creator's TikTok profile URL using their access token. */
