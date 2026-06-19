@@ -21,7 +21,7 @@ import {
   buildTikTokProfileUrl,
   isLikelyTikTokHandle,
   parseTikTokHandleFromProfileUrl,
-  fetchTikTokProfileUrl,
+  fetchTikTokConnectUserInfo,
 } from "@/lib/platform-view-url";
 
 /** Validate URL is http/https before storing as profile image. */
@@ -816,8 +816,22 @@ export async function GET(
       platformMetadata?: Record<string, unknown>;
     };
 
-    // Instagram/Threads return user_id in token response, use it if available
-    if (
+    if (platform === "tiktok") {
+      const tokenOpenId =
+        typeof tokens.open_id === "string" ? tokens.open_id : null;
+      const tiktokInfo = await fetchTikTokConnectUserInfo(
+        tokens.access_token,
+        tokenOpenId,
+      );
+      if (!tiktokInfo?.id || !tokens.access_token) {
+        console.error("TikTok connect: missing open_id after token exchange");
+        return safeRedirect(
+          `/dashboard/connections?error=oauth_failed&platform=tiktok`,
+          "/dashboard/connections",
+        );
+      }
+      userInfo = tiktokInfo;
+    } else if (
       (platform === "instagram" || platform === "threads") &&
       tokens.user_id
     ) {
@@ -844,58 +858,10 @@ export async function GET(
         rethrowNextRedirect(err);
         console.error("Failed to fetch platform user info:", err);
         userInfo = {
-          id:
-            platform === "tiktok" && typeof tokens.open_id === "string"
-              ? tokens.open_id
-              : `unknown-${Date.now()}`,
+          id: `unknown-${Date.now()}`,
           username: null,
           profileImageUrl: null,
         };
-      }
-    }
-
-    if (platform === "tiktok") {
-      const tokenOpenId =
-        typeof tokens.open_id === "string" ? tokens.open_id : null;
-      const resolvedId =
-        tokenOpenId &&
-        !tokenOpenId.startsWith("unknown-") &&
-        !tokenOpenId.startsWith("tiktok-")
-          ? tokenOpenId
-          : userInfo.id;
-      if (
-        resolvedId &&
-        !resolvedId.startsWith("unknown-") &&
-        !resolvedId.startsWith("tiktok-")
-      ) {
-        userInfo.id = resolvedId;
-      } else if (!tokens.access_token) {
-        return safeRedirect(
-          `/dashboard/connections?error=oauth_failed&platform=tiktok`,
-          "/dashboard/connections",
-        );
-      } else if (tokenOpenId) {
-        userInfo.id = tokenOpenId;
-      } else {
-        console.error("TikTok connect: missing open_id after token exchange");
-        return safeRedirect(
-          `/dashboard/connections?error=oauth_failed&platform=tiktok`,
-          "/dashboard/connections",
-        );
-      }
-
-      if (!userInfo.username && tokens.access_token) {
-        const profileUrl = await fetchTikTokProfileUrl(tokens.access_token);
-        if (profileUrl) {
-          const handle = parseTikTokHandleFromProfileUrl(profileUrl);
-          if (handle && isLikelyTikTokHandle(handle)) {
-            userInfo.username = handle.replace(/^@/, "").trim();
-            userInfo.platformMetadata = {
-              ...(userInfo.platformMetadata ?? {}),
-              profileUrl: buildTikTokProfileUrl(userInfo.username),
-            };
-          }
-        }
       }
     }
 
@@ -1393,60 +1359,8 @@ async function fetchPlatformUserInfo(
     }
 
     case "tiktok": {
-      try {
-        const response = await fetch(
-          "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name,username,profile_deep_link",
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-          },
-        );
-        const data = await response.json().catch(() => ({}));
-        if (response.ok && data.data?.user) {
-          const user = data.data.user;
-          const raw = user.avatar_url;
-          const profileImageUrl = isValidProfileImageUrl(raw) ? raw : null;
-          const displayName =
-            typeof user.display_name === "string" ? user.display_name : null;
-          let handle: string | null = null;
-          if (
-            typeof user.username === "string" &&
-            isLikelyTikTokHandle(user.username)
-          ) {
-            handle = user.username.replace(/^@/, "").trim();
-          } else if (typeof user.profile_deep_link === "string") {
-            handle = parseTikTokHandleFromProfileUrl(user.profile_deep_link);
-          }
-          const profileUrl = handle
-            ? buildTikTokProfileUrl(handle)
-            : typeof user.profile_deep_link === "string"
-              ? user.profile_deep_link
-              : null;
-          const openId =
-            typeof user.open_id === "string" && user.open_id.trim()
-              ? user.open_id.trim()
-              : null;
-          if (!openId) {
-            console.error("TikTok userinfo: missing open_id in response", data);
-            break;
-          }
-          return {
-            id: openId,
-            username: handle,
-            profileImageUrl,
-            platformMetadata: {
-              displayName,
-              profileUrl,
-            },
-          };
-        }
-        console.error("TikTok userinfo error:", response.status, data);
-      } catch (err) {
-        rethrowNextRedirect(err);
-        console.error("TikTok user info fetch failed:", err);
-      }
+      const info = await fetchTikTokConnectUserInfo(accessToken);
+      if (info) return info;
       break;
     }
 

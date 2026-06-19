@@ -56,30 +56,148 @@ export function resolveTikTokProfileUrl(input: {
   return null;
 }
 
+type TikTokUserInfoResponse = {
+  data?: {
+    user?: {
+      open_id?: string;
+      avatar_url?: string;
+      display_name?: string;
+      username?: string;
+      profile_deep_link?: string;
+    };
+  };
+  error?: { code?: string; message?: string };
+};
+
+async function fetchTikTokUserFields(
+  accessToken: string,
+  fields: string,
+): Promise<{ ok: boolean; status: number; user: TikTokUserInfoResponse["data"] extends infer D ? D extends { user?: infer U } ? U : undefined : undefined; raw: TikTokUserInfoResponse }> {
+  const response = await fetchWithTimeout(
+    `https://open.tiktokapis.com/v2/user/info/?fields=${encodeURIComponent(fields)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      timeoutMs: 10_000,
+    },
+  );
+  const raw = (await response.json().catch(() => ({}))) as TikTokUserInfoResponse;
+  return {
+    ok: response.ok && !!raw.data?.user,
+    status: response.status,
+    user: raw.data?.user,
+    raw,
+  };
+}
+
+/** Load TikTok profile data during OAuth connect (scoped to user.info.basic). */
+export async function fetchTikTokConnectUserInfo(
+  accessToken: string,
+  fallbackOpenId?: string | null,
+): Promise<{
+  id: string;
+  username: string | null;
+  profileImageUrl: string | null;
+  platformMetadata?: Record<string, unknown>;
+} | null> {
+  try {
+    const basic = await fetchTikTokUserFields(
+      accessToken,
+      "open_id,union_id,avatar_url,display_name",
+    );
+    if (!basic.ok || !basic.user) {
+      console.error(
+        "TikTok userinfo (basic) error:",
+        basic.status,
+        basic.raw,
+      );
+      if (fallbackOpenId) {
+        return {
+          id: fallbackOpenId,
+          username: null,
+          profileImageUrl: null,
+        };
+      }
+      return null;
+    }
+
+    const user = basic.user;
+    const openId =
+      typeof user.open_id === "string" && user.open_id.trim()
+        ? user.open_id.trim()
+        : fallbackOpenId?.trim() || null;
+    if (!openId) return null;
+
+    const rawAvatar = user.avatar_url;
+    const profileImageUrl =
+      typeof rawAvatar === "string" &&
+      (rawAvatar.startsWith("http://") || rawAvatar.startsWith("https://"))
+        ? rawAvatar
+        : null;
+    const displayName =
+      typeof user.display_name === "string" && user.display_name.trim()
+        ? user.display_name.trim()
+        : null;
+
+    let handle: string | null = null;
+    let profileUrl: string | null = null;
+
+    const profile = await fetchTikTokUserFields(
+      accessToken,
+      "username,profile_deep_link",
+    );
+    if (profile.ok && profile.user) {
+      const profileUser = profile.user;
+      if (
+        typeof profileUser.username === "string" &&
+        isLikelyTikTokHandle(profileUser.username)
+      ) {
+        handle = profileUser.username.replace(/^@/, "").trim();
+      } else if (typeof profileUser.profile_deep_link === "string") {
+        handle = parseTikTokHandleFromProfileUrl(profileUser.profile_deep_link);
+      }
+      profileUrl = handle
+        ? buildTikTokProfileUrl(handle)
+        : typeof profileUser.profile_deep_link === "string"
+          ? profileUser.profile_deep_link
+          : null;
+    }
+
+    return {
+      id: openId,
+      username: handle,
+      profileImageUrl,
+      platformMetadata: {
+        ...(displayName ? { displayName } : {}),
+        ...(profileUrl ? { profileUrl } : {}),
+      },
+    };
+  } catch (err) {
+    console.error("TikTok connect userinfo fetch failed:", err);
+    if (fallbackOpenId) {
+      return {
+        id: fallbackOpenId,
+        username: null,
+        profileImageUrl: null,
+      };
+    }
+    return null;
+  }
+}
+
 /** Fetch the creator's TikTok profile URL using their access token. */
 export async function fetchTikTokProfileUrl(
   accessToken: string,
 ): Promise<string | null> {
   try {
-    const response = await fetchWithTimeout(
-      "https://open.tiktokapis.com/v2/user/info/?fields=username,profile_deep_link,display_name",
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        timeoutMs: 10_000,
-      },
+    const profile = await fetchTikTokUserFields(
+      accessToken,
+      "username,profile_deep_link",
     );
-    if (!response.ok) return null;
-    const data = (await response.json()) as {
-      data?: {
-        user?: {
-          username?: string;
-          profile_deep_link?: string;
-          display_name?: string;
-        };
-      };
-    };
-    const user = data.data?.user;
-    if (!user) return null;
+    if (!profile.ok || !profile.user) return null;
+    const user = profile.user;
 
     if (typeof user.profile_deep_link === "string") {
       const handle = parseTikTokHandleFromProfileUrl(user.profile_deep_link);
