@@ -16,8 +16,6 @@ import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import OAuth from "oauth-1.0a";
 import { TwitterApi } from "twitter-api-v2";
-import { fetchTikTokConnectAccount } from "@/lib/platform-view-url";
-
 /** Validate URL is http/https before storing as profile image. */
 function isValidProfileImageUrl(url: unknown): url is string {
   if (typeof url !== "string" || !url.trim()) return false;
@@ -590,12 +588,6 @@ export async function GET(
           access_token: tokens.data.access_token,
           refresh_token: tokens.data.refresh_token ?? null,
           expires_in: tokens.data.expires_in ?? 24 * 3600,
-          open_id:
-            typeof tokens.data.open_id === "string"
-              ? tokens.data.open_id
-              : null,
-          scope:
-            typeof tokens.data.scope === "string" ? tokens.data.scope : null,
         };
       }
     } else if (platform === "pinterest") {
@@ -800,20 +792,7 @@ export async function GET(
       platformMetadata?: Record<string, unknown>;
     };
 
-    if (platform === "tiktok") {
-      const tokenOpenId =
-        typeof tokens.open_id === "string" ? tokens.open_id.trim() : "";
-      const profile = await fetchTikTokConnectAccount(tokens.access_token);
-      if (profile) {
-        userInfo = profile;
-      } else {
-        userInfo = {
-          id: tokenOpenId || `tiktok-${Date.now()}`,
-          username: null,
-          profileImageUrl: null,
-        };
-      }
-    } else if (
+    if (
       (platform === "instagram" || platform === "threads") &&
       tokens.user_id
     ) {
@@ -920,13 +899,19 @@ export async function GET(
       }
     }
 
-    // Check if this exact account (userId + platform + platformUserId) already connected
+    // TikTok: one account per user — update existing row even if platformUserId was wrong from a prior failed connect.
     const existing = await db.query.connectedAccounts.findFirst({
-      where: and(
-        eq(connectedAccounts.userId, userId),
-        eq(connectedAccounts.platform, platform),
-        eq(connectedAccounts.platformUserId, userInfo.id),
-      ),
+      where:
+        platform === "tiktok"
+          ? and(
+              eq(connectedAccounts.userId, userId),
+              eq(connectedAccounts.platform, platform),
+            )
+          : and(
+              eq(connectedAccounts.userId, userId),
+              eq(connectedAccounts.platform, platform),
+              eq(connectedAccounts.platformUserId, userInfo.id),
+            ),
     });
 
     if (existing) {
@@ -945,6 +930,7 @@ export async function GET(
         encryptedRefreshToken: string | null;
         tokenExpiresAt: Date | null;
         tokenStatus: string;
+        platformUserId?: string;
         platformUsername: string | null;
         profileImageUrl: string | null;
         isActive: boolean;
@@ -961,6 +947,9 @@ export async function GET(
         profileImageUrl: userInfo.profileImageUrl ?? existing.profileImageUrl,
         isActive: true,
         updatedAt: new Date(),
+        ...(platform === "tiktok"
+          ? { platformUserId: userInfo.id }
+          : {}),
       };
 
       // Set connectionMethod for Instagram direct OAuth
@@ -968,12 +957,6 @@ export async function GET(
         updateData.platformMetadata = {
           ...((existing.platformMetadata as Record<string, unknown>) || {}),
           connectionMethod: "direct",
-        };
-      }
-      if (platform === "tiktok" && userInfo.platformMetadata) {
-        updateData.platformMetadata = {
-          ...((existing.platformMetadata as Record<string, unknown>) || {}),
-          ...userInfo.platformMetadata,
         };
       }
 
@@ -993,15 +976,9 @@ export async function GET(
     // Generate UUID for account ID (needed for encryption)
     const accountId = crypto.randomUUID();
 
-    // Prepare metadata for Instagram direct OAuth / TikTok profile URL
-    let platformMetadata: Record<string, unknown> | undefined =
+    // Prepare metadata for Instagram direct OAuth
+    const platformMetadata: Record<string, unknown> | undefined =
       platform === "instagram" ? { connectionMethod: "direct" } : undefined;
-    if (userInfo.platformMetadata) {
-      platformMetadata = {
-        ...(platformMetadata ?? {}),
-        ...userInfo.platformMetadata,
-      };
-    }
 
     if (platform === "threads") {
       console.log("Saving Threads account:", {
@@ -1345,8 +1322,35 @@ async function fetchPlatformUserInfo(
     }
 
     case "tiktok": {
-      const account = await fetchTikTokConnectAccount(accessToken);
-      if (account) return account;
+      try {
+        const response = await fetch(
+          "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name",
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          },
+        );
+        if (response.ok) {
+          const data = await response.json();
+          if (data.data?.user) {
+            const user = data.data.user;
+            const raw = user.avatar_url;
+            const profileImageUrl = isValidProfileImageUrl(raw) ? raw : null;
+            return {
+              id: user.open_id || `tiktok-${Date.now()}`,
+              username: user.display_name || null,
+              profileImageUrl,
+            };
+          }
+        } else {
+          const errorText = await response.text();
+          console.error("TikTok userinfo error:", response.status, errorText);
+        }
+      } catch (err) {
+        rethrowNextRedirect(err);
+        console.error("TikTok user info fetch failed:", err);
+      }
       break;
     }
 

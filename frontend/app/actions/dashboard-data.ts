@@ -258,16 +258,11 @@ export async function loadConnectionsPageData(): Promise<LoadConnectionsPageData
       a.platform,
     );
     const expiresInDays = getExpiresInDays(a.tokenExpiresAt ?? null);
-    const meta = a.platformMetadata as Record<string, unknown> | null;
-    const platformDisplayName =
-      a.platform === "tiktok" && typeof meta?.displayName === "string"
-        ? meta.displayName
-        : null;
     return {
       id: a.id,
       platform: a.platform,
       platformUsername: a.platformUsername,
-      platformDisplayName,
+      platformDisplayName: null,
       profileImageUrl: a.profileImageUrl,
       isActive: a.isActive,
       isTwitterPremium: a.isTwitterPremium ?? false,

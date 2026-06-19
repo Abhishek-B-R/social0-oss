@@ -279,10 +279,7 @@ export function ConnectionsList({
                             />
                             <div className="min-w-0 flex flex-col justify-center">
                               <span className="truncate text-xs font-medium text-muted-foreground max-w-[120px] sm:max-w-[160px]">
-                                {account.platformDisplayName ??
-                                  (account.platformUsername
-                                    ? `@${account.platformUsername}`
-                                    : "@user")}
+                                @{account.platformUsername || "user"}
                               </span>
                             </div>
                             <Link
@@ -351,14 +348,12 @@ export function ConnectionsList({
                               <span
                                 className="flex items-center gap-1 truncate text-xs font-medium text-text max-w-[120px] sm:max-w-[160px]"
                                 title={
-                                  account.platformDisplayName ??
-                                  (account.platformUsername
+                                  account.platformUsername
                                     ? `@${account.platformUsername}`
-                                    : undefined)
+                                    : undefined
                                 }
                               >
-                                {account.platformDisplayName ??
-                                  `@${account.platformUsername || "user"}`}
+                                @{account.platformUsername || "user"}
                                 {account.platform === "twitter_x" &&
                                   account.isTwitterPremium && (
                                     <img

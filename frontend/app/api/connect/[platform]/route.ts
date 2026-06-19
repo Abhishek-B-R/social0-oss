@@ -188,9 +188,8 @@ export async function GET(
     url.searchParams.set("client_key", clientId);
     url.searchParams.set("code_challenge", codeChallenge);
     url.searchParams.set("code_challenge_method", "S256");
-    if (isReauth) {
-      url.searchParams.set("disable_auto_auth", "1");
-    }
+    // Force TikTok to show consent so scopes match config (avoids stale cached auth).
+    url.searchParams.set("disable_auto_auth", "1");
 
   } else {
     // Standard OAuth flow - encrypt userId + platform in state
