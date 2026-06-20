@@ -9,6 +9,7 @@ export type PublicationRow = {
   lastError: string | null;
   profileImageUrl: string | null;
   platformUsername: string | null;
+  platformUserId?: string | null;
   isTwitterPremium: boolean | null;
   publishedAt: Date | null;
   platformMetadata?: Record<string, unknown> | null;

@@ -54,16 +54,51 @@ export function resolveTikTokProfileUrl(input: {
   return null;
 }
 
+/** Instagram usernames are handles, not numeric Graph API user ids. */
+export function isLikelyInstagramHandle(value: string): boolean {
+  const handle = value.replace(/^@/, "").trim();
+  if (!handle || /^\d+$/.test(handle)) return false;
+  return /^[a-zA-Z0-9._]+$/.test(handle);
+}
+
+/** Canonical Instagram profile URL from @handle. */
+export function buildInstagramProfileUrl(handle: string): string {
+  const clean = handle.replace(/^@/, "").trim();
+  if (!clean) return "";
+  return `https://www.instagram.com/${encodeURIComponent(clean)}/`;
+}
+
+export function resolveInstagramProfileUrl(input: {
+  platformUsername?: string | null;
+  platformUserId?: string | null;
+}): string | null {
+  if (
+    input.platformUsername &&
+    isLikelyInstagramHandle(input.platformUsername)
+  ) {
+    return buildInstagramProfileUrl(input.platformUsername);
+  }
+  return null;
+}
+
 /** Resolve the "View on platform" link for a publication row. */
 export function getPublicationViewUrl(pub: {
   platform: string;
   status: string | null;
   platformPostUrl: string | null;
   platformPostId: string | null;
+  platformUserId?: string | null;
   platformUsername?: string | null;
   platformMetadata?: Record<string, unknown> | null;
 }): string | null {
   if (pub.status !== "published") return null;
+
+  if (pub.platform === "instagram") {
+    return resolveInstagramProfileUrl({
+      platformUsername: pub.platformUsername,
+      platformUserId: pub.platformUserId,
+    });
+  }
 
   if (pub.platform === "tiktok") {
     return (

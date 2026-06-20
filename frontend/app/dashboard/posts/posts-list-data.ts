@@ -141,6 +141,7 @@ export async function getPostsListData({
             lastError: postPublications.lastError,
             profileImageUrl: connectedAccounts.profileImageUrl,
             platformUsername: connectedAccounts.platformUsername,
+            platformUserId: connectedAccounts.platformUserId,
             isTwitterPremium: connectedAccounts.isTwitterPremium,
             publishedAt: postPublications.publishedAt,
           })
@@ -542,6 +543,7 @@ export async function getPostDetail(
         lastError: postPublications.lastError,
         profileImageUrl: connectedAccounts.profileImageUrl,
         platformUsername: connectedAccounts.platformUsername,
+        platformUserId: connectedAccounts.platformUserId,
         platformMetadata: connectedAccounts.platformMetadata,
         isTwitterPremium: connectedAccounts.isTwitterPremium,
         publishedAt: postPublications.publishedAt,

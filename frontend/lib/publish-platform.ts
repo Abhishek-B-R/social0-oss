@@ -20,7 +20,7 @@ import {
   processImageForTikTok,
   TikTokImageError,
 } from "@/lib/tiktok-photo-process";
-import { resolveTikTokProfileUrl } from "@/lib/platform-view-url";
+import { resolveTikTokProfileUrl, resolveInstagramProfileUrl } from "@/lib/platform-view-url";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import sharp from "sharp";
 
@@ -124,10 +124,6 @@ function parseThreadsPublishId(data: unknown): string | null {
   return null;
 }
 
-/** 64-char alphabet for base-64 style shortcode encoding. */
-const INSTAGRAM_SHORTCODE_CHARSET =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-
 /** Threads shortcode charset (+ and _). */
 const THREADS_SHORTCODE_CHARSET =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+_";
@@ -157,30 +153,6 @@ function mediaIdToShortcode(id: string | number, charset: string): string {
     n = (n - remainder) / sixtyFour;
   }
   return result;
-}
-
-/**
- * Instagram media ID (or "id_userId") to shortcode for post URLs.
- * Uses only the numeric part before "_" if present. Returns "" on invalid input.
- */
-function instagramMediaIdToShortcode(id: string | number): string {
-  const raw = typeof id === "number" ? String(id) : String(id).trim();
-  const numericId = raw.includes("_") ? raw.slice(0, raw.indexOf("_")) : raw;
-  if (!numericId || !/^\d+$/.test(numericId)) return "";
-
-  try {
-    const sixtyFour = BigInt(64);
-    let mediaId = BigInt(numericId);
-    let shortcode = "";
-    while (mediaId > BigInt(0)) {
-      const remainder = mediaId % sixtyFour;
-      mediaId = (mediaId - remainder) / sixtyFour;
-      shortcode = INSTAGRAM_SHORTCODE_CHARSET[Number(remainder)] + shortcode;
-    }
-    return shortcode;
-  } catch {
-    return "";
-  }
 }
 
 function threadsMediaIdToShortcode(id: string | number): string {
@@ -2263,12 +2235,11 @@ async function publishToInstagram(
     return { status: "failed", lastError: err, error: err };
   }
 
-  const shortcode = publishData.id
-    ? instagramMediaIdToShortcode(publishData.id)
-    : "";
-  const platformPostUrl = shortcode
-    ? `https://www.instagram.com/p/${shortcode}/`
-    : `https://www.instagram.com/${pub.platformUsername}/`;
+  const platformPostUrl =
+    resolveInstagramProfileUrl({
+      platformUsername: pub.platformUsername,
+      platformUserId: pub.platformUserId,
+    }) ?? null;
 
   console.log("✅ Instagram post published successfully:", {
     postId: publishData.id,
