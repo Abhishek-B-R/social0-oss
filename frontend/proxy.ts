@@ -1,13 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
+import { clientIp } from "@/lib/client-ip";
+import {
+  edgeAuthIpLimiter,
+  edgePageIpLimiter,
+  enforceEdgeRateLimit,
+} from "@/lib/edge-ratelimit";
+
+function rateLimitedResponse(kind: "page" | "api"): NextResponse {
+  const body =
+    kind === "api"
+      ? JSON.stringify({ error: "Too many requests. Try again later." })
+      : "Too many requests. Try again later.";
+  return new NextResponse(body, {
+    status: 429,
+    headers: {
+      "Content-Type":
+        kind === "api" ? "application/json" : "text/plain; charset=utf-8",
+      "Retry-After": "60",
+    },
+  });
+}
 
 // Proxy runs at the network boundary (Next.js 16+)
 // Auth is enforced in layout and API routes. Subscription gate removed for now.
 export async function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname;
+  const ip = clientIp(req);
 
-  // Allow API auth routes to pass through (Better Auth handles these)
   if (path.startsWith("/api/auth")) {
+    const rate = await enforceEdgeRateLimit(edgeAuthIpLimiter, `auth:${ip}`);
+    if (!rate.allowed) return rateLimitedResponse("api");
     return NextResponse.next();
+  }
+
+  const isPage =
+    path === "/" || path.startsWith("/dashboard") || path.startsWith("/auth");
+
+  if (isPage) {
+    const rate = await enforceEdgeRateLimit(edgePageIpLimiter, `page:${ip}`);
+    if (!rate.allowed) return rateLimitedResponse("page");
   }
 
   const requestHeaders = new Headers(req.headers);
@@ -18,5 +49,13 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/dashboard/:path*", "/api/connect/:path*", "/api/accounts"],
+  matcher: [
+    "/",
+    "/auth",
+    "/auth/:path*",
+    "/dashboard/:path*",
+    "/api/connect/:path*",
+    "/api/accounts",
+    "/api/auth/:path*",
+  ],
 };
