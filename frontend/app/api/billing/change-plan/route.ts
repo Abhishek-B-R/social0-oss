@@ -8,6 +8,9 @@ import { userSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { PLAN_IDS } from "@/lib/plans";
 import { env } from "@/lib/env";
+import {
+  listOpenDodoSubscriptions,
+} from "@/lib/billing-guards";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +67,24 @@ export async function POST(request: Request) {
     },
   });
 
+  const userEmail = session.user.email?.trim() ?? "";
+
   if (!row?.subscriptionId) {
+    if (userEmail) {
+      const openSubs = await listOpenDodoSubscriptions(userEmail, row?.customerId);
+      if (openSubs.length > 0) {
+        const hasActive = openSubs.some((s) => s.status === "active");
+        return NextResponse.json(
+          {
+            error: hasActive
+              ? "You already have an active subscription. Manage it from billing."
+              : "You have an unpaid subscription. Update your payment method in the customer portal.",
+            code: hasActive ? "use_change_plan" : "use_portal",
+          },
+          { status: 409 },
+        );
+      }
+    }
     return NextResponse.json(
       { error: "no_active_subscription" },
       { status: 404 },
@@ -113,6 +133,16 @@ export async function POST(request: Request) {
       );
     }
     const status = subscription?.status;
+    if (status === "on_hold") {
+      return NextResponse.json(
+        {
+          error:
+            "Your subscription payment failed. Update your payment method in the customer portal.",
+          code: "use_portal",
+        },
+        { status: 409 },
+      );
+    }
     if (status !== "active" && status !== "on_hold") {
       return NextResponse.json(
         { error: "no_active_subscription" },

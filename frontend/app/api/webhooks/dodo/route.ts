@@ -6,9 +6,15 @@ import { user, userSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { setSubscription } from "@/lib/subscription";
 import { syncConnectedAccountsToLimit } from "@/lib/plan-limits";
-import { getTierFromProductId, PLAN_IDS } from "@/lib/plans";
+import { getTierFromProductId, PLAN_IDS, isActiveTier } from "@/lib/plans";
 import { env } from "@/lib/env";
 import { claimWebhookDelivery } from "@/lib/webhook-idempotency";
+import {
+  findRecentPaidUpgradePayment,
+  hasTrialBeenClaimed,
+  recordTrialClaim,
+} from "@/lib/billing-guards";
+import { clearPendingCheckout } from "@/lib/pending-checkout";
 
 const webhookSecret = env.DODO_PAYMENTS_WEBHOOK_SECRET ?? "";
 const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
@@ -107,73 +113,97 @@ async function handleSubscriptionActiveOrUpdated(payload: {
     return;
   }
 
+  const incomingSubId = data.subscription_id ?? null;
+  const settings = await db.query.userSettings.findFirst({
+    where: eq(userSettings.userId, userId),
+    columns: {
+      subscriptionTier: true,
+      subscriptionId: true,
+    },
+  });
+  const currentTier = (settings?.subscriptionTier as string | null) ?? "free";
+  const canonicalSubId = settings?.subscriptionId ?? null;
+
+  // Ignore duplicate subscription objects — only one canonical sub per user.
+  if (
+    incomingSubId &&
+    canonicalSubId &&
+    incomingSubId !== canonicalSubId &&
+    isActiveTier(currentTier as "starter" | "growth" | "pro")
+  ) {
+    console.warn("[dodo webhook] Ignoring duplicate subscription activation", {
+      incomingSubId,
+      canonicalSubId,
+    });
+    return;
+  }
+
+  const isUpgrade = tierRank(tier) > tierRank(currentTier);
+
   // CRITICAL MONEY GUARD:
   // Dodo can mark subscription "active" immediately on changePlan even while payment is still processing.
-  // For upgrades only, verify the latest payment succeeded before upgrading tier.
-  try {
-    const current = await db.query.userSettings.findFirst({
-      where: eq(userSettings.userId, userId),
-      columns: { subscriptionTier: true },
-    });
-    const currentTier = (current?.subscriptionTier as string | null) ?? "free";
-    const isUpgrade = tierRank(tier) > tierRank(currentTier);
+  if (isUpgrade) {
+    if (!apiKey) {
+      console.error("[dodo webhook] Skipping upgrade: DODO_PAYMENTS_API_KEY missing");
+      return;
+    }
+    if (!incomingSubId) {
+      console.error("[dodo webhook] Skipping upgrade: missing subscription_id");
+      return;
+    }
 
-    if (isUpgrade) {
-      if (!apiKey) {
-        console.error("[dodo webhook] Skipping upgrade: DODO_PAYMENTS_API_KEY missing");
-        return;
-      }
-      const subscriptionId = data.subscription_id ?? null;
-      if (!subscriptionId) {
-        console.error("[dodo webhook] Skipping upgrade: missing subscription_id");
-        return;
-      }
-
-      const client = new DodoPayments({ bearerToken: apiKey, environment });
-      let latestPayment: any = null;
-      try {
-        const list = await (client.payments as any).list({
-          subscription_id: subscriptionId,
-          limit: 1,
-        });
-        latestPayment = Array.isArray((list as any)?.items)
-          ? (list as any).items[0]
-          : null;
-      } catch (e) {
-        console.error("[dodo webhook] Payment verification failed:", e);
-        return;
-      }
-
-      const paymentStatus =
-        latestPayment && typeof latestPayment.status === "string"
-          ? String(latestPayment.status)
-          : null;
-      const paymentId =
-        latestPayment && latestPayment.payment_id != null
-          ? String(latestPayment.payment_id)
-          : null;
-
-      if (paymentStatus !== "succeeded") {
-        console.log("[dodo webhook] Skipping upgrade: latest payment not succeeded", {
-          paymentStatus: paymentStatus ?? "none",
-          paymentId: paymentId ?? "none",
-          currentTier,
-          newTier: tier,
-        });
-        return;
-      }
-
-      console.log("[dodo webhook] Upgrade verified by payment", {
-        paymentStatus,
-        paymentId: paymentId ?? "(missing)",
+    const upgradePayment = await findRecentPaidUpgradePayment(incomingSubId);
+    if (!upgradePayment) {
+      console.log("[dodo webhook] Skipping upgrade: no recent paid payment", {
         currentTier,
         newTier: tier,
+        subscriptionId: incomingSubId,
       });
+      return;
     }
-  } catch (e) {
-    // If we can't read current tier or verify payment, be conservative: don't upgrade.
-    console.error("[dodo webhook] Error during upgrade verification; skipping tier update:", e);
-    return;
+
+    console.log("[dodo webhook] Upgrade verified by recent paid payment", {
+      paymentId: upgradePayment.payment_id ?? "(missing)",
+      currentTier,
+      newTier: tier,
+    });
+  } else if (currentTier === "free") {
+    // First subscription: allow ₹0 trial only if trial not already claimed for this email.
+    const email = data.customer?.email ?? "";
+    if (email) {
+      const trialClaimed = await hasTrialBeenClaimed(email, userId);
+      if (trialClaimed && apiKey && incomingSubId) {
+        const client = new DodoPayments({ bearerToken: apiKey, environment });
+        let latestPayment: { status?: string; total_amount?: number } | null = null;
+        try {
+          const list = await (client.payments as { list: (q: object) => Promise<unknown> }).list({
+            subscription_id: incomingSubId,
+            limit: 1,
+          });
+          latestPayment = Array.isArray((list as { items?: unknown[] })?.items)
+            ? ((list as { items: unknown[] }).items[0] as {
+                status?: string;
+                total_amount?: number;
+              })
+            : null;
+        } catch {
+          console.error("[dodo webhook] Payment verification failed for first subscription");
+          return;
+        }
+
+        const paymentStatus = latestPayment?.status ?? null;
+        const amount =
+          typeof latestPayment?.total_amount === "number"
+            ? latestPayment.total_amount
+            : 0;
+        if (paymentStatus !== "succeeded" || amount <= 0) {
+          console.log(
+            "[dodo webhook] Skipping first subscription: trial already claimed, no paid payment",
+          );
+          return;
+        }
+      }
+    }
   }
 
   await setSubscription(userId, {
@@ -182,10 +212,54 @@ async function handleSubscriptionActiveOrUpdated(payload: {
     subscriptionId: data.subscription_id ?? null,
     customerId: data.customer?.customer_id ?? null,
   });
+  await clearPendingCheckout(userId).catch((e) =>
+    console.error("[dodo webhook] clearPendingCheckout failed:", e),
+  );
   await syncConnectedAccountsToLimit(userId).catch((e) =>
     console.error("[dodo webhook] syncConnectedAccountsToLimit failed:", e),
   );
+  if (data.customer?.email) {
+    await recordTrialClaim({
+      email: data.customer.email,
+      userId,
+      customerId: data.customer?.customer_id ?? null,
+    }).catch((e) => console.error("[dodo webhook] recordTrialClaim failed:", e));
+  }
   console.log("[dodo webhook] Subscription updated", { tier });
+}
+
+async function handleSubscriptionOnHold(payload: {
+  data: DodoSubscriptionData;
+}) {
+  const data = payload.data;
+  let userId: string | null = null;
+
+  if (data.subscription_id) {
+    const bySubId = await db.query.userSettings.findFirst({
+      where: eq(userSettings.subscriptionId, data.subscription_id),
+      columns: { userId: true },
+    });
+    if (bySubId) userId = bySubId.userId;
+  }
+  if (!userId && data.customer?.email) {
+    const byEmail = await db.query.user.findFirst({
+      where: eq(user.email, data.customer.email),
+      columns: { id: true },
+    });
+    if (byEmail) userId = byEmail.id;
+  }
+  if (!userId) return;
+
+  await setSubscription(userId, {
+    tier: "free",
+    expiresAt: null,
+    subscriptionId: null,
+    customerId: data.customer?.customer_id ?? null,
+  });
+  await syncConnectedAccountsToLimit(userId).catch((e) =>
+    console.error("[dodo webhook] syncConnectedAccountsToLimit failed:", e),
+  );
+  console.log("[dodo webhook] Subscription on_hold — reverted user to free");
 }
 
 async function handleSubscriptionCancelledOrExpired(payload: {
@@ -312,10 +386,7 @@ export async function POST(request: Request) {
       await handleSubscriptionRenewed({ data });
       await handleSubscriptionActiveOrUpdated({ data });
     } else if (eventType === "subscription.on_hold" && data) {
-      // Payment failed or not yet complete — do NOT change tier; user keeps previous tier.
-      console.log(
-        "[dodo webhook] Skipping tier update: subscription.on_hold (payment not complete)",
-      );
+      await handleSubscriptionOnHold({ data });
     } else if (
       eventType === "subscription.active" ||
       eventType === "subscription.updated" ||
