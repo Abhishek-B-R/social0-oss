@@ -542,6 +542,23 @@ export function BillingClient({
         if (ok) return;
       }
       if (res.status === 409) {
+        if (data.code === "use_portal") {
+          toast.info(
+            typeof data.error === "string"
+              ? data.error
+              : "Update your payment method in the customer portal.",
+          );
+          await handleChangePlan();
+          return;
+        }
+        if (data.code === "use_change_plan") {
+          toast.info(
+            typeof data.error === "string"
+              ? data.error
+              : "You already have an active subscription.",
+          );
+          return;
+        }
         setUpgradePending(true);
         toast.info(
           "Your upgrade payment is still being processed. You'll be moved to Growth automatically — no action needed. If you didn't receive a payment request, try again after a few minutes.",
@@ -620,9 +637,29 @@ export function BillingClient({
       }),
     });
     const data = await res.json().catch(() => ({}));
-    if (res.ok && data.url) {
+    if ((res.ok || res.status === 409) && typeof data.url === "string") {
+      if (res.status === 409 && data.code === "checkout_in_progress") {
+        toast.info("Opening your existing checkout…");
+      }
       window.location.href = data.url;
       return true;
+    }
+    if (res.status === 409 && data.code === "use_portal") {
+      toast.info(
+        typeof data.error === "string"
+          ? data.error
+          : "Open the customer portal to fix your subscription.",
+      );
+      await handleChangePlan();
+      return false;
+    }
+    if (res.status === 409 && data.code === "use_change_plan") {
+      toast.info(
+        typeof data.error === "string"
+          ? data.error
+          : "You already have a subscription on this account.",
+      );
+      return false;
     }
     return false;
   };

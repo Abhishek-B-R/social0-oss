@@ -290,6 +290,16 @@ export const userSettings = pgTable("user_settings", {
   freePostsUsed: integer("free_posts_used").default(0).notNull(),
 });
 
+// ===== TRIAL CLAIMS (one trial per normalized billing email, forever) =====
+export const trialClaims = pgTable("trial_claims", {
+  normalizedEmail: text("normalized_email").primaryKey(),
+  userId: text("user_id")
+    .references(() => user.id, { onDelete: "cascade" })
+    .notNull(),
+  customerId: text("customer_id"),
+  claimedAt: timestamp("claimed_at").defaultNow().notNull(),
+});
+
 // ===== SUBSCRIPTION CANCELLATION FEEDBACK =====
 export const subscriptionCancellations = pgTable("subscription_cancellations", {
   id: uuid("id").defaultRandom().primaryKey(),

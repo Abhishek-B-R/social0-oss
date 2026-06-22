@@ -83,6 +83,7 @@ function OnboardingWelcomeContent() {
   }
 
   async function handleSelectPlan(plan: "starter" | "growth" | "pro") {
+    if (loadingPlan !== null) return;
     toast.dismiss();
     setLoadingPlan(plan);
     try {
@@ -96,8 +97,36 @@ function OnboardingWelcomeContent() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok && data.url) {
+      if ((res.ok || res.status === 409) && typeof data.url === "string") {
+        if (res.status === 409 && data.code === "checkout_in_progress") {
+          toast.info("Opening your existing checkout…");
+        }
         window.location.href = data.url;
+        return;
+      }
+      if (res.status === 409 && data.code === "use_portal") {
+        toast.info(
+          typeof data.error === "string"
+            ? data.error
+            : "You have an unpaid subscription. We'll open billing to fix it.",
+        );
+        const portalRes = await fetch("/api/billing/portal", {
+          method: "POST",
+          credentials: "include",
+        });
+        const portalData = await portalRes.json().catch(() => ({}));
+        if (portalRes.ok && portalData.url) {
+          window.location.href = portalData.url;
+          return;
+        }
+      }
+      if (res.status === 409 && data.code === "use_change_plan") {
+        toast.info(
+          typeof data.error === "string"
+            ? data.error
+            : "You already have a subscription. Go to billing to change your plan.",
+        );
+        router.push("/dashboard/billing");
         return;
       }
       toast.error(toFriendlyCheckoutError(data.error, "Failed to start checkout"));
