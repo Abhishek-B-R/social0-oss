@@ -1,11 +1,11 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { redis } from "@/lib/redis";
 
-/** Per-IP cap on marketing/auth pages before SSR runs (/, /auth, /dashboard). */
+/** Per-IP cap on full page loads (not RSC flights) before SSR runs. */
 export const edgePageIpLimiter = redis
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(120, "1 m"),
+      limiter: Ratelimit.slidingWindow(300, "1 m"),
       prefix: "rl:edge:page",
     })
   : null;
@@ -14,8 +14,17 @@ export const edgePageIpLimiter = redis
 export const edgeAuthIpLimiter = redis
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(45, "1 m"),
+      limiter: Ratelimit.slidingWindow(120, "1 m"),
       prefix: "rl:edge:auth",
+    })
+  : null;
+
+/** Session polling during dashboard use (get-session, etc.) — generous cap. */
+export const edgeAuthSessionPollLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(600, "1 m"),
+      prefix: "rl:edge:auth_poll",
     })
   : null;
 

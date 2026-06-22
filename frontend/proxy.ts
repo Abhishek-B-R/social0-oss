@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { clientIp } from "@/lib/client-ip";
 import {
   edgeAuthIpLimiter,
+  edgeAuthSessionPollLimiter,
   edgePageIpLimiter,
   enforceEdgeRateLimit,
 } from "@/lib/edge-ratelimit";
+import {
+  isAuthSessionPoll,
+  isFullPageDocumentRequest,
+} from "@/lib/proxy-request";
 
 function rateLimitedResponse(kind: "page" | "api"): NextResponse {
   const body =
@@ -28,7 +33,10 @@ export async function proxy(req: NextRequest) {
   const ip = clientIp(req);
 
   if (path.startsWith("/api/auth")) {
-    const rate = await enforceEdgeRateLimit(edgeAuthIpLimiter, `auth:${ip}`);
+    const limiter = isAuthSessionPoll(req)
+      ? edgeAuthSessionPollLimiter
+      : edgeAuthIpLimiter;
+    const rate = await enforceEdgeRateLimit(limiter, `auth:${ip}`);
     if (!rate.allowed) return rateLimitedResponse("api");
     return NextResponse.next();
   }
@@ -36,7 +44,7 @@ export async function proxy(req: NextRequest) {
   const isPage =
     path === "/" || path.startsWith("/dashboard") || path.startsWith("/auth");
 
-  if (isPage) {
+  if (isPage && isFullPageDocumentRequest(req)) {
     const rate = await enforceEdgeRateLimit(edgePageIpLimiter, `page:${ip}`);
     if (!rate.allowed) return rateLimitedResponse("page");
   }
