@@ -1,76 +1,75 @@
-# Social0 React Frontend
+# React + TypeScript + Vite
 
-Production React + Vite rebuild of the Social0 UI. Talks to the **Fastify backend** (`backend/server`) — not Next.js server actions.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Stack
+Currently, two official plugins are available:
 
-- React 19 + Vite 6 + TypeScript
-- TanStack Router + TanStack Query
-- Better Auth client (cookie sessions)
-- Axios API layer with SSE publish progress
-- Tailwind CSS v4 + shadcn-style primitives
-- Zustand (publish progress UI state)
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## Quick start
+## React Compiler
 
-```bash
-cd react-frontend
-cp apps/web/.env.example apps/web/.env
-npm install
-npm run dev
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+
 ```
 
-- **Web app:** http://localhost:5173
-- **API proxy:** `/api` and `/v1` → `VITE_API_URL` (default `http://localhost:3001`)
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-Start the backend separately:
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-```bash
-cd backend && bun run dev:server && bun run dev:worker
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+
 ```
-
-## Structure
-
-```
-apps/web/src/
-  features/     # Domain UI (auth, composer, billing, …)
-  services/     # Axios API clients (mirror backend routes)
-  routes/       # TanStack Router tree
-  hooks/        # React Query hooks
-  stores/       # Zustand (publish SSE state)
-  db/schema.ts  # Drizzle schema copy (types/reference only — no DB commands)
-```
-
-## Backend gaps (implement before full cutover)
-
-| SPA needs | Backend status |
-|-----------|----------------|
-| `GET/POST /v1/posts` CRUD | Stub — port from `frontend/app/actions/posts.ts` |
-| `GET /v1/settings` | Not implemented |
-| `POST /v1/automations/*` | Not implemented |
-| Dashboard data loaders | Were server actions — need REST BFF routes |
-
-Everything under `/api/*` (auth, connect, publish, billing, media, queue) is wired on the backend.
-
-## Feature build order
-
-See `REACT_REBUILD_PROMPT.md` for the master agent prompt. Build one feature at a time:
-
-1. ✅ Scaffold + auth + dashboard shell
-2. Connections (partial — OAuth redirects work)
-3. Billing (checkout/portal wired)
-4. Composer + publish SSE (needs post CRUD)
-5. Posts list/detail/edit
-6. Calendar drag-drop
-7. Settings + queue schedule
-8. Automations (auto-plug, resurface)
-9. Onboarding flow
-10. Marketing pages (features, alternatives, legal)
-
-## Drizzle / DB
-
-`src/db/schema.ts` is copied from `frontend/db/schema.ts` for type reference. **Do not run migrations from this package.** Copy `frontend/db/migrations` when ready; all runtime data goes through the API.
-
-## Branch
-
-`cursor/backend-v2-server-engine-worker`
