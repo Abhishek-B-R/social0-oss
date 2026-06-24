@@ -1,11 +1,8 @@
 import { Redis } from "@upstash/redis";
+import { resolveUpstashRedisConfig } from "@social0/shared";
 
-function makeRedis(): Redis | null {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
-  return new Redis({ url, token });
-}
+const config = resolveUpstashRedisConfig(process.env);
 
-/** Shared Upstash client for rate limits, auth session cache, and webhooks. */
-export const redis = makeRedis();
+export const redis = new Redis({ url: config.restUrl, token: config.restToken });
+
+export { config as upstashConfig };

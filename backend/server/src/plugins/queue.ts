@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { Queue, type ConnectionOptions } from "bullmq";
 import {
   QUEUES,
-  loadEnv,
+  getRedisUrl,
   createJobProgressStore,
   type JobProgressStore,
   type PublishPostJob,
@@ -32,14 +32,14 @@ declare module "fastify" {
 }
 
 export async function registerQueuePlugin(app: FastifyInstance) {
-  const env = loadEnv();
+  const redisUrl = getRedisUrl();
   const connection: ConnectionOptions = {
-    url: env.REDIS_URL,
+    url: redisUrl,
     maxRetriesPerRequest: null,
   };
   app.decorate("redisConnection", connection);
   const jobProgress = createJobProgressStore(
-    env.REDIS_URL,
+    redisUrl,
     createJobProgressPersistHooks(),
   );
   app.decorate("jobProgress", jobProgress);

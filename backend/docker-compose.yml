@@ -1,4 +1,5 @@
-# Local dev: Redis for BullMQ. API + worker run on host (or add services later).
+# Local Redis is no longer used — BullMQ + caches use Upstash (see backend/.env.example).
+# Kept for optional offline experiments only.
 services:
   redis:
     image: redis:7-alpine

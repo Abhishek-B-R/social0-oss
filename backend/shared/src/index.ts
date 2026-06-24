@@ -1,5 +1,6 @@
 export * from "./queues.js";
 export * from "./env.js";
+export * from "./redis-config.js";
 export * from "./api-routes.js";
 export * from "./constants/platforms.js";
 export * from "./types/dto.js";

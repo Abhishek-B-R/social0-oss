@@ -3,18 +3,20 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP } from "better-auth/plugins";
 import { db } from "../db/index.js";
 import { createAuthSecondaryStorage } from "./auth-secondary-storage.js";
-import { env } from "./env.js";
+import { env, appBaseUrl } from "./env.js";
 import { sendEmail } from "./mail.js";
 import { redis } from "./redis.js";
 import { user, session, account, verification } from "../db/schema.js";
 
-const secondaryStorage = redis ? createAuthSecondaryStorage(redis) : undefined;
+const secondaryStorage = createAuthSecondaryStorage(redis);
 
 const subjects: Record<string, string> = {
   "sign-in": "Your Social0 sign-in code",
   "email-verification": "Verify your Social0 email",
   "forget-password": "Your Social0 password reset code",
 };
+
+const authBaseUrl = appBaseUrl();
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -26,8 +28,12 @@ export const auth = betterAuth({
       verification,
     },
   }),
-  baseURL: env.BETTER_AUTH_URL,
+  baseURL: authBaseUrl,
   secret: env.BETTER_AUTH_SECRET,
+  trustedOrigins: [authBaseUrl],
+  advanced: {
+    useSecureCookies: authBaseUrl.startsWith("https://"),
+  },
   plugins: [
     emailOTP({
       overrideDefaultEmailVerification: true,
@@ -61,20 +67,16 @@ export const auth = betterAuth({
       clientSecret: env.GOOGLE_CLIENT_SECRET,
     },
   },
-  ...(secondaryStorage
-    ? {
-        secondaryStorage,
-        session: {
-          storeSessionInDatabase: true,
-          cookieCache: {
-            enabled: true,
-            maxAge: 5 * 60,
-            strategy: "jwe" as const,
-          },
-        },
-        rateLimit: {
-          storage: "secondary-storage" as const,
-        },
-      }
-    : {}),
+  secondaryStorage,
+  session: {
+    storeSessionInDatabase: true,
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60,
+      strategy: "jwe" as const,
+    },
+  },
+  rateLimit: {
+    storage: "secondary-storage" as const,
+  },
 });

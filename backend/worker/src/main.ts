@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { loadEnv, allPlatformPublishQueueNames } from "@social0/shared";
+import { loadEnv, allPlatformPublishQueueNames, getRedisUrl } from "@social0/shared";
 import { createRedisConnection } from "./lib/connection.js";
 import { closeJobProgress } from "./lib/job-progress.js";
 import { initCircuitBreaker } from "./lib/circuit-breaker.js";
@@ -33,7 +33,7 @@ const workers = [
 ];
 
 console.info(
-  `[worker] started ${workers.length} BullMQ workers (redis=${env.REDIS_URL}, platformQueues=${allPlatformPublishQueueNames().length})`,
+  `[worker] started ${workers.length} BullMQ workers (redis=upstash, platformQueues=${allPlatformPublishQueueNames().length})`,
 );
 
 async function shutdown() {

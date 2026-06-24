@@ -5,7 +5,9 @@ const envSchema = z.object({
     .enum(["development", "production", "test"])
     .default("development"),
   DATABASE_URL: z.string().url(),
-  REDIS_URL: z.string().default("redis://127.0.0.1:6379"),
+  UPSTASH_REDIS_REST_URL: z.string().url(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
+  UPSTASH_REDIS_URL: z.string().url().optional(),
   ENCRYPTION_KEY: z.string().min(32),
   NEXT_PUBLIC_APP_URL: z.string().url(),
   APP_URL: z.string().url().optional(),

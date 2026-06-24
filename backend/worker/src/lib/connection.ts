@@ -1,10 +1,9 @@
 import type { ConnectionOptions } from "bullmq";
-import { loadEnv } from "@social0/shared";
+import { getRedisUrl } from "@social0/shared";
 
 export function createRedisConnection(): ConnectionOptions {
-  const env = loadEnv();
   return {
-    url: env.REDIS_URL,
+    url: getRedisUrl(),
     maxRetriesPerRequest: null,
   };
 }

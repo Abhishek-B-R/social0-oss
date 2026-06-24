@@ -9,7 +9,7 @@ backend/
 ├── server/     Fastify API — all endpoints, auth, validation
 ├── worker/     BullMQ consumers + platform publish/email/token logic
 ├── shared/     Queues, job types, DTOs, route manifest
-└── docker-compose.yml   Redis for local dev
+└── docker-compose.yml   Optional local Redis (unused; Upstash is the default)
 ```
 
 ## Flow
@@ -30,7 +30,7 @@ Publishing never blocks the HTTP request.
 ```bash
 cd backend
 cp .env.example .env
-docker compose up -d redis
+# Add UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN from https://console.upstash.com
 bun install
 bun run build
 bun run dev:server   # :3001

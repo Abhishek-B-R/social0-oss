@@ -13,7 +13,10 @@ async function handleBetterAuth(
 ) {
   const proto =
     (request.headers["x-forwarded-proto"] as string | undefined) ?? "http";
-  const host = request.headers.host ?? "localhost";
+  const host =
+    (request.headers["x-forwarded-host"] as string | undefined) ??
+    request.headers.host ??
+    "localhost";
   const url = new URL(request.url, `${proto}://${host}`);
 
   const headers = new Headers();
