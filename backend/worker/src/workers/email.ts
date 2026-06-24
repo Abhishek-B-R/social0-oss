@@ -1,6 +1,6 @@
 import { Worker, type ConnectionOptions } from "bullmq";
 import { QUEUES, type EmailPostFailedJob } from "@social0/shared";
-import { sendPostFailedEmail } from "@social0/worker";
+import { sendPostFailedEmail } from "../email/post-failed.js";
 
 export function startEmailWorker(
   connection: ConnectionOptions,

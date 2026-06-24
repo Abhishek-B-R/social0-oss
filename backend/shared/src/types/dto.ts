@@ -1,6 +1,6 @@
 /**
  * DTOs aligned with frontend / legacy v1 API.
- * Business logic lives in engine + worker; server validates and enqueues.
+ * Business logic lives in worker; server validates and enqueues.
  */
 
 import type { SupportedPlatform } from "../constants/platforms.js";

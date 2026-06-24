@@ -1,6 +1,6 @@
 import { Worker, type ConnectionOptions } from "bullmq";
 import { JOB_NAMES, QUEUES, type TokenRefreshJob } from "@social0/shared";
-import { refreshPlatformToken } from "@social0/worker";
+import { refreshPlatformToken } from "../tokens/refresh.js";
 
 export function startTokenWorker(
   connection: ConnectionOptions,
@@ -10,7 +10,7 @@ export function startTokenWorker(
     QUEUES.TOKEN,
     async (job) => {
       if (job.name === JOB_NAMES.TOKEN_HEALTH_SWEEP) {
-        console.info("[engine] token health sweep — wire DB to list expiring tokens");
+        console.info("[worker] token health sweep — wire DB to list expiring tokens");
         return { swept: true };
       }
       const data = job.data as TokenRefreshJob;

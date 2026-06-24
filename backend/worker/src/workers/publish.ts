@@ -26,7 +26,7 @@ async function loadPublicationTargets(
     }));
   }
   console.warn(
-    `[engine] loadPublicationTargets stub — postId=${job.postId} userId=${job.userId}`,
+    `[worker] loadPublicationTargets stub — postId=${job.postId} userId=${job.userId}`,
   );
   return [];
 }

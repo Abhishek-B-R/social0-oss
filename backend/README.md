@@ -7,8 +7,7 @@ Queue-based backend for DigitalOcean + Neon + Cloudflare R2. Mirrors the Next.js
 ```
 backend/
 ├── server/     Fastify API — all endpoints, auth, validation
-├── engine/     BullMQ consumers — fan-out, retries, cron sweeps
-├── worker/     Platform publish + email + token logic (port from frontend)
+├── worker/     BullMQ consumers + platform publish/email/token logic
 ├── shared/     Queues, job types, DTOs, route manifest
 └── docker-compose.yml   Redis for local dev
 ```
@@ -16,7 +15,7 @@ backend/
 ## Flow
 
 ```
-Client → server (Fastify) → Redis/BullMQ → engine workers → worker (platform APIs)
+Client → server (Fastify) → Redis/BullMQ → worker (BullMQ + platform APIs)
                                               ↓ on failure
                                          email queue
 ```
@@ -35,7 +34,7 @@ docker compose up -d redis
 bun install
 bun run build
 bun run dev:server   # :3001
-bun run dev:engine   # BullMQ workers
+bun run dev:worker   # BullMQ workers
 ```
 
 ## Publish flows
@@ -78,10 +77,10 @@ BullMQ wakes the job at `scheduledAt` — no cron DB scan.
 1. Port Drizzle schema + queries from `frontend/db`
 2. Port `publish-platform.ts` into `worker/src/publish/platforms/*`
 3. Wire Better Auth session validation in `server/src/middleware/auth.ts`
-4. Deploy on a DO droplet: nginx → server:3001, engine as systemd/pm2 process
+4. Deploy on a DO droplet: nginx → server:3001, worker as systemd/pm2 process
 
 ## Scale
 
 - **server**: horizontal behind nginx (stateless)
-- **engine**: increase `ENGINE_*_CONCURRENCY` or run more engine processes
+- **worker**: increase `WORKER_*_CONCURRENCY` or run more worker processes
 - **platform-publish** queue: isolated rate limits per platform (TikTok vs X)

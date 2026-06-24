@@ -10,16 +10,16 @@ export function startSchedulerWorker(
     async (job) => {
       switch (job.name) {
         case JOB_NAMES.CRON_PUBLISH_SCHEDULED:
-          console.info("[engine] cron publish-scheduled — wire DB scan + publish queue");
+          console.info("[worker] cron publish-scheduled — wire DB scan + publish queue");
           break;
         case JOB_NAMES.CRON_REPOST:
-          console.info("[engine] cron repost — wire resurface logic");
+          console.info("[worker] cron repost — wire resurface logic");
           break;
         case JOB_NAMES.CRON_AUTOPLUG:
-          console.info("[engine] cron autoplug — wire automation");
+          console.info("[worker] cron autoplug — wire automation");
           break;
         default:
-          console.info(`[engine] scheduler job ${job.name}`);
+          console.info(`[worker] scheduler job ${job.name}`);
       }
       return { ok: true };
     },

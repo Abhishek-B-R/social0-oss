@@ -6,7 +6,7 @@ export type PublishPostJob = {
   userId: string;
   /** SSE tracking id — publish-now only; omitted for scheduled jobs. */
   trackingId?: string;
-  /** If omitted, engine loads targets from DB. */
+  /** If omitted, worker loads targets from DB. */
   connectedAccountIds?: string[];
 };
 

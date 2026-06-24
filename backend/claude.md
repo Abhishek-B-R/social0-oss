@@ -1,6 +1,6 @@
 # Social0 Backend v2 — AI Guidance
 
-This document is the **single source of truth for AI assistants** working in `backend/`. It describes the queue-based architecture, package layout, what is implemented vs stubbed, publish UX (SSE + scheduling), and how to extend without breaking the server → engine → worker split.
+This document is the **single source of truth for AI assistants** working in `backend/`. It describes the queue-based architecture, package layout, what is implemented vs stubbed, publish UX (SSE + scheduling), and how to extend without breaking the server → worker split.
 
 **Audience:** Any AI or human contributor editing `backend/`.
 
@@ -19,13 +19,10 @@ A **standalone Fastify API + BullMQ workers** that mirrors the Next.js `frontend
 | Layer | Responsibility |
 |-------|----------------|
 | **server** | HTTP — validate, auth, enqueue, return fast (`202` or `200`) |
-| **engine** | BullMQ consumers — fan-out, progress events, cron sweeps, retries |
-| **worker** | Pure publish/email/token logic (port from `frontend/lib/`) |
+| **worker** | BullMQ consumers + publish/email/token logic (port from `frontend/lib/`) |
 | **shared** | Types, queues, DTOs, job progress store, route manifest |
 
 Publishing to TikTok/YouTube/Meta takes 1–2.5 minutes. That work **never** runs inside the HTTP request.
-
-> **Naming note:** `engine/` is effectively the **worker process** (BullMQ consumers), not a separate microservice. `worker/` is a **library** of platform adapters. A future rename `engine` → `workers` would be clearer but is not required.
 
 ### Implementation status (honest)
 
@@ -52,7 +49,7 @@ Publishing to TikTok/YouTube/Meta takes 1–2.5 minutes. That work **never** run
 |-------|--------|
 | API | Fastify (`server/`) |
 | Queue | Redis + BullMQ |
-| Workers | Node on DigitalOcean droplet (`engine/` process) |
+| Workers | Node on DigitalOcean droplet (`worker/` process) |
 | Database | Neon Postgres (same as frontend) |
 | Media | Cloudflare R2 (presigned uploads — port from `frontend/lib/r2.ts`) |
 | Frontend (future) | React + Vite on Cloudflare Pages |
@@ -73,8 +70,10 @@ backend/
 │   ├── src/db/           # Drizzle schema (copy of frontend/db/schema.ts)
 │   ├── src/lib/          # Auth, encryption, platforms, token-refresh, shims
 │   └── src/connect/      # Platform OAuth handlers (ported from frontend)
-├── engine/               # @social0/engine — BullMQ consumer process
-└── worker/               # @social0/worker — platform adapter library
+└── worker/               # @social0/worker — BullMQ process + platform adapters
+    ├── src/main.ts       # BullMQ entrypoint (`bun run dev:worker`)
+    ├── src/workers/      # Queue consumers (publish, email, cron, …)
+    └── src/publish/      # Platform publish stubs
 ```
 
 ---
@@ -90,9 +89,7 @@ server (Fastify)          — auth, validation, enqueue
   ↓
 Redis / BullMQ
   ↓
-engine (BullMQ Workers)   — fan-out, SSE progress emit, cron, retries
-  ↓
-worker (library)          — publishToPlatform() per platform API
+worker (BullMQ + adapters) — fan-out, SSE progress, cron, publishToPlatform()
   ↓ on definitive platform failure
 email queue → sendPostFailedEmail
 ```
@@ -133,7 +130,7 @@ Each event includes `progress: { completed, failed, total }` when applicable.
 - State snapshot: `job:state:{trackingId}` (24h TTL)
 - Live pub/sub: `job:events:{trackingId}`
 
-Implemented in `shared/src/lib/job-progress.ts` (`JobProgressStore`). Server attaches `app.jobProgress`; engine uses `engine/src/lib/job-progress.ts`.
+Implemented in `shared/src/lib/job-progress.ts` (`JobProgressStore`). Server attaches `app.jobProgress`; worker uses `worker/src/lib/job-progress.ts`.
 
 #### Path B: Schedule later (fire and forget)
 
@@ -176,7 +173,7 @@ loadPublicationTargets()     ← stub; wire DB
     ↓
 N × platform-publish jobs    ← all enqueued at once (Promise.all on queue.add)
     ↓
-BullMQ runs up to ENGINE_PLATFORM_CONCURRENCY (default 20) in parallel
+BullMQ runs up to WORKER_PLATFORM_CONCURRENCY (default 20) in parallel
     ↓
 each job → publishToPlatform() for ONE platform only
 ```
@@ -240,9 +237,9 @@ cd backend
 cp .env.example .env
 docker compose up -d redis
 bun install
-bun run build                # shared → worker → server → engine
+bun run build                # shared → worker → server
 bun run dev:server           # :3001
-bun run dev:engine           # BullMQ consumers
+bun run dev:worker           # BullMQ consumers
 ```
 
 **Do not** use `npm run build --workspaces` at root — infinite recursion under Bun. Root scripts use `bun run --filter`.
@@ -251,11 +248,11 @@ bun run dev:engine           # BullMQ consumers
 
 | Var | Default | Used by |
 |-----|---------|---------|
-| `REDIS_URL` | `redis://127.0.0.1:6379` | server + engine |
+| `REDIS_URL` | `redis://127.0.0.1:6379` | server + worker |
 | `PORT` / `HOST` | `3001` / `0.0.0.0` | server |
-| `ENGINE_PUBLISH_CONCURRENCY` | `5` | engine |
-| `ENGINE_PLATFORM_CONCURRENCY` | `20` | engine |
-| `ENGINE_EMAIL_CONCURRENCY` | `10` | engine |
+| `WORKER_PUBLISH_CONCURRENCY` | `5` | worker |
+| `WORKER_PLATFORM_CONCURRENCY` | `20` | worker |
+| `WORKER_EMAIL_CONCURRENCY` | `10` | worker |
 | `CRON_SECRET` | — | `POST /api/cron/*` Bearer auth |
 | `WORKER_STUB_FAIL=1` | — | Force stub publish failures (test email/SSE) |
 | `DATABASE_URL` | — | Not wired yet |
@@ -403,21 +400,33 @@ Publish/jobs/connect routes return proper `401`/`403`/`404`.
 
 ---
 
-## 5. Engine (`engine/`)
+## 5. Worker (`worker/`)
 
-### 5.1 Workers
+Runnable BullMQ process (`src/main.ts`) plus platform adapter library.
+
+### 5.1 Queue consumers
 
 | File | Queue | Concurrency |
 |------|-------|-------------|
-| `workers/publish.ts` | `publish` | `ENGINE_PUBLISH_CONCURRENCY` |
-| `workers/platform-publish.ts` | `platform-publish` | `ENGINE_PLATFORM_CONCURRENCY` |
-| `workers/email.ts` | `email` | `ENGINE_EMAIL_CONCURRENCY` |
+| `workers/publish.ts` | `publish` | `WORKER_PUBLISH_CONCURRENCY` |
+| `workers/platform-publish.ts` | `platform-publish` | `WORKER_PLATFORM_CONCURRENCY` |
+| `workers/email.ts` | `email` | `WORKER_EMAIL_CONCURRENCY` |
 | `workers/token-refresh.ts` | `token` | 5 |
 | `workers/scheduler.ts` | `scheduler` | 2 |
 | `workers/billing.ts` | `billing` | 3 |
 | `workers/media.ts` | `media` | 5 |
 
-### 5.2 Progress emission
+### 5.2 Library exports (`src/index.ts`)
+
+| Export | Port from |
+|--------|-----------|
+| `publishToPlatform(ctx)` | `frontend/lib/publish-platform.ts` |
+| `sendPostFailedEmail(job)` | Frontend email templates |
+| `refreshPlatformToken(job)` | `frontend/lib/token-refresh.ts` |
+
+Platform stubs: `worker/src/publish/platforms/index.ts` — all 9 platforms log and return fake success unless `WORKER_STUB_FAIL=1`.
+
+### 5.3 Progress emission
 
 `workers/publish.ts` — if `trackingId` present:
 
@@ -431,10 +440,10 @@ Publish/jobs/connect routes return proper `401`/`403`/`404`.
 
 Scheduled jobs have **no** `trackingId` — no SSE when they wake up. Failures → email queue + optional in-app notification (wire later).
 
-### 5.3 Platform publish failure handling
+### 5.4 Platform publish failure handling
 
 ```ts
-// engine/src/workers/platform-publish.ts
+// worker/src/workers/platform-publish.ts
 throw new UnrecoverableError(...)  // no BullMQ retry loop
 emailQueue.add(..., { jobId: `email-failed-${publicationId}` })  // deduped
 ```
@@ -442,7 +451,7 @@ emailQueue.add(..., { jobId: `email-failed-${publicationId}` })  // deduped
 - `lockDuration: 180_000` (3 min)
 - `stalledInterval: 60_000`
 
-### 5.4 Stubs to wire
+### 5.5 Stubs to wire
 
 | Location | Port from |
 |----------|-----------|
@@ -453,21 +462,7 @@ emailQueue.add(..., { jobId: `email-failed-${publicationId}` })  // deduped
 
 ---
 
-## 6. Worker (`worker/`)
-
-Library imported by engine — **not** a separate process.
-
-| Export | Port from |
-|--------|-----------|
-| `publishToPlatform(ctx)` | `frontend/lib/publish-platform.ts` |
-| `sendPostFailedEmail(job)` | Frontend email templates |
-| `refreshPlatformToken(job)` | `frontend/lib/token-refresh.ts` |
-
-Platform stubs: `worker/src/publish/platforms/index.ts` — all 9 platforms log and return fake success unless `WORKER_STUB_FAIL=1`.
-
----
-
-## 7. Shared (`shared/`)
+## 6. Shared (`shared/`)
 
 | File | Purpose |
 |------|---------|
@@ -483,7 +478,7 @@ Platform stubs: `worker/src/publish/platforms/index.ts` — all 9 platforms log 
 
 ---
 
-## 8. Frontend integration (when wiring)
+## 7. Frontend integration (when wiring)
 
 ### Publish now — replace polling with SSE
 
@@ -537,7 +532,7 @@ Do **not** port everything at once. Keep Next.js in prod; migrate in this order:
 
 1. **Redis + BullMQ** — move publish off Vercel (biggest cost win)
 2. **Point frontend** `BETTER_AUTH_URL` / API at backend when ready
-3. **Token refreshes** → already on backend; wire engine jobs to `getValidToken`
+3. **Token refreshes** → already on backend; wire worker jobs to `getValidToken`
 4. **Billing sync** → queue
 5. **Replace API layer** — only when standalone frontend exists
 
@@ -551,7 +546,7 @@ Each step can run against the same Neon DB.
 - **Heavy work:** enqueue + fast HTTP response. Never await social APIs in server.
 - **Publish now:** always create `trackingId` + `jobProgress.initJob()` before enqueue.
 - **Schedule:** never create `trackingId`; return `200 scheduled`.
-- **New queue job:** update `shared` types → `JOB_NAMES` → `enqueue.ts` → `engine/workers/`.
+- **New queue job:** update `shared` types → `JOB_NAMES` → `enqueue.ts` → `worker/src/workers/`.
 - **New route:** `api-routes.ts` manifest + `server/src/routes/api/`.
 - **No CF Worker per post** — BullMQ on DO handles long work.
 
@@ -594,7 +589,7 @@ Single `platform-publish` queue for all platforms. Split when TikTok rate limits
 docker compose up -d redis && bun run dev:server
 
 # Terminal 2
-bun run dev:engine
+bun run dev:worker
 
 # Publish now
 curl -s -X POST http://localhost:3001/api/publish \
@@ -617,7 +612,7 @@ curl -s -X POST http://localhost:3001/api/publish \
   -d '{"postId":"post_123","scheduledAt":"2026-06-15T10:00:00.000Z","mode":"schedule"}'
 
 # Force platform failure (test email + SSE failed phase)
-WORKER_STUB_FAIL=1 bun run dev:engine
+WORKER_STUB_FAIL=1 bun run dev:worker
 ```
 
 ---
@@ -627,11 +622,11 @@ WORKER_STUB_FAIL=1 bun run dev:engine
 | Frontend | Backend |
 |----------|---------|
 | `app/api/**/route.ts` | `server/src/routes/api/*.ts` |
-| `app/actions/publish.ts` | `POST /api/publish` + engine |
+| `app/actions/publish.ts` | `POST /api/publish` + worker |
 | `lib/publish-order.ts` (poll DB) | Replace with SSE for publish now |
 | `lib/publish-platform.ts` | `worker/src/publish/` |
 | `lib/token-refresh.ts` | `worker/src/tokens/refresh.ts` |
-| `app/api/cron/*` | server enqueues → `engine/workers/scheduler.ts` |
+| `app/api/cron/*` | server enqueues → `worker/src/workers/scheduler.ts` |
 | `db/schema.ts` | Port when wiring DB |
 
 ---
@@ -639,7 +634,7 @@ WORKER_STUB_FAIL=1 bun run dev:engine
 ## 13. Scale & cost
 
 - **server** — stateless, horizontal behind nginx
-- **engine** — scale processes or `ENGINE_*_CONCURRENCY`
+- **worker** — scale processes or `WORKER_*_CONCURRENCY`
 - **Bottlenecks** — platform API rate limits and upload duration, not your API
 - **Cost** — DO droplet (~$24) + Neon + R2 usage; avoids Vercel long-function billing
 
@@ -653,4 +648,3 @@ Rough capacity: thousands of active users on one droplet before splitting API vs
 - `publish-retry` + dead-letter queues (vs same-queue retries)
 - `GET /api/jobs` list for user history
 - In-app notifications on scheduled post failure
-- Rename `engine/` → `workers/` for clarity

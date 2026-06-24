@@ -5,7 +5,7 @@ import {
   type PublishPlatformJob,
   type EmailPostFailedJob,
 } from "@social0/shared";
-import { publishToPlatform } from "@social0/worker";
+import { publishToPlatform } from "../publish/index.js";
 import { getJobProgress } from "../lib/job-progress.js";
 
 export function startPlatformPublishWorker(
@@ -33,7 +33,7 @@ export function startPlatformPublishWorker(
       }
 
       console.info(
-        `[engine] platform publish post=${data.postId} platform=${data.platform}`,
+        `[worker] platform publish post=${data.postId} platform=${data.platform}`,
       );
 
       const result = await publishToPlatform({
@@ -98,7 +98,7 @@ export function startPlatformPublishWorker(
 
   worker.on("failed", (job, err) => {
     console.error(
-      `[engine] platform job failed id=${job?.id} platform=${job?.data.platform}`,
+      `[worker] platform job failed id=${job?.id} platform=${job?.data.platform}`,
       err.message,
     );
   });

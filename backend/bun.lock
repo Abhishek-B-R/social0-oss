@@ -5,21 +5,6 @@
     "": {
       "name": "social0-backend",
     },
-    "engine": {
-      "name": "@social0/engine",
-      "version": "0.1.0",
-      "dependencies": {
-        "@social0/shared": "*",
-        "@social0/worker": "*",
-        "bullmq": "^5.34.5",
-        "dotenv": "^16.4.7",
-      },
-      "devDependencies": {
-        "@types/node": "^22.10.5",
-        "tsx": "^4.19.2",
-        "typescript": "^5.7.3",
-      },
-    },
     "server": {
       "name": "@social0/server",
       "version": "0.1.0",
@@ -64,8 +49,12 @@
       "version": "0.1.0",
       "dependencies": {
         "@social0/shared": "*",
+        "bullmq": "^5.34.5",
+        "dotenv": "^16.4.7",
       },
       "devDependencies": {
+        "@types/node": "^22.10.5",
+        "tsx": "^4.19.2",
         "typescript": "^5.7.3",
       },
     },
@@ -118,8 +107,6 @@
     "@opentelemetry/semantic-conventions": ["@opentelemetry/semantic-conventions@1.41.1", "", {}, "sha512-/UhIkaZgPutTFmQ7RnIJGgDXZmtEJ7Dvi86xNTFWcnRxVRNk/aotsqDJYeEvDP+FSMB2SdW+pQzNMcWP0rwuNA=="],
 
     "@pinojs/redact": ["@pinojs/redact@0.4.0", "", {}, ""],
-
-    "@social0/engine": ["@social0/engine@workspace:engine"],
 
     "@social0/server": ["@social0/server@workspace:server"],
 

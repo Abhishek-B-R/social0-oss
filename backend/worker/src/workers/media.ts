@@ -9,7 +9,7 @@ export function startMediaWorker(
     QUEUES.MEDIA,
     async (job) => {
       console.info(
-        `[engine] media.confirm mediaId=${job.data.mediaId} userId=${job.data.userId}`,
+        `[worker] media.confirm mediaId=${job.data.mediaId} userId=${job.data.userId}`,
       );
       return { ok: true };
     },

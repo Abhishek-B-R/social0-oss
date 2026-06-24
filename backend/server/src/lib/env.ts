@@ -49,9 +49,9 @@ const envSchema = z
     DODO_PAYMENTS_API_KEY: z.string().optional(),
     CANNY_PRIVATE_KEY: z.string().optional(),
     NEXT_PUBLIC_CANNY_BOARD_TOKEN: z.string().optional(),
-    ENGINE_PUBLISH_CONCURRENCY: z.coerce.number().default(5),
-    ENGINE_PLATFORM_CONCURRENCY: z.coerce.number().default(20),
-    ENGINE_EMAIL_CONCURRENCY: z.coerce.number().default(10),
+    WORKER_PUBLISH_CONCURRENCY: z.coerce.number().default(5),
+    WORKER_PLATFORM_CONCURRENCY: z.coerce.number().default(20),
+    WORKER_EMAIL_CONCURRENCY: z.coerce.number().default(10),
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV !== "production") return;

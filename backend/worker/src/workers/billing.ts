@@ -8,7 +8,7 @@ export function startBillingWorker(
   return new Worker<BillingSyncJob>(
     QUEUES.BILLING,
     async (job) => {
-      console.info(`[engine] billing sync userId=${job.data.userId}`);
+      console.info(`[worker] billing sync userId=${job.data.userId}`);
       return { synced: true };
     },
     { connection, concurrency },

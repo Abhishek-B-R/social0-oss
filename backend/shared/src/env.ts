@@ -10,9 +10,9 @@ export const envSchema = z.object({
   HOST: z.string().default("0.0.0.0"),
   BETTER_AUTH_SECRET: z.string().optional(),
   BETTER_AUTH_URL: z.string().url().optional(),
-  ENGINE_PUBLISH_CONCURRENCY: z.coerce.number().default(5),
-  ENGINE_PLATFORM_CONCURRENCY: z.coerce.number().default(20),
-  ENGINE_EMAIL_CONCURRENCY: z.coerce.number().default(10),
+  WORKER_PUBLISH_CONCURRENCY: z.coerce.number().default(5),
+  WORKER_PLATFORM_CONCURRENCY: z.coerce.number().default(20),
+  WORKER_EMAIL_CONCURRENCY: z.coerce.number().default(10),
 });
 
 export type Env = z.infer<typeof envSchema>;
