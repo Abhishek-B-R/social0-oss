@@ -1,61 +1,87 @@
-# Social0 Backend API
+# Social0 Backend v2
 
-Backend API skeleton for **Social0** — Social Media Management Platform.  
-Source of truth: [PROJECT_STATUS.md](../PROJECT_STATUS.md) at repo root.
+Queue-based backend for DigitalOcean + Neon + Cloudflare R2. Mirrors the Next.js `app/api` surface but keeps the API thin: validate, enqueue, return `202` in under ~100ms.
 
-## Product
+## Layout
 
-- **Name**: Social0
-- **Description**: Unified dashboard to create, schedule, and publish content across multiple social platforms.
-
-## Supported platforms
-
-Aligned with PROJECT_STATUS.md:
-
-| Platform   | Auth        |
-|-----------|-------------|
-| LinkedIn  | OAuth 2.0   |
-| Facebook  | OAuth (Page)|
-| Instagram | OAuth (direct or via Facebook Page) |
-| YouTube   | OAuth 2.0   |
-| Pinterest | OAuth       |
-| TikTok    | OAuth 2.0 + PKCE |
-| X (Twitter) | OAuth 2.0 + PKCE |
-| Threads   | Meta Graph API |
-| Bluesky   | BYOK        |
-| Medium    | BYOK        |
-| Hashnode  | BYOK        |
-| Dev.to    | BYOK        |
-
-## Tech
-
-- **Runtime**: Bun
-- **HTTP**: Hono
-- **Port**: `PORT` env or `3000`
-
-## API (v1 skeleton)
-
-All under `/v1`. Auth: `Authorization: Bearer <token>` (validation TBD).
-
-| Path | Methods | Description |
-|------|--------|-------------|
-| `/v1/media` | GET (list), GET `/:id`, DELETE `/:id`, POST `/create-upload-url` | Media list/get/delete; create signed upload URL |
-| `/v1/posts` | GET (list), POST, GET `/:id`, PATCH `/:id`, DELETE `/:id` | Posts CRUD; list filters: `platform[]`, `status[]` |
-| `/v1/post-results` | GET (list), GET `/:id` | Post publication results; list filters: `post_id[]`, `platform[]` |
-| `/v1/social-accounts` | GET (list), GET `/:id` | Connected social accounts; list filters: `platform[]`, `username[]` |
-
-List endpoints accept `offset` and `limit` (defaults 0, 10). Responses use `{ data, meta }` with `meta: { total, offset, limit, next }`.
-
-## Post status
-
-As per PROJECT_STATUS.md: `draft` | `scheduled` | `publishing` | `published` | `failed`.
-
-## Run
-
-```bash
-bun run index.ts
+```
+backend/
+├── server/     Fastify API — all endpoints, auth, validation
+├── engine/     BullMQ consumers — fan-out, retries, cron sweeps
+├── worker/     Platform publish + email + token logic (port from frontend)
+├── shared/     Queues, job types, DTOs, route manifest
+└── docker-compose.yml   Redis for local dev
 ```
 
----
+## Flow
 
-**Last updated**: February 2026 — aligned with PROJECT_STATUS.md.
+```
+Client → server (Fastify) → Redis/BullMQ → engine workers → worker (platform APIs)
+                                              ↓ on failure
+                                         email queue
+```
+
+Publishing never blocks the HTTP request.
+
+- **Publish now** → 202 + SSE progress stream
+- **Schedule later** → BullMQ `delay`, 200 `{ status: "scheduled" }` (no SSE)
+
+## Quick start
+
+```bash
+cd backend
+cp .env.example .env
+docker compose up -d redis
+bun install
+bun run build
+bun run dev:server   # :3001
+bun run dev:engine   # BullMQ workers
+```
+
+## Publish flows
+
+### Publish now (live progress via SSE)
+
+```bash
+# 1. Start publish
+curl -X POST http://localhost:3001/api/publish \
+  -H 'Content-Type: application/json' \
+  -H 'x-user-id: user_test' \
+  -d '{"postId":"post_123","connectedAccountIds":["acc_1"]}'
+# → 202 { trackingId, streamUrl, jobId, status: "queued" }
+
+# 2. Stream progress
+curl -N -H 'x-user-id: user_test' \
+  http://localhost:3001/api/jobs/<trackingId>/stream
+```
+
+### Schedule later (no SSE)
+
+```bash
+curl -X POST http://localhost:3001/api/publish \
+  -H 'Content-Type: application/json' \
+  -H 'x-user-id: user_test' \
+  -d '{"postId":"post_123","scheduledAt":"2026-06-15T10:00:00.000Z","mode":"schedule"}'
+# → 200 { status: "scheduled", scheduledAt, jobId, message }
+```
+
+BullMQ wakes the job at `scheduledAt` — no cron DB scan.
+
+## Endpoints
+
+- **v1** — legacy REST (`/v1/posts`, `/v1/media`, …)
+- **api** — mirrors `frontend/app/api/**` (see `GET /api/routes`)
+- Async routes return `{ jobId, status: "queued", queue }` with HTTP 202
+
+## Wiring production logic
+
+1. Port Drizzle schema + queries from `frontend/db`
+2. Port `publish-platform.ts` into `worker/src/publish/platforms/*`
+3. Wire Better Auth session validation in `server/src/middleware/auth.ts`
+4. Deploy on a DO droplet: nginx → server:3001, engine as systemd/pm2 process
+
+## Scale
+
+- **server**: horizontal behind nginx (stateless)
+- **engine**: increase `ENGINE_*_CONCURRENCY` or run more engine processes
+- **platform-publish** queue: isolated rate limits per platform (TikTok vs X)

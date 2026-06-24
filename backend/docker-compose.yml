@@ -1,0 +1,11 @@
+# Local dev: Redis for BullMQ. API + engine run on host (or add services later).
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:

@@ -1,15 +1,21 @@
 {
-  "name": "backend",
-  "module": "index.ts",
-  "type": "module",
+  "name": "social0-backend",
   "private": true,
-  "devDependencies": {
-    "@types/bun": "latest"
+  "workspaces": [
+    "shared",
+    "server",
+    "engine",
+    "worker"
+  ],
+  "scripts": {
+    "build": "bun run --filter @social0/shared build && bun run --filter @social0/worker build && bun run --filter @social0/server build && bun run --filter @social0/engine build",
+    "dev:server": "bun run --filter @social0/server dev",
+    "dev:engine": "bun run --filter @social0/engine dev",
+    "dev": "bun run dev:server & bun run dev:engine",
+    "start:server": "bun run --filter @social0/server start",
+    "start:engine": "bun run --filter @social0/engine start"
   },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "dependencies": {
-    "hono": "^4.11.9"
+  "engines": {
+    "node": ">=20"
   }
 }
