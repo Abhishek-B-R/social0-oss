@@ -1,5 +1,6 @@
 import { Worker, type ConnectionOptions } from "bullmq";
 import { QUEUES, type BillingSyncJob } from "@social0/shared";
+import { syncSubscriptionForUserId } from "../lib/billing-sync.js";
 
 export function startBillingWorker(
   connection: ConnectionOptions,
@@ -9,7 +10,8 @@ export function startBillingWorker(
     QUEUES.BILLING,
     async (job) => {
       console.info(`[worker] billing sync userId=${job.data.userId}`);
-      return { synced: true };
+      const result = await syncSubscriptionForUserId(job.data.userId);
+      return result;
     },
     { connection, concurrency },
   );

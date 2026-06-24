@@ -3,12 +3,16 @@ import {
   loadEnv,
   type JobProgressStore,
 } from "@social0/shared";
+import { createJobProgressPersistHooks } from "./job-progress-persist.js";
 
 let store: JobProgressStore | null = null;
 
 export function getJobProgress(): JobProgressStore {
   if (!store) {
-    store = createJobProgressStore(loadEnv().REDIS_URL);
+    store = createJobProgressStore(
+      loadEnv().REDIS_URL,
+      createJobProgressPersistHooks(),
+    );
   }
   return store;
 }

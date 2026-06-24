@@ -12,6 +12,7 @@ import {
   type MediaConfirmJob,
   type BillingSyncJob,
 } from "@social0/shared";
+import { createJobProgressPersistHooks } from "../lib/job-progress-persist.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -20,6 +21,7 @@ declare module "fastify" {
     queues: {
       publish: Queue<PublishPostJob>;
       platformPublish: Queue<PublishPlatformJob>;
+      platformPublishDlq: Queue<PublishPlatformJob>;
       email: Queue<EmailPostFailedJob>;
       token: Queue<TokenRefreshJob | { sweep: true }>;
       scheduler: Queue;
@@ -36,7 +38,10 @@ export async function registerQueuePlugin(app: FastifyInstance) {
     maxRetriesPerRequest: null,
   };
   app.decorate("redisConnection", connection);
-  const jobProgress = createJobProgressStore(env.REDIS_URL);
+  const jobProgress = createJobProgressStore(
+    env.REDIS_URL,
+    createJobProgressPersistHooks(),
+  );
   app.decorate("jobProgress", jobProgress);
 
   const defaultJobOptions = {
@@ -58,6 +63,16 @@ export async function registerQueuePlugin(app: FastifyInstance) {
         attempts: 5,
       },
     }),
+    platformPublishDlq: new Queue<PublishPlatformJob>(
+      QUEUES.PLATFORM_PUBLISH_DLQ,
+      {
+        connection,
+        defaultJobOptions: {
+          removeOnComplete: false,
+          removeOnFail: false,
+        },
+      },
+    ),
     email: new Queue<EmailPostFailedJob>(QUEUES.EMAIL, {
       connection,
       defaultJobOptions,

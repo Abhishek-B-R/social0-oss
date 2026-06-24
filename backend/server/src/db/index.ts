@@ -20,6 +20,8 @@ import {
   resurfaceSchedules,
   resurfaceEvents,
   autoPlugs,
+  publishJobs,
+  publishJobEvents,
 } from "./schema.js";
 
 const env = loadServerEnv();
@@ -47,6 +49,8 @@ export const db = drizzle(pool, {
     resurfaceSchedules,
     resurfaceEvents,
     autoPlugs,
+    publishJobs,
+    publishJobEvents,
   },
 });
 

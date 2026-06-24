@@ -34,10 +34,14 @@ function buildNextRequest(req: FastifyRequest): NextRequest {
   }
 
   const init: RequestInit = { method: req.method, headers };
-  if (req.method !== "GET" && req.method !== "HEAD" && req.body !== undefined) {
-    init.body = JSON.stringify(req.body);
-    if (!headers.has("content-type")) {
-      headers.set("content-type", "application/json");
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    if (req.rawBody !== undefined) {
+      init.body = req.rawBody;
+    } else if (req.body !== undefined) {
+      init.body = JSON.stringify(req.body);
+      if (!headers.has("content-type")) {
+        headers.set("content-type", "application/json");
+      }
     }
   }
 

@@ -1,39 +1,39 @@
 import type { FastifyInstance } from "fastify";
-import {
-  notImplemented,
-  requireUserId,
-  unauthorized,
-} from "../../middleware/auth.js";
+import { runNextRouteHandler, type NextRouteHandler } from "../../lib/run-next-handler.js";
+import * as slots from "../handlers/queue/slots.js";
+import * as slotsId from "../handlers/queue/slots-id.js";
+import * as nextSlot from "../handlers/queue/next-slot.js";
+import * as add from "../handlers/queue/add.js";
 
 export async function registerQueueRoutes(app: FastifyInstance) {
-  app.get("/queue/slots", async (request) => {
-    const userId = await requireUserId(request);
-    if (!userId) return unauthorized();
-    return notImplemented("GET /api/queue/slots");
+  app.get("/queue/slots", async (req, reply) => {
+    await runNextRouteHandler(req, reply, slots.GET);
   });
-  app.post("/queue/slots", async (request) => {
-    const userId = await requireUserId(request);
-    if (!userId) return unauthorized();
-    return notImplemented("POST /api/queue/slots");
+  app.post("/queue/slots", async (req, reply) => {
+    await runNextRouteHandler(req, reply, slots.POST);
   });
-  app.patch("/queue/slots/:id", async (request) => {
-    const userId = await requireUserId(request);
-    if (!userId) return unauthorized();
-    return notImplemented("PATCH /api/queue/slots/:id");
+  app.patch("/queue/slots/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    await runNextRouteHandler(
+      req,
+      reply,
+      slotsId.PATCH as unknown as NextRouteHandler,
+      { id },
+    );
   });
-  app.delete("/queue/slots/:id", async (request) => {
-    const userId = await requireUserId(request);
-    if (!userId) return unauthorized();
-    return notImplemented("DELETE /api/queue/slots/:id");
+  app.delete("/queue/slots/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    await runNextRouteHandler(
+      req,
+      reply,
+      slotsId.DELETE as unknown as NextRouteHandler,
+      { id },
+    );
   });
-  app.get("/queue/next-slot", async (request) => {
-    const userId = await requireUserId(request);
-    if (!userId) return unauthorized();
-    return notImplemented("GET /api/queue/next-slot");
+  app.get("/queue/next-slot", async (req, reply) => {
+    await runNextRouteHandler(req, reply, nextSlot.GET);
   });
-  app.post("/queue/add", async (request) => {
-    const userId = await requireUserId(request);
-    if (!userId) return unauthorized();
-    return notImplemented("POST /api/queue/add");
+  app.post("/queue/add", async (req, reply) => {
+    await runNextRouteHandler(req, reply, add.POST);
   });
 }

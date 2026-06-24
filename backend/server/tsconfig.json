@@ -5,9 +5,15 @@
     "moduleResolution": "NodeNext",
     "outDir": "dist",
     "rootDir": "src",
+    "baseUrl": ".",
     "strict": true,
     "skipLibCheck": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "paths": {
+      "next/headers": ["./src/lib/shim/next-headers.ts"],
+      "next/server": ["./src/lib/shim/next-server.ts"],
+      "next/navigation": ["./src/lib/shim/next-navigation.ts"]
+    }
   },
   "include": ["src/**/*"],
   "references": [{ "path": "../shared" }]

@@ -5,7 +5,7 @@ export const SUPPORTED_PLATFORMS = [
   "youtube",
   "pinterest",
   "tiktok",
-  "twitter",
+  "twitter_x",
   "threads",
   "bluesky",
 ] as const;

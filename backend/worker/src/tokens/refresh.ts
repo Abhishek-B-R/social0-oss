@@ -1,10 +1,8 @@
 import type { TokenRefreshJob } from "@social0/shared";
+import { getValidToken } from "../lib/token-refresh.js";
 
-/** Port OAuth refresh logic from frontend connect routes. */
 export async function refreshPlatformToken(
   job: TokenRefreshJob,
 ): Promise<void> {
-  console.info(
-    `[worker] token refresh platform=${job.platform} account=${job.connectedAccountId}`,
-  );
+  await getValidToken(job.connectedAccountId, job.platform);
 }

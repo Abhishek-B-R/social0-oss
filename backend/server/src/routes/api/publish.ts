@@ -11,6 +11,7 @@ import {
   queueNameForJob,
 } from "../../services/enqueue.js";
 import { JOB_NAMES } from "@social0/shared";
+import { loadJobSnapshotFromDb } from "../../lib/job-snapshot-from-db.js";
 
 const publishSchema = z
   .object({
@@ -101,7 +102,10 @@ export async function registerJobRoutes(app: FastifyInstance) {
     if (!userId) return reply.status(401).send(unauthorized());
 
     const { trackingId } = request.params as { trackingId: string };
-    const snapshot = await app.jobProgress.getSnapshot(trackingId);
+    let snapshot = await app.jobProgress.getSnapshot(trackingId);
+    if (!snapshot) {
+      snapshot = await loadJobSnapshotFromDb(trackingId);
+    }
     if (!snapshot) {
       return reply.status(404).send({ error: "Job not found", trackingId });
     }
@@ -116,7 +120,10 @@ export async function registerJobRoutes(app: FastifyInstance) {
     if (!userId) return reply.status(401).send(unauthorized());
 
     const { trackingId } = request.params as { trackingId: string };
-    const snapshot = await app.jobProgress.getSnapshot(trackingId);
+    let snapshot = await app.jobProgress.getSnapshot(trackingId);
+    if (!snapshot) {
+      snapshot = await loadJobSnapshotFromDb(trackingId);
+    }
     if (!snapshot) {
       return reply.status(404).send({ error: "Job not found", trackingId });
     }

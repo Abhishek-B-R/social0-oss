@@ -1,9 +1,16 @@
+import {
+  SUPPORTED_PLATFORMS,
+  type SupportedPlatform,
+} from "./constants/platforms.js";
+
 /** BullMQ queue names — one queue per concern for independent scaling. */
 export const QUEUES = {
   /** Fan-out orchestrator: splits a post into per-platform jobs. */
   PUBLISH: "publish",
-  /** Long-running per-platform publish (TikTok, YouTube, Meta, etc.). */
+  /** Legacy single queue — kept for backward compatibility during rollout. */
   PLATFORM_PUBLISH: "platform-publish",
+  /** Dead-letter queue for exhausted platform publish attempts. */
+  PLATFORM_PUBLISH_DLQ: "platform-publish-dlq",
   /** Transactional email (post failed, etc.). */
   EMAIL: "email",
   /** OAuth token refresh / token-health cron work. */
@@ -17,6 +24,15 @@ export const QUEUES = {
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
+
+/** Per-platform publish queue — isolates slow/noisy platforms (e.g. TikTok). */
+export function platformPublishQueueName(platform: SupportedPlatform): string {
+  return `platform-publish-${platform}`;
+}
+
+export function allPlatformPublishQueueNames(): string[] {
+  return SUPPORTED_PLATFORMS.map(platformPublishQueueName);
+}
 
 export const JOB_NAMES = {
   PUBLISH_POST: "publish.post",

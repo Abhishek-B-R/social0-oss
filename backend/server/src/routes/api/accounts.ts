@@ -1,46 +1,112 @@
 import type { FastifyInstance } from "fastify";
-import {
-  accepted,
-  notImplemented,
-  requireUserId,
-  unauthorized,
-} from "../../middleware/auth.js";
-import {
-  enqueueTokenRefresh,
-  queueNameForJob,
-} from "../../services/enqueue.js";
-import { JOB_NAMES } from "@social0/shared";
+import { and, count, eq } from "drizzle-orm";
+import { requireUserId, unauthorized } from "../../middleware/auth.js";
+import { db } from "../../db/index.js";
+import { connectedAccounts, postPublications } from "../../db/schema.js";
+import { decryptToken } from "../../lib/encryption.js";
+import { revokeTokenOnPlatform } from "../../lib/revoke-token.js";
+import type { Platform } from "../../lib/platforms.js";
 
 export async function registerAccountsRoutes(app: FastifyInstance) {
-  app.get("/accounts", async (request) => {
+  app.get("/accounts", async (request, reply) => {
     const userId = await requireUserId(request);
-    if (!userId) return unauthorized();
-    return notImplemented("GET /api/accounts");
+    if (!userId) return reply.status(401).send(unauthorized());
+
+    const accounts = await db.query.connectedAccounts.findMany({
+      where: eq(connectedAccounts.userId, userId),
+      columns: {
+        id: true,
+        platform: true,
+        platformUsername: true,
+        profileImageUrl: true,
+        isActive: true,
+        isTwitterPremium: true,
+        tokenExpiresAt: true,
+        tokenStatus: true,
+        platformMetadata: true,
+      },
+    });
+
+    return accounts;
   });
 
-  app.delete("/accounts/:id", async (request) => {
+  app.get("/accounts/:id", async (request, reply) => {
     const userId = await requireUserId(request);
-    if (!userId) return unauthorized();
-    return notImplemented("DELETE /api/accounts/:id");
+    if (!userId) return reply.status(401).send(unauthorized());
+    const { id: accountId } = request.params as { id: string };
+
+    const [account] = await db
+      .select({
+        id: connectedAccounts.id,
+        platform: connectedAccounts.platform,
+        platformUsername: connectedAccounts.platformUsername,
+      })
+      .from(connectedAccounts)
+      .where(
+        and(
+          eq(connectedAccounts.id, accountId),
+          eq(connectedAccounts.userId, userId),
+        ),
+      )
+      .limit(1);
+
+    if (!account) {
+      return reply.status(404).send({ error: "Account not found" });
+    }
+
+    const [row] = await db
+      .select({ value: count() })
+      .from(postPublications)
+      .where(eq(postPublications.connectedAccountId, accountId));
+
+    return {
+      ...account,
+      publicationCount: Number(row?.value ?? 0),
+    };
+  });
+
+  app.delete("/accounts/:id", async (request, reply) => {
+    const userId = await requireUserId(request);
+    if (!userId) return reply.status(401).send(unauthorized());
+    const { id: accountId } = request.params as { id: string };
+
+    const [account] = await db
+      .select()
+      .from(connectedAccounts)
+      .where(
+        and(
+          eq(connectedAccounts.id, accountId),
+          eq(connectedAccounts.userId, userId),
+        ),
+      )
+      .limit(1);
+
+    if (!account) {
+      return reply.status(404).send({ error: "Account not found" });
+    }
+
+    try {
+      const accessToken = decryptToken(
+        account.encryptedAccessToken,
+        account.id,
+      );
+      await revokeTokenOnPlatform(account.platform as Platform, accessToken);
+    } catch {
+      // best effort
+    }
+
+    await db
+      .delete(connectedAccounts)
+      .where(eq(connectedAccounts.id, accountId));
+
+    return { success: true };
   });
 
   app.post("/accounts/refresh-premium", async (request, reply) => {
     const userId = await requireUserId(request);
-    if (!userId) return unauthorized();
-    const body = (request.body ?? {}) as {
-      connectedAccountId?: string;
-      platform?: string;
-    };
-    if (!body.connectedAccountId || !body.platform) {
-      return reply.status(400).send({ error: "connectedAccountId and platform required" });
-    }
-    const job = await enqueueTokenRefresh(app, {
-      userId,
-      connectedAccountId: body.connectedAccountId,
-      platform: body.platform as never,
-    });
-    return reply
-      .status(202)
-      .send(accepted(job.id!, queueNameForJob(JOB_NAMES.TOKEN_REFRESH)));
+    if (!userId) return reply.status(401).send(unauthorized());
+    const { POST } = await import("../../connect/refresh-twitter-premium.js");
+    const { runNextRouteHandler } = await import("../../lib/run-next-handler.js");
+    await runNextRouteHandler(request, reply, POST);
   });
 }

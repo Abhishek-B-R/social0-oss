@@ -2,34 +2,12 @@ import { Queue, Worker, type ConnectionOptions } from "bullmq";
 import {
   JOB_NAMES,
   QUEUES,
+  platformPublishQueueName,
   type PublishPostJob,
   type PublishPlatformJob,
-  type SupportedPlatform,
 } from "@social0/shared";
 import { getJobProgress } from "../lib/job-progress.js";
-
-/** Stub until DB layer is ported — returns publication targets for a post. */
-async function loadPublicationTargets(
-  job: PublishPostJob,
-): Promise<
-  Array<{
-    publicationId: string;
-    connectedAccountId: string;
-    platform: SupportedPlatform;
-  }>
-> {
-  if (job.connectedAccountIds?.length) {
-    return job.connectedAccountIds.map((id, i) => ({
-      publicationId: `${job.postId}-${i}`,
-      connectedAccountId: id,
-      platform: "twitter" as SupportedPlatform,
-    }));
-  }
-  console.warn(
-    `[worker] loadPublicationTargets stub — postId=${job.postId} userId=${job.userId}`,
-  );
-  return [];
-}
+import { loadPublicationTargets } from "../publish/load-targets.js";
 
 async function track(
   job: PublishPostJob,
@@ -50,9 +28,19 @@ export function startPublishWorker(
   connection: ConnectionOptions,
   concurrency: number,
 ) {
-  const platformQueue = new Queue<PublishPlatformJob>(QUEUES.PLATFORM_PUBLISH, {
-    connection,
-  });
+  const platformQueues = new Map<string, Queue<PublishPlatformJob>>();
+
+  function getPlatformQueue(platform: string) {
+    const name = platformPublishQueueName(
+      platform as PublishPlatformJob["platform"],
+    );
+    let q = platformQueues.get(name);
+    if (!q) {
+      q = new Queue<PublishPlatformJob>(name, { connection });
+      platformQueues.set(name, q);
+    }
+    return q;
+  }
 
   return new Worker<PublishPostJob>(
     QUEUES.PUBLISH,
@@ -65,11 +53,9 @@ export function startPublishWorker(
       const targets = await loadPublicationTargets(data);
       if (targets.length === 0) {
         await track(data, "failed", {
-          message: "No publication targets — wire DB",
+          message: "No publication targets for this post",
         });
-        throw new Error(
-          `No publication targets for post ${data.postId} — wire DB`,
-        );
+        throw new Error(`No publication targets for post ${data.postId}`);
       }
 
       await track(data, "fan_out", {
@@ -84,7 +70,8 @@ export function startPublishWorker(
             connectedAccountId: t.connectedAccountId,
             message: `Queued ${t.platform}`,
           });
-          return platformQueue.add(
+          const queue = getPlatformQueue(t.platform);
+          return queue.add(
             JOB_NAMES.PUBLISH_PLATFORM,
             {
               postId: data.postId,
@@ -96,6 +83,8 @@ export function startPublishWorker(
             },
             {
               jobId: `platform-${t.publicationId}`,
+              attempts: 5,
+              backoff: { type: "exponential", delay: 10_000 },
             },
           );
         }),

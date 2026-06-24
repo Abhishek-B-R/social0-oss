@@ -17,11 +17,28 @@ function channelKey(trackingId: string) {
   return `job:events:${trackingId}`;
 }
 
+export function createJobProgressStore(
+  redisUrl: string,
+  hooks?: JobProgressHooks,
+) {
+  return new JobProgressStore(redisUrl, hooks);
+}
+
+export type JobProgressHooks = {
+  onInit?: (snapshot: JobProgressSnapshot) => Promise<void>;
+  onEvent?: (
+    event: JobProgressEvent,
+    snapshot: JobProgressSnapshot,
+  ) => Promise<void>;
+};
+
 export class JobProgressStore {
   private publisher: Redis;
+  private hooks?: JobProgressHooks;
 
-  constructor(redisUrl: string) {
+  constructor(redisUrl: string, hooks?: JobProgressHooks) {
     this.publisher = new Redis(redisUrl, { maxRetriesPerRequest: null });
+    this.hooks = hooks;
   }
 
   async close() {
@@ -62,6 +79,7 @@ export class JobProgressStore {
       STATE_TTL_SEC,
     );
     await this.publishEvent(input.trackingId, event);
+    await this.hooks?.onInit?.(snapshot);
     return snapshot;
   }
 
@@ -131,6 +149,7 @@ export class JobProgressStore {
       STATE_TTL_SEC,
     );
     await this.publishEvent(input.trackingId, event);
+    await this.hooks?.onEvent?.(event, snapshot);
 
     if (
       snapshot.total > 0 &&
@@ -177,8 +196,4 @@ export class JobProgressStore {
     });
     return subscriber;
   }
-}
-
-export function createJobProgressStore(redisUrl: string) {
-  return new JobProgressStore(redisUrl);
 }
