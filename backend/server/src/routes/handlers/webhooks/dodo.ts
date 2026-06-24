@@ -253,7 +253,7 @@ async function handleSubscriptionOnHold(payload: {
   await setSubscription(userId, {
     tier: "free",
     expiresAt: null,
-    subscriptionId: null,
+    subscriptionId: data.subscription_id ?? null,
     customerId: data.customer?.customer_id ?? null,
   });
   await syncConnectedAccountsToLimit(userId).catch((e) =>

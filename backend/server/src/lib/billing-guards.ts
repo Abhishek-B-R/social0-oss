@@ -1,6 +1,6 @@
 import DodoPayments from "dodopayments";
 import { db } from "../db/index.js";
-import { trialClaims } from "../db/schema.js";
+import { trialClaims, userSettings } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { PLAN_IDS, isActiveTier } from "./plans.js";
 import { getSubscriptionForUser } from "./subscription.js";
@@ -93,6 +93,95 @@ export async function listOpenDodoSubscriptions(
   }
 
   return results;
+}
+
+/** Allowlist Dodo customer portal redirect URLs (prevents open redirect). */
+export function isAllowedDodoPortalUrl(link: string): boolean {
+  try {
+    const u = new URL(link);
+    const host = u.hostname.toLowerCase();
+    return (
+      u.protocol === "https:" &&
+      (host === "customer.dodopayments.com" ||
+        host === "test.customer.dodopayments.com")
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Persist Dodo IDs discovered from API when local user_settings is stale. */
+export async function backfillBillingIds(
+  userId: string,
+  ids: { customerId?: string | null; subscriptionId?: string | null },
+): Promise<void> {
+  const patch: { customerId?: string; subscriptionId?: string } = {};
+  if (ids.customerId) patch.customerId = ids.customerId;
+  if (ids.subscriptionId) patch.subscriptionId = ids.subscriptionId;
+  if (Object.keys(patch).length === 0) return;
+
+  await db.update(userSettings).set(patch).where(eq(userSettings.userId, userId));
+}
+
+/**
+ * Resolve Dodo customer/subscription IDs for billing portal and recovery flows.
+ * Falls back to open subscriptions by email when DB was cleared (e.g. after on_hold sync).
+ */
+export async function resolveBillingCustomer(
+  userId: string,
+  email: string,
+): Promise<{ customerId: string | null; subscriptionId: string | null }> {
+  const sub = await getSubscriptionForUser(userId);
+  const openSubs = await listOpenDodoSubscriptions(email, sub.customerId);
+
+  let customerId = sub.customerId;
+  let subscriptionId = sub.subscriptionId;
+
+  if (!customerId) {
+    for (const s of openSubs) {
+      if (s.customerId) {
+        customerId = s.customerId;
+        break;
+      }
+    }
+  }
+
+  if (!subscriptionId && openSubs.length > 0) {
+    for (const status of ["on_hold", "pending", "active"] as const) {
+      const match = openSubs.find((s) => s.status === status);
+      if (match) {
+        subscriptionId = match.subscriptionId;
+        if (!customerId) customerId = match.customerId;
+        break;
+      }
+    }
+  }
+
+  if (
+    (customerId && customerId !== sub.customerId) ||
+    (subscriptionId && subscriptionId !== sub.subscriptionId)
+  ) {
+    await backfillBillingIds(userId, { customerId, subscriptionId });
+  }
+
+  return { customerId, subscriptionId };
+}
+
+/** Create a Dodo customer portal session URL for payment-method updates. */
+export async function createCustomerPortalUrl(
+  customerId: string,
+): Promise<string | null> {
+  const client = dodoClient();
+  if (!client) return null;
+
+  try {
+    const portalSession = await client.customers.customerPortal.create(customerId);
+    const link = portalSession.link ?? null;
+    if (!link || !isAllowedDodoPortalUrl(link)) return null;
+    return link;
+  } catch {
+    return null;
+  }
 }
 
 export type CheckoutEligibility =

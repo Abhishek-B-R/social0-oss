@@ -640,12 +640,6 @@ export function BillingClient({
     if ((res.ok || res.status === 409) && typeof data.url === "string") {
       if (res.status === 409 && data.code === "checkout_in_progress") {
         toast.info("Opening your existing checkout…");
-      } else if (res.status === 409 && data.code === "use_portal") {
-        toast.info(
-          typeof data.error === "string"
-            ? data.error
-            : "Opening the customer portal to update your payment method…",
-        );
       }
       window.location.href = data.url;
       return true;
@@ -657,7 +651,7 @@ export function BillingClient({
           : "Open the customer portal to fix your subscription.",
       );
       await handleChangePlan();
-      return true;
+      return false;
     }
     if (res.status === 409 && data.code === "use_change_plan") {
       toast.info(

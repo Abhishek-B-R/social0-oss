@@ -100,6 +100,12 @@ function OnboardingWelcomeContent() {
       if ((res.ok || res.status === 409) && typeof data.url === "string") {
         if (res.status === 409 && data.code === "checkout_in_progress") {
           toast.info("Opening your existing checkout…");
+        } else if (res.status === 409 && data.code === "use_portal") {
+          toast.info(
+            typeof data.error === "string"
+              ? data.error
+              : "Opening the customer portal to update your payment method…",
+          );
         }
         window.location.href = data.url;
         return;
