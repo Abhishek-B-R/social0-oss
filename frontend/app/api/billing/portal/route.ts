@@ -1,16 +1,15 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import DodoPayments from "dodopayments";
-import { db } from "@/db";
-import { userSettings } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import {
+  createCustomerPortalUrl,
+  resolveBillingCustomer,
+} from "@/lib/billing-guards";
+import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
-const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
-const environment = (process.env.DODO_PAYMENTS_ENVIRONMENT as "test_mode" | "live_mode") ?? "test_mode";
-const client = new DodoPayments({ bearerToken: apiKey, environment });
+const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
 
 /**
  * Redirects the current user to their Dodo Payments customer portal
@@ -29,57 +28,30 @@ export async function GET() {
     );
   }
 
-  const row = await db.query.userSettings.findFirst({
-    where: eq(userSettings.userId, session.user.id),
-    columns: { customerId: true },
-  });
+  const userEmail = session.user.email?.trim() ?? "";
+  if (!userEmail) {
+    return NextResponse.json(
+      { error: "Your account must have an email to open billing." },
+      { status: 400 },
+    );
+  }
 
-  if (!row?.customerId) {
+  const { customerId } = await resolveBillingCustomer(session.user.id, userEmail);
+  if (!customerId) {
     return NextResponse.json(
       { error: "No subscription found. Subscribe to a plan first." },
       { status: 404 },
     );
   }
 
-  try {
-    const portalSession = await client.customers.customerPortal.create(row.customerId);
-    const link = portalSession.link ?? null;
-    if (!link) {
-      return NextResponse.json(
-        { error: "Could not open customer portal" },
-        { status: 502 },
-      );
-    }
-    // Allowlist redirect: only Dodo customer portal domains (prevents open redirect)
-    let allowed = false;
-    try {
-      const u = new URL(link);
-      const host = u.hostname.toLowerCase();
-      if (
-        host === "customer.dodopayments.com" ||
-        host === "test.customer.dodopayments.com"
-      ) {
-        allowed = u.protocol === "https:";
-      }
-    } catch {
-      /* invalid URL */
-    }
-    if (!allowed) {
-      console.error("[billing/portal] Rejected non-Dodo redirect URL");
-      return NextResponse.json(
-        { error: "Could not open customer portal" },
-        { status: 502 },
-      );
-    }
-    return NextResponse.redirect(link);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Portal failed";
-    console.error("Dodo customer portal error:", msg);
+  const link = await createCustomerPortalUrl(customerId);
+  if (!link) {
     return NextResponse.json(
       { error: "Could not open customer portal" },
       { status: 502 },
     );
   }
+  return NextResponse.redirect(link);
 }
 
 export async function POST() {
@@ -95,59 +67,29 @@ export async function POST() {
     );
   }
 
-  const row = await db.query.userSettings.findFirst({
-    where: eq(userSettings.userId, session.user.id),
-    columns: { customerId: true },
-  });
+  const userEmail = session.user.email?.trim() ?? "";
+  if (!userEmail) {
+    return NextResponse.json(
+      { error: "Your account must have an email to open billing." },
+      { status: 400 },
+    );
+  }
 
-  if (!row?.customerId) {
+  const { customerId } = await resolveBillingCustomer(session.user.id, userEmail);
+  if (!customerId) {
     return NextResponse.json(
       { error: "No subscription found. Subscribe to a plan first." },
       { status: 404 },
     );
   }
 
-  try {
-    const portalSession = await client.customers.customerPortal.create(
-      row.customerId,
-    );
-    const link = portalSession.link ?? null;
-    if (!link) {
-      return NextResponse.json(
-        { error: "Could not open customer portal" },
-        { status: 502 },
-      );
-    }
-
-    // Allowlist redirect: only Dodo customer portal domains (prevents open redirect)
-    let allowed = false;
-    try {
-      const u = new URL(link);
-      const host = u.hostname.toLowerCase();
-      if (
-        host === "customer.dodopayments.com" ||
-        host === "test.customer.dodopayments.com"
-      ) {
-        allowed = u.protocol === "https:";
-      }
-    } catch {
-      /* invalid URL */
-    }
-    if (!allowed) {
-      console.error("[billing/portal] Rejected non-Dodo redirect URL");
-      return NextResponse.json(
-        { error: "Could not open customer portal" },
-        { status: 502 },
-      );
-    }
-
-    return NextResponse.json({ url: link });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Portal failed";
-    console.error("Dodo customer portal error:", msg);
+  const link = await createCustomerPortalUrl(customerId);
+  if (!link) {
     return NextResponse.json(
       { error: "Could not open customer portal" },
       { status: 502 },
     );
   }
+
+  return NextResponse.json({ url: link });
 }

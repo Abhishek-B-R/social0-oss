@@ -5,7 +5,11 @@ import DodoPayments from "dodopayments";
 import { PLAN_IDS } from "@/lib/plans";
 import { env } from "@/lib/env";
 import { checkoutLimiter, enforceRateLimit } from "@/lib/ratelimit";
-import { evaluateCheckoutEligibility } from "@/lib/billing-guards";
+import {
+  createCustomerPortalUrl,
+  evaluateCheckoutEligibility,
+  resolveBillingCustomer,
+} from "@/lib/billing-guards";
 import { resolveCheckoutSession } from "@/lib/pending-checkout";
 
 const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
@@ -62,6 +66,25 @@ export async function POST(request: Request) {
     userEmail,
   );
   if (!eligibility.allowed) {
+    if (eligibility.code === "use_portal") {
+      const { customerId } = await resolveBillingCustomer(
+        session.user.id,
+        userEmail,
+      );
+      if (customerId) {
+        const portalUrl = await createCustomerPortalUrl(customerId);
+        if (portalUrl) {
+          return NextResponse.json(
+            {
+              error: eligibility.error,
+              code: eligibility.code,
+              url: portalUrl,
+            },
+            { status: 409 },
+          );
+        }
+      }
+    }
     return NextResponse.json(
       { error: eligibility.error, code: eligibility.code },
       { status: eligibility.status },
