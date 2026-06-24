@@ -44,10 +44,10 @@ Content types and allowed platforms: `lib/content-types.ts` (text, image, video,
 - **Database:** PostgreSQL via Drizzle ORM; schema in `db/schema.ts`, migrations in `db/migrations/`.
 - **Auth:** Better Auth (Google OAuth + email/password); tables `user`, `session`, `account`, `verification` are owned by Better Auth — do not create app migrations that alter these; reference them for FKs and adapter only.
 - **Storage:** Cloudflare R2 (S3-compatible) for media; optional — use `isR2Configured()` / `getR2Client()` / `getPresignedUploadUrl()` from `lib/r2.ts`. Media upload uses presign → client PUT → confirm flow; see §1.6.
-- **Rate limiting:** Upstash Redis via `lib/ratelimit.ts` (optional; used for API, OAuth, and upload/presign routes).
+- **Rate limiting:** Upstash Redis via `lib/ratelimit.ts` (API routes: upload, publish, OAuth, billing, sign-up). **Edge/network boundary:** `proxy.ts` + `lib/edge-ratelimit.ts` (page loads and `/api/auth/*` before SSR/Better Auth). See §1.13.
 - **Styling:** Tailwind CSS v4; UI primitives from Radix/shadcn in `components/ui/`.
 - **Validation:** Zod for env (`lib/env.ts`); shared validation in `lib/validation.ts` and `lib/publish-validation.ts`.
-- **Billing:** Dodo Payments (optional); subscription tier stored in `user_settings`; plans and limits in `lib/plans.ts`, `lib/plan-limits.ts`, `lib/subscription.ts`, `lib/billing-sync.ts`.
+- **Billing:** Dodo Payments (optional); subscription tier in `user_settings`; checkout guards in `lib/billing-guards.ts` and `lib/pending-checkout.ts`; plans/limits in `lib/plans.ts`, `lib/plan-limits.ts`, `lib/subscription.ts`, `lib/billing-sync.ts`. See §1.8.
 - **Sign-up:** Cloudflare Turnstile optional (`app/api/auth/sign-up-with-turnstile/route.ts`); error mapping in `lib/sign-up-errors.ts`.
 - **Feedback:** Canny (embedded board); SSO via `GET /api/canny/sso`; see §1.11.
 
@@ -77,9 +77,11 @@ Content types and allowed platforms: `lib/content-types.ts` (text, image, video,
   - **Platforms & OAuth:** `platforms.ts`, `facebook-scopes.ts` (client-safe scope strings), `facebook-oauth.ts` (**server-only** — imports `env.ts`), `preconnect.ts`.
   - **Publish:** `publish-platform.ts`, `publish-order.ts`, `publish-validation.ts`, `platform-view-url.ts` (TikTok profile links).
   - **Media:** `upload-file.ts`, `r2.ts`, `tiktok-photo-process.ts`, `video-duration.ts`, `video-aspect-ratio.ts`.
-  - **Billing & plans:** `plans.ts`, `plan-limits.ts`, `subscription.ts`, `billing-sync.ts`.
-  - **Other:** `encryption.ts`, `token-refresh.ts`, `token-health.ts`, `composer-bridge.ts`, `pinterest-settings.ts`, `sign-up-errors.ts`, `docs-url.ts`.
-- **`db/`** — Drizzle schema (`schema.ts`), migrations, and `db/README.md`.
+  - **Billing & plans:** `plans.ts`, `plan-limits.ts`, `subscription.ts`, `billing-sync.ts`, **`billing-guards.ts`**, **`pending-checkout.ts`**.
+  - **Edge / proxy:** `edge-ratelimit.ts`, `proxy-request.ts`; network entry is **`proxy.ts`** (Next.js 16+, not `middleware.ts`).
+  - **Other:** `encryption.ts`, `token-refresh.ts`, `token-health.ts`, `composer-bridge.ts`, `pinterest-settings.ts`, `sign-up-errors.ts`, `docs-url.ts`, `client-ip.ts`, `database-url.ts`.
+- **`db/`** — Drizzle schema (`schema.ts`), migrations, `db/README.md`. Repair script: `scripts/db-repair-migrate.ts` when schema drifted ahead of journal.
+- **`proxy.ts`** — Network boundary (sets `x-pathname`, edge rate limits). Matcher: `/`, `/auth`, `/dashboard`, `/api/auth`, `/api/connect`, `/api/accounts`.
 
 ### 1.3 Conventions
 
@@ -99,16 +101,16 @@ Content types and allowed platforms: `lib/content-types.ts` (text, image, video,
 
 ### 1.4 Database
 
-- **Schema:** Single source of truth is `db/schema.ts`. Enums: `platform`, `post_status`, `publication_status`. Key tables: Better Auth tables; `connected_accounts` (includes `is_twitter_premium`, `platformMetadata` JSON); `media_uploads`, `posts`, `post_publications`, `user_settings`, `platform_rate_limits`, `resurface_schedules`, `resurface_events`, `auto_plugs`.
+- **Schema:** Single source of truth is `db/schema.ts`. Enums: `platform`, `post_status`, `publication_status`. Key tables: Better Auth tables; `connected_accounts` (includes `is_twitter_premium`, `platformMetadata` JSON); `media_uploads`, `posts`, `post_publications`, `user_settings`, **`trial_claims`** (one trial per normalized billing email), `platform_rate_limits`, `resurface_schedules`, `resurface_events`, `auto_plugs`.
 - **Posts:** CHECK constraint — either non-empty `final_content` or at least one `media_id`. Enforce the same in app validation.
-- **Migrations:** Generate with `npm run db:generate`; run with `npm run db:migrate`. Never edit existing `.sql` files or `_journal.json` (see §2.6).
+- **Migrations:** Generate with `npm run db:generate`; run with `npm run db:migrate`. Never edit existing `.sql` files or `_journal.json` (see §2.6). Use **direct** Neon URL for migrate (`DATABASE_URL_UNPOOLED` or strip `-pooler.` from host — see `drizzle.config.ts`). If migrate fails with “already exists” drift, run `npx tsx scripts/db-repair-migrate.ts`.
 - **Encryption:** OAuth state and tokens are encrypted **on the server** in `lib/encryption.ts` (AES-256-GCM, HKDF per-account salt; format `version:salt:iv:ciphertext:authTag`). Never log or expose tokens to the client. See `db/README.md`.
 
 ### 1.5 OAuth and connect flows
 
 - **Generic OAuth 2.0:** Entry `app/api/connect/[platform]/route.ts`; callback `app/api/connect/[platform]/callback/route.ts`.
 - **Twitter/X:** OAuth 1.0a only. Request token in encrypted cookie; callback uses `oauth_token` + `oauth_verifier`.
-- **TikTok:** PKCE. Code verifier in `verification` table (not in state — state size ~512 chars). On connect, store **`username`** and `profile_deep_link` in `platformUsername` / `platformMetadata.profileUrl` — **never** use `display_name` as the handle (see §2.10).
+- **TikTok:** PKCE. Code verifier in `verification` table (not in state — state size ~512 chars). On connect, store **`username`** and `profile_deep_link` in `platformUsername` / `platformMetadata.profileUrl` — **never** use `display_name` as the handle (see §2.10). **Connect route:** no OAuth rate limit / session-binding (plain redirect); callback skips `assertOAuthCallbackSession` — encrypted state + PKCE only. Scopes include `user.info.profile` for `@handle`.
 - **Instagram (Meta):** (1) Direct Instagram OAuth, or (2) Instagram via Facebook Page (`/api/connect/instagram-facebook/...` → page list → POST `/api/connect/instagram-facebook/select`).
 - **Pinterest:** After token exchange, fetch boards; redirect to board select or create-board flow; selection stored via `verification` table.
 - **Facebook Pages (important — differs from old docs):**
@@ -161,7 +163,8 @@ Production Facebook connect should use **Facebook Login for Business** with a Me
 #### Platform “View” links
 
 - **`lib/platform-view-url.ts`**: `getPublicationViewUrl()` for post detail “View on platform”.
-- **TikTok:** Links to **creator profile** (`https://www.tiktok.com/@handle`), not display name or wrong video ID. Resolves from `platformMetadata.profileUrl`, `platformUsername`, or API (`fetchTikTokProfileUrl`). On successful TikTok publish, `publish.ts` may backfill `platformUsername` and `profileUrl` on `connected_accounts`.
+- **TikTok:** Links to **creator profile** (`https://www.tiktok.com/@handle`), not display name or wrong video ID. Resolves from `platformMetadata.profileUrl`, `platformUsername`, or API (`fetchTikTokConnectAccount`). On successful TikTok publish, `publish.ts` may backfill `platformUsername` and `profileUrl` on `connected_accounts`.
+- **Instagram:** Profile/view links use **`platformUsername` (handle)**, not numeric Graph API id — `resolveInstagramProfileUrl()` / `buildInstagramProfileUrl()` in `lib/platform-view-url.ts`.
 
 #### Media
 
@@ -177,9 +180,17 @@ Production Facebook connect should use **Facebook Login for Business** with a Me
 ### 1.8 Subscription and billing
 
 - **Tiers:** `free`, `starter`, `growth` in `lib/plans.ts`.
-- **Storage:** `user_settings.subscriptionTier`, `subscriptionExpiresAt`, `subscriptionId`, `customerId`. Expired → treated as `free`.
-- **Dodo Payments:** Checkout `POST /api/billing/checkout`; portal `POST /api/billing/portal`; sync via `syncSubscriptionForUserId()` in `lib/billing-sync.ts` (downgrades to free when no active sub). Webhook `POST /api/webhooks/dodo` sets/downgrades tier; does **not** call sync.
-- **Gating:** `lib/plan-limits.ts` before connect, bulk tools, auto-plug, resurface, Twitter publish.
+- **Storage:** `user_settings.subscriptionTier`, `subscriptionExpiresAt`, `subscriptionId`, `customerId`, `hasUsedTrial` (sticky once user ever had a paid tier), `pendingPlanTier`, `subscriptionCancelAtPeriodEnd`.
+- **Trial dedup:** `trial_claims` table — one row per **normalized** billing email (`normalizeBillingEmail()` in `billing-guards.ts` strips Gmail `+alias` and dots). Written on successful webhook activation; checkout sets `subscription_data.trial_period_days` to **0** if trial already claimed.
+- **Checkout (`POST /api/billing/checkout`):**
+  1. `evaluateCheckoutEligibility()` — block if active paid tier, or any open Dodo sub (`active` / `on_hold` / `pending`); returns `code: use_change_plan` or `use_portal`.
+  2. `resolveCheckoutSession()` in `pending-checkout.ts` — **one pending checkout per user** (Redis, 1h TTL); double-tab returns same `cks_…` URL; concurrent creates serialized with Redis lock.
+  3. Passes `trial_period_days: 7 | 0` explicitly to Dodo (do not rely on product default alone).
+- **Change plan (`POST /api/billing/change-plan`):** In-place `changePlan` on existing `subscriptionId`. Trial users (`previous_billing_date` empty) must use checkout (`trial_upgrade_requires_checkout`). `on_hold` → `use_portal`.
+- **Webhook (`POST /api/webhooks/dodo`):** Idempotent via `claimWebhookDelivery`. Tier updates only when subscription `active`. **Upgrades** require a recent **paid** payment (`total_amount > 0`) via `findRecentPaidUpgradePayment`. Ignores duplicate `subscription_id` when user already has canonical active sub. `subscription.on_hold` → revert user to `free`. Clears pending checkout on success. Records `trial_claims`.
+- **Sync:** `syncSubscriptionForUserId()` in `lib/billing-sync.ts` (client poll after checkout); webhook is primary source of truth.
+- **Portal:** `POST /api/billing/portal` → Dodo customer portal (allowlisted redirect domains only).
+- **Gating:** `lib/plan-limits.ts` before connect, bulk tools, auto-plug, resurface, Twitter publish. `hasUsedTrial` drives “Start trial” vs “Upgrade” copy in billing/onboarding.
 
 ### 1.9 Onboarding
 
@@ -203,6 +214,16 @@ For **use-case-based** Meta apps (common for Social0):
 - **`pages_*` permissions** should show **“Ready to publish”** for production posting.
 - **`public_profile` stuck at “Ready for testing”** (= Standard Access) blocks **external** Facebook Login users (testers/roles only). Fix in Meta dashboard by completing app review / removing testing-only permission states — not fixable in code alone.
 - Production: set **`FACEBOOK_LOGIN_CONFIG_ID`** in hosting env (Vercel) when using Login for Business.
+
+### 1.13 Edge rate limiting (`proxy.ts`)
+
+Next.js 16 uses **`proxy.ts`** at the network boundary (replaces deprecated `middleware.ts` for this app).
+
+- **Page limit** (`edgePageIpLimiter`): **300/min per IP** — only **full document loads** (`isFullPageDocumentRequest()` in `lib/proxy-request.ts`). **Do not** count RSC flights (`Rsc: 1`), router prefetches, or `text/x-component` requests — one dashboard refresh fans out to dozens of internal requests; counting all of them caused false 429s.
+- **Auth limit** (`edgeAuthIpLimiter`): **120/min per IP** on `/api/auth/*` (sign-up, sign-in, etc.).
+- **Session poll** (`edgeAuthSessionPollLimiter`): **600/min per IP** for `get-session`, `subscription-check`.
+- **Fails open** if Redis unavailable (site stays up; limits disabled briefly). API route limits in `lib/ratelimit.ts` are separate and may fail closed in production.
+- **TikTok connect** bypasses `oauthLimiter` in connect route (by design); other platforms use `oauthLimiter` (120/10min per user).
 
 ---
 
@@ -272,6 +293,28 @@ When removing a platform from `platformEnum`, delete existing rows in the migrat
 
 **Correct:** One `publishPost` call; server uses `Promise.allSettled`; client uses **`publishPostWithParallelProgress`** for polling UI.
 
+### 2.12 Billing: unchecked checkout creates duplicate Dodo subscriptions (critical)
+
+**Wrong:** `checkoutSessions.create()` on every Upgrade click with no guards; product-default `trial_period_days`; webhook upgrades tier on any `active` event including ₹0 trial payments.
+
+**Correct (current code):**
+- `evaluateCheckoutEligibility()` before checkout; `resolveCheckoutSession()` for idempotency.
+- Explicit `subscription_data.trial_period_days`; `trial_claims` + `hasUsedTrial`.
+- Webhook: paid upgrade verification, ignore duplicate sub IDs, `on_hold` → free, `clearPendingCheckout`.
+- UI handles `use_portal`, `use_change_plan`, `checkout_in_progress` (reuse existing URL).
+
+### 2.13 Edge rate limit counted every RSC request as a page view
+
+**Wrong:** Rate-limit every `GET /dashboard/*` in `proxy.ts` — a few refreshes exhaust 120/min.
+
+**Correct:** Only throttle `isFullPageDocumentRequest()` (browser hard reload with `Accept: text/html`). RSC/prefetch passes through.
+
+### 2.14 Instagram profile links use numeric user id
+
+**Wrong:** `instagram.com/{platformUserId}` from Graph API numeric id.
+
+**Correct:** `platformUsername` handle via `resolveInstagramProfileUrl()` in `lib/platform-view-url.ts`.
+
 ---
 
 ## 3. Constraints — security, performance, and cost
@@ -298,7 +341,8 @@ When removing a platform from `platformEnum`, delete existing rows in the migrat
 - **R2:** Optional; fail gracefully with clear message if not configured.
 - **Platform limits:** `lib/platform-limits.ts` (UI), `lib/publish-validation.ts` (server).
 - **Plan limits:** Enforce before connect and feature use.
-- **Rate limits:** Upstash via `lib/ratelimit.ts`.
+- **Rate limits (API):** Upstash via `lib/ratelimit.ts` — upload, publish, oauth (except TikTok connect), checkout, sign-up, billing sync, etc.
+- **Rate limits (edge):** `proxy.ts` + `lib/edge-ratelimit.ts`; document loads only (see §1.13). Requires `UPSTASH_REDIS_REST_URL` + token on Vercel.
 - **Cron:** Idempotent; respect Vercel `maxDuration` (e.g. 60s for publish-scheduled).
 
 ### 3.4 Token management rules
@@ -332,7 +376,8 @@ Revoke token on platform (best effort), then DELETE `connected_accounts` row. `p
 | Publish (server) | `executePublish` → `Promise.allSettled` in `app/actions/publish.ts` |
 | Publish (client UI) | `publishPostWithParallelProgress` in `lib/publish-order.ts` |
 | Publish platform logic | `lib/publish-platform.ts` |
-| TikTok view links | `lib/platform-view-url.ts` → `getPublicationViewUrl` |
+| TikTok view links | `lib/platform-view-url.ts` → `getPublicationViewUrl`, `fetchTikTokConnectAccount` |
+| Instagram view links | `lib/platform-view-url.ts` → `resolveInstagramProfileUrl` (handle, not numeric id) |
 | Media upload | `lib/upload-file.ts`: presign → PUT → confirm |
 | Media SSRF | `isAllowedMediaUrl` / `getAllowedMediaOrigins` |
 | Plan limits | `lib/plan-limits.ts` + `lib/plans.ts` |
@@ -348,7 +393,10 @@ Revoke token on platform (best effort), then DELETE `connected_accounts` row. `p
 | Cron auth | `lib/cron-auth.ts` |
 | Crons | `vercel.json`: publish-scheduled, repost, autoplug; token-health 6 AM |
 | Token refresh | `getValidToken()` in `lib/token-refresh.ts` |
-| Billing | Dodo under `app/api/billing/`; webhook downgrades; sync in `lib/billing-sync.ts` |
+| Billing checkout guards | `lib/billing-guards.ts`, `lib/pending-checkout.ts`; `trial_claims` table |
+| Billing routes | `app/api/billing/checkout`, `change-plan`, `portal`, `sync`; webhook `app/api/webhooks/dodo` |
+| Edge rate limits | `proxy.ts`, `lib/edge-ratelimit.ts`, `lib/proxy-request.ts` |
+| DB migrate (Neon) | Direct URL / `DATABASE_URL_UNPOOLED`; repair: `scripts/db-repair-migrate.ts` |
 | Migration safety | Never edit existing `.sql`; use `db:generate` |
 | Meta dashboard | Use-case permissions; `public_profile` testing blocks external login |
 
@@ -361,5 +409,7 @@ Revoke token on platform (best effort), then DELETE `connected_accounts` row. `p
 3. **New client-imported lib module:** Trace imports — must not pull in `env.ts`.
 4. **New publish UI:** Use `publishPostWithParallelProgress`, not per-platform server actions.
 5. **Facebook changes:** Preserve page-picker flow unless product explicitly changes multi-page behavior.
+6. **Billing/checkout changes:** Preserve eligibility checks, pending-checkout idempotency, webhook payment verification, and trial_claims — do not create checkout without guards.
+7. **Edge rate limits:** Never count RSC flight requests toward page limits; use `isFullPageDocumentRequest()`.
 
-If something in this doc conflicts with code, **trust the code** and update this doc — but for Facebook page selection, parallel publish, and client/env boundaries, the code described here is authoritative as of the latest main branch.
+If something in this doc conflicts with code, **trust the code** and update this doc — but for Facebook page selection, parallel publish, client/env boundaries, billing guards, and edge rate-limit request classification, the code described here is authoritative as of the latest branch work (`cursor/billing-checkout-guards-trial-claims` and `main` proxy limits).
