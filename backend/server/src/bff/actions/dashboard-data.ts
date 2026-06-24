@@ -9,7 +9,7 @@ import {
   getPostDetail,
   getPostMedia,
 } from "@/app/dashboard/posts/posts-list-data";
-import type { PublicationRow } from "@/app/dashboard/posts/posts-list-types";
+import type { PublicationRow, StatusFilter } from "@/app/dashboard/posts/posts-list-types";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { getPlanLimits } from "@/lib/plans";
 import { getUserSettingsSnapshot } from "@/bff/actions/settings";
@@ -220,6 +220,10 @@ export async function loadPostsPageData(input: {
   }
   const userId = session.user.id;
   const page = Math.max(1, input.page ?? 1);
+  const statusFilter: StatusFilter =
+    input.statusFilter === "posted"
+      ? "published"
+      : (input.statusFilter ?? null);
 
   const [
     listResult,
@@ -228,7 +232,7 @@ export async function loadPostsPageData(input: {
   ] = await Promise.all([
     getPostsListData({
       userId,
-      statusFilter: input.statusFilter ?? null,
+      statusFilter,
       sort: input.sort === "oldest" ? "oldest" : "newest",
       platform: input.platform || null,
       time: input.time || null,

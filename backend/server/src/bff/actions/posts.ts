@@ -27,8 +27,10 @@ import {
   incrementFreePostsUsed,
 } from "@/lib/plan-limits";
 import { logPublishBlocked } from "@/lib/plan-analytics";
-import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
-import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
+import type {
+  AutoPlugConfig,
+  AutoResurfaceConfig,
+} from "@/lib/auto-features-types";
 import { getUserSettingsSnapshot } from "@/bff/actions/settings";
 
 /**

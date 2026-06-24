@@ -1,0 +1,48 @@
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { signInUrl } from "@/lib/sign-in-url";
+import { BulkToolsVideoWithAccounts } from "../BulkToolsVideoWithAccounts";
+import { CONTENT_TYPES } from "@/lib/content-types";
+import { checkBulkToolsAllowed } from "@/lib/plan-limits";
+import { DOCS_BULK_TOOLS_VIDEO_URL } from "@/lib/docs-url";
+
+const VIDEO_PLATFORMS =
+  CONTENT_TYPES.find((c) => c.id === "video")?.platforms ?? [];
+
+export default async function BulkToolsVideoPage() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) redirect(signInUrl("/dashboard/bulk-tools/video"));
+
+  const bulkAllowed = await checkBulkToolsAllowed(session.user.id);
+  if (!bulkAllowed) redirect("/dashboard/billing?upgrade=1");
+
+  return (
+    <>
+      <a
+        href={DOCS_BULK_TOOLS_VIDEO_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        title="Documentation for this page"
+        aria-label="Documentation for this page"
+      >
+        <svg
+          className="w-4 h-4"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+          aria-hidden
+        >
+          <path
+            fillRule="evenodd"
+            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </a>
+      <BulkToolsVideoWithAccounts
+        supportedPlatforms={Array.from(VIDEO_PLATFORMS)}
+      />
+    </>
+  );
+}

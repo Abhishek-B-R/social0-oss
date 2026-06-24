@@ -12,19 +12,19 @@ import { eq, desc, asc, inArray, and, sql, gte, exists } from "drizzle-orm";
 import { startOfWeek, startOfMonth } from "date-fns";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { isActiveTier } from "@/lib/plans";
-import { POSTS_PAGE_SIZE } from "./posts-constants";
+import { POSTS_PAGE_SIZE } from "./posts-constants.js";
 import type {
   PublicationRow,
   PostsListParams,
   StatusFilter,
-} from "./posts-list-types";
+} from "./posts-list-types.js";
 
-export { POSTS_PAGE_SIZE } from "./posts-constants";
+export { POSTS_PAGE_SIZE } from "./posts-constants.js";
 export type {
   PublicationRow,
   PostsListParams,
   StatusFilter,
-} from "./posts-list-types";
+} from "./posts-list-types.js";
 
 /** True if the user has payment-failed posts and no active subscription (so banner should show). */
 export async function hasPaymentFailedPosts(userId: string): Promise<boolean> {

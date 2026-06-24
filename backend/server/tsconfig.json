@@ -1,20 +1,38 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "outDir": "dist",
     "rootDir": "src",
-    "baseUrl": ".",
+    "baseUrl": "./src",
     "strict": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
+    "jsx": "react-jsx",
     "paths": {
-      "next/headers": ["./src/lib/shim/next-headers.ts"],
-      "next/server": ["./src/lib/shim/next-server.ts"],
-      "next/navigation": ["./src/lib/shim/next-navigation.ts"]
+      "@/*": ["./*"],
+      "next/headers": ["./lib/shim/next-headers.ts"],
+      "next/server": ["./lib/shim/next-server.ts"],
+      "next/navigation": ["./lib/shim/next-navigation.ts"],
+      "next/cache": ["./lib/shim/next-cache.ts"]
     }
   },
   "include": ["src/**/*"],
+  "exclude": [
+    "src/components/**",
+    "src/lib/platform-icons.tsx",
+    "src/lib/publish-order.ts",
+    "src/lib/remembered-accounts.ts",
+    "src/lib/remembered-autorepost-autoplug.ts",
+    "src/lib/rpc.ts",
+    "src/lib/auth-client.ts",
+    "src/lib/composer-bridge.ts",
+    "src/lib/utils.ts",
+    "src/lib/preconnect.ts",
+    "src/lib/sign-in-url.ts",
+    "src/lib/docs-url.ts",
+    "src/lib/seo.ts"
+  ],
   "references": [{ "path": "../shared" }]
 }

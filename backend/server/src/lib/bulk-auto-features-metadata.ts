@@ -1,5 +1,7 @@
-import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
-import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import type {
+  AutoPlugConfig,
+  AutoResurfaceConfig,
+} from "@/lib/auto-features-types";
 
 /**
  * Stored on scheduled/queued posts so executePublish can run setupBulkAutoFeaturesIfPresent

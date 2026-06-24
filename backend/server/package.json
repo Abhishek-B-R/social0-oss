@@ -6,10 +6,11 @@
   "imports": {
     "next/headers": "./src/lib/shim/next-headers.ts",
     "next/server": "./src/lib/shim/next-server.ts",
-    "next/navigation": "./src/lib/shim/next-navigation.ts"
+    "next/navigation": "./src/lib/shim/next-navigation.ts",
+    "next/cache": "./src/lib/shim/next-cache.ts"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && tsc-alias -p tsconfig.json",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js"
   },
@@ -29,6 +30,8 @@
     "fastify": "^5.2.1",
     "oauth-1.0a": "^2.2.6",
     "pg": "^8.18.0",
+    "resend": "^6.9.3",
+    "sharp": "^0.33.5",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "jsonwebtoken": "^9.0.2",
@@ -39,6 +42,7 @@
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.9",
     "@types/pg": "^8.16.0",
+    "tsc-alias": "^1.8.16",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   }
