@@ -1,0 +1,16 @@
+{
+  "name": "social0-react",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@social0/web",
+    "build": "npm run build --workspace=@social0/web",
+    "lint": "npm run lint --workspace=@social0/web",
+    "typecheck": "npm run typecheck --workspace=@social0/web"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

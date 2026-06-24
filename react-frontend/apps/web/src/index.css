@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --bg: #ffffff;
+  --bg-subtle: #f9fafb;
+  --bg-muted: #f3f4f6;
+  --bg-elevated: #ffffff;
+  --border: #e5e7eb;
+  --text: #111827;
+  --text-muted: #6b7280;
+  --text-subtle: #9ca3af;
+  --accent: #10b981;
+  --accent-hover: #059669;
+  --destructive: #ef4444;
+  --sidebar-bg: #f9fafb;
+  --sidebar-text: #111827;
+  --sidebar-muted: #6b7280;
+  --sidebar-border: #e5e7eb;
+  --sidebar-active: #e5e7eb;
+  --radius: 0.625rem;
+}
+
+.dark {
+  --bg: #0f1115;
+  --bg-subtle: #151820;
+  --bg-muted: #1c212b;
+  --bg-elevated: #151820;
+  --border: #2a3140;
+  --text: #f3f4f6;
+  --text-muted: #9ca3af;
+  --text-subtle: #6b7280;
+  --sidebar-bg: #11141a;
+  --sidebar-text: #f3f4f6;
+  --sidebar-muted: #9ca3af;
+  --sidebar-border: #2a3140;
+  --sidebar-active: #252b38;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-bg-muted: var(--bg-muted);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-destructive: var(--destructive);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-text: var(--sidebar-text);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-active: var(--sidebar-active);
+  --radius-lg: var(--radius);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+::selection {
+  background-color: rgba(16, 185, 129, 0.25);
+}
