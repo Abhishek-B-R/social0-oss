@@ -1,0 +1,37 @@
+{
+  "name": "social0-publish",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-03-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "queues": {
+    "producers": [
+      {
+        "binding": "PUBLISH_ORCHESTRATOR_QUEUE",
+        "queue": "social0-publish-orchestrator"
+      },
+      {
+        "binding": "PUBLISH_PLATFORM_QUEUE",
+        "queue": "social0-publish-platform"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "social0-publish-orchestrator",
+        "max_batch_size": 1,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "social0-publish-dlq"
+      },
+      {
+        "queue": "social0-publish-platform",
+        "max_batch_size": 1,
+        "max_batch_timeout": 30,
+        "max_retries": 5,
+        "dead_letter_queue": "social0-publish-dlq"
+      }
+    ]
+  }
+}

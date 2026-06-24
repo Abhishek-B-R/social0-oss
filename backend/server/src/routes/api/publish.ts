@@ -49,7 +49,7 @@ export async function registerPublishRoutes(app: FastifyInstance) {
       const scheduledAt = body.data.scheduledAt!;
       const delay = Math.max(0, new Date(scheduledAt).getTime() - Date.now());
 
-      const job = await enqueuePublishPost(
+      const dispatched = await enqueuePublishPost(
         app,
         {
           postId: body.data.postId,
@@ -63,7 +63,8 @@ export async function registerPublishRoutes(app: FastifyInstance) {
         status: "scheduled",
         postId: body.data.postId,
         scheduledAt,
-        jobId: job.id!,
+        jobId: dispatched.id,
+        backend: dispatched.backend,
         message: "Post scheduled successfully",
       });
     }
@@ -75,7 +76,7 @@ export async function registerPublishRoutes(app: FastifyInstance) {
       userId,
     });
 
-    const job = await enqueuePublishPost(
+    const dispatched = await enqueuePublishPost(
       app,
       {
         postId: body.data.postId,
@@ -88,8 +89,9 @@ export async function registerPublishRoutes(app: FastifyInstance) {
 
     return reply.status(202).send({
       trackingId,
-      jobId: job.id!,
+      jobId: dispatched.id,
       status: "queued",
+      backend: dispatched.backend,
       queue: queueNameForJob(JOB_NAMES.PUBLISH_POST),
       streamUrl: `/api/jobs/${trackingId}/stream`,
     });

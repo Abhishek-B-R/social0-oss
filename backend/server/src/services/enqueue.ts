@@ -1,38 +1,56 @@
-import { randomUUID } from "node:crypto";
+import { Queue } from "bullmq";
 import type { FastifyInstance } from "fastify";
 import {
   JOB_NAMES,
   QUEUES,
+  getRedisUrl,
   type PublishPostJob,
   type TokenRefreshJob,
   type MediaConfirmJob,
   type BillingSyncJob,
 } from "@social0/shared";
+import {
+  createPublishTrackingId,
+  dispatchPublishPost,
+  queueNameForJob,
+  useCloudflarePublishDispatch,
+} from "./publish-dispatch.js";
+
+export { createPublishTrackingId, queueNameForJob, useCloudflarePublishDispatch };
 
 export async function enqueuePublishPost(
   app: FastifyInstance,
   data: PublishPostJob,
   opts?: { delay?: number; trackingId?: string },
 ) {
-  const trackingId = opts?.trackingId ?? data.trackingId;
-  const jobId = trackingId
-    ? `publish-${trackingId}`
-    : opts?.delay
-      ? `publish-scheduled-${data.postId}-${Date.now()}`
-      : `publish-${data.postId}-${Date.now()}`;
-
-  return app.queues.publish.add(
-    JOB_NAMES.PUBLISH_POST,
-    { ...data, trackingId },
-    {
-      jobId,
-      delay: opts?.delay,
-    },
-  );
+  return dispatchPublishPost(app, data, opts);
 }
 
-export function createPublishTrackingId() {
-  return randomUUID();
+/** Enqueue from BFF/RPC — returns immediately; never runs executePublish inline. */
+export async function enqueuePublishPostStandalone(
+  data: PublishPostJob,
+  opts?: { trackingId?: string },
+): Promise<{ trackingId?: string; backend: "cloudflare" | "bullmq" }> {
+  const trackingId = opts?.trackingId ?? data.trackingId;
+
+  if (useCloudflarePublishDispatch()) {
+    const { id, backend } = await dispatchPublishPost(
+      null as unknown as FastifyInstance,
+      { ...data, trackingId },
+    );
+    return { trackingId: trackingId ?? id, backend };
+  }
+
+  const connection = { url: getRedisUrl() };
+  const queue = new Queue<PublishPostJob>(QUEUES.PUBLISH, { connection });
+  const jobId = trackingId
+    ? `publish-${trackingId}`
+    : `publish-${data.postId}-${Date.now()}`;
+
+  await queue.add(JOB_NAMES.PUBLISH_POST, { ...data, trackingId }, { jobId });
+  await queue.close();
+
+  return { trackingId, backend: "bullmq" };
 }
 
 export async function enqueueTokenRefresh(
@@ -61,14 +79,4 @@ export async function enqueueCronJob(
   name: string,
 ) {
   return app.queues.scheduler.add(name, { triggeredAt: Date.now() });
-}
-
-export function queueNameForJob(jobName: string): string {
-  if (jobName.startsWith("publish.")) return QUEUES.PUBLISH;
-  if (jobName.startsWith("email.")) return QUEUES.EMAIL;
-  if (jobName.startsWith("token.")) return QUEUES.TOKEN;
-  if (jobName.startsWith("billing.")) return QUEUES.BILLING;
-  if (jobName.startsWith("cron.")) return QUEUES.SCHEDULER;
-  if (jobName.startsWith("media.")) return QUEUES.MEDIA;
-  return QUEUES.PUBLISH;
 }

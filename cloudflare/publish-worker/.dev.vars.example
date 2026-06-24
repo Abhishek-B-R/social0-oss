@@ -1,0 +1,3 @@
+# Copy to .dev.vars for local `wrangler dev` (never commit .dev.vars)
+API_CALLBACK_URL=http://localhost:3001
+PUBLISH_HMAC_SECRET=dev-publish-secret-change-me

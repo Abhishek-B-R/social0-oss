@@ -12,7 +12,7 @@ import {
 import { eq, inArray, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { executePublish } from "@/bff/actions/publish";
+import { enqueuePublishPostStandalone } from "../../services/enqueue.js";
 import { userOwnsQueueSlot } from "@/lib/queue-slot-validation";
 import {
   getPostForEdit,
@@ -57,11 +57,11 @@ async function gateFreePostQuota(
 }
 
 export type PostAgainResult =
-  | { success: true; newPostId: string }
+  | { success: true; newPostId: string; queued?: boolean }
   | { success: false; error: string };
 
 export type CreatePostResult =
-  | { success: true; postId: string; allPlatformsFailed?: boolean }
+  | { success: true; postId: string; allPlatformsFailed?: boolean; queued?: boolean }
   | { success: false; error: string };
 
 export type PublishMode = "draft" | "now" | "scheduled";
@@ -219,12 +219,10 @@ export async function createPost(
         (metadata as Record<string, unknown>).__skipAutoPublish === true;
 
       if (!skipPublish) {
-        const publishResult = await executePublish(postRow.id, session.user.id);
-        const succeededCount =
-          publishResult.results?.filter((r) => r.status === "published")
-            .length ?? 0;
-        const allPlatformsFailed =
-          (publishResult.results?.length ?? 0) > 0 && succeededCount === 0;
+        await enqueuePublishPostStandalone({
+          postId: postRow.id,
+          userId: session.user.id,
+        });
 
         revalidatePath("/dashboard");
         revalidatePath("/dashboard/posts");
@@ -233,7 +231,7 @@ export async function createPost(
         return {
           success: true,
           postId: postRow.id,
-          allPlatformsFailed: allPlatformsFailed || undefined,
+          queued: true,
         };
       }
 
@@ -423,7 +421,10 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
 
     await incrementFreePostsUsed(session.user.id);
 
-    const publishResult = await executePublish(newPost.id, session.user.id);
+    await enqueuePublishPostStandalone({
+      postId: newPost.id,
+      userId: session.user.id,
+    });
 
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/posts");
@@ -431,13 +432,7 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
     revalidatePath(`/dashboard/posts/${postId}`);
     revalidatePath(`/dashboard/posts/${newPost.id}`);
 
-    if (publishResult.error) {
-      return {
-        success: true,
-        newPostId: newPost.id,
-      };
-    }
-    return { success: true, newPostId: newPost.id };
+    return { success: true, newPostId: newPost.id, queued: true };
   } catch (e) {
     console.error("postAgain error:", e);
     return {
@@ -956,7 +951,7 @@ export async function updateDraft(
 }
 
 export type UpdateAndPublishResult =
-  | { success: true; postId: string; allPlatformsFailed?: boolean }
+  | { success: true; postId: string; allPlatformsFailed?: boolean; queued?: boolean }
   | { success: false; error: string };
 
 /** Update draft content/accounts/media then publish now. */
@@ -995,16 +990,14 @@ export async function updateAndPublish(
   await incrementFreePostsUsed(session.user.id);
 
   try {
-    const publishResult = await executePublish(draftId, session.user.id);
-    const succeededCount =
-      publishResult.results?.filter((r) => r.status === "published")
-        .length ?? 0;
-    const allPlatformsFailed =
-      (publishResult.results?.length ?? 0) > 0 && succeededCount === 0;
+    await enqueuePublishPostStandalone({
+      postId: draftId,
+      userId: session.user.id,
+    });
     return {
       success: true,
       postId: draftId,
-      allPlatformsFailed: allPlatformsFailed || undefined,
+      queued: true,
     };
   } catch (err) {
     return {

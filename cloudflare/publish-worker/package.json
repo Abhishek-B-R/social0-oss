@@ -1,0 +1,21 @@
+{
+  "name": "social0-publish",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "queues:create": "wrangler queues create social0-publish-orchestrator && wrangler queues create social0-publish-platform && wrangler queues create social0-publish-dlq",
+    "deploy:setup": "npm run queues:create && npm run deploy",
+    "check": "npm run cf-typegen && npm run typecheck && npm run test && wrangler deploy --dry-run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5",
+    "wrangler": "^4.14.0"
+  }
+}
