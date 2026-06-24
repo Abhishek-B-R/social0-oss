@@ -1,3 +1,3 @@
-export { default as BulkToolsPage } from "@/app/dashboard/bulk-tools/page";
+export { default as BulkToolsPage } from "@/features/dashboard/bulk-tools/BulkToolsPage";
 export { BulkToolsImagePage } from "./BulkToolsImagePage";
 export { BulkToolsVideoPage } from "./BulkToolsVideoPage";

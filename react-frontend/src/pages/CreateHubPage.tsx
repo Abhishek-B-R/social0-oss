@@ -1,4 +1,4 @@
-import { NewPostTypeSelector } from "@/app/dashboard/create/NewPostTypeSelector";
+import { NewPostTypeSelector } from "@/features/dashboard/create/NewPostTypeSelector";
 import { DOCS_CREATE_TYPE_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
 

@@ -1,1 +1,1 @@
-export { default as ApiKeysPage } from "@/app/dashboard/api-keys/page";
+export { default as ApiKeysPage } from "@/features/dashboard/api-keys/ApiKeysPage";

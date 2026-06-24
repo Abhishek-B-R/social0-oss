@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { loadSettingsPageData } from "@/app/actions/settings";
-import { SettingsClient } from "@/app/dashboard/settings/SettingsClient";
+import { loadSettingsPageData } from "@/actions/settings";
+import { SettingsClient } from "@/features/dashboard/settings/SettingsClient";
 import { useSession } from "@/lib/auth-client";
 import { useNavigate } from "react-router-dom";
 import { signInUrl } from "@/lib/sign-in-url";

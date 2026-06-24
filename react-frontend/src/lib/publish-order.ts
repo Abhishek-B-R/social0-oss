@@ -1,5 +1,5 @@
-import type { PublishOptions, PublishResult } from "@/app/actions/publish";
-import { getPostPublicationList, publishPost } from "@/app/actions/publish";
+import type { PublishOptions, PublishResult } from "@/actions/publish";
+import { getPostPublicationList, publishPost } from "@/actions/publish";
 
 /**
  * TikTok / Threads are slow; list them last in the progress UI only.

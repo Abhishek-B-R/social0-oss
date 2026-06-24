@@ -25,9 +25,9 @@ The Vite dev server proxies `/api` and `/v1` to `VITE_API_PROXY_TARGET` (default
 ## Architecture
 
 - **`src/components/`**, **`src/lib/`** — shared UI and client utilities (ported from Next.js)
-- **`src/app/`** — page-level components from the Next.js `app/` folder (no `app/api`)
+- **`src/features/`** — feature UI (auth, dashboard, onboarding, marketing)
+- **`src/actions/`** — thin RPC clients calling `POST /api/rpc` on the backend BFF
 - **`src/pages/`** + **`src/routes/router.tsx`** — React Router DOM route tree
-- **`src/app/actions/`** — thin RPC clients calling `POST /api/rpc` on the backend BFF
 - **Backend** — `backend/server/src/bff/actions/*` holds the former Next.js server actions
 
 ## Scripts

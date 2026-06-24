@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { useParams } from "react-router-dom";
-import { PostDetailPageClient } from "@/app/dashboard/posts/[id]/PostDetailPageClient";
+import { PostDetailPageClient } from "@/features/dashboard/posts/PostDetailPageClient";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 
 export function PostDetailPage() {

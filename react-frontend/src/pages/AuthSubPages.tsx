@@ -1,6 +1,6 @@
-import ForgotPasswordPage from "@/app/auth/forgot-password/page";
-import ResetPasswordPage from "@/app/auth/reset-password/page";
-import VerifyEmailPage from "@/app/auth/verify-email/page";
+import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage";
+import ResetPasswordPage from "@/features/auth/pages/ResetPasswordPage";
+import VerifyEmailPage from "@/features/auth/pages/VerifyEmailPage";
 
 export function ForgotPasswordRoutePage() {
   return <ForgotPasswordPage />;

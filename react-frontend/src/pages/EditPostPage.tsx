@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { rpc } from "@/lib/rpc";
-import { EditPostWithAccountsClient } from "@/app/dashboard/posts/EditPostWithAccountsClient";
+import { EditPostWithAccountsClient } from "@/features/dashboard/posts/EditPostWithAccountsClient";
 import { useSession } from "@/lib/auth-client";
 import { signInUrl } from "@/lib/sign-in-url";
 import type { DateFormatKey } from "@/lib/date-format";

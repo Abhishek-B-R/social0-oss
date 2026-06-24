@@ -1,8 +1,8 @@
-import TermsPage from "@/app/terms/page";
-import PrivacyPage from "@/app/privacy/page";
-import DataDeletionPage from "@/app/data-deletion/page";
-import FeaturesPage from "@/app/features/page";
-import AlternativesPage from "@/app/alternatives/page";
+import TermsPage from "@/features/marketing/pages/TermsPage";
+import PrivacyPage from "@/features/marketing/pages/PrivacyPage";
+import DataDeletionPage from "@/features/marketing/pages/DataDeletionPage";
+import FeaturesPage from "@/features/marketing/pages/FeaturesIndexPage";
+import AlternativesPage from "@/features/marketing/pages/AlternativesIndexPage";
 import { FeatureDetailPage } from "@/pages/FeatureDetailPage";
 import { AlternativeDetailPage } from "@/pages/AlternativeDetailPage";
 import { HomeMarketingPage } from "@/pages/HomeMarketingPage";

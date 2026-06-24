@@ -12,7 +12,7 @@ import { FreePostsBanner } from "@/components/dashboard/FreePostsBanner";
 import { ConnectAccountsBanner } from "@/components/dashboard/ConnectAccountsBanner";
 import { useSession } from "@/lib/auth-client";
 import { rpc } from "@/lib/rpc";
-import { getOnboardingStatus, type OnboardingStatus } from "@/app/actions/onboarding";
+import { getOnboardingStatus, type OnboardingStatus } from "@/actions/onboarding";
 
 function getPlanLabel(tier: string): string {
   if (tier === "pro") return "Pro plan";

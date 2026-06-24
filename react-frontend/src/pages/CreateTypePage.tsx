@@ -13,10 +13,10 @@ import {
   DOCS_VIDEO_POST_TYPE_URL,
 } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
-import { CreatePostWithAccountsClient } from "@/app/dashboard/create/CreatePostWithAccountsClient";
+import { CreatePostWithAccountsClient } from "@/features/dashboard/create/CreatePostWithAccountsClient";
 import { useSession } from "@/lib/auth-client";
 import { rpc } from "@/lib/rpc";
-import { getUserSettingsSnapshot } from "@/app/actions/settings";
+import { getUserSettingsSnapshot } from "@/actions/settings";
 
 export function CreateTypePage() {
   const { type: typeSlug = "" } = useParams();

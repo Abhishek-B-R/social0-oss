@@ -1,4 +1,4 @@
-import AuthPage from "@/app/auth/page";
+import AuthPage from "@/features/auth/pages/AuthPage";
 
 export function AuthRoutePage() {
   return <AuthPage />;

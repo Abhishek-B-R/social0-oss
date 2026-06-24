@@ -1,13 +1,13 @@
 import { Suspense } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { loadPostsPageData } from "@/app/actions/dashboard-data";
-import { AllPostsFilters } from "@/app/dashboard/posts/AllPostsFilters";
-import { PostListCards } from "@/app/dashboard/posts/PostListCards";
+import { loadPostsPageData } from "@/actions/dashboard-data";
+import { AllPostsFilters } from "@/features/dashboard/posts/AllPostsFilters";
+import { PostListCards } from "@/features/dashboard/posts/PostListCards";
 import { Pagination } from "@/components/ui/Pagination";
 import { DOCS_POSTS_DRAFTS_URL } from "@/lib/docs-url";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
-import { POSTS_PAGE_SIZE } from "@/app/dashboard/posts/posts-constants";
+import { POSTS_PAGE_SIZE } from "@/features/dashboard/posts/posts-constants";
 import { useSession } from "@/lib/auth-client";
 import type { DateFormatKey } from "@/lib/date-format";
 

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { BulkToolsImageWithAccounts } from "@/app/dashboard/bulk-tools/BulkToolsImageWithAccounts";
+import { BulkToolsImageWithAccounts } from "@/features/dashboard/bulk-tools/BulkToolsImageWithAccounts";
 import { CONTENT_TYPES } from "@/lib/content-types";
 import { DOCS_BULK_TOOLS_IMAGE_URL } from "@/lib/docs-url";
 import { useSession } from "@/lib/auth-client";

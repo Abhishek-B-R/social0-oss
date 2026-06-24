@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { Navigate } from "react-router-dom";
-import { PostsPageClient } from "@/app/dashboard/posts/PostsPageClient";
-import { BillingPageClient } from "@/app/dashboard/billing/BillingPageClient";
-import { CalendarPageClient } from "@/app/dashboard/calendar/CalendarPageClient";
-import { ConnectionsPageClient } from "@/app/dashboard/connections/ConnectionsPageClient";
+import { PostsPageClient } from "@/features/dashboard/posts/PostsPageClient";
+import { BillingPageClient } from "@/features/dashboard/billing/BillingPageClient";
+import { CalendarPageClient } from "@/features/dashboard/calendar/CalendarPageClient";
+import { ConnectionsPageClient } from "@/features/dashboard/connections/ConnectionsPageClient";
 import { SettingsPageClient } from "@/pages/SettingsPage";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 

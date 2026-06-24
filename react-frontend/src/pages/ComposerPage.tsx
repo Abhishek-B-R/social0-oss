@@ -1,4 +1,4 @@
-import { ComposerClient } from "@/app/dashboard/composer/ComposerClient";
+import { ComposerClient } from "@/features/dashboard/composer/ComposerClient";
 
 export function ComposerPage() {
   return (

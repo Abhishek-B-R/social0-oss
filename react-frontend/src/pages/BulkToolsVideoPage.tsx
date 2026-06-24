@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { BulkToolsVideoWithAccounts } from "@/app/dashboard/bulk-tools/BulkToolsVideoWithAccounts";
+import { BulkToolsVideoWithAccounts } from "@/features/dashboard/bulk-tools/BulkToolsVideoWithAccounts";
 import { CONTENT_TYPES } from "@/lib/content-types";
 import { DOCS_BULK_TOOLS_VIDEO_URL } from "@/lib/docs-url";
 import { useSession } from "@/lib/auth-client";

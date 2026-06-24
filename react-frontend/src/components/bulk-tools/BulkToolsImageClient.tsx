@@ -21,7 +21,7 @@ import {
   computeBulkSchedule,
   formatSchedulePreview,
 } from "@/lib/bulk-schedule";
-import { createPost } from "@/app/actions/posts";
+import { createPost } from "@/actions/posts";
 import { uploadFile } from "@/lib/upload-file";
 import { toast } from "sonner";
 import {

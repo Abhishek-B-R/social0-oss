@@ -35,14 +35,14 @@ import {
 import { ApiKeysPage } from "@/pages/ApiKeysPage";
 import { TeamsPage } from "@/pages/TeamsPage";
 import { MarketingPages } from "@/pages/MarketingPages";
-import OnboardingPage from "@/app/onboarding/page";
-import OnboardingStep2Page from "@/app/onboarding/step2/page";
-import OnboardingStep3Page from "@/app/onboarding/step3/page";
-import OnboardingStep4Page from "@/app/onboarding/step4/page";
-import FacebookSelectPage from "@/app/dashboard/connections/facebook/select/page";
-import InstagramSelectPage from "@/app/dashboard/connections/instagram/select/page";
-import LinkedinSelectPage from "@/app/dashboard/connections/linkedin/select/page";
-import ConnectInstagramFacebookSelectPage from "@/app/dashboard/connect/instagram-facebook/select/page";
+import OnboardingPage from "@/features/onboarding/pages/OnboardingStep1Page";
+import OnboardingStep2Page from "@/features/onboarding/pages/OnboardingStep2Page";
+import OnboardingStep3Page from "@/features/onboarding/pages/OnboardingStep3Page";
+import OnboardingStep4Page from "@/features/onboarding/pages/OnboardingStep4Page";
+import FacebookSelectPage from "@/features/dashboard/connections/pages/FacebookSelectPage";
+import InstagramSelectPage from "@/features/dashboard/connections/pages/InstagramSelectPage";
+import LinkedinSelectPage from "@/features/dashboard/connections/pages/LinkedinSelectPage";
+import ConnectInstagramFacebookSelectPage from "@/features/dashboard/connections/pages/InstagramFacebookSelectPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 
 export function AppRouter() {

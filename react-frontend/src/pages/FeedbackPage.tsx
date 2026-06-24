@@ -2,7 +2,7 @@ import { useSession } from "@/lib/auth-client";
 import { GuestSignInPrompt } from "@/components/dashboard/GuestSignInPrompt";
 import DocsInfoIcon from "@/components/info-icon";
 import { DOCS_FEEDBACK_URL } from "@/lib/docs-url";
-import { FeedbackClient } from "@/app/dashboard/feedback/FeedbackClient";
+import { FeedbackClient } from "@/features/dashboard/feedback/FeedbackClient";
 
 export function FeedbackPage() {
   const { data: session } = useSession();
