@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   useNavigate,
   useLocation,
@@ -7,14 +8,18 @@ import {
 
 export function useRouter() {
   const navigate = useNavigate();
-  return {
-    push: (href: string, _opts?: { scroll?: boolean }) => navigate(href),
-    replace: (href: string, _opts?: { scroll?: boolean }) => navigate(href, { replace: true }),
-    back: () => navigate(-1),
-    forward: () => navigate(1),
-    refresh: () => navigate(0),
-    prefetch: (_href: string) => {},
-  };
+  return useMemo(
+    () => ({
+      push: (href: string, _opts?: { scroll?: boolean }) => navigate(href),
+      replace: (href: string, _opts?: { scroll?: boolean }) =>
+        navigate(href, { replace: true }),
+      back: () => navigate(-1),
+      forward: () => navigate(1),
+      refresh: () => navigate(0),
+      prefetch: (_href: string) => {},
+    }),
+    [navigate],
+  );
 }
 
 export function usePathname() {
@@ -23,7 +28,8 @@ export function usePathname() {
 
 export function useSearchParams() {
   const [params] = useRouterSearchParams();
-  return params;
+  const search = params.toString();
+  return useMemo(() => new URLSearchParams(search), [search]);
 }
 
 export function useParams<

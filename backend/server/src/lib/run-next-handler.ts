@@ -1,7 +1,9 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { NextRequest } from "./shim/next-server.js";
+import { buildForwardedRequestUrl } from "./forwarded-request-url.js";
 import {
   runWithRequestContext,
+  getRequestContext,
   type RequestContext,
 } from "./request-context.js";
 import { rethrowNextRedirect } from "./redirect.js";
@@ -14,13 +16,6 @@ export type NextRouteHandler = (
   req: NextRequest,
   ctx: RouteContext,
 ) => Promise<unknown>;
-
-function buildRequestUrl(req: FastifyRequest): string {
-  const proto =
-    (req.headers["x-forwarded-proto"] as string | undefined) ?? "http";
-  const host = req.headers.host ?? "localhost";
-  return `${proto}://${host}${req.url}`;
-}
 
 function buildNextRequest(req: FastifyRequest): NextRequest {
   const headers = new Headers();
@@ -45,10 +40,15 @@ function buildNextRequest(req: FastifyRequest): NextRequest {
     }
   }
 
-  return new NextRequest(buildRequestUrl(req), init);
+  return new NextRequest(buildForwardedRequestUrl(req), init);
 }
 
-function finalizeNextResponse(result: unknown) {
+async function finalizeHandlerResult(result: unknown) {
+  if (result instanceof Response) {
+    const { reply } = getRequestContext();
+    await sendWebResponse(result, reply);
+    return;
+  }
   if (
     result &&
     typeof result === "object" &&
@@ -57,6 +57,24 @@ function finalizeNextResponse(result: unknown) {
   ) {
     (result as { finalize: () => void }).finalize();
   }
+}
+
+async function sendWebResponse(result: Response, reply: FastifyReply) {
+  if (reply.sent) return;
+  reply.status(result.status);
+  const setCookies = result.headers.getSetCookie?.() ?? [];
+  if (setCookies.length > 0) {
+    for (const cookie of setCookies) {
+      reply.header("set-cookie", cookie);
+    }
+  }
+  result.headers.forEach((value, key) => {
+    if (key.toLowerCase() === "set-cookie") return;
+    reply.header(key, value);
+  });
+  const buf = Buffer.from(await result.arrayBuffer());
+  if (buf.length > 0) reply.send(buf);
+  else reply.send();
 }
 
 export async function runNextRouteHandler(
@@ -72,7 +90,7 @@ export async function runNextRouteHandler(
       const result = await handler(nextReq, {
         params: Promise.resolve(params),
       });
-      finalizeNextResponse(result);
+      await finalizeHandlerResult(result);
     } catch (err) {
       rethrowNextRedirect(err);
       if (!reply.sent) throw err;

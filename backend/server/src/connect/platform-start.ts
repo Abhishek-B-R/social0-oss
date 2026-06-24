@@ -106,7 +106,7 @@ export async function GET(
     });
     cookieStore.set("twitter_oauth1_request_secret", state, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: baseUrl.startsWith("https://"),
       sameSite: "lax",
       maxAge: 600, // 10 minutes
     });

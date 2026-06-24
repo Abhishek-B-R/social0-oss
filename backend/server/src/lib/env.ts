@@ -103,5 +103,5 @@ export const env = new Proxy({} as ServerEnv, {
 
 export function appBaseUrl(): string {
   const e = loadServerEnv();
-  return e.APP_URL ?? e.NEXT_PUBLIC_APP_URL;
+  return e.BETTER_AUTH_URL ?? e.APP_URL ?? e.NEXT_PUBLIC_APP_URL;
 }

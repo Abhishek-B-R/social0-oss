@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { loadPostsPageData } from "@/actions/dashboard-data";
 import type { PublicationRow } from "@/features/dashboard/posts/posts-list-types";
@@ -82,7 +82,6 @@ function hydrateFromSerialized(data: {
 }
 
 export function PostsPageClient() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -122,7 +121,7 @@ export function PostsPageClient() {
     }
     setPayload(result);
     setLoading(false);
-  }, [sort, platform, time, account, page, router]);
+  }, [sort, platform, time, account, page]);
 
   useEffect(() => {
     void load();

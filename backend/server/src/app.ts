@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
@@ -9,8 +12,38 @@ import { registerV1Routes } from "./routes/v1/index.js";
 import { registerApiRoutes } from "./routes/api/index.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
 
+function loadHttpsOptions(): { key: Buffer; cert: Buffer } | undefined {
+  const backendRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
+  const certDirs = [
+    resolve(backendRoot, "certificates"),
+    resolve(backendRoot, "../frontend/certificates"),
+    resolve(backendRoot, "../certificates"),
+  ];
+
+  for (const dir of certDirs) {
+    const fileSets: [string, string][] = [
+      ["key.pem", "cert.pem"],
+      ["localhost-key.pem", "localhost.pem"],
+    ];
+    for (const [keyFile, certFile] of fileSets) {
+      const keyPath = resolve(dir, keyFile);
+      const certPath = resolve(dir, certFile);
+      if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+        return {
+          key: fs.readFileSync(keyPath),
+          cert: fs.readFileSync(certPath),
+        };
+      }
+    }
+  }
+
+  return undefined;
+}
+
 export async function buildApp() {
+  const https = loadHttpsOptions();
   const app = Fastify({
+    ...(https ? { https } : {}),
     logger: {
       level: process.env.LOG_LEVEL ?? "info",
     },

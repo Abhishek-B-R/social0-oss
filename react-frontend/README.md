@@ -34,6 +34,6 @@ The Vite dev server proxies `/api` and `/v1` to `VITE_API_PROXY_TARGET` (default
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Vite dev server (port 5173) |
+| `npm run dev` | Vite dev server (https://localhost:3000) |
 | `npm run build` | Production build |
 | `npm run typecheck` | TypeScript check |

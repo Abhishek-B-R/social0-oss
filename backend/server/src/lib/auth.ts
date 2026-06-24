@@ -30,7 +30,9 @@ export const auth = betterAuth({
   }),
   baseURL: authBaseUrl,
   secret: env.BETTER_AUTH_SECRET,
-  trustedOrigins: [authBaseUrl],
+  trustedOrigins: [authBaseUrl, env.NEXT_PUBLIC_APP_URL].filter(
+    (origin, index, arr) => origin && arr.indexOf(origin) === index,
+  ),
   advanced: {
     useSecureCookies: authBaseUrl.startsWith("https://"),
   },

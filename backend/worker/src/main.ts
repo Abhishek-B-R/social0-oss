@@ -1,4 +1,12 @@
-import "dotenv/config";
+import { config } from "dotenv";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Load backend/.env (same as server) — worker cwd is backend/worker.
+config({
+  path: resolve(fileURLToPath(new URL("../..", import.meta.url)), ".env"),
+});
+
 import { loadEnv, allPlatformPublishQueueNames, getRedisUrl } from "@social0/shared";
 import { createRedisConnection } from "./lib/connection.js";
 import { closeJobProgress } from "./lib/job-progress.js";
