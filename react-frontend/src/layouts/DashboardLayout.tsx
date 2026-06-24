@@ -1,0 +1,108 @@
+import { useEffect } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Toaster } from "sonner";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { DevScheduledPostPoller } from "@/components/DevScheduledPostPoller";
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { DashboardBottomNav } from "@/components/dashboard/DashboardBottomNav";
+import { SubscriptionSync } from "@/components/dashboard/SubscriptionSync";
+import { GuestBanner } from "@/components/dashboard/GuestBanner";
+import { FreePostsBanner } from "@/components/dashboard/FreePostsBanner";
+import { ConnectAccountsBanner } from "@/components/dashboard/ConnectAccountsBanner";
+import { useSession } from "@/lib/auth-client";
+import { rpc } from "@/lib/rpc";
+import { getOnboardingStatus, type OnboardingStatus } from "@/actions/onboarding";
+
+function getPlanLabel(tier: string): string {
+  if (tier === "pro") return "Pro plan";
+  if (tier === "growth") return "Growth plan";
+  if (tier === "starter") return "Starter (Lite) plan";
+  return "Free plan";
+}
+
+export function DashboardLayout() {
+  const { data: session, isPending } = useSession();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isGuest = !session;
+
+  const { data: layoutData } = useQuery({
+    queryKey: ["dashboard-layout"],
+    queryFn: () => rpc<{
+      planLabel: string;
+      subscriptionTier: string;
+      freePostsBanner: { remaining: number; limit: number } | null;
+      profileName: string | null;
+      profileImage: string | null;
+    }>("dashboard-data.loadDashboardLayoutData"),
+    enabled: !!session,
+    retry: false,
+  });
+
+  const { data: onboarding } = useQuery<OnboardingStatus | null>({
+    queryKey: ["onboarding-status"],
+    queryFn: getOnboardingStatus,
+    enabled: !!session,
+  });
+
+  useEffect(() => {
+    if (isPending) return;
+    if (session?.user.emailVerified === false) {
+      navigate(
+        `/auth/verify-email?email=${encodeURIComponent(session.user.email ?? "")}`,
+        { replace: true },
+      );
+    }
+  }, [isPending, session, navigate]);
+
+  useEffect(() => {
+    if (!session || !onboarding) return;
+    const isConnectFlow = location.pathname.startsWith("/dashboard/connect");
+    if (onboarding.shouldOnboard && !isConnectFlow) {
+      navigate("/onboarding", { replace: true });
+    }
+  }, [session, onboarding, location.pathname, navigate]);
+
+  const showConnectBanner =
+    onboarding != null &&
+    onboarding.connectedAccountsCount === 0 &&
+    !location.pathname.startsWith("/dashboard/connections");
+
+  const sidebarUser =
+    session && layoutData
+      ? {
+          ...session.user,
+          name: layoutData.profileName ?? session.user.name,
+          image: layoutData.profileImage ?? session.user.image,
+        }
+      : session?.user ?? null;
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-bg">
+      {session && layoutData?.subscriptionTier && (
+        <SubscriptionSync tier={layoutData.subscriptionTier} />
+      )}
+      <DashboardSidebar
+        user={sidebarUser}
+        planLabel={isGuest ? "Guest" : layoutData ? getPlanLabel(layoutData.subscriptionTier) : "…"}
+        isGuest={isGuest}
+      />
+      <main className="flex flex-1 flex-col min-h-0 overflow-y-auto pb-80 mb-20 lg:mb-0 lg:pb-0">
+        <div className="mx-auto flex h-full min-h-0 w-full max-w-[1200px] 2xl:max-w-7xl flex-1 flex-col px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-12 sm:pl-4 sm:pr-6 sm:pt-6 sm:pb-6 lg:px-8 lg:py-8 lg:pb-8">
+          {isGuest && <GuestBanner />}
+          {showConnectBanner && <ConnectAccountsBanner />}
+          {layoutData?.freePostsBanner && (
+            <FreePostsBanner
+              remaining={layoutData.freePostsBanner.remaining}
+              limit={layoutData.freePostsBanner.limit}
+            />
+          )}
+          <Outlet />
+        </div>
+      </main>
+      <DashboardBottomNav />
+      {session && <DevScheduledPostPoller />}
+    </div>
+  );
+}

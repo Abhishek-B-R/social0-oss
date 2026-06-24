@@ -1,0 +1,51 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "types": ["vite/client", "node"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "next/link": ["./src/shims/next-link.tsx"],
+      "next/navigation": ["./src/shims/next-navigation.ts"],
+      "next/image": ["./src/shims/next-image.tsx"],
+      "next/font/google": ["./src/shims/next-font.ts"],
+      "next": ["./src/shims/next.ts"]
+    }
+  },
+  "include": ["src"],
+  "exclude": [
+    "src/app/layout.tsx",
+    "src/app/dashboard/layout.tsx",
+    "src/app/onboarding/layout.tsx",
+    "src/app/auth/layout.tsx",
+    "src/app/not-found.tsx",
+    "src/app/page.tsx",
+    "src/app/features/[slug]",
+    "src/app/alternatives/[slug]",
+    "src/app/home/page.tsx",
+    "src/app/dashboard/billing/page.tsx",
+    "src/app/dashboard/bulk-tools/image/page.tsx",
+    "src/app/dashboard/bulk-tools/video/page.tsx",
+    "src/app/dashboard/create/[type]/page.tsx",
+    "src/app/dashboard/posts/**/page.tsx",
+    "src/app/dashboard/settings/page.tsx",
+    "src/app/dashboard/feedback/page.tsx",
+    "src/app/dashboard/more/page.tsx",
+    "src/app/dashboard/composer/page.tsx",
+    "src/app/dashboard/create/page.tsx",
+    "src/app/dashboard/page.tsx"
+  ]
+}
