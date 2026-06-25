@@ -94,10 +94,12 @@ export async function forceCancelDodoSubscription(
     await client.subscriptions.update(subscriptionId, {
       status: "cancelled",
       cancel_at_next_billing_date: false,
-      cancel_reason: "cancelled_by_merchant",
-      cancellation_comment:
-        "Automated cancellation of unpaid/zombie subscription",
-      cancellation_feedback: "unused",
+      metadata: {
+        zombie_cleanup: "true",
+        cancel_reason: "cancelled_by_merchant",
+        cancellation_comment:
+          "Automated cancellation of unpaid/zombie subscription",
+      },
     });
     await revertLocalUserForSubscription(subscriptionId);
     return true;
