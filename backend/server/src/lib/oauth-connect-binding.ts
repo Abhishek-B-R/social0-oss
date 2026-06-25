@@ -4,15 +4,14 @@ import { and, eq, gt } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { cookies } from "./shim/next-headers.js";
 import { NextResponse } from "./shim/next-server.js";
-import { normalizeAppUrl } from "./url-utils.js";
-import { env } from "./env.js";
+import { resolveAppUrlFromRequest } from "./app-url.js";
 
 const COOKIE_NAME = "oauth_connect_binding";
 const MAX_AGE_SEC = 600;
 const IDENTIFIER = "oauth_connect_binding";
 
 function cookieOptions() {
-  const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
+  const baseUrl = resolveAppUrlFromRequest();
   const isHttps = baseUrl.startsWith("https://");
   return {
     httpOnly: true,

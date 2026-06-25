@@ -2,7 +2,7 @@ import { auth } from "../lib/auth.js";
 import { env } from "../lib/env.js";
 import { headers } from "../lib/shim/next-headers.js";
 import { encrypt } from "../lib/encryption.js";
-import { normalizeAppUrl } from "../lib/url-utils.js";
+import { resolveAppUrlFromRequest } from "../lib/app-url.js";
 import { NextRequest } from "../lib/shim/next-server.js";
 import {
   buildFacebookOAuthUrl,
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
+  const baseUrl = resolveAppUrlFromRequest(req);
   const redirectUri = `${baseUrl}/api/connect/instagram-facebook/callback`;
 
   const returnTo = sanitizeReturnToPath(req.nextUrl.searchParams.get("returnTo"));

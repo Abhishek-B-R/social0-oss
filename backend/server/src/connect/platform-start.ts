@@ -3,7 +3,7 @@ import { PLATFORM_OAUTH_CONFIG, Platform } from "../lib/platforms.js";
 import { env } from "../lib/env.js";
 import { headers, cookies } from "../lib/shim/next-headers.js";
 import { encrypt } from "../lib/encryption.js";
-import { normalizeAppUrl } from "../lib/url-utils.js";
+import { resolveAppUrlFromRequest } from "../lib/app-url.js";
 import crypto from "crypto";
 import { db } from "../db/index.js";
 import { verification, connectedAccounts } from "../db/schema.js";
@@ -89,7 +89,7 @@ export async function GET(
         { status: 400 },
       );
     }
-    const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
+    const baseUrl = resolveAppUrlFromRequest(req);
     const callbackUrl = `${baseUrl}/api/connect/twitter_x/callback`;
 
     const client = new TwitterApi({ appKey: consumerKey, appSecret: consumerSecret });
@@ -144,7 +144,7 @@ export async function GET(
   }
 
   // Construct redirect URI - normalize URL (https for production, http for localhost)
-  const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
+  const baseUrl = resolveAppUrlFromRequest(req);
   const redirectUri = `${baseUrl}/api/connect/${platform}/callback`;
 
   // Use platform's auth URL

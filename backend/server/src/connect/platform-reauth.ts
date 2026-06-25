@@ -4,8 +4,7 @@ import { connectedAccounts } from "../db/schema.js";
 import { and, eq } from "drizzle-orm";
 import { headers } from "../lib/shim/next-headers.js";
 import { NextRequest, NextResponse } from "../lib/shim/next-server.js";
-import { normalizeAppUrl } from "../lib/url-utils.js";
-import { env } from "../lib/env.js";
+import { resolveAppUrlFromRequest } from "../lib/app-url.js";
 import { enforceRateLimit, oauthLimiter } from "../lib/ratelimit.js";
 
 const VALID_PLATFORMS = [
@@ -67,7 +66,7 @@ export async function GET(
     return NextResponse.json({ error: "Account not found" }, { status: 403 });
   }
 
-  const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
+  const baseUrl = resolveAppUrlFromRequest(req);
   const reauthUrl = new URL(
     `/api/connect/${platformParam}`,
     baseUrl,

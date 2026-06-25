@@ -10,7 +10,7 @@ import { decrypt, encryptToken } from "../lib/encryption.js";
 import { assertOAuthCallbackSession } from "../lib/oauth-callback-session.js";
 import { sanitizeReturnToPath } from "../lib/safe-return-to.js";
 import crypto from "crypto";
-import { normalizeAppUrl } from "../lib/url-utils.js";
+import { resolveAppUrlFromRequest } from "../lib/app-url.js";
 import { safeRedirect, rethrowNextRedirect } from "../lib/redirect.js";
 import { NextRequest } from "../lib/shim/next-server.js";
 import { cookies } from "../lib/shim/next-headers.js";
@@ -387,7 +387,7 @@ export async function GET(
     let tokens: any;
 
     // Normalize redirect URI (https for production, http for localhost)
-    const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
+    const baseUrl = resolveAppUrlFromRequest(req);
     const redirectUri = `${baseUrl}/api/connect/${platform}/callback`;
 
     // Use platform's token URL

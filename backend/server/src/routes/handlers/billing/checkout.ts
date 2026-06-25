@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import DodoPayments from "dodopayments";
 import { PLAN_IDS } from "../../../lib/plans.js";
+import { resolveAppUrlFromRequest } from "../../../lib/app-url.js";
 import { env } from "../../../lib/env.js";
 import { checkoutLimiter, enforceRateLimit } from "../../../lib/ratelimit.js";
 import {
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const appUrl = env.NEXT_PUBLIC_APP_URL;
+  const appUrl = resolveAppUrlFromRequest(request);
   const returnUrl =
     successUrl && successUrl.startsWith("/")
       ? `${appUrl}${successUrl}`

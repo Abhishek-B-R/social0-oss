@@ -3,6 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP } from "better-auth/plugins";
 import { db } from "../db/index.js";
 import { createAuthSecondaryStorage } from "./auth-secondary-storage.js";
+import { getTrustedAppOrigins } from "./app-url.js";
 import { env, appBaseUrl } from "./env.js";
 import { sendEmail } from "./mail.js";
 import { redis } from "./redis.js";
@@ -30,9 +31,7 @@ export const auth = betterAuth({
   }),
   baseURL: authBaseUrl,
   secret: env.BETTER_AUTH_SECRET,
-  trustedOrigins: [authBaseUrl, env.NEXT_PUBLIC_APP_URL].filter(
-    (origin, index, arr) => origin && arr.indexOf(origin) === index,
-  ),
+  trustedOrigins: getTrustedAppOrigins(),
   advanced: {
     useSecureCookies: authBaseUrl.startsWith("https://"),
   },
