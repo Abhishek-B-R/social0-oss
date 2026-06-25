@@ -9,9 +9,10 @@ import {
   createPublishTrackingId,
   enqueuePublishPost,
   queueNameForJob,
+  useCloudflarePublishDispatch,
 } from "../../services/enqueue.js";
-import { JOB_NAMES } from "@social0/shared";
 import { loadJobSnapshotFromDb } from "../../lib/job-snapshot-from-db.js";
+import { hasPublishJobTables } from "../../lib/publish-job-tracking.js";
 
 const publishSchema = z
   .object({
@@ -92,7 +93,8 @@ export async function registerPublishRoutes(app: FastifyInstance) {
       jobId: dispatched.id,
       status: "queued",
       backend: dispatched.backend,
-      queue: queueNameForJob(JOB_NAMES.PUBLISH_POST),
+      enqueued: dispatched.enqueued,
+      queue: queueNameForJob("now"),
       streamUrl: `/api/jobs/${trackingId}/stream`,
     });
   });
@@ -152,6 +154,7 @@ async function openSseStream(
     "X-Accel-Buffering": "no",
   });
 
+  let lastEventCount = 0;
   const writeEvent = (event: JobProgressEvent) => {
     reply.raw.write(`event: progress\n`);
     reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
@@ -160,6 +163,7 @@ async function openSseStream(
   for (const event of initialSnapshot.events) {
     writeEvent(event);
   }
+  lastEventCount = initialSnapshot.events.length;
 
   if (
     initialSnapshot.status === "completed" ||
@@ -170,13 +174,38 @@ async function openSseStream(
     return;
   }
 
-  const subscriber = app.jobProgress.subscribe(trackingId, (event) => {
-    writeEvent(event);
-    if (event.phase === "completed" || event.phase === "failed") {
-      reply.raw.write(`event: done\ndata: ${JSON.stringify({ trackingId })}\n\n`);
-      void cleanup();
-    }
-  });
+  const useDbPoll =
+    useCloudflarePublishDispatch() && (await hasPublishJobTables());
+  let subscriber: ReturnType<FastifyInstance["jobProgress"]["subscribe"]> | null =
+    null;
+
+  if (!useDbPoll) {
+    subscriber = app.jobProgress.subscribe(trackingId, (event) => {
+      writeEvent(event);
+      if (event.phase === "completed" || event.phase === "failed") {
+        reply.raw.write(`event: done\ndata: ${JSON.stringify({ trackingId })}\n\n`);
+        void cleanup();
+      }
+    });
+  }
+
+  const pollDb = useDbPoll
+    ? setInterval(async () => {
+        const snapshot = await loadJobSnapshotFromDb(trackingId);
+        if (!snapshot) return;
+        const newEvents = snapshot.events.slice(lastEventCount);
+        for (const event of newEvents) {
+          writeEvent(event);
+        }
+        lastEventCount = snapshot.events.length;
+        if (snapshot.status === "completed" || snapshot.status === "failed") {
+          reply.raw.write(
+            `event: done\ndata: ${JSON.stringify({ trackingId })}\n\n`,
+          );
+          void cleanup();
+        }
+      }, 1500)
+    : null;
 
   const heartbeat = setInterval(() => {
     reply.raw.write(`: ping\n\n`);
@@ -184,8 +213,11 @@ async function openSseStream(
 
   const cleanup = async () => {
     clearInterval(heartbeat);
-    await subscriber.unsubscribe();
-    await subscriber.quit();
+    if (pollDb) clearInterval(pollDb);
+    if (subscriber) {
+      await subscriber.unsubscribe();
+      await subscriber.quit();
+    }
     if (!reply.raw.writableEnded) reply.raw.end();
   };
 

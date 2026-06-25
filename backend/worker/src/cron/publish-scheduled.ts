@@ -1,6 +1,7 @@
 import { and, eq, lt, lte } from "drizzle-orm";
 import { Queue, type ConnectionOptions } from "bullmq";
-import { JOB_NAMES, QUEUES, type PublishPostJob } from "@social0/shared";
+import { cfPublishClientFromEnv, cfEnqueuePlatformJob, JOB_NAMES, QUEUES, type PublishPostJob } from "@social0/shared";
+import { loadPublicationTargets } from "../publish/load-targets.js";
 import { db } from "../db/index.js";
 import { posts, queuedPosts } from "../db/schema.js";
 import { executePublish } from "../publish/execute-publish.js";
@@ -20,14 +21,37 @@ export async function runPublishScheduledCron(
     .from(posts)
     .where(and(eq(posts.status, "scheduled"), lte(posts.scheduledAt, now)));
 
-  const publishQueue = new Queue<PublishPostJob>(QUEUES.PUBLISH, { connection });
+  const cfClient = cfPublishClientFromEnv();
+  const publishQueue = cfClient
+    ? null
+    : new Queue<PublishPostJob>(QUEUES.PUBLISH, { connection });
   const processed: string[] = [];
 
   for (const post of due) {
-    await publishQueue.add(JOB_NAMES.PUBLISH_POST, {
-      postId: post.id,
-      userId: post.userId,
-    });
+    if (cfClient) {
+      const targets = await loadPublicationTargets({
+        postId: post.id,
+        userId: post.userId,
+      });
+      for (const t of targets) {
+        await cfEnqueuePlatformJob(
+          {
+            postId: post.id,
+            userId: post.userId,
+            publicationId: t.publicationId,
+            connectedAccountId: t.connectedAccountId,
+            platform: t.platform,
+          },
+          "scheduled",
+          cfClient,
+        );
+      }
+    } else {
+      await publishQueue!.add(JOB_NAMES.PUBLISH_POST, {
+        postId: post.id,
+        userId: post.userId,
+      });
+    }
     processed.push(post.id);
   }
 
@@ -48,6 +72,8 @@ export async function runPublishScheduledCron(
     queuedProcessed.push(q.postId);
   }
 
-  await publishQueue.close();
+  if (publishQueue) {
+    await publishQueue.close();
+  }
   return { processed, queuedProcessed };
 }

@@ -22,10 +22,7 @@ import {
 } from "@/app/dashboard/posts/posts-list-data";
 import { isValidUUID } from "@/lib/validation";
 import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
-import {
-  checkFreePostLimit,
-  incrementFreePostsUsed,
-} from "@/lib/plan-limits";
+import { checkFreePostLimit, incrementFreePostsUsed } from "@/lib/plan-limits";
 import { logPublishBlocked } from "@/lib/plan-analytics";
 import type {
   AutoPlugConfig,
@@ -51,17 +48,29 @@ async function gateFreePostQuota(
     limit: limit.limit,
   });
   return (
-    limit.reason ??
-    "You've used your free posts. Upgrade to continue posting."
+    limit.reason ?? "You've used your free posts. Upgrade to continue posting."
   );
 }
 
 export type PostAgainResult =
-  | { success: true; newPostId: string; queued?: boolean }
+  | {
+      success: true;
+      newPostId: string;
+      queued?: boolean;
+      trackingId?: string;
+      streamUrl?: string;
+    }
   | { success: false; error: string };
 
 export type CreatePostResult =
-  | { success: true; postId: string; allPlatformsFailed?: boolean; queued?: boolean }
+  | {
+      success: true;
+      postId: string;
+      allPlatformsFailed?: boolean;
+      queued?: boolean;
+      trackingId?: string;
+      streamUrl?: string;
+    }
   | { success: false; error: string };
 
 export type PublishMode = "draft" | "now" | "scheduled";
@@ -219,7 +228,7 @@ export async function createPost(
         (metadata as Record<string, unknown>).__skipAutoPublish === true;
 
       if (!skipPublish) {
-        await enqueuePublishPostStandalone({
+        const queued = await enqueuePublishPostStandalone({
           postId: postRow.id,
           userId: session.user.id,
         });
@@ -232,6 +241,8 @@ export async function createPost(
           success: true,
           postId: postRow.id,
           queued: true,
+          trackingId: queued.trackingId,
+          streamUrl: queued.streamUrl,
         };
       }
 
@@ -421,7 +432,7 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
 
     await incrementFreePostsUsed(session.user.id);
 
-    await enqueuePublishPostStandalone({
+    const queued = await enqueuePublishPostStandalone({
       postId: newPost.id,
       userId: session.user.id,
     });
@@ -432,7 +443,13 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
     revalidatePath(`/dashboard/posts/${postId}`);
     revalidatePath(`/dashboard/posts/${newPost.id}`);
 
-    return { success: true, newPostId: newPost.id, queued: true };
+    return {
+      success: true,
+      newPostId: newPost.id,
+      queued: true,
+      trackingId: queued.trackingId,
+      streamUrl: queued.streamUrl,
+    };
   } catch (e) {
     console.error("postAgain error:", e);
     return {
@@ -717,7 +734,9 @@ export async function updateScheduledPostAutoFeatures(
     return {
       success: false,
       error:
-        e instanceof Error ? e.message : "Failed to update scheduled auto features",
+        e instanceof Error
+          ? e.message
+          : "Failed to update scheduled auto features",
     };
   }
 }
@@ -803,7 +822,10 @@ export async function getScheduledPost(
     return { success: false, error: "Post not found" };
   }
   if (post.status !== "scheduled" && post.status !== "draft") {
-    return { success: false, error: "Only scheduled or draft posts can be edited" };
+    return {
+      success: false,
+      error: "Only scheduled or draft posts can be edited",
+    };
   }
   const mediaIds = post.mediaIds ?? [];
   const media =
@@ -868,7 +890,8 @@ export async function getPostToEdit(
   if (!allowed) {
     return {
       success: false,
-      error: "Only posted, partial, or failed posts can be edited for republish",
+      error:
+        "Only posted, partial, or failed posts can be edited for republish",
     };
   }
   const mediaIds = post.mediaIds ?? [];
@@ -951,7 +974,14 @@ export async function updateDraft(
 }
 
 export type UpdateAndPublishResult =
-  | { success: true; postId: string; allPlatformsFailed?: boolean; queued?: boolean }
+  | {
+      success: true;
+      postId: string;
+      allPlatformsFailed?: boolean;
+      queued?: boolean;
+      trackingId?: string;
+      streamUrl?: string;
+    }
   | { success: false; error: string };
 
 /** Update draft content/accounts/media then publish now. */
@@ -990,7 +1020,7 @@ export async function updateAndPublish(
   await incrementFreePostsUsed(session.user.id);
 
   try {
-    await enqueuePublishPostStandalone({
+    const queued = await enqueuePublishPostStandalone({
       postId: draftId,
       userId: session.user.id,
     });
@@ -998,6 +1028,8 @@ export async function updateAndPublish(
       success: true,
       postId: draftId,
       queued: true,
+      trackingId: queued.trackingId,
+      streamUrl: queued.streamUrl,
     };
   } catch (err) {
     return {

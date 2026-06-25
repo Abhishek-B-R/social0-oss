@@ -1,5 +1,3 @@
-/** Job payloads — keep in sync with @social0/shared */
-
 export type SupportedPlatform =
   | "twitter_x"
   | "linkedin"
@@ -11,13 +9,7 @@ export type SupportedPlatform =
   | "pinterest"
   | "bluesky";
 
-export type PublishPostJob = {
-  postId: string;
-  userId: string;
-  trackingId?: string;
-  connectedAccountIds?: string[];
-};
-
+/** One platform publish job — API enqueues directly (no orchestrator). */
 export type PublishPlatformJob = {
   postId: string;
   userId: string;
@@ -27,12 +19,21 @@ export type PublishPlatformJob = {
   platform: SupportedPlatform;
 };
 
-export type PublishJobEnvelope =
-  | { kind: "orchestrator"; job: PublishPostJob }
-  | { kind: "platform"; job: PublishPlatformJob };
+export type PublishEnqueueRequest = {
+  priority: "now" | "scheduled";
+  job: PublishPlatformJob;
+};
 
-export type PublishTarget = {
-  publicationId: string;
+export type PublishResultItem = {
+  platform: string;
   connectedAccountId: string;
-  platform: SupportedPlatform;
+  status: "published" | "failed";
+  platformPostUrl?: string | null;
+  error?: string;
+};
+
+export type PublishResult = {
+  success: boolean;
+  error?: string;
+  results: PublishResultItem[];
 };

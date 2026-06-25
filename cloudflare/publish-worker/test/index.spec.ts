@@ -3,10 +3,12 @@ import worker from "../src/index";
 
 function mockEnv(overrides: Partial<Env> = {}): Env {
   return {
-    PUBLISH_ORCHESTRATOR_QUEUE: { send: vi.fn() } as unknown as Queue,
-    PUBLISH_PLATFORM_QUEUE: { send: vi.fn() } as unknown as Queue,
+    PUBLISH_NOW_QUEUE: { send: vi.fn() } as unknown as Queue,
+    PUBLISH_SCHEDULED_QUEUE: { send: vi.fn() } as unknown as Queue,
     PUBLISH_HMAC_SECRET: "secret",
-    API_CALLBACK_URL: "http://localhost:3001",
+    ENCRYPTION_KEY: "a".repeat(64),
+    APP_URL: "http://localhost:3000",
+    HYPERDRIVE: { connectionString: "postgres://x" } as Hyperdrive,
     ...overrides,
   };
 }
@@ -31,7 +33,7 @@ describe("fetch handler", () => {
     expect(res.status).toBe(401);
   });
 
-  it("POST /enqueue queues orchestrator jobs", async () => {
+  it("POST /enqueue queues publish-now jobs", async () => {
     const env = mockEnv();
     const res = await worker.fetch!(
       new Request("https://worker/enqueue", {
@@ -41,16 +43,22 @@ describe("fetch handler", () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          kind: "orchestrator",
-          job: { postId: "p1", userId: "u1" },
+          priority: "now",
+          job: {
+            postId: "p1",
+            userId: "u1",
+            publicationId: "pub1",
+            connectedAccountId: "acc1",
+            platform: "twitter_x",
+          },
         }),
       }),
       env,
     );
 
     expect(res.status).toBe(202);
-    expect(env.PUBLISH_ORCHESTRATOR_QUEUE.send).toHaveBeenCalledOnce();
-    expect(env.PUBLISH_PLATFORM_QUEUE.send).not.toHaveBeenCalled();
+    expect(env.PUBLISH_NOW_QUEUE.send).toHaveBeenCalledOnce();
+    expect(env.PUBLISH_SCHEDULED_QUEUE.send).not.toHaveBeenCalled();
   });
 
   it("POST /enqueue rejects invalid JSON", async () => {

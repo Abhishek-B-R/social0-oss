@@ -10,6 +10,7 @@ import {
   pgEnum,
   unique,
   check,
+  index,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -259,6 +260,58 @@ export const queuedPosts = pgTable("queued_posts", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ===== PUBLISH JOB TRACKING (SSE + history) =====
+export const publishJobStatusEnum = pgEnum("publish_job_status", [
+  "queued",
+  "processing",
+  "completed",
+  "failed",
+]);
+
+export const publishJobs = pgTable("publish_jobs", {
+  trackingId: text("tracking_id").primaryKey(),
+  postId: uuid("post_id")
+    .references(() => posts.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: text("user_id")
+    .references(() => user.id, { onDelete: "cascade" })
+    .notNull(),
+  status: publishJobStatusEnum("status").default("queued").notNull(),
+  total: integer("total").default(0).notNull(),
+  completed: integer("completed").default(0).notNull(),
+  failed: integer("failed").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const publishJobEvents = pgTable(
+  "publish_job_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    trackingId: text("tracking_id")
+      .references(() => publishJobs.trackingId, { onDelete: "cascade" })
+      .notNull(),
+    postId: uuid("post_id").notNull(),
+    userId: text("user_id").notNull(),
+    phase: text("phase").notNull(),
+    platform: platformEnum("platform"),
+    connectedAccountId: uuid("connected_account_id"),
+    message: text("message"),
+    progress: jsonb("progress").$type<{
+      completed: number;
+      failed: number;
+      total: number;
+    }>(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    trackingIdCreatedAtIdx: index("publish_job_events_tracking_id_idx").on(
+      table.trackingId,
+      table.createdAt,
+    ),
+  }),
+);
+
 // ===== USER SETTINGS =====
 export const userSettings = pgTable("user_settings", {
   userId: text("user_id")
@@ -381,6 +434,7 @@ export const userRelations = relations(user, ({ one, many }) => ({
   mediaUploads: many(mediaUploads),
   queueSlots: many(queueSlots),
   queuedPosts: many(queuedPosts),
+  publishJobs: many(publishJobs),
   settings: one(userSettings, {
     fields: [user.id],
     references: [userSettings.userId],
@@ -441,6 +495,7 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
   resurfaceSchedules: many(resurfaceSchedules),
   autoPlugs: many(autoPlugs),
   queuedPost: one(queuedPosts),
+  publishJobs: many(publishJobs),
 }));
 
 export const postPublicationsRelations = relations(
@@ -502,3 +557,25 @@ export const queuedPostsRelations = relations(queuedPosts, ({ one }) => ({
     references: [queueSlots.id],
   }),
 }));
+
+export const publishJobsRelations = relations(publishJobs, ({ one, many }) => ({
+  post: one(posts, {
+    fields: [publishJobs.postId],
+    references: [posts.id],
+  }),
+  user: one(user, {
+    fields: [publishJobs.userId],
+    references: [user.id],
+  }),
+  events: many(publishJobEvents),
+}));
+
+export const publishJobEventsRelations = relations(
+  publishJobEvents,
+  ({ one }) => ({
+    job: one(publishJobs, {
+      fields: [publishJobEvents.trackingId],
+      references: [publishJobs.trackingId],
+    }),
+  }),
+);

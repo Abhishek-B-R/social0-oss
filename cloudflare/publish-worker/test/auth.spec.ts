@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  ORCHESTRATOR_QUEUE,
-  PLATFORM_QUEUE,
-  parsePublishEnvelope,
-  queueKindForBatch,
+  CF_PUBLISH_QUEUES,
+  parseEnqueueRequest,
   verifyBearerAuth,
 } from "../src/auth";
 
@@ -22,18 +20,10 @@ describe("verifyBearerAuth", () => {
   });
 });
 
-describe("parsePublishEnvelope", () => {
-  it("parses orchestrator jobs", () => {
-    const env = parsePublishEnvelope({
-      kind: "orchestrator",
-      job: { postId: "p1", userId: "u1" },
-    });
-    expect(env?.kind).toBe("orchestrator");
-  });
-
-  it("parses platform jobs", () => {
-    const env = parsePublishEnvelope({
-      kind: "platform",
+describe("parseEnqueueRequest", () => {
+  it("parses platform jobs with priority", () => {
+    const req = parseEnqueueRequest({
+      priority: "now",
       job: {
         postId: "p1",
         userId: "u1",
@@ -42,22 +32,22 @@ describe("parsePublishEnvelope", () => {
         platform: "twitter_x",
       },
     });
-    expect(env?.kind).toBe("platform");
+    expect(req?.priority).toBe("now");
+    expect(req?.job.platform).toBe("twitter_x");
   });
 
   it("rejects invalid payloads", () => {
-    expect(parsePublishEnvelope(null)).toBeNull();
-    expect(parsePublishEnvelope({ kind: "nope", job: {} })).toBeNull();
+    expect(parseEnqueueRequest(null)).toBeNull();
+    expect(parseEnqueueRequest({ priority: "nope", job: {} })).toBeNull();
     expect(
-      parsePublishEnvelope({ kind: "platform", job: { postId: "p", userId: "u" } }),
+      parseEnqueueRequest({ priority: "now", job: { postId: "p", userId: "u" } }),
     ).toBeNull();
   });
 });
 
-describe("queueKindForBatch", () => {
-  it("maps queue names", () => {
-    expect(queueKindForBatch(ORCHESTRATOR_QUEUE)).toBe("orchestrator");
-    expect(queueKindForBatch(PLATFORM_QUEUE)).toBe("platform");
-    expect(queueKindForBatch("other")).toBeNull();
+describe("CF_PUBLISH_QUEUES", () => {
+  it("defines now and scheduled queue names", () => {
+    expect(CF_PUBLISH_QUEUES.NOW).toBe("social0-publish-now");
+    expect(CF_PUBLISH_QUEUES.SCHEDULED).toBe("social0-publish-scheduled");
   });
 });

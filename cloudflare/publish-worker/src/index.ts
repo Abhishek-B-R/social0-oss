@@ -1,10 +1,10 @@
 import {
-  parsePublishEnvelope,
-  queueKindForBatch,
+  isKnownConsumerQueue,
+  parseEnqueueRequest,
   verifyBearerAuth,
 } from "./auth";
-import { fanOutPost, runPlatformPublish } from "./publish";
-import type { PublishJobEnvelope } from "./types";
+import { processPlatformJob } from "./process-platform";
+import type { PublishPlatformJob } from "./types";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -15,8 +15,8 @@ export default {
         ok: true,
         service: "social0-publish",
         queues: {
-          orchestrator: "social0-publish-orchestrator",
-          platform: "social0-publish-platform",
+          now: "social0-publish-now",
+          scheduled: "social0-publish-scheduled",
         },
       });
     }
@@ -37,26 +37,29 @@ export default {
         return Response.json({ error: "Invalid JSON" }, { status: 400 });
       }
 
-      const envelope = parsePublishEnvelope(body);
-      if (!envelope) {
-        return Response.json({ error: "Invalid publish envelope" }, { status: 400 });
+      const req = parseEnqueueRequest(body);
+      if (!req) {
+        return Response.json({ error: "Invalid publish job" }, { status: 400 });
       }
 
-      if (envelope.kind === "orchestrator") {
-        await env.PUBLISH_ORCHESTRATOR_QUEUE.send(envelope);
-      } else {
-        await env.PUBLISH_PLATFORM_QUEUE.send(envelope);
-      }
+      const queueBinding =
+        req.priority === "now"
+          ? env.PUBLISH_NOW_QUEUE
+          : env.PUBLISH_SCHEDULED_QUEUE;
 
-      return Response.json({ status: "queued", kind: envelope.kind }, { status: 202 });
+      await queueBinding.send(req.job);
+
+      return Response.json(
+        { status: "queued", priority: req.priority, platform: req.job.platform },
+        { status: 202 },
+      );
     }
 
     return new Response("Not found", { status: 404 });
   },
 
   async queue(batch: MessageBatch, env: Env): Promise<void> {
-    const expectedKind = queueKindForBatch(batch.queue);
-    if (!expectedKind) {
+    if (!isKnownConsumerQueue(batch.queue)) {
       console.error(`[publish-worker] unknown queue: ${batch.queue}`);
       for (const message of batch.messages) {
         message.retry();
@@ -65,30 +68,12 @@ export default {
     }
 
     for (const message of batch.messages) {
-      const body = message.body as PublishJobEnvelope;
-
-      if (body.kind !== expectedKind) {
-        console.error(
-          `[publish-worker] envelope kind ${body.kind} does not match queue ${batch.queue}`,
-        );
-        message.retry();
-        continue;
-      }
-
+      const job = message.body as PublishPlatformJob;
       try {
-        if (expectedKind === "orchestrator") {
-          if (body.kind !== "orchestrator") continue;
-          await fanOutPost(body.job, env);
-        } else {
-          if (body.kind !== "platform") continue;
-          const result = await runPlatformPublish(body.job, env);
-          if (!result.ok) {
-            throw new Error(result.error ?? "platform publish failed");
-          }
-        }
+        await processPlatformJob(job, env);
         message.ack();
       } catch (err) {
-        console.error("[publish-worker] job failed", err);
+        console.error("[publish-worker] platform job failed", err);
         message.retry();
       }
     }

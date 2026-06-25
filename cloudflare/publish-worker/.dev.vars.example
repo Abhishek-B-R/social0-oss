@@ -1,3 +1,9 @@
 # Copy to .dev.vars for local `wrangler dev` (never commit .dev.vars)
-API_CALLBACK_URL=http://localhost:3001
 PUBLISH_HMAC_SECRET=dev-publish-secret-change-me
+ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+APP_URL=http://localhost:3000
+R2_PUBLIC_URL=https://your-r2-public-url.example.com
+
+# OAuth + R2 — copy from backend/.env as needed for platform publish in dev
+# TWITTER_CONSUMER_KEY=
+# TWITTER_CONSUMER_SECRET=

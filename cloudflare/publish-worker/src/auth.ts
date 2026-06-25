@@ -1,7 +1,10 @@
-import type { PublishJobEnvelope } from "./types";
+import {
+  CF_PUBLISH_QUEUES,
+  type CfPublishPriority,
+} from "@social0/shared";
+import type { PublishEnqueueRequest, PublishPlatformJob } from "./types";
 
-export const ORCHESTRATOR_QUEUE = "social0-publish-orchestrator";
-export const PLATFORM_QUEUE = "social0-publish-platform";
+export { CF_PUBLISH_QUEUES };
 
 export function verifyBearerAuth(
   request: Request,
@@ -12,29 +15,38 @@ export function verifyBearerAuth(
   return auth === `Bearer ${secret}`;
 }
 
-export function parsePublishEnvelope(body: unknown): PublishJobEnvelope | null {
+export function parseEnqueueRequest(body: unknown): PublishEnqueueRequest | null {
   if (!body || typeof body !== "object") return null;
   const o = body as Record<string, unknown>;
-  if (o.kind !== "orchestrator" && o.kind !== "platform") return null;
+  if (o.priority !== "now" && o.priority !== "scheduled") return null;
   if (!o.job || typeof o.job !== "object") return null;
+
   const job = o.job as Record<string, unknown>;
-  if (typeof job.postId !== "string" || typeof job.userId !== "string") {
+  if (
+    typeof job.postId !== "string" ||
+    typeof job.userId !== "string" ||
+    typeof job.publicationId !== "string" ||
+    typeof job.connectedAccountId !== "string" ||
+    typeof job.platform !== "string"
+  ) {
     return null;
   }
-  if (o.kind === "platform") {
-    if (
-      typeof job.publicationId !== "string" ||
-      typeof job.connectedAccountId !== "string" ||
-      typeof job.platform !== "string"
-    ) {
-      return null;
-    }
-  }
-  return body as PublishJobEnvelope;
+
+  return {
+    priority: o.priority,
+    job: job as PublishPlatformJob,
+  };
 }
 
-export function queueKindForBatch(queueName: string): "orchestrator" | "platform" | null {
-  if (queueName === ORCHESTRATOR_QUEUE) return "orchestrator";
-  if (queueName === PLATFORM_QUEUE) return "platform";
-  return null;
+export function queueForPriority(priority: CfPublishPriority): string {
+  return priority === "now"
+    ? CF_PUBLISH_QUEUES.NOW
+    : CF_PUBLISH_QUEUES.SCHEDULED;
+}
+
+export function isKnownConsumerQueue(queueName: string): boolean {
+  return (
+    queueName === CF_PUBLISH_QUEUES.NOW ||
+    queueName === CF_PUBLISH_QUEUES.SCHEDULED
+  );
 }

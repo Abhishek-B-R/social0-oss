@@ -1,0 +1,197 @@
+import { and, eq } from "drizzle-orm";
+import { Queue } from "bullmq";
+import type { FastifyInstance } from "fastify";
+import {
+  JOB_NAMES,
+  getRedisUrl,
+  platformPublishQueueName,
+  type PublishPlatformJob,
+  type PublishPostJob,
+} from "@social0/shared";
+import { db } from "../db/index.js";
+import { posts, publishJobEvents, publishJobs } from "../db/schema.js";
+import { loadPublicationTargets } from "../lib/publish-load-targets.js";
+import {
+  resolveJobProgressStore,
+  safeDbPublishTracking,
+} from "../lib/publish-job-tracking.js";
+import {
+  dispatchPlatformJob,
+  useCloudflarePublishDispatch,
+} from "./publish-dispatch.js";
+
+export type PublishPriority = "now" | "scheduled";
+
+async function markPostPublishing(postId: string, userId: string) {
+  await db
+    .update(posts)
+    .set({ status: "publishing", updatedAt: new Date() })
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+}
+
+/** Persist tracking row for SSE when publish_jobs table exists. */
+export async function initPublishJobTracking(input: {
+  trackingId: string;
+  postId: string;
+  userId: string;
+  total: number;
+}) {
+  await safeDbPublishTracking(async () => {
+    const now = new Date();
+    await db
+      .insert(publishJobs)
+      .values({
+        trackingId: input.trackingId,
+        postId: input.postId,
+        userId: input.userId,
+        status: "queued",
+        total: input.total,
+        completed: 0,
+        failed: 0,
+      })
+      .onConflictDoUpdate({
+        target: publishJobs.trackingId,
+        set: {
+          status: "queued",
+          total: input.total,
+          updatedAt: now,
+        },
+      });
+
+    await db.insert(publishJobEvents).values({
+      trackingId: input.trackingId,
+      postId: input.postId,
+      userId: input.userId,
+      phase: "queued",
+      message: "Publish job queued",
+      progress: { completed: 0, failed: 0, total: input.total },
+    });
+  });
+}
+
+async function emitPlatformQueuedEvents(
+  app: FastifyInstance | null,
+  job: PublishPostJob,
+  targets: Awaited<ReturnType<typeof loadPublicationTargets>>,
+) {
+  if (!job.trackingId) return;
+
+  const progress = await resolveJobProgressStore(app);
+
+  await progress.initJob({
+    trackingId: job.trackingId,
+    postId: job.postId,
+    userId: job.userId,
+    total: targets.length,
+  });
+
+  await progress.emit({
+    trackingId: job.trackingId,
+    postId: job.postId,
+    userId: job.userId,
+    phase: "fan_out",
+    message: `Fanning out to ${targets.length} platforms`,
+    setTotal: targets.length,
+  });
+
+  for (const t of targets) {
+    await progress.emit({
+      trackingId: job.trackingId,
+      postId: job.postId,
+      userId: job.userId,
+      phase: "platform_queued",
+      platform: t.platform,
+      connectedAccountId: t.connectedAccountId,
+      message: `Queued ${t.platform}`,
+    });
+  }
+}
+
+async function enqueueBullmqPlatformJob(
+  app: FastifyInstance | null,
+  platformJob: PublishPlatformJob,
+  opts?: { delay?: number },
+) {
+  const connection = app?.redisConnection ?? { url: getRedisUrl() };
+  const queueName = platformPublishQueueName(platformJob.platform);
+  const queue = new Queue<PublishPlatformJob>(queueName, { connection });
+  await queue.add(JOB_NAMES.PUBLISH_PLATFORM, platformJob, {
+    jobId: `platform-${platformJob.publicationId}`,
+    attempts: 5,
+    backoff: { type: "exponential", delay: 10_000 },
+    delay: opts?.delay,
+  });
+  if (!app?.redisConnection) {
+    await queue.close();
+  }
+}
+
+/**
+ * API-side fan-out: load targets, update DB, enqueue one job per platform.
+ * Never runs executePublish inline.
+ */
+export async function prepareAndEnqueuePublish(
+  app: FastifyInstance | null,
+  data: PublishPostJob,
+  opts: {
+    priority: PublishPriority;
+    trackingId?: string;
+    delay?: number;
+  },
+): Promise<{
+  id: string;
+  backend: "cloudflare" | "bullmq";
+  enqueued: number;
+  trackingId?: string;
+}> {
+  const trackingId = opts.trackingId ?? data.trackingId;
+  const job: PublishPostJob = { ...data, trackingId };
+
+  const targets = await loadPublicationTargets(job);
+  if (targets.length === 0) {
+    throw new Error(`No publication targets for post ${job.postId}`);
+  }
+
+  await markPostPublishing(job.postId, job.userId);
+
+  if (trackingId) {
+    await initPublishJobTracking({
+      trackingId,
+      postId: job.postId,
+      userId: job.userId,
+      total: targets.length,
+    });
+  }
+
+  const backend = useCloudflarePublishDispatch() ? "cloudflare" : "bullmq";
+
+  if (backend === "bullmq" && !app?.redisConnection && !getRedisUrl()) {
+    throw new Error("BullMQ redis connection not available");
+  }
+
+  await emitPlatformQueuedEvents(app, job, targets);
+
+  for (const t of targets) {
+    const platformJob: PublishPlatformJob = {
+      postId: job.postId,
+      userId: job.userId,
+      trackingId,
+      publicationId: t.publicationId,
+      connectedAccountId: t.connectedAccountId,
+      platform: t.platform,
+    };
+
+    if (backend === "cloudflare") {
+      await dispatchPlatformJob(platformJob, opts.priority);
+    } else {
+      await enqueueBullmqPlatformJob(app, platformJob, { delay: opts.delay });
+    }
+  }
+
+  return {
+    id: trackingId ?? `publish-${job.postId}`,
+    backend,
+    enqueued: targets.length,
+    trackingId,
+  };
+}

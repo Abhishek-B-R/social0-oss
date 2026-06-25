@@ -11,7 +11,6 @@ import { registerWebhooksRoutes } from "./webhooks.js";
 import { registerMiscRoutes } from "./misc.js";
 import { registerApiPlatformRoutes } from "./api-platform.js";
 import { registerRpcRoutes } from "./rpc.js";
-import { registerInternalPublishRoutes } from "./internal-publish.js";
 import { FRONTEND_API_ROUTES } from "@social0/shared";
 
 export async function registerApiRoutes(app: FastifyInstance) {
@@ -33,5 +32,4 @@ export async function registerApiRoutes(app: FastifyInstance) {
   await app.register(registerMiscRoutes);
   await app.register(registerApiPlatformRoutes);
   await app.register(registerRpcRoutes);
-  await app.register(registerInternalPublishRoutes);
 }

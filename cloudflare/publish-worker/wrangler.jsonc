@@ -4,34 +4,40 @@
   "compatibility_date": "2025-03-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
-    "enabled": true
+    "enabled": true,
   },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "c41cd45f45304988bc3eaa6eafd7a9ab",
+    },
+  ],
   "queues": {
     "producers": [
       {
-        "binding": "PUBLISH_ORCHESTRATOR_QUEUE",
-        "queue": "social0-publish-orchestrator"
+        "binding": "PUBLISH_NOW_QUEUE",
+        "queue": "social0-publish-now",
       },
       {
-        "binding": "PUBLISH_PLATFORM_QUEUE",
-        "queue": "social0-publish-platform"
-      }
+        "binding": "PUBLISH_SCHEDULED_QUEUE",
+        "queue": "social0-publish-scheduled",
+      },
     ],
     "consumers": [
       {
-        "queue": "social0-publish-orchestrator",
+        "queue": "social0-publish-now",
         "max_batch_size": 1,
         "max_batch_timeout": 5,
         "max_retries": 5,
-        "dead_letter_queue": "social0-publish-dlq"
+        "dead_letter_queue": "social0-publish-dlq",
       },
       {
-        "queue": "social0-publish-platform",
+        "queue": "social0-publish-scheduled",
         "max_batch_size": 1,
         "max_batch_timeout": 30,
         "max_retries": 5,
-        "dead_letter_queue": "social0-publish-dlq"
-      }
-    ]
-  }
+        "dead_letter_queue": "social0-publish-dlq",
+      },
+    ],
+  },
 }
