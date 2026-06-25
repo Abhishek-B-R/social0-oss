@@ -23,7 +23,11 @@ import {
 import { loadPublicationTargets } from "../lib/publish-load-targets.js";
 import { resolveJobProgressStore } from "../lib/publish-job-tracking.js";
 
-export { createPublishTrackingId, queueNameForJob, useCloudflarePublishDispatch };
+export {
+  createPublishTrackingId,
+  queueNameForJob,
+  useCloudflarePublishDispatch,
+};
 
 export async function enqueuePublishPost(
   app: FastifyInstance,
@@ -44,13 +48,18 @@ export async function enqueuePublishPostStandalone(
   backend: "cloudflare" | "bullmq";
   streamUrl?: string;
 }> {
-  const trackingId = opts?.trackingId ?? data.trackingId ?? createPublishTrackingId();
+  const trackingId =
+    opts?.trackingId ?? data.trackingId ?? createPublishTrackingId();
 
   if (useCloudflarePublishDispatch()) {
-    const result = await prepareAndEnqueuePublish(null, { ...data, trackingId }, {
-      priority: "now",
-      trackingId,
-    });
+    const result = await prepareAndEnqueuePublish(
+      null,
+      { ...data, trackingId },
+      {
+        priority: "now",
+        trackingId,
+      },
+    );
     return {
       trackingId,
       backend: result.backend,
@@ -126,9 +135,6 @@ export async function enqueueBillingSync(
   return app.queues.billing.add(JOB_NAMES.BILLING_SYNC, data);
 }
 
-export async function enqueueCronJob(
-  app: FastifyInstance,
-  name: string,
-) {
+export async function enqueueCronJob(app: FastifyInstance, name: string) {
   return app.queues.scheduler.add(name, { triggeredAt: Date.now() });
 }
