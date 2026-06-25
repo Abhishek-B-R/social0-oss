@@ -3,7 +3,7 @@ import { PLATFORM_OAUTH_CONFIG, Platform } from "../lib/platforms.js";
 import { env } from "../lib/env.js";
 import { headers, cookies } from "../lib/shim/next-headers.js";
 import { encrypt } from "../lib/encryption.js";
-import { resolveAppUrlFromRequest } from "../lib/app-url.js";
+import { appUrlForPath, resolveAppUrlFromRequest } from "../lib/app-url.js";
 import crypto from "crypto";
 import { db } from "../db/index.js";
 import { verification, connectedAccounts } from "../db/schema.js";
@@ -45,7 +45,7 @@ export async function GET(
     });
     if (!rate.allowed) {
       return NextResponse.redirect(
-        new URL("/dashboard/connections?error=rate_limited", req.url),
+        appUrlForPath("/dashboard/connections?error=rate_limited", req),
       );
     }
   }

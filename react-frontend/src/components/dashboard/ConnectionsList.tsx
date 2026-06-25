@@ -282,6 +282,7 @@ export function ConnectionsList({
                             className="flex min-w-0 max-w-full flex-wrap items-center gap-1 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 opacity-75"
                           >
                             <AccountAvatar
+                              accountId={account.id}
                               profileImageUrl={account.profileImageUrl}
                               username={account.platformUsername}
                               platform={account.platform}
@@ -326,6 +327,7 @@ export function ConnectionsList({
                           }`}
                         >
                           <AccountAvatar
+                            accountId={account.id}
                             profileImageUrl={account.profileImageUrl}
                             username={account.platformUsername}
                             platform={account.platform}

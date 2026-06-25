@@ -1,6 +1,7 @@
 import { env, appBaseUrl } from "./env.js";
 import { forwardedRequestOrigin } from "./forwarded-request-url.js";
 import { getRequestContext } from "./request-context.js";
+import { sanitizeReturnToPath } from "./safe-return-to.js";
 import { normalizeAppUrl } from "./url-utils.js";
 
 function toOrigin(url: string): string {
@@ -82,4 +83,14 @@ export function resolveAppUrlFromRequest(request?: Request): string {
   }
 
   return normalizeAppUrl(appBaseUrl());
+}
+
+/** Absolute frontend URL for a safe in-app path (OAuth / dashboard redirects). */
+export function appUrlForPath(path: unknown, request?: Request): string {
+  const safe =
+    sanitizeReturnToPath(path) ??
+    sanitizeReturnToPath("/dashboard") ??
+    "/dashboard";
+  const base = resolveAppUrlFromRequest(request);
+  return new URL(safe, `${base}/`).toString();
 }

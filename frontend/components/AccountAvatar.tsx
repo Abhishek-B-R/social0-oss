@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { accountAvatarSrc } from "@/lib/account-avatar-url";
 
 type AccountAvatarProps = {
   profileImageUrl: string | null | undefined;
+  /** When set, FB/IG avatars load via /api/accounts/:id/avatar (fresh from Graph API). */
+  accountId?: string;
   username?: string | null;
   /** Platform id for placeholder initial and Premium badge (e.g. "twitter_x") */
   platform?: string;
@@ -18,6 +21,7 @@ const sizeMap = { sm: 32, md: 36, lg: 48 };
 
 export function AccountAvatar({
   profileImageUrl,
+  accountId,
   username,
   platform,
   isTwitterPremium = false,
@@ -26,6 +30,7 @@ export function AccountAvatar({
 }: AccountAvatarProps) {
   const [failed, setFailed] = useState(false);
   const px = sizeMap[size];
+  const src = accountAvatarSrc(accountId, platform, profileImageUrl);
 
   const initial =
     username?.charAt(0)?.toUpperCase() ||
@@ -34,7 +39,7 @@ export function AccountAvatar({
 
   // Reset failed state when URL changes
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => setFailed(false), [profileImageUrl]);
+  useEffect(() => setFailed(false), [src]);
 
   const showPremiumBadge = platform === "twitter_x" && isTwitterPremium;
 
@@ -43,9 +48,9 @@ export function AccountAvatar({
       className={cn("relative shrink-0", className)}
       style={{ width: px, height: px }}
     >
-      {profileImageUrl?.trim() && !failed ? (
+      {src && !failed ? (
         <img
-          src={profileImageUrl}
+          src={src}
           alt={username || platform || "Account"}
           referrerPolicy="no-referrer"
           draggable={false}

@@ -1,13 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { loadSettingsPageData } from "@/actions/settings";
 import { SettingsClient } from "@/features/dashboard/settings/SettingsClient";
 import { useSession } from "@/lib/auth-client";
-import { useNavigate } from "react-router-dom";
 import { signInUrl } from "@/lib/sign-in-url";
-import { useEffect } from "react";
-import { MdQuestionMark } from "react-icons/md";
-import { DOCS_SETTINGS_URL } from "@/lib/docs-url";
+import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 
 function getTimezoneOffsetMinutes(tz: string): number {
   try {
@@ -37,10 +35,16 @@ function sortTimezonesByOffset(tzList: string[]): string[] {
 }
 
 export function SettingsPageClient() {
-  const { data: session, isPending } = useSession();
+  const { data: session, isPending: sessionPending } = useSession();
   const navigate = useNavigate();
 
-  const { data, isLoading } = useQuery({
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["settings-page"],
     queryFn: loadSettingsPageData,
     enabled: !!session,
@@ -66,39 +70,47 @@ export function SettingsPageClient() {
   }, []);
 
   useEffect(() => {
-    if (!isPending && !session) {
+    if (!sessionPending && !session) {
       navigate(signInUrl("/dashboard/settings"), { replace: true });
     }
-  }, [isPending, session, navigate]);
+  }, [sessionPending, session, navigate]);
 
-  if (isLoading || !data || !session) return null;
+  if (sessionPending || (session && isLoading)) {
+    return <DashboardPageSkeleton message="Loading settings..." />;
+  }
+
+  if (!session) {
+    return null;
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-6 text-sm text-foreground">
+        <p className="text-muted-foreground">
+          {isError
+            ? (error instanceof Error ? error.message : "Could not load settings.")
+            : "Could not load settings."}
+        </p>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          className="mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <div className="flex items-center gap-2 mb-2">
-        <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground landing">
-          Settings
-        </h1>
-        <a
-          href={DOCS_SETTINGS_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-full text-text-muted hover:text-text hover:bg-muted transition-colors"
-          title="Documentation"
-          aria-label="Documentation"
-        >
-          <MdQuestionMark className="w-5 h-5" />
-        </a>
-      </div>
-      <SettingsClient
-        displayName={data.displayName}
-        email={data.email}
-        image={data.image}
-        settings={data.settings}
-        connections={data.connections}
-        timeZones={timeZones}
-        isCredentialUser={data.isCredentialUser}
-      />
-    </>
+    <SettingsClient
+      displayName={data.displayName}
+      email={data.email}
+      image={data.image}
+      settings={data.settings}
+      connections={data.connections}
+      timeZones={timeZones}
+      isCredentialUser={data.isCredentialUser}
+    />
   );
 }

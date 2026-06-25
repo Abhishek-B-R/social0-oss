@@ -36,6 +36,7 @@ import type {
 } from "@/components/autoplug/AutoPlugPanel";
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
+import { AccountAvatar } from "@/components/AccountAvatar";
 import {
   MdOutlineAddPhotoAlternate,
   MdOutlineVideocam,
@@ -2289,21 +2290,14 @@ export function CollectionPostForm({
               <>
                 <div className="rounded-lg border border-border bg-bg p-3 shadow-sm">
                   <div className="flex gap-3">
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-bg-muted flex items-center justify-center text-sm font-semibold text-text-muted">
-                      {previewAccount?.profileImageUrl?.trim() ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={previewAccount.profileImageUrl}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        (previewAccount?.platformUsername ?? "?")
-                          .charAt(0)
-                          .toUpperCase()
-                      )}
-                    </div>
+                    <AccountAvatar
+                      accountId={previewAccount?.id}
+                      profileImageUrl={previewAccount?.profileImageUrl}
+                      username={previewAccount?.platformUsername}
+                      platform={previewAccount?.platform}
+                      size="md"
+                      className="!h-10 !w-10"
+                    />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-text inline-flex items-center gap-0.5 flex-wrap">
                         {previewAccount?.platformUsername

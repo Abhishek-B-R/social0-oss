@@ -48,6 +48,7 @@ import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsMod
 import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
 import { PLATFORMS } from "@/lib/platforms";
 import { PlatformIcon } from "@/components/PlatformIcon";
+import { AccountAvatar } from "@/components/AccountAvatar";
 import {
   UploadPublishOverlay,
   type PlatformResult,
@@ -1090,21 +1091,13 @@ export function TextPostForm({
                       >
                         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                           <div className="flex min-w-0 flex-1 items-center gap-2">
-                            <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-muted text-sm font-semibold text-text-muted">
-                              {account.profileImageUrl?.trim() ? (
-                                /* eslint-disable-next-line @next/next/no-img-element */
-                                <img
-                                  src={account.profileImageUrl}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                  referrerPolicy="no-referrer"
-                                />
-                              ) : (
-                                (account.platformUsername ?? account.platform)
-                                  .charAt(0)
-                                  .toUpperCase()
-                              )}
-                            </div>
+                            <AccountAvatar
+                              accountId={account.id}
+                              profileImageUrl={account.profileImageUrl}
+                              username={account.platformUsername}
+                              platform={account.platform}
+                              size="sm"
+                            />
                             <span className="min-w-0 truncate text-sm font-medium text-text">
                               {username}
                               <span className="text-text-muted">
@@ -1300,25 +1293,14 @@ export function TextPostForm({
             ) : (
               <div className="flex gap-3">
                 <div className="flex flex-col items-center shrink-0">
-                  <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-muted text-sm font-semibold text-text-muted">
-                    {previewAccount?.profileImageUrl?.trim() ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={previewAccount.profileImageUrl}
-                        alt=""
-                        className="h-full w-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      (
-                        previewAccount?.platformUsername ??
-                        previewAccount?.platform ??
-                        "A"
-                      )
-                        .charAt(0)
-                        .toUpperCase()
-                    )}
-                  </div>
+                  <AccountAvatar
+                    accountId={previewAccount?.id}
+                    profileImageUrl={previewAccount?.profileImageUrl}
+                    username={previewAccount?.platformUsername}
+                    platform={previewAccount?.platform}
+                    size="md"
+                    className="!h-10 !w-10"
+                  />
                 </div>
                 <div className="min-w-0 flex-1 max-h-[320px] overflow-y-auto">
                   <p className="text-sm font-semibold text-text shrink-0 inline-flex items-center gap-0.5 flex-wrap">

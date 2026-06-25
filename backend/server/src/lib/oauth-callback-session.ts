@@ -37,5 +37,6 @@ export async function assertOAuthCallbackSession(
   safeRedirect(
     `/dashboard/connections?error=oauth_session_mismatch&platform=${encodeURIComponent(platform)}`,
     "/dashboard/connections",
+    request,
   );
 }

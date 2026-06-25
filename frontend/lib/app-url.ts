@@ -1,4 +1,5 @@
 import { env } from "./env";
+import { sanitizeReturnToPath } from "./safe-return-to";
 import { normalizeAppUrl } from "./url-utils";
 
 function toOrigin(url: string): string {
@@ -57,4 +58,14 @@ export function resolveAppUrlFromRequest(request?: Request): string {
   }
 
   return normalizeAppUrl(env.BETTER_AUTH_URL ?? env.NEXT_PUBLIC_APP_URL);
+}
+
+/** Absolute frontend URL for a safe in-app path (OAuth / dashboard redirects). */
+export function appUrlForPath(path: unknown, request?: Request): string {
+  const safe =
+    sanitizeReturnToPath(path) ??
+    sanitizeReturnToPath("/dashboard") ??
+    "/dashboard";
+  const base = resolveAppUrlFromRequest(request);
+  return new URL(safe, `${base}/`).toString();
 }

@@ -1,11 +1,16 @@
+import { appUrlForPath } from "./app-url.js";
 import { redirect } from "./shim/next-navigation.js";
 import { sanitizeReturnToPath } from "./safe-return-to.js";
 
-/** Redirect only to a safe in-app relative path. External URLs are rejected. */
-export function safeRedirect(url: unknown, fallback: string): never {
+/** Redirect only to a safe in-app path on the frontend origin. */
+export function safeRedirect(
+  url: unknown,
+  fallback: string,
+  request?: Request,
+): never {
   const fallbackSafe = sanitizeReturnToPath(fallback) ?? "/dashboard";
   const s = sanitizeReturnToPath(url) ?? fallbackSafe;
-  return redirect(s);
+  return redirect(appUrlForPath(s, request));
 }
 
 /** Rethrow Next.js redirect errors so they propagate; call at the start of catch blocks in API routes. */

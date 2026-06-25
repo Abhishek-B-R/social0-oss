@@ -17,12 +17,12 @@ import {
   CalendarPage,
   ConnectionsPage,
   SettingsPage,
+  FeedbackPageRoute,
 } from "@/pages/DashboardPages";
 import { CreateHubPage } from "@/pages/CreateHubPage";
 import { CreateTypePage } from "@/pages/CreateTypePage";
 import { PostDetailPage } from "@/pages/PostDetailPage";
 import { EditPostPage } from "@/pages/EditPostPage";
-import { FeedbackPage } from "@/pages/FeedbackPage";
 import { MorePage } from "@/pages/MorePage";
 import { BulkToolsPage } from "@/pages/BulkToolsPages";
 import { BulkToolsImagePage } from "@/pages/BulkToolsImagePage";
@@ -94,7 +94,7 @@ export function AppRouter() {
             <Route path="bulk-tools/image" element={<BulkToolsImagePage />} />
             <Route path="bulk-tools/video" element={<BulkToolsVideoPage />} />
             <Route path="api-keys" element={<ApiKeysPage />} />
-            <Route path="feedback" element={<FeedbackPage />} />
+            <Route path="feedback" element={<FeedbackPageRoute />} />
             <Route path="more" element={<MorePage />} />
             <Route path="teams" element={<TeamsPage />} />
           </Route>

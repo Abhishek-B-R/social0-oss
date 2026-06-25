@@ -5,6 +5,7 @@ import { BillingPageClient } from "@/features/dashboard/billing/BillingPageClien
 import { CalendarPageClient } from "@/features/dashboard/calendar/CalendarPageClient";
 import { ConnectionsPageClient } from "@/features/dashboard/connections/ConnectionsPageClient";
 import { SettingsPageClient } from "@/pages/SettingsPage";
+import { FeedbackPage } from "@/pages/FeedbackPage";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 
 export function DashboardIndexPage() {
@@ -36,5 +37,17 @@ export function ConnectionsPage() {
 }
 
 export function SettingsPage() {
-  return <SettingsPageClient />;
+  return (
+    <Suspense fallback={<DashboardPageSkeleton message="Loading settings..." />}>
+      <SettingsPageClient />
+    </Suspense>
+  );
+}
+
+export function FeedbackPageRoute() {
+  return (
+    <Suspense fallback={<DashboardPageSkeleton message="Loading feedback..." />}>
+      <FeedbackPage />
+    </Suspense>
+  );
 }

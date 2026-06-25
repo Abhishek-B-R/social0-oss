@@ -4,8 +4,7 @@ import { connectedAccounts } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { normalizeAppUrl } from "@/lib/url-utils";
-import { env } from "@/lib/env";
+import { appUrlForPath, resolveAppUrlFromRequest } from "@/lib/app-url";
 import { enforceRateLimit, oauthLimiter } from "@/lib/ratelimit";
 
 const VALID_PLATFORMS = [
@@ -25,9 +24,7 @@ export async function GET(
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
-    return NextResponse.redirect(
-      new URL("/dashboard/connections", req.url),
-    );
+    return NextResponse.redirect(appUrlForPath("/dashboard/connections", req));
   }
 
   const rate = await enforceRateLimit(oauthLimiter, session.user.id, {
@@ -35,7 +32,7 @@ export async function GET(
   });
   if (!rate.allowed) {
     return NextResponse.redirect(
-      new URL("/dashboard/connections?error=rate_limited", req.url),
+      appUrlForPath("/dashboard/connections?error=rate_limited", req),
     );
   }
 
@@ -67,10 +64,10 @@ export async function GET(
     return NextResponse.json({ error: "Account not found" }, { status: 403 });
   }
 
-  const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
+  const baseUrl = resolveAppUrlFromRequest(req);
   const reauthUrl = new URL(
     `/api/connect/${platformParam}`,
-    baseUrl,
+    `${baseUrl}/`,
   );
   reauthUrl.searchParams.set("reauth", "1");
   reauthUrl.searchParams.set("accountId", accountId);

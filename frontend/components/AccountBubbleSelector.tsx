@@ -177,6 +177,7 @@ export function AccountBubbleSelector({
               >
                 <div className="h-full w-full flex items-center justify-center">
                   <AccountAvatar
+                    accountId={acc.id}
                     profileImageUrl={acc.profileImageUrl}
                     username={acc.platformUsername}
                     platform={acc.platform}

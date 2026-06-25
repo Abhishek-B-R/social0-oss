@@ -713,7 +713,7 @@ export async function GET(
     // Facebook: cache pages and redirect to single-page picker (do not save to DB yet)
     if (platform === "facebook") {
       const pagesRes = await fetch(
-        "https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,picture",
+        "https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,picture.type(large){url,is_silhouette}",
         {
           headers: {
             Authorization: `Bearer ${tokens.access_token}`,
@@ -732,7 +732,7 @@ export async function GET(
         id: string;
         name: string;
         access_token: string;
-        picture?: { data?: { url?: string } };
+        picture?: { data?: { url?: string; is_silhouette?: boolean } };
       }[] = pagesData.data || [];
       if (pages.length === 0) {
         return safeRedirect(
@@ -749,7 +749,7 @@ export async function GET(
       for (const page of pages) {
         let profileImageUrl: string | null = null;
         const fromList = page.picture?.data?.url;
-        if (isValidProfileImageUrl(fromList)) {
+        if (isValidProfileImageUrl(fromList) && !page.picture?.data?.is_silhouette) {
           profileImageUrl = fromList;
         } else {
           try {

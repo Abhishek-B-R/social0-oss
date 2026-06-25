@@ -36,6 +36,7 @@ import type {
 } from "@/components/autoplug/AutoPlugPanel";
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
+import { AccountAvatar } from "@/components/AccountAvatar";
 import {
   UploadPublishOverlay,
   type PlatformResult,
@@ -2326,19 +2327,14 @@ export function ThreadsPostForm({
                   return (
                     <div key={post.id} className="flex gap-3">
                       <div className="flex flex-col items-center">
-                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-muted text-sm font-semibold text-text-muted">
-                          {previewAccount?.profileImageUrl?.trim() ? (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              src={previewAccount.profileImageUrl}
-                              alt=""
-                              className="h-full w-full object-cover"
-                              referrerPolicy="no-referrer"
-                            />
-                          ) : (
-                            initial
-                          )}
-                        </div>
+                        <AccountAvatar
+                          accountId={previewAccount?.id}
+                          profileImageUrl={previewAccount?.profileImageUrl}
+                          username={previewAccount?.platformUsername}
+                          platform={previewAccount?.platform}
+                          size="md"
+                          className="!h-10 !w-10"
+                        />
                         {!isLast && (
                           <div className="w-0.5 flex-1 min-h-[8px] bg-bg-muted" />
                         )}

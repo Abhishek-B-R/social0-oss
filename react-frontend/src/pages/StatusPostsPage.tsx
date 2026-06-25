@@ -5,6 +5,7 @@ import { loadPostsPageData } from "@/actions/dashboard-data";
 import { AllPostsFilters } from "@/features/dashboard/posts/AllPostsFilters";
 import { PostListCards } from "@/features/dashboard/posts/PostListCards";
 import { Pagination } from "@/components/ui/Pagination";
+import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 import { DOCS_POSTS_DRAFTS_URL } from "@/lib/docs-url";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 import { POSTS_PAGE_SIZE } from "@/features/dashboard/posts/posts-constants";
@@ -24,10 +25,16 @@ type StatusPostsConfig = {
 
 export function StatusPostsPage({ config }: { config: StatusPostsConfig }) {
   const [searchParams] = useSearchParams();
-  const { data: session } = useSession();
+  const { data: session, isPending: sessionPending } = useSession();
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
 
-  const { data: result, isLoading } = useQuery({
+  const {
+    data: result,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: [
       "status-posts",
       config.statusFilter,
@@ -46,6 +53,10 @@ export function StatusPostsPage({ config }: { config: StatusPostsConfig }) {
     enabled: !!session,
   });
 
+  if (sessionPending) {
+    return <DashboardPageSkeleton message={`Loading ${config.title.toLowerCase()}...`} />;
+  }
+
   if (!session) {
     return (
       <GuestPostsPageView
@@ -57,7 +68,29 @@ export function StatusPostsPage({ config }: { config: StatusPostsConfig }) {
     );
   }
 
-  if (isLoading || !result?.ok) return null;
+  if (isLoading) {
+    return <DashboardPageSkeleton message={`Loading ${config.title.toLowerCase()}...`} />;
+  }
+
+  if (isError || !result?.ok) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-6 text-sm text-foreground">
+        <p className="text-muted-foreground">
+          {isError
+            ? (error instanceof Error ? error.message : `Could not load ${config.title.toLowerCase()}.`)
+            : (result && !result.ok ? result.error : `Could not load ${config.title.toLowerCase()}.`)}
+        </p>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          className="mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
   const data = result.data;
   const params = Object.fromEntries(searchParams.entries());
   const hasActiveFilters = !!(params.platform || params.time || params.account);
