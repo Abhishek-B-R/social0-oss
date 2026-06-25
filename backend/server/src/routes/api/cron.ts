@@ -51,4 +51,15 @@ export async function registerCronRoutes(app: FastifyInstance) {
       .status(202)
       .send(accepted(job.id!, queueNameForJob(JOB_NAMES.TOKEN_HEALTH_SWEEP)));
   });
+
+  app.post("/cron/billing-zombie-cleanup", async (request, reply) => {
+    if (!verifyCronSecret(request)) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
+    const { sweepStaleZombieSubscriptions } = await import(
+      "../../lib/billing-zombie-cleanup.js"
+    );
+    const result = await sweepStaleZombieSubscriptions();
+    return reply.send(result);
+  });
 }

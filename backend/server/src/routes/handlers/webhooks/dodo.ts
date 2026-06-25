@@ -15,6 +15,10 @@ import {
   recordTrialClaim,
 } from "../../../lib/billing-guards.js";
 import { clearPendingCheckout } from "../../../lib/pending-checkout.js";
+import {
+  forceCancelDodoSubscription,
+  isStaleZombieSubscription,
+} from "../../../lib/billing-zombie-cleanup.js";
 
 const webhookSecret = env.DODO_PAYMENTS_WEBHOOK_SECRET ?? "";
 const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
@@ -42,6 +46,8 @@ type DodoSubscriptionData = {
   subscription_id?: string;
   product_id?: string;
   next_billing_date?: string | null;
+  previous_billing_date?: string | null;
+  created_at?: string;
   status?: string;
   customer?: { customer_id?: string; email?: string };
   metadata?: Record<string, string>;
@@ -260,6 +266,38 @@ async function handleSubscriptionOnHold(payload: {
     console.error("[dodo webhook] syncConnectedAccountsToLimit failed:", e),
   );
   console.log("[dodo webhook] Subscription on_hold — reverted user to free");
+
+  const subId = data.subscription_id;
+  if (
+    subId &&
+    data.created_at &&
+    isStaleZombieSubscription({
+      status: "on_hold",
+      created_at: data.created_at,
+      previous_billing_date: data.previous_billing_date,
+      next_billing_date: data.next_billing_date,
+    })
+  ) {
+    await forceCancelDodoSubscription(subId);
+    console.log("[dodo webhook] Cancelled stale on_hold subscription in Dodo", {
+      subscriptionId: subId,
+    });
+  }
+}
+
+async function handleSubscriptionFailedOrExpired(payload: {
+  data: DodoSubscriptionData;
+}) {
+  const data = payload.data;
+  const subId = data.subscription_id;
+  if (subId) {
+    await forceCancelDodoSubscription(subId);
+    console.log("[dodo webhook] Force-cancelled zombie subscription in Dodo", {
+      subscriptionId: subId,
+      status: data.status ?? "(unknown)",
+    });
+  }
+  await handleSubscriptionCancelledOrExpired(payload);
 }
 
 async function handleSubscriptionCancelledOrExpired(payload: {
@@ -395,9 +433,10 @@ export async function POST(request: Request) {
       if (data) await handleSubscriptionActiveOrUpdated({ data });
     } else if (
       eventType === "subscription.cancelled" ||
-      eventType === "subscription.expired"
+      eventType === "subscription.expired" ||
+      eventType === "subscription.failed"
     ) {
-      if (data) await handleSubscriptionCancelledOrExpired({ data });
+      if (data) await handleSubscriptionFailedOrExpired({ data });
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";

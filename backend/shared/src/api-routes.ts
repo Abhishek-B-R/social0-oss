@@ -122,6 +122,11 @@ export const FRONTEND_API_ROUTES: ApiRouteDef[] = [
     job: "token.health-sweep",
     async: true,
   },
+  {
+    method: "POST",
+    path: "/api/cron/billing-zombie-cleanup",
+    note: "sync — cancel stale unpaid Dodo subscriptions",
+  },
 
   // Dev
   { method: "POST", path: "/api/dev/trigger-crons", note: "dev only — enqueue all crons" },
