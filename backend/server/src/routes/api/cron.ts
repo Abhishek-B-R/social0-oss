@@ -1,12 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { accepted } from "../../middleware/auth.js";
 import { enqueueCronJob, queueNameForJob } from "../../services/enqueue.js";
+import { verifyCronSecretFromAuthorizationHeader } from "../../lib/cron-auth.js";
 import { JOB_NAMES } from "@social0/shared";
 
-function verifyCronSecret(request: { headers: Record<string, unknown> }) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
-  return request.headers["authorization"] === `Bearer ${secret}`;
+function verifyCronSecret(request: { headers: { authorization?: string | string[] } }) {
+  return verifyCronSecretFromAuthorizationHeader(request.headers.authorization);
 }
 
 export async function registerCronRoutes(app: FastifyInstance) {
@@ -52,14 +51,29 @@ export async function registerCronRoutes(app: FastifyInstance) {
       .send(accepted(job.id!, queueNameForJob(JOB_NAMES.TOKEN_HEALTH_SWEEP)));
   });
 
+  app.get("/cron/billing-zombie-cleanup", async (request, reply) => {
+    if (!verifyCronSecret(request)) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
+    const forceParam = (request.query as { force?: string }).force;
+    const force = forceParam === "1" || forceParam === "true";
+    const { sweepStaleZombieSubscriptions } = await import(
+      "../../lib/billing-zombie-cleanup.js"
+    );
+    const result = await sweepStaleZombieSubscriptions({ force });
+    return reply.send(result);
+  });
+
   app.post("/cron/billing-zombie-cleanup", async (request, reply) => {
     if (!verifyCronSecret(request)) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
+    const forceParam = (request.query as { force?: string }).force;
+    const force = forceParam === "1" || forceParam === "true";
     const { sweepStaleZombieSubscriptions } = await import(
       "../../lib/billing-zombie-cleanup.js"
     );
-    const result = await sweepStaleZombieSubscriptions();
+    const result = await sweepStaleZombieSubscriptions({ force });
     return reply.send(result);
   });
 }
