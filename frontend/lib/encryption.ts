@@ -11,6 +11,7 @@ export function encrypt(data: {
   oauth_token_secret?: string; // Twitter OAuth 1.0a request token secret
   returnTo?: string; // Redirect path after OAuth (e.g. /dashboard/connections)
   reauth?: boolean; // Re-auth flow: update existing row instead of insert
+  reauthAccountId?: string;
 }): string {
   const key = Buffer.from(env.ENCRYPTION_KEY, "hex");
   if (key.length !== 32) {
@@ -38,6 +39,7 @@ export function decrypt(encrypted: string): {
   oauth_token_secret?: string; // Twitter OAuth 1.0a request token secret
   returnTo?: string; // Redirect path after OAuth (e.g. /dashboard/connections)
   reauth?: boolean;
+  reauthAccountId?: string;
 } {
   const key = Buffer.from(env.ENCRYPTION_KEY, "hex");
   if (key.length !== 32) {

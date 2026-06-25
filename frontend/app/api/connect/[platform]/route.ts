@@ -65,6 +65,7 @@ export async function GET(
   const reauthParam = req.nextUrl.searchParams.get("reauth");
   const accountIdParam = req.nextUrl.searchParams.get("accountId");
   let isReauth = false;
+  let reauthAccountId: string | undefined;
   if (reauthParam === "1" && accountIdParam) {
     const [account] = await db
       .select({ id: connectedAccounts.id })
@@ -76,7 +77,10 @@ export async function GET(
         ),
       )
       .limit(1);
-    if (account) isReauth = true;
+    if (account) {
+      isReauth = true;
+      reauthAccountId = accountIdParam;
+    }
   }
 
   // Twitter/X: OAuth 1.0a flow (separate from standard OAuth 2.0)
@@ -102,7 +106,7 @@ export async function GET(
       platform: "twitter_x",
       oauth_token_secret: oauth_token_secret,
       ...(returnToForConnect && { returnTo: returnToForConnect }),
-      ...(isReauth && { reauth: true }),
+      ...(isReauth && { reauth: true, reauthAccountId }),
     });
     cookieStore.set("twitter_oauth1_request_secret", state, {
       httpOnly: true,
@@ -181,7 +185,7 @@ export async function GET(
       platform: platform,
       stateId: stateId, // Reference to verifier in DB
       ...(returnToForConnect && { returnTo: returnToForConnect }),
-      ...(isReauth && { reauth: true }),
+      ...(isReauth && { reauth: true, reauthAccountId }),
     });
 
     // TikTok-specific: use client_key (NOT client_id)
@@ -195,7 +199,7 @@ export async function GET(
       userId: session.user.id,
       platform: platform,
       ...(returnToForConnect && { returnTo: returnToForConnect }),
-      ...(isReauth && { reauth: true }),
+      ...(isReauth && { reauth: true, reauthAccountId }),
     });
     url.searchParams.set("client_id", clientId);
   }

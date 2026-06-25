@@ -203,13 +203,21 @@ export async function GET(
           "/dashboard",
         );
       }
-      const existing = await db.query.connectedAccounts.findFirst({
-        where: and(
-          eq(connectedAccounts.userId, userId),
-          eq(connectedAccounts.platform, "twitter_x"),
-          eq(connectedAccounts.platformUserId, userInfo.id),
-        ),
-      });
+      const existing = secretDecrypted.reauthAccountId
+        ? await db.query.connectedAccounts.findFirst({
+            where: and(
+              eq(connectedAccounts.id, secretDecrypted.reauthAccountId),
+              eq(connectedAccounts.userId, userId),
+              eq(connectedAccounts.platform, "twitter_x"),
+            ),
+          })
+        : await db.query.connectedAccounts.findFirst({
+            where: and(
+              eq(connectedAccounts.userId, userId),
+              eq(connectedAccounts.platform, "twitter_x"),
+              eq(connectedAccounts.platformUserId, userInfo.id),
+            ),
+          });
 
       const accountId = existing?.id ?? crypto.randomUUID();
       const encryptedAccess = encryptToken(accessToken, accountId);
@@ -308,10 +316,14 @@ export async function GET(
   let codeVerifier: string | undefined;
   let successRedirect = "/dashboard/connections";
   let isReauth = false;
+  let reauthAccountId: string | undefined;
   try {
     const decrypted = decrypt(state);
     userId = decrypted.userId;
     isReauth = decrypted.reauth === true;
+    if (typeof decrypted.reauthAccountId === "string") {
+      reauthAccountId = decrypted.reauthAccountId;
+    }
     const returnTo = sanitizeReturnToPath(decrypted.returnTo);
     if (returnTo) {
       successRedirect = returnTo;
@@ -917,20 +929,33 @@ export async function GET(
       }
     }
 
-    // TikTok: one account per user — update existing row even if platformUserId was wrong from a prior failed connect.
-    const existing = await db.query.connectedAccounts.findFirst({
-      where:
-        platform === "tiktok"
-          ? and(
+    // Re-auth: update the account the user clicked refresh on (not only platformUserId match).
+    let existing =
+      isReauth && reauthAccountId
+        ? await db.query.connectedAccounts.findFirst({
+            where: and(
+              eq(connectedAccounts.id, reauthAccountId),
               eq(connectedAccounts.userId, userId),
               eq(connectedAccounts.platform, platform),
-            )
-          : and(
-              eq(connectedAccounts.userId, userId),
-              eq(connectedAccounts.platform, platform),
-              eq(connectedAccounts.platformUserId, userInfo.id),
             ),
-    });
+          })
+        : null;
+
+    if (!existing) {
+      existing = await db.query.connectedAccounts.findFirst({
+        where:
+          platform === "tiktok"
+            ? and(
+                eq(connectedAccounts.userId, userId),
+                eq(connectedAccounts.platform, platform),
+              )
+            : and(
+                eq(connectedAccounts.userId, userId),
+                eq(connectedAccounts.platform, platform),
+                eq(connectedAccounts.platformUserId, userInfo.id),
+              ),
+      });
+    }
 
     if (existing) {
       // Update existing (token refresh / profile refresh only)
@@ -972,6 +997,7 @@ export async function GET(
         ...(platform === "tiktok" && isLikelyTikTokOpenId(userInfo.id)
           ? { platformUserId: userInfo.id }
           : {}),
+        ...(platform === "youtube" ? { platformUserId: userInfo.id } : {}),
       };
 
       // Set connectionMethod for Instagram direct OAuth
