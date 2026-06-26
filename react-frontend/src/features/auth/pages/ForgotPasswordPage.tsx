@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="landing flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
       <AuthBrandHeader />
 
       <main className="relative flex flex-1 items-center justify-center px-4 py-12">

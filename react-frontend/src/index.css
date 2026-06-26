@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @import "shadcn/tailwind.css";
 
+/* Brand fonts (Vite — no next/font injection) */
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/400.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/500.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/600.css");
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -52,6 +57,10 @@
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --font-geist-sans: "Geist Sans", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --font-geist-mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
+  --font-serif: "Instrument Serif", Georgia, serif;
 }
 
 /* Brand-colored text selection (replaces default blue).
@@ -159,6 +168,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --font-serif: "Instrument Serif", Georgia, serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

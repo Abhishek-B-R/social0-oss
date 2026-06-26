@@ -310,7 +310,7 @@ function AuthPageContent() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="landing flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
       <AuthBrandHeader showNav />
 
       <main className="relative flex flex-1 items-center justify-center px-4 py-12">
@@ -718,7 +718,7 @@ function AuthPageContent() {
 
 function AuthPageFallback() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="landing flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
       <main className="flex flex-1 items-center justify-center px-4 py-12">
         <p className="text-muted-foreground">Loading…</p>
       </main>
