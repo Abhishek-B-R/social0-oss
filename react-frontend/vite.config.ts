@@ -42,9 +42,14 @@ export default defineConfig(({ mode }) => {
   const apiProxyTarget =
     env.VITE_API_PROXY_TARGET || env.VITE_API_URL || defaultApiTarget;
   const useHttps = Boolean(httpsCerts);
+  const cannyBoardToken =
+    env.VITE_CANNY_BOARD_TOKEN || env.NEXT_PUBLIC_CANNY_BOARD_TOKEN || "";
 
   return {
     plugins: [react(), tailwindcss()],
+    define: {
+      "import.meta.env.VITE_CANNY_BOARD_TOKEN": JSON.stringify(cannyBoardToken),
+    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
