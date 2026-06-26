@@ -1366,7 +1366,7 @@ async function publishToYouTube(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   accessToken: string, // Unused - we get fresh token via getValidToken
 ): Promise<PublishPlatformResult> {
-  // Get fresh token (auto-refreshes if needed)
+  // Get fresh token (auto-refreshes if needed; validates youtube.upload scope)
   let validToken: string;
   try {
     validToken = await getValidToken(pub.connectedAccountId, "youtube");
@@ -1377,8 +1377,8 @@ async function publishToYouTube(
   }
 
   console.log("🔍 YouTube publish attempt:", {
-    tokenPrefix: validToken.substring(0, 30),
-    videoUrl: post,
+    accountId: pub.connectedAccountId,
+    videoMediaCount: post.mediaIds?.length ?? 0,
   });
   const media = post.mediaIds?.length
     ? await getMediaWithUrls(post.mediaIds)
@@ -1399,20 +1399,7 @@ async function publishToYouTube(
 
   let videoBuffer: Buffer;
   try {
-    const res = await fetch(videoEntry.url, { method: "GET" });
-    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
-    const contentLength = res.headers.get("content-length");
-    if (contentLength) {
-      const size = parseInt(contentLength, 10);
-      if (size > YOUTUBE_MAX_VIDEO_BYTES) {
-        return {
-          status: "failed",
-          lastError: `Video is too large for YouTube (max ${YOUTUBE_MAX_VIDEO_BYTES / 1024 / 1024}MB).`,
-          error: "Video too large",
-        };
-      }
-    }
-    videoBuffer = Buffer.from(await res.arrayBuffer());
+    videoBuffer = Buffer.from(await fetchMediaBytes(videoEntry.url));
   } catch (e) {
     const err = e instanceof Error ? e.message : "Failed to fetch video";
     return { status: "failed", lastError: err, error: err };
@@ -1426,6 +1413,7 @@ async function publishToYouTube(
     };
   }
 
+  const videoMimeType = videoEntry.mimeType || "video/mp4";
   const meta = post.metadata as { youtube?: { title?: string }; video?: { durationSeconds?: number; isVertical?: boolean } } | undefined;
   const userTitle = meta?.youtube?.title?.trim();
   const fallbackTitle = truncate(post.finalContent?.trim() ?? "Short", 95);
@@ -1444,19 +1432,34 @@ async function publishToYouTube(
     status: { privacyStatus: "public" as const },
   };
 
-  const initRes = await fetch(
-    "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${validToken}`,
-        "Content-Type": "application/json; charset=UTF-8",
-        "x-upload-content-type": videoEntry.mimeType || "video/mp4",
-        "X-Upload-Content-Length": String(videoBuffer.length),
+  const runUploadInit = (token: string) =>
+    fetch(
+      "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json; charset=UTF-8",
+          "x-upload-content-type": videoMimeType,
+          "X-Upload-Content-Length": String(videoBuffer.length),
+        },
+        body: JSON.stringify(metadata),
       },
-      body: JSON.stringify(metadata),
-    },
-  );
+    );
+
+  let initRes = await runUploadInit(validToken);
+  if (initRes.status === 401 || initRes.status === 403) {
+    try {
+      validToken = await getValidToken(pub.connectedAccountId, "youtube", {
+        forceRefresh: true,
+      });
+      initRes = await runUploadInit(validToken);
+    } catch (err) {
+      const errorMsg =
+        err instanceof Error ? err.message : "Failed to refresh YouTube token";
+      return { status: "failed", lastError: errorMsg, error: errorMsg };
+    }
+  }
 
   if (!initRes.ok) {
     const errText = await initRes.text();
@@ -1466,6 +1469,10 @@ async function publishToYouTube(
       if (errJson.error?.message) errMsg = errJson.error.message;
     } catch {
       // ignore
+    }
+    if (initRes.status === 401) {
+      errMsg =
+        "YouTube rejected the upload (unauthorized). Reconnect YouTube from Connections, then retry.";
     }
     return { status: "failed", lastError: errMsg, error: errMsg };
   }

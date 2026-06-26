@@ -1,6 +1,7 @@
 /** Shared types for posts list (safe to import from client components — no DB). */
 
 export type PublicationRow = {
+  publicationId: string;
   connectedAccountId: string | null;
   status: string | null;
   platformPostUrl: string | null;

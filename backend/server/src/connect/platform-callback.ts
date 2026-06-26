@@ -21,6 +21,11 @@ import {
   parseTikTokTokenResponse,
   resolveTikTokConnectUser,
 } from "../lib/tiktok-connect.js";
+import {
+  isYouTubeAccessTokenUsable,
+  resolveEncryptedRefreshToken,
+  youtubeTokenExpiresAt,
+} from "../lib/youtube-token.js";
 
 /** Validate URL is http/https before storing as profile image. */
 function isValidProfileImageUrl(url: unknown): url is string {
@@ -677,9 +682,11 @@ export async function GET(
             platformUsername: userInfo.username,
             profileImageUrl: userInfo.profileImageUrl,
             encryptedAccessToken: encryptToken(tokens.access_token, existing.id),
-            encryptedRefreshToken: tokens.refresh_token
-              ? encryptToken(tokens.refresh_token, existing.id)
-              : null,
+            encryptedRefreshToken: resolveEncryptedRefreshToken(
+              existing.id,
+              existing.encryptedRefreshToken,
+              tokens.refresh_token,
+            ),
             tokenExpiresAt,
             tokenStatus: "active",
             isActive: true,
@@ -856,6 +863,16 @@ export async function GET(
       }
     }
 
+    if (platform === "youtube") {
+      const usable = await isYouTubeAccessTokenUsable(tokens.access_token);
+      if (!usable) {
+        return safeRedirect(
+          `/dashboard/connections?error=youtube_scope_required&platform=youtube`,
+          "/dashboard/connections",
+        );
+      }
+    }
+
     // LinkedIn: if user has company pages, redirect to select modal instead of connecting immediately
     if (platform === "linkedin") {
       try {
@@ -963,7 +980,7 @@ export async function GET(
         ? new Date(Date.now() + tokens.expires_in * 1000)
         : null;
       if (platform === "youtube") {
-        tokenExpiresAt = new Date(Date.now() + 3600 * 1000);
+        tokenExpiresAt = youtubeTokenExpiresAt(tokens.expires_in);
       }
       if (platform === "tiktok" && tokens.expires_in) {
         tokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
@@ -981,9 +998,11 @@ export async function GET(
         updatedAt: Date;
       } = {
         encryptedAccessToken: encryptToken(tokens.access_token, existing.id),
-        encryptedRefreshToken: tokens.refresh_token
-          ? encryptToken(tokens.refresh_token, existing.id)
-          : null,
+        encryptedRefreshToken: resolveEncryptedRefreshToken(
+          existing.id,
+          existing.encryptedRefreshToken,
+          tokens.refresh_token,
+        ),
         tokenExpiresAt,
         tokenStatus: "active",
         platformUsername:
@@ -1039,7 +1058,13 @@ export async function GET(
       ? new Date(Date.now() + tokens.expires_in * 1000)
       : null;
     if (platform === "youtube") {
-      insertTokenExpiresAt = new Date(Date.now() + 3600 * 1000);
+      insertTokenExpiresAt = youtubeTokenExpiresAt(tokens.expires_in);
+      if (!tokens.refresh_token) {
+        return safeRedirect(
+          `/dashboard/connections?error=youtube_no_refresh_token&platform=youtube`,
+          "/dashboard/connections",
+        );
+      }
     }
     if (platform === "tiktok" && tokens.expires_in) {
       insertTokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);

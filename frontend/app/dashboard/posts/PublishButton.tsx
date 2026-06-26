@@ -7,10 +7,13 @@ import { toast } from "sonner";
 
 export function PublishButton({
   postId,
+  publicationId,
   disabled,
   label = "Publish now",
 }: {
   postId: string;
+  /** When set, only this publication is retried (per-platform Retry). */
+  publicationId?: string;
   disabled?: boolean;
   label?: string;
 }) {
@@ -20,7 +23,7 @@ export function PublishButton({
   const handlePublish = async () => {
     toast.dismiss();
     setLoading(true);
-    const result = await publishPost(postId);
+    const result = await publishPost(postId, undefined, publicationId);
     setLoading(false);
     if (result.error) {
       toast.error(result.error);

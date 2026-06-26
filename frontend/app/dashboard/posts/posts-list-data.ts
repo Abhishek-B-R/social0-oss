@@ -133,6 +133,7 @@ export async function getPostsListData({
       ? await db
           .select({
             postId: postPublications.postId,
+            publicationId: postPublications.id,
             connectedAccountId: postPublications.connectedAccountId,
             status: postPublications.status,
             platformPostUrl: postPublications.platformPostUrl,
@@ -535,6 +536,7 @@ export async function getPostDetail(
 
     const pubs = await db
       .select({
+        publicationId: postPublications.id,
         connectedAccountId: postPublications.connectedAccountId,
         status: postPublications.status,
         platformPostUrl: postPublications.platformPostUrl,

@@ -72,7 +72,7 @@ export async function registerAccountsRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: "Avatar not available" });
     }
 
-    const image = await fetchAvatarBytes(remoteUrl);
+    const image = await fetchAvatarBytes(remoteUrl, account.platform);
     if (!image) {
       return reply.status(502).send({ error: "Failed to load avatar" });
     }

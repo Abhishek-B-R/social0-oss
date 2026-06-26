@@ -3,6 +3,7 @@ import { connectedAccounts } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { decryptToken, encryptToken } from "./encryption.js";
 import { env } from "./env.js";
+import { getValidYouTubeToken } from "./youtube-token.js";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
@@ -16,6 +17,7 @@ const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
 export async function getValidToken(
   accountId: string,
   platform: string,
+  options?: { forceRefresh?: boolean },
 ): Promise<string> {
   const account = await db.query.connectedAccounts.findFirst({
     where: eq(connectedAccounts.id, accountId),
@@ -23,6 +25,10 @@ export async function getValidToken(
 
   if (!account) {
     throw new Error("Account not found");
+  }
+
+  if (platform === "youtube") {
+    return getValidYouTubeToken(account, options);
   }
 
   const accessToken = decryptToken(account.encryptedAccessToken, account.id);
@@ -40,10 +46,12 @@ export async function getValidToken(
             ? 5 * 60 * 1000
             : 5 * 60 * 1000;
 
-  if (
-    !account.tokenExpiresAt ||
-    new Date(account.tokenExpiresAt) > new Date(Date.now() + bufferMs)
-  ) {
+  const expiresAt = account.tokenExpiresAt;
+  const tokenStillValid =
+    expiresAt != null &&
+    new Date(expiresAt) > new Date(Date.now() + bufferMs);
+
+  if (tokenStillValid) {
     return accessToken;
   }
 
@@ -106,7 +114,6 @@ export async function getValidToken(
     expiresIn = data.expires_in ?? 60 * 24 * 60 * 60;
     didRefresh = true;
   } else if (
-    platform === "youtube" ||
     platform === "tiktok" ||
     platform === "linkedin"
   ) {
@@ -120,38 +127,7 @@ export async function getValidToken(
       account.id,
     );
 
-  if (platform === "youtube") {
-    if (!env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET) {
-      throw new Error("YouTube OAuth credentials not configured");
-    }
-
-    const response = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: env.YOUTUBE_CLIENT_ID,
-        client_secret: env.YOUTUBE_CLIENT_SECRET,
-        refresh_token: refreshToken,
-        grant_type: "refresh_token",
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("YouTube token refresh failed:", {
-        status: response.status,
-        error: errorData,
-      });
-      throw new Error(
-        "Failed to refresh YouTube token. Please reconnect your account.",
-      );
-    }
-
-    const data = await response.json();
-    newAccessToken = data.access_token;
-    expiresIn = data.expires_in || 3600;
-    didRefresh = true;
-  } else if (platform === "tiktok") {
+  if (platform === "tiktok") {
     if (!env.TIKTOK_CLIENT_ID || !env.TIKTOK_CLIENT_SECRET) {
       throw new Error("TikTok OAuth credentials not configured");
     }

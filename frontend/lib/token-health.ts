@@ -109,10 +109,10 @@ async function verifyToken(
       return r.status;
     }
     case "youtube": {
-      const r = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      return r.status;
+      const { isYouTubeAccessTokenUsable } = await import(
+        "@/lib/youtube-token"
+      );
+      return (await isYouTubeAccessTokenUsable(accessToken)) ? 200 : 401;
     }
     case "tiktok": {
       const r = await fetch(

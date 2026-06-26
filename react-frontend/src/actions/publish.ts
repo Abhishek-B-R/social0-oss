@@ -49,6 +49,6 @@ export async function executePublish(postId: string, userId?: string, publicatio
   return rpc("publish.executePublish", postId, userId, publicationIdFilter, options);
 }
 
-export async function publishPost(postId: string, options?: PublishOptions): Promise<PublishResult> {
-  return rpc("publish.publishPost", postId, options);
+export async function publishPost(postId: string, options?: PublishOptions, publicationIdFilter?: string): Promise<PublishResult> {
+  return rpc("publish.publishPost", postId, options, publicationIdFilter);
 }

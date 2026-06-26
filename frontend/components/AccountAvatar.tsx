@@ -6,7 +6,7 @@ import { accountAvatarSrc } from "@/lib/account-avatar-url";
 
 type AccountAvatarProps = {
   profileImageUrl: string | null | undefined;
-  /** When set, FB/IG avatars load via /api/accounts/:id/avatar (fresh from Graph API). */
+  /** When set, FB/IG/TikTok avatars load via /api/accounts/:id/avatar (fresh from platform API). */
   accountId?: string;
   username?: string | null;
   /** Platform id for placeholder initial and Premium badge (e.g. "twitter_x") */

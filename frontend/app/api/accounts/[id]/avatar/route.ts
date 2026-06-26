@@ -51,7 +51,7 @@ export async function GET(
     return Response.json({ error: "Avatar not available" }, { status: 404 });
   }
 
-  const image = await fetchAvatarBytes(remoteUrl);
+  const image = await fetchAvatarBytes(remoteUrl, account.platform);
   if (!image) {
     return Response.json({ error: "Failed to load avatar" }, { status: 502 });
   }

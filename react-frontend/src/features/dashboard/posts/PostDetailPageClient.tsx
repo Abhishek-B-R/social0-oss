@@ -589,6 +589,7 @@ export function PostDetailPageClient({ postId }: { postId: string }) {
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <AccountAvatar
+                          accountId={pub.connectedAccountId ?? undefined}
                           profileImageUrl={pub.profileImageUrl}
                           username={pub.platformUsername}
                           platform={pub.platform}
@@ -627,7 +628,11 @@ export function PostDetailPageClient({ postId }: { postId: string }) {
                           </a>
                         )}
                         {pub.status === "failed" && (
-                          <PublishButton postId={post.id} label="Retry" />
+                          <PublishButton
+                            postId={post.id}
+                            publicationId={pub.publicationId}
+                            label="Retry"
+                          />
                         )}
                       </div>
                     </li>

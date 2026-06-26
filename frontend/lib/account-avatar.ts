@@ -1,4 +1,5 @@
 import { getValidToken } from "./token-refresh";
+import { fetchTikTokConnectProfile } from "./tiktok-connect";
 
 type AccountForAvatar = {
   id: string;
@@ -15,19 +16,29 @@ function isHttpUrl(url: unknown): url is string {
   );
 }
 
-/** Whether the browser should load this avatar via our proxy (Meta CDNs block hotlinking). */
+function isProxiedCdnUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return (
+    lower.includes("fbcdn.net") ||
+    lower.includes("cdninstagram.com") ||
+    lower.includes("instagram.") ||
+    lower.includes("facebook.com") ||
+    lower.includes("tiktokcdn") ||
+    lower.includes("byteimg.com") ||
+    lower.includes("muscdn.com")
+  );
+}
+
+/** Whether the browser should load this avatar via our proxy. */
 export function shouldProxyAccountAvatar(
   platform: string | undefined,
   profileImageUrl: string | null | undefined,
 ): boolean {
-  if (platform === "facebook" || platform === "instagram") return true;
+  if (platform === "facebook" || platform === "instagram" || platform === "tiktok") {
+    return true;
+  }
   const u = profileImageUrl?.toLowerCase() ?? "";
-  return (
-    u.includes("fbcdn.net") ||
-    u.includes("cdninstagram.com") ||
-    u.includes("instagram.") ||
-    u.includes("facebook.com")
-  );
+  return isProxiedCdnUrl(u);
 }
 
 /** Resolve a fresh remote avatar URL using the platform access token. */
@@ -42,6 +53,17 @@ export async function fetchRemoteAvatarUrl(
   }
 
   const metadata = account.platformMetadata ?? {};
+
+  if (account.platform === "tiktok") {
+    try {
+      const profile = await fetchTikTokConnectProfile(accessToken);
+      if (isHttpUrl(profile?.profileImageUrl)) {
+        return profile.profileImageUrl;
+      }
+    } catch (e) {
+      console.warn("[account-avatar] TikTok picture fetch failed:", e);
+    }
+  }
 
   if (account.platform === "facebook") {
     try {
@@ -96,9 +118,23 @@ export async function fetchRemoteAvatarUrl(
 
 export async function fetchAvatarBytes(
   remoteUrl: string,
+  platform?: string,
 ): Promise<{ body: Uint8Array; contentType: string } | null> {
   try {
-    const res = await fetch(remoteUrl, { redirect: "follow" });
+    const lower = remoteUrl.toLowerCase();
+    const isTikTokCdn =
+      platform === "tiktok" ||
+      lower.includes("tiktokcdn") ||
+      lower.includes("byteimg.com") ||
+      lower.includes("muscdn.com");
+    const headers: Record<string, string> = {};
+    if (isTikTokCdn) {
+      headers["User-Agent"] =
+        "Mozilla/5.0 (compatible; Social0/1.0; +https://social0.app)";
+      headers.Referer = "https://www.tiktok.com/";
+    }
+
+    const res = await fetch(remoteUrl, { redirect: "follow", headers });
     if (!res.ok) return null;
     const contentType = res.headers.get("content-type") ?? "image/jpeg";
     if (!contentType.startsWith("image/")) return null;

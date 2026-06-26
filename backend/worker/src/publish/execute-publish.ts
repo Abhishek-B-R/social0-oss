@@ -261,11 +261,24 @@ export async function executePublish(
   const pendingPublicationIds = publicationsWithAccounts
     .filter((p) => p.publicationStatus === "pending")
     .map((p) => p.publicationId);
-  if (pendingPublicationIds.length > 0) {
+  const retryPublicationIds = publicationIdFilter
+    ? publicationsWithAccounts
+        .filter(
+          (p) =>
+            p.publicationId === publicationIdFilter &&
+            (p.publicationStatus === "failed" ||
+              p.publicationStatus === "pending"),
+        )
+        .map((p) => p.publicationId)
+    : [];
+  const publishingPublicationIds = [
+    ...new Set([...pendingPublicationIds, ...retryPublicationIds]),
+  ];
+  if (publishingPublicationIds.length > 0) {
     await db
       .update(postPublications)
-      .set({ status: "publishing", updatedAt: new Date() })
-      .where(inArray(postPublications.id, pendingPublicationIds));
+      .set({ status: "publishing", lastError: null, updatedAt: new Date() })
+      .where(inArray(postPublications.id, publishingPublicationIds));
   }
 
   const results: PublishResult["results"] = [];
@@ -1313,7 +1326,34 @@ export async function executePublish(
       }
 
       let tokenForPublish = accessToken;
-      if (pub.platform === "tiktok") {
+      if (pub.platform === "youtube") {
+        try {
+          const { getValidToken } = await import("@/lib/token-refresh");
+          tokenForPublish = await getValidToken(
+            pub.connectedAccountId,
+            "youtube",
+          );
+        } catch (err) {
+          console.error("[executePublish] YouTube getValidToken failed:", err);
+          const errorMsg =
+            err instanceof Error ? err.message : "Failed to get valid token";
+          await db
+            .update(postPublications)
+            .set({
+              status: "failed",
+              lastError: errorMsg,
+              updatedAt: new Date(),
+            })
+            .where(eq(postPublications.id, pub.publicationId));
+          results.push({
+            platform: pub.platform,
+            connectedAccountId: pub.connectedAccountId,
+            status: "failed",
+            error: errorMsg,
+          });
+          return;
+        }
+      } else if (pub.platform === "tiktok") {
         try {
           const { getValidToken } = await import("../lib/token-refresh.js");
           tokenForPublish = await getValidToken(
@@ -1560,7 +1600,35 @@ export async function executePublish(
         failures: failureItems,
       });
     }
-
+  } else {
+    const allPubs = await db
+      .select({ status: postPublications.status })
+      .from(postPublications)
+      .where(eq(postPublications.postId, postId));
+    if (allPubs.length > 0) {
+      const publishedCount = allPubs.filter(
+        (p) => p.status === "published",
+      ).length;
+      const failedCount = allPubs.filter((p) => p.status === "failed").length;
+      const pendingCount = allPubs.filter(
+        (p) => p.status === "pending" || p.status === "publishing",
+      ).length;
+      let newPostStatus = post.status;
+      if (pendingCount === 0) {
+        newPostStatus =
+          publishedCount === 0
+            ? "failed"
+            : failedCount === 0
+              ? "published"
+              : "partial";
+      }
+      if (newPostStatus !== post.status) {
+        await db
+          .update(posts)
+          .set({ status: newPostStatus, updatedAt: new Date() })
+          .where(eq(posts.id, postId));
+      }
+    }
   }
 
   const errorSummary =
