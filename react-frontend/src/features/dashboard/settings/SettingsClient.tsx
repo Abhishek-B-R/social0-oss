@@ -9,7 +9,6 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useFormStatus } from "react-dom";
 import {
   IconUser,
   IconLink,
@@ -26,7 +25,11 @@ import {
 } from "@/actions/settings";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PLATFORMS } from "@/lib/platforms";
-import { DATE_FORMAT_OPTIONS, formatTimezoneLabel } from "@/lib/date-format";
+import {
+  DATE_FORMAT_OPTIONS,
+  formatTimezoneLabel,
+  type DateFormatKey,
+} from "@/lib/date-format";
 import { uploadFile } from "@/lib/upload-file";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import { QueueScheduleSection } from "./QueueScheduleSection";
@@ -47,6 +50,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import DocsInfoIcon from "@/components/info-icon";
 import { DOCS_SETTINGS_URL } from "@/lib/docs-url";
+import { accountAvatarSrc } from "@/lib/account-avatar-url";
 import { toast } from "sonner";
 
 export type SettingsConnection = {
@@ -80,20 +84,6 @@ function setSettingsUrlHash(tabId: SettingsTabId) {
   if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== next) {
     window.history.replaceState(null, "", next);
   }
-}
-
-function SaveButton({ label = "Save" }: { label?: string }) {
-  const { pending } = useFormStatus();
-
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      {pending ? "Saving..." : label}
-    </button>
-  );
 }
 
 function ProfileSettingsSection({
@@ -201,38 +191,6 @@ function ProfileSettingsSection({
         </button>
       </form>
     </div>
-  );
-}
-
-function Toggle({
-  id,
-  name,
-  defaultChecked,
-  label,
-  description,
-}: {
-  id: string;
-  name: string;
-  defaultChecked: boolean;
-  label: string;
-  description?: string;
-}) {
-  return (
-    <label htmlFor={id} className="flex items-start justify-between gap-4">
-      <div>
-        <p className="text-sm font-semibold text-text">{label}</p>
-        {description ? (
-          <p className="mt-1 text-sm text-text-muted">{description}</p>
-        ) : null}
-      </div>
-      <input
-        id={id}
-        name={name}
-        type="checkbox"
-        defaultChecked={defaultChecked}
-        className="mt-1 h-5 w-5 rounded border-input bg-bg text-accent focus:ring-accent"
-      />
-    </label>
   );
 }
 
@@ -636,6 +594,7 @@ function ChangePasswordModal({
               onError(msg);
             }}
             onSuccess={() => {
+              toast.success("Password updated");
               onSuccess();
               handleOpenChange(false);
             }}
@@ -771,6 +730,7 @@ function ChangeEmailModal({
               else toast.dismiss();
             }}
             onSuccess={() => {
+              toast.success("Email updated");
               onSuccess();
               handleOpenChange(false);
             }}
@@ -837,11 +797,19 @@ function AvatarEditor({
   displayLabel,
   onSave,
   size = "lg",
+  accountId,
+  platform,
+  successMessage,
 }: {
   currentUrl: string | null;
   displayLabel: string;
   onSave: (url: string) => Promise<{ error?: string }>;
   size?: "md" | "lg";
+  /** When set, Meta/TikTok avatars load via /api/accounts/:id/avatar. */
+  accountId?: string;
+  platform?: string;
+  /** Shown after a successful save; omit when the parent handles feedback. */
+  successMessage?: string;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -849,10 +817,17 @@ function AvatarEditor({
   const [urlInput, setUrlInput] = useState("");
   /** Local preview so the UI updates immediately; session props can lag behind DB after save. */
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentUrl);
+  const [imgFailed, setImgFailed] = useState(false);
 
   useEffect(() => {
     setPreviewUrl(currentUrl);
   }, [currentUrl]);
+
+  const displaySrc = accountAvatarSrc(accountId, platform, previewUrl);
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [displaySrc]);
 
   const sizeClass = size === "lg" ? "h-20 w-20 text-2xl" : "h-14 w-14 text-lg";
 
@@ -881,6 +856,9 @@ function AvatarEditor({
         return;
       }
       setPreviewUrl(imageUrl);
+      if (successMessage) {
+        toast.success(successMessage);
+      }
       router.refresh();
     } finally {
       setLoading(false);
@@ -901,6 +879,9 @@ function AvatarEditor({
       }
       setPreviewUrl(url);
       setUrlInput("");
+      if (successMessage) {
+        toast.success(successMessage);
+      }
       router.refresh();
     } finally {
       setLoading(false);
@@ -910,14 +891,15 @@ function AvatarEditor({
   return (
     <div className="flex flex-wrap items-start gap-4">
       <div className="flex flex-col items-center gap-2">
-        {previewUrl ? (
+        {displaySrc && !imgFailed ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            key={previewUrl}
-            src={previewUrl}
+            key={displaySrc}
+            src={displaySrc}
             alt={displayLabel}
             className={`rounded-full object-cover shrink-0 ${sizeClass}`}
             referrerPolicy="no-referrer"
+            onError={() => setImgFailed(true)}
           />
         ) : (
           <div
@@ -1037,10 +1019,34 @@ export function SettingsClient({
   /** Controlled so the select updates after save (uncontrolled defaultValue does not). */
   const [timezoneValue, setTimezoneValue] = useState(settings.timezone ?? "UTC");
   const [timezonePending, startTimezoneTransition] = useTransition();
+  const [dateFormatValue, setDateFormatValue] = useState<DateFormatKey>(
+    settings.dateFormat ?? "dd/MM/yyyy",
+  );
+  const [use24HourTimeFormatValue, setUse24HourTimeFormatValue] = useState(
+    settings.use24HourTimeFormat ?? false,
+  );
+  const [preferencesPending, startPreferencesTransition] = useTransition();
+  const [automationEmailsValue, setAutomationEmailsValue] = useState(
+    settings.automationEmails ?? false,
+  );
+  const [emailOnPostFailedValue, setEmailOnPostFailedValue] = useState(
+    settings.emailOnPostFailed ?? false,
+  );
+  const [emailPrefsPending, startEmailPrefsTransition] = useTransition();
 
   useEffect(() => {
     setTimezoneValue(settings.timezone ?? "UTC");
   }, [settings.timezone]);
+
+  useEffect(() => {
+    setDateFormatValue(settings.dateFormat ?? "dd/MM/yyyy");
+    setUse24HourTimeFormatValue(settings.use24HourTimeFormat ?? false);
+  }, [settings.dateFormat, settings.use24HourTimeFormat]);
+
+  useEffect(() => {
+    setAutomationEmailsValue(settings.automationEmails ?? false);
+    setEmailOnPostFailedValue(settings.emailOnPostFailed ?? false);
+  }, [settings.automationEmails, settings.emailOnPostFailed]);
 
   useEffect(() => {
     try {
@@ -1177,22 +1183,46 @@ export function SettingsClient({
                 24-hour time and date format for the app.
               </p>
               <form
-                action={updatePlatformPreferences}
                 className="mt-4 space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const fd = new FormData();
+                  if (clientTimezone) {
+                    fd.append("clientTimezone", clientTimezone);
+                  }
+                  if (use24HourTimeFormatValue) {
+                    fd.append("use24HourTimeFormat", "on");
+                  }
+                  fd.append("dateFormat", dateFormatValue);
+                  startPreferencesTransition(async () => {
+                    try {
+                      await updatePlatformPreferences(fd);
+                      toast.success("Preferences saved");
+                      router.refresh();
+                    } catch {
+                      toast.error("Failed to save preferences");
+                    }
+                  });
+                }}
               >
-                {clientTimezone ? (
+                <label
+                  htmlFor="use24HourTimeFormat"
+                  className="flex items-start justify-between gap-4"
+                >
+                  <p className="text-sm font-semibold text-text">
+                    24-hour time format
+                  </p>
                   <input
-                    type="hidden"
-                    name="clientTimezone"
-                    value={clientTimezone}
+                    id="use24HourTimeFormat"
+                    type="checkbox"
+                    checked={use24HourTimeFormatValue}
+                    onChange={(e) =>
+                      setUse24HourTimeFormatValue(e.target.checked)
+                    }
+                    disabled={preferencesPending}
+                    className="mt-1 h-5 w-5 rounded border-input bg-bg text-accent focus:ring-accent disabled:opacity-60"
                   />
-                ) : null}
-                <Toggle
-                  id="use24HourTimeFormat"
-                  name="use24HourTimeFormat"
-                  defaultChecked={settings.use24HourTimeFormat}
-                  label="24-hour time format"
-                />
+                </label>
                 <div>
                   <label
                     htmlFor="dateFormat"
@@ -1203,8 +1233,12 @@ export function SettingsClient({
                   <select
                     id="dateFormat"
                     name="dateFormat"
-                    defaultValue={settings.dateFormat}
-                    className="w-full rounded-xl border border-input bg-bg px-4 py-2.5 text-sm font-medium text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1"
+                    value={dateFormatValue}
+                    onChange={(e) =>
+                      setDateFormatValue(e.target.value as DateFormatKey)
+                    }
+                    disabled={preferencesPending}
+                    className="w-full rounded-xl border border-input bg-bg px-4 py-2.5 text-sm font-medium text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 disabled:opacity-60"
                   >
                     {DATE_FORMAT_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -1213,7 +1247,13 @@ export function SettingsClient({
                     ))}
                   </select>
                 </div>
-                <SaveButton />
+                <button
+                  type="submit"
+                  disabled={preferencesPending}
+                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {preferencesPending ? "Saving..." : "Save"}
+                </button>
               </form>
             </div>
             <div className="border-t border-border my-8" />
@@ -1233,6 +1273,7 @@ export function SettingsClient({
                       const tz =
                         String(fd.get("timezone") ?? "").trim() || "UTC";
                       setTimezoneValue(tz);
+                      toast.success("Timezone updated");
                       router.refresh();
                     } catch {
                       toast.error("Failed to save timezone");
@@ -1292,7 +1333,31 @@ export function SettingsClient({
               <p className="mt-1 text-sm text-text-muted">
                 Notifications and reminders from the app.
               </p>
-              <form action={updateAutomationEmails} className="mt-4 space-y-4">
+              <form
+                className="mt-4 space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const fd = new FormData();
+                  if (clientTimezone) {
+                    fd.append("clientTimezone", clientTimezone);
+                  }
+                  if (automationEmailsValue) {
+                    fd.append("automationEmails", "on");
+                  }
+                  if (emailOnPostFailedValue) {
+                    fd.append("emailOnPostFailed", "on");
+                  }
+                  startEmailPrefsTransition(async () => {
+                    try {
+                      await updateAutomationEmails(fd);
+                      toast.success("Email preferences saved");
+                      router.refresh();
+                    } catch {
+                      toast.error("Failed to save email preferences");
+                    }
+                  });
+                }}
+              >
                 {clientTimezone ? (
                   <input
                     type="hidden"
@@ -1300,21 +1365,61 @@ export function SettingsClient({
                     value={clientTimezone}
                   />
                 ) : null}
-                <Toggle
-                  id="automationEmails"
-                  name="automationEmails"
-                  defaultChecked={settings.automationEmails}
-                  label="Automation emails"
-                  description="Helpful reminders when you haven't posted or connected accounts"
-                />
-                <Toggle
-                  id="emailOnPostFailed"
-                  name="emailOnPostFailed"
-                  defaultChecked={settings.emailOnPostFailed}
-                  label="Email if post failed"
-                  description="Get an email when a publish fails, with the account, platform, and a link to view the post"
-                />
-                <SaveButton />
+                <label
+                  htmlFor="automationEmails"
+                  className="flex items-start justify-between gap-4"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-text">
+                      Automation emails
+                    </p>
+                    <p className="mt-1 text-sm text-text-muted">
+                      Helpful reminders when you haven&apos;t posted or
+                      connected accounts
+                    </p>
+                  </div>
+                  <input
+                    id="automationEmails"
+                    type="checkbox"
+                    checked={automationEmailsValue}
+                    onChange={(e) =>
+                      setAutomationEmailsValue(e.target.checked)
+                    }
+                    disabled={emailPrefsPending}
+                    className="mt-1 h-5 w-5 rounded border-input bg-bg text-accent focus:ring-accent disabled:opacity-60"
+                  />
+                </label>
+                <label
+                  htmlFor="emailOnPostFailed"
+                  className="flex items-start justify-between gap-4"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-text">
+                      Email if post failed
+                    </p>
+                    <p className="mt-1 text-sm text-text-muted">
+                      Get an email when a publish fails, with the account,
+                      platform, and a link to view the post
+                    </p>
+                  </div>
+                  <input
+                    id="emailOnPostFailed"
+                    type="checkbox"
+                    checked={emailOnPostFailedValue}
+                    onChange={(e) =>
+                      setEmailOnPostFailedValue(e.target.checked)
+                    }
+                    disabled={emailPrefsPending}
+                    className="mt-1 h-5 w-5 rounded border-input bg-bg text-accent focus:ring-accent disabled:opacity-60"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={emailPrefsPending}
+                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {emailPrefsPending ? "Saving..." : "Save"}
+                </button>
               </form>
             </div>
           </section>
@@ -1360,6 +1465,8 @@ export function SettingsClient({
                     >
                       <AvatarEditor
                         currentUrl={conn.profileImageUrl}
+                        accountId={conn.id}
+                        platform={conn.platform}
                         displayLabel={
                           conn.platformUsername
                             ? `@${conn.platformUsername}`
@@ -1368,6 +1475,7 @@ export function SettingsClient({
                         onSave={async (url) =>
                           updateConnectionAvatar(conn.id, url)
                         }
+                        successMessage="Connection avatar updated"
                         size="md"
                       />
                       <div className="min-w-0 flex-1">
