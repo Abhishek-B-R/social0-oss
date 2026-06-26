@@ -21,6 +21,10 @@ export const FRONTEND_API_ROUTES: ApiRouteDef[] = [
   { method: "GET", path: "/api/auth/*", note: "Better Auth catch-all" },
   { method: "POST", path: "/api/auth/*", note: "Better Auth catch-all" },
 
+  // Legal consent
+  { method: "GET", path: "/api/legal/status", note: "sync" },
+  { method: "POST", path: "/api/legal/accept", note: "sync" },
+
   // Accounts
   { method: "GET", path: "/api/accounts", note: "sync" },
   { method: "DELETE", path: "/api/accounts/:id", note: "sync" },

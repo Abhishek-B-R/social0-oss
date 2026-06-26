@@ -8,6 +8,7 @@ import { SubscriptionSync } from "@/components/dashboard/SubscriptionSync";
 import { GuestBanner } from "@/components/dashboard/GuestBanner";
 import { FreePostsBanner } from "@/components/dashboard/FreePostsBanner";
 import { ConnectAccountsBanner } from "@/components/dashboard/ConnectAccountsBanner";
+import { LegalConsentGate } from "@/components/auth/LegalConsentGate";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { getOnboardingStatus } from "@/app/actions/onboarding";
 import { checkFreePostLimit } from "@/lib/plan-limits";
@@ -121,6 +122,7 @@ export default async function DashboardLayout({
       </main>
       <DashboardBottomNav />
       {session && <DevScheduledPostPoller />}
+      {session && <LegalConsentGate />}
     </div>
   );
 }

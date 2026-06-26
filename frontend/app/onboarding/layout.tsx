@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getOnboardingStatus } from "@/app/actions/onboarding";
 import { OnboardingProgressClient } from "@/components/onboarding/OnboardingProgressClient";
+import { LegalConsentGate } from "@/components/auth/LegalConsentGate";
 import { requireSessionUser } from "@/lib/require-session-user";
 
 export default async function OnboardingLayout({
@@ -54,6 +55,7 @@ export default async function OnboardingLayout({
       <main className="flex flex-1 flex-col w-full px-5 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12">
         {children}
       </main>
+      <LegalConsentGate />
     </div>
   );
 }

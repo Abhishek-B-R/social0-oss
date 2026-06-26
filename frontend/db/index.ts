@@ -8,6 +8,7 @@ import {
   session,
   account,
   verification,
+  legalAcceptances,
   // App tables
   connectedAccounts,
   mediaUploads,
@@ -44,6 +45,7 @@ export const db = drizzle(pool, {
     session,
     account,
     verification,
+    legalAcceptances,
     // App tables
     connectedAccounts,
     mediaUploads,
