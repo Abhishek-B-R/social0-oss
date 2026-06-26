@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import { loadPostsPageData } from "@/actions/dashboard-data";
 import type { PublicationRow } from "@/features/dashboard/posts/posts-list-types";
@@ -13,6 +14,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { DOCS_POSTS_URL } from "@/lib/docs-url";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
+import { useSession } from "@/lib/auth-client";
 
 type PostRow = {
   id: string;
@@ -83,12 +85,7 @@ function hydrateFromSerialized(data: {
 
 export function PostsPageClient() {
   const searchParams = useSearchParams();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [payload, setPayload] = useState<Awaited<
-    ReturnType<typeof loadPostsPageData>
-  > | null>(null);
-  const [isGuest, setIsGuest] = useState(false);
+  const { data: session, isPending: sessionPending } = useSession();
 
   const sort = searchParams.get("sort") || "newest";
   const platform = searchParams.get("platform");
@@ -97,53 +94,43 @@ export function PostsPageClient() {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
   const tiktokPublished = searchParams.get("tiktok_published") === "true";
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const result = await loadPostsPageData({
-      sort,
-      platform: platform || null,
-      time: time || null,
-      account: account || null,
-      page,
-    });
-    if (!result.ok) {
-      if (result.error === "Unauthorized") {
-        setIsGuest(true);
-        setPayload(null);
-        setLoading(false);
-        return;
-      }
-      setError(result.error);
-      setPayload(null);
-      setLoading(false);
-      return;
-    }
-    setPayload(result);
-    setLoading(false);
-  }, [sort, platform, time, account, page]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const {
+    data: result,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["posts-page", sort, platform, time, account, page],
+    queryFn: () =>
+      loadPostsPageData({
+        sort,
+        platform: platform || null,
+        time: time || null,
+        account: account || null,
+        page,
+      }),
+    enabled: !!session,
+  });
 
   const hydrated = useMemo(() => {
-    if (!payload || !payload.ok) return null;
+    if (!result?.ok) return null;
     return hydrateFromSerialized({
-      userPosts: payload.data.userPosts,
-      publicationsByPostId: payload.data.publicationsByPostId,
-      firstMediaByPost: payload.data.firstMediaByPost,
-      queuedPostIds: payload.data.queuedPostIds,
+      userPosts: result.data.userPosts,
+      publicationsByPostId: result.data.publicationsByPostId,
+      firstMediaByPost: result.data.firstMediaByPost,
+      queuedPostIds: result.data.queuedPostIds,
     });
-  }, [payload]);
+  }, [result]);
 
   const hasActiveFilters = !!(platform || time || account);
 
-  if (loading && !payload && !isGuest) {
+  if (sessionPending) {
     return <DashboardPageSkeleton message="Loading posts..." />;
   }
 
-  if (isGuest) {
+  if (!session) {
     return (
       <GuestPostsPageView
         pageTitle="Posts"
@@ -152,10 +139,25 @@ export function PostsPageClient() {
     );
   }
 
-  if (error || !payload?.ok || !hydrated) {
+  if (isLoading && !result) {
+    return <DashboardPageSkeleton message="Loading posts..." />;
+  }
+
+  if (isError || !result?.ok || !hydrated) {
     return (
       <div className="rounded-xl border border-border bg-card p-6 text-sm text-foreground">
-        {error ?? "Could not load posts."}
+        <p className="text-muted-foreground">
+          {isError
+            ? (error instanceof Error ? error.message : "Could not load posts.")
+            : (result && !result.ok ? result.error : "Could not load posts.")}
+        </p>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          className="mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover"
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -169,7 +171,7 @@ export function PostsPageClient() {
     accountOptions,
     totalCount,
     resurfaceByPostId,
-  } = payload.data;
+  } = result.data;
 
   return (
     <div>
@@ -233,7 +235,7 @@ export function PostsPageClient() {
         </Link>
       </div>
 
-      <div className={`mb-6 ${loading ? "opacity-60" : ""}`}>
+      <div className={`mb-6 ${isFetching ? "opacity-80" : ""}`}>
         <AllPostsFilters
           platformOptions={platformOptions}
           accountOptions={accountOptions}

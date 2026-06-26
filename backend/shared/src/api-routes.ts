@@ -126,6 +126,7 @@ export const FRONTEND_API_ROUTES: ApiRouteDef[] = [
 
   // Canny
   { method: "GET", path: "/api/canny/sso", note: "sync" },
+  { method: "GET", path: "/api/canny/config", note: "sync — public board token" },
 
   // Webhooks
   {

@@ -6,6 +6,7 @@ import * as pinterestDefaultBoard from "../handlers/pinterest/default-board.js";
 import * as changeEmailSendOtp from "../handlers/account/change-email-send-otp.js";
 import * as changeEmail from "../handlers/account/change-email.js";
 import * as cannySso from "../handlers/canny/sso.js";
+import * as cannyConfig from "../handlers/canny/config.js";
 import { JOB_NAMES } from "@social0/shared";
 
 export async function registerMiscRoutes(app: FastifyInstance) {
@@ -23,6 +24,9 @@ export async function registerMiscRoutes(app: FastifyInstance) {
   });
   app.get("/canny/sso", async (req, reply) => {
     await runNextRouteHandler(req, reply, cannySso.GET);
+  });
+  app.get("/canny/config", async (req, reply) => {
+    await runNextRouteHandler(req, reply, cannyConfig.GET);
   });
 
   app.post("/dev/trigger-crons", async (request, reply) => {

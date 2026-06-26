@@ -48,6 +48,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import DocsInfoIcon from "@/components/info-icon";
 import { DOCS_SETTINGS_URL } from "@/lib/docs-url";
 import { toast } from "sonner";
+import { accountAvatarSrc } from "@/lib/account-avatar-url";
 
 export type SettingsConnection = {
   id: string;
@@ -837,11 +838,16 @@ function AvatarEditor({
   displayLabel,
   onSave,
   size = "lg",
+  accountId,
+  platform,
 }: {
   currentUrl: string | null;
   displayLabel: string;
   onSave: (url: string) => Promise<{ error?: string }>;
   size?: "md" | "lg";
+  /** When set, Meta/TikTok avatars load via /api/accounts/:id/avatar. */
+  accountId?: string;
+  platform?: string;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -849,10 +855,17 @@ function AvatarEditor({
   const [urlInput, setUrlInput] = useState("");
   /** Local preview so the UI updates immediately; session props can lag behind DB after save. */
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentUrl);
+  const [imgFailed, setImgFailed] = useState(false);
 
   useEffect(() => {
     setPreviewUrl(currentUrl);
   }, [currentUrl]);
+
+  const displaySrc = accountAvatarSrc(accountId, platform, previewUrl);
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [displaySrc]);
 
   const sizeClass = size === "lg" ? "h-20 w-20 text-2xl" : "h-14 w-14 text-lg";
 
@@ -910,14 +923,15 @@ function AvatarEditor({
   return (
     <div className="flex flex-wrap items-start gap-4">
       <div className="flex flex-col items-center gap-2">
-        {previewUrl ? (
+        {displaySrc && !imgFailed ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            key={previewUrl}
-            src={previewUrl}
+            key={displaySrc}
+            src={displaySrc}
             alt={displayLabel}
             className={`rounded-full object-cover shrink-0 ${sizeClass}`}
             referrerPolicy="no-referrer"
+            onError={() => setImgFailed(true)}
           />
         ) : (
           <div
@@ -1360,6 +1374,8 @@ export function SettingsClient({
                     >
                       <AvatarEditor
                         currentUrl={conn.profileImageUrl}
+                        accountId={conn.id}
+                        platform={conn.platform}
                         displayLabel={
                           conn.platformUsername
                             ? `@${conn.platformUsername}`

@@ -146,6 +146,7 @@ export function QueueScheduleSection({
         return merged.sort((a, b) => a.hour - b.hour || a.minute - b.minute);
       });
       setShowAddRow(false);
+      toast.success("Posting time added");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to add slot");
     } finally {
@@ -218,6 +219,7 @@ export function QueueScheduleSection({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to remove slot");
       }
+      toast.success("Posting time removed");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to remove slot");
       setSlots(previous);
