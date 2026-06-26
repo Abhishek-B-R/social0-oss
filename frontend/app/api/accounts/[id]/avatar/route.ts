@@ -56,7 +56,7 @@ export async function GET(
     return Response.json({ error: "Failed to load avatar" }, { status: 502 });
   }
 
-  return new Response(new Blob([image.body], { type: image.contentType }), {
+  return new Response(image.body, {
     headers: {
       "Content-Type": image.contentType,
       "Cache-Control": "private, max-age=3600",

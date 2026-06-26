@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { FaLinkedin } from "react-icons/fa";
 import {
-  SiLinkedin,
   SiInstagram,
   SiYoutube,
   SiPinterest,
@@ -23,9 +23,9 @@ import { CONTENT_TYPES } from "@/lib/content-types";
 
 const PLATFORM_DISPLAY: Record<
   string,
-  { name: string; icon: typeof SiLinkedin; color: string }
+  { name: string; icon: typeof FaLinkedin; color: string }
 > = {
-  linkedin: { name: "LinkedIn", icon: SiLinkedin, color: "bg-[#0A66C2]" },
+  linkedin: { name: "LinkedIn", icon: FaLinkedin, color: "bg-[#0A66C2]" },
   facebook: { name: "Facebook", icon: SiFacebook, color: "bg-[#1877F2]" },
   bluesky: { name: "Bluesky", icon: SiBluesky, color: "bg-[#0085FF]" },
   youtube: { name: "YouTube", icon: SiYoutube, color: "bg-[#FF0000]" },

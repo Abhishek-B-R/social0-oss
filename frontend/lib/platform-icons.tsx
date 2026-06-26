@@ -1,6 +1,6 @@
 import type { ComponentType, SVGProps } from "react";
+import { FaLinkedin } from "react-icons/fa";
 import {
-  SiLinkedin,
   SiFacebook,
   SiBluesky,
   SiYoutube,
@@ -14,7 +14,7 @@ import {
 type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: string | number }>;
 
 const PLATFORM_ICON_MAP: Record<string, IconComponent> = {
-  linkedin: SiLinkedin,
+  linkedin: FaLinkedin,
   facebook: SiFacebook,
   bluesky: SiBluesky,
   youtube: SiYoutube,

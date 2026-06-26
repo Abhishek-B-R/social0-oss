@@ -4,8 +4,8 @@ import { useEffect } from "react";
 import Link from "next/link";
 import confetti from "canvas-confetti";
 import { Check } from "lucide-react";
+import { FaLinkedin } from "react-icons/fa";
 import {
-  SiLinkedin,
   SiInstagram,
   SiYoutube,
   SiPinterest,
@@ -17,7 +17,7 @@ import {
 } from "react-icons/si";
 
 const PLATFORMS = [
-  { name: "LinkedIn", Icon: SiLinkedin, color: "bg-[#0A66C2]" },
+  { name: "LinkedIn", Icon: FaLinkedin, color: "bg-[#0A66C2]" },
   {
     name: "Instagram",
     Icon: SiInstagram,

@@ -65,7 +65,7 @@ async function buildThreadOfThree(
       timeout: 15000,
     });
   } else if (addImageAndVideo && useManualMedia) {
-    const addMediaLabels = page.getByRole("label").filter({
+    const addMediaLabels = page.locator("label").filter({
       hasText: /Add media/,
     });
     await addMediaLabels.nth(0).click();
