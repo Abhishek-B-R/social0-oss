@@ -79,10 +79,24 @@ const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 /** Allow a few minutes of client/server clock skew and network delay (was causing false failures). */
 const SCHEDULE_FUTURE_GRACE_MS = 120_000;
 
-function validateScheduledAtWindow(scheduledAt: Date | null): string | null {
-  if (!scheduledAt) return "Please pick a date and time to schedule";
+/** RPC/JSON may pass ISO strings instead of Date instances. */
+function coerceDate(value: unknown): Date | null {
+  if (value == null) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  return null;
+}
+
+function validateScheduledAtWindow(scheduledAt: unknown): string | null {
+  const date = coerceDate(scheduledAt);
+  if (!date) return "Please pick a date and time to schedule";
   const now = Date.now();
-  const target = scheduledAt.getTime();
+  const target = date.getTime();
   if (Number.isNaN(target)) return "Please pick a valid schedule date and time";
   if (target < now - SCHEDULE_FUTURE_GRACE_MS) {
     return "Scheduled time must be in the future";
@@ -107,6 +121,8 @@ export async function createPost(
     return { success: false, error: "Unauthorized" };
   }
 
+  const normalizedScheduledAt = coerceDate(scheduledAt);
+
   const trimmed = content.trim();
   if (!trimmed) {
     return { success: false, error: "Post content is required" };
@@ -130,7 +146,7 @@ export async function createPost(
   }
 
   if (mode === "scheduled") {
-    const scheduleError = validateScheduledAtWindow(scheduledAt);
+    const scheduleError = validateScheduledAtWindow(normalizedScheduledAt);
     if (scheduleError) {
       return { success: false, error: scheduleError };
     }
@@ -189,7 +205,11 @@ export async function createPost(
 
   const status = mode === "draft" ? "draft" : "scheduled";
   const resolvedScheduledAt =
-    mode === "now" ? new Date() : mode === "scheduled" ? scheduledAt : null;
+    mode === "now"
+      ? new Date()
+      : mode === "scheduled"
+        ? normalizedScheduledAt
+        : null;
 
   try {
     const [postRow] = await db
@@ -256,7 +276,7 @@ export async function createPost(
       };
     }
 
-    if (mode === "scheduled" && scheduledAt && queueSlotId?.trim()) {
+    if (mode === "scheduled" && normalizedScheduledAt && queueSlotId?.trim()) {
       const slotId = queueSlotId.trim();
       if (!(await userOwnsQueueSlot(session.user.id, slotId))) {
         return { success: false, error: "Invalid queue slot" };
@@ -265,7 +285,7 @@ export async function createPost(
         userId: session.user.id,
         postId: postRow.id,
         slotId,
-        scheduledFor: scheduledAt,
+        scheduledFor: normalizedScheduledAt,
         status: "pending",
       });
     }
@@ -477,6 +497,8 @@ export async function updatePost(
     return { success: false, error: "Unauthorized" };
   }
 
+  const normalizedScheduledAt = coerceDate(scheduledAt);
+
   const trimmed = content.trim();
   if (!trimmed) {
     return { success: false, error: "Post content is required" };
@@ -524,8 +546,8 @@ export async function updatePost(
       error: "One or more selected accounts are invalid",
     };
   }
-  if (scheduledAt) {
-    const scheduleError = validateScheduledAtWindow(scheduledAt);
+  if (normalizedScheduledAt) {
+    const scheduleError = validateScheduledAtWindow(normalizedScheduledAt);
     if (scheduleError) {
       return { success: false, error: scheduleError };
     }
@@ -548,7 +570,7 @@ export async function updatePost(
 
     // Scheduling a draft is a "Schedule" submission - costs one free post.
     // Rescheduling an already-scheduled post (already charged) is free.
-    const chargesQuota = !!scheduledAt && existing.status === "draft";
+    const chargesQuota = !!normalizedScheduledAt && existing.status === "draft";
     if (chargesQuota) {
       const quotaError = await gateFreePostQuota(session.user.id, postId);
       if (quotaError) {
@@ -573,14 +595,14 @@ export async function updatePost(
     }
 
     const oldMediaIds = (existing.mediaIds ?? []) as string[];
-    const status = scheduledAt ? "scheduled" : "draft";
+    const status = normalizedScheduledAt ? "scheduled" : "draft";
     await db
       .update(posts)
       .set({
         originalContent: trimmed,
         finalContent: trimmed,
         status,
-        scheduledAt,
+        scheduledAt: normalizedScheduledAt,
         mediaIds: finalMediaIds,
         ...(metadata != null && { metadata }),
         updatedAt: new Date(),
@@ -612,7 +634,7 @@ export async function updatePost(
       })),
     );
 
-    if (scheduledAt && queueSlotId?.trim()) {
+    if (normalizedScheduledAt && queueSlotId?.trim()) {
       const slotId = queueSlotId.trim();
       if (!(await userOwnsQueueSlot(session.user.id, slotId))) {
         return { success: false, error: "Invalid queue slot" };
@@ -629,10 +651,10 @@ export async function updatePost(
         userId: session.user.id,
         postId,
         slotId,
-        scheduledFor: scheduledAt,
+        scheduledFor: normalizedScheduledAt,
         status: "pending",
       });
-    } else if (!scheduledAt) {
+    } else if (!normalizedScheduledAt) {
       await db
         .delete(queuedPosts)
         .where(

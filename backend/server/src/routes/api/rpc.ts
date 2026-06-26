@@ -62,6 +62,16 @@ function reviveArgs(args: unknown[]): unknown[] {
       arg &&
       typeof arg === "object" &&
       !Array.isArray(arg) &&
+      "__date" in arg &&
+      (arg as { __date: unknown }).__date === true &&
+      typeof (arg as { value?: unknown }).value === "string"
+    ) {
+      return new Date((arg as unknown as { value: string }).value);
+    }
+    if (
+      arg &&
+      typeof arg === "object" &&
+      !Array.isArray(arg) &&
       "__formData" in arg &&
       (arg as { __formData: unknown }).__formData === true
     ) {
