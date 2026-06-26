@@ -39,11 +39,13 @@ export function recordCircuitFailure(platform: SupportedPlatform) {
   s.failures.push(now);
   if (s.failures.length >= OPEN_THRESHOLD) {
     s.openUntil = now + OPEN_DURATION_MS;
-    console.warn(`[circuit] opened for ${platform} until ${new Date(s.openUntil).toISOString()}`);
+    console.warn(
+      `[circuit] opened for ${platform} until ${new Date(s.openUntil).toISOString()}`,
+    );
   }
 }
 
 /** Reserved for future Redis-backed circuit state across worker replicas. */
 export function initCircuitBreaker(_connection: ConnectionOptions) {
-  /* no-op — in-process breaker per worker instance */
+  /* no-op - in-process breaker per worker instance */
 }

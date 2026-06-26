@@ -619,8 +619,8 @@ function AuthPageContent() {
                         )}
                         {isTurnstileTestSiteKey(SIGN_UP.turnstileSiteKey) && (
                           <p className="text-center text-[11px] text-muted-foreground">
-                            Turnstile test key active — for local/Playwright
-                            use only.
+                            Turnstile test key active - for local/Playwright use
+                            only.
                           </p>
                         )}
                         <div className="flex justify-center overflow-hidden rounded-lg">

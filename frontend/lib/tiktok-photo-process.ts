@@ -3,7 +3,7 @@
  * convert to JPEG, re-upload to R2 with -tiktok-processed suffix.
  * TikTok photo/carousel API accepts ratios 9:16, 1:1, and 4:5 (not 16:9).
  * We always output **1080×1920 (9:16)** with the source image centered on a
- * dark gray letterbox — safest single output for the API.
+ * dark gray letterbox - safest single output for the API.
  * Unique key per attempt so TikTok does not serve cached stale images.
  */
 
@@ -93,7 +93,7 @@ export async function processImageForTikTok(
     );
   }
 
-  // Foreground — source scaled to fit inside 1080×1920 (preserve aspect, allow upscale)
+  // Foreground - source scaled to fit inside 1080×1920 (preserve aspect, allow upscale)
   const fgBuffer = await sharp(inputBuffer)
     .resize(TIKTOK_PHOTO_W, TIKTOK_PHOTO_H, {
       fit: "inside",
@@ -120,9 +120,7 @@ export async function processImageForTikTok(
     .toBuffer();
 
   let outputBuffer = await sharp(baseCanvas)
-    .composite([
-      { input: fgBuffer, left: offsetX, top: offsetY },
-    ])
+    .composite([{ input: fgBuffer, left: offsetX, top: offsetY }])
     .jpeg({ quality: JPEG_QUALITY })
     .toBuffer();
 

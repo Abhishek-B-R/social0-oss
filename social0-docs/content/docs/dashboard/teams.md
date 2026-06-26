@@ -9,9 +9,9 @@ Teams will let you invite other people to your Social0 account and control what 
 
 ## What to expect (when it’s ready)
 
-- **Invite** — Send an invite by email. The person accepts and joins your team.
-- **Roles** — Different levels of access (e.g. admin, editor, viewer) so you can limit who can post or change settings.
-- **Manage** — See who’s on the team and remove or change roles as needed.
+- **Invite** - Send an invite by email. The person accepts and joins your team.
+- **Roles** - Different levels of access (e.g. admin, editor, viewer) so you can limit who can post or change settings.
+- **Manage** - See who’s on the team and remove or change roles as needed.
 
 ## For now
 

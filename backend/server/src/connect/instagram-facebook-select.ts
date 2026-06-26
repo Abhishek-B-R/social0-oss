@@ -28,7 +28,10 @@ export async function GET(req: NextRequest) {
   });
 
   if (!record || record.identifier !== "instagram_facebook_pages") {
-    return Response.json({ error: "Invalid or expired token" }, { status: 400 });
+    return Response.json(
+      { error: "Invalid or expired token" },
+      { status: 400 },
+    );
   }
 
   if (new Date(record.expiresAt) < new Date()) {
@@ -96,7 +99,10 @@ export async function POST(req: NextRequest) {
   });
 
   if (!record || record.identifier !== "instagram_facebook_pages") {
-    return Response.json({ error: "Invalid or expired token" }, { status: 400 });
+    return Response.json(
+      { error: "Invalid or expired token" },
+      { status: 400 },
+    );
   }
 
   if (new Date(record.expiresAt) < new Date()) {
@@ -141,7 +147,10 @@ export async function POST(req: NextRequest) {
     await db
       .update(connectedAccounts)
       .set({
-        encryptedAccessToken: encryptToken(pageData.pageAccessToken, existing.id),
+        encryptedAccessToken: encryptToken(
+          pageData.pageAccessToken,
+          existing.id,
+        ),
         encryptedRefreshToken: null,
         tokenExpiresAt: null,
         platformUsername: pageData.instagramUsername,
@@ -189,7 +198,7 @@ export async function POST(req: NextRequest) {
 
   await db.delete(verification).where(eq(verification.id, token));
 
-  // NOTE: Using NextResponse.redirect() (not next/navigation redirect()) — this does NOT throw
+  // NOTE: Using NextResponse.redirect() (not next/navigation redirect()) - this does NOT throw
   // a NEXT_REDIRECT error, so no rethrowNextRedirect() guard is needed here.
   // If you ever add a try/catch wrapping this line, use NextResponse.redirect() or
   // call rethrowNextRedirect(err) at the top of the catch to avoid swallowing redirects.

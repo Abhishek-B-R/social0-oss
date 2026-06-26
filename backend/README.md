@@ -6,7 +6,7 @@ Queue-based backend for DigitalOcean + Neon + Cloudflare R2. Mirrors the Next.js
 
 ```
 backend/
-├── server/     Fastify API — all endpoints, auth, validation
+├── server/     Fastify API - all endpoints, auth, validation
 ├── worker/     BullMQ consumers + platform publish/email/token logic
 ├── shared/     Queues, job types, DTOs, route manifest
 └── docker-compose.yml   Optional local Redis (unused; Upstash is the default)
@@ -64,12 +64,12 @@ curl -X POST http://localhost:3001/api/publish \
 # → 200 { status: "scheduled", scheduledAt, jobId, message }
 ```
 
-BullMQ wakes the job at `scheduledAt` — no cron DB scan.
+BullMQ wakes the job at `scheduledAt` - no cron DB scan.
 
 ## Endpoints
 
-- **v1** — legacy REST (`/v1/posts`, `/v1/media`, …)
-- **api** — mirrors `frontend/app/api/**` (see `GET /api/routes`)
+- **v1** - legacy REST (`/v1/posts`, `/v1/media`, …)
+- **api** - mirrors `frontend/app/api/**` (see `GET /api/routes`)
 - Async routes return `{ jobId, status: "queued", queue }` with HTTP 202
 
 ## Wiring production logic

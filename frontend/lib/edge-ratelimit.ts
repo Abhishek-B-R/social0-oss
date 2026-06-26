@@ -19,7 +19,7 @@ export const edgeAuthIpLimiter = redis
     })
   : null;
 
-/** Session polling during dashboard use (get-session, etc.) — generous cap. */
+/** Session polling during dashboard use (get-session, etc.) - generous cap. */
 export const edgeAuthSessionPollLimiter = redis
   ? new Ratelimit({
       redis,

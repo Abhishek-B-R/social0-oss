@@ -5,7 +5,7 @@ import { MdQuestionMark } from "react-icons/md";
 import { DOCS_TERMS_URL } from "@/lib/docs-url";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | Social0 — Social Media Scheduling Tool",
+  title: "Terms of Service | Social0 - Social Media Scheduling Tool",
   description:
     "Read the Social0 terms of service. Understand your rights and responsibilities when using our social media scheduling and publishing platform.",
   alternates: { canonical: "https://social0.app/terms" },

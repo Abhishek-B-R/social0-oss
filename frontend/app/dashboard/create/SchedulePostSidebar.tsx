@@ -72,7 +72,7 @@ type SchedulePostSidebarProps = {
   /** Remember Auto-Repost & Auto-Plug: when checked, persist settings to localStorage */
   rememberAutoFeatures?: boolean;
   onRememberAutoFeaturesChange?: (checked: boolean) => void;
-  /** Guest browsing — show sign-in instead of publish actions. */
+  /** Guest browsing - show sign-in instead of publish actions. */
   isGuest?: boolean;
   /** Free-tier posts remaining (shown above actions for signed-in free users). */
   freePostsRemaining?: number | null;
@@ -335,7 +335,7 @@ export function SchedulePostSidebar({
                   Sign in to post
                 </Link>
                 <p className="text-xs text-center text-text-muted">
-                  Write your post now — sign in when you&apos;re ready to
+                  Write your post now - sign in when you&apos;re ready to
                   publish or save drafts.
                 </p>
               </>

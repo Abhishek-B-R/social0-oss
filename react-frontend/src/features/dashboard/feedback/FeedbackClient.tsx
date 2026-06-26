@@ -14,7 +14,7 @@ declare global {
 const CANNY_SDK_URL = "https://sdk.canny.io/sdk.js";
 const CANNY_FALLBACK_URL = "https://social0.canny.io";
 
-/** Canny board embed — caller must ensure the user is signed in. */
+/** Canny board embed - caller must ensure the user is signed in. */
 export function FeedbackBoard() {
   const { resolvedTheme } = useTheme();
   const cannyTheme = resolvedTheme === "dark" ? "dark" : "light";
@@ -116,7 +116,7 @@ export function FeedbackBoard() {
         <FeedbackHeader />
         <div className="mt-6 flex flex-1 flex-col items-center justify-center gap-4 rounded-xl border border-border bg-bg-elevated p-8 text-center">
           <p className="max-w-md text-muted-foreground">
-            We couldn&apos;t load the feedback board here—you can share feedback
+            We couldn&apos;t load the feedback board here-you can share feedback
             directly on Canny. Or you can always email us at{" "}
             <a
               href="mailto:support@social0.app"
@@ -177,8 +177,8 @@ export function FeedbackHeader() {
         <DocsInfoIcon url={DOCS_FEEDBACK_URL} />
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        Vote on features, report bugs, and suggest improvements. Or you can always
-        email us at{" "}
+        Vote on features, report bugs, and suggest improvements. Or you can
+        always email us at{" "}
         <a
           href="mailto:support@social0.app"
           className="text-emerald-600 dark:text-emerald-400 hover:underline"

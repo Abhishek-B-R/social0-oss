@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-// Only usable in development — returns 404 in production so it's a no-op if
+// Only usable in development - returns 404 in production so it's a no-op if
 // ever deployed accidentally.
 export async function GET() {
   if (process.env.NODE_ENV !== "development") {
@@ -17,7 +17,7 @@ export async function GET() {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
     return NextResponse.json(
-      { error: "CRON_SECRET not set — add it to .env.local" },
+      { error: "CRON_SECRET not set - add it to .env.local" },
       { status: 503 },
     );
   }

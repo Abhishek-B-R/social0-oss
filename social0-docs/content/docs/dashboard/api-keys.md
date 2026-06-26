@@ -13,5 +13,5 @@ If you see an **API keys** or **API access** link and click it, you may see a �
 
 ## Tips
 
-- Don’t share your Social0 password with third-party tools. When API keys are available, you’ll use those instead—one key per integration, and you can revoke them anytime.
+- Don’t share your Social0 password with third-party tools. When API keys are available, you’ll use those instead-one key per integration, and you can revoke them anytime.
 - Use **Feedback** to tell us what you’d want to do with API access (e.g. “post from Zapier” or “sync with my CMS”).

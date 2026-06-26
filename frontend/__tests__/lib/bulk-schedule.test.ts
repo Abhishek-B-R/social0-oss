@@ -51,7 +51,7 @@ describe("computeBulkSchedule", () => {
     expect(result).toEqual([]);
   });
 
-  it("returns day1@23:00, day2@23:00 for (2, today, 23, 0, 1, 1) — not 24:00", () => {
+  it("returns day1@23:00, day2@23:00 for (2, today, 23, 0, 1, 1) - not 24:00", () => {
     const start = todayAt(0, 0);
     const result = computeBulkSchedule(2, start, 23, 0, 1, 1);
     expect(result).toHaveLength(2);

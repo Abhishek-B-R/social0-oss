@@ -100,7 +100,7 @@ export function ConnectStepClient({
           Connect a social account
         </h1>
         <p className="text-center text-muted-foreground mb-2">
-          Pick one platform to get started — you can add more anytime.
+          Pick one platform to get started - you can add more anytime.
         </p>
         {limitTotal > 0 && limitTotal <= 3 && (
           <p className="text-center text-xs text-muted-foreground mb-6">
@@ -210,7 +210,7 @@ export function ConnectStepClient({
           ) : (
             <>
               <p className="text-xs text-center text-muted-foreground max-w-sm">
-                You can connect later from the dashboard — nothing is lost if
+                You can connect later from the dashboard - nothing is lost if
                 you skip this step.
               </p>
               <button
@@ -219,7 +219,9 @@ export function ConnectStepClient({
                 disabled={skipping}
                 className="inline-flex items-center justify-center rounded-xl border border-border px-6 py-3 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
               >
-                {skipping ? "Opening dashboard…" : "Skip for now — go to dashboard"}
+                {skipping
+                  ? "Opening dashboard…"
+                  : "Skip for now - go to dashboard"}
               </button>
             </>
           )}

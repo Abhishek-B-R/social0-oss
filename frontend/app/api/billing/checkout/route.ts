@@ -26,9 +26,13 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const plan = body.plan as string | undefined;
-  const successUrl = typeof body.successUrl === "string" ? body.successUrl.trim() : null;
-  // Pro tier commented out for now — add back later
-  if (!plan || (plan !== "starter" && plan !== "growth" /* && plan !== "pro" */)) {
+  const successUrl =
+    typeof body.successUrl === "string" ? body.successUrl.trim() : null;
+  // Pro tier commented out for now - add back later
+  if (
+    !plan ||
+    (plan !== "starter" && plan !== "growth") /* && plan !== "pro" */
+  ) {
     return NextResponse.json(
       { error: "Invalid plan. Use 'starter' or 'growth'." },
       { status: 400 },

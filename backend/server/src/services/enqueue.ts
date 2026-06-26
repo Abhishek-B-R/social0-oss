@@ -39,7 +39,7 @@ export async function enqueuePublishPost(
   return dispatchPublishPost(app, data, { ...opts, priority });
 }
 
-/** Enqueue from BFF/RPC — returns immediately; never runs executePublish inline. */
+/** Enqueue from BFF/RPC - returns immediately; never runs executePublish inline. */
 export async function enqueuePublishPostStandalone(
   data: PublishPostJob,
   opts?: { trackingId?: string },

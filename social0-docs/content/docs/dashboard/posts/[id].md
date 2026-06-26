@@ -16,12 +16,12 @@ You’ll see the full caption, media, and a status for each account you selected
 
 ## What you can do
 
-- **Edit** — Change the text, media, or schedule. For drafts, you’re taken to the create form. For scheduled posts, you can change the time or the content.
-- **Publish now** — If the post is a draft or scheduled, you can publish it immediately.
-- **Retry** — If one or more platforms failed, use **Retry** to send again to those platforms.
-- **Post again** — For a post that’s already published (or partially published), use “Post again” or “Edit and post” to reuse the same content and send it again (e.g. with a new schedule).
-- **Delete** — Remove the post. Use this for drafts or scheduled posts you no longer want.
-- **View on platform** — If the post was published, we may show a link to view it on Twitter, Instagram, etc.
+- **Edit** - Change the text, media, or schedule. For drafts, you’re taken to the create form. For scheduled posts, you can change the time or the content.
+- **Publish now** - If the post is a draft or scheduled, you can publish it immediately.
+- **Retry** - If one or more platforms failed, use **Retry** to send again to those platforms.
+- **Post again** - For a post that’s already published (or partially published), use “Post again” or “Edit and post” to reuse the same content and send it again (e.g. with a new schedule).
+- **Delete** - Remove the post. Use this for drafts or scheduled posts you no longer want.
+- **View on platform** - If the post was published, we may show a link to view it on Twitter, Instagram, etc.
 
 ## Status per platform
 

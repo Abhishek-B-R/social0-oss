@@ -216,7 +216,7 @@ export function EditPostForm({
         />
         {existingMedia.length === 0 && newFiles.length === 0 ? (
           <p className="text-sm text-text-muted mb-2">
-            No attachments yet — add files below.
+            No attachments yet - add files below.
           </p>
         ) : (
           <div className="flex flex-wrap gap-3 mb-4">

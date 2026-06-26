@@ -26,7 +26,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
               </span>
             </h1>
 
-            {/* Subtitle — benefit first, no feature names */}
+            {/* Subtitle - benefit first, no feature names */}
             <p className="mb-10 max-w-[480px] text-[17px] leading-relaxed text-muted-foreground">
               Simple to use, with built-in tools that keep your content working
               even after you publish.
@@ -47,7 +47,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
                   card required
                 </span>
               </div>
-              {/* Social proof — under CTA to reinforce action */}
+              {/* Social proof - under CTA to reinforce action */}
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="h-1.5 w-1.5 ml-2 shrink-0 rounded-full bg-emerald-500/80" />
                 Be among the first to try Social0

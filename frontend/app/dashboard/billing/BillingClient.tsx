@@ -174,7 +174,8 @@ export function BillingClient({
   const [waitingForWebhook, setWaitingForWebhook] = useState(
     Boolean(justSubscribed && subscription.tier === "free"),
   );
-  const showTrialInfo = subscription.tier === "free" && !accountLimit.hasUsedTrial;
+  const showTrialInfo =
+    subscription.tier === "free" && !accountLimit.hasUsedTrial;
 
   // After return from checkout (?success=1): verify plan actually changed by polling sync; stop after 3 attempts and clear URL
   useEffect(() => {
@@ -299,7 +300,7 @@ export function BillingClient({
         </h2>
         <p className="mt-2 text-text-muted">Processing your payment.</p>
         <p className="mt-2 text-sm text-text-muted">
-          We&apos;re confirming your subscription — this usually takes a few
+          We&apos;re confirming your subscription - this usually takes a few
           seconds.
         </p>
         <p className="mt-6 text-xs text-text-muted">
@@ -342,7 +343,10 @@ export function BillingClient({
         return;
       }
       toast.error(
-        toFriendlyBillingError(data.error, "Could not open billing portal. Try again."),
+        toFriendlyBillingError(
+          data.error,
+          "Could not open billing portal. Try again.",
+        ),
       );
     } finally {
       setLoading(null);
@@ -369,7 +373,9 @@ export function BillingClient({
         router.push("/dashboard/feedback");
         return;
       }
-      toast.error(toFriendlyBillingError(data.error, "Failed to pause subscription."));
+      toast.error(
+        toFriendlyBillingError(data.error, "Failed to pause subscription."),
+      );
     } finally {
       setLoading(null);
     }
@@ -521,7 +527,7 @@ export function BillingClient({
           setLoadingChangePlan(null);
           return;
         }
-        // Preview failed (e.g. no subscription) — fall back to direct change-plan.
+        // Preview failed (e.g. no subscription) - fall back to direct change-plan.
       }
 
       const res = await fetch("/api/billing/change-plan", {
@@ -533,7 +539,7 @@ export function BillingClient({
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success && data.pending) {
         toast.info(
-          "Payment processing — your plan will update automatically once payment clears.",
+          "Payment processing - your plan will update automatically once payment clears.",
         );
         return;
       }
@@ -561,7 +567,7 @@ export function BillingClient({
         }
         setUpgradePending(true);
         toast.info(
-          "Your upgrade payment is still being processed. You'll be moved to Growth automatically — no action needed. If you didn't receive a payment request, try again after a few minutes.",
+          "Your upgrade payment is still being processed. You'll be moved to Growth automatically - no action needed. If you didn't receive a payment request, try again after a few minutes.",
         );
         return;
       }
@@ -570,7 +576,10 @@ export function BillingClient({
         if (ok) return;
       }
       toast.error(
-        toFriendlyBillingError(data.error, "Failed to change plan. Please try again."),
+        toFriendlyBillingError(
+          data.error,
+          "Failed to change plan. Please try again.",
+        ),
       );
     } finally {
       setLoadingChangePlan(null);
@@ -596,7 +605,7 @@ export function BillingClient({
         setUpgradeConfirmPlan(null);
         setUpgradePreview(null);
         toast.info(
-          "Payment processing — your plan will update automatically once payment clears.",
+          "Payment processing - your plan will update automatically once payment clears.",
         );
         return;
       }
@@ -610,7 +619,7 @@ export function BillingClient({
         setUpgradePreview(null);
         setUpgradePending(true);
         toast.info(
-          "Your upgrade payment is still being processed. You'll be moved to Growth automatically — no action needed. If you didn't receive a payment request, try again after a few minutes.",
+          "Your upgrade payment is still being processed. You'll be moved to Growth automatically - no action needed. If you didn't receive a payment request, try again after a few minutes.",
         );
         return;
       }
@@ -619,7 +628,10 @@ export function BillingClient({
         if (ok) return;
       }
       toast.error(
-        toFriendlyBillingError(data.error, "Failed to change plan. Please try again."),
+        toFriendlyBillingError(
+          data.error,
+          "Failed to change plan. Please try again.",
+        ),
       );
     } finally {
       setLoadingChangePlan(null);
@@ -676,7 +688,6 @@ export function BillingClient({
 
   return (
     <div className="space-y-5">
-
       <div className="border border-border rounded-xl p-6">
         <p className="text-sm text-muted-foreground">Current plan</p>
         <h2 className="text-2xl font-serif text-foreground">{tierLabel}</h2>
@@ -698,7 +709,7 @@ export function BillingClient({
               : "Cancels at period end"
             : renewalDate
               ? `Renews ${renewalDate}`
-              : "Renews —"}{" "}
+              : "Renews -"}{" "}
           · {pricePerMonth > 0 ? `$${pricePerMonth}/month` : "$0/month"}
         </p>
 
@@ -846,13 +857,16 @@ export function BillingClient({
                         />
                         Opening…
                       </>
+                    ) : showTrialInfo ? (
+                      "Start 7-day free trial"
                     ) : (
-                      showTrialInfo ? "Start 7-day free trial" : "Upgrade to Starter"
+                      "Upgrade to Starter"
                     )}
                   </Button>
                   {showTrialInfo && (
                     <p className="mt-2 text-center text-xs text-muted-foreground">
-                      7-day free trial included — you won&apos;t be charged today.
+                      7-day free trial included - you won&apos;t be charged
+                      today.
                     </p>
                   )}
                 </>
@@ -929,13 +943,16 @@ export function BillingClient({
                         />
                         Opening…
                       </>
+                    ) : showTrialInfo ? (
+                      "Start 7-day free trial"
                     ) : (
-                      showTrialInfo ? "Start 7-day free trial" : "Upgrade to Growth"
+                      "Upgrade to Growth"
                     )}
                   </Button>
                   {showTrialInfo && (
                     <p className="mt-2 text-center text-xs text-muted-foreground">
-                      7-day free trial included — you won&apos;t be charged today.
+                      7-day free trial included - you won&apos;t be charged
+                      today.
                     </p>
                   )}
                 </>
@@ -1079,7 +1096,7 @@ export function BillingClient({
                 />
                 <p className="text-xs text-muted-foreground whitespace-pre-line">
                   this helps me understand what&apos;s missing. i&apos;ll read
-                  every response and use it to improve Social0.{"\n"}— abhishek
+                  every response and use it to improve Social0.{"\n"}- abhishek
                   (the person who built + runs social0)
                 </p>
               </div>
@@ -1274,7 +1291,7 @@ export function BillingClient({
                 <p className="text-xs text-muted-foreground whitespace-pre-line">
                   the feedback you put here matters to me. i will pay attention
                   and improve Social0 based on it, thank you for your time.
-                  {"\n"}— abhishek (the person who built + runs social0)
+                  {"\n"}- abhishek (the person who built + runs social0)
                 </p>
               </div>
 

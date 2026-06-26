@@ -10,7 +10,7 @@ const envSchema = z
     BETTER_AUTH_SECRET: z.string().min(32),
     GOOGLE_CLIENT_ID: z.string().min(1),
     GOOGLE_CLIENT_SECRET: z.string().min(1),
-    /** OAuth redirect base — same as frontend NEXT_PUBLIC_APP_URL */
+    /** OAuth redirect base - same as frontend NEXT_PUBLIC_APP_URL */
     NEXT_PUBLIC_APP_URL: z.string().url(),
     APP_URL: z.string().url().optional(),
     /** Comma-separated extra frontend origins (e.g. https://localhost:3000,https://api.social0.app) */
@@ -53,9 +53,7 @@ const envSchema = z
     TEST_USER_NAME: z.string().optional(),
     DODO_PAYMENTS_API_KEY: z.string().optional(),
     DODO_PAYMENTS_WEBHOOK_SECRET: z.string().optional(),
-    DODO_PAYMENTS_ENVIRONMENT: z
-      .enum(["test_mode", "live_mode"])
-      .optional(),
+    DODO_PAYMENTS_ENVIRONMENT: z.enum(["test_mode", "live_mode"]).optional(),
     DODO_PAYMENTS_STARTER_PRODUCT_ID: z.string().optional(),
     DODO_PAYMENTS_GROWTH_PRODUCT_ID: z.string().optional(),
     DODO_PAYMENTS_PRO_PRODUCT_ID: z.string().optional(),
@@ -113,7 +111,7 @@ export function loadServerEnv(): ServerEnv {
   return cached;
 }
 
-/** Parsed server env singleton — same shape as frontend `env`. */
+/** Parsed server env singleton - same shape as frontend `env`. */
 export const env = new Proxy({} as ServerEnv, {
   get(_t, prop: string) {
     return loadServerEnv()[prop as keyof ServerEnv];

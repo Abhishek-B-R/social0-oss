@@ -1,6 +1,6 @@
 /**
  * Client-side video dimensions / aspect ratio helpers.
- * We do not block uploads by ratio — optional warning for non-standard ratios only.
+ * We do not block uploads by ratio - optional warning for non-standard ratios only.
  */
 
 /** ~5% relative tolerance when matching standard ratios */
@@ -34,7 +34,9 @@ function matchesStandardRatio(ratio: number, w: number, h: number): boolean {
 /** True if ratio matches any common platform-safe ratio (~5% tolerance). */
 export function isStandardAspectRatio(ratio: number): boolean {
   if (ratio <= 0 || !Number.isFinite(ratio)) return false;
-  return STANDARD_RATIO_PAIRS.some(([w, h]) => matchesStandardRatio(ratio, w, h));
+  return STANDARD_RATIO_PAIRS.some(([w, h]) =>
+    matchesStandardRatio(ratio, w, h),
+  );
 }
 
 /** Non-standard ratio warning shown in the UI (single copy). */
@@ -44,9 +46,9 @@ export type AspectRatioGuidance = {
 };
 
 const NON_STANDARD_MESSAGE =
-  "Not a standard ratio — some platforms may reject this video resulting in post failure.";
+  "Not a standard ratio - some platforms may reject this video resulting in post failure.";
 
-/** Use for consolidated UI (e.g. composer) when multiple videos share the same warning — show once. */
+/** Use for consolidated UI (e.g. composer) when multiple videos share the same warning - show once. */
 export const NON_STANDARD_VIDEO_ASPECT_GUIDANCE: AspectRatioGuidance = {
   level: "warn",
   message: NON_STANDARD_MESSAGE,
@@ -55,7 +57,9 @@ export const NON_STANDARD_VIDEO_ASPECT_GUIDANCE: AspectRatioGuidance = {
 /**
  * Returns `null` for standard ratios (no banner). Otherwise one warning object.
  */
-export function getAspectRatioGuidance(ratio: number): AspectRatioGuidance | null {
+export function getAspectRatioGuidance(
+  ratio: number,
+): AspectRatioGuidance | null {
   if (isStandardAspectRatio(ratio)) return null;
   return NON_STANDARD_VIDEO_ASPECT_GUIDANCE;
 }
@@ -71,16 +75,22 @@ const TIKTOK_NINE_SIXTEEN = 9 / 16;
 
 /**
  * TikTok upload API expects vertical 9:16 at minimum 720×1280 (see TikTok Content Posting API).
- * Client-side warning only — same intent as server `picture_size_check_failed`.
+ * Client-side warning only - same intent as server `picture_size_check_failed`.
  */
-export function meetsTikTokVideoResolution(width: number, height: number): boolean {
-  if (width <= 0 || height <= 0 || !Number.isFinite(width) || !Number.isFinite(height))
+export function meetsTikTokVideoResolution(
+  width: number,
+  height: number,
+): boolean {
+  if (
+    width <= 0 ||
+    height <= 0 ||
+    !Number.isFinite(width) ||
+    !Number.isFinite(height)
+  )
     return false;
   if (width >= height) return false;
   const r = width / height;
-  if (
-    Math.abs(r - TIKTOK_NINE_SIXTEEN) / TIKTOK_NINE_SIXTEEN > REL_TOL
-  ) {
+  if (Math.abs(r - TIKTOK_NINE_SIXTEEN) / TIKTOK_NINE_SIXTEEN > REL_TOL) {
     return false;
   }
   return width >= TIKTOK_MIN_WIDTH && height >= TIKTOK_MIN_HEIGHT;
@@ -125,7 +135,7 @@ export function measureVideoAspectRatio(
   });
 }
 
-/** @deprecated Use measureVideoAspectRatio — we no longer block on ratio */
+/** @deprecated Use measureVideoAspectRatio - we no longer block on ratio */
 export function validateVideoAspectRatio(
   file: File,
 ): Promise<VideoAspectMeasurement & { valid: true }> {

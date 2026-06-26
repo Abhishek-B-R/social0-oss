@@ -9,15 +9,15 @@ When you open **Create**, you see five options: Text, Image, Video, Threads, and
 
 ## How to create each type
 
-**Text** — Enter your text. Pick accounts. Publish or schedule. No media.
+**Text** - Enter your text. Pick accounts. Publish or schedule. No media.
 
-**Image** — Upload one or more images, add a caption, pick accounts, then publish or schedule.
+**Image** - Upload one or more images, add a caption, pick accounts, then publish or schedule.
 
-**Video** — Upload one video, add a caption, pick accounts (video-capable only), then publish or schedule.
+**Video** - Upload one video, add a caption, pick accounts (video-capable only), then publish or schedule.
 
-**Threads** — Add the first post (text and optional media), then add more posts. Pick accounts (Twitter/X, Threads, Bluesky). Publish or schedule; we’ll send each part in order.
+**Threads** - Add the first post (text and optional media), then add more posts. Pick accounts (Twitter/X, Threads, Bluesky). Publish or schedule; we’ll send each part in order.
 
-**Collection** — Upload multiple images and/or videos, add a caption, pick accounts (Twitter/X, Threads, Instagram), then publish or schedule.
+**Collection** - Upload multiple images and/or videos, add a caption, pick accounts (Twitter/X, Threads, Instagram), then publish or schedule.
 
 ## Tips
 

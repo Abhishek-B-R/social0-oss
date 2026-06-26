@@ -1,4 +1,4 @@
-/** Client IP for rate limiting — only trusts proxy headers when configured. */
+/** Client IP for rate limiting - only trusts proxy headers when configured. */
 export function clientIp(
   request: Request,
   options?: { socketIp?: string },

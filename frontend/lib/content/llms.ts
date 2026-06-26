@@ -10,7 +10,7 @@ export function generateLlmsTxt(): string {
   const featureLines = PSEO_PAGES_ENABLED
     ? FEATURES.map(
         (f) =>
-          `- ${f.platformLabel ? `${f.platformLabel} scheduler` : f.heroHeadline.split("—")[0].trim()}: ${base}/features/${f.slug}`,
+          `- ${f.platformLabel ? `${f.platformLabel} scheduler` : f.heroHeadline.split("-")[0].trim()}: ${base}/features/${f.slug}`,
       )
     : [];
 

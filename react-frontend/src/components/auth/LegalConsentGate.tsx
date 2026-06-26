@@ -23,7 +23,8 @@ export function LegalConsentGate() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [consent, setConsent] = useState<LegalConsentValues>(EMPTY_LEGAL_CONSENT);
+  const [consent, setConsent] =
+    useState<LegalConsentValues>(EMPTY_LEGAL_CONSENT);
 
   const checkStatus = useCallback(async () => {
     setLoading(true);
@@ -40,7 +41,7 @@ export function LegalConsentGate() {
         setConsent(EMPTY_LEGAL_CONSENT);
       }
     } catch {
-      // ponytail: silent fail — user can retry on next navigation
+      // ponytail: silent fail - user can retry on next navigation
     } finally {
       setLoading(false);
     }
@@ -71,7 +72,7 @@ export function LegalConsentGate() {
         return;
       }
       setOpen(false);
-      toast.success("Thanks — you're all set.");
+      toast.success("Thanks - you're all set.");
     } catch {
       toast.error("Something went wrong. Please try again.");
     } finally {

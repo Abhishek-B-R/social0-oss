@@ -28,7 +28,7 @@ export type ZombieSweepResult = {
   scanned: number;
   /** Cancelled in Dodo via API. */
   cancelled: number;
-  /** failed/expired in Dodo — cannot PATCH cancel; local DB cleared only. */
+  /** failed/expired in Dodo - cannot PATCH cancel; local DB cleared only. */
   clearedTerminal: number;
   /** Failed Dodo cancel attempts (after retries). */
   cancelErrors: number;
@@ -82,7 +82,9 @@ export function zombieStaleSince(sub: ZombieSubscriptionTiming): Date {
   return new Date(sub.created_at);
 }
 
-export function isStaleZombieSubscription(sub: ZombieSubscriptionTiming): boolean {
+export function isStaleZombieSubscription(
+  sub: ZombieSubscriptionTiming,
+): boolean {
   if (!ZOMBIE_DODO_STATUSES.includes(sub.status as ZombieDodoStatus)) {
     return false;
   }
@@ -134,7 +136,7 @@ async function patchCancelSubscription(
   await client.subscriptions.update(subscriptionId, body);
 }
 
-/** Try several Dodo cancel shapes — on_hold subs often reject a bare status patch. */
+/** Try several Dodo cancel shapes - on_hold subs often reject a bare status patch. */
 async function cancelInDodo(
   client: DodoPayments,
   subscriptionId: string,
@@ -142,7 +144,8 @@ async function cancelInDodo(
   const metadata = {
     zombie_cleanup: "true",
     cancel_reason: "cancelled_by_merchant",
-    cancellation_comment: "Automated cancellation of unpaid/zombie subscription",
+    cancellation_comment:
+      "Automated cancellation of unpaid/zombie subscription",
   };
 
   const attempts: Array<{
@@ -205,7 +208,7 @@ async function cancelInDodo(
   return { ok: false, message: lastMessage };
 }
 
-/** Dodo terminal states — cannot transition to cancelled via API. */
+/** Dodo terminal states - cannot transition to cancelled via API. */
 function isDodoTerminalStatus(status: string | null | undefined): boolean {
   return status === "failed" || status === "expired" || status === "cancelled";
 }
@@ -215,7 +218,8 @@ export async function forceCancelDodoSubscription(
   subscriptionId: string,
 ): Promise<{ ok: true; terminal?: boolean } | { ok: false; message: string }> {
   const client = dodoClient();
-  if (!client) return { ok: false, message: "DODO_PAYMENTS_API_KEY not configured" };
+  if (!client)
+    return { ok: false, message: "DODO_PAYMENTS_API_KEY not configured" };
 
   try {
     const sub = await client.subscriptions.retrieve(subscriptionId);
@@ -328,7 +332,10 @@ export async function sweepStaleZombieSubscriptions(
     };
   }
 
-  const { candidates, listErrors } = await collectZombieCandidates(client, force);
+  const { candidates, listErrors } = await collectZombieCandidates(
+    client,
+    force,
+  );
   const scanned = candidates.length;
   let cancelled = 0;
   let clearedTerminal = 0;

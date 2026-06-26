@@ -13,9 +13,7 @@ import {
 import { signInUrl } from "@/lib/sign-in-url";
 import { createPost, type PublishMode } from "@/app/actions/posts";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
-import {
-  getPostPublicationList,
-} from "@/app/actions/publish";
+import { getPostPublicationList } from "@/app/actions/publish";
 import {
   sortBySlowPlatformsLast,
   publishPostWithParallelProgress,
@@ -1403,7 +1401,9 @@ export function ImagePostForm({
         (rows) => {
           setPlatformStatuses((prev) =>
             prev.map((p) => {
-              const row = rows.find((r) => r.connectedAccountId === p.accountId);
+              const row = rows.find(
+                (r) => r.connectedAccountId === p.accountId,
+              );
               if (!row) return p;
               const status: PlatformStatus =
                 row.publicationStatus === "published"
@@ -1476,7 +1476,10 @@ export function ImagePostForm({
   const showPlatformCaptionsSection = selectedIds.size >= 2;
   const platformDisplayName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
-  const getPlatformCaptionPreview = (platformId: string, rawCaption: string) => {
+  const getPlatformCaptionPreview = (
+    platformId: string,
+    rawCaption: string,
+  ) => {
     const trimmed = rawCaption.trim();
     if (!trimmed) return "";
     const platformAccounts = selectedAccounts.filter(
@@ -1484,7 +1487,9 @@ export function ImagePostForm({
     );
     const limit =
       platformAccounts.length > 0
-        ? Math.min(...platformAccounts.map((account) => getLimitForAccount(account)))
+        ? Math.min(
+            ...platformAccounts.map((account) => getLimitForAccount(account)),
+          )
         : getLimitForAccount({ platform: platformId, isTwitterPremium: false });
     if (trimmed.length <= limit) return trimmed;
     if (limit <= 3) return "...";
@@ -2227,7 +2232,7 @@ export function ImagePostForm({
                       showPreviewHint
                     />
                   )}
-                  {/* Auto Add Music — TikTok photos only */}
+                  {/* Auto Add Music - TikTok photos only */}
                   <div className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-border bg-bg p-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-text">
@@ -2286,7 +2291,9 @@ export function ImagePostForm({
                         value: "",
                       } as PlatformCaptionState);
                     const displayName = platformDisplayName(platformId);
-                    const effectiveCaption = state.overridden ? state.value : content;
+                    const effectiveCaption = state.overridden
+                      ? state.value
+                      : content;
                     const previewCaption = getPlatformCaptionPreview(
                       platformId,
                       effectiveCaption,

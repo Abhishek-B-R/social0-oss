@@ -1,4 +1,3 @@
-
 import { db } from "../db/index.js";
 import {
   posts,
@@ -11,7 +10,10 @@ import {
 } from "../db/schema.js";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { decryptToken } from "../lib/encryption.js";
-import { uploadLinkedInImage, uploadLinkedInVideo } from "../lib/linkedin-media.js";
+import {
+  uploadLinkedInImage,
+  uploadLinkedInVideo,
+} from "../lib/linkedin-media.js";
 import { publishToPlatform } from "../lib/publish-platform.js";
 import {
   isValidPostId,
@@ -25,7 +27,10 @@ import {
   checkTwitterPublishRateLimit,
 } from "../lib/plan-limits.js";
 import { logPublishBlocked } from "../lib/plan-analytics.js";
-import { uploadTwitterImage, uploadTwitterVideo } from "../lib/twitter-media.js";
+import {
+  uploadTwitterImage,
+  uploadTwitterVideo,
+} from "../lib/twitter-media.js";
 import { getTwitterErrorMessage } from "../lib/twitter-errors.js";
 import { parseTikTokHandleFromProfileUrl } from "../lib/platform-view-url.js";
 import { maybeSendPostFailureEmail } from "../lib/post-failure-email.js";
@@ -134,7 +139,7 @@ export async function getPostPublicationList(
  * Core publish logic: fetches post + publications, posts to each platform, updates DB.
  * When userId is provided, verifies post belongs to that user.
  * When publicationIdFilter is provided, only that publication is processed (for per-platform progress).
- * options: runtime-only (e.g. instagramConfig) — not persisted.
+ * options: runtime-only (e.g. instagramConfig) - not persisted.
  */
 export async function executePublish(
   postId: string,
@@ -143,7 +148,7 @@ export async function executePublish(
   options?: PublishOptions,
 ): Promise<PublishResult> {
   console.log(
-    "[executePublish] called — options:",
+    "[executePublish] called - options:",
     JSON.stringify(options ?? null),
   );
   if (!postId || !isValidPostId(postId)) {
@@ -179,7 +184,7 @@ export async function executePublish(
   }
 
   // Free-tier quota is charged once when the user submits the post
-  // (createPost / updatePost / updateAndPublish / postAgain) — never here.
+  // (createPost / updatePost / updateAndPublish / postAgain) - never here.
   // This function runs multiple times per post (per-platform progress calls,
   // safety-net republish, retries, cron) and must not gate or count quota.
 
@@ -246,7 +251,7 @@ export async function executePublish(
   }
 
   // Mark post and pending publications as "publishing" so UI shows progress and we avoid double-publish.
-  // Never demote an already published/partial post — follow-up calls on finished publications
+  // Never demote an already published/partial post - follow-up calls on finished publications
   // (per-platform progress, safety-net republish) would otherwise erase the status that
   // marks the post as already counted against the free quota.
   await db
@@ -355,7 +360,7 @@ export async function executePublish(
       !NEVER_EXPIRES_PLATFORMS.has(pub.platform)
     ) {
       const tokenExpiredMsg =
-        "Token expired — user must reconnect this account";
+        "Token expired - user must reconnect this account";
       await db
         .update(postPublications)
         .set({
@@ -383,7 +388,7 @@ export async function executePublish(
       pub.platform !== "linkedin"
     ) {
       const tokenExpiredMsg =
-        "Token expired — user must reconnect this account";
+        "Token expired - user must reconnect this account";
       await db
         .update(postPublications)
         .set({
@@ -765,7 +770,8 @@ export async function executePublish(
         if (!md || typeof md !== "object") return null;
         const x = (md as Record<string, unknown>)["x"];
         if (!x || typeof x !== "object") return null;
-        const madeWithAi = (x as Record<string, unknown>)["madeWithAi"] === true;
+        const madeWithAi =
+          (x as Record<string, unknown>)["madeWithAi"] === true;
         const paidPartnership =
           (x as Record<string, unknown>)["paidPartnership"] === true;
         if (!madeWithAi && !paidPartnership) return null;
@@ -851,7 +857,7 @@ export async function executePublish(
           return;
         }
 
-        // Skip 280 char validation — Premium users can post up to 25k chars.
+        // Skip 280 char validation - Premium users can post up to 25k chars.
         // If Twitter rejects, the API error will be surfaced to the user.
 
         const uniqueDbMediaIds = [...new Set(parts.flatMap((p) => p.mediaIds))];
@@ -1145,7 +1151,7 @@ export async function executePublish(
         return;
       }
 
-      // Skip 280 char validation — Premium users can post up to 25k chars.
+      // Skip 280 char validation - Premium users can post up to 25k chars.
       // If Twitter rejects, the API error will be surfaced to the user.
 
       type MediaIdsTuple =
@@ -1413,7 +1419,7 @@ export async function executePublish(
           | { instagram?: { coverImageUrl?: string; isTrialReel: boolean } }
           | undefined;
         if (pub.platform === "instagram" && options?.instagramConfig) {
-          // coverImageUrl comes from our own uploadFile() flow — not user-supplied.
+          // coverImageUrl comes from our own uploadFile() flow - not user-supplied.
           // Instagram fetches the URL (not our server), so SSRF doesn't apply here.
           // We do a basic sanity check: must be a valid https URL.
           let coverImageUrl: string | undefined;
@@ -1423,7 +1429,7 @@ export async function executePublish(
               const parsed = new URL(rawUrl);
               if (parsed.protocol === "https:") coverImageUrl = rawUrl;
             } catch {
-              // invalid URL — leave undefined
+              // invalid URL - leave undefined
             }
           }
           console.log(
@@ -1635,7 +1641,7 @@ export async function executePublish(
     failedList.length > 0
       ? failedList
           .map((r) => `${r.platform}: ${r.error ?? "Unknown error"}`.trim())
-          .join(" — ")
+          .join(" - ")
       : undefined;
 
   return {

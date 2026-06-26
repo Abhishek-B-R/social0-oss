@@ -4,7 +4,7 @@ import { user, session } from "../../db/schema.js";
 import { eq } from "drizzle-orm";
 import { createHmac, randomBytes } from "crypto";
 
-// The REAL user account — has all connected social media platforms
+// The REAL user account - has all connected social media platforms
 const TEST_USER_ID = process.env.TEST_USER_ID!;
 const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL!;
 const TEST_USER_NAME = process.env.TEST_USER_NAME!;
@@ -28,7 +28,7 @@ function makeSignedCookieValue(token: string, secret: string): string {
 // Only active when ALLOW_TEST_SIGNIN=true (set in .env.test / .env.local).
 // Hard-blocked in production regardless of env var.
 export async function GET(req: NextRequest) {
-  // Hard production guard — never allow in production no matter what env vars say
+  // Hard production guard - never allow in production no matter what env vars say
   if (process.env.NODE_ENV === "production") {
     return NextResponse.error(404);
   }
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
   // Clear any stale test sessions then create a fresh one
   await db.delete(session).where(eq(session.userId, TEST_USER_ID));
 
-  // 32-char hex token — same length as Better Auth's generateId(32)
+  // 32-char hex token - same length as Better Auth's generateId(32)
   const token = randomBytes(16).toString("hex");
   const sessionId = randomBytes(16).toString("hex");
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);

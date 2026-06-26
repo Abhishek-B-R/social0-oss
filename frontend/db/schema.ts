@@ -93,7 +93,7 @@ export const account = pgTable(
   },
   (table) => ({
     uniqueProviderAccount: unique().on(table.providerId, table.accountId),
-  })
+  }),
 );
 
 // Verification table (Better Auth - for email verification, password reset, etc.)
@@ -106,7 +106,7 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp("updated_at"),
 });
 
-// Legal consent audit trail (append-only — new row per acceptance / version)
+// Legal consent audit trail (append-only - new row per acceptance / version)
 export const legalAcceptances = pgTable(
   "legal_acceptances",
   {
@@ -148,7 +148,8 @@ export const connectedAccounts = pgTable(
     encryptedAccessToken: text("encrypted_access_token").notNull(),
     encryptedRefreshToken: text("encrypted_refresh_token"),
     tokenExpiresAt: timestamp("token_expires_at"),
-    platformMetadata: jsonb("platform_metadata").$type<Record<string, unknown>>(),
+    platformMetadata:
+      jsonb("platform_metadata").$type<Record<string, unknown>>(),
     isTwitterPremium: boolean("is_twitter_premium").default(false),
     platformAccountType: text("platform_account_type").default("personal"), // 'personal' | 'company' (e.g. LinkedIn company pages)
     createdAt: timestamp("created_at").defaultNow(),
@@ -277,7 +278,9 @@ export const queuedPosts = pgTable("queued_posts", {
   postId: uuid("post_id")
     .references(() => posts.id, { onDelete: "cascade" })
     .notNull(),
-  slotId: uuid("slot_id").references(() => queueSlots.id, { onDelete: "set null" }),
+  slotId: uuid("slot_id").references(() => queueSlots.id, {
+    onDelete: "set null",
+  }),
   scheduledFor: timestamp("scheduled_for").notNull(),
   status: text("status").default("pending").notNull(), // pending | processing | done | failed
   createdAt: timestamp("created_at").defaultNow(),
@@ -361,7 +364,9 @@ export const userSettings = pgTable("user_settings", {
   /** Downgrade feedback (captured before scheduling downgrade). */
   downgradeReason: text("downgrade_reason"),
   /** True when user cancelled; access until subscription_expires_at. Cleared when sub ends or user undoes cancel. */
-  subscriptionCancelAtPeriodEnd: boolean("subscription_cancel_at_period_end").default(false),
+  subscriptionCancelAtPeriodEnd: boolean(
+    "subscription_cancel_at_period_end",
+  ).default(false),
   /** Lifetime posts used on the free tier (no reset). */
   freePostsUsed: integer("free_posts_used").default(0).notNull(),
 });

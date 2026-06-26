@@ -62,7 +62,7 @@ export const publishLimiter = redis
     })
   : null;
 
-// 120 X/Twitter tweet publications/hour per user — anti-automation only; normal usage stays well below this
+// 120 X/Twitter tweet publications/hour per user - anti-automation only; normal usage stays well below this
 export const twitterPublishLimiter = redis
   ? new Ratelimit({
       redis,
@@ -71,7 +71,7 @@ export const twitterPublishLimiter = redis
     })
   : null;
 
-// Connect/reauth on dashboard/connections — generous for multi-platform setup + retries.
+// Connect/reauth on dashboard/connections - generous for multi-platform setup + retries.
 export const oauthLimiter = redis
   ? new Ratelimit({
       redis,

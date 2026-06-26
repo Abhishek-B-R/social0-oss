@@ -59,7 +59,9 @@ function createImageFile(name = "test.png"): File {
   if (typeof File !== "undefined") {
     return new File(["image content"], name, { type: "image/png" });
   }
-  const blob = new Blob(["image content"], { type: "image/png" }) as unknown as File;
+  const blob = new Blob(["image content"], {
+    type: "image/png",
+  }) as unknown as File;
   Object.defineProperty(blob, "name", { value: name });
   return blob;
 }
@@ -68,7 +70,9 @@ function createVideoFile(name = "test.mp4"): File {
   if (typeof File !== "undefined") {
     return new File(["video content"], name, { type: "video/mp4" });
   }
-  const blob = new Blob(["video content"], { type: "video/mp4" }) as unknown as File;
+  const blob = new Blob(["video content"], {
+    type: "video/mp4",
+  }) as unknown as File;
   Object.defineProperty(blob, "name", { value: name });
   return blob;
 }
@@ -204,7 +208,7 @@ describe("CollectionPostForm", () => {
       expect(textarea).toHaveValue("My collection caption");
     });
 
-    it("hasContent is false with empty caption and no media — submit actions disabled", () => {
+    it("hasContent is false with empty caption and no media - submit actions disabled", () => {
       render(<CollectionPostForm accounts={defaultAccounts} />);
       const postNow = screen.getByRole("button", { name: "Post now" });
       const saveDraft = screen.getByRole("button", { name: "Save to Drafts" });
@@ -279,7 +283,11 @@ describe("CollectionPostForm", () => {
       render(<CollectionPostForm accounts={defaultAccounts} />);
       const input = screen.getByLabelText(/Images/);
       const badFile = new File(["x"], "doc.pdf", { type: "application/pdf" });
-      const fileList = { 0: badFile, length: 1, item: (i: number) => (i === 0 ? badFile : null) };
+      const fileList = {
+        0: badFile,
+        length: 1,
+        item: (i: number) => (i === 0 ? badFile : null),
+      };
       fireEvent.change(input, { target: { files: fileList } });
       expect(
         screen.getByText("Please select only image files."),
@@ -315,7 +323,11 @@ describe("CollectionPostForm", () => {
       render(<CollectionPostForm accounts={defaultAccounts} />);
       const input = screen.getByLabelText(/Videos/);
       const badFile = new File(["x"], "image.png", { type: "image/png" });
-      const fileList = { 0: badFile, length: 1, item: (i: number) => (i === 0 ? badFile : null) };
+      const fileList = {
+        0: badFile,
+        length: 1,
+        item: (i: number) => (i === 0 ? badFile : null),
+      };
       fireEvent.change(input, { target: { files: fileList } });
       expect(
         screen.getByText("Please select only video files."),
@@ -384,7 +396,7 @@ describe("CollectionPostForm", () => {
       ]);
       expect(
         screen.getByText(
-          /X \(Twitter\) supports max 4 attachments — only the first 4 will be published/,
+          /X \(Twitter\) supports max 4 attachments - only the first 4 will be published/,
         ),
       ).toBeInTheDocument();
     });
@@ -399,9 +411,7 @@ describe("CollectionPostForm", () => {
         createImageFile("1.png"),
         createImageFile("2.png"),
       ]);
-      expect(
-        screen.queryByText(/max 4 attachments/),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/max 4 attachments/)).not.toBeInTheDocument();
     });
   });
 
@@ -424,7 +434,9 @@ describe("CollectionPostForm", () => {
         createImageFile("a.png"),
         createImageFile("b.png"),
       ]);
-      expect(screen.getByRole("button", { name: "Previous" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Previous" }),
+      ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Next" })).toBeInTheDocument();
       expect(screen.getByText("1 / 2")).toBeInTheDocument();
     });
@@ -454,9 +466,11 @@ describe("CollectionPostForm", () => {
       expect(postNow).not.toBeDisabled();
       await user.click(postNow);
 
-      await screen.findByText(/Uploading|Publishing|Saving/, undefined, {
-        timeout: 500,
-      }).catch(() => {});
+      await screen
+        .findByText(/Uploading|Publishing|Saving/, undefined, {
+          timeout: 500,
+        })
+        .catch(() => {});
 
       await new Promise((r) => setTimeout(r, 100));
 

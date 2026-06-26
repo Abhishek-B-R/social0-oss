@@ -30,7 +30,7 @@ describe("AutoResurfacePanel", () => {
     expect(screen.getByText(/Auto-Repost/)).toBeInTheDocument();
   });
 
-  it("toggle off by default — onChange not called with config on mount", () => {
+  it("toggle off by default - onChange not called with config on mount", () => {
     const onChange = jest.fn();
     render(
       <AutoResurfacePanel
@@ -72,7 +72,7 @@ describe("AutoResurfacePanel", () => {
     expect(screen.getByText(/First reshare/)).toBeInTheDocument();
   });
 
-  it("toggle on, set 4h and 3 reshares — onChange called with config", async () => {
+  it("toggle on, set 4h and 3 reshares - onChange called with config", async () => {
     const onChange = jest.fn();
     render(
       <AutoResurfacePanel
@@ -96,7 +96,7 @@ describe("AutoResurfacePanel", () => {
     );
   });
 
-  it("toggle back off — onChange called with null", async () => {
+  it("toggle back off - onChange called with null", async () => {
     const onChange = jest.fn();
     render(
       <AutoResurfacePanel

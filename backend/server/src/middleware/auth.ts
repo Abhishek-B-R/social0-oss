@@ -42,7 +42,7 @@ export function accepted(jobId: string, queue: string): QueuedResponse {
 
 export function notImplemented(route: string) {
   return {
-    error: "Not implemented — wire DB/services from frontend",
+    error: "Not implemented - wire DB/services from frontend",
     route,
     code: "NOT_IMPLEMENTED",
   };

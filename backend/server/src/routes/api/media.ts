@@ -115,15 +115,16 @@ export async function registerMediaApiRoutes(app: FastifyInstance) {
       fileSize?: number;
     };
 
-    const {
-      key,
-      storageFilename,
-      originalFilename,
-      contentType,
-      fileSize,
-    } = body;
+    const { key, storageFilename, originalFilename, contentType, fileSize } =
+      body;
 
-    if (!key || !storageFilename || !originalFilename || !contentType || !fileSize) {
+    if (
+      !key ||
+      !storageFilename ||
+      !originalFilename ||
+      !contentType ||
+      !fileSize
+    ) {
       return reply.status(400).send({ error: "Missing required fields" });
     }
 
@@ -171,7 +172,9 @@ export async function registerMediaApiRoutes(app: FastifyInstance) {
       }
     } catch (e) {
       request.log.error(e, "Confirm upload magic-byte check failed");
-      return reply.status(400).send({ error: "Could not verify uploaded file" });
+      return reply
+        .status(400)
+        .send({ error: "Could not verify uploaded file" });
     }
 
     const base = (env.R2_PUBLIC_URL ?? "").replace(/\/$/, "");
@@ -221,7 +224,9 @@ export async function registerMediaApiRoutes(app: FastifyInstance) {
         });
 
       if (!row) {
-        return reply.status(500).send({ error: "Failed to create media record" });
+        return reply
+          .status(500)
+          .send({ error: "Failed to create media record" });
       }
 
       return row;
@@ -234,6 +239,6 @@ export async function registerMediaApiRoutes(app: FastifyInstance) {
   });
 
   app.post("/media/upload", async () =>
-    notImplemented("POST /api/media/upload — deprecated"),
+    notImplemented("POST /api/media/upload - deprecated"),
   );
 }

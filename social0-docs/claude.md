@@ -1,4 +1,4 @@
-# Social0 Docs — AI / Claude Guidance
+# Social0 Docs - AI / Claude Guidance
 
 This document describes the **social0-docs** project: a standalone Fumadocs site for Social0 documentation. It summarizes what was built, how it’s structured, and constraints to keep edits consistent.
 
@@ -25,24 +25,24 @@ This document describes the **social0-docs** project: a standalone Fumadocs site
 
 ## 3. Directory layout
 
-- **`app/`** — App Router.
-  - **`app/layout.tsx`** — Root layout: fonts, `RootProvider`, `DocsNavbar`, favicon metadata, `globals.css`.
-  - **`app/page.tsx`** — Home/landing (e.g. redirect or simple welcome).
-  - **`app/docs/`** — Docs section.
-    - **`app/docs/layout.tsx`** — Uses `DocsLayout` from fumadocs-ui; `tree={source.pageTree}`, sidebar options, `baseOptions()` (nav disabled).
-    - **`app/docs/[[...slug]]/page.tsx`** — Catch-all for doc pages; renders Fumadocs page + TOC etc.
-  - **`app/api/search/route.ts`** — Search API used by Fumadocs search.
-  - **`app/globals.css`** — Tailwind imports, Social0 CSS variables (light/dark), Fumadocs overrides (`--color-fd-*`), no-shadow rules for sidebar/nav.
-- **`components/`** — React components.
-  - **`docs-navbar.tsx`** — Sticky top navbar: left “Social0 | Docs”, right ThemeToggle + Dashboard link + X icon.
-  - **`theme-toggle.tsx`** — Client component: sun/moon horizontal toggle with sliding thumb; uses `next-themes` `useTheme()`.
-  - **`mdx.tsx`** — Optional MDX component overrides (e.g. custom headings, code blocks).
-- **`content/docs/`** — All documentation source. Structure here becomes the sidebar tree. Supports `.md` and `.mdx`; **frontmatter is required** (see §5).
-- **`lib/`** — Docs wiring.
-  - **`lib/source.ts`** — Loads Fumadocs source (page tree, etc.) from `source.config.ts`.
-  - **`lib/layout.shared.tsx`** — `baseOptions()` for `DocsLayout` (e.g. `nav.enabled: false` because we use a custom navbar).
-- **`public/`** — Static assets. **`favicon-light.png`** is the favicon (from main app’s `logo-circular.png`); referenced in root layout metadata.
-- **`source.config.ts`** — Fumadocs MDX config; points `dir` to `content/docs`.
+- **`app/`** - App Router.
+  - **`app/layout.tsx`** - Root layout: fonts, `RootProvider`, `DocsNavbar`, favicon metadata, `globals.css`.
+  - **`app/page.tsx`** - Home/landing (e.g. redirect or simple welcome).
+  - **`app/docs/`** - Docs section.
+    - **`app/docs/layout.tsx`** - Uses `DocsLayout` from fumadocs-ui; `tree={source.pageTree}`, sidebar options, `baseOptions()` (nav disabled).
+    - **`app/docs/[[...slug]]/page.tsx`** - Catch-all for doc pages; renders Fumadocs page + TOC etc.
+  - **`app/api/search/route.ts`** - Search API used by Fumadocs search.
+  - **`app/globals.css`** - Tailwind imports, Social0 CSS variables (light/dark), Fumadocs overrides (`--color-fd-*`), no-shadow rules for sidebar/nav.
+- **`components/`** - React components.
+  - **`docs-navbar.tsx`** - Sticky top navbar: left “Social0 | Docs”, right ThemeToggle + Dashboard link + X icon.
+  - **`theme-toggle.tsx`** - Client component: sun/moon horizontal toggle with sliding thumb; uses `next-themes` `useTheme()`.
+  - **`mdx.tsx`** - Optional MDX component overrides (e.g. custom headings, code blocks).
+- **`content/docs/`** - All documentation source. Structure here becomes the sidebar tree. Supports `.md` and `.mdx`; **frontmatter is required** (see §5).
+- **`lib/`** - Docs wiring.
+  - **`lib/source.ts`** - Loads Fumadocs source (page tree, etc.) from `source.config.ts`.
+  - **`lib/layout.shared.tsx`** - `baseOptions()` for `DocsLayout` (e.g. `nav.enabled: false` because we use a custom navbar).
+- **`public/`** - Static assets. **`favicon-light.png`** is the favicon (from main app’s `logo-circular.png`); referenced in root layout metadata.
+- **`source.config.ts`** - Fumadocs MDX config; points `dir` to `content/docs`.
 
 ---
 
@@ -59,27 +59,29 @@ This document describes the **social0-docs** project: a standalone Fumadocs site
 
 ## 5. Documentation content policy (user-facing product docs)
 
-All docs in **`content/docs/`** are **user-facing product documentation**. They are for people who signed up for Social0 and want to use it—not for developers or internal technical readers.
+All docs in **`content/docs/`** are **user-facing product documentation**. They are for people who signed up for Social0 and want to use it-not for developers or internal technical readers.
 
 **Audience:** A regular person who uses Social0 to schedule and publish posts. They don’t need to know what an API or database is. They care about what to click, what they see, and how to get things done.
 
 **Rules when writing or editing docs:**
+
 - **NEVER mention:** Code, functions, components, or file names; API routes, endpoints, database, or server actions; Next.js, React, Drizzle, BullMQ, or any tech stack; internal architecture or how things work under the hood; error codes or technical error messages.
 - **ALWAYS:** Write in plain English; focus on what the user clicks, sees, and does; use short sentences; use “you” and talk directly to the user; explain what each feature does and how to use it step by step.
 
 **Standard page format:** Each doc page should have:
+
 - **Frontmatter:** `title`, `description` (one sentence: what this page helps you do).
-- **Overview** — One short paragraph: what this is and why it exists.
-- **How to [main action]** — Numbered steps (1. Go to… 2. Click… 3. Fill in…).
-- **Other sections as needed** — Short, plain language.
-- **Tips** — 2–3 bullet points of useful things to know.
-- **Common questions** — Q&A in simple user questions and answers.
+- **Overview** - One short paragraph: what this is and why it exists.
+- **How to [main action]** - Numbered steps (1. Go to… 2. Click… 3. Fill in…).
+- **Other sections as needed** - Short, plain language.
+- **Tips** - 2–3 bullet points of useful things to know.
+- **Common questions** - Q&A in simple user questions and answers.
 
-**Tone:** Friendly, clear, direct—like a helpful teammate explaining the product. Not a lawyer. Not an engineer.
+**Tone:** Friendly, clear, direct-like a helpful teammate explaining the product. Not a lawyer. Not an engineer.
 
-**Sections covered:** index (welcome), getting-started, platforms/*, post-types/*, features/*, billing/*, dashboard/* (composer, create, connections, posts, settings, queue, feedback, bulk-tools, etc.), onboarding, auth (sign in, verify email, forgot/reset password), privacy, terms. The **developer/** section is intentionally non-technical: “Integrations and API” points users to contact for API/integrations; no internal architecture or code.
+**Sections covered:** index (welcome), getting-started, platforms/_, post-types/_, features/_, billing/_, dashboard/\* (composer, create, connections, posts, settings, queue, feedback, bulk-tools, etc.), onboarding, auth (sign in, verify email, forgot/reset password), privacy, terms. The **developer/** section is intentionally non-technical: “Integrations and API” points users to contact for API/integrations; no internal architecture or code.
 
-**Free tier:** Document that on the free tier users can **only explore the dashboard**—they **cannot connect accounts or post anything** (no drafts, no scheduling, no publishing). Connecting accounts and posting require a paid plan (Starter, Growth, or Pro).
+**Free tier:** Document that on the free tier users can **only explore the dashboard**-they **cannot connect accounts or post anything** (no drafts, no scheduling, no publishing). Connecting accounts and posting require a paid plan (Starter, Growth, or Pro).
 
 ---
 
@@ -88,8 +90,8 @@ All docs in **`content/docs/`** are **user-facing product documentation**. They 
 - **Location:** All docs live under **`content/docs/`**. Folder structure = sidebar tree.
 - **Formats:** `.md` and `.mdx`.
 - **Frontmatter (required):** Every doc must have valid frontmatter. Fumadocs MDX expects at least:
-  - **`title`** (string) — Used in sidebar and meta.
-  - **`description`** (string) — Used for meta and search.
+  - **`title`** (string) - Used in sidebar and meta.
+  - **`description`** (string) - Used for meta and search.
 - **Invalid frontmatter** (e.g. missing `title` or `description`) causes the build to fail with “invalid frontmatter … title: expected string, received undefined”. When adding or moving docs, always add or fix frontmatter.
 
 ---
@@ -127,7 +129,7 @@ All docs in **`content/docs/`** are **user-facing product documentation**. They 
 
 ## 10. Build and config notes
 
-- **Next config:** `next.config.mjs` uses `createMDX()` from `fumadocs-mdx/next` and exports `withMDX(config)`. Do not pass the full Next config into `createMDX()` — use the pattern: `const withMDX = createMDX(); export default withMDX(config);`.
+- **Next config:** `next.config.mjs` uses `createMDX()` from `fumadocs-mdx/next` and exports `withMDX(config)`. Do not pass the full Next config into `createMDX()` - use the pattern: `const withMDX = createMDX(); export default withMDX(config);`.
 - **Provider:** Use `RootProvider` from **`fumadocs-ui/provider/next`** (not `fumadocs-ui/provider`). It wraps the app with theme and search providers.
 - **Sidebar:** Sidebar configuration (e.g. `defaultOpenLevel`, `banner`) lives in `app/docs/layout.tsx` and is passed as the `sidebar` prop to `DocsLayout`; `BaseLayoutProps` in Fumadocs types include `sidebar` on the layout, not only in shared options.
 

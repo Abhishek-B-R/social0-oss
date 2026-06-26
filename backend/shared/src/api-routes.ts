@@ -13,7 +13,7 @@ export type ApiRouteDef = {
 
 export const FRONTEND_API_ROUTES: ApiRouteDef[] = [
   // Auth
-  { method: "GET", path: "/api/auth/check-email", note: "sync — rate limited" },
+  { method: "GET", path: "/api/auth/check-email", note: "sync - rate limited" },
   { method: "POST", path: "/api/auth/sign-up", note: "sync" },
   { method: "POST", path: "/api/auth/sign-up-with-turnstile", note: "sync" },
   { method: "GET", path: "/api/auth/subscription-check", note: "sync" },
@@ -37,12 +37,28 @@ export const FRONTEND_API_ROUTES: ApiRouteDef[] = [
 
   // Connect / OAuth (redirect flows stay sync; token refresh async)
   { method: "GET", path: "/api/connect/:platform", note: "OAuth redirect" },
-  { method: "GET", path: "/api/connect/:platform/callback", note: "OAuth callback" },
-  { method: "POST", path: "/api/connect/:platform/reauth", note: "OAuth redirect" },
+  {
+    method: "GET",
+    path: "/api/connect/:platform/callback",
+    note: "OAuth callback",
+  },
+  {
+    method: "POST",
+    path: "/api/connect/:platform/reauth",
+    note: "OAuth redirect",
+  },
   { method: "POST", path: "/api/connect/bluesky/byok", note: "sync" },
   { method: "GET", path: "/api/connect/instagram-facebook", note: "OAuth" },
-  { method: "GET", path: "/api/connect/instagram-facebook/callback", note: "OAuth" },
-  { method: "POST", path: "/api/connect/instagram-facebook/select", note: "sync" },
+  {
+    method: "GET",
+    path: "/api/connect/instagram-facebook/callback",
+    note: "OAuth",
+  },
+  {
+    method: "POST",
+    path: "/api/connect/instagram-facebook/select",
+    note: "sync",
+  },
   { method: "POST", path: "/api/connect/facebook/select", note: "sync" },
   { method: "POST", path: "/api/connect/linkedin/select", note: "sync" },
   {
@@ -59,7 +75,11 @@ export const FRONTEND_API_ROUTES: ApiRouteDef[] = [
   },
 
   // Media
-  { method: "POST", path: "/api/media/presign", note: "sync — returns presigned URL" },
+  {
+    method: "POST",
+    path: "/api/media/presign",
+    note: "sync - returns presigned URL",
+  },
   {
     method: "POST",
     path: "/api/media/confirm",
@@ -69,7 +89,11 @@ export const FRONTEND_API_ROUTES: ApiRouteDef[] = [
   { method: "POST", path: "/api/media/upload", note: "deprecated" },
 
   // Billing
-  { method: "POST", path: "/api/billing/checkout", note: "sync — Dodo redirect" },
+  {
+    method: "POST",
+    path: "/api/billing/checkout",
+    note: "sync - Dodo redirect",
+  },
   { method: "POST", path: "/api/billing/portal", note: "sync" },
   {
     method: "POST",
@@ -104,7 +128,11 @@ export const FRONTEND_API_ROUTES: ApiRouteDef[] = [
   { method: "GET", path: "/api/canny/sso", note: "sync" },
 
   // Webhooks
-  { method: "POST", path: "/api/webhooks/dodo", note: "sync — verify signature" },
+  {
+    method: "POST",
+    path: "/api/webhooks/dodo",
+    note: "sync - verify signature",
+  },
 
   // Crons → enqueue sweeps (never run publish inline on server)
   {
@@ -129,11 +157,15 @@ export const FRONTEND_API_ROUTES: ApiRouteDef[] = [
   {
     method: "POST",
     path: "/api/cron/billing-zombie-cleanup",
-    note: "sync — cancel stale unpaid Dodo subscriptions",
+    note: "sync - cancel stale unpaid Dodo subscriptions",
   },
 
   // Dev
-  { method: "POST", path: "/api/dev/trigger-crons", note: "dev only — enqueue all crons" },
+  {
+    method: "POST",
+    path: "/api/dev/trigger-crons",
+    note: "dev only - enqueue all crons",
+  },
 
   // Publish
   {
@@ -143,10 +175,14 @@ export const FRONTEND_API_ROUTES: ApiRouteDef[] = [
     async: true,
     note: "Publish now → 202 + SSE streamUrl; schedule → 200 scheduled (BullMQ delay)",
   },
-  { method: "GET", path: "/api/jobs/:trackingId", note: "Job progress snapshot" },
+  {
+    method: "GET",
+    path: "/api/jobs/:trackingId",
+    note: "Job progress snapshot",
+  },
   {
     method: "GET",
     path: "/api/jobs/:trackingId/stream",
-    note: "SSE live progress — publish now only",
+    note: "SSE live progress - publish now only",
   },
 ];

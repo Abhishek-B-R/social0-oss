@@ -43,7 +43,7 @@ const PROGRESS_POLL_MS = 1200;
 const PUBLISH_SERVER_ACTION_TIMEOUT_MS = 90_000;
 
 /**
- * One server action — executePublish runs all platforms in parallel via
+ * One server action - executePublish runs all platforms in parallel via
  * Promise.allSettled. Polls publication rows for per-platform progress UI.
  */
 export async function publishPostWithParallelProgress(

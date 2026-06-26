@@ -58,7 +58,7 @@ export async function getPostsListData({
 }: PostsListParams) {
   const offset = offsetParam ?? (page - 1) * limit;
 
-  // Build WHERE fully in DB — no in-memory filtering after this point
+  // Build WHERE fully in DB - no in-memory filtering after this point
   const timeFilterDate =
     timeFilter === "week"
       ? startOfWeek(new Date(), { weekStartsOn: 1 })
@@ -102,7 +102,7 @@ export async function getPostsListData({
       : undefined,
   );
 
-  // COUNT + paginated SELECT — two fast indexed queries instead of one full scan
+  // COUNT + paginated SELECT - two fast indexed queries instead of one full scan
   const [[countRow], userPosts] = await Promise.all([
     db
       .select({ count: sql<number>`count(*)::int` })
@@ -438,7 +438,9 @@ export async function getPostMedia(
       } satisfies PostMediaRow,
     ]),
   );
-  return mediaIds.map((id) => byId.get(id)).filter((row): row is PostMediaRow => row != null);
+  return mediaIds
+    .map((id) => byId.get(id))
+    .filter((row): row is PostMediaRow => row != null);
 }
 
 export type PostDetailRow = {

@@ -56,7 +56,7 @@ type PostFormOptionsProps = {
   warningAccountIds?: Set<string>;
   warningReasons?: Record<string, string>;
   warningLabel?: string;
-  /** Guest browsing — show sign-in CTA instead of account picker. */
+  /** Guest browsing - show sign-in CTA instead of account picker. */
   isGuest?: boolean;
   /** Free-tier posts remaining; shows a small usage banner when set. */
   freePostsRemaining?: number | null;
@@ -112,7 +112,7 @@ export function PostFormOptions({
               Sign in to connect accounts and post
             </p>
             <p className="text-sm text-muted-foreground">
-              You can write your post below — sign in when you&apos;re ready to
+              You can write your post below - sign in when you&apos;re ready to
               publish.
             </p>
             <Link
@@ -136,9 +136,9 @@ export function PostFormOptions({
           <div className="rounded-xl border border-dashed border-border bg-bg-muted/30 p-5 space-y-3 text-center">
             <p className="font-medium text-text">Connect accounts to post</p>
             <p className="text-sm text-muted-foreground">
-              Free plan includes up to {getPlanLimits("free").maxConnectedAccounts}{" "}
-              connected accounts and {getPlanLimits("free").maxFreePosts} lifetime
-              posts.
+              Free plan includes up to{" "}
+              {getPlanLimits("free").maxConnectedAccounts} connected accounts
+              and {getPlanLimits("free").maxFreePosts} lifetime posts.
             </p>
             <Link
               href="/dashboard/connections"
@@ -158,7 +158,7 @@ export function PostFormOptions({
                 {freePostsRemaining <= 0 && (
                   <>
                     {" "}
-                    —{" "}
+                    -{" "}
                     <Link
                       href="/dashboard/billing"
                       className="font-medium text-accent underline underline-offset-2 hover:no-underline"
@@ -277,7 +277,7 @@ export function PostFormOptions({
           <p className="mt-4 text-sm text-text-muted">
             {mode === "draft" ? (
               <span className="text-accent font-medium">
-                Saving as draft — you can publish later from Posts.
+                Saving as draft - you can publish later from Posts.
               </span>
             ) : (
               <>

@@ -39,7 +39,7 @@ export default function FeaturesIndexPage() {
       FEATURES.map((feature) => ({
         name: feature.platformLabel
           ? `${feature.platformLabel} scheduler`
-          : feature.heroHeadline.split("—")[0].trim(),
+          : feature.heroHeadline.split("-")[0].trim(),
         path: `/features/${feature.slug}`,
       })),
     ),
@@ -58,8 +58,8 @@ export default function FeaturesIndexPage() {
             Scheduling for every platform you use
           </h1>
           <p className="mt-5 max-w-2xl text-[16px] leading-relaxed text-muted-foreground">
-            Deep dives on how Social0 handles each network and the multi-platform
-            workflow that ties them together.
+            Deep dives on how Social0 handles each network and the
+            multi-platform workflow that ties them together.
           </p>
           <ul className="mt-12 grid gap-4 sm:grid-cols-2">
             {FEATURES.map((feature) => (
@@ -71,7 +71,7 @@ export default function FeaturesIndexPage() {
                   <h2 className="font-serif text-xl text-foreground">
                     {feature.platformLabel
                       ? `${feature.platformLabel} scheduler`
-                      : feature.heroHeadline.split("—")[0].trim()}
+                      : feature.heroHeadline.split("-")[0].trim()}
                   </h2>
                   <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
                     {feature.heroSubheadline}

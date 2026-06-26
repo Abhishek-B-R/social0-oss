@@ -8,7 +8,7 @@ export type UpstashRedisConfig = {
 type UpstashEnv = {
   UPSTASH_REDIS_REST_URL?: string;
   UPSTASH_REDIS_REST_TOKEN?: string;
-  /** Optional override — copy from Upstash console "Redis Connect" tab. */
+  /** Optional override - copy from Upstash console "Redis Connect" tab. */
   UPSTASH_REDIS_URL?: string;
 };
 

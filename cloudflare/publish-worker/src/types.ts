@@ -9,7 +9,7 @@ export type SupportedPlatform =
   | "pinterest"
   | "bluesky";
 
-/** One platform publish job — API enqueues directly (no orchestrator). */
+/** One platform publish job - API enqueues directly (no orchestrator). */
 export type PublishPlatformJob = {
   postId: string;
   userId: string;

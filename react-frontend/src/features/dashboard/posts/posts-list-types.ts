@@ -1,4 +1,4 @@
-/** Shared types for posts list (safe to import from client components — no DB). */
+/** Shared types for posts list (safe to import from client components - no DB). */
 
 export type PublicationRow = {
   publicationId: string;

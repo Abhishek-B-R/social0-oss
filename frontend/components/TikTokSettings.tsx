@@ -235,9 +235,7 @@ export function TikTokSettings({
             <option
               key={option.value}
               value={option.value}
-              disabled={
-                settings.brand_content && option.value === "SELF_ONLY"
-              }
+              disabled={settings.brand_content && option.value === "SELF_ONLY"}
             >
               {option.label}
               {settings.brand_content && option.value === "SELF_ONLY"
@@ -262,7 +260,7 @@ export function TikTokSettings({
         />
       </SettingRow>
 
-      {/* Duet / Stitch — videos only */}
+      {/* Duet / Stitch - videos only */}
       {mediaType !== "photo" && (
         <>
           <SettingRow
@@ -336,7 +334,7 @@ export function TikTokSettings({
               <span className="min-w-0 flex-1">
                 <span className="block text-sm text-text">Branded Content</span>
                 <span className="mt-0.5 block text-xs text-text-muted">
-                  Paid partnership — you&apos;re promoting another brand or a
+                  Paid partnership - you&apos;re promoting another brand or a
                   third party
                 </span>
               </span>

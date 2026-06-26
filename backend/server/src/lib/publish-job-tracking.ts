@@ -16,19 +16,22 @@ export function isMissingRelationError(err: unknown): boolean {
 
 let publishJobTablesAvailable: boolean | null = null;
 
-/** Probe once — false when publish_jobs was never migrated. */
+/** Probe once - false when publish_jobs was never migrated. */
 export async function hasPublishJobTables(): Promise<boolean> {
   if (publishJobTablesAvailable !== null) {
     return publishJobTablesAvailable;
   }
   try {
-    await db.select({ trackingId: publishJobs.trackingId }).from(publishJobs).limit(1);
+    await db
+      .select({ trackingId: publishJobs.trackingId })
+      .from(publishJobs)
+      .limit(1);
     publishJobTablesAvailable = true;
   } catch (err) {
     if (isMissingRelationError(err)) {
       publishJobTablesAvailable = false;
       console.warn(
-        "[publish] publish_jobs table missing — using Redis-only job progress (no migration required)",
+        "[publish] publish_jobs table missing - using Redis-only job progress (no migration required)",
       );
     } else {
       throw err;
@@ -72,7 +75,7 @@ export async function safeDbPublishTracking<T>(
     if (isMissingRelationError(err)) {
       publishJobTablesAvailable = false;
       console.warn(
-        "[publish] publish_jobs write skipped — table missing, using Redis",
+        "[publish] publish_jobs write skipped - table missing, using Redis",
       );
       return undefined;
     }

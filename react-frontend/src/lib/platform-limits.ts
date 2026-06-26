@@ -14,14 +14,14 @@ export const VIDEO_LIMITS: Record<
   }
 > = {
   twitter_x: {
-    maxDuration: 140, // 2min 20s — free accounts only
-    maxDurationPremium: 600, // 10min — Premium accounts
+    maxDuration: 140, // 2min 20s - free accounts only
+    maxDurationPremium: 600, // 10min - Premium accounts
     maxSize: 512 * MB,
     formats: ["mp4", "mov"],
   },
   instagram: {
-    maxDuration: 1200, // 20min — hard API limit (Dec 2025)
-    softWarnDuration: 180, // 3min — accepted but algorithm won't push to new audiences
+    maxDuration: 1200, // 20min - hard API limit (Dec 2025)
+    softWarnDuration: 180, // 3min - accepted but algorithm won't push to new audiences
     maxSize: 250 * MB,
     formats: ["mp4", "mov"],
   },
@@ -31,7 +31,7 @@ export const VIDEO_LIMITS: Record<
     formats: ["mp4", "mov"],
   },
   youtube: {
-    maxDuration: 300, // 5min — platform cap; ≤3min vertical → Shorts, 3–5min → regular
+    maxDuration: 300, // 5min - platform cap; ≤3min vertical → Shorts, 3–5min → regular
     maxSize: 256 * MB,
     formats: ["mp4", "mov"],
   },

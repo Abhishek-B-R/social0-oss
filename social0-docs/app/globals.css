@@ -1,8 +1,8 @@
-@import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
-@import 'fumadocs-ui/css/preset.css';
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
 
-/* Social0 design system overrides — match website exactly */
+/* Social0 design system overrides - match website exactly */
 :root {
   --background: #fafaf8;
   --foreground: #0a0a0a;
@@ -68,12 +68,17 @@ body {
   font-family: var(--font-sans);
 }
 
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   font-family: var(--font-serif);
 }
 
-/* No shadow — border only (Social0 anti-pattern) */
-.fd-sidebar, [data-fd-sidebar], [data-fd-nav] {
+/* No shadow - border only (Social0 anti-pattern) */
+.fd-sidebar,
+[data-fd-sidebar],
+[data-fd-nav] {
   box-shadow: none;
   border-width: 1px;
   border-color: var(--border);
