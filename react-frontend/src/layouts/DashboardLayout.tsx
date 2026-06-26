@@ -8,6 +8,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardBottomNav } from "@/components/dashboard/DashboardBottomNav";
 import { SubscriptionSync } from "@/components/dashboard/SubscriptionSync";
 import { GuestBanner } from "@/components/dashboard/GuestBanner";
+import { GuestTestModeDialog } from "@/components/dashboard/GuestTestModeDialog";
 import { FreePostsBanner } from "@/components/dashboard/FreePostsBanner";
 import { ConnectAccountsBanner } from "@/components/dashboard/ConnectAccountsBanner";
 import { LegalConsentGate } from "@/components/auth/LegalConsentGate";
@@ -105,6 +106,7 @@ export function DashboardLayout() {
       <DashboardBottomNav />
       {session && <DevScheduledPostPoller />}
       {session && <LegalConsentGate />}
+      {!isPending && isGuest && <GuestTestModeDialog />}
     </div>
   );
 }
