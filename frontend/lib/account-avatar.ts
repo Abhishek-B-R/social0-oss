@@ -119,7 +119,7 @@ export async function fetchRemoteAvatarUrl(
 export async function fetchAvatarBytes(
   remoteUrl: string,
   platform?: string,
-): Promise<{ body: Uint8Array; contentType: string } | null> {
+): Promise<{ body: ArrayBuffer; contentType: string } | null> {
   try {
     const lower = remoteUrl.toLowerCase();
     const isTikTokCdn =
@@ -138,8 +138,8 @@ export async function fetchAvatarBytes(
     if (!res.ok) return null;
     const contentType = res.headers.get("content-type") ?? "image/jpeg";
     if (!contentType.startsWith("image/")) return null;
-    const body = new Uint8Array(await res.arrayBuffer());
-    if (body.length === 0) return null;
+    const body = await res.arrayBuffer();
+    if (body.byteLength === 0) return null;
     return { body, contentType };
   } catch (e) {
     console.warn("[account-avatar] image download failed:", e);
