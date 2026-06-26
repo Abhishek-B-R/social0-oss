@@ -350,7 +350,7 @@ export function UploadPublishOverlay({
               </h2>
               <p className="mt-2 text-sm text-text-muted leading-relaxed">
                 Some platforms take a few minutes. You don&apos;t need to wait
-                here — we&apos;ll keep going in the background. Check status
+                here - we&apos;ll keep going in the background. Check status
                 anytime from your post.
               </p>
               <div className="mt-6 flex flex-col gap-3">

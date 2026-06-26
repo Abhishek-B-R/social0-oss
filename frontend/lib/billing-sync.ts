@@ -6,7 +6,9 @@ import { getTierFromProductId, PLAN_IDS } from "@/lib/plans";
 import { setSubscription } from "@/lib/subscription";
 
 const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
-const environment = (process.env.DODO_PAYMENTS_ENVIRONMENT as "test_mode" | "live_mode") ?? "test_mode";
+const environment =
+  (process.env.DODO_PAYMENTS_ENVIRONMENT as "test_mode" | "live_mode") ??
+  "test_mode";
 
 export type SyncSubscriptionResult = {
   ok: boolean;
@@ -70,7 +72,7 @@ export async function syncSubscriptionForUserId(
                 : null;
 
             if (paymentStatus && paymentStatus !== "succeeded") {
-              // Payment is still processing or not successful yet — don't upgrade tier.
+              // Payment is still processing or not successful yet - don't upgrade tier.
               sawUnpaidActiveSubscription = true;
               continue;
             }
@@ -83,7 +85,9 @@ export async function syncSubscriptionForUserId(
 
         await setSubscription(userId, {
           tier,
-          expiresAt: sub.next_billing_date ? new Date(sub.next_billing_date) : null,
+          expiresAt: sub.next_billing_date
+            ? new Date(sub.next_billing_date)
+            : null,
           subscriptionId: sub.subscription_id ?? null,
           customerId: sub.customer?.customer_id ?? null,
         });
@@ -91,9 +95,9 @@ export async function syncSubscriptionForUserId(
       }
     }
     // If we saw an active subscription but its latest payment isn't succeeded yet,
-    // don't touch the tier — webhook will update it once payment clears.
+    // don't touch the tier - webhook will update it once payment clears.
     if (!sawUnpaidActiveSubscription) {
-      // No active subscription found at all — downgrade to free
+      // No active subscription found at all - downgrade to free
       await setSubscription(userId, {
         tier: "free",
         expiresAt: null,

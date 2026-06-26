@@ -12,6 +12,7 @@ import {
   changeEmailOtpTargetLimiter,
   enforceRateLimit,
 } from "../../../lib/ratelimit.js";
+import { clientIp } from "../../../lib/client-ip.js";
 
 const OTP_LENGTH = 6;
 const OTP_EXPIRES_SEC = 600;
@@ -19,14 +20,6 @@ const OTP_EXPIRES_SEC = 600;
 function generateOTP(): string {
   const n = randomInt(0, 10 ** OTP_LENGTH);
   return n.toString().padStart(OTP_LENGTH, "0");
-}
-
-function clientIp(request: Request): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request.headers.get("x-real-ip") ??
-    "anonymous"
-  );
 }
 
 /**

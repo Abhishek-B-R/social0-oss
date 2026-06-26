@@ -1,11 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import type { PublishPostJob, SupportedPlatform } from "@social0/shared";
 import { db } from "../db/index.js";
-import {
-  connectedAccounts,
-  postPublications,
-  posts,
-} from "../db/schema.js";
+import { connectedAccounts, postPublications, posts } from "../db/schema.js";
 
 const ACTIVE_PUBLICATION_STATUSES = ["pending", "publishing"] as const;
 
@@ -24,7 +20,7 @@ export async function loadPublicationTargets(job: PublishPostJob): Promise<
 
   if (!post) {
     console.warn(
-      `[worker] loadPublicationTargets — post not found postId=${job.postId}`,
+      `[worker] loadPublicationTargets - post not found postId=${job.postId}`,
     );
     return [];
   }

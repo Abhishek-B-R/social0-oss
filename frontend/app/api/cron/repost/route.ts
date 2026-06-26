@@ -39,8 +39,8 @@ export async function GET(request: Request) {
         lte(resurfaceEvents.nextExecuteAt, now),
       ),
     )
-    // Most overdue first — guarantees no event starves waiting behind newer ones.
-    // No explicit LIMIT — Vercel's maxDuration=60 is the natural execution cap.
+    // Most overdue first - guarantees no event starves waiting behind newer ones.
+    // No explicit LIMIT - Vercel's maxDuration=60 is the natural execution cap.
     .orderBy(resurfaceEvents.nextExecuteAt);
 
   let processed = 0;
@@ -73,22 +73,28 @@ export async function GET(request: Request) {
   const scheduleMap = new Map(scheduleRows.map((s) => [s.id, s]));
 
   // Batch plan-limit check for all unique user IDs
-  const uniqueUserIds = [...new Set(scheduleRows.map((s) => s.userId).filter(Boolean))];
-  const subRows = uniqueUserIds.length > 0
-    ? await db
-        .select({
-          userId: userSettings.userId,
-          subscriptionTier: userSettings.subscriptionTier,
-          subscriptionExpiresAt: userSettings.subscriptionExpiresAt,
-        })
-        .from(userSettings)
-        .where(inArray(userSettings.userId, uniqueUserIds))
-    : [];
+  const uniqueUserIds = [
+    ...new Set(scheduleRows.map((s) => s.userId).filter(Boolean)),
+  ];
+  const subRows =
+    uniqueUserIds.length > 0
+      ? await db
+          .select({
+            userId: userSettings.userId,
+            subscriptionTier: userSettings.subscriptionTier,
+            subscriptionExpiresAt: userSettings.subscriptionExpiresAt,
+          })
+          .from(userSettings)
+          .where(inArray(userSettings.userId, uniqueUserIds))
+      : [];
 
   const allowedUserIds = new Set<string>();
   for (const s of subRows) {
-    const isExpired = s.subscriptionExpiresAt && new Date(s.subscriptionExpiresAt) < now;
-    const tier = (isExpired ? "free" : (s.subscriptionTier ?? "free")) as SubscriptionTier;
+    const isExpired =
+      s.subscriptionExpiresAt && new Date(s.subscriptionExpiresAt) < now;
+    const tier = (
+      isExpired ? "free" : (s.subscriptionTier ?? "free")
+    ) as SubscriptionTier;
     if (getPlanLimits(tier).allowResurface) {
       allowedUserIds.add(s.userId);
     }
@@ -96,32 +102,36 @@ export async function GET(request: Request) {
 
   // Batch-fetch X publications for all relevant post IDs
   const xPostIds = scheduleRows
-    .filter((s) => s.platform === "x" && s.isActive && s.resurfacesDone < s.maxResurfaces)
+    .filter(
+      (s) =>
+        s.platform === "x" && s.isActive && s.resurfacesDone < s.maxResurfaces,
+    )
     .map((s) => s.postId);
 
-  const xPubRows = xPostIds.length > 0
-    ? await db
-        .select({
-          postId: postPublications.postId,
-          platformPostId: postPublications.platformPostId,
-          connectedAccountId: postPublications.connectedAccountId,
-          encryptedAccessToken: connectedAccounts.encryptedAccessToken,
-          encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
-          platformUserId: connectedAccounts.platformUserId,
-        })
-        .from(postPublications)
-        .innerJoin(
-          connectedAccounts,
-          eq(postPublications.connectedAccountId, connectedAccounts.id),
-        )
-        .where(
-          and(
-            inArray(postPublications.postId, xPostIds),
-            eq(connectedAccounts.platform, "twitter_x"),
-            eq(postPublications.status, "published"),
-          ),
-        )
-    : [];
+  const xPubRows =
+    xPostIds.length > 0
+      ? await db
+          .select({
+            postId: postPublications.postId,
+            platformPostId: postPublications.platformPostId,
+            connectedAccountId: postPublications.connectedAccountId,
+            encryptedAccessToken: connectedAccounts.encryptedAccessToken,
+            encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
+            platformUserId: connectedAccounts.platformUserId,
+          })
+          .from(postPublications)
+          .innerJoin(
+            connectedAccounts,
+            eq(postPublications.connectedAccountId, connectedAccounts.id),
+          )
+          .where(
+            and(
+              inArray(postPublications.postId, xPostIds),
+              eq(connectedAccounts.platform, "twitter_x"),
+              eq(postPublications.status, "published"),
+            ),
+          )
+      : [];
 
   const xPubByPostId = new Map(xPubRows.map((x) => [x.postId, x]));
 
@@ -143,7 +153,10 @@ export async function GET(request: Request) {
   const prevDoneByScheduleId = new Map<string, string | null>();
   for (const row of prevDoneRows) {
     if (!prevDoneByScheduleId.has(row.scheduleId)) {
-      prevDoneByScheduleId.set(row.scheduleId, row.plugCommentId?.trim() || null);
+      prevDoneByScheduleId.set(
+        row.scheduleId,
+        row.plugCommentId?.trim() || null,
+      );
     }
   }
   // ──────────────────────────────────────────────────────────────────────────
@@ -202,8 +215,12 @@ export async function GET(request: Request) {
         continue;
       }
 
-      const { platformPostId, connectedAccountId, encryptedRefreshToken, platformUserId } =
-        xPub;
+      const {
+        platformPostId,
+        connectedAccountId,
+        encryptedRefreshToken,
+        platformUserId,
+      } = xPub;
       let accessToken: string;
       let accessSecret: string | null = null;
       try {
@@ -256,7 +273,10 @@ export async function GET(request: Request) {
           try {
             await client.v2.deleteTweet(previousPlugId);
           } catch (delErr) {
-            console.error("[cron/resurface] Delete previous plug tweet:", delErr);
+            console.error(
+              "[cron/resurface] Delete previous plug tweet:",
+              delErr,
+            );
           }
         }
 
@@ -265,10 +285,7 @@ export async function GET(request: Request) {
 
         if (hasComment) {
           // Quote tweet: post with comment as the quote text
-          const quoteRes = await client.v2.quote(
-            hasComment,
-            platformPostId,
-          );
+          const quoteRes = await client.v2.quote(hasComment, platformPostId);
           plugCommentId = quoteRes.data?.id ?? null;
         } else {
           // Plain retweet

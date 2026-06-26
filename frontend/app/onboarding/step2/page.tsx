@@ -33,9 +33,7 @@ export default function OnboardingGoalPage() {
       .then((res) => res.json())
       .then((data) => {
         const hasPaidTier =
-          data?.ok === true &&
-          data?.tier &&
-          data.tier !== "free";
+          data?.ok === true && data?.tier && data.tier !== "free";
         setVerifying(false);
         if (hasPaidTier) {
           setPaymentVerified(true);
@@ -89,8 +87,13 @@ export default function OnboardingGoalPage() {
   if (paid && verifying) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-24">
-        <IconLoader2 className="h-8 w-8 shrink-0 animate-spin text-accent" strokeWidth={1.5} />
-        <p className="text-sm text-muted-foreground">Confirming your subscription…</p>
+        <IconLoader2
+          className="h-8 w-8 shrink-0 animate-spin text-accent"
+          strokeWidth={1.5}
+        />
+        <p className="text-sm text-muted-foreground">
+          Confirming your subscription…
+        </p>
       </div>
     );
   }
@@ -122,7 +125,7 @@ export default function OnboardingGoalPage() {
         What&apos;s your goal?
       </h1>
       <p className="text-center text-muted-foreground mb-8">
-        Optional — helps us personalize your experience. You can skip this.
+        Optional - helps us personalize your experience. You can skip this.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
@@ -164,7 +167,7 @@ export default function OnboardingGoalPage() {
         &ldquo;Social0 saved me hours every week. I schedule everything in one
         place and my engagement went up.&rdquo;
         <footer className="mt-2 not-italic text-foreground font-medium">
-          — Early user
+          - Early user
         </footer>
       </blockquote> */}
     </div>

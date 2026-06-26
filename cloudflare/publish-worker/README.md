@@ -1,6 +1,6 @@
 # Social0 Publish Worker (Cloudflare)
 
-Per-platform publish at the edge — **no API callbacks**. The Fastify API validates, writes DB records, fans out one queue message per platform, and returns **202**. Workers read Postgres (Hyperdrive) + R2 and publish directly.
+Per-platform publish at the edge - **no API callbacks**. The Fastify API validates, writes DB records, fans out one queue message per platform, and returns **202**. Workers read Postgres (Hyperdrive) + R2 and publish directly.
 
 ## Architecture
 
@@ -53,18 +53,18 @@ CF_PUBLISH_HMAC_SECRET=<same as worker>
 
 ## Queues
 
-| Queue | Priority | Use |
-|-------|----------|-----|
-| `social0-publish-now` | HIGH | Publish Now — user waiting + SSE |
-| `social0-publish-scheduled` | NORMAL | Cron / scheduled posts |
-| `social0-publish-dlq` | — | Exhausted retries |
+| Queue                       | Priority | Use                              |
+| --------------------------- | -------- | -------------------------------- |
+| `social0-publish-now`       | HIGH     | Publish Now - user waiting + SSE |
+| `social0-publish-scheduled` | NORMAL   | Cron / scheduled posts           |
+| `social0-publish-dlq`       | -        | Exhausted retries                |
 
 ## API endpoints (Worker)
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/health` | No | Liveness |
-| POST | `/enqueue` | Bearer | Body: `{ priority: "now"\|"scheduled", job: PublishPlatformJob }` |
+| Method | Path       | Auth   | Description                                                       |
+| ------ | ---------- | ------ | ----------------------------------------------------------------- |
+| GET    | `/health`  | No     | Liveness                                                          |
+| POST   | `/enqueue` | Bearer | Body: `{ priority: "now"\|"scheduled", job: PublishPlatformJob }` |
 
 ## SSE (Publish Now)
 

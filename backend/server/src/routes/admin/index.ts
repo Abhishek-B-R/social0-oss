@@ -2,18 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { desc, eq, isNull } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { publishFailures, publishJobs } from "../../db/schema.js";
-import { env } from "../../lib/env.js";
-
-function verifyAdmin(request: { headers: Record<string, unknown> }) {
-  const key = env.ADMIN_API_KEY ?? process.env.CRON_SECRET;
-  if (!key) return false;
-  const auth = request.headers.authorization;
-  return auth === `Bearer ${key}`;
-}
+import { verifyAdminRequest } from "../../lib/admin-auth.js";
 
 export async function registerAdminRoutes(app: FastifyInstance) {
   app.addHook("onRequest", async (request, reply) => {
-    if (!verifyAdmin(request)) {
+    if (!verifyAdminRequest(request)) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
   });

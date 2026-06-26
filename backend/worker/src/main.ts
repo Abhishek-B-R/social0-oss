@@ -2,12 +2,16 @@ import { config } from "dotenv";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Load backend/.env (same as server) — worker cwd is backend/worker.
+// Load backend/.env (same as server) - worker cwd is backend/worker.
 config({
   path: resolve(fileURLToPath(new URL("../..", import.meta.url)), ".env"),
 });
 
-import { loadEnv, allPlatformPublishQueueNames, getRedisUrl } from "@social0/shared";
+import {
+  loadEnv,
+  allPlatformPublishQueueNames,
+  getRedisUrl,
+} from "@social0/shared";
 import { createRedisConnection } from "./lib/connection.js";
 import { closeJobProgress } from "./lib/job-progress.js";
 import { initCircuitBreaker } from "./lib/circuit-breaker.js";
@@ -25,7 +29,9 @@ initCircuitBreaker(connection);
 
 const perPlatformConcurrency = Math.max(
   1,
-  Math.floor(env.WORKER_PLATFORM_CONCURRENCY / allPlatformPublishQueueNames().length),
+  Math.floor(
+    env.WORKER_PLATFORM_CONCURRENCY / allPlatformPublishQueueNames().length,
+  ),
 );
 
 const workers = [

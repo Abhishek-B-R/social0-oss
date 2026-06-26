@@ -1,6 +1,6 @@
 ---
 title: "Composer"
-description: The quick way to create a post—type, add media, and we take you to the right next step.
+description: The quick way to create a post-type, add media, and we take you to the right next step.
 ---
 
 ## Overview
@@ -20,8 +20,8 @@ If something’s wrong (e.g. video aspect ratio), we’ll show a message so you 
 
 ## What the Composer does for you
 
-- **Picks the post type** — Text only → text post. One image or more (no video) → image post. One video → video post. Multiple videos or mixed media → collection. Thread mode → thread post.
-- **Prefills the next step** — Your text and media are carried over to the create/schedule screen so you don’t re-enter anything.
+- **Picks the post type** - Text only → text post. One image or more (no video) → image post. One video → video post. Multiple videos or mixed media → collection. Thread mode → thread post.
+- **Prefills the next step** - Your text and media are carried over to the create/schedule screen so you don’t re-enter anything.
 
 ## Tips
 

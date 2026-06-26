@@ -26,7 +26,7 @@ export function AlternativeDetailPage() {
     .filter(Boolean)
     .map((f) => ({
       href: `/features/${f!.slug}`,
-      label: f!.heroHeadline.replace(/ —.*/, ""),
+      label: f!.heroHeadline.replace(/ -.*/, ""),
     }));
 
   const jsonLd = [
@@ -38,7 +38,10 @@ export function AlternativeDetailPage() {
     buildBreadcrumbJsonLd([
       { name: "Home", path: "/" },
       { name: "Alternatives", path: "/alternatives" },
-      { name: `${page.competitorName} alternative`, path: `/alternatives/${slug}` },
+      {
+        name: `${page.competitorName} alternative`,
+        path: `/alternatives/${slug}`,
+      },
     ]),
     buildSoftwareApplicationJsonLd(),
     buildFaqJsonLd(page.faq),
@@ -84,7 +87,9 @@ export function AlternativeDetailPage() {
       </section>
       <section className="px-6 py-16 lg:px-8">
         <div className="mx-auto max-w-[1100px]">
-          <p className="max-w-3xl text-[16px] leading-relaxed text-muted-foreground">{page.intro}</p>
+          <p className="max-w-3xl text-[16px] leading-relaxed text-muted-foreground">
+            {page.intro}
+          </p>
           <h2 className="mt-12 mb-6 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-foreground">
             Why creators switch from {page.competitorName}
           </h2>
@@ -110,17 +115,32 @@ export function AlternativeDetailPage() {
               <table className="w-full min-w-[520px] text-left text-[14px]">
                 <thead>
                   <tr className="border-b border-border bg-background">
-                    <th className="px-5 py-4 font-medium text-muted-foreground">Feature</th>
-                    <th className="px-5 py-4 font-medium text-foreground">Social0</th>
-                    <th className="px-5 py-4 font-medium text-muted-foreground">{page.competitorName}</th>
+                    <th className="px-5 py-4 font-medium text-muted-foreground">
+                      Feature
+                    </th>
+                    <th className="px-5 py-4 font-medium text-foreground">
+                      Social0
+                    </th>
+                    <th className="px-5 py-4 font-medium text-muted-foreground">
+                      {page.competitorName}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {page.comparisonRows.map((row) => (
-                    <tr key={row.feature} className="border-b border-border last:border-0">
-                      <td className="px-5 py-4 text-foreground">{row.feature}</td>
-                      <td className="px-5 py-4 text-foreground">{row.social0}</td>
-                      <td className="px-5 py-4 text-muted-foreground">{row.competitor}</td>
+                    <tr
+                      key={row.feature}
+                      className="border-b border-border last:border-0"
+                    >
+                      <td className="px-5 py-4 text-foreground">
+                        {row.feature}
+                      </td>
+                      <td className="px-5 py-4 text-foreground">
+                        {row.social0}
+                      </td>
+                      <td className="px-5 py-4 text-muted-foreground">
+                        {row.competitor}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -29,9 +29,7 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const rate = await enforceRateLimit(blueskyByokLimiter, session.user.id, {
-      failClosedWhenUnavailable: false,
-    });
+    const rate = await enforceRateLimit(blueskyByokLimiter, session.user.id);
     if (!rate.allowed) {
       return Response.json({ error: rate.error }, { status: rate.status });
     }

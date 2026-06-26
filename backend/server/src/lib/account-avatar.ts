@@ -1,3 +1,4 @@
+import { isSafeOutboundUrl } from "@social0/shared";
 import { getValidToken } from "./token-refresh.js";
 import { fetchTikTokConnectProfile } from "./tiktok-connect.js";
 
@@ -120,6 +121,9 @@ export async function fetchAvatarBytes(
   remoteUrl: string,
   platform?: string,
 ): Promise<{ body: Buffer; contentType: string } | null> {
+  if (!isSafeOutboundUrl(remoteUrl)) {
+    return null;
+  }
   try {
     const lower = remoteUrl.toLowerCase();
     const isTikTokCdn =

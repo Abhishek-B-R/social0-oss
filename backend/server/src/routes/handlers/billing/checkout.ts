@@ -6,6 +6,7 @@ import { PLAN_IDS } from "../../../lib/plans.js";
 import { resolveAppUrlFromRequest } from "../../../lib/app-url.js";
 import { env } from "../../../lib/env.js";
 import { checkoutLimiter, enforceRateLimit } from "../../../lib/ratelimit.js";
+import { sanitizeReturnToPath } from "../../../lib/safe-return-to.js";
 import {
   createCustomerPortalUrl,
   evaluateCheckoutEligibility,
@@ -30,9 +31,13 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const plan = body.plan as string | undefined;
-  const successUrl = typeof body.successUrl === "string" ? body.successUrl.trim() : null;
-  // Pro tier commented out for now — add back later
-  if (!plan || (plan !== "starter" && plan !== "growth" /* && plan !== "pro" */)) {
+  const successUrl =
+    typeof body.successUrl === "string" ? body.successUrl.trim() : null;
+  // Pro tier commented out for now - add back later
+  if (
+    !plan ||
+    (plan !== "starter" && plan !== "growth") /* && plan !== "pro" */
+  ) {
     return NextResponse.json(
       { error: "Invalid plan. Use 'starter' or 'growth'." },
       { status: 400 },
@@ -93,10 +98,10 @@ export async function POST(request: Request) {
   }
 
   const appUrl = resolveAppUrlFromRequest(request);
-  const returnUrl =
-    successUrl && successUrl.startsWith("/")
-      ? `${appUrl}${successUrl}`
-      : `${appUrl}/dashboard/billing?success=1`;
+  const safeSuccessPath = successUrl ? sanitizeReturnToPath(successUrl) : null;
+  const returnUrl = safeSuccessPath
+    ? `${appUrl}${safeSuccessPath}`
+    : `${appUrl}/dashboard/billing?success=1`;
 
   try {
     const resolved = await resolveCheckoutSession({

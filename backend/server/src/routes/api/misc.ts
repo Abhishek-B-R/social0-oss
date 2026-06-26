@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { runNextRouteHandler } from "../../lib/run-next-handler.js";
+import { verifyCronSecretFromAuthorizationHeader } from "../../lib/cron-auth.js";
 import * as pinterestBoards from "../handlers/pinterest/boards.js";
 import * as pinterestDefaultBoard from "../handlers/pinterest/default-board.js";
 import * as changeEmailSendOtp from "../handlers/account/change-email-send-otp.js";
@@ -27,6 +28,9 @@ export async function registerMiscRoutes(app: FastifyInstance) {
   app.post("/dev/trigger-crons", async (request, reply) => {
     if (process.env.NODE_ENV === "production") {
       return reply.status(404).send({ error: "Not found" });
+    }
+    if (!verifyCronSecretFromAuthorizationHeader(request.headers.authorization)) {
+      return reply.status(401).send({ error: "Unauthorized" });
     }
     const jobs = await Promise.all([
       request.server.queues.scheduler.add(JOB_NAMES.CRON_PUBLISH_SCHEDULED, {}),

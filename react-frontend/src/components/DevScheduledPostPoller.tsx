@@ -8,7 +8,7 @@ const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 /**
  * Development-only: runs crons in the background when the tab is hidden.
  * In production, Vercel Cron Jobs handle these.
- * No full-page reloads — avoids bad UX on connections and other pages.
+ * No full-page reloads - avoids bad UX on connections and other pages.
  */
 export function DevScheduledPostPoller() {
   useEffect(() => {

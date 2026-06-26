@@ -74,7 +74,10 @@ export function AccountBubbleSelector({
         {platformList ? (
           <>
             Connect at least one account from the{" "}
-            <Link href="/dashboard/connections" className="font-medium underline hover:no-underline">
+            <Link
+              href="/dashboard/connections"
+              className="font-medium underline hover:no-underline"
+            >
               connections
             </Link>{" "}
             page that supports this form to post.
@@ -84,7 +87,10 @@ export function AccountBubbleSelector({
         ) : (
           <>
             Connect at least one account from the{" "}
-            <Link href="/dashboard/connections" className="font-medium underline hover:no-underline">
+            <Link
+              href="/dashboard/connections"
+              className="font-medium underline hover:no-underline"
+            >
               connections
             </Link>{" "}
             page that supports this form to post.
@@ -137,12 +143,12 @@ export function AccountBubbleSelector({
         const disabled = expired || disabledByLimit;
         const softWarn = hasWarning(acc.id);
         const disabledTitle = expired
-          ? "Token expired — reconnect in Connections page"
+          ? "Token expired - reconnect in Connections page"
           : disabledByLimit
-            ? disabledReasons?.[acc.id] ?? disabledAccountDefaultReason
+            ? (disabledReasons?.[acc.id] ?? disabledAccountDefaultReason)
             : undefined;
         const warningTitle = softWarn
-          ? warningReasons?.[acc.id] ?? warningLabel
+          ? (warningReasons?.[acc.id] ?? warningLabel)
           : undefined;
 
         return (
@@ -263,7 +269,7 @@ export function AccountBubbleSelector({
             {expired && (
               <span
                 className="mt-0.5 inline-block rounded bg-red-100 dark:bg-red-950/40 px-1.5 py-0.5 text-[9px] font-medium text-red-700 dark:text-red-200"
-                title="Token expired — reconnect in Connections page"
+                title="Token expired - reconnect in Connections page"
               >
                 Token expired
               </span>

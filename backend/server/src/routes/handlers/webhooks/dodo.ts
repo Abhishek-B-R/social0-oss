@@ -6,7 +6,11 @@ import { user, userSettings } from "../../../db/schema.js";
 import { eq } from "drizzle-orm";
 import { setSubscription } from "../../../lib/subscription.js";
 import { syncConnectedAccountsToLimit } from "../../../lib/plan-limits.js";
-import { getTierFromProductId, PLAN_IDS, isActiveTier } from "../../../lib/plans.js";
+import {
+  getTierFromProductId,
+  PLAN_IDS,
+  isActiveTier,
+} from "../../../lib/plans.js";
 import { env } from "../../../lib/env.js";
 import { claimWebhookDelivery } from "../../../lib/webhook-idempotency.js";
 import {
@@ -62,7 +66,7 @@ async function handleSubscriptionActiveOrUpdated(payload: {
   // CRITICAL: Only update tier when payment has actually succeeded.
   // Dodo fires subscription.updated / subscription.plan_changed when changePlan
   // is called, BEFORE payment succeeds. If payment fails, status becomes
-  // "on_hold" / "past_due" — we must NOT write the new tier in that case.
+  // "on_hold" / "past_due" - we must NOT write the new tier in that case.
   if (status === "cancelled" || status === "expired") {
     await handleSubscriptionCancelledOrExpired(payload);
     return;
@@ -83,15 +87,12 @@ async function handleSubscriptionActiveOrUpdated(payload: {
   const tier = getTierFromProductId(data.product_id ?? "");
 
   if (tier === "free") {
-    console.warn(
-      "[dodo webhook] Subscription product ID did not match env:",
-      {
-        receivedProductId: data.product_id,
-        expectedStarterId: PLAN_IDS.starter ? "(set)" : "(not set)",
-        expectedGrowthId: PLAN_IDS.growth ? "(set)" : "(not set)",
-        customerEmail: data.customer?.email ? "(redacted)" : undefined,
-      },
-    );
+    console.warn("[dodo webhook] Subscription product ID did not match env:", {
+      receivedProductId: data.product_id,
+      expectedStarterId: PLAN_IDS.starter ? "(set)" : "(not set)",
+      expectedGrowthId: PLAN_IDS.growth ? "(set)" : "(not set)",
+      customerEmail: data.customer?.email ? "(redacted)" : undefined,
+    });
     return;
   }
 
@@ -115,7 +116,9 @@ async function handleSubscriptionActiveOrUpdated(payload: {
     if (byEmail) userId = byEmail.id;
   }
   if (!userId) {
-    console.warn("[dodo webhook] No user found for subscription (email/metadata redacted)");
+    console.warn(
+      "[dodo webhook] No user found for subscription (email/metadata redacted)",
+    );
     return;
   }
 
@@ -130,7 +133,7 @@ async function handleSubscriptionActiveOrUpdated(payload: {
   const currentTier = (settings?.subscriptionTier as string | null) ?? "free";
   const canonicalSubId = settings?.subscriptionId ?? null;
 
-  // Ignore duplicate subscription objects — only one canonical sub per user.
+  // Ignore duplicate subscription objects - only one canonical sub per user.
   if (
     incomingSubId &&
     canonicalSubId &&
@@ -150,7 +153,9 @@ async function handleSubscriptionActiveOrUpdated(payload: {
   // Dodo can mark subscription "active" immediately on changePlan even while payment is still processing.
   if (isUpgrade) {
     if (!apiKey) {
-      console.error("[dodo webhook] Skipping upgrade: DODO_PAYMENTS_API_KEY missing");
+      console.error(
+        "[dodo webhook] Skipping upgrade: DODO_PAYMENTS_API_KEY missing",
+      );
       return;
     }
     if (!incomingSubId) {
@@ -180,9 +185,12 @@ async function handleSubscriptionActiveOrUpdated(payload: {
       const trialClaimed = await hasTrialBeenClaimed(email, userId);
       if (trialClaimed && apiKey && incomingSubId) {
         const client = new DodoPayments({ bearerToken: apiKey, environment });
-        let latestPayment: { status?: string; total_amount?: number } | null = null;
+        let latestPayment: { status?: string; total_amount?: number } | null =
+          null;
         try {
-          const list = await (client.payments as { list: (q: object) => Promise<unknown> }).list({
+          const list = await (
+            client.payments as { list: (q: object) => Promise<unknown> }
+          ).list({
             subscription_id: incomingSubId,
             limit: 1,
           });
@@ -193,7 +201,9 @@ async function handleSubscriptionActiveOrUpdated(payload: {
               })
             : null;
         } catch {
-          console.error("[dodo webhook] Payment verification failed for first subscription");
+          console.error(
+            "[dodo webhook] Payment verification failed for first subscription",
+          );
           return;
         }
 
@@ -229,7 +239,9 @@ async function handleSubscriptionActiveOrUpdated(payload: {
       email: data.customer.email,
       userId,
       customerId: data.customer?.customer_id ?? null,
-    }).catch((e) => console.error("[dodo webhook] recordTrialClaim failed:", e));
+    }).catch((e) =>
+      console.error("[dodo webhook] recordTrialClaim failed:", e),
+    );
   }
   console.log("[dodo webhook] Subscription updated", { tier });
 }
@@ -265,7 +277,7 @@ async function handleSubscriptionOnHold(payload: {
   await syncConnectedAccountsToLimit(userId).catch((e) =>
     console.error("[dodo webhook] syncConnectedAccountsToLimit failed:", e),
   );
-  console.log("[dodo webhook] Subscription on_hold — reverted user to free");
+  console.log("[dodo webhook] Subscription on_hold - reverted user to free");
 
   const subId = data.subscription_id;
   if (
@@ -349,13 +361,14 @@ async function handleSubscriptionRenewed(payload: {
     where: eq(userSettings.subscriptionId, subscriptionId),
     columns: { userId: true, pendingPlanTier: true },
   });
-  if (!row?.pendingPlanTier || (row.pendingPlanTier !== "starter" && row.pendingPlanTier !== "growth"))
+  if (
+    !row?.pendingPlanTier ||
+    (row.pendingPlanTier !== "starter" && row.pendingPlanTier !== "growth")
+  )
     return;
 
   const productId =
-    row.pendingPlanTier === "starter"
-      ? PLAN_IDS.starter
-      : PLAN_IDS.growth;
+    row.pendingPlanTier === "starter" ? PLAN_IDS.starter : PLAN_IDS.growth;
   if (!productId) return;
 
   const client = new DodoPayments({ bearerToken: apiKey, environment });
@@ -369,10 +382,15 @@ async function handleSubscriptionRenewed(payload: {
       .update(userSettings)
       .set({ pendingPlanTier: null, downgradeReason: null })
       .where(eq(userSettings.userId, row.userId));
-    console.log("[dodo webhook] Pending downgrade applied on renewal", { pendingPlanTier: row.pendingPlanTier });
+    console.log("[dodo webhook] Pending downgrade applied on renewal", {
+      pendingPlanTier: row.pendingPlanTier,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Apply downgrade failed";
-    console.error("[dodo webhook] Failed to apply pending downgrade on renewal:", msg);
+    console.error(
+      "[dodo webhook] Failed to apply pending downgrade on renewal:",
+      msg,
+    );
   }
 }
 

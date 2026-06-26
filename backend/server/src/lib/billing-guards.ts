@@ -87,7 +87,7 @@ export async function listOpenDodoSubscriptions(
           });
         }
       } catch {
-        // Best-effort — checkout still guarded by DB state if Dodo list fails.
+        // Best-effort - checkout still guarded by DB state if Dodo list fails.
       }
     }
   }
@@ -120,7 +120,10 @@ export async function backfillBillingIds(
   if (ids.subscriptionId) patch.subscriptionId = ids.subscriptionId;
   if (Object.keys(patch).length === 0) return;
 
-  await db.update(userSettings).set(patch).where(eq(userSettings.userId, userId));
+  await db
+    .update(userSettings)
+    .set(patch)
+    .where(eq(userSettings.userId, userId));
 }
 
 /**
@@ -175,7 +178,8 @@ export async function createCustomerPortalUrl(
   if (!client) return null;
 
   try {
-    const portalSession = await client.customers.customerPortal.create(customerId);
+    const portalSession =
+      await client.customers.customerPortal.create(customerId);
     const link = portalSession.link ?? null;
     if (!link || !isAllowedDodoPortalUrl(link)) return null;
     return link;
@@ -283,7 +287,9 @@ export async function findRecentPaidUpgradePayment(
 
   const cutoff = Date.now() - windowMs;
   try {
-    const list = await (client.payments as { list: (q: object) => Promise<unknown> }).list({
+    const list = await (
+      client.payments as { list: (q: object) => Promise<unknown> }
+    ).list({
       subscription_id: subscriptionId,
       limit: 10,
     });
@@ -293,12 +299,11 @@ export async function findRecentPaidUpgradePayment(
 
     for (const item of items) {
       if (item.status !== "succeeded") continue;
-      const amount = typeof item.total_amount === "number" ? item.total_amount : 0;
+      const amount =
+        typeof item.total_amount === "number" ? item.total_amount : 0;
       if (amount <= 0) continue;
       const created =
-        typeof item.created_at === "string"
-          ? Date.parse(item.created_at)
-          : NaN;
+        typeof item.created_at === "string" ? Date.parse(item.created_at) : NaN;
       if (!Number.isFinite(created) || created < cutoff) continue;
       return item;
     }

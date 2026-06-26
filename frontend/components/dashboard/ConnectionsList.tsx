@@ -203,7 +203,7 @@ export function ConnectionsList({
             {atLimit && (
               <>
                 {" "}
-                —{" "}
+                -{" "}
                 <Link
                   href="/dashboard/billing"
                   className="font-medium text-accent underline underline-offset-2 hover:no-underline"
@@ -401,11 +401,11 @@ export function ConnectionsList({
                             <Link
                               href={`/api/connect/${account.platform}`}
                               className="shrink-0 inline-flex items-center gap-1 rounded border border-destructive/50 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive transition-colors hover:bg-destructive/20"
-                              title="Token expired — Reconnect"
+                              title="Token expired - Reconnect"
                             >
                               <AlertTriangle className="h-3 w-3 shrink-0" />
                               <span className="hidden sm:inline">
-                                Token expired —{" "}
+                                Token expired -{" "}
                               </span>
                               Reconnect
                             </Link>
@@ -413,7 +413,7 @@ export function ConnectionsList({
                           {isExpiringSoon && account.expiresInDays != null && (
                             <span
                               className="shrink-0 inline-flex items-center gap-0.5 rounded bg-amber-100 dark:bg-amber-900/50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200"
-                              title="Token expires soon — reconnect to refresh"
+                              title="Token expires soon - reconnect to refresh"
                             >
                               <AlertTriangle className="h-3 w-3" />
                               Expires in {account.expiresInDays} day

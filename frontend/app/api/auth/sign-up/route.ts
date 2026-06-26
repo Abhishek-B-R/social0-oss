@@ -8,6 +8,13 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { enforceRateLimit, signUpIpLimiter } from "@/lib/ratelimit";
 import { clientIp } from "@/lib/client-ip";
+import {
+  recordLegalAcceptances,
+  validateSignupLegalConsent,
+} from "@/lib/legal";
+import { db } from "@/db";
+import { user } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 /**
  * Email/password sign-up. Better Auth emailOTP plugin sends the verification OTP; we redirect to verify-email (no Turnstile).
@@ -30,11 +37,22 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { name, email, password } = body as {
+  const { name, email, password, acceptTerms, acceptPrivacy, marketingOptIn } = body as {
     name?: string;
     email?: string;
     password?: string;
+    acceptTerms?: boolean;
+    acceptPrivacy?: boolean;
+    marketingOptIn?: boolean;
   };
+
+  const consentError = validateSignupLegalConsent({ acceptTerms, acceptPrivacy });
+  if (consentError) {
+    return NextResponse.json(
+      { error: consentError, code: "LEGAL_CONSENT_REQUIRED" },
+      { status: 400 },
+    );
+  }
 
   const normalizedEmail = email ? String(email).trim().toLowerCase() : "";
   if (!name || !normalizedEmail || !password) {
@@ -63,6 +81,21 @@ export async function POST(request: Request) {
     if (!response.ok) {
       const mapped = await mapSignUpErrorFromResponse(response);
       return NextResponse.json(mapped, { status: response.status });
+    }
+
+    const created = await db.query.user.findFirst({
+      where: eq(user.email, normalizedEmail),
+      columns: { id: true },
+    });
+    if (created) {
+      await recordLegalAcceptances({
+        userId: created.id,
+        acceptTerms: true,
+        acceptPrivacy: true,
+        marketingOptIn: !!marketingOptIn,
+        ipAddress: clientIp(request),
+        userAgent: request.headers.get("user-agent"),
+      });
     }
 
     // OTP is sent by Better Auth emailOTP plugin on sign-up (single send path); do not call sendVerificationOTP here to avoid duplicate emails.

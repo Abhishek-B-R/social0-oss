@@ -17,7 +17,7 @@ export const FEATURES: FeaturePage[] = [
   {
     slug: "threads-scheduler",
     platformLabel: "Threads",
-    metaTitle: "Threads Scheduler — Schedule Meta Threads Posts | Social0",
+    metaTitle: "Threads Scheduler - Schedule Meta Threads Posts | Social0",
     metaDescription:
       "Schedule Threads posts from one dashboard. Compose text, images, and videos, pick your Threads account, and publish or schedule with Social0.",
     keywords: [
@@ -90,7 +90,7 @@ export const FEATURES: FeaturePage[] = [
   {
     slug: "bluesky-scheduling-tool",
     platformLabel: "Bluesky",
-    metaTitle: "Bluesky Scheduling Tool — Schedule AT Protocol Posts | Social0",
+    metaTitle: "Bluesky Scheduling Tool - Schedule AT Protocol Posts | Social0",
     metaDescription:
       "Bluesky scheduling tool for creators on the AT Protocol. Connect with your handle, compose posts, and schedule or publish from Social0.",
     keywords: [
@@ -108,7 +108,7 @@ export const FEATURES: FeaturePage[] = [
       {
         title: "BYOK connection",
         description:
-          "Connect with your Bluesky handle and app password using Social0's secure flow — no custom scripts.",
+          "Connect with your Bluesky handle and app password using Social0's secure flow - no custom scripts.",
       },
       {
         title: "Caption limits enforced",
@@ -136,8 +136,7 @@ export const FEATURES: FeaturePage[] = [
       {
         step: 2,
         title: "Create your post",
-        description:
-          "Write text and attach images supported by Bluesky's API.",
+        description: "Write text and attach images supported by Bluesky's API.",
       },
       {
         step: 3,
@@ -163,15 +162,19 @@ export const FEATURES: FeaturePage[] = [
   {
     slug: "tiktok-scheduler",
     platformLabel: "TikTok",
-    metaTitle: "TikTok Scheduler — Schedule TikTok Videos & Photos | Social0",
+    metaTitle: "TikTok Scheduler - Schedule TikTok Videos & Photos | Social0",
     metaDescription:
       "TikTok scheduler for videos and photo posts. Set privacy, titles, and publish or schedule TikTok content from Social0.",
-    keywords: ["tiktok scheduler", "schedule tiktok posts", "tiktok content scheduler"],
+    keywords: [
+      "tiktok scheduler",
+      "schedule tiktok posts",
+      "tiktok content scheduler",
+    ],
     heroHeadline: "TikTok scheduler with Direct Post support",
     heroSubheadline:
       "Upload video or images, configure TikTok-specific settings, and schedule from the same composer you use for every network.",
     intro:
-      "TikTok publishing has extra requirements — titles, privacy levels, and media rules. Social0's TikTok composer captures those settings, processes images when needed, and schedules or publishes through TikTok's Content Posting API.",
+      "TikTok publishing has extra requirements - titles, privacy levels, and media rules. Social0's TikTok composer captures those settings, processes images when needed, and schedules or publishes through TikTok's Content Posting API.",
     benefits: [
       {
         title: "Video and photo posts",
@@ -193,12 +196,14 @@ export const FEATURES: FeaturePage[] = [
       {
         step: 1,
         title: "Connect TikTok",
-        description: "Authorize via TikTok Login Kit with the scopes required for publishing.",
+        description:
+          "Authorize via TikTok Login Kit with the scopes required for publishing.",
       },
       {
         step: 2,
         title: "Upload and configure",
-        description: "Add media, set TikTok title and privacy, and confirm posting consent.",
+        description:
+          "Add media, set TikTok title and privacy, and confirm posting consent.",
       },
       {
         step: 3,
@@ -218,10 +223,14 @@ export const FEATURES: FeaturePage[] = [
   {
     slug: "instagram-scheduler",
     platformLabel: "Instagram",
-    metaTitle: "Instagram Scheduler — Schedule Posts & Reels | Social0",
+    metaTitle: "Instagram Scheduler - Schedule Posts & Reels | Social0",
     metaDescription:
       "Instagram scheduler for images, carousels, and reels. Connect via Instagram or Facebook Page and schedule from Social0.",
-    keywords: ["instagram scheduler", "schedule instagram posts", "instagram reel scheduler"],
+    keywords: [
+      "instagram scheduler",
+      "schedule instagram posts",
+      "instagram reel scheduler",
+    ],
     heroHeadline: "Instagram scheduler without leaving your main workflow",
     heroSubheadline:
       "Connect Instagram directly or via a linked Facebook Page, then schedule posts with the rest of your content calendar.",
@@ -248,12 +257,14 @@ export const FEATURES: FeaturePage[] = [
       {
         step: 1,
         title: "Connect Instagram",
-        description: "Choose direct OAuth or Facebook Page linking in Connections.",
+        description:
+          "Choose direct OAuth or Facebook Page linking in Connections.",
       },
       {
         step: 2,
         title: "Compose with media",
-        description: "Add images or video and write your caption with limit indicators.",
+        description:
+          "Add images or video and write your caption with limit indicators.",
       },
       {
         step: 3,
@@ -273,10 +284,14 @@ export const FEATURES: FeaturePage[] = [
   {
     slug: "linkedin-scheduler",
     platformLabel: "LinkedIn",
-    metaTitle: "LinkedIn Scheduler — Schedule Posts & Articles | Social0",
+    metaTitle: "LinkedIn Scheduler - Schedule Posts & Articles | Social0",
     metaDescription:
       "LinkedIn scheduler for professionals and founders. Schedule text, images, and video posts to LinkedIn from Social0.",
-    keywords: ["linkedin scheduler", "schedule linkedin posts", "linkedin post scheduler"],
+    keywords: [
+      "linkedin scheduler",
+      "schedule linkedin posts",
+      "linkedin post scheduler",
+    ],
     heroHeadline: "LinkedIn scheduler for founders and operators",
     heroSubheadline:
       "Draft thought leadership once, schedule it, and publish to LinkedIn with your other channels.",
@@ -285,11 +300,13 @@ export const FEATURES: FeaturePage[] = [
     benefits: [
       {
         title: "Professional publishing",
-        description: "Post text, images, and video with LinkedIn's limits enforced in the UI.",
+        description:
+          "Post text, images, and video with LinkedIn's limits enforced in the UI.",
       },
       {
         title: "Token refresh",
-        description: "Expired tokens are refreshed automatically before publish when possible.",
+        description:
+          "Expired tokens are refreshed automatically before publish when possible.",
       },
       {
         title: "Multi-account",
@@ -325,7 +342,7 @@ export const FEATURES: FeaturePage[] = [
   {
     slug: "twitter-scheduler",
     platformLabel: "X (Twitter)",
-    metaTitle: "X / Twitter Scheduler — Schedule Tweets & Threads | Social0",
+    metaTitle: "X / Twitter Scheduler - Schedule Tweets & Threads | Social0",
     metaDescription:
       "X and Twitter scheduler with support for long posts on Premium accounts. Schedule tweets, threads, and media from Social0.",
     keywords: [
@@ -338,7 +355,7 @@ export const FEATURES: FeaturePage[] = [
     heroSubheadline:
       "Schedule tweets and threads. Social0 detects X Premium so long-form posts use the right character limit.",
     intro:
-      "X publishing needs OAuth 1.0a and careful handling of character limits — 280 for standard accounts, up to 25,000 for Premium. Social0 connects your X accounts, respects Premium status, and lets you schedule single posts and threads.",
+      "X publishing needs OAuth 1.0a and careful handling of character limits - 280 for standard accounts, up to 25,000 for Premium. Social0 connects your X accounts, respects Premium status, and lets you schedule single posts and threads.",
     benefits: [
       {
         title: "Premium character limits",
@@ -347,7 +364,8 @@ export const FEATURES: FeaturePage[] = [
       },
       {
         title: "Threads support",
-        description: "Publish multi-post threads without manual reply chaining.",
+        description:
+          "Publish multi-post threads without manual reply chaining.",
       },
       {
         title: "Media attachments",
@@ -391,11 +409,11 @@ export const FEATURES: FeaturePage[] = [
       "publish to all socials",
       "cross platform posting tool",
     ],
-    heroHeadline: "Multi-platform scheduler — one composer, every network",
+    heroHeadline: "Multi-platform scheduler - one composer, every network",
     heroSubheadline:
       "The core Social0 workflow: compose once, select accounts, schedule or publish in parallel.",
     intro:
-      "Most schedulers still treat each network as a separate queue. Social0 is built around parallel publishing — you write one post, pick every account that should receive it, and Social0 sends to each platform with per-network validation and clear success/failure feedback.",
+      "Most schedulers still treat each network as a separate queue. Social0 is built around parallel publishing - you write one post, pick every account that should receive it, and Social0 sends to each platform with per-network validation and clear success/failure feedback.",
     benefits: [
       {
         title: "9+ platforms",
@@ -430,21 +448,22 @@ export const FEATURES: FeaturePage[] = [
       {
         step: 3,
         title: "Publish or schedule everywhere",
-        description: "Post now or set one schedule time for all selected networks.",
+        description:
+          "Post now or set one schedule time for all selected networks.",
       },
     ],
     faq: [
       {
         question: "What makes Social0 a multi-platform scheduler?",
         answer:
-          "A single composer and parallel publishing pipeline — not separate queues per network that you fill one by one.",
+          "A single composer and parallel publishing pipeline - not separate queues per network that you fill one by one.",
       },
     ],
     relatedAlternativeSlugs: ["buffer", "hootsuite", "later"],
   },
   {
     slug: "social-media-calendar",
-    metaTitle: "Social Media Calendar — Plan & Schedule Posts | Social0",
+    metaTitle: "Social Media Calendar - Plan & Schedule Posts | Social0",
     metaDescription:
       "Social media content calendar to view scheduled and published posts across all connected platforms in Social0.",
     keywords: [
@@ -460,7 +479,7 @@ export const FEATURES: FeaturePage[] = [
     benefits: [
       {
         title: "Cross-platform view",
-        description: "Every network on one calendar — no spreadsheet sidecars.",
+        description: "Every network on one calendar - no spreadsheet sidecars.",
       },
       {
         title: "Scheduled and posted history",
@@ -468,7 +487,8 @@ export const FEATURES: FeaturePage[] = [
       },
       {
         title: "Tied to the composer",
-        description: "Click through to edit drafts or reschedule from the same app.",
+        description:
+          "Click through to edit drafts or reschedule from the same app.",
       },
     ],
     howItWorks: [
@@ -500,7 +520,7 @@ export const FEATURES: FeaturePage[] = [
   {
     slug: "youtube-scheduler",
     platformLabel: "YouTube",
-    metaTitle: "YouTube Scheduler — Schedule Shorts & Videos | Social0",
+    metaTitle: "YouTube Scheduler - Schedule Shorts & Videos | Social0",
     metaDescription:
       "YouTube scheduler for Shorts and videos. Upload, set title and visibility, and schedule YouTube content from Social0 alongside your other platforms.",
     keywords: [
@@ -565,7 +585,7 @@ export const FEATURES: FeaturePage[] = [
   {
     slug: "pinterest-scheduler",
     platformLabel: "Pinterest",
-    metaTitle: "Pinterest Scheduler — Schedule Pins & Idea Pins | Social0",
+    metaTitle: "Pinterest Scheduler - Schedule Pins & Idea Pins | Social0",
     metaDescription:
       "Pinterest scheduler to publish pins to boards you choose. Schedule images and video pins from Social0's multi-platform composer.",
     keywords: [
@@ -604,7 +624,8 @@ export const FEATURES: FeaturePage[] = [
       {
         step: 2,
         title: "Select board and media",
-        description: "Upload your pin image or video and pick a destination board.",
+        description:
+          "Upload your pin image or video and pick a destination board.",
       },
       {
         step: 3,
@@ -624,7 +645,7 @@ export const FEATURES: FeaturePage[] = [
   {
     slug: "facebook-scheduler",
     platformLabel: "Facebook",
-    metaTitle: "Facebook Page Scheduler — Schedule Page Posts | Social0",
+    metaTitle: "Facebook Page Scheduler - Schedule Page Posts | Social0",
     metaDescription:
       "Facebook Page scheduler for text, images, and video. Connect your Page via Meta OAuth and schedule posts from Social0.",
     keywords: [
@@ -635,14 +656,14 @@ export const FEATURES: FeaturePage[] = [
     ],
     heroHeadline: "Facebook Page scheduler built into Social0",
     heroSubheadline:
-      "Schedule posts to Facebook Pages — not personal profiles — from the same dashboard as Instagram and Threads.",
+      "Schedule posts to Facebook Pages - not personal profiles - from the same dashboard as Instagram and Threads.",
     intro:
       "Facebook Page publishing requires Meta permissions and the right account type. Social0 connects Facebook Pages via official OAuth, supports text, images, and video posts, and schedules them on your unified calendar.",
     benefits: [
       {
         title: "Page-only publishing",
         description:
-          "Built for Facebook Pages — the format businesses and creators actually use.",
+          "Built for Facebook Pages - the format businesses and creators actually use.",
       },
       {
         title: "Multi-photo and video",

@@ -1,6 +1,6 @@
 import type { EmailPostFailedJob } from "@social0/shared";
 
-/** Port from frontend email templates — Resend/Postmark/etc. */
+/** Port from frontend email templates - Resend/Postmark/etc. */
 export async function sendPostFailedEmail(
   job: EmailPostFailedJob,
 ): Promise<void> {

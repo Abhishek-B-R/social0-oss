@@ -43,9 +43,7 @@ function VideoPlayBadge({ compact }: { compact?: boolean }) {
   return (
     <div
       className={`pointer-events-none absolute flex items-center justify-center rounded-full bg-black/60 text-white shadow-sm ${
-        compact
-          ? "bottom-0.5 right-0.5 h-6 w-6"
-          : "bottom-1 right-1 h-7 w-7"
+        compact ? "bottom-0.5 right-0.5 h-6 w-6" : "bottom-1 right-1 h-7 w-7"
       }`}
       role="img"
       aria-label="Video"
@@ -53,9 +51,7 @@ function VideoPlayBadge({ compact }: { compact?: boolean }) {
       <svg
         viewBox="0 0 24 24"
         className={`fill-current ${
-          compact
-            ? "h-3 w-3 translate-x-[1.5px]"
-            : "h-4 w-4 translate-x-[1px]"
+          compact ? "h-3 w-3 translate-x-[1.5px]" : "h-4 w-4 translate-x-[1px]"
         }`}
         aria-hidden
       >
@@ -632,9 +628,9 @@ export function ComposerClient() {
           <DocsInfoIcon url={DOCS_COMPOSER_URL} />
         </div>
         <p className="text-sm leading-snug text-text-muted sm:leading-normal">
-          Type anything, paste, drag and drop, or upload images/videos — we&apos;ll
-          route you to the right post flow. You can always adjust details on the
-          next screen.
+          Type anything, paste, drag and drop, or upload images/videos -
+          we&apos;ll route you to the right post flow. You can always adjust
+          details on the next screen.
         </p>
       </div>
 
@@ -754,8 +750,7 @@ export function ComposerClient() {
               )}
             </div>
             {media.some(
-              (m) =>
-                m.type === "video" && aspectGuidanceByMediaId[m.id],
+              (m) => m.type === "video" && aspectGuidanceByMediaId[m.id],
             ) && (
               <div className="pt-1">
                 <AspectRatioGuidanceBanner
@@ -968,8 +963,7 @@ export function ComposerClient() {
                     ))}
                   </div>
                   {slot.media.some(
-                    (m) =>
-                      m.type === "video" && aspectGuidanceByMediaId[m.id],
+                    (m) => m.type === "video" && aspectGuidanceByMediaId[m.id],
                   ) && (
                     <div className="pt-1">
                       <AspectRatioGuidanceBanner

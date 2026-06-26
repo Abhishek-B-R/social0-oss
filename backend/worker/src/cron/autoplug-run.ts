@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   const now = new Date();
 
   // Order oldest-first so all plugs cycle through across runs as they resolve.
-  // No explicit LIMIT — Vercel's maxDuration=60 is the natural execution cap.
+  // No explicit LIMIT - Vercel's maxDuration=60 is the natural execution cap.
   // Each Twitter API call + DELAY_MS ≈ 300-700ms, so ≈80-180 items/run in practice.
   const watching = await db
     .select()
@@ -43,7 +43,12 @@ export async function GET(request: Request) {
     await db
       .update(autoPlugs)
       .set({ status: "expired", updatedAt: now })
-      .where(inArray(autoPlugs.id, expiredPlugs.map((p) => p.id)));
+      .where(
+        inArray(
+          autoPlugs.id,
+          expiredPlugs.map((p) => p.id),
+        ),
+      );
     expired += expiredPlugs.length;
   }
 
@@ -66,23 +71,27 @@ export async function GET(request: Request) {
 
   const accountMap = new Map(accountRows.map((a) => [a.id, a]));
 
-  // Batch-check plan limits — 1 query for all unique user IDs
+  // Batch-check plan limits - 1 query for all unique user IDs
   const uniqueUserIds = [...new Set(accountRows.map((a) => a.userId))];
-  const subRows = uniqueUserIds.length > 0
-    ? await db
-        .select({
-          userId: userSettings.userId,
-          subscriptionTier: userSettings.subscriptionTier,
-          subscriptionExpiresAt: userSettings.subscriptionExpiresAt,
-        })
-        .from(userSettings)
-        .where(inArray(userSettings.userId, uniqueUserIds))
-    : [];
+  const subRows =
+    uniqueUserIds.length > 0
+      ? await db
+          .select({
+            userId: userSettings.userId,
+            subscriptionTier: userSettings.subscriptionTier,
+            subscriptionExpiresAt: userSettings.subscriptionExpiresAt,
+          })
+          .from(userSettings)
+          .where(inArray(userSettings.userId, uniqueUserIds))
+      : [];
 
   const allowedUserIds = new Set<string>();
   for (const s of subRows) {
-    const isExpired = s.subscriptionExpiresAt && new Date(s.subscriptionExpiresAt) < now;
-    const tier = (isExpired ? "free" : (s.subscriptionTier ?? "free")) as SubscriptionTier;
+    const isExpired =
+      s.subscriptionExpiresAt && new Date(s.subscriptionExpiresAt) < now;
+    const tier = (
+      isExpired ? "free" : (s.subscriptionTier ?? "free")
+    ) as SubscriptionTier;
     if (getPlanLimits(tier).allowAutoPlug) {
       allowedUserIds.add(s.userId);
     }
@@ -101,11 +110,7 @@ export async function GET(request: Request) {
       continue;
     }
 
-    if (
-      !account?.encryptedAccessToken ||
-      !appKey ||
-      !appSecret
-    ) {
+    if (!account?.encryptedAccessToken || !appKey || !appSecret) {
       await db
         .update(autoPlugs)
         .set({ status: "failed", updatedAt: now })
@@ -172,8 +177,7 @@ export async function GET(request: Request) {
       const metrics = tweet.data?.public_metrics;
       const likeCount = metrics?.like_count ?? 0;
       const retweetCount = metrics?.retweet_count ?? 0;
-      const count =
-        plug.metricType === "retweets" ? retweetCount : likeCount;
+      const count = plug.metricType === "retweets" ? retweetCount : likeCount;
 
       if (count < plug.metricThreshold) {
         continue;
@@ -206,7 +210,7 @@ export async function GET(request: Request) {
         plug.id,
         "platformPostId:",
         plug.platformPostId,
-        "—",
+        "-",
         errMsg,
         errDetail ? errDetail : "",
       );

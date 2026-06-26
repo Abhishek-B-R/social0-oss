@@ -253,6 +253,13 @@
       "when": 1782390000000,
       "tag": "0037_add_publish_job_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1782500000000,
+      "tag": "0038_add_legal_acceptances",
+      "breakpoints": true
     }
   ]
 }

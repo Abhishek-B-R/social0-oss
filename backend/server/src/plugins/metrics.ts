@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { verifyAdminRequest } from "../lib/admin-auth.js";
 
 type CounterMap = Map<string, number>;
 
@@ -26,5 +27,10 @@ export async function registerMetricsPlugin(app: FastifyInstance) {
     incrementMetric("http.requests");
   });
 
-  app.get("/metrics", async () => getMetricsSnapshot());
+  app.get("/metrics", async (request, reply) => {
+    if (!verifyAdminRequest(request)) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
+    return getMetricsSnapshot();
+  });
 }

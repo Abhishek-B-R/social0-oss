@@ -9,11 +9,13 @@ import { twitterPublishLimiter, enforceRateLimit } from "./ratelimit.js";
 
 /**
  * Sync connected_accounts.isActive to plan limit.
- * Keeps the first N accounts (by createdAt ASC — oldest first) active; extra
+ * Keeps the first N accounts (by createdAt ASC - oldest first) active; extra
  * are marked isActive = false. This ordering is GLOBAL across all platforms so
  * limit behavior is deterministic and matches the composer account picker.
  */
-export async function syncConnectedAccountsToLimit(userId: string): Promise<void> {
+export async function syncConnectedAccountsToLimit(
+  userId: string,
+): Promise<void> {
   const sub = await getSubscriptionForUser(userId);
   const limitTotal = getPlanLimits(sub.tier).maxConnectedAccounts;
 
@@ -35,13 +37,23 @@ export async function syncConnectedAccountsToLimit(userId: string): Promise<void
     await db
       .update(connectedAccounts)
       .set({ isActive: true })
-      .where(and(eq(connectedAccounts.userId, userId), inArray(connectedAccounts.id, activateIds)));
+      .where(
+        and(
+          eq(connectedAccounts.userId, userId),
+          inArray(connectedAccounts.id, activateIds),
+        ),
+      );
   }
   if (deactivateIds.length > 0) {
     await db
       .update(connectedAccounts)
       .set({ isActive: false })
-      .where(and(eq(connectedAccounts.userId, userId), inArray(connectedAccounts.id, deactivateIds)));
+      .where(
+        and(
+          eq(connectedAccounts.userId, userId),
+          inArray(connectedAccounts.id, deactivateIds),
+        ),
+      );
   }
 }
 
@@ -187,7 +199,7 @@ export async function incrementFreePostsUsed(userId: string): Promise<void> {
   const sub = await getSubscriptionForUser(userId);
   if (isActiveTier(sub.tier)) return;
 
-  // Atomic increment — concurrent publishes must not read-modify-write.
+  // Atomic increment - concurrent publishes must not read-modify-write.
   await db
     .update(userSettings)
     .set({ freePostsUsed: sql`${userSettings.freePostsUsed} + 1` })

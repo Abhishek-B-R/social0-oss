@@ -20,7 +20,7 @@ const features: Feature[] = [
     icon: GitBranch,
     title: "Parallel publishing",
     tag: "Fast",
-    desc: "All platforms receive your post at the same time. If one fails, the others still go through — and you'll see exactly which.",
+    desc: "All platforms receive your post at the same time. If one fails, the others still go through - and you'll see exactly which.",
   },
   {
     icon: PenLine,

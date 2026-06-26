@@ -147,7 +147,7 @@ export function buildSoftwareApplicationJsonLd() {
 }
 
 export const homePageTitle =
-  "Social0 — Post and Schedule to All Your Socials from One Place";
+  "Social0 - Post and Schedule to All Your Socials from One Place";
 
 export const homePageDescription =
   "Social0 lets you write once and publish everywhere. Schedule posts to Twitter, Instagram, LinkedIn, TikTok, YouTube, Pinterest, Bluesky, Threads, and Facebook from one dashboard. 7-day free trial.";
@@ -187,7 +187,7 @@ export function buildHomeMetadata(path: "/" | "/home" = "/"): Metadata {
           url: absoluteUrl("/og-image.png"),
           width: 1200,
           height: 630,
-          alt: "Social0 — Social Media Scheduling Dashboard",
+          alt: "Social0 - Social Media Scheduling Dashboard",
         },
       ],
     },

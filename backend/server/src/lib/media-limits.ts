@@ -1,6 +1,6 @@
 /**
  * Platform-specific max file sizes (reference for publish-time warnings / account UI).
- * Client upload for videos uses CLIENT_MAX_VIDEO_UPLOAD_BYTES — not these.
+ * Client upload for videos uses CLIENT_MAX_VIDEO_UPLOAD_BYTES - not these.
  * Keys match platform ids (e.g. twitter_x, not twitter).
  */
 
@@ -76,7 +76,7 @@ export type ValidateMediaResult =
 /**
  * Validate file size before upload.
  * Images: never block (server compresses per platform).
- * Videos: enforce CLIENT_MAX_VIDEO_UPLOAD_BYTES only — platform limits apply at publish time.
+ * Videos: enforce CLIENT_MAX_VIDEO_UPLOAD_BYTES only - platform limits apply at publish time.
  */
 export function validateMediaFile(
   file: File,
@@ -113,8 +113,7 @@ export function getAccountsExceededByAttachments(
 ): { accountIds: Set<string>; reasons: Record<string, string> } {
   const accountIds = new Set<string>();
   const reasons: Record<string, string> = {};
-  if (attachments.length === 0)
-    return { accountIds, reasons };
+  if (attachments.length === 0) return { accountIds, reasons };
 
   const platformExceededLimit = new Map<string, number>();
   for (const { file } of attachments) {
@@ -133,7 +132,8 @@ export function getAccountsExceededByAttachments(
     if (limit == null) continue;
     accountIds.add(acc.id);
     const name = getPlatformDisplayName(acc.platform);
-    reasons[acc.id] = `Attachment exceeds ${name}'s size limit (max ${formatBytes(limit)})`;
+    reasons[acc.id] =
+      `Attachment exceeds ${name}'s size limit (max ${formatBytes(limit)})`;
   }
   return { accountIds, reasons };
 }

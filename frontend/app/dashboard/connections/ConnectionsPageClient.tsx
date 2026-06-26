@@ -13,10 +13,11 @@ export function ConnectionsPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(false);
   const [data, setData] = useState<
-    Extract<
-      Awaited<ReturnType<typeof loadConnectionsPageData>>,
-      { ok: true }
-    >["data"] | null
+    | Extract<
+        Awaited<ReturnType<typeof loadConnectionsPageData>>,
+        { ok: true }
+      >["data"]
+    | null
   >(null);
   const fetchSeq = useRef(0);
 
@@ -47,7 +48,7 @@ export function ConnectionsPageClient() {
     void refetch();
   }, [refetch, searchParams]);
 
-  // Refetch when the tab regains focus — covers OAuth completed in another
+  // Refetch when the tab regains focus - covers OAuth completed in another
   // tab/window and token refreshes done elsewhere.
   useEffect(() => {
     const onFocus = () => void refetch();
@@ -76,11 +77,7 @@ export function ConnectionsPageClient() {
 
   if (isGuest || !data) {
     return (
-      <ConnectionsList
-        accounts={[]}
-        accountLimit={undefined}
-        requireAuth
-      />
+      <ConnectionsList accounts={[]} accountLimit={undefined} requireAuth />
     );
   }
 

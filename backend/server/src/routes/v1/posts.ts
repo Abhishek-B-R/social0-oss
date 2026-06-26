@@ -58,7 +58,7 @@ export async function registerPostsRoutes(app: FastifyInstance) {
     return notImplemented("DELETE /v1/posts/:id");
   });
 
-  /** Publish now — async via queue + SSE tracking. */
+  /** Publish now - async via queue + SSE tracking. */
   app.post("/posts/:id/publish", async (request, reply) => {
     const userId = await requireUserId(request);
     if (!userId) return reply.status(401).send(unauthorized());

@@ -13,7 +13,7 @@ import {
   IconFileText,
   IconCalendar,
   IconLink,
-  // IconUsers, // Teams — re-enable when /dashboard/teams ships
+  // IconUsers, // Teams - re-enable when /dashboard/teams ships
   IconSettings,
   IconWallet,
   IconMessageCircle,
@@ -148,7 +148,8 @@ export function DashboardSidebar({
           href="/dashboard/composer"
           prefetch
           onClick={() => {
-            if (!pathname.startsWith("/dashboard/composer")) setLogoPending(true);
+            if (!pathname.startsWith("/dashboard/composer"))
+              setLogoPending(true);
           }}
           className={`flex items-center gap-3 rounded-lg px-3 py-2 font-semibold text-lg text-sidebar-text hover:bg-sidebar-active transition-colors ${logoPending ? "opacity-60" : ""}`}
         >
@@ -174,7 +175,8 @@ export function DashboardSidebar({
           href="/dashboard/composer"
           prefetch
           onClick={() => {
-            if (!pathname.startsWith("/dashboard/composer")) setComposerCtaPending(true);
+            if (!pathname.startsWith("/dashboard/composer"))
+              setComposerCtaPending(true);
           }}
           className={`sidebar-create-post-cta flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-accent-hover transition-colors ${composerCtaPending ? "opacity-80" : ""}`}
         >
@@ -250,7 +252,7 @@ export function DashboardSidebar({
               icon={IconLink}
               isActive={pathname === "/dashboard/connections"}
             />
-            {/* Teams — hidden until feature is ready
+            {/* Teams - hidden until feature is ready
             <NavLink
               href="/dashboard/teams"
               label="Teams"
@@ -358,7 +360,9 @@ export function DashboardSidebar({
                 <p className="truncate text-sm font-medium text-sidebar-text">
                   {user.name || user.email || "User"}
                 </p>
-                <p className="truncate text-xs text-sidebar-text">{planLabel}</p>
+                <p className="truncate text-xs text-sidebar-text">
+                  {planLabel}
+                </p>
               </div>
               <IconChevronDown
                 className={`h-4 w-4 shrink-0 text-sidebar-text transition-transform ${userMenuOpen ? "rotate-180" : ""}`}

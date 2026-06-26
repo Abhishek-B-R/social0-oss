@@ -5,7 +5,7 @@ description: View your scheduled and published posts on a calendar.
 
 ## Overview
 
-The Calendar view shows your posts on a calendar—scheduled posts on their date and time, and optionally published posts. Use it to see your content plan at a glance and spot gaps or busy days.
+The Calendar view shows your posts on a calendar-scheduled posts on their date and time, and optionally published posts. Use it to see your content plan at a glance and spot gaps or busy days.
 
 ## How to open the Calendar
 
@@ -16,9 +16,9 @@ You’ll see a calendar (week or mont or day view). Posts appear on the day (and
 
 ## What you can do
 
-- **View** — See which days have scheduled or published posts.
-- **Click a post** — Open it to view details, edit, or cancel.
-- **Change view** — Switch between week and month if the option is there.
+- **View** - See which days have scheduled or published posts.
+- **Click a post** - Open it to view details, edit, or cancel.
+- **Change view** - Switch between week and month if the option is there.
 
 Times use the timezone you set in **Settings** → **Preferences**.
 

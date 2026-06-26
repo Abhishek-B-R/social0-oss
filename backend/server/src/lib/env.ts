@@ -10,7 +10,7 @@ const envSchema = z
     BETTER_AUTH_SECRET: z.string().min(32),
     GOOGLE_CLIENT_ID: z.string().min(1),
     GOOGLE_CLIENT_SECRET: z.string().min(1),
-    /** OAuth redirect base — same as frontend NEXT_PUBLIC_APP_URL */
+    /** OAuth redirect base - same as frontend NEXT_PUBLIC_APP_URL */
     NEXT_PUBLIC_APP_URL: z.string().url(),
     APP_URL: z.string().url().optional(),
     /** Comma-separated extra frontend origins (e.g. https://localhost:3000,https://api.social0.app) */
@@ -20,7 +20,10 @@ const envSchema = z
     UPSTASH_REDIS_URL: z.string().url().optional(),
     PORT: z.coerce.number().default(3001),
     HOST: z.string().default("0.0.0.0"),
-    ENCRYPTION_KEY: z.string().min(32),
+    ENCRYPTION_KEY: z
+      .string()
+      .length(64, "ENCRYPTION_KEY must be 64 hex characters (32 bytes)")
+      .regex(/^[0-9a-f]+$/i),
     RESEND_API_KEY: z.string().min(1),
     RESEND_FROM_EMAIL: z.string(),
     LINKEDIN_CLIENT_ID: z.string().optional(),
@@ -50,9 +53,7 @@ const envSchema = z
     TEST_USER_NAME: z.string().optional(),
     DODO_PAYMENTS_API_KEY: z.string().optional(),
     DODO_PAYMENTS_WEBHOOK_SECRET: z.string().optional(),
-    DODO_PAYMENTS_ENVIRONMENT: z
-      .enum(["test_mode", "live_mode"])
-      .optional(),
+    DODO_PAYMENTS_ENVIRONMENT: z.enum(["test_mode", "live_mode"]).optional(),
     DODO_PAYMENTS_STARTER_PRODUCT_ID: z.string().optional(),
     DODO_PAYMENTS_GROWTH_PRODUCT_ID: z.string().optional(),
     DODO_PAYMENTS_PRO_PRODUCT_ID: z.string().optional(),
@@ -71,6 +72,20 @@ const envSchema = z
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV !== "production") return;
+    if (!data.CRON_SECRET?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "CRON_SECRET required in production",
+        path: ["CRON_SECRET"],
+      });
+    }
+    if (!data.ADMIN_API_KEY?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "ADMIN_API_KEY required in production",
+        path: ["ADMIN_API_KEY"],
+      });
+    }
     if (!data.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -96,7 +111,7 @@ export function loadServerEnv(): ServerEnv {
   return cached;
 }
 
-/** Parsed server env singleton — same shape as frontend `env`. */
+/** Parsed server env singleton - same shape as frontend `env`. */
 export const env = new Proxy({} as ServerEnv, {
   get(_t, prop: string) {
     return loadServerEnv()[prop as keyof ServerEnv];

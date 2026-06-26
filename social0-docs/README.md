@@ -20,15 +20,15 @@ npm start
 
 ## Structure
 
-- **Navbar** — "Social0 | Docs" (custom component in `components/docs-navbar.tsx`). Links to social0.app, Dashboard, and X.
-- **Content** — `content/docs/` (MDX). Structure:
-  - `index.mdx` — Overview
-  - `getting-started/` — Getting started, Connecting accounts
-  - `platforms/` — Twitter, Instagram, LinkedIn, TikTok, Bluesky, Facebook, Threads, Pinterest, YouTube
-  - `post-types/` — Text, Image, Video, Thread, Collection
-  - `features/` — Scheduling, Queue, Bulk tools, Auto-repost
-  - `billing/` — Plans, FAQ
-  - `developer/` — Architecture, Pages reference (agent-generated page docs go under `developer/pages/`)
+- **Navbar** - "Social0 | Docs" (custom component in `components/docs-navbar.tsx`). Links to social0.app, Dashboard, and X.
+- **Content** - `content/docs/` (MDX). Structure:
+  - `index.mdx` - Overview
+  - `getting-started/` - Getting started, Connecting accounts
+  - `platforms/` - Twitter, Instagram, LinkedIn, TikTok, Bluesky, Facebook, Threads, Pinterest, YouTube
+  - `post-types/` - Text, Image, Video, Thread, Collection
+  - `features/` - Scheduling, Queue, Bulk tools, Auto-repost
+  - `billing/` - Plans, FAQ
+  - `developer/` - Architecture, Pages reference (agent-generated page docs go under `developer/pages/`)
 
 ## Doc agent
 

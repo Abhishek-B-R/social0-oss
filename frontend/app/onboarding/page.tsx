@@ -129,7 +129,9 @@ function OnboardingWelcomeContent() {
         router.push("/dashboard/billing");
         return;
       }
-      toast.error(toFriendlyCheckoutError(data.error, "Failed to start checkout"));
+      toast.error(
+        toFriendlyCheckoutError(data.error, "Failed to start checkout"),
+      );
     } finally {
       setLoadingPlan(null);
     }
@@ -160,7 +162,7 @@ function OnboardingWelcomeContent() {
       </a>
 
       <div className="grid w-full flex-1 gap-8 lg:grid-cols-2 lg:gap-12 xl:gap-16">
-        {/* Left — hero + free tier */}
+        {/* Left - hero + free tier */}
         <div className="flex flex-col justify-center lg:py-4">
           <p className="mb-3 text-sm font-medium uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
             Free to start
@@ -215,7 +217,7 @@ function OnboardingWelcomeContent() {
           </div>
         </div>
 
-        {/* Right — paid plans */}
+        {/* Right - paid plans */}
         <div className="flex flex-col justify-center rounded-2xl border border-border bg-muted/30 p-6 sm:p-8 lg:p-10">
           <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
             Need more? Upgrade anytime
@@ -227,7 +229,7 @@ function OnboardingWelcomeContent() {
           <div className="mt-8 grid flex-1 gap-5 sm:grid-cols-2">
             <div className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm">
               <h3 className="font-semibold text-foreground">
-                Starter — <span className="text-foreground">$9</span>/mo
+                Starter - <span className="text-foreground">$9</span>/mo
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 For creators getting started
@@ -246,7 +248,9 @@ function OnboardingWelcomeContent() {
                 disabled={loadingPlan !== null}
                 className="mt-6 w-full rounded-xl border-2 border-emerald-500 px-4 py-3 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 transition-colors"
               >
-                {loadingPlan === "starter" ? "Redirecting…" : "Start free trial"}
+                {loadingPlan === "starter"
+                  ? "Redirecting…"
+                  : "Start free trial"}
               </button>
             </div>
 
@@ -255,7 +259,7 @@ function OnboardingWelcomeContent() {
                 Popular
               </span>
               <h3 className="font-semibold text-foreground">
-                Growth —{" "}
+                Growth -{" "}
                 <span className="line-through text-muted-foreground">$29</span>{" "}
                 <span className="text-foreground">$19</span>/mo
               </h3>

@@ -6,10 +6,7 @@ import { PseoJsonLd } from "@/components/seo/PseoJsonLd";
 import { PseoFaq } from "@/components/landing/PseoFaq";
 import { PseoRelatedLinks } from "@/components/landing/PseoRelatedLinks";
 import { PSEO_PAGES_ENABLED } from "@/lib/content/pseo-enabled";
-import {
-  ALTERNATIVE_SLUGS,
-  getAlternative,
-} from "@/lib/content/alternatives";
+import { ALTERNATIVE_SLUGS, getAlternative } from "@/lib/content/alternatives";
 import { getFeature } from "@/lib/content/features";
 import {
   buildBreadcrumbJsonLd,
@@ -55,7 +52,7 @@ export default async function AlternativePage({ params }: PageProps) {
     .filter(Boolean)
     .map((f) => ({
       href: `/features/${f!.slug}`,
-      label: f!.heroHeadline.replace(/ —.*/, ""),
+      label: f!.heroHeadline.replace(/ -.*/, ""),
     }));
 
   const jsonLd = [

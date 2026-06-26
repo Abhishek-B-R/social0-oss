@@ -105,6 +105,18 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp("updated_at"),
 });
 
+export const legalAcceptances = pgTable("legal_acceptances", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id")
+    .references(() => user.id, { onDelete: "cascade" })
+    .notNull(),
+  documentType: text("document_type").notNull(),
+  version: text("version").notNull(),
+  acceptedAt: timestamp("accepted_at").defaultNow().notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+});
+
 // ===== CONNECTED ACCOUNTS =====
 export const connectedAccounts = pgTable(
   "connected_accounts",

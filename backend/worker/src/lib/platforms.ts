@@ -1,4 +1,4 @@
-// Order: color groups — blues → reds → gradient → blacks (visually consistent everywhere)
+// Order: color groups - blues → reds → gradient → blacks (visually consistent everywhere)
 import { FACEBOOK_PAGE_SCOPES } from "./facebook-scopes.js";
 
 export const PLATFORMS = [
@@ -75,7 +75,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "TIKTOK_CLIENT_SECRET",
     authUrl: "https://www.tiktok.com/v2/auth/authorize/",
     tokenUrl: "https://open.tiktokapis.com/v2/oauth/token/",
-    // Login Kit + Content Posting API only — do not add user.info.profile (separate 2-week review).
+    // Login Kit + Content Posting API only - do not add user.info.profile (separate 2-week review).
     scope: "user.info.basic,video.upload,video.publish",
   },
   facebook: {

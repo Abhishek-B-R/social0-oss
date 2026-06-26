@@ -28,7 +28,10 @@ export function FreePostsBanner({ remaining, limit }: FreePostsBannerProps) {
         <span className="font-medium">
           {remaining}/{limit} free posts remaining
         </span>
-        <span className="text-text-muted"> — lifetime limit on the free plan.</span>
+        <span className="text-text-muted">
+          {" "}
+          - lifetime limit on the free plan.
+        </span>
       </p>
       <Link
         href="/dashboard/billing"

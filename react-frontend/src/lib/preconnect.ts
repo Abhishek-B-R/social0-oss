@@ -29,7 +29,7 @@ export const PRE_CONNECT: Record<
   tiktok: {
     title: "Connect TikTok",
     checkmark: "Must be a Business or Creator profile",
-    info: "Connect a TikTok Creator or Business profile to schedule posts, manage comments and more.\n\nRequirements:\n• Must be a Business or Creator profile\n• Account must be older than 48 hours\n\nTikTok does not support logging in to multiple accounts at once on web. To connect multiple accounts:\n1. Log in to the account you wish to connect (same browser)\n2. Press Connect below\n3. Log out and log in to the other account\n4. Connect again — repeat for each account.",
+    info: "Connect a TikTok Creator or Business profile to schedule posts, manage comments and more.\n\nRequirements:\n• Must be a Business or Creator profile\n• Account must be older than 48 hours\n\nTikTok does not support logging in to multiple accounts at once on web. To connect multiple accounts:\n1. Log in to the account you wish to connect (same browser)\n2. Press Connect below\n3. Log out and log in to the other account\n4. Connect again - repeat for each account.",
   },
   twitter_x: {
     title: "Connect Twitter",

@@ -10,6 +10,7 @@ import { SubscriptionSync } from "@/components/dashboard/SubscriptionSync";
 import { GuestBanner } from "@/components/dashboard/GuestBanner";
 import { FreePostsBanner } from "@/components/dashboard/FreePostsBanner";
 import { ConnectAccountsBanner } from "@/components/dashboard/ConnectAccountsBanner";
+import { LegalConsentGate } from "@/components/auth/LegalConsentGate";
 import { useSession } from "@/lib/auth-client";
 import { rpc } from "@/lib/rpc";
 import { getOnboardingStatus, type OnboardingStatus } from "@/actions/onboarding";
@@ -103,6 +104,7 @@ export function DashboardLayout() {
       </main>
       <DashboardBottomNav />
       {session && <DevScheduledPostPoller />}
+      {session && <LegalConsentGate />}
     </div>
   );
 }

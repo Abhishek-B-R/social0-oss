@@ -1,5 +1,5 @@
 /**
- * TikTok OAuth connect helpers — scopes: user.info.basic,video.upload,video.publish only.
+ * TikTok OAuth connect helpers - scopes: user.info.basic,video.upload,video.publish only.
  */
 
 const OPEN_ID_RE = /^[a-f0-9-]{20,}$/i;
@@ -19,7 +19,9 @@ export type TikTokOAuthTokens = {
 };
 
 /** Normalize TikTok token endpoint JSON (nested under `data` or flat). */
-export function parseTikTokTokenResponse(raw: unknown): TikTokOAuthTokens | null {
+export function parseTikTokTokenResponse(
+  raw: unknown,
+): TikTokOAuthTokens | null {
   if (!raw || typeof raw !== "object") return null;
   const root = raw as Record<string, unknown>;
   const data = (root.data ?? root) as Record<string, unknown>;
@@ -97,7 +99,9 @@ export async function fetchTikTokConnectProfile(
         },
       );
 
-      const body = (await response.json().catch(() => ({}))) as TikTokUserInfoBody;
+      const body = (await response
+        .json()
+        .catch(() => ({}))) as TikTokUserInfoBody;
       const errCode = body.error?.code;
       if (errCode && errCode !== "ok") {
         console.error("[TikTok] userinfo error:", {
@@ -141,7 +145,10 @@ export async function resolveTikTokConnectUser(
   | { ok: false; reason: "missing_basic_scope" | "profile_fetch_failed" }
 > {
   if (!tiktokTokenHasBasicScope(tokens.scope)) {
-    console.error("[TikTok] token missing user.info.basic scope:", tokens.scope);
+    console.error(
+      "[TikTok] token missing user.info.basic scope:",
+      tokens.scope,
+    );
     return { ok: false, reason: "missing_basic_scope" };
   }
 

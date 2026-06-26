@@ -21,10 +21,10 @@
 ### OAuth & Platform Connections
 
 - **Facebook OAuth**: Full Page OAuth (`/api/connect/facebook`), callback, token exchange. Multiple Pages → selection page `/dashboard/connect/facebook/select`; single Page saves directly. Uses `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` (same Meta app as Instagram/Threads).
-- **Instagram: two connection methods**: (1) **Connect via Instagram** — existing direct OAuth; `platformMetadata.connectionMethod: 'direct'`. (2) **Connect via Facebook Page** — modal choice → Facebook OAuth (scopes: `instagram_basic`, `instagram_content_publish`, `pages_show_list`, `pages_read_engagement`) → callback fetches Pages, checks `instagram_business_account` per Page, fetches Instagram profile → one account saves directly; multiple → `/dashboard/connect/instagram-facebook/select` → `POST /api/connect/instagram-facebook/connect-page` with `platformMetadata: { facebookPageId, instagramBusinessAccountId, connectionMethod: 'facebook-page' }`. Routes: `/api/connect/instagram-facebook`, callback, select (GET), connect-page (POST). UI: `InstagramConnectionModal` (two cards).
+- **Instagram: two connection methods**: (1) **Connect via Instagram** - existing direct OAuth; `platformMetadata.connectionMethod: 'direct'`. (2) **Connect via Facebook Page** - modal choice → Facebook OAuth (scopes: `instagram_basic`, `instagram_content_publish`, `pages_show_list`, `pages_read_engagement`) → callback fetches Pages, checks `instagram_business_account` per Page, fetches Instagram profile → one account saves directly; multiple → `/dashboard/connect/instagram-facebook/select` → `POST /api/connect/instagram-facebook/connect-page` with `platformMetadata: { facebookPageId, instagramBusinessAccountId, connectionMethod: 'facebook-page' }`. Routes: `/api/connect/instagram-facebook`, callback, select (GET), connect-page (POST). UI: `InstagramConnectionModal` (two cards).
 - **OAuth redirect fix**: Callback was sometimes redirecting to an object → 404 / `oauth_failed`. All redirects now use `safeRedirect(url, fallback)` so only string URLs are passed to `redirect()`.
 - **Pinterest / YouTube / LinkedIn**: Pinterest token exchange (Basic Auth + form body); scope `user_accounts:read`. YouTube scope `userinfo.profile`, profile fallbacks. LinkedIn scope `w_member_social`, profile fallbacks. **Note:** Pinterest callback can return 401 on token exchange in some environments (see Known Issues).
-- **BYOK**: **Medium** (`/api/connect/medium/byok`), **Hashnode** (`/api/connect/hashnode/byok`), **Dev.to** (`/api/connect/devto/byok`) — users paste tokens/keys; no server env. `.env.example` updated with Facebook and BYOK notes.
+- **BYOK**: **Medium** (`/api/connect/medium/byok`), **Hashnode** (`/api/connect/hashnode/byok`), **Dev.to** (`/api/connect/devto/byok`) - users paste tokens/keys; no server env. `.env.example` updated with Facebook and BYOK notes.
 
 ### Automatic OAuth Token Refresh (Feb 2026)
 
@@ -35,7 +35,7 @@
 
 ### TikTok Photo Posts (Feb 2026)
 
-- **Photo vs video**: In `publishToTikTok` (`lib/publish-platform.ts`), media type is detected — if the post has only images (no video), the **photo post** flow runs; if video is present, the existing video flow runs.
+- **Photo vs video**: In `publishToTikTok` (`lib/publish-platform.ts`), media type is detected - if the post has only images (no video), the **photo post** flow runs; if video is present, the existing video flow runs.
 - **Photo endpoint**: `POST /v2/post/publish/content/init/` with `media_type: "PHOTO"`, `post_mode: "MEDIA_UPLOAD"` (used for unaudited apps; DIRECT_POST may be restricted for photo posts), `source_info.source: "PULL_FROM_URL"`, `photo_images: [urls]`, `photo_cover_index: 0` (0-based). Post info includes privacy_level, title, description, disable_comment (no duet/stitch for photos).
 - **Validation**: PNG images rejected with a clear error (TikTok supports JPG/JPEG/WEBP only). Max 35 images per post. Min dimensions 360×360, aspect ratio 1:3–3:1.
 - **Image processing** (`lib/tiktok-photo-process.ts`): Before calling the TikTok API, each image is processed with **sharp**: download from R2 URL → validate dimensions and aspect ratio → resize (scale up if shortest side &lt; 640px to 640; scale down if any side &gt; 4096px) → convert to JPEG quality 85 → re-upload to R2 with **-tiktok-processed** suffix → use the new R2 URL in `photo_images`. Final dimensions and file size (bytes) are logged before upload. R2 helpers: `getR2KeyFromUrl`, `getR2PublicBaseUrl` in `lib/r2.ts`.
@@ -48,8 +48,8 @@
   - **New post page** (`/dashboard/create`): Text area for content, platform selector (only connected accounts), “Save as draft” option, Create post / Save draft actions. Uses server action to create post and `post_publications` (pending) for selected accounts.
   - **Posts list** (`/dashboard/posts`): Lists all posts for the user with status badge, created date, scheduled time (if set), platform count, and “View” link when a publication has a platform URL.
 - **Create post flow**
-  - **Server action** (`app/actions/posts.ts`): `createPost(content, selectedAccountIds, asDraft)` — inserts into `posts` (draft or scheduled), then inserts one `post_publications` row per selected connected account with status `pending`. Revalidates dashboard and posts paths.
-- **Media upload API**: `POST /api/media/upload` — auth, multipart `file`, type/size validation, `media_uploads` row; CDN `url` TBD.
+  - **Server action** (`app/actions/posts.ts`): `createPost(content, selectedAccountIds, asDraft)` - inserts into `posts` (draft or scheduled), then inserts one `post_publications` row per selected connected account with status `pending`. Revalidates dashboard and posts paths.
+- **Media upload API**: `POST /api/media/upload` - auth, multipart `file`, type/size validation, `media_uploads` row; CDN `url` TBD.
 - **Other**: `frontend/.next` was committed earlier; removed from Git index so `.gitignore` applies.
 
 **Next suggested steps:** Wire media IDs into post creation, CDN/storage for uploads, then publishing engine (platform formatters + API calls).
@@ -58,7 +58,7 @@
 
 - **Content types** (`frontend/lib/content-types.ts`): Defines post types (text, image, video, blog, threads, collection) and each type’s `platforms` array. The Video Post form and other type-specific forms only show platforms listed for that content type.
 - **Video content type**: Supports Facebook, Bluesky, X (Twitter), LinkedIn, Threads, YouTube, TikTok, Instagram, and **Pinterest**. Pinterest was added so users can create video posts and publish video pins from the Video Post form.
-- **Pinterest publishing** (`lib/publish-platform.ts` — `publishToPinterest`): Supports both **image pins** and **video pins**. If the post has video media, the publisher uses Pinterest’s `media_source` with `source_type: "video_url"` and the video URL; otherwise it creates an image pin with `source_type: "image_url"`. Video URLs must be publicly accessible for Pinterest’s API.
+- **Pinterest publishing** (`lib/publish-platform.ts` - `publishToPinterest`): Supports both **image pins** and **video pins**. If the post has video media, the publisher uses Pinterest’s `media_source` with `source_type: "video_url"` and the video URL; otherwise it creates an image pin with `source_type: "image_url"`. Video URLs must be publicly accessible for Pinterest’s API.
 
 ---
 
@@ -209,7 +209,7 @@ The platform supports OAuth 2.0 connections for the following platforms:
 - ✅ **Posts List**: `/dashboard/posts` lists all user posts with status, date, platform count, and link to view published post
 - ✅ **Create Post Server Action**: Inserts post + `post_publications` rows for selected accounts (status pending)
 - ⚠️ **Post Editor**: Edit existing posts not yet implemented
-- ✅ **Media Upload API**: `POST /api/media/upload` — auth, validation (image/video types & size), DB record creation; CDN/storage URL still to be wired
+- ✅ **Media Upload API**: `POST /api/media/upload` - auth, validation (image/video types & size), DB record creation; CDN/storage URL still to be wired
 
 ### 2. Publishing System
 
@@ -296,7 +296,7 @@ The platform is designed to support **5 different post types**, but none are cur
 
 ### 2. Media Management System
 
-- ✅ **File Upload API**: `POST /api/media/upload` — accepts multipart file, validates type/size, creates `media_uploads` record (url/CDN TBD)
+- ✅ **File Upload API**: `POST /api/media/upload` - accepts multipart file, validates type/size, creates `media_uploads` record (url/CDN TBD)
 - ❌ **Media Processing**: Image compression, video transcoding
 - ❌ **CDN Integration**: CloudFront/R2 CDN setup
 - ❌ **Media Library UI**: Browse and manage uploaded media
@@ -448,20 +448,20 @@ The platform is designed to support **5 different post types**, but none are cur
 
 ## 📊 Platform Support Matrix
 
-| Platform    | OAuth Status | Text | Images | Video | Threads | Blogs | Notes                              |
-| ----------- | ------------ | ---- | ------ | ----- | ------- | ----- | ---------------------------------- |
-| LinkedIn    | ✅ Complete  | ✅   | ✅     | ✅    | ❌      | 🔮    | Articles planned                   |
-| Facebook    | ✅ Complete  | ✅   | ✅     | ✅    | ❌      | ❌    | Page-only; selection if multiple   |
-| Instagram   | ✅ Complete  | ✅   | ✅     | ✅    | ❌      | ❌    | Direct OAuth or via Facebook Page  |
-| YouTube     | ✅ Complete  | ✅   | ❌     | ✅    | ❌      | ❌    | Video-only platform                |
-| Pinterest   | ✅ Complete  | ✅   | ✅     | ✅    | ❌      | ❌    | Image and video pins               |
+| Platform    | OAuth Status | Text | Images | Video | Threads | Blogs | Notes                                              |
+| ----------- | ------------ | ---- | ------ | ----- | ------- | ----- | -------------------------------------------------- |
+| LinkedIn    | ✅ Complete  | ✅   | ✅     | ✅    | ❌      | 🔮    | Articles planned                                   |
+| Facebook    | ✅ Complete  | ✅   | ✅     | ✅    | ❌      | ❌    | Page-only; selection if multiple                   |
+| Instagram   | ✅ Complete  | ✅   | ✅     | ✅    | ❌      | ❌    | Direct OAuth or via Facebook Page                  |
+| YouTube     | ✅ Complete  | ✅   | ❌     | ✅    | ❌      | ❌    | Video-only platform                                |
+| Pinterest   | ✅ Complete  | ✅   | ✅     | ✅    | ❌      | ❌    | Image and video pins                               |
 | TikTok      | ✅ Complete  | ✅   | ✅     | ✅    | ❌      | ❌    | Video and photo posts; sharp processing for images |
-| X (Twitter) | ✅ Complete  | ✅   | ✅     | ✅    | ✅      | 🔮    | X Articles planned                 |
-| Threads     | ✅ Complete  | ✅   | ✅     | ✅    | ✅      | ❌    | Native threads                     |
-| Bluesky     | ⚠️ BYOK      | ✅   | ✅     | ✅    | 🔮      | ❌    | App password; OAuth when available |
-| Medium      | ⚠️ BYOK      | ✅   | ✅     | ❌    | ❌      | ✅    | Integration token                  |
-| Hashnode    | ⚠️ BYOK      | ✅   | ✅     | ❌    | ❌      | ✅    | API key + Publication ID           |
-| Dev.to      | ⚠️ BYOK      | ✅   | ✅     | ❌    | ❌      | ✅    | API key                            |
+| X (Twitter) | ✅ Complete  | ✅   | ✅     | ✅    | ✅      | 🔮    | X Articles planned                                 |
+| Threads     | ✅ Complete  | ✅   | ✅     | ✅    | ✅      | ❌    | Native threads                                     |
+| Bluesky     | ⚠️ BYOK      | ✅   | ✅     | ✅    | 🔮      | ❌    | App password; OAuth when available                 |
+| Medium      | ⚠️ BYOK      | ✅   | ✅     | ❌    | ❌      | ✅    | Integration token                                  |
+| Hashnode    | ⚠️ BYOK      | ✅   | ✅     | ❌    | ❌      | ✅    | API key + Publication ID                           |
+| Dev.to      | ⚠️ BYOK      | ✅   | ✅     | ❌    | ❌      | ✅    | API key                                            |
 
 **Legend:**
 
@@ -582,7 +582,7 @@ FACEBOOK_CLIENT_SECRET=<meta-app-secret>
 
 **Where to get them:** Meta (Facebook/Instagram/Threads): [developers.facebook.com](https://developers.facebook.com/apps/) → App → Settings → Basic (App ID, App Secret). Same app can be used for Facebook, Instagram (via Page), and Threads.
 
-**BYOK (no app env vars):** Medium, Hashnode, Dev.to, Bluesky — users add their own keys/tokens in the dashboard.
+**BYOK (no app env vars):** Medium, Hashnode, Dev.to, Bluesky - users add their own keys/tokens in the dashboard.
 
 ---
 

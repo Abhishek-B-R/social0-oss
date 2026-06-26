@@ -7,7 +7,7 @@ import {
   IconClock,
   IconCircleCheck,
   IconFileText,
-  // IconUsers, // Teams — re-enable when /dashboard/teams ships
+  // IconUsers, // Teams - re-enable when /dashboard/teams ships
   IconCreditCard,
   IconMessageCircle,
   IconTool,
@@ -68,7 +68,6 @@ export default async function MorePage() {
           planLabel={planLabel}
         />
       )}
-
 
       <section className="mt-6">
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-text-muted">

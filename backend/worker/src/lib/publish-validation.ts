@@ -48,7 +48,9 @@ export function validateTitleLength(title: string): string | null {
 }
 
 /** Validate mediaIds array size to prevent abuse. */
-export function validateMediaCount(mediaIds: string[] | null | undefined): string | null {
+export function validateMediaCount(
+  mediaIds: string[] | null | undefined,
+): string | null {
   if (!mediaIds?.length) return null;
   if (mediaIds.length > MAX_MEDIA_IDS) {
     return `Maximum ${MAX_MEDIA_IDS} media items per post.`;
@@ -76,7 +78,7 @@ export function validateCollectionMedia(
         return {
           valid: true,
           warning:
-            "X (Twitter) and Bluesky support max 4 attachments — only the first 4 will be published.",
+            "X (Twitter) and Bluesky support max 4 attachments - only the first 4 will be published.",
         };
       }
       return { valid: true, warning: null };
@@ -85,7 +87,7 @@ export function validateCollectionMedia(
       if (count > 10) {
         return {
           valid: true,
-          warning: `${platform === "instagram" ? "Instagram" : "Threads"} supports max 10 carousel items — only the first 10 will be published.`,
+          warning: `${platform === "instagram" ? "Instagram" : "Threads"} supports max 10 carousel items - only the first 10 will be published.`,
         };
       }
       return { valid: true, warning: null };
@@ -123,14 +125,21 @@ export function isAllowedMediaUrl(
 }
 
 /** Truncate text to a max length with optional ellipsis. */
-export function truncate(text: string, maxLen: number, ellipsis = "..."): string {
+export function truncate(
+  text: string,
+  maxLen: number,
+  ellipsis = "...",
+): string {
   const t = text.trim();
   if (t.length <= maxLen) return t;
   return t.slice(0, maxLen - ellipsis.length) + ellipsis;
 }
 
 /** Get allowed origins for media URLs from env (SSRF allowlist). */
-export function getAllowedMediaOrigins(): { appUrl: string; r2PublicUrl?: string | null } {
+export function getAllowedMediaOrigins(): {
+  appUrl: string;
+  r2PublicUrl?: string | null;
+} {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const r2PublicUrl = process.env.R2_PUBLIC_URL ?? null;
   return { appUrl, r2PublicUrl };

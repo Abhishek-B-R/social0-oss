@@ -18,7 +18,7 @@ import {
 
 /**
  * Storytelling loop (seconds). The beam ease is a steep ease-out, so the
- * visible head lands at ~60% of each leg's duration — pulse/glow are timed
+ * visible head lands at ~60% of each leg's duration - pulse/glow are timed
  * to those arrivals, not to the end of the leg.
  *   0.0        beam leaves the user
  *   ~0.8 – 1.4 Social0 pulses as the post arrives
@@ -103,7 +103,7 @@ export function FlowAnimation({ className }: { className?: string }) {
         className,
       )}
     >
-      {/* Fake browser bar — gives the diagram product context */}
+      {/* Fake browser bar - gives the diagram product context */}
       <div className="flex items-center gap-2 border-b border-white/6 bg-[#141414] px-4 py-3 dark:border-border dark:bg-[#F0EEE9]">
         <div className="flex gap-1.5">
           <div className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]" />

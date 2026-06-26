@@ -84,7 +84,9 @@ export async function getSubscriptionForUser(
     customerId: row?.customerId ?? null,
     hasUsedTrial,
     pendingPlanTier,
-    cancelAtPeriodEnd: cancelAtPeriodEnd && (tier === "starter" || tier === "growth" || tier === "pro"),
+    cancelAtPeriodEnd:
+      cancelAtPeriodEnd &&
+      (tier === "starter" || tier === "growth" || tier === "pro"),
   };
 }
 
@@ -113,7 +115,7 @@ export async function setSubscription(
   const isPaidTier =
     data.tier === "starter" || data.tier === "growth" || data.tier === "pro";
 
-  // Single UPSERT — replaces a SELECT + conditional INSERT/UPDATE (was 2 queries)
+  // Single UPSERT - replaces a SELECT + conditional INSERT/UPDATE (was 2 queries)
   await db
     .insert(userSettings)
     .values({
@@ -133,7 +135,7 @@ export async function setSubscription(
         subscriptionExpiresAt: data.expiresAt,
         subscriptionId: data.subscriptionId,
         customerId: data.customerId,
-        // Preserve hasUsedTrial once set — never downgrade to false
+        // Preserve hasUsedTrial once set - never downgrade to false
         hasUsedTrial: sql`GREATEST(${userSettings.hasUsedTrial}::int, ${isPaidTier ? 1 : 0}::int)::boolean`,
         subscriptionCancelAtPeriodEnd: false,
       },

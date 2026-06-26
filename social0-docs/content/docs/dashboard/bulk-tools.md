@@ -10,7 +10,7 @@ Bulk tools let you upload many images or many videos at once and schedule them (
 ## How to open bulk tools
 
 1. In the Dashboard, look at the left sidebar.
-2. Under the **Create** section, you'll see **Bulk tools** as a visible option—just click it.
+2. Under the **Create** section, you'll see **Bulk tools** as a visible option-just click it.
 3. Then pick either **Bulk Image Upload** or **Bulk Video Upload** from the options provided.
 
 If you don’t see them, your plan may not include bulk tools. Go to **Billing** to upgrade to Growth or Pro.
@@ -44,4 +44,4 @@ If you don’t see them, your plan may not include bulk tools. Go to **Billing**
 A: Bulk tools are on Growth and Pro. Upgrade in **Billing** and the option will work.
 
 **Q: Can I use different captions for each image?**  
-A: Yes, you can use different captions for each image or video—just add them in the per-file caption fields during upload.
+A: Yes, you can use different captions for each image or video-just add them in the per-file caption fields during upload.

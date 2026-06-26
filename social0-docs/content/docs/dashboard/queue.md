@@ -5,7 +5,7 @@ description: Where queue slots are set and how scheduled posts use them.
 
 ## Overview
 
-The **queue** lets you define time slots (e.g. “weekdays at 9 AM”) and assign scheduled posts to those slots instead of picking an exact time for each post. There isn’t a separate “Queue” page that lists only queued posts—you manage slots in **Settings** → **Queue**, and when you schedule a post you choose whether to give it a specific time or add it to a slot. Queued posts show up in your main **Posts** list with a **Queued** label.
+The **queue** lets you define time slots (e.g. “weekdays at 9 AM”) and assign scheduled posts to those slots instead of picking an exact time for each post. There isn’t a separate “Queue” page that lists only queued posts-you manage slots in **Settings** → **Queue**, and when you schedule a post you choose whether to give it a specific time or add it to a slot. Queued posts show up in your main **Posts** list with a **Queued** label.
 
 ## How to set up queue slots
 
@@ -25,7 +25,7 @@ Those slots are now available when you schedule a post.
 
 ## Where to see queued posts
 
-- **Dashboard** → **Posts** — All your posts are here. Queued ones have a **Queued** badge and the slot they’re in. Open any post to edit or cancel it.
+- **Dashboard** → **Posts** - All your posts are here. Queued ones have a **Queued** badge and the slot they’re in. Open any post to edit or cancel it.
 
 ## Tips
 

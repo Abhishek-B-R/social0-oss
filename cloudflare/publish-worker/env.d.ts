@@ -1,4 +1,4 @@
-/** Secrets / vars — set via `wrangler secret put` or `.dev.vars`. */
+/** Secrets / vars - set via `wrangler secret put` or `.dev.vars`. */
 interface Env {
   PUBLISH_HMAC_SECRET: string;
   ENCRYPTION_KEY: string;

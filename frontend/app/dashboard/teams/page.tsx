@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// Teams page disabled until the feature is ready — restore below when shipping.
+// Teams page disabled until the feature is ready - restore below when shipping.
 // import DocsInfoIcon from "@/components/info-icon";
 // import { DOCS_TEAMS_URL } from "@/lib/docs-url";
 //

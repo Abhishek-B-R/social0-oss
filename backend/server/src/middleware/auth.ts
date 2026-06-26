@@ -3,6 +3,13 @@ import type { QueuedResponse } from "@social0/shared";
 import { getSessionFromRequest } from "../lib/session.js";
 import { resolveUserIdFromApiKey } from "../lib/api-keys.js";
 
+function devUserIdFromHeader(request: FastifyRequest): string | null {
+  if (process.env.NODE_ENV === "production") return null;
+  const header = request.headers["x-user-id"];
+  if (typeof header === "string" && header.length > 0) return header;
+  return null;
+}
+
 export async function requireUserId(
   request: FastifyRequest,
 ): Promise<string | null> {
@@ -14,9 +21,15 @@ export async function requireUserId(
   );
   if (apiUser) return apiUser;
 
-  const header = request.headers["x-user-id"];
-  if (typeof header === "string" && header.length > 0) return header;
-  return null;
+  return devUserIdFromHeader(request);
+}
+
+/** Session cookie auth only (RPC / BFF-style routes). */
+export async function requireSessionUserId(
+  request: FastifyRequest,
+): Promise<string | null> {
+  const session = await getSessionFromRequest(request);
+  return session?.user?.id ?? null;
 }
 
 export function unauthorized() {
@@ -29,7 +42,7 @@ export function accepted(jobId: string, queue: string): QueuedResponse {
 
 export function notImplemented(route: string) {
   return {
-    error: "Not implemented — wire DB/services from frontend",
+    error: "Not implemented - wire DB/services from frontend",
     route,
     code: "NOT_IMPLEMENTED",
   };

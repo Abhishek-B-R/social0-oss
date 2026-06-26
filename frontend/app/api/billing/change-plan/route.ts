@@ -8,9 +8,7 @@ import { userSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { PLAN_IDS } from "@/lib/plans";
 import { env } from "@/lib/env";
-import {
-  listOpenDodoSubscriptions,
-} from "@/lib/billing-guards";
+import { listOpenDodoSubscriptions } from "@/lib/billing-guards";
 
 export const dynamic = "force-dynamic";
 
@@ -71,7 +69,10 @@ export async function POST(request: Request) {
 
   if (!row?.subscriptionId) {
     if (userEmail) {
-      const openSubs = await listOpenDodoSubscriptions(userEmail, row?.customerId);
+      const openSubs = await listOpenDodoSubscriptions(
+        userEmail,
+        row?.customerId,
+      );
       if (openSubs.length > 0) {
         const hasActive = openSubs.some((s) => s.status === "active");
         return NextResponse.json(
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
 
   try {
     if (scheduleAtPeriodEnd) {
-      // Don't call Dodo changePlan — defer downgrade until renewal. Store pending
+      // Don't call Dodo changePlan - defer downgrade until renewal. Store pending
       // locally; webhook handler will call changePlan on subscription.renewed.
       // Replace cancel with downgrade: clear cancel flag so only one intent applies.
       if (reason.length > 0) {
@@ -123,7 +124,10 @@ export async function POST(request: Request) {
 
     // Immediate upgrade: verify subscription is still active in Dodo before changing.
     // IMPORTANT: Trial → upgrade must go through checkout so a payment is actually collected.
-    let subscription: { status?: string; previous_billing_date?: string | null } | null;
+    let subscription: {
+      status?: string;
+      previous_billing_date?: string | null;
+    } | null;
     try {
       subscription = await client.subscriptions.retrieve(row.subscriptionId);
     } catch {
@@ -179,7 +183,10 @@ export async function POST(request: Request) {
     );
 
     // Only log in non-production to avoid leaking billing data
-    if (process.env.BILLING_DEBUG === "1" && process.env.NODE_ENV !== "production") {
+    if (
+      process.env.BILLING_DEBUG === "1" &&
+      process.env.NODE_ENV !== "production"
+    ) {
       console.log(
         "[billing/change-plan] UPGRADE RESPONSE:",
         JSON.stringify(dodoResponse, null, 2),

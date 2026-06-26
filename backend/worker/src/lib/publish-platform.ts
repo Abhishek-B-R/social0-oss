@@ -20,7 +20,10 @@ import {
   processImageForTikTok,
   TikTokImageError,
 } from "./tiktok-photo-process.js";
-import { resolveTikTokProfileUrl, resolveInstagramProfileUrl } from "./platform-view-url.js";
+import {
+  resolveTikTokProfileUrl,
+  resolveInstagramProfileUrl,
+} from "./platform-view-url.js";
 import { fetchWithTimeout } from "./fetch-with-timeout.js";
 import sharp from "sharp";
 
@@ -106,7 +109,7 @@ function threadsFormBody(
 
 /**
  * Published media id from POST .../threads_publish (Graph JSON).
- * Prefer string ids — large numeric JSON ids can lose precision in JS.
+ * Prefer string ids - large numeric JSON ids can lose precision in JS.
  */
 function parseThreadsPublishId(data: unknown): string | null {
   if (data == null || typeof data !== "object") return null;
@@ -119,7 +122,8 @@ function parseThreadsPublishId(data: unknown): string | null {
   const nested = o.data;
   if (nested != null && typeof nested === "object") {
     const inner = (nested as Record<string, unknown>).id;
-    if (typeof inner === "string" && inner.trim().length > 0) return inner.trim();
+    if (typeof inner === "string" && inner.trim().length > 0)
+      return inner.trim();
   }
   return null;
 }
@@ -606,15 +610,11 @@ async function prepareImageForPlatform(
   }
 
   let quality = 85;
-  let output = await sharp(buf)
-    .jpeg({ quality, mozjpeg: true })
-    .toBuffer();
+  let output = await sharp(buf).jpeg({ quality, mozjpeg: true }).toBuffer();
 
   while (output.length > limit && quality >= 30) {
     quality -= 10;
-    output = await sharp(buf)
-      .jpeg({ quality, mozjpeg: true })
-      .toBuffer();
+    output = await sharp(buf).jpeg({ quality, mozjpeg: true }).toBuffer();
   }
 
   if (output.length > limit) {
@@ -896,7 +896,7 @@ async function publishToBluesky(
     )?.["contentType"];
     if (contentType === "collection") {
       const err =
-        "Collection posts not supported on Bluesky — use Image Post or Video Post instead.";
+        "Collection posts not supported on Bluesky - use Image Post or Video Post instead.";
       return { status: "failed", lastError: err, error: err };
     }
 
@@ -1284,7 +1284,7 @@ async function publishToBluesky(
       createdAt: new Date().toISOString(),
     };
 
-    // Add video embed if present (takes priority over images) — but only when there are no images.
+    // Add video embed if present (takes priority over images) - but only when there are no images.
     if (videoBlob && imageBlobs.length === 0) {
       record.embed = {
         $type: "app.bsky.embed.video",
@@ -1392,8 +1392,15 @@ async function publishToYouTube(
     return { status: "failed", lastError: hint, error: "No video" };
   }
 
-  const videoMeta = (post.metadata as { video?: { durationSeconds?: number; isVertical?: boolean } })?.video;
-  const durationSeconds = typeof videoMeta?.durationSeconds === "number" ? videoMeta.durationSeconds : 0;
+  const videoMeta = (
+    post.metadata as {
+      video?: { durationSeconds?: number; isVertical?: boolean };
+    }
+  )?.video;
+  const durationSeconds =
+    typeof videoMeta?.durationSeconds === "number"
+      ? videoMeta.durationSeconds
+      : 0;
   const isVertical = videoMeta?.isVertical === true;
   const isShort = durationSeconds <= YOUTUBE_SHORT_MAX_DURATION && isVertical;
 
@@ -1414,17 +1421,28 @@ async function publishToYouTube(
   }
 
   const videoMimeType = videoEntry.mimeType || "video/mp4";
-  const meta = post.metadata as { youtube?: { title?: string }; video?: { durationSeconds?: number; isVertical?: boolean } } | undefined;
+  const meta = post.metadata as
+    | {
+        youtube?: { title?: string };
+        video?: { durationSeconds?: number; isVertical?: boolean };
+      }
+    | undefined;
   const userTitle = meta?.youtube?.title?.trim();
   const fallbackTitle = truncate(post.finalContent?.trim() ?? "Short", 95);
   const title = isShort
-    ? (userTitle ? truncate(`${userTitle} #Shorts`, 100) : truncate(`${fallbackTitle} #Shorts`, 100))
-    : (userTitle ? truncate(userTitle, 100) : truncate(fallbackTitle, 100));
+    ? userTitle
+      ? truncate(`${userTitle} #Shorts`, 100)
+      : truncate(`${fallbackTitle} #Shorts`, 100)
+    : userTitle
+      ? truncate(userTitle, 100)
+      : truncate(fallbackTitle, 100);
   const description = truncate(post.finalContent?.trim() ?? "", 5000);
   const snippet = {
     title,
     description: isShort
-      ? (description.includes("#Shorts") ? description : `${description}\n\n#Shorts`)
+      ? description.includes("#Shorts")
+        ? description
+        : `${description}\n\n#Shorts`
       : description,
   };
   const metadata = {
@@ -2032,7 +2050,10 @@ async function publishToInstagram(
     }
 
     if (containerData.error) {
-      console.warn("[Instagram Reels] Container response included error/warning:", containerData.error);
+      console.warn(
+        "[Instagram Reels] Container response included error/warning:",
+        containerData.error,
+      );
     }
     console.log("✅ Instagram container created:", {
       containerId: containerData.id,
@@ -2508,8 +2529,7 @@ async function publishToTikTok(
     };
 
     if (!postAsDraft) {
-      photoPostInfo.auto_add_music =
-        tiktokOptions?.autoAddMusic ?? true;
+      photoPostInfo.auto_add_music = tiktokOptions?.autoAddMusic ?? true;
     }
 
     const userPhotoTitle = (accountSettings as any).video_title?.trim();
@@ -2700,13 +2720,15 @@ async function publishToTikTok(
     return { statusRes, statusData };
   }
 
-  // Poll status; TikTok moderation can take a minute — cap wait so server actions finish.
+  // Poll status; TikTok moderation can take a minute - cap wait so server actions finish.
   for (let i = 0; i < TIKTOK_MAX_POLLS; i++) {
     if (i > 0) {
       await new Promise((r) => setTimeout(r, TIKTOK_POLL_INTERVAL_MS));
     }
     let statusRes: Response;
-    let statusData: Awaited<ReturnType<typeof fetchTikTokPublishStatus>>["statusData"];
+    let statusData: Awaited<
+      ReturnType<typeof fetchTikTokPublishStatus>
+    >["statusData"];
     try {
       ({ statusRes, statusData } = await fetchTikTokPublishStatus(publishId));
     } catch (err) {
@@ -2742,7 +2764,7 @@ async function publishToTikTok(
     }
   }
 
-  // TikTok accepted the upload but is still processing — don't block the UI/server action.
+  // TikTok accepted the upload but is still processing - don't block the UI/server action.
   console.warn(
     "[TikTok] Publish status still processing after poll cap; marking published",
     { publishId },
@@ -2876,7 +2898,7 @@ async function publishThreadsThread(
       };
     }
 
-    // Container ID from step 1 — do NOT use as reply_to_id; only the threads_publish response id is valid.
+    // Container ID from step 1 - do NOT use as reply_to_id; only the threads_publish response id is valid.
     const containerId = createData.id;
 
     // Step 2: Poll container status until FINISHED (Threads API requires container to be ready before publish)

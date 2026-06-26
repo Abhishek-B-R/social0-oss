@@ -1,5 +1,5 @@
 ---
-title: "Onboarding — You’re all set"
+title: "Onboarding - You’re all set"
 description: The final onboarding step before you start using the Dashboard.
 ---
 

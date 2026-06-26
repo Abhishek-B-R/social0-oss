@@ -5,6 +5,10 @@ import { verifyCronSecretFromAuthorizationHeader } from "../../lib/cron-auth.js"
 import { JOB_NAMES } from "@social0/shared";
 
 function verifyCronSecret(request: { headers: { authorization?: string | string[] } }) {
+  const expected = process.env.CRON_SECRET?.trim();
+  if (!expected) {
+    return false;
+  }
   return verifyCronSecretFromAuthorizationHeader(request.headers.authorization);
 }
 
