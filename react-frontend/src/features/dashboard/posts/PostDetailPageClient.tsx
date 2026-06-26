@@ -585,56 +585,58 @@ export function PostDetailPageClient({ postId }: { postId: string }) {
                   return (
                     <li
                       key={pub.connectedAccountId ?? pub.platform}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg-subtle px-3 py-2"
+                      className="rounded-xl border border-border bg-bg-subtle px-3 py-2"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <AccountAvatar
-                          accountId={pub.connectedAccountId ?? undefined}
-                          profileImageUrl={pub.profileImageUrl}
-                          username={pub.platformUsername}
-                          platform={pub.platform}
-                          isTwitterPremium={pub.isTwitterPremium ?? false}
-                          size="md"
-                        />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-text capitalize">
-                              {pub.platform.replace("_", " ")}
-                            </span>
-                            <span
-                              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${badge.className}`}
-                            >
-                              {badge.label}
-                            </span>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                          <AccountAvatar
+                            accountId={pub.connectedAccountId ?? undefined}
+                            profileImageUrl={pub.profileImageUrl}
+                            username={pub.platformUsername}
+                            platform={pub.platform}
+                            isTwitterPremium={pub.isTwitterPremium ?? false}
+                            size="md"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-medium text-text capitalize">
+                                {pub.platform.replace("_", " ")}
+                              </span>
+                              <span
+                                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${badge.className}`}
+                              >
+                                {badge.label}
+                              </span>
+                            </div>
                           </div>
-                          {pub.lastError && pub.status === "failed" && (
-                            <p className="mt-0.5 text-[11px] text-red-600 dark:text-red-400 line-clamp-4">
-                              {isTwitterPlatformId(pub.platform)
-                                ? enrichTwitterErrorForDisplay(pub.lastError)
-                                : pub.lastError}
-                            </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                          {viewUrl && pub.status === "published" && (
+                            <a
+                              href={viewUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 transition-colors"
+                            >
+                              View
+                            </a>
+                          )}
+                          {pub.status === "failed" && (
+                            <PublishButton
+                              postId={post.id}
+                              publicationId={pub.publicationId}
+                              label="Retry"
+                            />
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {viewUrl && pub.status === "published" && (
-                          <a
-                            href={viewUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 transition-colors"
-                          >
-                            View
-                          </a>
-                        )}
-                        {pub.status === "failed" && (
-                          <PublishButton
-                            postId={post.id}
-                            publicationId={pub.publicationId}
-                            label="Retry"
-                          />
-                        )}
-                      </div>
+                      {pub.lastError && pub.status === "failed" && (
+                        <p className="mt-2 text-xs leading-relaxed text-red-600 dark:text-red-400 break-words whitespace-pre-wrap">
+                          {isTwitterPlatformId(pub.platform)
+                            ? enrichTwitterErrorForDisplay(pub.lastError)
+                            : pub.lastError}
+                        </p>
+                      )}
                     </li>
                   );
                 })}

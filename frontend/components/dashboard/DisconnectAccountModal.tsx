@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -10,7 +9,7 @@ type DisconnectAccountModalProps = {
   onClose: () => void;
   accountId: string | null;
   accountLabel: string;
-  onDisconnected?: () => void;
+  onDisconnected?: (accountId: string) => void;
 };
 
 export function DisconnectAccountModal({
@@ -20,7 +19,6 @@ export function DisconnectAccountModal({
   accountLabel,
   onDisconnected,
 }: DisconnectAccountModalProps) {
-  const router = useRouter();
   const [disconnecting, setDisconnecting] = useState(false);
 
   const handleDisconnect = async () => {
@@ -36,8 +34,7 @@ export function DisconnectAccountModal({
         throw new Error(data.error || "Failed to disconnect");
       }
       onClose();
-      onDisconnected?.();
-      router.refresh();
+      onDisconnected?.(accountId);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to disconnect");
     } finally {

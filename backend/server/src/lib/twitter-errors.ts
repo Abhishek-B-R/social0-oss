@@ -212,6 +212,18 @@ export function isTwitterPlatformId(platform: string | null | undefined): boolea
  * SDK strings like "Request failed with code 403" without publish-time formatting.
  */
 export function enrichTwitterErrorForDisplay(message: string): string {
+  if (
+    /maxFileSizeExceeded|File size exceeds/i.test(message) ||
+    /maxFileSize(?:Bytes|Byes)/i.test(message)
+  ) {
+    const bytesMatch = message.match(
+      /(?:maxFileSize(?:Bytes|Byes)|exceeds)\D*(\d{5,})/i,
+    );
+    const bytes = bytesMatch ? parseInt(bytesMatch[1], 10) : 5_242_880;
+    const mb = (bytes / (1024 * 1024)).toFixed(bytes % (1024 * 1024) === 0 ? 0 : 1);
+    return `Image is too large for X (maximum ${mb} MB). Use a smaller or compressed image and try again.`;
+  }
+
   const httpStatus = parseHttpStatusFromMessage(message);
   return appendTwitter403DuplicateHint(message, httpStatus);
 }

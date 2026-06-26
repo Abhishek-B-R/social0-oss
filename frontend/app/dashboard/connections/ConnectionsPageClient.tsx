@@ -20,6 +20,22 @@ export function ConnectionsPageClient() {
   >(null);
   const fetchSeq = useRef(0);
 
+  const handleAccountDisconnected = useCallback((accountId: string) => {
+    setData((prev) => {
+      if (!prev) return prev;
+      const removed = prev.accounts.find((a) => a.id === accountId);
+      const accounts = prev.accounts.filter((a) => a.id !== accountId);
+      const accountLimit =
+        prev.accountLimit && removed && removed.isActive !== false
+          ? {
+              ...prev.accountLimit,
+              currentTotal: Math.max(0, prev.accountLimit.currentTotal - 1),
+            }
+          : prev.accountLimit;
+      return { ...prev, accounts, accountLimit };
+    });
+  }, []);
+
   /** Re-pulls accounts; silent (no skeleton) unless it's the initial load. */
   const refetch = useCallback(async () => {
     const seq = ++fetchSeq.current;
@@ -90,6 +106,7 @@ export function ConnectionsPageClient() {
       <ConnectionsList
         accounts={data.accounts}
         accountLimit={data.accountLimit}
+        onAccountDisconnected={handleAccountDisconnected}
         onAccountsChanged={refetch}
       />
       <p className="mt-4 text-sm text-text-muted">

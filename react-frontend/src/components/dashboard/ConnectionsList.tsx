@@ -67,12 +67,15 @@ export function ConnectionsList({
   accounts,
   accountLimit,
   requireAuth = false,
+  onAccountDisconnected,
   onAccountsChanged,
 }: {
   accounts: Account[];
   accountLimit?: AccountLimit;
   requireAuth?: boolean;
-  /** Called after an account is disconnected or tokens change so the parent can refetch. */
+  /** Optimistic UI update after disconnect — avoids full-page refresh. */
+  onAccountDisconnected?: (accountId: string) => void;
+  /** Background refetch after token/premium changes. */
   onAccountsChanged?: () => void;
 }) {
   const [disconnectAccountId, setDisconnectAccountId] = useState<string | null>(
@@ -114,7 +117,6 @@ export function ConnectionsList({
         return;
       }
       onAccountsChanged?.();
-      router.refresh();
     } catch (err) {
       setPremiumRefreshError(
         err instanceof Error ? err.message : "Failed to refresh premium status",
@@ -478,7 +480,7 @@ export function ConnectionsList({
         onClose={() => setDisconnectAccountId(null)}
         accountId={disconnectAccountId}
         accountLabel={disconnectLabel}
-        onDisconnected={onAccountsChanged}
+        onDisconnected={onAccountDisconnected}
       />
     </>
   );
