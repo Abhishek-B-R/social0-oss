@@ -50,7 +50,11 @@ export default {
       await queueBinding.send(req.job);
 
       return Response.json(
-        { status: "queued", priority: req.priority, platform: req.job.platform },
+        {
+          status: "queued",
+          priority: req.priority,
+          platform: req.job.platform,
+        },
         { status: 202 },
       );
     }
