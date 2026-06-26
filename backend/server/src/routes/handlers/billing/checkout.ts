@@ -6,6 +6,7 @@ import { PLAN_IDS } from "../../../lib/plans.js";
 import { resolveAppUrlFromRequest } from "../../../lib/app-url.js";
 import { env } from "../../../lib/env.js";
 import { checkoutLimiter, enforceRateLimit } from "../../../lib/ratelimit.js";
+import { sanitizeReturnToPath } from "../../../lib/safe-return-to.js";
 import {
   createCustomerPortalUrl,
   evaluateCheckoutEligibility,
@@ -93,10 +94,12 @@ export async function POST(request: Request) {
   }
 
   const appUrl = resolveAppUrlFromRequest(request);
-  const returnUrl =
-    successUrl && successUrl.startsWith("/")
-      ? `${appUrl}${successUrl}`
-      : `${appUrl}/dashboard/billing?success=1`;
+  const safeSuccessPath = successUrl
+    ? sanitizeReturnToPath(successUrl)
+    : null;
+  const returnUrl = safeSuccessPath
+    ? `${appUrl}${safeSuccessPath}`
+    : `${appUrl}/dashboard/billing?success=1`;
 
   try {
     const resolved = await resolveCheckoutSession({

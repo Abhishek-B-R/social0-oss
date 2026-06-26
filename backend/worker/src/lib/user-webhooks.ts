@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { and, eq } from "drizzle-orm";
+import { isSafeOutboundUrl } from "@social0/shared";
 import { db } from "../db/index.js";
 import { userWebhookSubscriptions } from "../db/schema.js";
 
@@ -20,7 +21,12 @@ export async function dispatchUserWebhooks(input: {
       ),
     );
 
-  const matching = subs.filter((s: WebhookSub) => s.events.includes(input.event));
+  const httpsOnly = process.env.NODE_ENV === "production";
+  const matching = subs.filter(
+    (s: WebhookSub) =>
+      s.events.includes(input.event) &&
+      isSafeOutboundUrl(s.url, { httpsOnly }),
+  );
   if (matching.length === 0) return;
 
   const body = JSON.stringify({

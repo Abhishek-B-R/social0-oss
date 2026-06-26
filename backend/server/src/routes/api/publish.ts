@@ -5,6 +5,7 @@ import {
   requireUserId,
   unauthorized,
 } from "../../middleware/auth.js";
+import { enforceRateLimit, publishLimiter } from "../../lib/ratelimit.js";
 import {
   createPublishTrackingId,
   enqueuePublishPost,
@@ -38,6 +39,11 @@ export async function registerPublishRoutes(app: FastifyInstance) {
   app.post("/publish", async (request, reply) => {
     const userId = await requireUserId(request);
     if (!userId) return reply.status(401).send(unauthorized());
+
+    const rate = await enforceRateLimit(publishLimiter, userId);
+    if (!rate.allowed) {
+      return reply.status(rate.status).send({ error: rate.error });
+    }
 
     const body = publishSchema.safeParse(request.body);
     if (!body.success) {

@@ -20,7 +20,10 @@ const envSchema = z
     UPSTASH_REDIS_URL: z.string().url().optional(),
     PORT: z.coerce.number().default(3001),
     HOST: z.string().default("0.0.0.0"),
-    ENCRYPTION_KEY: z.string().min(32),
+    ENCRYPTION_KEY: z
+      .string()
+      .length(64, "ENCRYPTION_KEY must be 64 hex characters (32 bytes)")
+      .regex(/^[0-9a-f]+$/i),
     RESEND_API_KEY: z.string().min(1),
     RESEND_FROM_EMAIL: z.string(),
     LINKEDIN_CLIENT_ID: z.string().optional(),
@@ -71,6 +74,20 @@ const envSchema = z
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV !== "production") return;
+    if (!data.CRON_SECRET?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "CRON_SECRET required in production",
+        path: ["CRON_SECRET"],
+      });
+    }
+    if (!data.ADMIN_API_KEY?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "ADMIN_API_KEY required in production",
+        path: ["ADMIN_API_KEY"],
+      });
+    }
     if (!data.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

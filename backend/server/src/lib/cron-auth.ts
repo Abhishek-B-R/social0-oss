@@ -22,7 +22,7 @@ export function verifyCronSecretFromAuthorizationHeader(
   authorization: string | string[] | undefined,
 ): boolean {
   const expected = expectedCronSecret();
-  if (!expected) return true;
+  if (!expected) return false;
 
   const raw = Array.isArray(authorization) ? authorization[0] : authorization;
   const token = bearerTokenFromAuthorizationHeader(raw);

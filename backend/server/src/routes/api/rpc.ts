@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { runWithRequestContext } from "../../lib/request-context.js";
 import { rethrowNextRedirect } from "../../lib/redirect.js";
+import { requireSessionUserId, unauthorized } from "../../middleware/auth.js";
 import * as dashboardData from "../../bff/actions/dashboard-data.js";
 import * as onboarding from "../../bff/actions/onboarding.js";
 import * as posts from "../../bff/actions/posts.js";
@@ -78,6 +79,9 @@ function reviveArgs(args: unknown[]): unknown[] {
 
 export async function registerRpcRoutes(app: FastifyInstance) {
   app.post("/rpc", async (request, reply) => {
+    const userId = await requireSessionUserId(request);
+    if (!userId) return reply.status(401).send(unauthorized());
+
     const body = request.body as { fn?: string; args?: unknown[] };
     const fn = body.fn;
     const args = Array.isArray(body.args) ? body.args : [];

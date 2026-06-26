@@ -363,10 +363,7 @@ export async function GET(
         .where(eq(verification.id, decrypted.stateId));
     }
 
-    // TikTok uses encrypted state + PKCE only (same as pre-security working flow).
-    if (platform !== "tiktok") {
-      await assertOAuthCallbackSession(req, userId, platform);
-    }
+    await assertOAuthCallbackSession(req, userId, platform);
   } catch (err) {
     rethrowNextRedirect(err);
     console.error("OAuth state decryption failed");

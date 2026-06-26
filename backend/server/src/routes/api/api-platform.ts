@@ -1,9 +1,15 @@
 import type { FastifyInstance } from "fastify";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
+import { isSafeOutboundUrl } from "@social0/shared";
 import { db } from "../../db/index.js";
 import { apiKeys, userWebhookSubscriptions } from "../../db/schema.js";
 import { generateApiKey } from "../../lib/api-keys.js";
 import { requireUserId } from "../../middleware/auth.js";
+
+function isAllowedWebhookUrl(url: string): boolean {
+  const httpsOnly = process.env.NODE_ENV === "production";
+  return isSafeOutboundUrl(url, { httpsOnly });
+}
 
 export async function registerApiPlatformRoutes(app: FastifyInstance) {
   app.post("/api-keys", async (request, reply) => {
@@ -55,7 +61,7 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
     await db
       .update(apiKeys)
       .set({ revokedAt: new Date() })
-      .where(eq(apiKeys.id, id));
+      .where(and(eq(apiKeys.id, id), eq(apiKeys.userId, userId)));
     return { ok: true };
   });
 
@@ -70,6 +76,12 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
     if (!body.url || !body.secret || !body.events?.length) {
       return reply.status(400).send({ error: "url, secret, events required" });
     }
+    if (!isAllowedWebhookUrl(body.url)) {
+      return reply.status(400).send({
+        error:
+          "Webhook URL must be a public https URL (no localhost or private networks).",
+      });
+    }
     const row = await db
       .insert(userWebhookSubscriptions)
       .values({
@@ -78,7 +90,13 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
         secret: body.secret,
         events: body.events,
       })
-      .returning();
+      .returning({
+        id: userWebhookSubscriptions.id,
+        url: userWebhookSubscriptions.url,
+        events: userWebhookSubscriptions.events,
+        active: userWebhookSubscriptions.active,
+        createdAt: userWebhookSubscriptions.createdAt,
+      });
     return { subscription: row[0] };
   });
 
@@ -86,7 +104,14 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
     const userId = await requireUserId(request);
     if (!userId) return reply.status(401).send({ error: "Unauthorized" });
     const subs = await db
-      .select()
+      .select({
+        id: userWebhookSubscriptions.id,
+        url: userWebhookSubscriptions.url,
+        events: userWebhookSubscriptions.events,
+        active: userWebhookSubscriptions.active,
+        createdAt: userWebhookSubscriptions.createdAt,
+        updatedAt: userWebhookSubscriptions.updatedAt,
+      })
       .from(userWebhookSubscriptions)
       .where(eq(userWebhookSubscriptions.userId, userId));
     return { subscriptions: subs };
