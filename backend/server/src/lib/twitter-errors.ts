@@ -1,11 +1,11 @@
 /**
  * Shared X/Twitter API error parsing for tweet posts and media uploads.
  * twitter-api-v2 often throws Error("Request failed with code 403") while the
- * useful detail lives on .data or .response.data — we surface that first.
+ * useful detail lives on .data or .response.data - we surface that first.
  */
 
 const TWITTER_403_DUPLICATE_HINT =
-  " This may happen if this tweet was already published—X won't post the exact same content twice.";
+  " This may happen if this tweet was already published-X won't post the exact same content twice.";
 
 /** Extract a readable error from Twitter/X API response (v2 problem+json, v1 errors[], etc.) */
 export function parseTwitterError(
@@ -30,18 +30,24 @@ export function parseTwitterError(
       .join(", ");
     parts.push(errorMessages);
   }
-  if (parts.length) return parts.join(" — ");
+  if (parts.length) return parts.join(" - ");
   return `Twitter API error: ${fallbackStatus}`;
 }
 
-function collectTwitterErrorPayload(e: unknown): Record<string, unknown> | null {
+function collectTwitterErrorPayload(
+  e: unknown,
+): Record<string, unknown> | null {
   if (!e || typeof e !== "object") return null;
   const o = e as Record<string, unknown>;
   if (o.data && typeof o.data === "object" && !Array.isArray(o.data)) {
     return o.data as Record<string, unknown>;
   }
   const resp = o.response as { data?: unknown } | undefined;
-  if (resp?.data && typeof resp.data === "object" && !Array.isArray(resp.data)) {
+  if (
+    resp?.data &&
+    typeof resp.data === "object" &&
+    !Array.isArray(resp.data)
+  ) {
     return resp.data as Record<string, unknown>;
   }
   if (Array.isArray(o.errors) && o.errors.length) {
@@ -52,7 +58,8 @@ function collectTwitterErrorPayload(e: unknown): Record<string, unknown> | null 
 
 function parseHttpStatusFromMessage(message: string): number | undefined {
   const codeMatch =
-    message.match(/(?:code|HTTP)\s*(\d{3})\b/i) ?? message.match(/\b(4\d{2}|5\d{2})\b/);
+    message.match(/(?:code|HTTP)\s*(\d{3})\b/i) ??
+    message.match(/\b(4\d{2}|5\d{2})\b/);
   if (codeMatch) {
     const n = parseInt(codeMatch[1], 10);
     if (n >= 400 && n < 600) return n;
@@ -65,7 +72,8 @@ function extractHttpStatus(e: unknown): number | undefined {
     return undefined;
   }
   const o = e as Record<string, unknown>;
-  if (typeof o.code === "number" && o.code >= 100 && o.code < 600) return o.code;
+  if (typeof o.code === "number" && o.code >= 100 && o.code < 600)
+    return o.code;
   if (typeof o.status === "number") return o.status;
   const r = o.response as { status?: number } | undefined;
   if (r?.status) return r.status;
@@ -105,7 +113,11 @@ function logGenericRequestFailed(e: unknown): void {
       const o = e as Record<string, unknown>;
       for (const k of safeKeys) {
         if (k in o && o[k] !== undefined) {
-          if (typeof o[k] === "object" && o[k] !== null && "data" in (o[k] as object))
+          if (
+            typeof o[k] === "object" &&
+            o[k] !== null &&
+            "data" in (o[k] as object)
+          )
             hint[k] = "(has data)";
           else if (
             typeof o[k] === "object" &&
@@ -117,9 +129,12 @@ function logGenericRequestFailed(e: unknown): void {
         }
       }
     }
-    console.error("[Twitter] Generic Request failed — error hint:", JSON.stringify(hint));
+    console.error(
+      "[Twitter] Generic Request failed - error hint:",
+      JSON.stringify(hint),
+    );
   } catch {
-    console.error("[Twitter] Generic Request failed — raw error:", e);
+    console.error("[Twitter] Generic Request failed - raw error:", e);
   }
 }
 
@@ -201,7 +216,9 @@ export function formatTwitterMediaError(e: unknown, context: string): string {
 }
 
 /** Matches `connectedAccounts.platform` for X/Twitter in this app. */
-export function isTwitterPlatformId(platform: string | null | undefined): boolean {
+export function isTwitterPlatformId(
+  platform: string | null | undefined,
+): boolean {
   if (!platform) return false;
   const p = platform.toLowerCase();
   return p === "twitter" || p === "twitter_x" || p === "x";

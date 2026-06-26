@@ -1,5 +1,5 @@
 ---
-title: "Onboarding — Set your goal"
+title: "Onboarding - Set your goal"
 description: Choose why you’re using Social0 so we can tailor your experience.
 ---
 

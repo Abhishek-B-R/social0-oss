@@ -1,28 +1,22 @@
-import { db } from "../../db/index.js";
-import { user } from "../../db/schema.js";
-import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "../../lib/shim/next-server.js";
 import {
   checkEmailLimiter,
   checkEmailPerEmailLimiter,
   enforceRateLimit,
 } from "../../lib/ratelimit.js";
+import { clientIp } from "../../lib/client-ip.js";
 
 /**
- * Check if an email is registered. Used on sign-in to show "No account found — sign up first" when appropriate.
- * Rate-limited to reduce enumeration.
+ * Pre-sign-in email check. Does not reveal whether an account exists (enumeration-safe).
  */
 export async function GET(req: NextRequest) {
   const email = req.nextUrl.searchParams.get("email");
   const normalized = typeof email === "string" ? email.trim().toLowerCase() : "";
-  if (!normalized) {
+  if (!normalized || !normalized.includes("@")) {
     return NextResponse.json({ error: "Missing email" }, { status: 400 });
   }
 
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "anonymous";
+  const ip = clientIp(req);
 
   const ipRate = await enforceRateLimit(checkEmailLimiter, `check_email:${ip}`);
   if (!ipRate.allowed) {
@@ -40,11 +34,6 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const [row] = await db
-    .select({ id: user.id })
-    .from(user)
-    .where(eq(user.email, normalized))
-    .limit(1);
-
-  return NextResponse.json({ exists: !!row?.id });
+  // Always report exists: true so callers cannot enumerate registered emails.
+  return NextResponse.json({ exists: true });
 }

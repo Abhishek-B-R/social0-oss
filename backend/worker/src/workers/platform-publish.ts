@@ -1,9 +1,10 @@
-import { Queue, Worker, UnrecoverableError, type ConnectionOptions } from "bullmq";
 import {
-  JOB_NAMES,
-  QUEUES,
-  type PublishPlatformJob,
-} from "@social0/shared";
+  Queue,
+  Worker,
+  UnrecoverableError,
+  type ConnectionOptions,
+} from "bullmq";
+import { JOB_NAMES, QUEUES, type PublishPlatformJob } from "@social0/shared";
 import { executePublish } from "../publish/execute-publish.js";
 import { maybeFinalizePostPublish } from "../publish/finalize-post.js";
 import { getJobProgress } from "../lib/job-progress.js";
@@ -28,7 +29,7 @@ async function processPlatformJob(
   const attempt = job.attemptsMade + 1;
 
   if (isCircuitOpen(data.platform)) {
-    throw new Error(`Circuit open for ${data.platform} — try again shortly`);
+    throw new Error(`Circuit open for ${data.platform} - try again shortly`);
   }
 
   if (await isPublicationAlreadyPublished(data.publicationId)) {

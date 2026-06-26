@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { auth } from "../../lib/auth.js";
+import { env } from "../../lib/env.js";
 import { runNextRouteHandler } from "../../lib/run-next-handler.js";
 import { POST as signUpDev } from "./auth-sign-up.js";
 import { POST as signUpTurnstile } from "./auth-sign-up-turnstile.js";
@@ -11,13 +12,8 @@ async function handleBetterAuth(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
-  const proto =
-    (request.headers["x-forwarded-proto"] as string | undefined) ?? "http";
-  const host =
-    (request.headers["x-forwarded-host"] as string | undefined) ??
-    request.headers.host ??
-    "localhost";
-  const url = new URL(request.url, `${proto}://${host}`);
+  const baseUrl = env.BETTER_AUTH_URL.replace(/\/$/, "");
+  const url = new URL(request.url, `${baseUrl}/`);
 
   const headers = new Headers();
   for (const [key, value] of Object.entries(request.headers)) {

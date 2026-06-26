@@ -1,6 +1,6 @@
 ---
 title: "Posts"
-description: See all your posts—drafts, scheduled, and published—in one list.
+description: See all your posts-drafts, scheduled, and published-in one list.
 ---
 
 ## Overview
@@ -16,19 +16,19 @@ You’ll see a list (or grid) of post cards. Each shows a preview of the content
 
 ## What you can do
 
-- **Open a post** — Click a post to see the full content, media, and status per platform. From there you can edit, publish, schedule, retry a failed post, or delete.
-- **Filter** — Filter by platform (e.g. only Twitter) or by time (e.g. this week). Use the filter controls at the top.
-- **Sort** — Sort by newest or oldest using the sort option.
-- **Create a new post** — Use the “Create post” or “Composer” button to start a new one.
+- **Open a post** - Click a post to see the full content, media, and status per platform. From there you can edit, publish, schedule, retry a failed post, or delete.
+- **Filter** - Filter by platform (e.g. only Twitter) or by time (e.g. this week). Use the filter controls at the top.
+- **Sort** - Sort by newest or oldest using the sort option.
+- **Create a new post** - Use the “Create post” or “Composer” button to start a new one.
 
 ## Statuses you’ll see
 
-- **Draft** — Not published or scheduled yet. You can edit and then publish or schedule.
-- **Scheduled** — Has a date and time; Social0 will publish it then.
-- **Queued** — Scheduled and assigned to a queue slot. It will go out in that time window.
-- **Published** — Successfully sent to all selected platforms.
-- **Partial** — Sent to some platforms; one or more failed. You can open the post and retry the failed ones.
-- **Failed** — Didn’t go out (e.g. payment required, connection issue). Fix the issue (e.g. upgrade, reconnect account) and retry from the post.
+- **Draft** - Not published or scheduled yet. You can edit and then publish or schedule.
+- **Scheduled** - Has a date and time; Social0 will publish it then.
+- **Queued** - Scheduled and assigned to a queue slot. It will go out in that time window.
+- **Published** - Successfully sent to all selected platforms.
+- **Partial** - Sent to some platforms; one or more failed. You can open the post and retry the failed ones.
+- **Failed** - Didn’t go out (e.g. payment required, connection issue). Fix the issue (e.g. upgrade, reconnect account) and retry from the post.
 
 ## Tips
 

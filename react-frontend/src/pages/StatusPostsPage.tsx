@@ -68,7 +68,7 @@ export function StatusPostsPage({ config }: { config: StatusPostsConfig }) {
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !result) {
     return <DashboardPageSkeleton message={`Loading ${config.title.toLowerCase()}...`} />;
   }
 

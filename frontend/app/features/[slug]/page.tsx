@@ -65,7 +65,7 @@ export default async function FeaturePage({ params }: PageProps) {
       { name: "Home", path: "/" },
       { name: "Features", path: "/features" },
       {
-        name: page.platformLabel ?? page.heroHeadline.split("—")[0].trim(),
+        name: page.platformLabel ?? page.heroHeadline.split("-")[0].trim(),
         path: `/features/${slug}`,
       },
     ]),
@@ -85,7 +85,7 @@ export default async function FeaturePage({ params }: PageProps) {
             </Link>
             <span className="mx-2">/</span>
             <span className="text-foreground">
-              {page.platformLabel ?? page.heroHeadline.split("—")[0].trim()}
+              {page.platformLabel ?? page.heroHeadline.split("-")[0].trim()}
             </span>
           </nav>
           {page.platformLabel ? (
@@ -167,15 +167,17 @@ export default async function FeaturePage({ params }: PageProps) {
       <PseoRelatedLinks title="Compare tools" links={relatedAlternatives} />
       <PseoRelatedLinks
         title="More features"
-        links={FEATURE_SLUGS.filter((s) => s !== slug).slice(0, 6).map((s) => {
-          const feature = getFeature(s)!;
-          return {
-            href: `/features/${s}`,
-            label: feature.platformLabel
-              ? `${feature.platformLabel} scheduler`
-              : feature.heroHeadline.split("—")[0].trim(),
-          };
-        })}
+        links={FEATURE_SLUGS.filter((s) => s !== slug)
+          .slice(0, 6)
+          .map((s) => {
+            const feature = getFeature(s)!;
+            return {
+              href: `/features/${s}`,
+              label: feature.platformLabel
+                ? `${feature.platformLabel} scheduler`
+                : feature.heroHeadline.split("-")[0].trim(),
+            };
+          })}
       />
     </MarketingPageLayout>
   );

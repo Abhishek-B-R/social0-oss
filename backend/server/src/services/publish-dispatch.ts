@@ -28,7 +28,7 @@ export async function dispatchPlatformJob(
   await cfEnqueuePlatformJob(job, priority, config);
 }
 
-/** Enqueue publish — fans out per platform on the API, returns 202 immediately. */
+/** Enqueue publish - fans out per platform on the API, returns 202 immediately. */
 export async function dispatchPublishPost(
   app: FastifyInstance | null,
   data: PublishPostJob,
@@ -60,7 +60,9 @@ export function createPublishTrackingId() {
   return randomUUID();
 }
 
-export function queueNameForJob(jobNameOrPriority: string | CfPublishPriority = "now"): string {
+export function queueNameForJob(
+  jobNameOrPriority: string | CfPublishPriority = "now",
+): string {
   if (jobNameOrPriority === "now" || jobNameOrPriority === "scheduled") {
     if (useCloudflarePublishDispatch()) {
       return cfPublishQueueName(jobNameOrPriority);
@@ -69,7 +71,9 @@ export function queueNameForJob(jobNameOrPriority: string | CfPublishPriority = 
   }
 
   if (jobNameOrPriority.startsWith("publish.")) {
-    return useCloudflarePublishDispatch() ? cfPublishQueueName("now") : QUEUES.PUBLISH;
+    return useCloudflarePublishDispatch()
+      ? cfPublishQueueName("now")
+      : QUEUES.PUBLISH;
   }
   if (jobNameOrPriority.startsWith("email.")) return QUEUES.EMAIL;
   if (jobNameOrPriority.startsWith("token.")) return QUEUES.TOKEN;

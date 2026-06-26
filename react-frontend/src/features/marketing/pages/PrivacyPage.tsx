@@ -5,7 +5,7 @@ import { DOCS_PRIVACY_URL } from "@/lib/docs-url";
 import { MdQuestionMark } from "react-icons/md";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Social0 — Social Media Scheduling Tool",
+  title: "Privacy Policy | Social0 - Social Media Scheduling Tool",
   description:
     "Read the Social0 privacy policy. Learn how we collect, use, and protect your data when you use our social media scheduling platform.",
   alternates: { canonical: "https://social0.app/privacy" },
@@ -173,11 +173,11 @@ export default function PrivacyPage() {
             </p>
             <ul className="list-disc pl-5 space-y-1 mb-3">
               <li>
-                <strong>youtube.upload</strong> — to upload and publish videos
+                <strong>youtube.upload</strong> - to upload and publish videos
                 to your YouTube channel on your behalf.
               </li>
               <li>
-                <strong>youtube.readonly</strong> — to verify your channel
+                <strong>youtube.readonly</strong> - to verify your channel
                 details and check upload status.
               </li>
             </ul>

@@ -129,7 +129,7 @@ export function FeedbackClient() {
       <div className="flex min-h-full flex-col items-center justify-center gap-4 p-8 text-center">
         <FeedbackHeader />
         <p className="text-muted-foreground max-w-md">
-          We couldn&apos;t load the feedback board here—you can share feedback
+          We couldn&apos;t load the feedback board here-you can share feedback
           directly on Canny. Or you can always email us at{" "}
           <a
             href="mailto:support@social0.app"

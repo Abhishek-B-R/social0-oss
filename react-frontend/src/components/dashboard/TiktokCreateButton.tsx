@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 const TOKENS = {
   width: 56,
   height: 40,
-  /** Horizontal offset (px) for glow layers — subtle, not flashy */
+  /** Horizontal offset (px) for glow layers - subtle, not flashy */
   glowOffset: 2,
 } as const;
 
@@ -56,19 +56,19 @@ export function TiktokCreateButton({
           height: TOKENS.height,
         }}
       >
-        {/* Left glow — darker green, subtle */}
+        {/* Left glow - darker green, subtle */}
         <div
           className="absolute inset-0 rounded-xl bg-emerald-500/60 blur-sm"
           style={{ transform: `translateX(-${TOKENS.glowOffset}px)` }}
           aria-hidden
         />
-        {/* Right glow — lighter green / teal, subtle */}
+        {/* Right glow - lighter green / teal, subtle */}
         <div
           className="absolute inset-0 rounded-xl bg-emerald-300/60 blur-sm"
           style={{ transform: `translateX(${TOKENS.glowOffset}px)` }}
           aria-hidden
         />
-        {/* Main button — primary green, clean */}
+        {/* Main button - primary green, clean */}
         <div className="relative flex h-full w-full items-center justify-center rounded-xl bg-accent shadow-lg shadow-emerald-500/30">
           <Plus
             className="h-5 w-5 shrink-0 stroke-[2.5] text-white"

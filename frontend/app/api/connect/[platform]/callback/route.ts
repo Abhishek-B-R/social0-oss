@@ -252,7 +252,8 @@ export async function GET(
           logConnectBlocked(
             userId,
             "twitter_x",
-            limitCheck.reason ?? "You need an active plan to connect accounts and post content.",
+            limitCheck.reason ??
+              "You need an active plan to connect accounts and post content.",
             limitCheck.currentTotal,
             limitCheck.limitTotal,
           );
@@ -275,12 +276,11 @@ export async function GET(
         });
       }
       try {
-        const { refreshTwitterPremiumStatus } = await import(
-          "@/lib/twitter-premium"
-        );
+        const { refreshTwitterPremiumStatus } =
+          await import("@/lib/twitter-premium");
         await refreshTwitterPremiumStatus(accountId);
       } catch {
-        // Best effort — don't block redirect
+        // Best effort - don't block redirect
       }
       let twitterRedirect =
         sanitizeReturnToPath(secretDecrypted.returnTo) ??
@@ -608,7 +608,10 @@ export async function GET(
       tokens = await tokenResponse.json();
       const parsedTikTok = parseTikTokTokenResponse(tokens);
       if (!parsedTikTok) {
-        console.error("TikTok token exchange: missing access_token in response", tokens);
+        console.error(
+          "TikTok token exchange: missing access_token in response",
+          tokens,
+        );
         throw new Error("TikTok: invalid token response");
       }
       tokens = parsedTikTok;
@@ -663,7 +666,10 @@ export async function GET(
 
     // Pinterest: complete connection (board chosen at post time)
     if (platform === "pinterest") {
-      const userInfo = await fetchPlatformUserInfo(platform, tokens.access_token);
+      const userInfo = await fetchPlatformUserInfo(
+        platform,
+        tokens.access_token,
+      );
       const existing = await db.query.connectedAccounts.findFirst({
         where: and(
           eq(connectedAccounts.userId, userId),
@@ -681,7 +687,10 @@ export async function GET(
           .set({
             platformUsername: userInfo.username,
             profileImageUrl: userInfo.profileImageUrl,
-            encryptedAccessToken: encryptToken(tokens.access_token, existing.id),
+            encryptedAccessToken: encryptToken(
+              tokens.access_token,
+              existing.id,
+            ),
             encryptedRefreshToken: resolveEncryptedRefreshToken(
               existing.id,
               existing.encryptedRefreshToken,
@@ -690,17 +699,22 @@ export async function GET(
             tokenExpiresAt,
             tokenStatus: "active",
             isActive: true,
-            platformMetadata: (existing.platformMetadata as Record<string, unknown>) ?? {},
+            platformMetadata:
+              (existing.platformMetadata as Record<string, unknown>) ?? {},
             updatedAt: new Date(),
           })
           .where(eq(connectedAccounts.id, existing.id));
       } else {
-        const pinterestLimitCheck = await checkAccountLimits(userId, "pinterest");
+        const pinterestLimitCheck = await checkAccountLimits(
+          userId,
+          "pinterest",
+        );
         if (!pinterestLimitCheck.allowed) {
           logConnectBlocked(
             userId,
             "pinterest",
-            pinterestLimitCheck.reason ?? "You need an active plan to connect accounts and post content.",
+            pinterestLimitCheck.reason ??
+              "You need an active plan to connect accounts and post content.",
             pinterestLimitCheck.currentTotal,
             pinterestLimitCheck.limitTotal,
           );
@@ -888,7 +902,9 @@ export async function GET(
         const orgData = await orgResponse.json().catch(() => ({}));
         console.log("[LinkedIn] orgResponse status:", orgResponse.status);
         console.log("[LinkedIn] orgData:", JSON.stringify(orgData, null, 2));
-        const elements = Array.isArray(orgData.elements) ? orgData.elements : [];
+        const elements = Array.isArray(orgData.elements)
+          ? orgData.elements
+          : [];
         if (elements.length > 0) {
           const orgDetails = await Promise.all(
             elements.map(async (element: { organization?: string }) => {
@@ -917,7 +933,10 @@ export async function GET(
             (o): o is { id: string; urn: string; name: string } => o !== null,
           );
           console.log("[LinkedIn] orgDetails count:", orgDetails.length);
-          console.log("[LinkedIn] redirecting to select:", companyPages.length > 0);
+          console.log(
+            "[LinkedIn] redirecting to select:",
+            companyPages.length > 0,
+          );
           if (companyPages.length > 0) {
             const stateId = crypto.randomBytes(16).toString("hex");
             const payload = JSON.stringify({
@@ -1009,8 +1028,7 @@ export async function GET(
           userInfo.username != null && userInfo.username !== ""
             ? userInfo.username
             : existing.platformUsername,
-        profileImageUrl:
-          userInfo.profileImageUrl ?? existing.profileImageUrl,
+        profileImageUrl: userInfo.profileImageUrl ?? existing.profileImageUrl,
         isActive: true,
         updatedAt: new Date(),
         ...(platform === "tiktok" && isLikelyTikTokOpenId(userInfo.id)
@@ -1033,9 +1051,9 @@ export async function GET(
         .where(eq(connectedAccounts.id, existing.id));
 
       const redirectUrl = isReauth
-        ? (successRedirect.includes("?")
-            ? `${successRedirect}&reauth=success`
-            : `${successRedirect}?reauth=success`)
+        ? successRedirect.includes("?")
+          ? `${successRedirect}&reauth=success`
+          : `${successRedirect}?reauth=success`
         : successRedirect;
       return safeRedirect(redirectUrl, redirectUrl);
     }
@@ -1079,7 +1097,8 @@ export async function GET(
       logConnectBlocked(
         userId,
         platform,
-        limitCheck.reason ?? "You need an active plan to connect accounts and post content.",
+        limitCheck.reason ??
+          "You need an active plan to connect accounts and post content.",
         limitCheck.currentTotal,
         limitCheck.limitTotal,
       );
@@ -1107,13 +1126,13 @@ export async function GET(
     });
 
     const insertRedirectUrl = isReauth
-      ? (successRedirect.includes("?")
-          ? `${successRedirect}&reauth=warning`
-          : `${successRedirect}?reauth=warning`)
+      ? successRedirect.includes("?")
+        ? `${successRedirect}&reauth=warning`
+        : `${successRedirect}?reauth=warning`
       : platform === "tiktok" && !isReauth
-        ? (successRedirect.includes("?")
-            ? `${successRedirect}&connected=tiktok`
-            : `${successRedirect}?connected=tiktok`)
+        ? successRedirect.includes("?")
+          ? `${successRedirect}&connected=tiktok`
+          : `${successRedirect}?connected=tiktok`
         : successRedirect;
     return safeRedirect(insertRedirectUrl, insertRedirectUrl);
   } catch (err) {

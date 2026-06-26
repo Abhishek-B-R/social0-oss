@@ -17,7 +17,7 @@ export type RememberedAccountsData = {
 };
 
 /**
- * Suffix for `localStorage` key `remembered-accounts-${suffix}` — one unique key per surface.
+ * Suffix for `localStorage` key `remembered-accounts-${suffix}` - one unique key per surface.
  * Do not use a generic `post-form` key; each form uses its own entry.
  */
 export const REMEMBERED_ACCOUNT_KEYS = {
@@ -55,8 +55,7 @@ function parseRememberedPayload(raw: string): RememberedAccountsData | null {
 }
 
 function readStored(key: string): RememberedAccountsData {
-  if (typeof window === "undefined")
-    return { remember: false, accountIds: [] };
+  if (typeof window === "undefined") return { remember: false, accountIds: [] };
   try {
     const raw = localStorage.getItem(STORAGE_PREFIX + key);
     if (!raw) return { remember: false, accountIds: [] };
@@ -77,7 +76,7 @@ function writeStored(key: string, data: RememberedAccountsData): void {
  * After accounts load, apply remembered selection if the initial `useState` ran with an empty
  * account list (common on first client paint before `accounts` is ready).
  *
- * Returns `{ isHydrated }` — becomes `true` once the loading phase is done and any stored
+ * Returns `{ isHydrated }` - becomes `true` once the loading phase is done and any stored
  * selection has been applied. The caller's `persistSelection` effect must wait for this before
  * writing to localStorage, otherwise it would fire on the initial render with an empty
  * `selectedIds` and wipe the stored account IDs before they can be restored.
@@ -182,9 +181,7 @@ export function useRememberedAccounts(key: string) {
   const getInitialSelectedIds = useCallback(
     (validAccountIds: Set<string>): Set<string> => {
       if (!stored.remember || stored.accountIds.length === 0) return new Set();
-      return new Set(
-        stored.accountIds.filter((id) => validAccountIds.has(id)),
-      );
+      return new Set(stored.accountIds.filter((id) => validAccountIds.has(id)));
     },
     [stored.remember, stored.accountIds],
   );

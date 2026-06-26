@@ -16,9 +16,9 @@ You’ll see the feedback board. If something doesn’t load, you may see a link
 
 ## What you can do
 
-- **Post feedback** — Describe your idea or issue. The team can respond and others can vote.
-- **Vote** — Vote on other people’s suggestions so we know what matters most.
-- **Read** — See what others have asked and what the team has said.
+- **Post feedback** - Describe your idea or issue. The team can respond and others can vote.
+- **Vote** - Vote on other people’s suggestions so we know what matters most.
+- **Read** - See what others have asked and what the team has said.
 
 You’re signed in with your Social0 account so we know who’s posting. We don’t share that outside the product.
 

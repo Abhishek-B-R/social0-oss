@@ -27,9 +27,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const rate = await enforceRateLimit(tokenRefreshLimiter, session.user.id, {
-    failClosedWhenUnavailable: false,
-  });
+  const rate = await enforceRateLimit(tokenRefreshLimiter, session.user.id);
   if (!rate.allowed) {
     return NextResponse.json({ error: rate.error }, { status: rate.status });
   }

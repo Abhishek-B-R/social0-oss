@@ -109,9 +109,8 @@ async function verifyToken(
       return r.status;
     }
     case "youtube": {
-      const { isYouTubeAccessTokenUsable } = await import(
-        "@/lib/youtube-token"
-      );
+      const { isYouTubeAccessTokenUsable } =
+        await import("@/lib/youtube-token");
       return (await isYouTubeAccessTokenUsable(accessToken)) ? 200 : 401;
     }
     case "tiktok": {
@@ -216,7 +215,7 @@ export async function runTokenHealthCheck(
     // Other statuses: leave tokenStatus/lastSyncedAt unchanged
   }
 
-  // Batch writes — 2 queries max regardless of how many accounts were checked
+  // Batch writes - 2 queries max regardless of how many accounts were checked
   if (toMarkActive.length > 0) {
     await db
       .update(connectedAccounts)

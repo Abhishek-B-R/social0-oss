@@ -22,10 +22,7 @@ import {
 } from "@/app/dashboard/posts/posts-list-data";
 import { isValidUUID } from "@/lib/validation";
 import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
-import {
-  checkFreePostLimit,
-  incrementFreePostsUsed,
-} from "@/lib/plan-limits";
+import { checkFreePostLimit, incrementFreePostsUsed } from "@/lib/plan-limits";
 import { logPublishBlocked } from "@/lib/plan-analytics";
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
@@ -33,7 +30,7 @@ import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel
 /**
  * Free-tier quota: exactly one free post is consumed when the user hits
  * "Publish now" or "Schedule" (the submission actions below). The publish
- * pipeline itself never counts — it may run many times per post (per-platform
+ * pipeline itself never counts - it may run many times per post (per-platform
  * progress, safety-net republish, retries, cron).
  * Returns an error message when the user is out of free posts, else null.
  */
@@ -48,8 +45,7 @@ async function gateFreePostQuota(
     limit: limit.limit,
   });
   return (
-    limit.reason ??
-    "You've used your free posts. Upgrade to continue posting."
+    limit.reason ?? "You've used your free posts. Upgrade to continue posting."
   );
 }
 
@@ -386,7 +382,7 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
 
   const mediaIds = post.mediaIds ?? [];
 
-  // "Post again" publishes a brand-new post — costs one free post.
+  // "Post again" publishes a brand-new post - costs one free post.
   const quotaError = await gateFreePostQuota(session.user.id, postId);
   if (quotaError) {
     return { success: false, error: quotaError };
@@ -531,7 +527,7 @@ export async function updatePost(
       };
     }
 
-    // Scheduling a draft is a "Schedule" submission — costs one free post.
+    // Scheduling a draft is a "Schedule" submission - costs one free post.
     // Rescheduling an already-scheduled post (already charged) is free.
     const chargesQuota = !!scheduledAt && existing.status === "draft";
     if (chargesQuota) {
@@ -649,7 +645,7 @@ export async function updatePost(
 
 /**
  * Persist Auto-Plug / Auto-Repost for a scheduled post via `metadata.bulkAutoFeatures`
- * (queue-slot posts still use `posts.status === "scheduled"` — there is no separate `queued` status).
+ * (queue-slot posts still use `posts.status === "scheduled"` - there is no separate `queued` status).
  * Consumed at publish time by executePublish.
  */
 export async function updateScheduledPostAutoFeatures(
@@ -719,7 +715,9 @@ export async function updateScheduledPostAutoFeatures(
     return {
       success: false,
       error:
-        e instanceof Error ? e.message : "Failed to update scheduled auto features",
+        e instanceof Error
+          ? e.message
+          : "Failed to update scheduled auto features",
     };
   }
 }
@@ -805,7 +803,10 @@ export async function getScheduledPost(
     return { success: false, error: "Post not found" };
   }
   if (post.status !== "scheduled" && post.status !== "draft") {
-    return { success: false, error: "Only scheduled or draft posts can be edited" };
+    return {
+      success: false,
+      error: "Only scheduled or draft posts can be edited",
+    };
   }
   const mediaIds = post.mediaIds ?? [];
   const media =
@@ -870,7 +871,8 @@ export async function getPostToEdit(
   if (!allowed) {
     return {
       success: false,
-      error: "Only posted, partial, or failed posts can be edited for republish",
+      error:
+        "Only posted, partial, or failed posts can be edited for republish",
     };
   }
   const mediaIds = post.mediaIds ?? [];
@@ -969,7 +971,7 @@ export async function updateAndPublish(
     return { success: false, error: "Unauthorized" };
   }
   // Pass null for scheduledAt: we are publishing now, not scheduling. Using `new Date()`
-  // caused flaky failures — the client timestamp can be slightly in the past relative to
+  // caused flaky failures - the client timestamp can be slightly in the past relative to
   // the server when validateScheduledAtWindow runs after network latency.
   const result = await updatePost(
     draftId,
@@ -983,7 +985,7 @@ export async function updateAndPublish(
     return result;
   }
 
-  // Publishing a draft now is a "Publish now" submission — costs one free post.
+  // Publishing a draft now is a "Publish now" submission - costs one free post.
   // (The updatePost call above ran with scheduledAt=null, so it charged nothing.)
   const quotaError = await gateFreePostQuota(session.user.id, draftId);
   if (quotaError) {
@@ -994,8 +996,8 @@ export async function updateAndPublish(
   try {
     const publishResult = await executePublish(draftId, session.user.id);
     const succeededCount =
-      publishResult.results?.filter((r) => r.status === "published")
-        .length ?? 0;
+      publishResult.results?.filter((r) => r.status === "published").length ??
+      0;
     const allPlatformsFailed =
       (publishResult.results?.length ?? 0) > 0 && succeededCount === 0;
     return {

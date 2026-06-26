@@ -75,7 +75,7 @@ export function SettingsPageClient() {
     }
   }, [sessionPending, session, navigate]);
 
-  if (sessionPending || (session && isLoading)) {
+  if (sessionPending || (session && isLoading && !data)) {
     return <DashboardPageSkeleton message="Loading settings..." />;
   }
 

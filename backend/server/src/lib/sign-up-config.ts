@@ -2,7 +2,7 @@ export type SignUpConfig = {
   turnstileSiteKey: string;
   signUpEndpoint: "/api/auth/sign-up-with-turnstile" | "/api/auth/sign-up";
   requiresTurnstileToken: boolean;
-  /** Production is missing Turnstile keys — email sign-up cannot work. */
+  /** Production is missing Turnstile keys - email sign-up cannot work. */
   misconfigured: boolean;
 };
 
@@ -14,8 +14,7 @@ export function buildSignUpConfig(input: {
   const turnstileSiteKey = input.turnstileSiteKey ?? "";
   const hasSecret = Boolean(input.turnstileSecretKey);
   const requiresTurnstile = input.isProduction || Boolean(turnstileSiteKey);
-  const misconfigured =
-    input.isProduction && (!turnstileSiteKey || !hasSecret);
+  const misconfigured = input.isProduction && (!turnstileSiteKey || !hasSecret);
 
   return {
     turnstileSiteKey,
@@ -27,7 +26,7 @@ export function buildSignUpConfig(input: {
   };
 }
 
-/** Safe for client components — does not import server env validation. */
+/** Safe for client components - does not import server env validation. */
 export function getClientSignUpConfig(): SignUpConfig {
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   const isProduction = process.env.NODE_ENV === "production";

@@ -11,7 +11,7 @@ export function DemoVideoSection() {
           <div className="relative aspect-video w-full">
             <iframe
               src={`https://www.youtube.com/embed/${YOUTUBE_DEMO_ID}`}
-              title="Social0 demo — post and schedule to all your socials from one place"
+              title="Social0 demo - post and schedule to all your socials from one place"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               referrerPolicy="strict-origin-when-cross-origin"
               allowFullScreen

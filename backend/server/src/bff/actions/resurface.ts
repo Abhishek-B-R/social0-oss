@@ -1,5 +1,3 @@
-
-
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { checkAutoPlugAllowed, checkResurfaceAllowed } from "@/lib/plan-limits";
@@ -51,7 +49,7 @@ async function assertPostAutoFeaturesEditable(
     return {
       ok: false,
       error:
-        "No published X (Twitter) publication — Auto-Plug and Auto-Repost can’t be changed.",
+        "No published X (Twitter) publication - Auto-Plug and Auto-Repost can’t be changed.",
     };
   }
   const earliest = new Date(Math.min(...times));
@@ -59,7 +57,7 @@ async function assertPostAutoFeaturesEditable(
     return {
       ok: false,
       error:
-        "This post is older than 24 hours — Auto-Plug and Auto-Repost can no longer be edited.",
+        "This post is older than 24 hours - Auto-Plug and Auto-Repost can no longer be edited.",
     };
   }
   return { ok: true };
@@ -87,15 +85,17 @@ export async function createAutoPlug(
 
   const autoPlugAllowed = await checkAutoPlugAllowed(session.user.id);
   if (!autoPlugAllowed) {
-    return { success: false, error: "Auto-plug is available on the Growth plan. Upgrade to use this feature." };
+    return {
+      success: false,
+      error:
+        "Auto-plug is available on the Growth plan. Upgrade to use this feature.",
+    };
   }
 
   const [post] = await db
     .select({ id: posts.id, userId: posts.userId, status: posts.status })
     .from(posts)
-    .where(
-      and(eq(posts.id, postId), eq(posts.userId, session.user.id)),
-    );
+    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
 
   if (!post) {
     return { success: false, error: "Post not found" };
@@ -140,11 +140,16 @@ export async function createAutoPlug(
         eq(postPublications.status, "published"),
       ),
     )
-    .orderBy(desc(postPublications.publishedAt), desc(postPublications.createdAt));
+    .orderBy(
+      desc(postPublications.publishedAt),
+      desc(postPublications.createdAt),
+    );
 
   const pub =
     (connectedAccountId
-      ? xPublications.find((row) => row.connectedAccountId === connectedAccountId)
+      ? xPublications.find(
+          (row) => row.connectedAccountId === connectedAccountId,
+        )
       : null) ?? xPublications[0];
 
   if (!pub || pub.connectedAccountUserId !== session.user.id) {
@@ -161,7 +166,7 @@ export async function createAutoPlug(
   if (!pub.platformPostId) {
     return {
       success: false,
-      error: "Tweet ID not found — cannot set up auto-plug",
+      error: "Tweet ID not found - cannot set up auto-plug",
     };
   }
 
@@ -173,7 +178,10 @@ export async function createAutoPlug(
   }
 
   if (pub.autoPlugId) {
-    return { success: false, error: "Auto-Plug is already set up for this X post" };
+    return {
+      success: false,
+      error: "Auto-Plug is already set up for this X post",
+    };
   }
 
   const now = new Date();
@@ -236,7 +244,11 @@ export async function createResurfaceSchedule(
 
   const resurfaceAllowed = await checkResurfaceAllowed(session.user.id);
   if (!resurfaceAllowed) {
-    return { success: false, error: "Resurface / auto-repost is available on the Growth plan. Upgrade to use this feature." };
+    return {
+      success: false,
+      error:
+        "Resurface / auto-repost is available on the Growth plan. Upgrade to use this feature.",
+    };
   }
 
   if (platform !== PLATFORM_X) {
@@ -253,9 +265,7 @@ export async function createResurfaceSchedule(
   const [post] = await db
     .select({ id: posts.id, userId: posts.userId, status: posts.status })
     .from(posts)
-    .where(
-      and(eq(posts.id, postId), eq(posts.userId, session.user.id)),
-    );
+    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
 
   if (!post) {
     return { success: false, error: "Post not found" };
@@ -307,7 +317,10 @@ export async function createResurfaceSchedule(
       .where(eq(resurfaceSchedules.postId, postId));
 
     if (existing.length > 0) {
-      return { success: false, error: "Auto-Repost is already set up for this post" };
+      return {
+        success: false,
+        error: "Auto-Repost is already set up for this post",
+      };
     }
 
     const now = new Date();
@@ -439,12 +452,7 @@ export async function updateAutoPlug(
     .select({ id: autoPlugs.id, status: autoPlugs.status })
     .from(autoPlugs)
     .innerJoin(posts, eq(autoPlugs.postId, posts.id))
-    .where(
-      and(
-        eq(autoPlugs.postId, postId),
-        eq(posts.userId, session.user.id),
-      ),
-    )
+    .where(and(eq(autoPlugs.postId, postId), eq(posts.userId, session.user.id)))
     .orderBy(desc(autoPlugs.createdAt))
     .limit(1);
 
@@ -490,7 +498,7 @@ export async function cancelAutoPlug(
     return { success: false, error: "Unauthorized" };
   }
 
-  // Allow turning off even if the user downgraded — no Growth plan check.
+  // Allow turning off even if the user downgraded - no Growth plan check.
 
   const [row] = await db
     .select({ id: autoPlugs.id })
@@ -615,12 +623,11 @@ export async function updateResurfaceSchedule(
     updates.intervalHours !== undefined &&
     nextInterval !== schedule.intervalHours;
   const maxIncreased =
-    updates.maxResurfaces !== undefined && nextMax > (schedule.maxResurfaces ?? 0);
+    updates.maxResurfaces !== undefined &&
+    nextMax > (schedule.maxResurfaces ?? 0);
 
   const hitCapIncrease =
-    maxIncreased &&
-    done >= (schedule.maxResurfaces ?? 0) &&
-    done < nextMax;
+    maxIncreased && done >= (schedule.maxResurfaces ?? 0) && done < nextMax;
 
   const effectiveIsActive = hitCapIncrease
     ? true
@@ -638,7 +645,9 @@ export async function updateResurfaceSchedule(
           ...(updates.intervalHours !== undefined
             ? { intervalHours: nextInterval }
             : {}),
-          ...(updates.maxResurfaces !== undefined ? { maxResurfaces: nextMax } : {}),
+          ...(updates.maxResurfaces !== undefined
+            ? { maxResurfaces: nextMax }
+            : {}),
           ...(plugComment !== undefined ? { plugComment } : {}),
           ...(updates.isActive !== undefined || hitCapIncrease
             ? { isActive: effectiveIsActive }
@@ -672,7 +681,9 @@ export async function updateResurfaceSchedule(
           )
           .limit(1);
         if (!pending) {
-          const nextAt = new Date(now.getTime() + nextInterval * 60 * 60 * 1000);
+          const nextAt = new Date(
+            now.getTime() + nextInterval * 60 * 60 * 1000,
+          );
           await tx.insert(resurfaceEvents).values({
             scheduleId,
             status: "pending",

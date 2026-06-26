@@ -12,15 +12,19 @@ test.describe("Draft lifecycle", () => {
     await page.waitForLoadState("networkidle");
     await expect(page).toHaveURL(/\/dashboard\/create/);
 
-    // Click the "Text Post" card — it links directly to /dashboard/create/text
-    const textPostCard = page.locator('a[href="/dashboard/create/text"]').first();
+    // Click the "Text Post" card - it links directly to /dashboard/create/text
+    const textPostCard = page
+      .locator('a[href="/dashboard/create/text"]')
+      .first();
     await expect(textPostCard).toBeVisible({ timeout: 10000 });
     await textPostCard.click();
     await page.waitForURL(/\/dashboard\/create\/text/, { timeout: 10000 });
 
     // Select at least one account (required for save to succeed).
     // Button may say "Select all" or "Deselect all" when all are already selected.
-    const accountToggleBtn = page.getByRole("button", { name: /Select all|Deselect all/ });
+    const accountToggleBtn = page.getByRole("button", {
+      name: /Select all|Deselect all/,
+    });
     await expect(accountToggleBtn).toBeVisible({ timeout: 10000 });
     if ((await accountToggleBtn.textContent())?.trim() === "Select all") {
       await accountToggleBtn.click();
@@ -28,12 +32,16 @@ test.describe("Draft lifecycle", () => {
 
     // Fill in the textarea (placeholder: "Write your post...")
     const uniqueCaption = "Test draft " + Date.now();
-    const textarea = page.locator('textarea[placeholder="What\'s on your mind?"], textarea').first();
+    const textarea = page
+      .locator('textarea[placeholder="What\'s on your mind?"], textarea')
+      .first();
     await expect(textarea).toBeVisible({ timeout: 10000 });
     await textarea.fill(uniqueCaption);
 
     // Click "Save to Drafts" in the sidebar
-    const saveDraftButton = page.getByRole("button", { name: /save.*draft/i, exact: false }).first();
+    const saveDraftButton = page
+      .getByRole("button", { name: /save.*draft/i, exact: false })
+      .first();
     await expect(saveDraftButton).toBeVisible({ timeout: 10000 });
     await saveDraftButton.click();
 
@@ -52,7 +60,7 @@ test.describe("Draft lifecycle", () => {
     // Our draft caption should be visible in the list
     await expect(page.getByText(uniqueCaption)).toBeVisible({ timeout: 10000 });
 
-    // Click the draft card — it redirects to /dashboard/create/text?draft={id}
+    // Click the draft card - it redirects to /dashboard/create/text?draft={id}
     await page.getByText(uniqueCaption).click();
     await page.waitForURL(/\/dashboard\/create\/text\?draft=/, {
       timeout: 10000,

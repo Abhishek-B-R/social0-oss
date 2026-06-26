@@ -14,80 +14,134 @@ declare global {
 const CANNY_SDK_URL = "https://sdk.canny.io/sdk.js";
 const CANNY_FALLBACK_URL = "https://social0.canny.io";
 
-/** Canny board embed — caller must ensure the user is signed in. */
+function loadCannySdk(): Promise<void> {
+  if (typeof window.Canny === "function") {
+    return Promise.resolve();
+  }
+
+  const existing = document.querySelector(
+    `script[src="${CANNY_SDK_URL}"]`,
+  ) as HTMLScriptElement | null;
+
+  if (existing) {
+    return new Promise((resolve, reject) => {
+      if (typeof window.Canny === "function") {
+        resolve();
+        return;
+      }
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener(
+        "error",
+        () => reject(new Error("Failed to load feedback widget")),
+        { once: true },
+      );
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = CANNY_SDK_URL;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load feedback widget"));
+    document.body.appendChild(script);
+  });
+}
+
+async function resolveBoardToken(): Promise<string> {
+  const fromEnv = getCannyBoardToken();
+  if (fromEnv) return fromEnv;
+
+  const res = await fetch("/api/canny/config");
+  if (!res.ok) {
+    throw new Error("Feedback board not configured");
+  }
+  const data = (await res.json()) as { boardToken?: string };
+  if (!data.boardToken) {
+    throw new Error("Feedback board not configured");
+  }
+  return data.boardToken;
+}
+
+/** Canny board embed - caller must ensure the user is signed in. */
 export function FeedbackBoard() {
   const { resolvedTheme } = useTheme();
   const cannyTheme = resolvedTheme === "dark" ? "dark" : "light";
 
   const mountRef = useRef<HTMLDivElement>(null);
   const [ssoToken, setSsoToken] = useState<string | null>(null);
+  const [boardToken, setBoardToken] = useState<string | null>(null);
   const [sdkLoaded, setSdkLoaded] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
-  const cannyReady = sdkLoaded && !!ssoToken;
+  const cannyReady = sdkLoaded && !!ssoToken && !!boardToken;
   const isLoading = !loadFailed && !cannyReady;
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/canny/sso", { credentials: "include" })
-      .then((res) => {
-        if (res.status === 401) {
-          if (!cancelled) setLoadFailed(true);
-          return null;
-        }
-        if (res.status === 503) {
-          if (!cancelled) setLoadFailed(true);
-          return null;
-        }
-        if (!res.ok) throw new Error("Failed to get feedback session");
-        return res.json();
-      })
-      .then((data) => {
-        if (!data || cancelled) return;
-        if (data.token) setSsoToken(data.token);
-        else {
+
+    void (async () => {
+      try {
+        const [ssoRes, boardTokenValue] = await Promise.all([
+          fetch("/api/canny/sso", { credentials: "include" }),
+          resolveBoardToken(),
+        ]);
+
+        if (cancelled) return;
+
+        if (ssoRes.status === 401) {
           setLoadFailed(true);
-          toast.error("No token received");
+          return;
         }
-      })
-      .catch((err) => {
+        if (ssoRes.status === 503) {
+          throw new Error("Canny SSO is not configured on the server");
+        }
+        if (!ssoRes.ok) {
+          throw new Error("Failed to get feedback session");
+        }
+
+        const ssoData = (await ssoRes.json()) as { token?: string };
+        if (!ssoData.token) {
+          throw new Error("No token received");
+        }
+
+        setSsoToken(ssoData.token);
+        setBoardToken(boardTokenValue);
+      } catch (err) {
         if (!cancelled) {
           setLoadFailed(true);
-          toast.error(err?.message ?? "Failed to load feedback");
+          toast.error(
+            err instanceof Error ? err.message : "Failed to load feedback",
+          );
         }
-      });
+      }
+    })();
+
     return () => {
       cancelled = true;
     };
   }, []);
 
   useEffect(() => {
-    if (document.querySelector(`script[src="${CANNY_SDK_URL}"]`)) {
-      setSdkLoaded(true);
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = CANNY_SDK_URL;
-    script.async = true;
-    script.onload = () => setSdkLoaded(true);
-    script.onerror = () => {
-      setLoadFailed(true);
-      toast.error("Failed to load feedback widget");
-    };
-    document.body.appendChild(script);
+    let cancelled = false;
+
+    void loadCannySdk()
+      .then(() => {
+        if (!cancelled) setSdkLoaded(true);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setLoadFailed(true);
+          toast.error(err instanceof Error ? err.message : "Failed to load feedback widget");
+        }
+      });
+
     return () => {
-      script.remove();
+      cancelled = true;
     };
   }, []);
 
   useEffect(() => {
-    if (!sdkLoaded || !ssoToken || !mountRef.current) return;
-
-    const boardToken = getCannyBoardToken();
-    if (!boardToken) {
-      setLoadFailed(true);
-      toast.error("Feedback board not configured");
-      return;
-    }
+    if (!sdkLoaded || !ssoToken || !boardToken || !mountRef.current) return;
 
     if (typeof window.Canny !== "function") {
       setLoadFailed(true);
@@ -108,7 +162,7 @@ export function FeedbackBoard() {
     return () => {
       if (node) node.innerHTML = "";
     };
-  }, [sdkLoaded, ssoToken, cannyTheme]);
+  }, [sdkLoaded, ssoToken, boardToken, cannyTheme]);
 
   if (loadFailed) {
     return (
@@ -116,7 +170,7 @@ export function FeedbackBoard() {
         <FeedbackHeader />
         <div className="mt-6 flex flex-1 flex-col items-center justify-center gap-4 rounded-xl border border-border bg-bg-elevated p-8 text-center">
           <p className="max-w-md text-muted-foreground">
-            We couldn&apos;t load the feedback board here—you can share feedback
+            We couldn&apos;t load the feedback board here-you can share feedback
             directly on Canny. Or you can always email us at{" "}
             <a
               href="mailto:support@social0.app"
@@ -177,8 +231,8 @@ export function FeedbackHeader() {
         <DocsInfoIcon url={DOCS_FEEDBACK_URL} />
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        Vote on features, report bugs, and suggest improvements. Or you can always
-        email us at{" "}
+        Vote on features, report bugs, and suggest improvements. Or you can
+        always email us at{" "}
         <a
           href="mailto:support@social0.app"
           className="text-emerald-600 dark:text-emerald-400 hover:underline"

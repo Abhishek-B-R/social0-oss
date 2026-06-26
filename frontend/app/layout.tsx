@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://social0.app";
-const title = "Social0 — Write once. Publish everywhere.";
+const title = "Social0 - Write once. Publish everywhere.";
 const description =
   "One composer. 12 platforms. No copy-paste, no tab-switching. Schedule and publish to Twitter, Instagram, LinkedIn, YouTube, and more.";
 
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Social0 — Social Media Scheduling Dashboard",
+        alt: "Social0 - Social Media Scheduling Dashboard",
       },
     ],
   },

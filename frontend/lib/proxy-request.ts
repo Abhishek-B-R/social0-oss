@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 /**
  * Next.js App Router issues many requests per user-visible navigation (RSC flights,
  * prefetches, layout segments). Only full document loads should count toward the
- * edge page rate limit — otherwise a few refreshes exhaust the quota.
+ * edge page rate limit - otherwise a few refreshes exhaust the quota.
  */
 export function isFullPageDocumentRequest(req: NextRequest): boolean {
   if (req.method !== "GET" && req.method !== "HEAD") return false;
@@ -19,7 +19,7 @@ export function isFullPageDocumentRequest(req: NextRequest): boolean {
   return accept.includes("text/html");
 }
 
-/** Better Auth session polling / RSC-adjacent calls — higher cap than document loads. */
+/** Better Auth session polling / RSC-adjacent calls - higher cap than document loads. */
 export function isAuthSessionPoll(req: NextRequest): boolean {
   const path = req.nextUrl.pathname;
   return (

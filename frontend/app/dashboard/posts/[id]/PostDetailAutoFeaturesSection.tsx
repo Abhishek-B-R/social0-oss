@@ -32,7 +32,10 @@ import {
   getResurfacePlatforms,
 } from "@/lib/resurface-utils";
 import type { AutoPlugDetail, ResurfaceDetail } from "../posts-list-data";
-import { AutoPlugPanel, type AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import {
+  AutoPlugPanel,
+  type AutoPlugConfig,
+} from "@/components/autoplug/AutoPlugPanel";
 import {
   AutoResurfacePanel,
   type AutoResurfaceConfig,
@@ -178,30 +181,23 @@ export function PostDetailAutoFeaturesSection({
   const withinAuto = pub ? isWithinAutoPlugWindow(pub) : false;
   const withinResurface = pub ? isWithinResurfaceWindow(pub) : false;
 
-  const hasX =
-    getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
+  const hasX = getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
 
   const autoPlugRowVisible =
     hasX && (isScheduled || !!autoPlugDetail || withinAuto);
   const resurfaceRowVisible =
     hasX && (isScheduled || !!resurfaceDetail || withinResurface);
 
-  /** Plug already fired or finished — no edits. */
+  /** Plug already fired or finished - no edits. */
   const plugLocked =
-    !isScheduled &&
-    !!autoPlugDetail &&
-    autoPlugDetail.status !== "watching";
-  /** At least one reshare executed — no edits. */
+    !isScheduled && !!autoPlugDetail && autoPlugDetail.status !== "watching";
+  /** At least one reshare executed - no edits. */
   const repostLocked =
-    !isScheduled &&
-    !!resurfaceDetail &&
-    resurfaceDetail.resurfacesDone > 0;
+    !isScheduled && !!resurfaceDetail && resurfaceDetail.resurfacesDone > 0;
 
-  /** Published more than 24h ago — no Auto-Plug / Auto-Repost edits (UI + API). */
+  /** Published more than 24h ago - no Auto-Plug / Auto-Repost edits (UI + API). */
   const ageLocked =
-    !isScheduled &&
-    pub != null &&
-    isPostOlderThanAutoFeaturesEditWindow(pub);
+    !isScheduled && pub != null && isPostOlderThanAutoFeaturesEditWindow(pub);
 
   const plugEditLocked = plugLocked || ageLocked;
   const repostEditLocked = repostLocked || ageLocked;
@@ -248,7 +244,7 @@ export function PostDetailAutoFeaturesSection({
     ? !!toFullAutoPlug(pendingAutoPlugFromServer)
     : !!autoPlugDetail && autoPlugDetail.status === "watching";
 
-  /** Schedule still running (pending reshares) — ON when active; OFF when paused or finished. */
+  /** Schedule still running (pending reshares) - ON when active; OFF when paused or finished. */
   const resurfaceToggleOn = isScheduled
     ? !!toFullResurface(pendingResurfaceFromServer)
     : !!resurfaceDetail &&
@@ -266,7 +262,7 @@ export function PostDetailAutoFeaturesSection({
     }
     if (!isScheduled && ageLocked) {
       toast.error(
-        "This post is older than 24 hours — Auto-Plug can no longer be edited.",
+        "This post is older than 24 hours - Auto-Plug can no longer be edited.",
       );
       return;
     }
@@ -326,7 +322,7 @@ export function PostDetailAutoFeaturesSection({
     }
     if (!isScheduled && ageLocked) {
       toast.error(
-        "This post is older than 24 hours — Auto-Repost can no longer be edited.",
+        "This post is older than 24 hours - Auto-Repost can no longer be edited.",
       );
       return;
     }
@@ -431,9 +427,7 @@ export function PostDetailAutoFeaturesSection({
       return;
     }
     if (!withinAuto && !autoPlugDetail) {
-      toast.error(
-        "Auto-Plug can only be added within 6 hours of publishing.",
-      );
+      toast.error("Auto-Plug can only be added within 6 hours of publishing.");
       return;
     }
     setDraftPlug(null);
@@ -543,9 +537,7 @@ export function PostDetailAutoFeaturesSection({
   const plugGearVisible =
     allowAutoPlug &&
     !plugEditLocked &&
-    (isScheduled
-      ? plugToggleOn
-      : autoPlugDetail?.status === "watching");
+    (isScheduled ? plugToggleOn : autoPlugDetail?.status === "watching");
 
   const resurfaceGearVisible =
     allowResurface && !repostEditLocked && resurfaceToggleOn;
@@ -562,7 +554,7 @@ export function PostDetailAutoFeaturesSection({
         </p>
         {ageLocked && (
           <p className="text-[13px] text-muted-foreground pt-0.5">
-            This post was published more than 24 hours ago — Auto-Plug and
+            This post was published more than 24 hours ago - Auto-Plug and
             Auto-Repost can no longer be edited.
           </p>
         )}
@@ -592,7 +584,7 @@ export function PostDetailAutoFeaturesSection({
               </span>
               {repostLocked && (
                 <span className="text-[11px] text-amber-600 dark:text-amber-400/90 mt-0.5">
-                  Already ran — locked
+                  Already ran - locked
                 </span>
               )}
               {!allowResurface && (
@@ -680,7 +672,7 @@ export function PostDetailAutoFeaturesSection({
               {plugLocked && (
                 <span className="text-[11px] text-amber-600 dark:text-amber-400/90 mt-0.5">
                   {autoPlugDetail?.status === "triggered"
-                    ? "Already sent — locked"
+                    ? "Already sent - locked"
                     : "No longer editable"}
                 </span>
               )}

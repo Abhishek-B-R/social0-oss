@@ -16,9 +16,9 @@ Each card shows a preview and when it was published.
 
 ## What you can do with a posted post
 
-- **View** — Open it to see the full content, media, and status per platform (e.g. “Posted on Twitter,” “Posted on LinkedIn”).
-- **Post again** — Reuse the same content and send it again (e.g. to the same or different accounts, or on a schedule). Useful for reposting or boosting.
-- **View on platform** — If we show a link to the post on Twitter, Instagram, etc., you can click it to see it there.
+- **View** - Open it to see the full content, media, and status per platform (e.g. “Posted on Twitter,” “Posted on LinkedIn”).
+- **Post again** - Reuse the same content and send it again (e.g. to the same or different accounts, or on a schedule). Useful for reposting or boosting.
+- **View on platform** - If we show a link to the post on Twitter, Instagram, etc., you can click it to see it there.
 
 You can’t change what’s already on the platforms; that content is live. “Post again” creates a new send (same or edited content).
 

@@ -9,12 +9,13 @@ import {
 } from "@/lib/ratelimit";
 
 /**
- * Check if an email is registered. Used on sign-in to show "No account found — sign up first" when appropriate.
+ * Check if an email is registered. Used on sign-in to show "No account found - sign up first" when appropriate.
  * Rate-limited to reduce enumeration.
  */
 export async function GET(req: NextRequest) {
   const email = req.nextUrl.searchParams.get("email");
-  const normalized = typeof email === "string" ? email.trim().toLowerCase() : "";
+  const normalized =
+    typeof email === "string" ? email.trim().toLowerCase() : "";
   if (!normalized) {
     return NextResponse.json({ error: "Missing email" }, { status: 400 });
   }
@@ -26,7 +27,10 @@ export async function GET(req: NextRequest) {
 
   const ipRate = await enforceRateLimit(checkEmailLimiter, `check_email:${ip}`);
   if (!ipRate.allowed) {
-    return NextResponse.json({ error: ipRate.error }, { status: ipRate.status });
+    return NextResponse.json(
+      { error: ipRate.error },
+      { status: ipRate.status },
+    );
   }
 
   const emailRate = await enforceRateLimit(

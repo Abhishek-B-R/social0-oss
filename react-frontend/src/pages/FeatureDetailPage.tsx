@@ -39,7 +39,7 @@ export function FeatureDetailPage() {
       { name: "Home", path: "/" },
       { name: "Features", path: "/features" },
       {
-        name: page.platformLabel ?? page.heroHeadline.split("—")[0].trim(),
+        name: page.platformLabel ?? page.heroHeadline.split("-")[0].trim(),
         path: `/features/${slug}`,
       },
     ]),
@@ -58,7 +58,7 @@ export function FeatureDetailPage() {
             </Link>
             <span className="mx-2">/</span>
             <span className="text-foreground">
-              {page.platformLabel ?? page.heroHeadline.split("—")[0].trim()}
+              {page.platformLabel ?? page.heroHeadline.split("-")[0].trim()}
             </span>
           </nav>
           {page.platformLabel ? (
@@ -85,15 +85,24 @@ export function FeatureDetailPage() {
       </section>
       <section className="px-6 py-16 lg:px-8">
         <div className="mx-auto max-w-[1100px]">
-          <p className="max-w-3xl text-[16px] leading-relaxed text-muted-foreground">{page.intro}</p>
+          <p className="max-w-3xl text-[16px] leading-relaxed text-muted-foreground">
+            {page.intro}
+          </p>
           <h2 className="mt-12 mb-6 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-foreground">
             What you get
           </h2>
           <div className="grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2">
             {page.benefits.map((benefit) => (
-              <div key={benefit.title} className="bg-background px-6 py-6 dark:bg-background/50">
-                <h3 className="mb-2 text-[15px] font-semibold text-foreground">{benefit.title}</h3>
-                <p className="text-[14px] leading-relaxed text-muted-foreground">{benefit.description}</p>
+              <div
+                key={benefit.title}
+                className="bg-background px-6 py-6 dark:bg-background/50"
+              >
+                <h3 className="mb-2 text-[15px] font-semibold text-foreground">
+                  {benefit.title}
+                </h3>
+                <p className="text-[14px] leading-relaxed text-muted-foreground">
+                  {benefit.description}
+                </p>
               </div>
             ))}
           </div>
@@ -113,8 +122,12 @@ export function FeatureDetailPage() {
                 <span className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600/10 text-[13px] font-semibold text-emerald-700">
                   {step.step}
                 </span>
-                <h3 className="mb-2 text-[16px] font-semibold text-foreground">{step.title}</h3>
-                <p className="text-[14px] leading-relaxed text-muted-foreground">{step.description}</p>
+                <h3 className="mb-2 text-[16px] font-semibold text-foreground">
+                  {step.title}
+                </h3>
+                <p className="text-[14px] leading-relaxed text-muted-foreground">
+                  {step.description}
+                </p>
               </li>
             ))}
           </ol>
@@ -132,7 +145,7 @@ export function FeatureDetailPage() {
               href: `/features/${s}`,
               label: feature.platformLabel
                 ? `${feature.platformLabel} scheduler`
-                : feature.heroHeadline.split("—")[0].trim(),
+                : feature.heroHeadline.split("-")[0].trim(),
             };
           })}
       />

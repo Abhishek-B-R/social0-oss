@@ -4,7 +4,7 @@ import type { SupportedPlatform } from "../constants/platforms.js";
 export type PublishPostJob = {
   postId: string;
   userId: string;
-  /** SSE tracking id — publish-now only; omitted for scheduled jobs. */
+  /** SSE tracking id - publish-now only; omitted for scheduled jobs. */
   trackingId?: string;
   /** If omitted, worker loads targets from DB. */
   connectedAccountIds?: string[];
@@ -14,7 +14,7 @@ export type PublishPostJob = {
 export type PublishPlatformJob = {
   postId: string;
   userId: string;
-  /** SSE tracking — publish-now only. */
+  /** SSE tracking - publish-now only. */
   trackingId?: string;
   publicationId: string;
   connectedAccountId: string;

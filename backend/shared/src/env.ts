@@ -7,7 +7,7 @@ export const envSchema = z.object({
     .default("development"),
   UPSTASH_REDIS_REST_URL: z.string().url(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
-  /** Optional — rediss:// URL from Upstash console; derived from REST creds when omitted. */
+  /** Optional - rediss:// URL from Upstash console; derived from REST creds when omitted. */
   UPSTASH_REDIS_URL: z.string().url().optional(),
   DATABASE_URL: z.string().optional(),
   PORT: z.coerce.number().default(3001),

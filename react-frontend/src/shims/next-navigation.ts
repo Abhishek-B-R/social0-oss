@@ -5,9 +5,11 @@ import {
   useParams as useRouterParams,
   useSearchParams as useRouterSearchParams,
 } from "react-router-dom";
+import { useRouterRefresh } from "@/lib/router-refresh";
 
 export function useRouter() {
   const navigate = useNavigate();
+  const { refresh } = useRouterRefresh();
   return useMemo(
     () => ({
       push: (href: string, _opts?: { scroll?: boolean }) => navigate(href),
@@ -15,10 +17,10 @@ export function useRouter() {
         navigate(href, { replace: true }),
       back: () => navigate(-1),
       forward: () => navigate(1),
-      refresh: () => navigate(0),
+      refresh,
       prefetch: (_href: string) => {},
     }),
-    [navigate],
+    [navigate, refresh],
   );
 }
 

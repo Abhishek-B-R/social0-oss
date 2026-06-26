@@ -26,4 +26,4 @@ If you don’t remember your password, use the **Forgot password** link on the s
 A: Check spam and wait a minute. Try again with **Send code**. Make sure you’re using the email tied to your Social0 account.
 
 **Q: I use Google to sign in. Can I reset my password?**  
-A: If you signed up with Google, you don’t have a Social0 password—you sign in with Google. Use the Google sign-in option. If you added a password later in Settings, use forgot password with that email.
+A: If you signed up with Google, you don’t have a Social0 password-you sign in with Google. Use the Google sign-in option. If you added a password later in Settings, use forgot password with that email.

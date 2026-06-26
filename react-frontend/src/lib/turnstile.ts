@@ -1,4 +1,4 @@
-/** Cloudflare dummy keys for automated browser testing — https://developers.cloudflare.com/turnstile/troubleshooting/testing/ */
+/** Cloudflare dummy keys for automated browser testing - https://developers.cloudflare.com/turnstile/troubleshooting/testing/ */
 export const TURNSTILE_TEST_SITE_KEY_ALWAYS_PASS = "1x00000000000000000000AA";
 export const TURNSTILE_TEST_SECRET_ALWAYS_PASS =
   "1x0000000000000000000000000000000AA";

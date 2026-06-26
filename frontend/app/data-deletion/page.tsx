@@ -4,7 +4,7 @@ import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 
 export const metadata: Metadata = {
-  title: "Data Deletion Request | Social0 — Social Media Scheduling Tool",
+  title: "Data Deletion Request | Social0 - Social Media Scheduling Tool",
   description:
     "Disconnect accounts in Connections, or email to request deletion of post content and personal data from Social0.",
   alternates: { canonical: "https://social0.app/data-deletion" },
@@ -26,10 +26,10 @@ export default function DataDeletionPage() {
 
         <div className="prose prose-zinc dark:prose-invert max-w-none space-y-10 text-base leading-relaxed text-foreground">
           <p className="text-muted-foreground text-lg leading-relaxed">
-            You can manage connected platforms yourself, or ask us to delete your
-            post content and other data held in Social0. This page explains what
-            we hold, the difference between disconnecting and a full deletion
-            request, and what happens when we process an email request.
+            You can manage connected platforms yourself, or ask us to delete
+            your post content and other data held in Social0. This page explains
+            what we hold, the difference between disconnecting and a full
+            deletion request, and what happens when we process an email request.
           </p>
 
           <section>
@@ -44,15 +44,15 @@ export default function DataDeletionPage() {
               >
                 Connections
               </Link>{" "}
-              and click the remove (×) icon next to the platform. That revokes the
-              connection and removes it from Social0—it does{" "}
+              and click the remove (×) icon next to the platform. That revokes
+              the connection and removes it from Social0-it does{" "}
               <span className="text-foreground font-medium">not</span> delete
               your drafts, scheduled posts, published post records, or uploaded
               media already stored in Social0.
             </p>
             <p className="text-muted-foreground">
-              If you want that post content and media removed from our systems as
-              well, use the email request below.
+              If you want that post content and media removed from our systems
+              as well, use the email request below.
             </p>
           </section>
 
@@ -64,9 +64,13 @@ export default function DataDeletionPage() {
               Depending on how you use the service, we may hold:
             </p>
             <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
-              <li>Connected social accounts (OAuth tokens and related identifiers)</li>
+              <li>
+                Connected social accounts (OAuth tokens and related identifiers)
+              </li>
               <li>Scheduled, draft, and published posts and their metadata</li>
-              <li>Uploaded media (e.g. images and videos you attach to posts)</li>
+              <li>
+                Uploaded media (e.g. images and videos you attach to posts)
+              </li>
               <li>Account settings and preferences tied to your profile</li>
             </ul>
           </section>

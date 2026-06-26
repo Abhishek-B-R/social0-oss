@@ -27,7 +27,7 @@ export interface AnimatedBeamProps {
   endYOffset?: number;
 }
 
-/** MagicUI Animated Beam — https://magicui.design/docs/components/animated-beam */
+/** MagicUI Animated Beam - https://magicui.design/docs/components/animated-beam */
 export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
   className,
   containerRef,

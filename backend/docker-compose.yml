@@ -1,4 +1,4 @@
-# Local Redis is no longer used — BullMQ + caches use Upstash (see backend/.env.example).
+# Local Redis is no longer used - BullMQ + caches use Upstash (see backend/.env.example).
 # Kept for optional offline experiments only.
 services:
   redis:

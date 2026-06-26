@@ -16,6 +16,11 @@ import {
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 import { getClientSignUpConfig } from "@/lib/sign-up-config";
+import {
+  EMPTY_LEGAL_CONSENT,
+  LegalConsentCheckboxes,
+  type LegalConsentValues,
+} from "@/components/auth/LegalConsentCheckboxes";
 
 const SIGN_UP = getClientSignUpConfig();
 const TIMEOUT_MS = 10_000;
@@ -117,6 +122,8 @@ function AuthPageContent() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [legalConsent, setLegalConsent] =
+    useState<LegalConsentValues>(EMPTY_LEGAL_CONSENT);
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
@@ -233,6 +240,12 @@ function AuthPageContent() {
       );
       return;
     }
+    if (!legalConsent.acceptTerms || !legalConsent.acceptPrivacy) {
+      toast.error(
+        "Please accept the Terms of Service and acknowledge the Privacy Policy.",
+      );
+      return;
+    }
     setLoading(true);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -248,11 +261,17 @@ function AuthPageContent() {
                 email: email.trim().toLowerCase(),
                 password,
                 turnstileToken,
+                acceptTerms: legalConsent.acceptTerms,
+                acceptPrivacy: legalConsent.acceptPrivacy,
+                marketingOptIn: legalConsent.marketingOptIn,
               }
             : {
                 name: name.trim(),
                 email: email.trim().toLowerCase(),
                 password,
+                acceptTerms: legalConsent.acceptTerms,
+                acceptPrivacy: legalConsent.acceptPrivacy,
+                marketingOptIn: legalConsent.marketingOptIn,
               },
         ),
         signal: controller.signal,
@@ -278,6 +297,14 @@ function AuthPageContent() {
         }
         if (data.code === "EMAIL_ALREADY_EXISTS") {
           toast.error(EMAIL_ALREADY_EXISTS_MESSAGE);
+          return;
+        }
+        if (data.code === "LEGAL_CONSENT_REQUIRED") {
+          toast.error(
+            typeof data.error === "string"
+              ? data.error
+              : "Please accept the Terms of Service and Privacy Policy.",
+          );
           return;
         }
         const raw =
@@ -351,6 +378,7 @@ function AuthPageContent() {
                   setMode("signup");
                   toast.dismiss();
                   resetTurnstileChallenge();
+                  setLegalConsent(EMPTY_LEGAL_CONSENT);
                 }}
                 className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
                   mode === "signup"
@@ -591,8 +619,8 @@ function AuthPageContent() {
                         )}
                         {isTurnstileTestSiteKey(SIGN_UP.turnstileSiteKey) && (
                           <p className="text-center text-[11px] text-muted-foreground">
-                            Turnstile test key active — for local/Playwright
-                            use only.
+                            Turnstile test key active - for local/Playwright use
+                            only.
                           </p>
                         )}
                         <div className="flex justify-center overflow-hidden rounded-lg">
@@ -629,12 +657,19 @@ function AuthPageContent() {
                     )}
                   </div>
                 )}
+                <LegalConsentCheckboxes
+                  values={legalConsent}
+                  onChange={setLegalConsent}
+                  idPrefix="signup"
+                />
                 <button
                   type="submit"
                   disabled={
                     loading ||
                     googleLoading ||
                     SIGN_UP.misconfigured ||
+                    !legalConsent.acceptTerms ||
+                    !legalConsent.acceptPrivacy ||
                     (SIGN_UP.requiresTurnstileToken && !turnstileToken)
                   }
                   className="w-full inline-flex items-center justify-center gap-2 rounded-[10px] bg-accent hover:bg-accent-hover disabled:opacity-50 text-white font-medium py-3 px-4 transition-colors"
@@ -674,24 +709,6 @@ function AuthPageContent() {
               Terms of Service
             </Link>
           </div>
-
-          <p className="mt-8 text-center text-xs text-muted-foreground">
-            By continuing, you agree to our{" "}
-            <Link
-              href="/terms"
-              className="underline hover:text-foreground transition-colors"
-            >
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link
-              href="/privacy"
-              className="underline hover:text-foreground transition-colors"
-            >
-              Privacy Policy
-            </Link>
-            .
-          </p>
         </div>
       </main>
 

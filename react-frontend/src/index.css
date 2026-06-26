@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "shadcn/tailwind.css";
 
-/* Brand fonts (Vite — no next/font injection) */
+/* Brand fonts (Vite - no next/font injection) */
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/400.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/500.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/600.css");
@@ -57,8 +57,9 @@
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --font-geist-sans: "Geist Sans", system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+  --font-geist-sans:
+    "Geist Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
   --font-geist-mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
   --font-serif: "Instrument Serif", Georgia, serif;
 }
@@ -374,7 +375,7 @@ html {
   }
 }
 
-/* Landing page scoped overrides — does not affect dashboard */
+/* Landing page scoped overrides - does not affect dashboard */
 /* ============================================
    LANDING PAGE SCOPED THEME
    Append this to the bottom of globals.css

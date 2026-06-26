@@ -24,13 +24,23 @@ export async function GET(
   { params }: { params: Promise<{ platform: string }> },
 ) {
   const { platform: platformParam } = await params;
-  
+
   // Validate platform is a valid Platform type (including BYOK platforms)
-  const validPlatforms: Platform[] = ["linkedin", "instagram", "youtube", "pinterest", "tiktok", "twitter_x", "threads", "bluesky", "facebook"];
+  const validPlatforms: Platform[] = [
+    "linkedin",
+    "instagram",
+    "youtube",
+    "pinterest",
+    "tiktok",
+    "twitter_x",
+    "threads",
+    "bluesky",
+    "facebook",
+  ];
   if (!validPlatforms.includes(platformParam as Platform)) {
     return Response.json({ error: "Invalid platform" }, { status: 400 });
   }
-  
+
   const platform = platformParam as Platform;
   const session = await auth.api.getSession({ headers: await headers() });
 
@@ -38,7 +48,7 @@ export async function GET(
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // TikTok: no rate limit / binding — plain OAuth like pre-security flow.
+  // TikTok: no rate limit / binding - plain OAuth like pre-security flow.
   if (platform !== "tiktok") {
     const rate = await enforceRateLimit(oauthLimiter, session.user.id, {
       failClosedWhenUnavailable: false,
@@ -89,15 +99,22 @@ export async function GET(
     const consumerSecret = env.TWITTER_CONSUMER_SECRET;
     if (!consumerKey || !consumerSecret) {
       return Response.json(
-        { error: "Twitter OAuth 1.0a credentials not configured (TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET)" },
+        {
+          error:
+            "Twitter OAuth 1.0a credentials not configured (TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET)",
+        },
         { status: 400 },
       );
     }
     const baseUrl = normalizeAppUrl(env.NEXT_PUBLIC_APP_URL);
     const callbackUrl = `${baseUrl}/api/connect/twitter_x/callback`;
 
-    const client = new TwitterApi({ appKey: consumerKey, appSecret: consumerSecret });
-    const { url: authUrl, oauth_token_secret } = await client.generateAuthLink(callbackUrl);
+    const client = new TwitterApi({
+      appKey: consumerKey,
+      appSecret: consumerSecret,
+    });
+    const { url: authUrl, oauth_token_secret } =
+      await client.generateAuthLink(callbackUrl);
 
     // Store request token secret in encrypted cookie (needed in callback)
     const cookieStore = await cookies();
@@ -115,7 +132,10 @@ export async function GET(
       maxAge: 600, // 10 minutes
     });
     // State for CSRF: userId + platform (callback will verify)
-    const csrfState = encrypt({ userId: session.user.id, platform: "twitter_x" });
+    const csrfState = encrypt({
+      userId: session.user.id,
+      platform: "twitter_x",
+    });
     const finalUrl = `${authUrl}&state=${encodeURIComponent(csrfState)}`;
     return redirectWithOAuthConnectBinding(
       finalUrl,
@@ -126,7 +146,10 @@ export async function GET(
 
   // Check if platform uses OAuth (not BYOK)
   if (!PLATFORM_OAUTH_CONFIG[platform]) {
-    return Response.json({ error: "Platform not configured for OAuth" }, { status: 400 });
+    return Response.json(
+      { error: "Platform not configured for OAuth" },
+      { status: 400 },
+    );
   }
 
   const config = PLATFORM_OAUTH_CONFIG[platform];
@@ -155,7 +178,7 @@ export async function GET(
   const authUrl = config.authUrl;
 
   const url = new URL(authUrl);
-  
+
   // TikTok and X (Twitter) require PKCE
   let state: string;
   if (platform === "tiktok") {
@@ -192,7 +215,6 @@ export async function GET(
     url.searchParams.set("client_key", clientId);
     url.searchParams.set("code_challenge", codeChallenge);
     url.searchParams.set("code_challenge_method", "S256");
-
   } else {
     // Standard OAuth flow - encrypt userId + platform in state
     state = encrypt({
@@ -217,7 +239,7 @@ export async function GET(
       platform,
     );
   }
-  
+
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", config.scope);

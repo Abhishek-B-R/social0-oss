@@ -29,7 +29,9 @@ type ThreadPreview = {
 
 type QuickActionStatus = "published" | "failed" | "scheduled" | "draft";
 
-function toComposerSlug(displayType: string): "text" | "image" | "video" | "threads" | "collection" {
+function toComposerSlug(
+  displayType: string,
+): "text" | "image" | "video" | "threads" | "collection" {
   if (displayType === "Thread") return "threads";
   if (displayType === "Collection") return "collection";
   if (displayType === "Image") return "image";
@@ -54,13 +56,19 @@ function getThreadPreview(post: PostRow): ThreadPreview {
   const partsArr = meta?.twitterThread?.parts;
   if (Array.isArray(partsArr) && partsArr.length > 0) {
     const parts = partsArr.map((p) => {
-      const t = typeof p === "object" && p && "text" in p ? String((p as { text: string }).text).trim() : "";
+      const t =
+        typeof p === "object" && p && "text" in p
+          ? String((p as { text: string }).text).trim()
+          : "";
       return t || "(No caption)";
     });
     return { parts, isThread: true };
   }
   const raw = post.originalContent ?? "";
-  const segments = raw.split(/\n\s*---\s*\n|\s+---\s+/).map((s) => s.trim()).filter(Boolean);
+  const segments = raw
+    .split(/\n\s*---\s*\n|\s+---\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
   if (segments.length > 1) {
     return { parts: segments, isThread: true };
   }
@@ -134,14 +142,22 @@ function getTimestampLabel(
         : null;
     return publishedAt ? `Posted at ${fmt(publishedAt)}` : "Posted";
   }
-  return post.createdAt ? `Created ${fmt(new Date(post.createdAt))}` : "—";
+  return post.createdAt ? `Created ${fmt(new Date(post.createdAt))}` : "-";
 }
 
 /** Status pill: label + optional prefix character. */
-function getStatusBadge(status: string | null): { label: string; className: string; prefix: string } {
+function getStatusBadge(status: string | null): {
+  label: string;
+  className: string;
+  prefix: string;
+} {
   switch (status) {
     case "published":
-      return { label: "Posted", prefix: "●", className: "bg-emerald-600 text-white" };
+      return {
+        label: "Posted",
+        prefix: "●",
+        className: "bg-emerald-600 text-white",
+      };
     case "partial":
       return {
         label: "Partial",
@@ -149,17 +165,30 @@ function getStatusBadge(status: string | null): { label: string; className: stri
         className: "bg-purple-600 text-white",
       };
     case "publishing":
-      return { label: "Publishing", prefix: "◌", className: "bg-amber-400 text-amber-950" };
+      return {
+        label: "Publishing",
+        prefix: "◌",
+        className: "bg-amber-400 text-amber-950",
+      };
     case "scheduled":
-      return { label: "Scheduled", prefix: "◷", className: "bg-blue-600 text-white" };
+      return {
+        label: "Scheduled",
+        prefix: "◷",
+        className: "bg-blue-600 text-white",
+      };
     case "failed":
       return {
         label: "Failed",
         prefix: "✕",
-        className: "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800",
+        className:
+          "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800",
       };
     default:
-      return { label: "Draft", prefix: "○", className: "bg-muted text-foreground" };
+      return {
+        label: "Draft",
+        prefix: "○",
+        className: "bg-muted text-foreground",
+      };
   }
 }
 
@@ -405,7 +434,10 @@ export function PostListCards({
 }: {
   userPosts: PostRow[];
   publicationsByPostId: Record<string, PublicationRow[]>;
-  firstMediaByPost: Map<string, { mimeType: string; originalFilename: string | null }>;
+  firstMediaByPost: Map<
+    string,
+    { mimeType: string; originalFilename: string | null }
+  >;
   resurfaceByPostId?: Record<string, ResurfaceForPost>;
   /** When provided, posts in this set show a "Queued" badge instead of "Scheduled" */
   queuedPostIds?: Set<string>;
@@ -466,10 +498,17 @@ export function PostListCards({
         const publicationsList = publicationsByPostId[post.id] ?? [];
         const isQueued = queuedPostIds?.has(post.id);
         const statusBadge = isQueued
-          ? { label: "Queued", prefix: "▸", className: "bg-orange-600 text-white" }
+          ? {
+              label: "Queued",
+              prefix: "▸",
+              className: "bg-orange-600 text-white",
+            }
           : getStatusBadge(uiStatus);
         const showIcons = publicationsList.slice(0, MAX_PLATFORM_ICONS);
-        const extraCount = publicationsList.length > MAX_PLATFORM_ICONS ? publicationsList.length - MAX_PLATFORM_ICONS : 0;
+        const extraCount =
+          publicationsList.length > MAX_PLATFORM_ICONS
+            ? publicationsList.length - MAX_PLATFORM_ICONS
+            : 0;
         const quickStatus: QuickActionStatus | null =
           uiStatus === "published" ||
           uiStatus === "failed" ||
@@ -508,7 +547,7 @@ export function PostListCards({
                   {statusBadge.prefix} {statusBadge.label}
                 </span>
               </div>
-              {/* MIDDLE: caption/title — larger, bolder, 2 lines */}
+              {/* MIDDLE: caption/title - larger, bolder, 2 lines */}
               <p
                 className={`mb-2 line-clamp-2 text-[15px] leading-snug ${
                   hasCaption
@@ -518,12 +557,16 @@ export function PostListCards({
               >
                 {preview}
               </p>
-              {uiStatus === "failed" && getFriendlyFailureReason(post.failureReason) && (
-                <p className="text-xs text-red-600 dark:text-red-400 mt-2 flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" strokeWidth={1.5} />
-                  {getFriendlyFailureReason(post.failureReason)}
-                </p>
-              )}
+              {uiStatus === "failed" &&
+                getFriendlyFailureReason(post.failureReason) && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2 flex items-center gap-1.5">
+                    <AlertCircle
+                      className="w-3.5 h-3.5 shrink-0"
+                      strokeWidth={1.5}
+                    />
+                    {getFriendlyFailureReason(post.failureReason)}
+                  </p>
+                )}
               {/* BOTTOM ROW: [Platform icons left] [Date right muted] */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1">

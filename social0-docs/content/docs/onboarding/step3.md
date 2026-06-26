@@ -1,11 +1,11 @@
 ---
-title: "Onboarding — Connect accounts"
+title: "Onboarding - Connect accounts"
 description: Connect your first social accounts so you can start posting.
 ---
 
 ## Overview
 
-In this step you connect the social accounts you want to use with Social0. **You need a paid plan to connect accounts**—on the free tier you cannot connect any. If you have a paid plan, you’ll see a list of platforms (Twitter/X, LinkedIn, Instagram, etc.). Click **Connect** for each one you want, sign in to that platform when asked, and approve the permissions. When you’re done, click **Next** to finish onboarding.
+In this step you connect the social accounts you want to use with Social0. **You need a paid plan to connect accounts**-on the free tier you cannot connect any. If you have a paid plan, you’ll see a list of platforms (Twitter/X, LinkedIn, Instagram, etc.). Click **Connect** for each one you want, sign in to that platform when asked, and approve the permissions. When you’re done, click **Next** to finish onboarding.
 
 ## How to connect accounts during onboarding
 

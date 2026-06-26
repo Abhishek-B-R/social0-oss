@@ -10,8 +10,7 @@ const faqs = [
   },
   {
     question: "Is there a free trial?",
-    answer:
-      "Yes! All plans include a 7-day free trial. Cancel anytime.",
+    answer: "Yes! All plans include a 7-day free trial. Cancel anytime.",
   },
   {
     question: "Can I cancel anytime?",
@@ -21,7 +20,7 @@ const faqs = [
   {
     question: "Do I need to give Social0 my social media passwords?",
     answer:
-      "No. Social0 connects using official OAuth integrations from each platform. You sign in directly with the platform and grant permission — we never see or store your passwords.",
+      "No. Social0 connects using official OAuth integrations from each platform. You sign in directly with the platform and grant permission - we never see or store your passwords.",
   },
   {
     question: "Can I connect multiple accounts per platform?",

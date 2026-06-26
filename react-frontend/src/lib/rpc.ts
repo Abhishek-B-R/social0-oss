@@ -1,4 +1,7 @@
 function serializeArg(arg: unknown): unknown {
+  if (arg instanceof Date) {
+    return { __date: true, value: arg.toISOString() };
+  }
   if (arg instanceof FormData) {
     const entries: Record<string, string> = {};
     arg.forEach((value, key) => {

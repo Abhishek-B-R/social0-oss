@@ -24,7 +24,7 @@ export async function requireSessionUser(): Promise<Session> {
     try {
       await auth.api.revokeSessions({ headers: sessionHeaders });
     } catch {
-      // Best effort — cookie may already be invalid in the database.
+      // Best effort - cookie may already be invalid in the database.
     }
     redirect("/auth?session=expired");
   }

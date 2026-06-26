@@ -51,7 +51,7 @@ import {
 const MAX_VIDEO_BATCH = 40;
 const YOUTUBE_TITLE_MAX = 100;
 const LIMITS = {
-  /** Combined size of all videos in this bulk session — same cap as a single upload. */
+  /** Combined size of all videos in this bulk session - same cap as a single upload. */
   totalSize: CLIENT_MAX_VIDEO_UPLOAD_BYTES,
   perFile: CLIENT_MAX_VIDEO_UPLOAD_BYTES,
   maxCount: MAX_VIDEO_BATCH,
@@ -266,7 +266,8 @@ export function BulkToolsVideoClient({
         ? bulk
         : allSame
           ? nonEmptyTitles[0]!
-          : items.find((i) => i.youtubeTitle.trim())?.youtubeTitle.trim() ?? ""
+          : (items.find((i) => i.youtubeTitle.trim())?.youtubeTitle.trim() ??
+            "")
     ).slice(0, YOUTUBE_TITLE_MAX);
     setYoutubeModalTitle(initial);
     setShowYoutubeModal(true);
@@ -375,12 +376,7 @@ export function BulkToolsVideoClient({
         });
       });
     },
-    [
-      startDate,
-      startTime,
-      videosPerDay,
-      effectiveGapHours,
-    ],
+    [startDate, startTime, videosPerDay, effectiveGapHours],
   );
 
   const updateCaption = (id: string, caption: string) => {
@@ -769,7 +765,7 @@ export function BulkToolsVideoClient({
                   </span>
                 </div>
                 <p className="text-[20px] text-amber-600 dark:text-amber-400">
-                  ⚠️ Do not close this tab — your videos will not be saved if
+                  ⚠️ Do not close this tab - your videos will not be saved if
                   you leave now.
                 </p>
               </div>
@@ -916,7 +912,8 @@ export function BulkToolsVideoClient({
                     }
                     value={
                       pinterestSettingsByAccount[
-                        pinterestAccounts[selectedPinterestAccountIndex]?.id ?? ""
+                        pinterestAccounts[selectedPinterestAccountIndex]?.id ??
+                          ""
                       ] ?? {
                         boardId: "",
                         title: "",
@@ -942,7 +939,9 @@ export function BulkToolsVideoClient({
                 <PinterestConfigInline
                   accountId={pinterestAccounts[0]?.id ?? ""}
                   value={
-                    pinterestSettingsByAccount[pinterestAccounts[0]?.id ?? ""] ?? {
+                    pinterestSettingsByAccount[
+                      pinterestAccounts[0]?.id ?? ""
+                    ] ?? {
                       boardId: "",
                       title: "",
                       link: "",

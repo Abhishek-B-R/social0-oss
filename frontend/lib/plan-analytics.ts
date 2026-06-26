@@ -1,6 +1,6 @@
 /**
  * Analytics logging for plan-limit events.
- * Not for security — for understanding how often users hit limits.
+ * Not for security - for understanding how often users hit limits.
  * Logs are structured for easy grep / forwarding to analytics.
  */
 

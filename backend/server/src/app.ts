@@ -8,9 +8,11 @@ import cookie from "@fastify/cookie";
 import { registerQueuePlugin } from "./plugins/queue.js";
 import { registerLoggingPlugin } from "./plugins/logging.js";
 import { registerMetricsPlugin } from "./plugins/metrics.js";
+import { registerSecurityHeadersPlugin } from "./plugins/security-headers.js";
 import { registerV1Routes } from "./routes/v1/index.js";
 import { registerApiRoutes } from "./routes/api/index.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
+import { getTrustedAppOrigins } from "./lib/app-url.js";
 
 function loadHttpsOptions(): { key: Buffer; cert: Buffer } | undefined {
   const backendRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -50,10 +52,29 @@ export async function buildApp() {
     requestIdHeader: "x-request-id",
     genReqId: (req) =>
       (req.headers["x-request-id"] as string | undefined) ?? randomUUID(),
+    trustProxy:
+      process.env.TRUST_PROXY === "true" ||
+      (process.env.TRUST_PROXY !== "false" &&
+        process.env.NODE_ENV === "production"),
   });
 
-  await app.register(cors, { origin: true, credentials: true });
+  const trustedOrigins = getTrustedAppOrigins();
+  await app.register(cors, {
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (trustedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error("CORS origin not allowed"), false);
+    },
+    credentials: true,
+  });
   await app.register(cookie);
+  await app.register(registerSecurityHeadersPlugin);
   await app.register(registerLoggingPlugin);
   await app.register(registerMetricsPlugin);
   await app.register(registerQueuePlugin);

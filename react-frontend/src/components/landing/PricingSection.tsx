@@ -4,7 +4,7 @@ const freeFeatures = [
   "Connect up to 3 accounts",
   "10 posts to try it out before you commit",
   "Schedule posts across your channels",
-  "All 9 platforms — one dashboard",
+  "All 9 platforms - one dashboard",
   "No credit card required",
   "No trial that auto-charges you",
   "Activated instantly when you sign up",
@@ -28,8 +28,7 @@ const basePlanFeature = "text-[14px] leading-snug text-muted-foreground";
 const basePlanCheck =
   "mt-0.5 shrink-0 text-[14px] text-emerald-600 dark:text-emerald-400";
 
-const basePlanFooter =
-  "mt-3 text-center text-[12px] text-muted-foreground";
+const basePlanFooter = "mt-3 text-center text-[12px] text-muted-foreground";
 
 const ctaBase =
   "block w-full rounded-[10px] py-3.5 text-center text-[14px] font-medium transition-all";
@@ -92,12 +91,12 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
           <div className="text-right">
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-[13px] text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-400">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              Early adopter pricing — early users keep this price forever
+              Early adopter pricing - early users keep this price forever
             </div>
           </div>
         </div>
         <p className="mb-3 text-[15px] text-muted-foreground">
-          Start free today. Upgrade when you&apos;re ready — every paid plan
+          Start free today. Upgrade when you&apos;re ready - every paid plan
           includes a 7-day trial.
         </p>
 
@@ -114,7 +113,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
             </div>
 
             <p className={`mb-8 ${basePlanDesc}`}>
-              Publish across every platform and see why creators switch — before
+              Publish across every platform and see why creators switch - before
               you spend a dollar.
             </p>
 
@@ -140,7 +139,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
             </div>
           </div>
 
-          {/* STARTER — step up from Free: lifted surface + emerald accents */}
+          {/* STARTER - step up from Free: lifted surface + emerald accents */}
           <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-foreground/15 bg-gradient-to-b from-muted/60 to-background p-8 shadow-md md:p-10">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(26,107,74,0.07),transparent_55%)]" />
 
@@ -186,9 +185,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                 href="/dashboard"
                 className={`${ctaBase} border-2 border-emerald-600/50 text-emerald-700 hover:border-emerald-500 hover:bg-emerald-600/10 dark:text-emerald-400`}
               >
-                {signedIn
-                  ? "Go to dashboard →"
-                  : "Start your 7-day free trial"}
+                {signedIn ? "Go to dashboard →" : "Start your 7-day free trial"}
               </Link>
               <p className={basePlanFooter}>
                 7-day free trial · Cancel anytime
@@ -196,7 +193,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
             </div>
           </div>
 
-          {/* GROWTH — inverted contrast card: white on dark theme, dark on light */}
+          {/* GROWTH - inverted contrast card: white on dark theme, dark on light */}
           <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-emerald-600/30 bg-[#0C0C0C] p-8 shadow-md dark:bg-[#FAFAF8] md:p-10">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(26,107,74,0.15),transparent_60%)] dark:bg-[radial-gradient(circle_at_70%_0%,rgba(26,107,74,0.08),transparent_60%)]" />
 
@@ -254,9 +251,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
 
             <div className="relative z-10 mt-auto pt-8">
               <Link href="/dashboard" className={ctaPrimary}>
-                {signedIn
-                  ? "Go to dashboard →"
-                  : "Start your 7-day free trial"}
+                {signedIn ? "Go to dashboard →" : "Start your 7-day free trial"}
               </Link>
               <p className="mt-3 text-center text-[12px] text-white/25 dark:text-[#0A0A0A]/40">
                 7-day free trial · Cancel anytime · Lock in early-adopter
@@ -265,7 +260,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
             </div>
           </div>
 
-          {/* PRO — commented out for now, add back later
+          {/* PRO - commented out for now, add back later
           <div className="flex flex-col bg-background p-8 md:p-10">
             <div className="mb-6 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               Pro
@@ -313,7 +308,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
               href="/dashboard"
               className="block w-full rounded-[10px] border-2 border-foreground/10 bg-background py-3.5 text-center text-[14px] font-medium text-foreground transition-all hover:border-foreground/25 hover:bg-muted dark:border-white/10 dark:hover:border-white/20 dark:hover:bg-muted/50"
             >
-              Get started — 7-day free trial
+              Get started - 7-day free trial
             </Link>
 
             <p className="mt-3 text-center text-[12px] text-muted-foreground">

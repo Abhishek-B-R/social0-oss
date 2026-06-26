@@ -9,7 +9,6 @@ import { db } from "../db/index.js";
 import { verification, connectedAccounts } from "../db/schema.js";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "../lib/shim/next-server.js";
-import { redirect } from "../lib/shim/next-navigation.js";
 import { TwitterApi } from "twitter-api-v2";
 import { oauthLimiter, enforceRateLimit } from "../lib/ratelimit.js";
 import {
@@ -38,29 +37,17 @@ export async function GET(
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // TikTok: no rate limit / binding — plain OAuth like pre-security flow.
-  if (platform !== "tiktok") {
-    const rate = await enforceRateLimit(oauthLimiter, session.user.id, {
-      failClosedWhenUnavailable: false,
-    });
-    if (!rate.allowed) {
-      return NextResponse.redirect(
-        appUrlForPath("/dashboard/connections?error=rate_limited", req),
-      );
-    }
+  // TikTok and all other platforms: rate limit + connect-binding cookie on redirect.
+  const rate = await enforceRateLimit(oauthLimiter, session.user.id);
+  if (!rate.allowed) {
+    return NextResponse.redirect(
+      appUrlForPath("/dashboard/connections?error=rate_limited", req),
+    );
   }
 
-  const returnToForConnect =
-    platform === "tiktok"
-      ? (() => {
-          const p = req.nextUrl.searchParams.get("returnTo");
-          return typeof p === "string" &&
-            p.startsWith("/") &&
-            !p.startsWith("//")
-            ? p
-            : undefined;
-        })()
-      : sanitizeReturnToPath(req.nextUrl.searchParams.get("returnTo"));
+  const returnToForConnect = sanitizeReturnToPath(
+    req.nextUrl.searchParams.get("returnTo"),
+  );
 
   const reauthParam = req.nextUrl.searchParams.get("reauth");
   const accountIdParam = req.nextUrl.searchParams.get("accountId");
@@ -230,8 +217,5 @@ export async function GET(
   }
 
   const finalUrl = url.toString();
-  if (platform === "tiktok") {
-    return redirect(finalUrl);
-  }
   return redirectWithOAuthConnectBinding(finalUrl, session.user.id, platform);
 }

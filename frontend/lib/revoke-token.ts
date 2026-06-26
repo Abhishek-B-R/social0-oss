@@ -4,7 +4,7 @@ import { env } from "@/lib/env";
 /**
  * Revoke the OAuth access token on the platform (best effort).
  * Used when disconnecting an account so the platform drops the grant.
- * Never throws — log and continue so we still hard-delete the account locally.
+ * Never throws - log and continue so we still hard-delete the account locally.
  */
 export async function revokeTokenOnPlatform(
   platform: Platform,
