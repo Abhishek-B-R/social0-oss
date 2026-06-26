@@ -1,6 +1,6 @@
 import DodoPayments from "dodopayments";
 import { db } from "@/db";
-import { trialClaims } from "@/db/schema";
+import { trialClaims, userSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { PLAN_IDS, isActiveTier } from "@/lib/plans";
 import { getSubscriptionForUser } from "@/lib/subscription";
@@ -93,6 +93,36 @@ export async function listOpenDodoSubscriptions(
   }
 
   return results;
+}
+
+export function isAllowedDodoPortalUrl(link: string): boolean {
+  try {
+    const u = new URL(link);
+    const host = u.hostname.toLowerCase();
+    return (
+      u.protocol === "https:" &&
+      (host === "customer.dodopayments.com" ||
+        host === "test.customer.dodopayments.com")
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Persist Dodo IDs discovered from API when local user_settings is stale. */
+export async function backfillBillingIds(
+  userId: string,
+  ids: { customerId?: string | null; subscriptionId?: string | null },
+): Promise<void> {
+  const patch: { customerId?: string; subscriptionId?: string } = {};
+  if (ids.customerId) patch.customerId = ids.customerId;
+  if (ids.subscriptionId) patch.subscriptionId = ids.subscriptionId;
+  if (Object.keys(patch).length === 0) return;
+
+  await db
+    .update(userSettings)
+    .set(patch)
+    .where(eq(userSettings.userId, userId));
 }
 
 export type CheckoutEligibility =

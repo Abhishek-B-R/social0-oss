@@ -9,6 +9,7 @@ import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { isTurnstileTestSiteKey } from "@/lib/turnstile";
 import { signIn } from "@/lib/auth-client";
 import { resolveCallbackUrl } from "@/lib/sign-in-url";
+import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 import {
   EMAIL_ALREADY_EXISTS_MESSAGE,
   GENERIC_SIGN_UP_ERROR,
@@ -153,20 +154,7 @@ function AuthPageContent() {
     toast.dismiss();
     setLoading(true);
     const normalizedEmail = email.trim().toLowerCase();
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const checkRes = await fetch(
-        `/api/auth/check-email?email=${encodeURIComponent(normalizedEmail)}`,
-        { credentials: "include", signal: controller.signal },
-      );
-      const checkData = (await checkRes.json().catch(() => ({}))) as {
-        exists?: boolean;
-      };
-      if (checkData.exists === false) {
-        toast.error("No account found with this email. Please sign up first.");
-        return;
-      }
       const { error: err } = await signIn.email({
         email: normalizedEmail,
         password,
@@ -176,19 +164,10 @@ function AuthPageContent() {
         toast.error(friendlyAuthError(err.message ?? err));
         return;
       }
-      window.location.href = callbackUrl;
-    } catch (err) {
-      const isTimeout =
-        err instanceof Error &&
-        (err.name === "AbortError" ||
-          err.message.toLowerCase().includes("abort"));
-      toast.error(
-        isTimeout
-          ? "Request timed out. Please try again."
-          : "Something went wrong. Please try again later.",
-      );
+      assignSafeRedirectUrl(callbackUrl);
+    } catch {
+      toast.error("Something went wrong. Please try again later.");
     } finally {
-      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -277,7 +256,9 @@ function AuthPageContent() {
         signal: controller.signal,
       });
       if (res.redirected && res.url) {
-        window.location.href = res.url;
+        if (!assignSafeRedirectUrl(res.url)) {
+          toast.error("Sign-up could not continue. Please try again.");
+        }
         return;
       }
       if (!res.ok) {
@@ -316,7 +297,9 @@ function AuthPageContent() {
       }
       const data = await res.json().catch(() => ({}));
       if (data.url) {
-        window.location.href = data.url;
+        if (!assignSafeRedirectUrl(data.url)) {
+          toast.error("Sign-up could not continue. Please try again.");
+        }
       } else {
         window.location.href = `/auth/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`;
       }

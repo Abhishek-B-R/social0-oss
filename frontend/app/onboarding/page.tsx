@@ -7,6 +7,7 @@ import { IconLoader2 } from "@tabler/icons-react";
 import { setOnboardingCompleted } from "@/app/actions/onboarding";
 import { DOCS_ONBOARDING_URL } from "@/lib/docs-url";
 import { toast } from "sonner";
+import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 
 const PAYMENT_FAILED_MESSAGE =
   "Payment failed. Please check your payment method and try again.";
@@ -101,7 +102,10 @@ function OnboardingWelcomeContent() {
         if (res.status === 409 && data.code === "checkout_in_progress") {
           toast.info("Opening your existing checkout…");
         }
-        window.location.href = data.url;
+        if (!assignSafeRedirectUrl(data.url)) {
+          toast.error("Failed to start checkout");
+          return;
+        }
         return;
       }
       if (res.status === 409 && data.code === "use_portal") {
@@ -116,7 +120,9 @@ function OnboardingWelcomeContent() {
         });
         const portalData = await portalRes.json().catch(() => ({}));
         if (portalRes.ok && portalData.url) {
-          window.location.href = portalData.url;
+          if (!assignSafeRedirectUrl(portalData.url)) {
+            toast.error("Could not open billing portal");
+          }
           return;
         }
       }

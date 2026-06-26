@@ -38,8 +38,31 @@ function isPrivateIpv6(host: string): boolean {
   return false;
 }
 
+function normalizeHostname(hostname: string): string {
+  let host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+
+  // IPv6-mapped IPv4 (e.g. [::ffff:127.0.0.1])
+  const v6Mapped = host.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (v6Mapped) host = v6Mapped[1]!;
+
+  // Decimal-encoded IPv4 (e.g. 2130706433 -> 127.0.0.1)
+  if (/^\d+$/.test(host)) {
+    const n = Number(host);
+    if (Number.isFinite(n) && n >= 0 && n <= 0xffffffff) {
+      host = `${(n >>> 24) & 0xff}.${(n >>> 16) & 0xff}.${(n >>> 8) & 0xff}.${n & 0xff}`;
+    }
+  }
+
+  // Octal/hex dotted forms — reject non-decimal octets early
+  if (host.split(".").some((p) => /^0[0-9]/.test(p) || /^0x/i.test(p))) {
+    return hostname;
+  }
+
+  return host;
+}
+
 function isPrivateOrLocalHost(hostname: string): boolean {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  const host = normalizeHostname(hostname);
   if (BLOCKED_HOSTNAMES.has(host)) return true;
   if (host.endsWith(".local") || host.endsWith(".internal")) return true;
   return isPrivateIpv4(host) || isPrivateIpv6(host);

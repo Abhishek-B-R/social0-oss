@@ -100,6 +100,13 @@ const envSchema = z
         path: ["TURNSTILE_SECRET_KEY"],
       });
     }
+    if (!data.DODO_PAYMENTS_WEBHOOK_SECRET?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "DODO_PAYMENTS_WEBHOOK_SECRET required in production",
+        path: ["DODO_PAYMENTS_WEBHOOK_SECRET"],
+      });
+    }
   });
 
 export type ServerEnv = z.infer<typeof envSchema>;

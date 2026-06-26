@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { auth } from "../../lib/auth.js";
 import { env } from "../../lib/env.js";
+import { isBlockedNativeSignUpPath } from "../../lib/block-native-sign-up.js";
 import { runNextRouteHandler } from "../../lib/run-next-handler.js";
 import { POST as signUpDev } from "./auth-sign-up.js";
 import { POST as signUpTurnstile } from "./auth-sign-up-turnstile.js";
@@ -14,6 +15,13 @@ async function handleBetterAuth(
 ) {
   const baseUrl = env.BETTER_AUTH_URL.replace(/\/$/, "");
   const url = new URL(request.url, `${baseUrl}/`);
+
+  if (isBlockedNativeSignUpPath(url.pathname)) {
+    reply.status(403);
+    return reply.send({
+      error: "Use the Turnstile-protected sign-up endpoint.",
+    });
+  }
 
   const headers = new Headers();
   for (const [key, value] of Object.entries(request.headers)) {

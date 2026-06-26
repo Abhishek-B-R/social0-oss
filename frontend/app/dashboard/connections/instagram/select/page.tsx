@@ -9,6 +9,7 @@ import {
 } from "@/components/AccountPicker";
 import { toast } from "sonner";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
+import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 
 export default function InstagramSelectPage() {
   const searchParams = useSearchParams();
@@ -92,7 +93,9 @@ export default function InstagramSelectPage() {
           return;
         }
         if (res.redirected) {
-          window.location.href = res.url;
+          if (!assignSafeRedirectUrl(res.url)) {
+            toast.error("Connection could not complete. Please try again.");
+          }
           return;
         }
         const data = await res.json().catch(() => ({}));

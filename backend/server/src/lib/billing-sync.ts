@@ -111,16 +111,8 @@ export async function syncSubscriptionForUserId(
           customerId: primary.customerId,
           subscriptionId: primary.subscriptionId,
         });
-        return { ok: false };
       }
-
-      // No open subscription at all - downgrade to free.
-      await setSubscription(userId, {
-        tier: "free",
-        expiresAt: null,
-        subscriptionId: null,
-        customerId: null,
-      });
+      // Client-initiated sync may upgrade tier; never downgrade to free here.
     }
     return { ok: false };
   } catch (e) {

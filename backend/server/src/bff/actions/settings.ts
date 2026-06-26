@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { DateFormatKey } from "@/lib/date-format";
 import { requireSessionUserId } from "@/lib/require-session-user";
+import { isSafeOutboundUrl } from "@social0/shared";
 
 export type SettingsConnectionPayload = {
   id: string;
@@ -235,6 +236,13 @@ export async function updateConnectionAvatar(
   const url = String(profileImageUrl ?? "").trim();
   if (!url) {
     return { error: "Image URL is required" };
+  }
+  if (
+    !isSafeOutboundUrl(url, {
+      httpsOnly: process.env.NODE_ENV === "production",
+    })
+  ) {
+    return { error: "Image URL must be a public HTTPS address." };
   }
   try {
     const [updated] = await db

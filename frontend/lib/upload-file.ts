@@ -1,3 +1,5 @@
+import { isAllowedPresignedUploadUrl } from "./safe-external-url";
+
 export type UploadProgressCallback = (fileIndex: number, percent: number) => void;
 
 const DEFAULT_UPLOAD_TIMEOUT_MS = 60_000;
@@ -80,6 +82,15 @@ export function uploadFile(
         }
 
         const { presignedUrl, key, storageFilename } = await presignRes.json();
+
+        if (
+          typeof presignedUrl !== "string" ||
+          !isAllowedPresignedUploadUrl(presignedUrl)
+        ) {
+          cleanup();
+          signal?.removeEventListener("abort", onAbort);
+          return reject(new Error("Invalid upload URL from server"));
+        }
 
         // Phase 1: Upload directly to R2 via XHR (progress tracking works)
         xhr = new XMLHttpRequest();

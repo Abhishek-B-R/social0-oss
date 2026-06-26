@@ -12,6 +12,8 @@ function serializeArg(arg: unknown): unknown {
   return arg;
 }
 
+import { assignSafeRedirectUrl } from "./safe-external-url";
+
 export async function rpc<T>(fn: string, ...args: unknown[]): Promise<T> {
   const res = await fetch("/api/rpc", {
     method: "POST",
@@ -21,7 +23,9 @@ export async function rpc<T>(fn: string, ...args: unknown[]): Promise<T> {
   });
 
   if (res.redirected) {
-    window.location.assign(res.url);
+    if (!assignSafeRedirectUrl(res.url)) {
+      throw new Error("Invalid redirect");
+    }
     throw new Error("Redirecting");
   }
 

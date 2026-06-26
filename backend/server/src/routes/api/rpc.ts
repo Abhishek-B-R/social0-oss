@@ -2,6 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { runWithRequestContext } from "../../lib/request-context.js";
 import { rethrowNextRedirect } from "../../lib/redirect.js";
 import { requireSessionUserId, unauthorized } from "../../middleware/auth.js";
+import {
+  enforceRateLimit,
+  rpcLimiter,
+  rpcMutationLimiter,
+} from "../../lib/ratelimit.js";
 import * as dashboardData from "../../bff/actions/dashboard-data.js";
 import * as onboarding from "../../bff/actions/onboarding.js";
 import * as posts from "../../bff/actions/posts.js";
@@ -10,6 +15,33 @@ import * as resurface from "../../bff/actions/resurface.js";
 import * as settings from "../../bff/actions/settings.js";
 
 type RpcHandler = (...args: any[]) => Promise<unknown>;
+
+const RPC_MUTATION_HANDLERS = new Set([
+  "posts.createPost",
+  "posts.deletePost",
+  "posts.postAgain",
+  "posts.updatePost",
+  "posts.updateScheduledPostAutoFeatures",
+  "posts.deleteDraft",
+  "posts.updateDraft",
+  "posts.updateAndPublish",
+  "publish.publishPost",
+  "resurface.createAutoPlug",
+  "resurface.createResurfaceSchedule",
+  "resurface.disableResurfaceSchedule",
+  "resurface.updateAutoPlug",
+  "resurface.cancelAutoPlug",
+  "resurface.updateResurfaceSchedule",
+  "settings.updateDisplayName",
+  "settings.updateUserImage",
+  "settings.updateConnectionAvatar",
+  "settings.updateAutomationEmails",
+  "settings.updatePlatformPreferences",
+  "settings.updateTimezone",
+  "settings.signOutAllDevices",
+  "onboarding.setOnboardingGoal",
+  "onboarding.setOnboardingCompleted",
+]);
 
 const RPC_HANDLERS: Record<string, RpcHandler> = {
   "dashboard-data.loadDashboardLayoutData": dashboardData.loadDashboardLayoutData,
@@ -103,6 +135,14 @@ export async function registerRpcRoutes(app: FastifyInstance) {
     const handler = RPC_HANDLERS[fn];
     if (!handler) {
       return reply.status(404).send({ error: `Unknown RPC: ${fn}` });
+    }
+
+    const limiter = RPC_MUTATION_HANDLERS.has(fn)
+      ? rpcMutationLimiter
+      : rpcLimiter;
+    const rate = await enforceRateLimit(limiter, `rpc:${userId}`);
+    if (!rate.allowed) {
+      return reply.status(rate.status).send({ error: rate.error });
     }
 
     try {

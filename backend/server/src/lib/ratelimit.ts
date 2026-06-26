@@ -176,3 +176,21 @@ export const billingSyncLimiter = redis
       prefix: "rl:billing_sync",
     })
   : null;
+
+/** General RPC calls per authenticated user. */
+export const rpcLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(120, "1 m"),
+      prefix: "rl:rpc",
+    })
+  : null;
+
+/** Expensive RPC mutations (publish, post writes). */
+export const rpcMutationLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(30, "1 m"),
+      prefix: "rl:rpc_mut",
+    })
+  : null;

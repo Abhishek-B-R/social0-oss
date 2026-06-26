@@ -1,11 +1,6 @@
 @import "tailwindcss";
 @import "shadcn/tailwind.css";
 
-/* Brand fonts (Vite - no next/font injection) */
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/400.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/500.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/600.css");
-
 @custom-variant dark (&:is(.dark *));
 
 :root {

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import type { SubscriptionState } from "@/lib/subscription";
 import type { AccountLimitResult } from "@/lib/plan-limits";
 import { formatDate } from "@/lib/date-format";
+import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -339,7 +340,9 @@ export function BillingClient({
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.url) {
-        window.location.href = data.url;
+        if (!assignSafeRedirectUrl(data.url)) {
+          toast.error("Could not open billing portal. Try again.");
+        }
         return;
       }
       toast.error(
@@ -659,7 +662,10 @@ export function BillingClient({
             : "Opening the customer portal to update your payment method…",
         );
       }
-      window.location.href = data.url;
+      if (!assignSafeRedirectUrl(data.url)) {
+        toast.error("Failed to start checkout. Please try again.");
+        return false;
+      }
       return true;
     }
     if (res.status === 409 && data.code === "use_portal") {

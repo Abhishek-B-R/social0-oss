@@ -1,4 +1,4 @@
-import { isSafeOutboundUrl } from "@social0/shared";
+import { isSafeOutboundUrl, safeFetch } from "@social0/shared";
 import { getValidToken } from "./token-refresh.js";
 import { fetchTikTokConnectProfile } from "./tiktok-connect.js";
 
@@ -138,8 +138,11 @@ export async function fetchAvatarBytes(
       headers.Referer = "https://www.tiktok.com/";
     }
 
-    const res = await fetch(remoteUrl, { redirect: "follow", headers });
-    if (!res.ok) return null;
+    const res = await safeFetch(remoteUrl, {
+      headers,
+      httpsOnly: process.env.NODE_ENV === "production",
+    });
+    if (!res || !res.ok) return null;
     const contentType = res.headers.get("content-type") ?? "image/jpeg";
     if (!contentType.startsWith("image/")) return null;
     const body = Buffer.from(await res.arrayBuffer());

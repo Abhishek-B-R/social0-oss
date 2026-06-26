@@ -41,10 +41,16 @@ export function attachOAuthConnectBindingCookie(
   response: { headers: Headers },
   token: string,
 ): { headers: Headers } {
-  response.headers.append(
-    "set-cookie",
-    `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${MAX_AGE_SEC}`,
-  );
+  const opts = cookieOptions();
+  const parts = [
+    `${COOKIE_NAME}=${token}`,
+    "Path=/",
+    "HttpOnly",
+    `SameSite=${opts.sameSite === "lax" ? "Lax" : opts.sameSite}`,
+    `Max-Age=${MAX_AGE_SEC}`,
+  ];
+  if (opts.secure) parts.push("Secure");
+  response.headers.append("set-cookie", parts.join("; "));
   return response;
 }
 

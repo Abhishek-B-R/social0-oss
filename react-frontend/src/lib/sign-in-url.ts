@@ -1,13 +1,11 @@
+import { sanitizeReturnToPath } from "./safe-return-to";
+
 const DEFAULT_CALLBACK = "/dashboard/composer";
 
 /** Build a sign-in URL that returns the user to `callbackPath` after auth. */
 export function signInUrl(callbackPath?: string): string {
   const path =
-    callbackPath &&
-    callbackPath.startsWith("/") &&
-    !callbackPath.startsWith("//")
-      ? callbackPath
-      : DEFAULT_CALLBACK;
+    sanitizeReturnToPath(callbackPath) ?? DEFAULT_CALLBACK;
   return `/auth?callbackUrl=${encodeURIComponent(path)}`;
 }
 
@@ -18,6 +16,5 @@ export function resolveCallbackUrl(
 ): string {
   const s =
     typeof raw === "string" ? raw : Array.isArray(raw) ? raw[0] : undefined;
-  if (s && s.startsWith("/") && !s.startsWith("//")) return s;
-  return fallback;
+  return sanitizeReturnToPath(s) ?? fallback;
 }

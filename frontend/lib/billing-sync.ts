@@ -4,6 +4,10 @@ import { eq } from "drizzle-orm";
 import DodoPayments from "dodopayments";
 import { getTierFromProductId, PLAN_IDS } from "@/lib/plans";
 import { setSubscription } from "@/lib/subscription";
+import {
+  backfillBillingIds,
+  listOpenDodoSubscriptions,
+} from "@/lib/billing-guards";
 
 const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
 const environment =
@@ -97,13 +101,18 @@ export async function syncSubscriptionForUserId(
     // If we saw an active subscription but its latest payment isn't succeeded yet,
     // don't touch the tier - webhook will update it once payment clears.
     if (!sawUnpaidActiveSubscription) {
-      // No active subscription found at all - downgrade to free
-      await setSubscription(userId, {
-        tier: "free",
-        expiresAt: null,
-        subscriptionId: null,
-        customerId: null,
-      });
+      const openSubs = await listOpenDodoSubscriptions(userEmail);
+      if (openSubs.length > 0) {
+        const primary =
+          openSubs.find((s) => s.status === "on_hold") ??
+          openSubs.find((s) => s.status === "pending") ??
+          openSubs[0];
+        await backfillBillingIds(userId, {
+          customerId: primary.customerId,
+          subscriptionId: primary.subscriptionId,
+        });
+      }
+      // Client-initiated sync may upgrade tier; never downgrade to free here.
     }
     return { ok: false };
   } catch (e) {

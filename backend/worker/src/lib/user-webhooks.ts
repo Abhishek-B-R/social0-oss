@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { isSafeOutboundUrl } from "@social0/shared";
+import { isSafeOutboundUrl, safeFetch } from "@social0/shared";
 import { db } from "../db/index.js";
 import { userWebhookSubscriptions } from "../db/schema.js";
 
@@ -38,7 +38,7 @@ export async function dispatchUserWebhooks(input: {
   await Promise.allSettled(
     matching.map(async (sub: WebhookSub) => {
       const sig = createHmac("sha256", sub.secret).update(body).digest("hex");
-      const res = await fetch(sub.url, {
+      const res = await safeFetch(sub.url, {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -46,8 +46,9 @@ export async function dispatchUserWebhooks(input: {
         },
         body,
         signal: AbortSignal.timeout(10_000),
+        httpsOnly,
       });
-      if (!res.ok) {
+      if (!res || !res.ok) {
         console.warn(
           `[user-webhook] delivery failed user=${input.userId} status=${res.status}`,
         );

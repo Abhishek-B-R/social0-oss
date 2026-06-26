@@ -42,6 +42,7 @@ export async function loadPublicationTargets(job: PublishPostJob): Promise<
     .where(
       and(
         eq(postPublications.postId, job.postId),
+        eq(connectedAccounts.userId, job.userId),
         inArray(postPublications.status, [...ACTIVE_PUBLICATION_STATUSES]),
         accountFilter,
       ),

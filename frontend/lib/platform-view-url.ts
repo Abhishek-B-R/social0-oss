@@ -1,3 +1,5 @@
+import { isSafeHttpsLink } from "./safe-external-url";
+
 /** True when a string looks like a TikTok @handle (not a display name). */
 export function isLikelyTikTokHandle(value: string): boolean {
   const handle = value.replace(/^@/, "").trim();
@@ -30,7 +32,7 @@ export function resolveTikTokProfileUrl(input: {
   const meta = input.platformMetadata;
   const storedProfileUrl =
     typeof meta?.profileUrl === "string" ? meta.profileUrl : null;
-  if (storedProfileUrl) {
+  if (storedProfileUrl && isSafeHttpsLink(storedProfileUrl)) {
     const handle = parseTikTokHandleFromProfileUrl(storedProfileUrl);
     if (handle && isLikelyTikTokHandle(handle)) {
       return buildTikTokProfileUrl(handle);
@@ -110,5 +112,5 @@ export function getPublicationViewUrl(pub: {
     );
   }
 
-  return pub.platformPostUrl;
+  return isSafeHttpsLink(pub.platformPostUrl) ? pub.platformPostUrl : null;
 }
