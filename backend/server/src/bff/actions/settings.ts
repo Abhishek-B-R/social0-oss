@@ -48,13 +48,13 @@ export async function loadSettingsPageData(): Promise<{
     }),
     db.query.user.findFirst({
       where: eq(user.id, userId),
-      columns: { name: true, image: true },
+      columns: { name: true, image: true, email: true },
     }),
   ]);
 
   return {
     displayName: profileRow?.name ?? session.user.name ?? "",
-    email: session.user.email ?? "",
+    email: profileRow?.email ?? session.user.email ?? "",
     image: profileRow?.image ?? session.user.image ?? null,
     settings,
     connections: connections.map((c) => ({
@@ -300,9 +300,12 @@ export async function updateTimezone(formData: FormData): Promise<void> {
   );
 }
 
-export async function signOutAllDevices(): Promise<void> {
+export async function signOutAllDevices(): Promise<{ success: true }> {
   const sessionHeaders = await headers();
-  const session = await auth.api.getSession({ headers: sessionHeaders });
+  const session = await auth.api.getSession({
+    headers: sessionHeaders,
+    query: { disableCookieCache: true },
+  });
   if (!session) {
     redirect("/");
   }
@@ -311,5 +314,9 @@ export async function signOutAllDevices(): Promise<void> {
     headers: sessionHeaders,
   });
 
-  redirect("/");
+  await auth.api.signOut({
+    headers: sessionHeaders,
+  });
+
+  return { success: true };
 }

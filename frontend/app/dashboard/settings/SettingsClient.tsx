@@ -17,7 +17,6 @@ import {
   IconAdjustments,
 } from "@tabler/icons-react";
 import {
-  signOutAllDevices,
   updateAutomationEmails,
   updatePlatformPreferences,
   updateTimezone,
@@ -49,6 +48,7 @@ import DocsInfoIcon from "@/components/info-icon";
 import { DOCS_SETTINGS_URL } from "@/lib/docs-url";
 import { toast } from "sonner";
 import { accountAvatarSrc } from "@/lib/account-avatar-url";
+import { SignOutAllDevicesButton } from "@/components/SignOutAllDevicesButton";
 
 export type SettingsConnection = {
   id: string;
@@ -393,7 +393,7 @@ function ChangeEmailForm({
   onNewEmailChange: (v: string) => void;
   onOtpChange: (v: string) => void;
   onError: (s: string | null) => void;
-  onSuccess: () => void;
+  onSuccess: (newEmail: string) => void;
   loading: boolean;
   setLoading: (v: boolean) => void;
   resendCooldown?: number;
@@ -474,7 +474,8 @@ function ChangeEmailForm({
         onError(msg);
         return;
       }
-      onSuccess();
+      onSuccess(email);
+      void authClient.getSession({ query: { disableCookieCache: true } });
       router.refresh();
     } catch {
       onError("Failed to update email.");
@@ -671,7 +672,7 @@ function ChangeEmailModal({
   onSuccess,
 }: {
   currentEmail: string;
-  onSuccess: () => void;
+  onSuccess: (newEmail: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"email" | "otp">("email");
@@ -771,8 +772,8 @@ function ChangeEmailModal({
               if (msg) toast.error(msg);
               else toast.dismiss();
             }}
-            onSuccess={() => {
-              onSuccess();
+            onSuccess={(newEmail) => {
+              onSuccess(newEmail);
               handleOpenChange(false);
             }}
             loading={loading}
@@ -1047,6 +1048,7 @@ export function SettingsClient({
   const [activeTab, setActiveTab] = useState<SettingsTabId>("profile");
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [changeEmailSuccess, setChangeEmailSuccess] = useState(false);
+  const [currentEmail, setCurrentEmail] = useState(email);
   const [clientTimezone, setClientTimezone] = useState("");
   /** Controlled so the select updates after save (uncontrolled defaultValue does not). */
   const [timezoneValue, setTimezoneValue] = useState(settings.timezone ?? "UTC");
@@ -1055,6 +1057,10 @@ export function SettingsClient({
   useEffect(() => {
     setTimezoneValue(settings.timezone ?? "UTC");
   }, [settings.timezone]);
+
+  useEffect(() => {
+    setCurrentEmail(email);
+  }, [email]);
 
   useEffect(() => {
     try {
@@ -1123,7 +1129,7 @@ export function SettingsClient({
               <ProfileSettingsSection
                 initialDisplayName={displayName}
                 initialImage={image}
-                email={email}
+                email={currentEmail}
                 isCredentialUser={isCredentialUser}
               />
             </div>
@@ -1150,8 +1156,11 @@ export function SettingsClient({
                       onSuccess={() => setPasswordSuccess(true)}
                     />
                     <ChangeEmailModal
-                      currentEmail={email}
-                      onSuccess={() => setChangeEmailSuccess(true)}
+                      currentEmail={currentEmail}
+                      onSuccess={(newEmail) => {
+                        setCurrentEmail(newEmail);
+                        setChangeEmailSuccess(true);
+                      }}
                     />
                   </div>
                   {passwordSuccess && (
@@ -1166,17 +1175,9 @@ export function SettingsClient({
                   )}
                 </>
               )}
-              <form
-                action={signOutAllDevices}
-                className={isCredentialUser ? "mt-6" : "mt-4"}
-              >
-                <button
-                  type="submit"
-                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Sign Out All Devices
-                </button>
-              </form>
+              <div className={isCredentialUser ? "mt-6" : "mt-4"}>
+                <SignOutAllDevicesButton />
+              </div>
             </div>
           </section>
         )}

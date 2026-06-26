@@ -96,7 +96,7 @@ export default async function SettingsPage() {
     }),
     db.query.user.findFirst({
       where: eq(user.id, session.user.id),
-      columns: { name: true, image: true },
+      columns: { name: true, image: true, email: true },
     }),
   ]);
 
@@ -113,7 +113,7 @@ export default async function SettingsPage() {
   return (
     <SettingsClient
       displayName={profileRow?.name ?? session.user.name ?? ""}
-      email={session.user.email}
+      email={profileRow?.email ?? session.user.email ?? ""}
       image={profileRow?.image ?? session.user.image ?? null}
       settings={settings}
       connections={connectionsForClient}

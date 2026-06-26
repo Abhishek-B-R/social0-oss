@@ -241,9 +241,12 @@ export async function updateTimezone(formData: FormData): Promise<void> {
   );
 }
 
-export async function signOutAllDevices(): Promise<void> {
+export async function signOutAllDevices(): Promise<{ success: true }> {
   const sessionHeaders = await headers();
-  const session = await auth.api.getSession({ headers: sessionHeaders });
+  const session = await auth.api.getSession({
+    headers: sessionHeaders,
+    query: { disableCookieCache: true },
+  });
   if (!session) {
     redirect("/");
   }
@@ -252,5 +255,9 @@ export async function signOutAllDevices(): Promise<void> {
     headers: sessionHeaders,
   });
 
-  redirect("/");
+  await auth.api.signOut({
+    headers: sessionHeaders,
+  });
+
+  return { success: true };
 }

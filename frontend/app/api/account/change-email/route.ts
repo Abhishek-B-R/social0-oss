@@ -134,5 +134,11 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ success: true });
+  const sessionHeaders = await headers();
+  await auth.api.getSession({
+    headers: sessionHeaders,
+    query: { disableCookieCache: true },
+  });
+
+  return NextResponse.json({ success: true, email });
 }
