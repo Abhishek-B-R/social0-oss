@@ -25,7 +25,7 @@ import type {
 import { db } from "@/db";
 import { posts, postPublications, connectedAccounts, userSettings } from "@/db/schema";
 import { eq, inArray, and, or } from "drizzle-orm";
-import { format, subMonths, addMonths } from "date-fns";
+import { format } from "date-fns";
 import { syncConnectedAccountsToLimit } from "@/lib/plan-limits";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import { isActiveTier } from "@/lib/plans";
@@ -443,8 +443,6 @@ export async function loadCalendarPageData(): Promise<LoadCalendarPageDataResult
   const userId = session.user.id;
 
   const now = new Date();
-  const rangeStart = subMonths(now, 1);
-  const rangeEnd = addMonths(now, 2);
 
   const [{ use24HourTimeFormat, dateFormat, timezone }, userPosts] =
     await Promise.all([
@@ -537,7 +535,6 @@ export async function loadCalendarPageData(): Promise<LoadCalendarPageDataResult
         : (firstPublicationByPost.get(post.id)?.publishedAt ??
           post.createdAt ??
           new Date());
-    if (displayDate < rangeStart || displayDate > rangeEnd) continue;
     const firstPub = firstPublicationByPost.get(post.id);
     calendarPosts.push({
       id: post.id,
