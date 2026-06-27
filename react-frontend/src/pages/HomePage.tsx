@@ -15,7 +15,8 @@ export function HomePage() {
     }
   }, [isPending, session, navigate]);
 
-  if (isPending || session) return null;
+  // Keep landing visible while auth resolves so crawlers and first paint get real content.
+  if (session) return null;
 
   return (
     <>

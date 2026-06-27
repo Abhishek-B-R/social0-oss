@@ -7,7 +7,9 @@ import { PseoRelatedLinks } from "@/components/landing/PseoRelatedLinks";
 import { PSEO_PAGES_ENABLED } from "@/lib/content/pseo-enabled";
 import { ALTERNATIVE_SLUGS, getAlternative } from "@/lib/content/alternatives";
 import { getFeature } from "@/lib/content/features";
+import { SeoHead } from "@/components/seo/SeoHead";
 import {
+  absoluteUrl,
   buildBreadcrumbJsonLd,
   buildFaqJsonLd,
   buildSoftwareApplicationJsonLd,
@@ -49,6 +51,12 @@ export function AlternativeDetailPage() {
 
   return (
     <MarketingPageLayout>
+      <SeoHead
+        title={page.metaTitle}
+        description={page.metaDescription}
+        path={`/alternatives/${slug}`}
+        canonical={absoluteUrl(`/alternatives/${slug}`)}
+      />
       <PseoJsonLd graphs={jsonLd} />
       <section className="border-b border-border px-6 pb-16 pt-12 lg:px-8 lg:pt-16">
         <div className="mx-auto max-w-[1100px]">

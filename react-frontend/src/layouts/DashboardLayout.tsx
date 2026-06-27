@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import { SeoHead } from "@/components/seo/SeoHead";
+import { dashboardSeo } from "@/lib/page-metadata";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Toaster } from "sonner";
@@ -81,6 +83,7 @@ export function DashboardLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-bg">
+      <SeoHead {...dashboardSeo} />
       {session && layoutData?.subscriptionTier && (
         <SubscriptionSync tier={layoutData.subscriptionTier} />
       )}

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/generate-sitemap.mjs",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "preview": "vite preview"
@@ -33,6 +33,7 @@
     "react": "^19.2.3",
     "react-day-picker": "^9.13.2",
     "react-dom": "^19.2.3",
+    "react-helmet-async": "^3.0.0",
     "react-hook-form": "^7.57.0",
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.6.2",
