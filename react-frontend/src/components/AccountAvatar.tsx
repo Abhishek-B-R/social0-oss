@@ -14,6 +14,8 @@ type AccountAvatarProps = {
   /** When true and platform is twitter_x, shows blue checkmark badge */
   isTwitterPremium?: boolean;
   size?: "sm" | "md" | "lg";
+  /** When true, fill the parent container instead of using fixed pixel dimensions. */
+  fill?: boolean;
   className?: string;
 };
 
@@ -26,6 +28,7 @@ export function AccountAvatar({
   platform,
   isTwitterPremium = false,
   size = "md",
+  fill = false,
   className,
 }: AccountAvatarProps) {
   const [failed, setFailed] = useState(false);
@@ -45,8 +48,12 @@ export function AccountAvatar({
 
   return (
     <div
-      className={cn("relative shrink-0", className)}
-      style={{ width: px, height: px }}
+      className={cn(
+        "relative shrink-0 overflow-hidden rounded-full",
+        fill && "h-full w-full",
+        className,
+      )}
+      style={fill ? undefined : { width: px, height: px }}
     >
       {src && !failed ? (
         <img

@@ -1,14 +1,20 @@
-function isProxiedCdnUrl(url: string): boolean {
+function isAvatarCdnUrl(url: string): boolean {
   const lower = url.toLowerCase();
   return (
     lower.includes("fbcdn.net") ||
     lower.includes("cdninstagram.com") ||
     lower.includes("instagram.") ||
     lower.includes("facebook.com") ||
+    lower.includes("fbsbx.com") ||
     lower.includes("tiktokcdn") ||
     lower.includes("byteimg.com") ||
+    lower.includes("ibytedtos.com") ||
     lower.includes("muscdn.com")
   );
+}
+
+function isProxiedCdnUrl(url: string): boolean {
+  return isAvatarCdnUrl(url);
 }
 
 /** Same-origin avatar proxy for Meta/TikTok (CDN URLs expire or block hotlinking). */

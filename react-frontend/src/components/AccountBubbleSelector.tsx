@@ -181,20 +181,14 @@ export function AccountBubbleSelector({
                 aria-pressed={selected}
                 aria-disabled={disabled}
               >
-                <div className="h-full w-full flex items-center justify-center">
+                <div className="h-full w-full overflow-hidden rounded-full">
                   <AccountAvatar
                     accountId={acc.id}
                     profileImageUrl={acc.profileImageUrl}
                     username={acc.platformUsername}
                     platform={acc.platform}
                     isTwitterPremium={acc.isTwitterPremium ?? false}
-                    size="lg"
-                    className={cn(
-                      "h-full w-full border-2 rounded-full",
-                      selected && !disabled
-                        ? "border-emerald-400"
-                        : "border-border",
-                    )}
+                    fill
                   />
                 </div>
                 <span

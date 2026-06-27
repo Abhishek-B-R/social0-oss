@@ -66,6 +66,7 @@ type TikTokUserInfoBody = {
     user?: {
       open_id?: string;
       avatar_url?: string;
+      avatar_large_url?: string;
       display_name?: string;
     };
   };
@@ -85,7 +86,11 @@ function parseAvatarUrl(raw: unknown): string | null {
 export async function fetchTikTokConnectProfile(
   accessToken: string,
 ): Promise<TikTokConnectProfile | null> {
-  const fieldSets = ["open_id,avatar_url,display_name", "open_id"] as const;
+  const fieldSets = [
+    "open_id,avatar_large_url,avatar_url,display_name",
+    "open_id,avatar_url,display_name",
+    "open_id",
+  ] as const;
 
   for (const fields of fieldSets) {
     try {
@@ -127,7 +132,9 @@ export async function fetchTikTokConnectProfile(
       return {
         id: openId,
         username: displayName,
-        profileImageUrl: parseAvatarUrl(user?.avatar_url),
+        profileImageUrl:
+          parseAvatarUrl(user?.avatar_large_url) ??
+          parseAvatarUrl(user?.avatar_url),
       };
     } catch (err) {
       console.error("[TikTok] userinfo request failed:", err);

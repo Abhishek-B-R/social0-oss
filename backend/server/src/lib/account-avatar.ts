@@ -17,17 +17,94 @@ function isHttpUrl(url: unknown): url is string {
   );
 }
 
-function isProxiedCdnUrl(url: string): boolean {
+function isAvatarCdnUrl(url: string): boolean {
   const lower = url.toLowerCase();
   return (
     lower.includes("fbcdn.net") ||
     lower.includes("cdninstagram.com") ||
     lower.includes("instagram.") ||
     lower.includes("facebook.com") ||
+    lower.includes("fbsbx.com") ||
     lower.includes("tiktokcdn") ||
     lower.includes("byteimg.com") ||
+    lower.includes("ibytedtos.com") ||
     lower.includes("muscdn.com")
   );
+}
+
+function isProxiedCdnUrl(url: string): boolean {
+  return isAvatarCdnUrl(url);
+}
+
+function looksLikeImageBytes(body: Buffer): boolean {
+  if (body.length < 4) return false;
+  if (body[0] === 0xff && body[1] === 0xd8) return true;
+  if (body[0] === 0x89 && body[1] === 0x50) return true;
+  if (body.subarray(0, 3).toString("ascii") === "GIF") return true;
+  if (body.subarray(0, 4).toString("ascii") === "RIFF") return true;
+  return false;
+}
+
+function resolveAvatarContentType(
+  headerValue: string | null,
+  body: Buffer,
+): string | null {
+  const contentType = headerValue?.split(";")[0]?.trim().toLowerCase() ?? "";
+  if (contentType.startsWith("image/")) return contentType;
+  if (
+    contentType === "" ||
+    contentType === "application/octet-stream" ||
+    contentType === "binary/octet-stream"
+  ) {
+    if (looksLikeImageBytes(body)) return "image/jpeg";
+  }
+  return null;
+}
+
+function avatarCdnHeaders(platform: string | undefined, url: string): Record<string, string> {
+  const lower = url.toLowerCase();
+  const isTikTokCdn =
+    platform === "tiktok" ||
+    lower.includes("tiktokcdn") ||
+    lower.includes("byteimg.com") ||
+    lower.includes("ibytedtos.com") ||
+    lower.includes("muscdn.com");
+  const headers: Record<string, string> = {
+    Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+  };
+  if (isTikTokCdn) {
+    headers["User-Agent"] =
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+    headers.Referer = "https://www.tiktok.com/";
+  }
+  return headers;
+}
+
+/** Fetch avatar bytes from a known CDN with SSRF-safe redirect handling. */
+async function fetchAvatarCdnResponse(
+  remoteUrl: string,
+  platform: string | undefined,
+): Promise<Response | null> {
+  const httpsOnly = process.env.NODE_ENV === "production";
+  if (!isSafeOutboundUrl(remoteUrl, { httpsOnly })) return null;
+
+  const headers = avatarCdnHeaders(platform, remoteUrl);
+
+  const safeRes = await safeFetch(remoteUrl, { headers, httpsOnly });
+  if (safeRes?.ok) return safeRes;
+
+  if (!isAvatarCdnUrl(remoteUrl)) return safeRes;
+
+  try {
+    const res = await fetch(remoteUrl, { redirect: "follow", headers });
+    if (!res.ok) return null;
+    const finalUrl = res.url || remoteUrl;
+    if (!isSafeOutboundUrl(finalUrl, { httpsOnly })) return null;
+    if (!isAvatarCdnUrl(finalUrl)) return null;
+    return res;
+  } catch {
+    return null;
+  }
 }
 
 /** Whether the browser should load this avatar via our proxy. */
@@ -121,32 +198,16 @@ export async function fetchAvatarBytes(
   remoteUrl: string,
   platform?: string,
 ): Promise<{ body: Buffer; contentType: string } | null> {
-  if (!isSafeOutboundUrl(remoteUrl)) {
-    return null;
-  }
   try {
-    const lower = remoteUrl.toLowerCase();
-    const isTikTokCdn =
-      platform === "tiktok" ||
-      lower.includes("tiktokcdn") ||
-      lower.includes("byteimg.com") ||
-      lower.includes("muscdn.com");
-    const headers: Record<string, string> = {};
-    if (isTikTokCdn) {
-      headers["User-Agent"] =
-        "Mozilla/5.0 (compatible; Social0/1.0; +https://social0.app)";
-      headers.Referer = "https://www.tiktok.com/";
-    }
-
-    const res = await safeFetch(remoteUrl, {
-      headers,
-      httpsOnly: process.env.NODE_ENV === "production",
-    });
-    if (!res || !res.ok) return null;
-    const contentType = res.headers.get("content-type") ?? "image/jpeg";
-    if (!contentType.startsWith("image/")) return null;
+    const res = await fetchAvatarCdnResponse(remoteUrl, platform);
+    if (!res?.ok) return null;
     const body = Buffer.from(await res.arrayBuffer());
     if (body.length === 0) return null;
+    const contentType = resolveAvatarContentType(
+      res.headers.get("content-type"),
+      body,
+    );
+    if (!contentType) return null;
     return { body, contentType };
   } catch (e) {
     console.warn("[account-avatar] image download failed:", e);

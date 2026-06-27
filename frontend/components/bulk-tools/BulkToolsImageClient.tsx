@@ -14,6 +14,10 @@ import { BulkUploadZone } from "./BulkUploadZone";
 import { ImageCard, type ImageItem } from "./ImageCard";
 import { BulkScheduleSettings } from "./BulkScheduleSettings";
 import {
+  BulkScheduleOverlay,
+  type BulkScheduleOverlayPhase,
+} from "./BulkScheduleOverlay";
+import {
   BulkAutoFeaturesCard,
   type BulkAutoFeaturesValue,
 } from "./BulkAutoFeaturesCard";
@@ -118,6 +122,10 @@ export function BulkToolsImageClient({
   const [videosPerDay, setVideosPerDay] = useState(1);
   const [gapHours, setGapHours] = useState(2);
   const [scheduling, setScheduling] = useState(false);
+  const [schedulePhase, setSchedulePhase] =
+    useState<BulkScheduleOverlayPhase>("uploading");
+  const [overlayTotal, setOverlayTotal] = useState(0);
+  const [creatingIndex, setCreatingIndex] = useState(0);
   const [progress, setProgress] = useState("");
   const [uploadPercent, setUploadPercent] = useState(0);
   const [success, setSuccess] = useState(false);
@@ -382,10 +390,11 @@ export function BulkToolsImageClient({
     toast.dismiss();
     cancelledRef.current = false;
     setScheduling(true);
+    setSchedulePhase("uploading");
+    setOverlayTotal(items.length);
+    setCreatingIndex(0);
     setUploadPercent(0);
-    setProgress(
-      `Uploading ${items.length} image${items.length === 1 ? "" : "s"}… 0%`,
-    );
+    setProgress(`Uploading… 0%`);
     const accountIds = selectedAccountIds;
 
     const autoFeatures: BulkAutoFeaturesValue = {
@@ -438,9 +447,7 @@ export function BulkToolsImageClient({
                 ? Math.round(sum / perFileProgress.length)
                 : percent;
             setUploadPercent(avg);
-            setProgress(
-              `Uploading ${items.length} image${items.length === 1 ? "" : "s"}… ${avg}%`,
-            );
+            setProgress(`Uploading… ${avg}%`);
           }),
         ),
       );
@@ -469,10 +476,16 @@ export function BulkToolsImageClient({
       }
 
       // Phase 2: create posts sequentially for successful uploads
+      setSchedulePhase("creating");
+      setOverlayTotal(successfulUploads.length);
+      setCreatingIndex(0);
       setUploadPercent(100);
-      setProgress("Creating scheduled posts…");
-      for (const { result, index } of successfulUploads) {
+      setProgress("Scheduling posts…");
+      for (let i = 0; i < successfulUploads.length; i++) {
         if (cancelledRef.current) break;
+        const { result, index } = successfulUploads[i];
+        setCreatingIndex(i + 1);
+        setProgress(`Scheduling post ${i + 1} of ${successfulUploads.length}…`);
         const item = items[index];
         const createResult = await createPost(
           item.caption.trim() || "No caption",
@@ -701,31 +714,16 @@ export function BulkToolsImageClient({
       )}
 
       {scheduling && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-[360px] max-w-[90vw] rounded-2xl bg-card border border-border p-8 shadow-xl flex flex-col items-center gap-4">
-            <p className="font-medium text-foreground">{progress}</p>
-            <div className="w-full">
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full bg-accent transition-all duration-200"
-                  style={{ width: `${uploadPercent}%` }}
-                />
-              </div>
-              <div className="mt-1 text-center text-xs font-medium text-foreground">
-                {uploadPercent}%
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                cancelledRef.current = true;
-              }}
-              className="rounded-lg border border-border bg-muted px-4 py-2 text-sm font-medium text-foreground hover:bg-background transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <BulkScheduleOverlay
+          variant="image"
+          phase={schedulePhase}
+          uploadPercent={uploadPercent}
+          totalItems={overlayTotal}
+          creatingIndex={creatingIndex}
+          onCancel={() => {
+            cancelledRef.current = true;
+          }}
+        />
       )}
 
       {showPinterestModal && (
