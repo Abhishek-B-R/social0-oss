@@ -87,12 +87,15 @@ type DashboardSidebarProps = {
   } | null;
   planLabel: string;
   isGuest?: boolean;
+  /** Session still loading — show signed-in shell, not guest sign-in. */
+  sessionPending?: boolean;
 };
 
 export function DashboardSidebar({
   user,
   planLabel,
   isGuest = false,
+  sessionPending = false,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
@@ -325,13 +328,24 @@ export function DashboardSidebar({
         ref={userMenuRef}
         className="shrink-0 border-t border-sidebar-border bg-sidebar-bg p-4"
       >
-        {isGuest || !user ? (
+        {isGuest ? (
           <Link
             href={signInUrl(pathname)}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover"
           >
             Sign in
           </Link>
+        ) : sessionPending || !user ? (
+          <div
+            className="sidebar-user-block flex w-full items-center gap-3 rounded-lg px-3 py-2"
+            aria-hidden
+          >
+            <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-sidebar-active" />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <div className="h-3 w-24 animate-pulse rounded bg-sidebar-active" />
+              <div className="h-2.5 w-16 animate-pulse rounded bg-sidebar-active/80" />
+            </div>
+          </div>
         ) : (
           <>
             <button

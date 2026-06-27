@@ -15,6 +15,7 @@ import {
 import DocsInfoIcon from "@/components/info-icon";
 import { CreatePostWithAccountsClient } from "@/features/dashboard/create/CreatePostWithAccountsClient";
 import { useSession } from "@/lib/auth-client";
+import { useIsGuest } from "@/lib/use-is-guest";
 import { rpc } from "@/lib/rpc";
 import { getUserSettingsSnapshot } from "@/actions/settings";
 
@@ -23,7 +24,7 @@ export function CreateTypePage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { data: session } = useSession();
-  const isGuest = !session;
+  const isGuest = useIsGuest();
 
   const contentType = getContentTypeBySlug(typeSlug);
 

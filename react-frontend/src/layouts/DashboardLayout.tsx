@@ -12,7 +12,7 @@ import { GuestTestModeDialog } from "@/components/dashboard/GuestTestModeDialog"
 import { FreePostsBanner } from "@/components/dashboard/FreePostsBanner";
 import { ConnectAccountsBanner } from "@/components/dashboard/ConnectAccountsBanner";
 import { LegalConsentGate } from "@/components/auth/LegalConsentGate";
-import { useSession } from "@/lib/auth-client";
+import { useSessionResolved } from "@/lib/use-is-guest";
 import { rpc } from "@/lib/rpc";
 import { getOnboardingStatus, type OnboardingStatus } from "@/actions/onboarding";
 
@@ -24,10 +24,9 @@ function getPlanLabel(tier: string): string {
 }
 
 export function DashboardLayout() {
-  const { data: session, isPending } = useSession();
+  const { session, isPending, isGuest } = useSessionResolved();
   const location = useLocation();
   const navigate = useNavigate();
-  const isGuest = !session;
 
   const { data: layoutData } = useQuery({
     queryKey: ["dashboard-layout"],
@@ -89,6 +88,7 @@ export function DashboardLayout() {
         user={sidebarUser}
         planLabel={isGuest ? "Guest" : layoutData ? getPlanLabel(layoutData.subscriptionTier) : "…"}
         isGuest={isGuest}
+        sessionPending={isPending}
       />
       <main className="flex flex-1 flex-col min-h-0 overflow-y-auto pb-80 mb-20 lg:mb-0 lg:pb-0">
         <div className="mx-auto flex h-full min-h-0 w-full max-w-[1200px] 2xl:max-w-7xl flex-1 flex-col px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-12 sm:pl-4 sm:pr-6 sm:pt-6 sm:pb-6 lg:px-8 lg:py-8 lg:pb-8">

@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
 import { IconEye, IconEyeOff } from "@tabler/icons-react";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { isTurnstileTestSiteKey } from "@/lib/turnstile";
-import { signIn } from "@/lib/auth-client";
+import { signIn, useSession } from "@/lib/auth-client";
 import { resolveCallbackUrl } from "@/lib/sign-in-url";
 import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 import {
@@ -101,9 +101,21 @@ function friendlyAuthError(err: unknown): string {
 
 function AuthPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { data: session, isPending } = useSession();
   const callbackUrl = resolveCallbackUrl(searchParams.get("callbackUrl"));
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [resetSuccess, setResetSuccess] = useState(false);
+  useEffect(() => {
+    if (isPending || !session) return;
+    if (session.user.emailVerified === false) {
+      router.replace(
+        `/auth/verify-email?email=${encodeURIComponent(session.user.email ?? "")}`,
+      );
+      return;
+    }
+    assignSafeRedirectUrl(callbackUrl);
+  }, [isPending, session, callbackUrl, router]);
   useEffect(() => {
     if (searchParams.get("reset") === "success") setResetSuccess(true);
     if (searchParams.get("session") === "expired") {
@@ -318,6 +330,10 @@ function AuthPageContent() {
       setLoading(false);
     }
   };
+
+  if (isPending || session) {
+    return <AuthPageFallback />;
+  }
 
   return (
     <div className="landing flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">

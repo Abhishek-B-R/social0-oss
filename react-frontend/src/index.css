@@ -391,20 +391,20 @@ html {
   --secondary-foreground: #0a0a0a;
   --muted: #f0eee9;
   --muted-foreground: #5c5750;
-  --accent: #1a6b4a;
-  --accent-light: #22914f;
-  --accent-hover: #22914f;
-  --accent-foreground: #fafaf8;
+  --accent: #10b981;
+  --accent-light: #34d399;
+  --accent-hover: #059669;
+  --accent-foreground: #ffffff;
   --destructive: #dc2626;
   --destructive-foreground: #fef2f2;
   --border: #e2ded6;
   --input: #e2ded6;
-  --ring: #1a6b4a;
+  --ring: #10b981;
   --radius: 0.625rem;
   --font-sans: "Geist", "Geist Fallback", system-ui, sans-serif;
   --font-serif: "Instrument Serif", Georgia, serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", monospace;
-  --hero-everywhere: #1a6b4a;
+  --hero-everywhere: #10b981;
 }
 
 .dark .landing,
