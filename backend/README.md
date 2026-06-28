@@ -1,86 +1,61 @@
 # Social0 Backend v2
 
-Queue-based backend for DigitalOcean + Neon + Cloudflare R2. Mirrors the Next.js `app/api` surface but keeps the API thin: validate, enqueue, return `202` in under ~100ms.
+Queue-based API on DigitalOcean + Neon + Cloudflare R2. The Fastify server is the only backend process: HTTP, crons, and enqueue to Cloudflare for publishing.
 
 ## Layout
 
 ```
 backend/
-├── server/     Fastify API - all endpoints, auth, validation
-├── worker/     BullMQ consumers + platform publish/email/token logic
-├── shared/     Queues, job types, DTOs, route manifest
-└── docker-compose.yml   Optional local Redis (unused; Upstash is the default)
+├── server/              Fastify API — auth, crons, publish fan-out to CF
+├── shared/              Queues, job types, DTOs, CF publish client
+└── docker-compose.yml   Optional local Redis (SSE progress; Upstash in prod)
 ```
 
-## Flow
+## Architecture (production)
+
+| Component | Responsibility |
+| --------- | -------------- |
+| **server** (`dev:server`) | HTTP API, inline crons, presigned media, webhooks |
+| **Cloudflare publish worker** | Post to TikTok / X / IG / … (`PUBLISH_DISPATCH=cloudflare`) |
 
 ```
-Client → server (Fastify) → Redis/BullMQ → worker (BullMQ + platform APIs)
-                                              ↓ on failure
-                                         email queue
+Client → server → CF publish worker → platform APIs
+              ↘ inline crons (scheduled posts, repost, autoplug, token health)
 ```
 
 Publishing never blocks the HTTP request.
 
-- **Publish now** → 202 + SSE progress stream
-- **Schedule later** → BullMQ `delay`, 200 `{ status: "scheduled" }` (no SSE)
+- **Publish now** → 202 + SSE progress stream (DB poll when using CF)
+- **Schedule later** → save `status: scheduled` in DB → `POST /api/cron/publish-scheduled` fans out to CF
 
 ## Quick start
 
 ```bash
 cd backend
 cp .env.example .env
-# Add UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN from https://console.upstash.com
 bun install
 bun run build
 bun run dev:server   # :3001
-bun run dev:worker   # BullMQ workers
 ```
 
-## Publish flows
+## Cron endpoints (Bearer `CRON_SECRET`)
 
-### Publish now (live progress via SSE)
+| Route | Purpose |
+| ----- | ------- |
+| `POST /api/cron/publish-scheduled` | Due scheduled posts → CF scheduled queue |
+| `POST /api/cron/repost` | Auto-repost / resurface |
+| `POST /api/cron/autoplug` | Auto-plug comments |
+| `POST /api/cron/token-health` | Proactive token validation sweep |
+| `POST /api/cron/billing-zombie-cleanup` | Stale Dodo subscriptions |
 
-```bash
-# 1. Start publish
-curl -X POST http://localhost:3001/api/publish \
-  -H 'Content-Type: application/json' \
-  -H 'x-user-id: user_test' \
-  -d '{"postId":"post_123","connectedAccountIds":["acc_1"]}'
-# → 202 { trackingId, streamUrl, jobId, status: "queued" }
+## Publish (CF)
 
-# 2. Stream progress
-curl -N -H 'x-user-id: user_test' \
-  http://localhost:3001/api/jobs/<trackingId>/stream
+Set in `.env`:
+
+```env
+PUBLISH_DISPATCH=cloudflare
+CF_PUBLISH_WORKER_URL=https://social0-publish.<account>.workers.dev
+CF_PUBLISH_HMAC_SECRET=...
 ```
 
-### Schedule later (no SSE)
-
-```bash
-curl -X POST http://localhost:3001/api/publish \
-  -H 'Content-Type: application/json' \
-  -H 'x-user-id: user_test' \
-  -d '{"postId":"post_123","scheduledAt":"2026-06-15T10:00:00.000Z","mode":"schedule"}'
-# → 200 { status: "scheduled", scheduledAt, jobId, message }
-```
-
-BullMQ wakes the job at `scheduledAt` - no cron DB scan.
-
-## Endpoints
-
-- **v1** - legacy REST (`/v1/posts`, `/v1/media`, …)
-- **api** - mirrors `frontend/app/api/**` (see `GET /api/routes`)
-- Async routes return `{ jobId, status: "queued", queue }` with HTTP 202
-
-## Wiring production logic
-
-1. Port Drizzle schema + queries from `frontend/db`
-2. Port `publish-platform.ts` into `worker/src/publish/platforms/*`
-3. Wire Better Auth session validation in `server/src/middleware/auth.ts`
-4. Deploy on a DO droplet: nginx → server:3001, worker as systemd/pm2 process
-
-## Scale
-
-- **server**: horizontal behind nginx (stateless)
-- **worker**: increase `WORKER_*_CONCURRENCY` or run more worker processes
-- **platform-publish** queue: isolated rate limits per platform (TikTok vs X)
+Deploy the worker from `cloudflare/publish-worker/` (bundles `server/src/publish/`).

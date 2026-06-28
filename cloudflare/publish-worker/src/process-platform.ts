@@ -15,7 +15,7 @@ type FinalizeModule = {
 };
 
 async function loadWorkerModules() {
-  const root = "../../../backend/worker/src/publish/";
+  const root = "../../../backend/server/src/publish/";
   const [executor, finalize] = await Promise.all([
     import(
       /* @vite-ignore */ root + "execute-publish.js"
@@ -29,7 +29,7 @@ async function loadWorkerModules() {
 
 /**
  * Publish one platform directly from Postgres + R2 - no API callbacks.
- * Bundles backend/worker at deploy time (nodejs_compat).
+ * Bundles backend/server publish code at deploy time (nodejs_compat).
  */
 export async function processPlatformJob(
   job: PublishPlatformJob,

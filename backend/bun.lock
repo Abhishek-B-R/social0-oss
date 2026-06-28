@@ -52,32 +52,6 @@
         "typescript": "^5.7.3",
       },
     },
-    "worker": {
-      "name": "@social0/worker",
-      "version": "0.1.0",
-      "dependencies": {
-        "@aws-sdk/client-s3": "^3.750.0",
-        "@aws-sdk/s3-request-presigner": "^3.750.0",
-        "@social0/shared": "*",
-        "@upstash/ratelimit": "^2.0.8",
-        "@upstash/redis": "^1.36.3",
-        "dodopayments": "^2.22.6",
-        "dotenv": "^16.4.7",
-        "drizzle-orm": "^0.45.1",
-        "oauth-1.0a": "^2.2.6",
-        "pg": "^8.18.0",
-        "resend": "^6.9.3",
-        "sharp": "^0.33.5",
-        "twitter-api-v2": "^1.29.0",
-        "zod": "^3.23.8",
-      },
-      "devDependencies": {
-        "@types/node": "^22.10.5",
-        "@types/pg": "^8.16.0",
-        "tsx": "^4.19.2",
-        "typescript": "^5.7.3",
-      },
-    },
   },
   "packages": {
     "@aws-crypto/crc32": ["@aws-crypto/crc32@5.2.0", "", { "dependencies": { "@aws-crypto/util": "^5.2.0", "@aws-sdk/types": "^3.222.0", "tslib": "^2.6.2" } }, "sha512-nLbCWqQNgUiwwtFsen1AdzAtvuLRsQS8rYgMuxCrdKf9kOssamGLuPwyTY9wyYblNr9+1XM8v6zoDTPPSIeANg=="],
@@ -251,8 +225,6 @@
     "@social0/server": ["@social0/server@workspace:server"],
 
     "@social0/shared": ["@social0/shared@workspace:shared"],
-
-    "@social0/worker": ["@social0/worker@workspace:worker"],
 
     "@stablelib/base64": ["@stablelib/base64@1.0.1", "", {}, "sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ=="],
 

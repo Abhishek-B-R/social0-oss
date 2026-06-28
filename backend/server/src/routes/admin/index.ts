@@ -38,24 +38,11 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     return { failures };
   });
 
-  app.get("/queues", async (request) => {
-    const names = Object.keys(request.server.queues) as Array<
-      keyof typeof request.server.queues
-    >;
-    const depths = await Promise.all(
-      names.map(async (name) => {
-        const q = request.server.queues[name];
-        const counts = await q.getJobCounts(
-          "waiting",
-          "active",
-          "delayed",
-          "failed",
-          "completed",
-        );
-        return { name, counts };
-      }),
-    );
-    return { queues: depths };
+  app.get("/queues", async () => {
+    return {
+      queues: [],
+      note: "Cron jobs run inline on the server; publish dispatches to Cloudflare Workers.",
+    };
   });
 
   app.post("/failures/:id/resolve", async (request, reply) => {

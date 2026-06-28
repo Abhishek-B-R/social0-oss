@@ -112,7 +112,7 @@ async function enqueueBullmqPlatformJob(
   platformJob: PublishPlatformJob,
   opts?: { delay?: number },
 ) {
-  const connection = app?.redisConnection ?? { url: getRedisUrl() };
+  const connection = { url: getRedisUrl() };
   const queueName = platformPublishQueueName(platformJob.platform);
   const queue = new Queue<PublishPlatformJob>(queueName, { connection });
   await queue.add(JOB_NAMES.PUBLISH_PLATFORM, platformJob, {
@@ -121,9 +121,7 @@ async function enqueueBullmqPlatformJob(
     backoff: { type: "exponential", delay: 10_000 },
     delay: opts?.delay,
   });
-  if (!app?.redisConnection) {
-    await queue.close();
-  }
+  await queue.close();
 }
 
 /**
@@ -165,7 +163,7 @@ export async function prepareAndEnqueuePublish(
 
   const backend = useCloudflarePublishDispatch() ? "cloudflare" : "bullmq";
 
-  if (backend === "bullmq" && !app?.redisConnection && !getRedisUrl()) {
+  if (backend === "bullmq" && !getRedisUrl()) {
     throw new Error("BullMQ redis connection not available");
   }
 

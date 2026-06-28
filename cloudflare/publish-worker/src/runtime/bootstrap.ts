@@ -1,4 +1,4 @@
-/** Inject Worker secrets into process.env before loading @social0/worker publish code. */
+/** Inject CF Worker secrets into process.env before loading publish executor code. */
 export function bootstrapWorkerRuntime(env: Env): void {
   process.env.DATABASE_URL = env.HYPERDRIVE.connectionString;
   process.env.ENCRYPTION_KEY = env.ENCRYPTION_KEY;

@@ -1,13 +1,16 @@
 import type { FastifyInstance } from "fastify";
 import { runNextRouteHandler } from "../../lib/run-next-handler.js";
 import { verifyCronSecretFromAuthorizationHeader } from "../../lib/cron-auth.js";
+import { runPublishScheduledCron } from "../../cron/publish-scheduled.js";
 import * as pinterestBoards from "../handlers/pinterest/boards.js";
 import * as pinterestDefaultBoard from "../handlers/pinterest/default-board.js";
 import * as changeEmailSendOtp from "../handlers/account/change-email-send-otp.js";
 import * as changeEmail from "../handlers/account/change-email.js";
 import * as cannySso from "../handlers/canny/sso.js";
 import * as cannyConfig from "../handlers/canny/config.js";
-import { JOB_NAMES } from "@social0/shared";
+import * as repostCron from "../handlers/cron/repost.js";
+import * as autoplugCron from "../handlers/cron/autoplug.js";
+import * as tokenHealthCron from "../handlers/cron/token-health.js";
 
 export async function registerMiscRoutes(app: FastifyInstance) {
   app.get("/pinterest/boards", async (req, reply) => {
@@ -36,16 +39,28 @@ export async function registerMiscRoutes(app: FastifyInstance) {
     if (!verifyCronSecretFromAuthorizationHeader(request.headers.authorization)) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
-    const jobs = await Promise.all([
-      request.server.queues.scheduler.add(JOB_NAMES.CRON_PUBLISH_SCHEDULED, {}),
-      request.server.queues.scheduler.add(JOB_NAMES.CRON_REPOST, {}),
-      request.server.queues.scheduler.add(JOB_NAMES.CRON_AUTOPLUG, {}),
-      request.server.queues.token.add(JOB_NAMES.TOKEN_HEALTH_SWEEP, {
-        sweep: true,
-      }),
+
+    const publishScheduled = await runPublishScheduledCron().catch((err) => ({
+      error: err instanceof Error ? err.message : String(err),
+    }));
+
+    const cronRequest = new Request("http://localhost/api/cron", {
+      headers: {
+        Authorization: request.headers.authorization ?? "",
+      },
+    });
+
+    const [repost, autoplug, tokenHealth] = await Promise.all([
+      repostCron.GET(cronRequest),
+      autoplugCron.GET(cronRequest),
+      tokenHealthCron.GET(cronRequest),
     ]);
+
     return {
-      triggered: jobs.map((j) => j.id),
+      publishScheduled,
+      repost: await repost.json(),
+      autoplug: await autoplug.json(),
+      tokenHealth: await tokenHealth.json(),
     };
   });
 }

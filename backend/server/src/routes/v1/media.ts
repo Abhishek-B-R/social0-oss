@@ -1,13 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
-  accepted,
   notImplemented,
   requireUserId,
   unauthorized,
 } from "../../middleware/auth.js";
-import { enqueueMediaConfirm, queueNameForJob } from "../../services/enqueue.js";
-import { JOB_NAMES } from "@social0/shared";
 
 const presignSchema = z.object({
   name: z.string(),
@@ -41,10 +38,6 @@ export async function registerMediaRoutes(app: FastifyInstance) {
     const userId = await requireUserId(request);
     if (!userId) return unauthorized();
     const { id: mediaId } = request.params as { id: string };
-
-    const job = await enqueueMediaConfirm(app, { userId, mediaId });
-    return reply
-      .status(202)
-      .send(accepted(job.id!, queueNameForJob(JOB_NAMES.MEDIA_CONFIRM)));
+    return reply.status(200).send({ ok: true, mediaId });
   });
 }
