@@ -4,6 +4,7 @@ import {
   connectedAccounts,
   postPublications,
   posts,
+  queuedPosts,
 } from "../db/schema.js";
 import { maybeSendPostFailureEmail } from "../lib/post-failure-email.js";
 
@@ -46,6 +47,19 @@ export async function maybeFinalizePostPublish(
     .update(posts)
     .set({ status: overallStatus, updatedAt: new Date() })
     .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+
+  await db
+    .update(queuedPosts)
+    .set({
+      status: overallStatus === "failed" ? "failed" : "done",
+    })
+    .where(
+      and(
+        eq(queuedPosts.postId, postId),
+        eq(queuedPosts.userId, userId),
+        eq(queuedPosts.status, "processing"),
+      ),
+    );
 
   const failedList = pubs.filter((p) => p.status === "failed");
   if (failedList.length > 0) {

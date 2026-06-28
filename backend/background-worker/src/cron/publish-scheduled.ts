@@ -34,10 +34,30 @@ export async function runPublishScheduledCron(): Promise<{
   const processed: string[] = [];
 
   for (const post of due) {
+    const [claimed] = await db
+      .update(posts)
+      .set({ status: "publishing", updatedAt: new Date() })
+      .where(
+        and(
+          eq(posts.id, post.id),
+          eq(posts.userId, post.userId),
+          eq(posts.status, "scheduled"),
+        ),
+      )
+      .returning({ id: posts.id });
+    if (!claimed) continue;
+
     const targets = await loadPublicationTargets({
       postId: post.id,
       userId: post.userId,
     });
+    if (targets.length === 0) {
+      await db
+        .update(posts)
+        .set({ status: "failed", updatedAt: new Date() })
+        .where(and(eq(posts.id, post.id), eq(posts.userId, post.userId)));
+      continue;
+    }
     for (const t of targets) {
       await cfEnqueuePlatformJob(
         {
@@ -67,10 +87,26 @@ export async function runPublishScheduledCron(): Promise<{
 
   const queuedProcessed: string[] = [];
   for (const q of dueQueued) {
+    const [claimed] = await db
+      .update(queuedPosts)
+      .set({ status: "processing" })
+      .where(
+        and(eq(queuedPosts.id, q.id), eq(queuedPosts.status, "pending")),
+      )
+      .returning({ id: queuedPosts.id });
+    if (!claimed) continue;
+
     const targets = await loadPublicationTargets({
       postId: q.postId,
       userId: q.userId,
     });
+    if (targets.length === 0) {
+      await db
+        .update(queuedPosts)
+        .set({ status: "failed" })
+        .where(eq(queuedPosts.id, q.id));
+      continue;
+    }
     for (const t of targets) {
       await cfEnqueuePlatformJob(
         {
@@ -84,10 +120,6 @@ export async function runPublishScheduledCron(): Promise<{
         cfClient,
       );
     }
-    await db
-      .update(queuedPosts)
-      .set({ status: "done" })
-      .where(eq(queuedPosts.id, q.id));
     queuedProcessed.push(q.postId);
   }
 

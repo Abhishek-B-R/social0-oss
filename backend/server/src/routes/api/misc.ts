@@ -14,6 +14,9 @@ export async function registerMiscRoutes(app: FastifyInstance) {
   app.get("/pinterest/boards", async (req, reply) => {
     await runNextRouteHandler(req, reply, pinterestBoards.GET);
   });
+  app.post("/pinterest/boards", async (req, reply) => {
+    await runNextRouteHandler(req, reply, pinterestBoards.POST);
+  });
   app.put("/pinterest/default-board", async (req, reply) => {
     await runNextRouteHandler(req, reply, pinterestDefaultBoard.PUT);
   });

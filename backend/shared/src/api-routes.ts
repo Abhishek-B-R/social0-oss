@@ -118,7 +118,8 @@ export const FRONTEND_API_ROUTES: ApiRouteDef[] = [
 
   // Pinterest
   { method: "GET", path: "/api/pinterest/boards", note: "sync" },
-  { method: "POST", path: "/api/pinterest/default-board", note: "sync" },
+  { method: "POST", path: "/api/pinterest/boards", note: "sync" },
+  { method: "PUT", path: "/api/pinterest/default-board", note: "sync" },
 
   // Account email
   { method: "POST", path: "/api/account/change-email/send-otp", note: "sync" },

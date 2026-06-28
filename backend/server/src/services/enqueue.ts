@@ -112,5 +112,16 @@ export async function enqueuePublishPostStandalone(
 }
 
 export async function enqueueCronJob(app: FastifyInstance, name: string) {
-  return app.queues.scheduler.add(name, { triggeredAt: Date.now() });
+  const jobId = `cron:${name}`;
+  try {
+    return await app.queues.scheduler.add(
+      name,
+      { triggeredAt: Date.now() },
+      { jobId },
+    );
+  } catch {
+    const existing = await app.queues.scheduler.getJob(jobId);
+    if (existing) return existing;
+    throw new Error(`Failed to enqueue cron job: ${name}`);
+  }
 }

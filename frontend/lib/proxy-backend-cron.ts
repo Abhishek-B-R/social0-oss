@@ -14,12 +14,17 @@ export async function proxyBackendCron(
   if (authError) return authError;
 
   const url = `${backendApiBase()}/api/cron/${cronPath}`;
-  const res = await fetch(url, {
-    method: request.method,
-    headers: {
-      Authorization: request.headers.get("authorization") ?? "",
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: request.method,
+      headers: {
+        Authorization: request.headers.get("authorization") ?? "",
+      },
+    });
+  } catch {
+    return Response.json({ error: "Backend API unreachable" }, { status: 502 });
+  }
   const body = await res.text();
   return new Response(body, {
     status: res.status,
