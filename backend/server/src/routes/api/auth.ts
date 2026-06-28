@@ -14,6 +14,7 @@ async function handleBetterAuth(
   reply: FastifyReply,
 ) {
   const baseUrl = env.BETTER_AUTH_URL.replace(/\/$/, "");
+  const apiHost = new URL(baseUrl).host;
   const url = new URL(request.url, `${baseUrl}/`);
 
   if (isBlockedNativeSignUpPath(url.pathname)) {
@@ -26,12 +27,18 @@ async function handleBetterAuth(
   const headers = new Headers();
   for (const [key, value] of Object.entries(request.headers)) {
     if (value === undefined) continue;
+    const lower = key.toLowerCase();
+    // ponytail: SPA/proxy sends dev.social0.app — force OAuth redirect_uri to api host
+    if (lower === "host" || lower === "x-forwarded-host") continue;
     if (Array.isArray(value)) {
       for (const v of value) headers.append(key, v);
     } else {
       headers.set(key, value);
     }
   }
+  headers.set("host", apiHost);
+  headers.set("x-forwarded-host", apiHost);
+  headers.set("x-forwarded-proto", new URL(baseUrl).protocol.replace(":", ""));
 
   const init: RequestInit = { method: request.method, headers };
   if (request.method !== "GET" && request.method !== "HEAD") {
