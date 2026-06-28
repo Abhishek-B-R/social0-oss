@@ -12,7 +12,7 @@ import { registerSecurityHeadersPlugin } from "./plugins/security-headers.js";
 import { registerV1Routes } from "./routes/v1/index.js";
 import { registerApiRoutes } from "./routes/api/index.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
-import { getTrustedAppOrigins } from "./lib/app-url.js";
+import { getCorsOrigins } from "./lib/app-url.js";
 
 function loadHttpsOptions(): { key: Buffer; cert: Buffer } | undefined {
   const backendRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -58,14 +58,14 @@ export async function buildApp() {
         process.env.NODE_ENV === "production"),
   });
 
-  const trustedOrigins = getTrustedAppOrigins();
+  const corsOrigins = getCorsOrigins();
   await app.register(cors, {
     origin: (origin, callback) => {
       if (!origin) {
         callback(null, true);
         return;
       }
-      if (trustedOrigins.includes(origin)) {
+      if (corsOrigins.includes(origin)) {
         callback(null, true);
         return;
       }

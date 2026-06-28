@@ -8,6 +8,33 @@ function toOrigin(url: string): string {
   return new URL(normalizeAppUrl(url)).origin;
 }
 
+/** Browser origins allowed for CORS + Better Auth credentialed requests. */
+export function getCorsOrigins(): string[] {
+  const explicit =
+    env.CORS_ORIGINS?.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean) ?? [];
+
+  if (explicit.length > 0) {
+    const origins = new Set<string>();
+    for (const item of explicit) {
+      try {
+        origins.add(toOrigin(item));
+      } catch {
+        // skip invalid URLs
+      }
+    }
+    return [...origins];
+  }
+
+  const origins = new Set<string>(["https://social0.app"]);
+  if (env.NODE_ENV !== "production") {
+    origins.add("https://localhost:3000");
+    origins.add("http://localhost:3000");
+  }
+  return [...origins];
+}
+
 /** Allowed frontend origins for checkout return URLs, OAuth redirects, and auth. */
 export function getTrustedAppOrigins(): string[] {
   const extra =
@@ -17,9 +44,9 @@ export function getTrustedAppOrigins(): string[] {
 
   const candidates = [
     ...extra,
-    env.BETTER_AUTH_URL,
     env.APP_URL,
     env.NEXT_PUBLIC_APP_URL,
+    ...getCorsOrigins(),
   ].filter((v): v is string => Boolean(v));
 
   const origins = new Set<string>();

@@ -13,7 +13,9 @@ const envSchema = z
     /** OAuth redirect base - same as frontend NEXT_PUBLIC_APP_URL */
     NEXT_PUBLIC_APP_URL: z.string().url(),
     APP_URL: z.string().url().optional(),
-    /** Comma-separated extra frontend origins (e.g. https://localhost:3000,https://api.social0.app) */
+    /** Comma-separated browser origins for CORS (defaults: prod=https://social0.app; dev=+localhost:3000) */
+    CORS_ORIGINS: z.string().optional(),
+    /** Comma-separated extra frontend origins (e.g. https://localhost:3000,https://social0.app) */
     TRUSTED_APP_ORIGINS: z.string().optional(),
     UPSTASH_REDIS_REST_URL: z.string().url(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
