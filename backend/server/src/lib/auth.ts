@@ -70,6 +70,7 @@ export const auth = betterAuth({
     google: {
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
+      redirectURI: `${authBaseUrl}/api/auth/callback/google`,
     },
   },
   secondaryStorage,
