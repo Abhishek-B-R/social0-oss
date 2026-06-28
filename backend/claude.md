@@ -101,7 +101,7 @@ backend/
 │       │   ├── admin/          # Ops API
 │       │   └── v1/             # Legacy REST (stubs)
 │       └── services/enqueue.ts
-└── worker/                   # @social0/worker - BullMQ process
+├── background-worker/        # @social0/background-worker - BullMQ background jobs (not CF publish)
     └── src/
         ├── main.ts             # Starts 11+ BullMQ workers
         ├── workers/            # Queue consumers
@@ -294,7 +294,7 @@ psql "$DATABASE_URL" -f migrations/002_production_hardening.sql
 bun install
 bun run build                 # shared → worker → server
 bun run dev:server            # :3001
-bun run dev:worker            # 11 BullMQ workers
+bun run dev:background-worker            # 11 BullMQ workers
 ```
 
 **Do not** use `npm run build --workspaces` at root - use `bun run --filter`.
@@ -715,7 +715,7 @@ In-process only - each worker replica has independent breaker state. For multi-r
 
 ### 11.5 Production Dockerfiles
 
-`docker-compose.prod.yml` references `Dockerfile.server` and `Dockerfile.worker` - create these before prod deploy.
+`docker-compose.prod.yml` references `Dockerfile.server` and `Dockerfile.background-worker` - create these before prod deploy.
 
 ### Fixed (do not re-introduce)
 
@@ -735,7 +735,7 @@ In-process only - each worker replica has independent breaker state. For multi-r
 docker compose up -d redis && bun run dev:server
 
 # Terminal 2
-bun run dev:worker
+bun run dev:background-worker
 
 # Publish now (dev auth)
 curl -s -X POST http://localhost:3001/api/publish \

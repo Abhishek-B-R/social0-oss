@@ -43,6 +43,7 @@ export const JOB_NAMES = {
   CRON_PUBLISH_SCHEDULED: "cron.publish-scheduled",
   CRON_REPOST: "cron.repost",
   CRON_AUTOPLUG: "cron.autoplug",
+  CRON_BILLING_ZOMBIE_CLEANUP: "cron.billing-zombie-cleanup",
   BILLING_SYNC: "billing.sync",
   MEDIA_CONFIRM: "media.confirm",
 } as const;

@@ -45,3 +45,16 @@ export function logConnectBlocked(
     limitTotal,
   });
 }
+
+/** Cron skipped running a job because user's plan doesn't allow it. */
+export function logCronSkipped(
+  type: "resurface" | "autoplug",
+  userId: string,
+  resourceId: string,
+) {
+  logEvent("cron_skipped", {
+    type,
+    userId,
+    resourceId,
+  });
+}

@@ -1,72 +1,89 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { accepted } from "../../middleware/auth.js";
+import { enqueueCronJob, queueNameForJob } from "../../services/enqueue.js";
 import { verifyCronSecretFromAuthorizationHeader } from "../../lib/cron-auth.js";
-import { runPublishScheduledCron } from "../../cron/publish-scheduled.js";
-import { runNextRouteHandler } from "../../lib/run-next-handler.js";
-import * as repostCron from "../handlers/cron/repost.js";
-import * as autoplugCron from "../handlers/cron/autoplug.js";
-import * as tokenHealthCron from "../handlers/cron/token-health.js";
+import { JOB_NAMES, type JobName } from "@social0/shared";
 
-function verifyCronSecret(request: {
-  headers: { authorization?: string | string[] };
-}) {
+function verifyCronSecret(request: FastifyRequest) {
   const expected = process.env.CRON_SECRET?.trim();
   if (!expected) return false;
   return verifyCronSecretFromAuthorizationHeader(request.headers.authorization);
 }
 
+async function enqueueSchedulerCron(
+  request: FastifyRequest,
+  jobName: JobName,
+  reply: FastifyReply,
+) {
+  const job = await enqueueCronJob(request.server, jobName);
+  return reply
+    .status(202)
+    .send(accepted(job.id!, queueNameForJob(jobName)));
+}
+
+async function enqueueTokenHealthCron(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const job = await request.server.queues.token.add(
+    JOB_NAMES.TOKEN_HEALTH_SWEEP,
+    { sweep: true },
+  );
+  return reply
+    .status(202)
+    .send(accepted(job.id!, queueNameForJob(JOB_NAMES.TOKEN_HEALTH_SWEEP)));
+}
+
+function registerCronTrigger(
+  app: FastifyInstance,
+  path: string,
+  handler: (request: FastifyRequest, reply: FastifyReply) => Promise<unknown>,
+) {
+  app.get(path, handler);
+  app.post(path, handler);
+}
+
 export async function registerCronRoutes(app: FastifyInstance) {
-  app.post("/cron/publish-scheduled", async (request, reply) => {
+  registerCronTrigger(app, "/cron/publish-scheduled", async (request, reply) => {
     if (!verifyCronSecret(request)) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
-    const result = await runPublishScheduledCron();
-    return reply.send({ ok: true, ...result });
+    return enqueueSchedulerCron(request, JOB_NAMES.CRON_PUBLISH_SCHEDULED, reply);
   });
 
-  app.post("/cron/repost", async (request, reply) => {
+  registerCronTrigger(app, "/cron/repost", async (request, reply) => {
     if (!verifyCronSecret(request)) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
-    await runNextRouteHandler(request, reply, repostCron.GET);
+    return enqueueSchedulerCron(request, JOB_NAMES.CRON_REPOST, reply);
   });
 
-  app.post("/cron/autoplug", async (request, reply) => {
+  registerCronTrigger(app, "/cron/autoplug", async (request, reply) => {
     if (!verifyCronSecret(request)) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
-    await runNextRouteHandler(request, reply, autoplugCron.GET);
+    return enqueueSchedulerCron(request, JOB_NAMES.CRON_AUTOPLUG, reply);
   });
 
-  app.post("/cron/token-health", async (request, reply) => {
+  registerCronTrigger(app, "/cron/token-health", async (request, reply) => {
     if (!verifyCronSecret(request)) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
-    await runNextRouteHandler(request, reply, tokenHealthCron.GET);
+    return enqueueTokenHealthCron(request, reply);
   });
 
-  app.get("/cron/billing-zombie-cleanup", async (request, reply) => {
-    if (!verifyCronSecret(request)) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    const forceParam = (request.query as { force?: string }).force;
-    const force = forceParam === "1" || forceParam === "true";
-    const { sweepStaleZombieSubscriptions } = await import(
-      "../../lib/billing-zombie-cleanup.js"
-    );
-    const result = await sweepStaleZombieSubscriptions({ force });
-    return reply.send(result);
-  });
-
-  app.post("/cron/billing-zombie-cleanup", async (request, reply) => {
-    if (!verifyCronSecret(request)) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    const forceParam = (request.query as { force?: string }).force;
-    const force = forceParam === "1" || forceParam === "true";
-    const { sweepStaleZombieSubscriptions } = await import(
-      "../../lib/billing-zombie-cleanup.js"
-    );
-    const result = await sweepStaleZombieSubscriptions({ force });
-    return reply.send(result);
-  });
+  registerCronTrigger(
+    app,
+    "/cron/billing-zombie-cleanup",
+    async (request, reply) => {
+      if (!verifyCronSecret(request)) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      return enqueueSchedulerCron(
+        request,
+        JOB_NAMES.CRON_BILLING_ZOMBIE_CLEANUP,
+        reply,
+      );
+    },
+  );
 }

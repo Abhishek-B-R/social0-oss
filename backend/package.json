@@ -3,13 +3,16 @@
   "private": true,
   "workspaces": [
     "shared",
-    "server"
+    "server",
+    "background-worker"
   ],
   "scripts": {
-    "build": "bun run --filter @social0/shared build && bun run --filter @social0/server build",
+    "build": "bun run --filter @social0/shared build && bun run --filter @social0/background-worker build && bun run --filter @social0/server build",
     "dev:server": "bun run --filter @social0/server dev",
-    "dev": "bun run dev:server",
-    "start:server": "bun run --filter @social0/server start"
+    "dev:background-worker": "bun run --filter @social0/background-worker dev",
+    "dev": "bun run dev:server & bun run dev:background-worker",
+    "start:server": "bun run --filter @social0/server start",
+    "start:background-worker": "bun run --filter @social0/background-worker start"
   },
   "engines": {
     "node": ">=20"

@@ -1,17 +1,13 @@
-import { NextResponse } from "next/server";
-import { db } from "../../../db/index.js";
-import {
-  autoPlugs,
-  connectedAccounts,
-  userSettings,
-} from "../../../db/schema.js";
+import { NextResponse } from "../lib/next-shim.js";
+import { db } from "../db/index.js";
+import { autoPlugs, connectedAccounts, userSettings } from "../db/schema.js";
 import { eq, inArray } from "drizzle-orm";
 import { TwitterApi } from "twitter-api-v2";
-import { decryptToken } from "../../../lib/encryption.js";
-import { verifyCronAuth } from "../../../lib/cron-auth.js";
-import { logCronSkipped } from "../../../lib/plan-analytics.js";
-import { getPlanLimits, type SubscriptionTier } from "../../../lib/plans.js";
-import { env } from "../../../lib/env.js";
+import { decryptToken } from "../lib/encryption.js";
+import { verifyCronAuth } from "../lib/cron-auth.js";
+import { logCronSkipped } from "../lib/plan-analytics.js";
+import { getPlanLimits, type SubscriptionTier } from "../lib/plans.js";
+import { env } from "../lib/env.js";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;

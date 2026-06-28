@@ -66,9 +66,6 @@ const envSchema = z
     R2_BUCKET_NAME: z.string().optional(),
     R2_PUBLIC_URL: z.string().url().optional(),
     R2_ENDPOINT: z.string().url().optional(),
-    WORKER_PUBLISH_CONCURRENCY: z.coerce.number().default(5),
-    WORKER_PLATFORM_CONCURRENCY: z.coerce.number().default(20),
-    WORKER_EMAIL_CONCURRENCY: z.coerce.number().default(10),
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV !== "production") return;

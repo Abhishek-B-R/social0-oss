@@ -110,3 +110,7 @@ export async function enqueuePublishPostStandalone(
     streamUrl: `/api/jobs/${trackingId}/stream`,
   };
 }
+
+export async function enqueueCronJob(app: FastifyInstance, name: string) {
+  return app.queues.scheduler.add(name, { triggeredAt: Date.now() });
+}

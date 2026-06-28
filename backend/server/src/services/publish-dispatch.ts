@@ -75,10 +75,7 @@ export function queueNameForJob(
       ? cfPublishQueueName("now")
       : QUEUES.PUBLISH;
   }
-  if (jobNameOrPriority.startsWith("email.")) return QUEUES.EMAIL;
   if (jobNameOrPriority.startsWith("token.")) return QUEUES.TOKEN;
-  if (jobNameOrPriority.startsWith("billing.")) return QUEUES.BILLING;
   if (jobNameOrPriority.startsWith("cron.")) return QUEUES.SCHEDULER;
-  if (jobNameOrPriority.startsWith("media.")) return QUEUES.MEDIA;
   return QUEUES.PUBLISH;
 }

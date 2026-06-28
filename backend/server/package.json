@@ -12,7 +12,7 @@
   "scripts": {
     "build": "tsc && tsc-alias -p tsconfig.json",
     "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js"
+    "start": "tsx src/index.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.750.0",
@@ -28,6 +28,7 @@
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.45.1",
     "fastify": "^5.2.1",
+    "fastify-plugin": "^5.1.0",
     "oauth-1.0a": "^2.2.6",
     "pg": "^8.18.0",
     "resend": "^6.9.3",

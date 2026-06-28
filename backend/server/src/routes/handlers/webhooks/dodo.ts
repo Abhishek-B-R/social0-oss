@@ -22,7 +22,7 @@ import { clearPendingCheckout } from "../../../lib/pending-checkout.js";
 import {
   forceCancelDodoSubscription,
   isStaleZombieSubscription,
-} from "../../../lib/billing-zombie-cleanup.js";
+} from "../../../lib/billing-zombie-utils.js";
 
 const webhookSecret = env.DODO_PAYMENTS_WEBHOOK_SECRET ?? "";
 const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";

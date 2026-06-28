@@ -5,6 +5,28 @@
     "": {
       "name": "social0-backend",
     },
+    "background-worker": {
+      "name": "@social0/background-worker",
+      "version": "0.1.0",
+      "dependencies": {
+        "@social0/shared": "*",
+        "@upstash/ratelimit": "^2.0.8",
+        "@upstash/redis": "^1.36.3",
+        "dodopayments": "^2.22.6",
+        "dotenv": "^16.4.7",
+        "drizzle-orm": "^0.45.1",
+        "oauth-1.0a": "^2.2.6",
+        "pg": "^8.18.0",
+        "twitter-api-v2": "^1.29.0",
+        "zod": "^3.23.8",
+      },
+      "devDependencies": {
+        "@types/node": "^22.10.5",
+        "@types/pg": "^8.16.0",
+        "tsx": "^4.19.2",
+        "typescript": "^5.7.3",
+      },
+    },
     "server": {
       "name": "@social0/server",
       "version": "0.1.0",
@@ -24,6 +46,7 @@
         "dotenv": "^16.4.7",
         "drizzle-orm": "^0.45.1",
         "fastify": "^5.2.1",
+        "fastify-plugin": "^5.1.0",
         "jsonwebtoken": "^9.0.2",
         "oauth-1.0a": "^2.2.6",
         "pg": "^8.18.0",
@@ -221,6 +244,8 @@
     "@smithy/util-buffer-from": ["@smithy/util-buffer-from@2.2.0", "", { "dependencies": { "@smithy/is-array-buffer": "^2.2.0", "tslib": "^2.6.2" } }, "sha512-IJdWBbTcMQ6DA0gdNhh/BwrLkDR+ADW5Kr1aZmd4k3DIF6ezMV4R2NIAmT08wQJ3yUK82thHWmC/TnK/wpMMIA=="],
 
     "@smithy/util-utf8": ["@smithy/util-utf8@2.3.0", "", { "dependencies": { "@smithy/util-buffer-from": "^2.2.0", "tslib": "^2.6.2" } }, "sha512-R8Rdn8Hy72KKcebgLiv8jQcQkXoLMOGGv5uI1/k0l+snqkOzQ1R0ChUBCxWMlBsFMekWjq0wRudIweFs7sKT5A=="],
+
+    "@social0/background-worker": ["@social0/background-worker@workspace:background-worker"],
 
     "@social0/server": ["@social0/server@workspace:server"],
 
