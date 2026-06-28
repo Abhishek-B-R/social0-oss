@@ -5,6 +5,14 @@ export function getApiBaseUrl(): string {
   return import.meta.env.VITE_API_URL ?? "";
 }
 
+/** Better Auth API origin. Dev: same-origin + Vite /api proxy. Prod: api.social0.app. */
+export function getAuthBaseUrl(): string {
+  const api = getApiBaseUrl().replace(/\/$/, "");
+  if (api) return api;
+  if (typeof window !== "undefined") return window.location.origin;
+  return "https://api.social0.app";
+}
+
 export function getAppUrl(): string {
   const configured = import.meta.env.VITE_APP_URL?.replace(/\/$/, "");
   if (configured) return configured;

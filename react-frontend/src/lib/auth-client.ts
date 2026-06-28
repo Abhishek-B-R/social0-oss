@@ -1,10 +1,10 @@
 import { createAuthClient } from "better-auth/react";
 import { emailOTPClient } from "better-auth/client/plugins";
-import { getAppUrl } from "@/lib/env";
+import { getAuthBaseUrl } from "@/lib/env";
 
 export const authClient = createAuthClient({
-  // Same as Next.js: auth API is reached at the SPA origin (/api proxied to backend).
-  baseURL: getAppUrl(),
+  // OAuth + session API live on api.social0.app (not the SPA host).
+  baseURL: getAuthBaseUrl(),
   plugins: [emailOTPClient()],
 });
 

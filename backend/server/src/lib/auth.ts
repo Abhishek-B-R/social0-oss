@@ -4,7 +4,7 @@ import { emailOTP } from "better-auth/plugins";
 import { db } from "../db/index.js";
 import { createAuthSecondaryStorage } from "./auth-secondary-storage.js";
 import { getCorsOrigins } from "./app-url.js";
-import { env, appBaseUrl } from "./env.js";
+import { env } from "./env.js";
 import { sendEmail } from "./mail.js";
 import { redis } from "./redis.js";
 import { user, session, account, verification } from "../db/schema.js";
@@ -17,7 +17,7 @@ const subjects: Record<string, string> = {
   "forget-password": "Your Social0 password reset code",
 };
 
-const authBaseUrl = appBaseUrl();
+const authBaseUrl = env.BETTER_AUTH_URL.replace(/\/$/, "");
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -34,6 +34,10 @@ export const auth = betterAuth({
   trustedOrigins: getCorsOrigins(),
   advanced: {
     useSecureCookies: authBaseUrl.startsWith("https://"),
+    crossSubDomainCookies: {
+      enabled: authBaseUrl.includes("social0.app"),
+      domain: "social0.app",
+    },
   },
   plugins: [
     emailOTP({
