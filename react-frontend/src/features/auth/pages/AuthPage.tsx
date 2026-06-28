@@ -8,7 +8,10 @@ import { IconEye, IconEyeOff } from "@tabler/icons-react";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { isTurnstileTestSiteKey } from "@/lib/turnstile";
 import { signIn, useSession } from "@/lib/auth-client";
-import { resolveCallbackUrl } from "@/lib/sign-in-url";
+import {
+  absoluteCallbackUrl,
+  resolveCallbackUrl,
+} from "@/lib/sign-in-url";
 import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 import {
   EMAIL_ALREADY_EXISTS_MESSAGE,
@@ -105,6 +108,7 @@ function AuthPageContent() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
   const callbackUrl = resolveCallbackUrl(searchParams.get("callbackUrl"));
+  const authCallbackUrl = absoluteCallbackUrl(callbackUrl);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [resetSuccess, setResetSuccess] = useState(false);
   useEffect(() => {
@@ -148,7 +152,7 @@ function AuthPageContent() {
     try {
       const { error } = await signIn.social({
         provider: "google",
-        callbackURL: callbackUrl,
+        callbackURL: authCallbackUrl,
       });
       // If we actually got an error payload (no redirect happened), show it.
       if (error) {
@@ -171,7 +175,7 @@ function AuthPageContent() {
       const { error: err } = await signIn.email({
         email: normalizedEmail,
         password,
-        callbackURL: callbackUrl,
+        callbackURL: authCallbackUrl,
       });
       if (err) {
         toast.error(friendlyAuthError(err.message ?? err));

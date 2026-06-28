@@ -1,3 +1,4 @@
+import { getAppUrl } from "./env";
 import { sanitizeReturnToPath } from "./safe-return-to";
 
 const DEFAULT_CALLBACK = "/dashboard/composer";
@@ -17,4 +18,11 @@ export function resolveCallbackUrl(
   const s =
     typeof raw === "string" ? raw : Array.isArray(raw) ? raw[0] : undefined;
   return sanitizeReturnToPath(s) ?? fallback;
+}
+
+/** Better Auth resolves relative callbackURL against the API host — must be the SPA origin. */
+export function absoluteCallbackUrl(path: string): string {
+  const safe = sanitizeReturnToPath(path) ?? DEFAULT_CALLBACK;
+  const base = getAppUrl().replace(/\/$/, "");
+  return `${base}${safe}`;
 }
