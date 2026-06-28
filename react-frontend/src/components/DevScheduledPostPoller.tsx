@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useEffect } from "react";
 import { isDev } from "@/lib/env";
@@ -18,7 +19,7 @@ export function DevScheduledPostPoller() {
 
     const runCrons = async () => {
       try {
-        // const res = await fetch("/api/dev/trigger-crons");
+        // const res = await fetchApi("/api/dev/trigger-crons");
         // if (!res.ok) return;
         // const data = await res.json();
         // const { publishScheduled, resurface, autoplug } = data;

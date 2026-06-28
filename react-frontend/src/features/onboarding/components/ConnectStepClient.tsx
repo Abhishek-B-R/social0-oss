@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -59,7 +60,7 @@ export function ConnectStepClient({
   useEffect(() => {
     async function fetchAccounts() {
       try {
-        const res = await fetch("/api/accounts", { credentials: "include" });
+        const res = await fetchApi("/api/accounts", { credentials: "include" });
         if (!res.ok) return;
         const data = await res.json();
         if (Array.isArray(data)) setAccounts(data);

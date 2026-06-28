@@ -9,11 +9,12 @@ import { PreConnectModal } from "@/components/PreConnectModal";
 import { InstagramConnectionModal } from "@/components/InstagramConnectionModal";
 import { signInUrl } from "@/lib/sign-in-url";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
+import { apiUrl } from "@/lib/env";
 
 type Platform = (typeof PLATFORMS)[number];
 
 function connectUrl(platformId: string, returnTo?: string | null): string {
-  const base = `/api/connect/${platformId}`;
+  const base = apiUrl(`/api/connect/${platformId}`);
   const safe = sanitizeReturnToPath(returnTo);
   if (safe) {
     return `${base}?returnTo=${encodeURIComponent(safe)}`;
@@ -134,8 +135,10 @@ export function ConnectPlatformButton({
             setShowInstagramModal(false);
             const safe = sanitizeReturnToPath(returnTo);
             window.location.href = safe
-              ? `/api/connect/instagram-facebook?returnTo=${encodeURIComponent(safe)}`
-              : "/api/connect/instagram-facebook";
+              ? apiUrl(
+                  `/api/connect/instagram-facebook?returnTo=${encodeURIComponent(safe)}`,
+                )
+              : apiUrl("/api/connect/instagram-facebook");
           }}
         />
       )}

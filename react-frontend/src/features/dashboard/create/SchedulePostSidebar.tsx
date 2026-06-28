@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -237,7 +238,7 @@ export function SchedulePostSidebar({
     let cancelled = false;
     setNextSlotLoading(true);
     setNextSlot(null);
-    fetch("/api/queue/next-slot")
+    fetchApi("/api/queue/next-slot")
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;

@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -28,8 +29,7 @@ export default function InstagramSelectPage() {
       setLoading(false);
       return;
     }
-    fetch(
-      `/api/connect/instagram-facebook/select?token=${encodeURIComponent(token)}`,
+    fetchApi(`/api/connect/instagram-facebook/select?token=${encodeURIComponent(token)}`,
       {
         credentials: "include",
       },
@@ -76,7 +76,7 @@ export default function InstagramSelectPage() {
       toast.dismiss();
       setSubmitLoading(true);
       try {
-        const res = await fetch("/api/connect/instagram-facebook/select", {
+        const res = await fetchApi("/api/connect/instagram-facebook/select", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

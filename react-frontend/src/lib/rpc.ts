@@ -13,9 +13,10 @@ function serializeArg(arg: unknown): unknown {
 }
 
 import { assignSafeRedirectUrl } from "./safe-external-url";
+import { fetchApi } from "./fetch-api";
 
 export async function rpc<T>(fn: string, ...args: unknown[]): Promise<T> {
-  const res = await fetch("/api/rpc", {
+  const res = await fetchApi("/api/rpc", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },

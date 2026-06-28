@@ -1,3 +1,5 @@
+import { apiUrl } from "@/lib/env";
+
 function isAvatarCdnUrl(url: string): boolean {
   const lower = url.toLowerCase();
   return (
@@ -27,7 +29,7 @@ export function accountAvatarSrc(
     accountId &&
     (platform === "facebook" || platform === "instagram" || platform === "tiktok")
   ) {
-    return `/api/accounts/${accountId}/avatar`;
+    return apiUrl(`/api/accounts/${accountId}/avatar`);
   }
 
   const url = profileImageUrl?.trim();
@@ -35,7 +37,7 @@ export function accountAvatarSrc(
   if (!accountId) return url;
 
   if (isProxiedCdnUrl(url)) {
-    return `/api/accounts/${accountId}/avatar`;
+    return apiUrl(`/api/accounts/${accountId}/avatar`);
   }
 
   return url;

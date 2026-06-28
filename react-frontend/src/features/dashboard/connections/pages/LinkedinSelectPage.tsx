@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -43,7 +44,7 @@ export default function LinkedInSelectPage() {
       setLoading(false);
       return;
     }
-    fetch(`/api/connect/linkedin/select?token=${encodeURIComponent(token)}`, {
+    fetchApi(`/api/connect/linkedin/select?token=${encodeURIComponent(token)}`, {
       credentials: "include",
     })
       .then((res) => {
@@ -90,7 +91,7 @@ export default function LinkedInSelectPage() {
       toast.dismiss();
       setSubmitLoading(true);
       try {
-        const res = await fetch("/api/connect/linkedin/select", {
+        const res = await fetchApi("/api/connect/linkedin/select", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

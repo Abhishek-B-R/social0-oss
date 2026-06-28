@@ -5,6 +5,13 @@ export function getApiBaseUrl(): string {
   return import.meta.env.VITE_API_URL ?? "";
 }
 
+/** Absolute or same-origin path to a backend /api or /v1 route. */
+export function apiUrl(path: string): string {
+  const base = getApiBaseUrl().replace(/\/$/, "");
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return base ? `${base}${normalized}` : normalized;
+}
+
 /** Better Auth API origin. Dev: same-origin + Vite /api proxy. Prod: api.social0.app. */
 export function getAuthBaseUrl(): string {
   const api = getApiBaseUrl().replace(/\/$/, "");

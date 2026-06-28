@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -28,7 +29,7 @@ export default function FacebookSelectPage() {
       setLoading(false);
       return;
     }
-    fetch(`/api/connect/facebook/select?token=${encodeURIComponent(token)}`, {
+    fetchApi(`/api/connect/facebook/select?token=${encodeURIComponent(token)}`, {
       credentials: "include",
     })
       .then((res) => {
@@ -65,7 +66,7 @@ export default function FacebookSelectPage() {
       toast.dismiss();
       setSubmitLoading(true);
       try {
-        const res = await fetch("/api/connect/facebook/select", {
+        const res = await fetchApi("/api/connect/facebook/select", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

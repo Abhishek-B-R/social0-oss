@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
@@ -26,7 +27,7 @@ export function DisconnectAccountModal({
     setDisconnecting(true);
     toast.dismiss();
     try {
-      const res = await fetch(`/api/accounts/${accountId}`, {
+      const res = await fetchApi(`/api/accounts/${accountId}`, {
         method: "DELETE",
       });
       if (!res.ok) {

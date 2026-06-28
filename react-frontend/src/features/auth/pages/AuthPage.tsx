@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 import { getClientSignUpConfig } from "@/lib/sign-up-config";
+import { apiUrl } from "@/lib/env";
 import {
   EMPTY_LEGAL_CONSENT,
   LegalConsentCheckboxes,
@@ -241,7 +242,7 @@ function AuthPageContent() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const res = await fetch(SIGN_UP.signUpEndpoint, {
+      const res = await fetch(apiUrl(SIGN_UP.signUpEndpoint), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

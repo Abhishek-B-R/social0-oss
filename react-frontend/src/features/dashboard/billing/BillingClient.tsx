@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -198,7 +199,7 @@ export function BillingClient({
     const poll = async () => {
       attempts++;
 
-      await fetch("/api/billing/sync", {
+      await fetchApi("/api/billing/sync", {
         method: "POST",
         credentials: "include",
       });
@@ -225,7 +226,7 @@ export function BillingClient({
     const trySyncAndCheck = async () => {
       try {
         // Sync from Dodo Payments by email (works even when webhook didn't reach localhost)
-        const syncRes = await fetch("/api/billing/sync", {
+        const syncRes = await fetchApi("/api/billing/sync", {
           method: "POST",
           credentials: "include",
         });
@@ -239,7 +240,7 @@ export function BillingClient({
           redirectToComposer();
           return true;
         }
-        const checkRes = await fetch("/api/auth/subscription-check", {
+        const checkRes = await fetchApi("/api/auth/subscription-check", {
           credentials: "include",
         });
         if (!checkRes.ok) return false;
@@ -334,7 +335,7 @@ export function BillingClient({
   const handleChangePlan = async () => {
     setLoading("portal");
     try {
-      const res = await fetch("/api/billing/portal", {
+      const res = await fetchApi("/api/billing/portal", {
         method: "POST",
         credentials: "include",
       });
@@ -359,7 +360,7 @@ export function BillingClient({
   const handlePause = async (months: 1 | 2 | 3) => {
     setLoading("pause");
     try {
-      const res = await fetch("/api/billing/pause", {
+      const res = await fetchApi("/api/billing/pause", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -387,7 +388,7 @@ export function BillingClient({
   const handleCancel = async () => {
     setLoading("cancel");
     try {
-      const res = await fetch("/api/billing/cancel", {
+      const res = await fetchApi("/api/billing/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -425,7 +426,7 @@ export function BillingClient({
   const handleUndoCancel = async () => {
     setLoading("undoCancel");
     try {
-      const res = await fetch("/api/billing/undo-cancel", {
+      const res = await fetchApi("/api/billing/undo-cancel", {
         method: "POST",
         credentials: "include",
       });
@@ -450,7 +451,7 @@ export function BillingClient({
     if (!targetDowngradePlan) return;
     setLoadingChangePlan(targetDowngradePlan);
     try {
-      const res = await fetch("/api/billing/change-plan", {
+      const res = await fetchApi("/api/billing/change-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -488,7 +489,7 @@ export function BillingClient({
 
   const handleCancelDowngrade = async () => {
     try {
-      const res = await fetch("/api/billing/cancel-downgrade", {
+      const res = await fetchApi("/api/billing/cancel-downgrade", {
         method: "POST",
         credentials: "include",
       });
@@ -514,7 +515,7 @@ export function BillingClient({
     try {
       // For Starter → Growth, show preview first so user sees exact charge before confirming.
       if (plan === "growth" && subscription.tier === "starter") {
-        const previewRes = await fetch("/api/billing/preview-plan-change", {
+        const previewRes = await fetchApi("/api/billing/preview-plan-change", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -533,7 +534,7 @@ export function BillingClient({
         // Preview failed (e.g. no subscription) - fall back to direct change-plan.
       }
 
-      const res = await fetch("/api/billing/change-plan", {
+      const res = await fetchApi("/api/billing/change-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -593,7 +594,7 @@ export function BillingClient({
     if (!upgradeConfirmPlan || !upgradePreview) return;
     setLoadingChangePlan(upgradeConfirmPlan);
     try {
-      const res = await fetch("/api/billing/change-plan", {
+      const res = await fetchApi("/api/billing/change-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -642,7 +643,7 @@ export function BillingClient({
   };
 
   const redirectToCheckoutForPlan = async (plan: "starter" | "growth") => {
-    const res = await fetch("/api/billing/checkout", {
+    const res = await fetchApi("/api/billing/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

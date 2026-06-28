@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -29,7 +30,7 @@ export function LegalConsentGate() {
   const checkStatus = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/legal/status", { credentials: "include" });
+      const res = await fetchApi("/api/legal/status", { credentials: "include" });
       if (res.status === 401) {
         setOpen(false);
         return;
@@ -60,7 +61,7 @@ export function LegalConsentGate() {
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/legal/accept", {
+      const res = await fetchApi("/api/legal/accept", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

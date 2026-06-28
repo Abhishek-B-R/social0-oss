@@ -1,4 +1,5 @@
 import { isAllowedPresignedUploadUrl } from "./safe-external-url";
+import { fetchApi } from "@/lib/fetch-api";
 
 export type UploadProgressCallback = (fileIndex: number, percent: number) => void;
 
@@ -63,7 +64,7 @@ export function uploadFile(
     (async () => {
       try {
         // Phase 0: Get presigned URL from backend (~20ms)
-        const presignRes = await fetch("/api/media/presign", {
+        const presignRes = await fetchApi("/api/media/presign", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -116,7 +117,7 @@ export function uploadFile(
           if (xhr?.status === 200) {
             try {
               // Phase 2: Confirm upload, save DB record (~20ms)
-              const confirmRes = await fetch("/api/media/confirm", {
+              const confirmRes = await fetchApi("/api/media/confirm", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

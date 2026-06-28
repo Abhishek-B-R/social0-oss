@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
@@ -88,7 +89,7 @@ function OnboardingWelcomeContent() {
     toast.dismiss();
     setLoadingPlan(plan);
     try {
-      const res = await fetch("/api/billing/checkout", {
+      const res = await fetchApi("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -120,7 +121,7 @@ function OnboardingWelcomeContent() {
             ? data.error
             : "You have an unpaid subscription. We'll open billing to fix it.",
         );
-        const portalRes = await fetch("/api/billing/portal", {
+        const portalRes = await fetchApi("/api/billing/portal", {
           method: "POST",
           credentials: "include",
         });

@@ -1,3 +1,4 @@
+import { fetchApi } from "@/lib/fetch-api";
 export function getRememberedBoard(accountId: string): string | null {
   if (typeof window === "undefined") return null;
   try {
@@ -21,7 +22,7 @@ export async function savePinterestDefaultBoardToDb(
   boardId: string,
 ): Promise<void> {
   try {
-    const res = await fetch("/api/pinterest/default-board", {
+    const res = await fetchApi("/api/pinterest/default-board", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ accountId, boardId }),

@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import {
   useRef,
@@ -375,7 +376,7 @@ function ChangeEmailForm({
     onError(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/account/change-email/send-otp", {
+      const res = await fetchApi("/api/account/change-email/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -411,7 +412,7 @@ function ChangeEmailForm({
     onError(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/account/change-email", {
+      const res = await fetchApi("/api/account/change-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -665,7 +666,7 @@ function ChangeEmailModal({
     toast.dismiss();
     setLoading(true);
     try {
-      const res = await fetch("/api/account/change-email/send-otp", {
+      const res = await fetchApi("/api/account/change-email/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

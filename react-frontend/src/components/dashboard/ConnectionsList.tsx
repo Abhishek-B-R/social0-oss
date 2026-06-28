@@ -1,3 +1,5 @@
+import { fetchApi } from "@/lib/fetch-api";
+import { apiUrl } from "@/lib/env";
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
@@ -107,7 +109,7 @@ export function ConnectionsList({
     setPremiumRefreshError(null);
     setRefreshingAllPremium(true);
     try {
-      const res = await fetch("/api/connect/refresh-twitter-premium", {
+      const res = await fetchApi("/api/connect/refresh-twitter-premium", {
         method: "POST",
       });
       if (!res.ok) {
@@ -392,7 +394,9 @@ export function ConnectionsList({
                           </div>
                           {!isExpired && account.platform !== "bluesky" && (
                             <Link
-                              href={`/api/connect/${account.platform}/reauth?accountId=${encodeURIComponent(account.id)}`}
+                              href={apiUrl(
+                                `/api/connect/${account.platform}/reauth?accountId=${encodeURIComponent(account.id)}`,
+                              )}
                               className="shrink-0 rounded p-0.5 text-text-muted transition-colors hover:bg-bg-muted hover:text-text cursor-auto"
                               title="Refresh account tokens"
                             >
@@ -401,7 +405,7 @@ export function ConnectionsList({
                           )}
                           {isExpired && (
                             <Link
-                              href={`/api/connect/${account.platform}`}
+                              href={apiUrl(`/api/connect/${account.platform}`)}
                               className="shrink-0 inline-flex items-center gap-1 rounded border border-destructive/50 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive transition-colors hover:bg-destructive/20"
                               title="Token expired - Reconnect"
                             >

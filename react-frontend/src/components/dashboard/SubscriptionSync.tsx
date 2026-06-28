@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -28,7 +29,7 @@ export function SubscriptionSync({ tier }: SubscriptionSyncProps) {
     if (didRun.current) return;
     didRun.current = true;
 
-    fetch("/api/billing/sync", { method: "POST", credentials: "include" })
+    fetchApi("/api/billing/sync", { method: "POST", credentials: "include" })
       .then((res) => res.json())
       .then((data) => {
         try {

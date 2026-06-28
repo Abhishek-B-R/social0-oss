@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useEffect, useState } from "react";
 import { Check, Plus } from "lucide-react";
@@ -86,7 +87,7 @@ export function QueueScheduleSection({
   const fetchSlots = async () => {
     toast.dismiss();
     try {
-      const res = await fetch("/api/queue/slots");
+      const res = await fetchApi("/api/queue/slots");
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to load queue slots");
@@ -125,7 +126,7 @@ export function QueueScheduleSection({
     setAdding(true);
     toast.dismiss();
     try {
-      const res = await fetch("/api/queue/slots", {
+      const res = await fetchApi("/api/queue/slots", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -172,7 +173,7 @@ export function QueueScheduleSection({
     );
     toast.dismiss();
     try {
-      const res = await fetch(`/api/queue/slots/${slotId}`, {
+      const res = await fetchApi(`/api/queue/slots/${slotId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ daysOfWeek: nextDays }),
@@ -192,7 +193,7 @@ export function QueueScheduleSection({
     if (!slot) return;
     toast.dismiss();
     try {
-      const res = await fetch(`/api/queue/slots/${slotId}`, {
+      const res = await fetchApi(`/api/queue/slots/${slotId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hour: editHour, minute: editMinute }),
@@ -214,7 +215,7 @@ export function QueueScheduleSection({
     setSlots((prev) => prev.filter((s) => s.id !== id));
     toast.dismiss();
     try {
-      const res = await fetch(`/api/queue/slots/${id}`, { method: "DELETE" });
+      const res = await fetchApi(`/api/queue/slots/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to remove slot");

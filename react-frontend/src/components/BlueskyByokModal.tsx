@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useState } from "react";
 import { toast } from "sonner";
@@ -28,7 +29,7 @@ export function BlueskyByokModal({
     toast.dismiss();
 
     try {
-      const response = await fetch("/api/connect/bluesky/byok", {
+      const response = await fetchApi("/api/connect/bluesky/byok", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect, useCallback } from "react";
 import type { ApiAccountRow } from "@/lib/accounts-for-form";
@@ -16,7 +17,7 @@ export function useAccountsForForm(allowedPlatforms?: string[] | null) {
     setLoading(true);
     toast.dismiss();
     try {
-      const res = await fetch("/api/accounts", { credentials: "include" });
+      const res = await fetchApi("/api/accounts", { credentials: "include" });
       if (res.status === 401) {
         setAccounts([]);
         return;

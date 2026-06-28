@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect, useCallback } from "react";
 import {
@@ -44,8 +45,7 @@ export function PinterestConfigInline({
     setBoardsLoading(true);
     setBoardsError(null);
     try {
-      const res = await fetch(
-        `/api/pinterest/boards?accountId=${encodeURIComponent(accountId)}`,
+      const res = await fetchApi(`/api/pinterest/boards?accountId=${encodeURIComponent(accountId)}`,
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -123,7 +123,7 @@ export function PinterestConfigInline({
     setCreateSubmitting(true);
     setBoardsError(null);
     try {
-      const res = await fetch("/api/pinterest/boards", {
+      const res = await fetchApi("/api/pinterest/boards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

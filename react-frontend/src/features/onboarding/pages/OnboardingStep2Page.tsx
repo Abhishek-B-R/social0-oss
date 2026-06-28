@@ -1,4 +1,5 @@
 "use client";
+import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -29,7 +30,7 @@ export default function OnboardingGoalPage() {
     if (!paid || syncAttempted.current) return;
     syncAttempted.current = true;
     setVerifying(true);
-    fetch("/api/billing/sync", { method: "POST", credentials: "include" })
+    fetchApi("/api/billing/sync", { method: "POST", credentials: "include" })
       .then((res) => res.json())
       .then((data) => {
         const hasPaidTier =

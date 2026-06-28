@@ -4,6 +4,7 @@ import { getCannyBoardToken } from "@/lib/env";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { fetchApi } from "@/lib/fetch-api";
 
 declare global {
   interface Window {
@@ -52,7 +53,7 @@ async function resolveBoardToken(): Promise<string> {
   const fromEnv = getCannyBoardToken();
   if (fromEnv) return fromEnv;
 
-  const res = await fetch("/api/canny/config");
+  const res = await fetchApi("/api/canny/config");
   if (!res.ok) {
     throw new Error("Feedback board not configured");
   }
@@ -82,7 +83,7 @@ export function FeedbackBoard() {
     void (async () => {
       try {
         const [ssoRes, boardTokenValue] = await Promise.all([
-          fetch("/api/canny/sso", { credentials: "include" }),
+          fetchApi("/api/canny/sso", { credentials: "include" }),
           resolveBoardToken(),
         ]);
 
