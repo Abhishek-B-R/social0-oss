@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { auth } from "../../lib/auth.js";
-import { env } from "../../lib/env.js";
+import { getAuthApiBaseUrl } from "../../lib/env.js";
 import { isBlockedNativeSignUpPath } from "../../lib/block-native-sign-up.js";
 import { runNextRouteHandler } from "../../lib/run-next-handler.js";
 import { POST as signUpDev } from "./auth-sign-up.js";
@@ -13,7 +13,7 @@ async function handleBetterAuth(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
-  const baseUrl = env.BETTER_AUTH_URL.replace(/\/$/, "");
+  const baseUrl = getAuthApiBaseUrl();
   const apiHost = new URL(baseUrl).host;
   const url = new URL(request.url, `${baseUrl}/`);
 

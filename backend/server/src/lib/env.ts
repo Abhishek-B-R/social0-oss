@@ -7,10 +7,12 @@ const envSchema = z
       .default("development"),
     DATABASE_URL: z.string().url(),
     BETTER_AUTH_URL: z.string().url(),
+    /** Override auth API host (defaults to api.social0.app when BETTER_AUTH_URL is the SPA). */
+    AUTH_API_URL: z.string().url().optional(),
     BETTER_AUTH_SECRET: z.string().min(32),
     GOOGLE_CLIENT_ID: z.string().min(1),
     GOOGLE_CLIENT_SECRET: z.string().min(1),
-    /** OAuth redirect base - same as frontend NEXT_PUBLIC_APP_URL */
+    /** SPA origin for post-login redirects (dev.social0.app / social0.app — NOT the auth API). */
     NEXT_PUBLIC_APP_URL: z.string().url(),
     APP_URL: z.string().url().optional(),
     /** Comma-separated browser origins for CORS (defaults: prod=https://social0.app; dev=+localhost:3000) */
@@ -128,4 +130,31 @@ export function appBaseUrl(): string {
   const e = loadServerEnv();
   // SPA origin for dashboard/OAuth return URLs (may differ from BETTER_AUTH_URL on split deploys).
   return e.APP_URL ?? e.NEXT_PUBLIC_APP_URL ?? e.BETTER_AUTH_URL;
+}
+
+const DEFAULT_AUTH_API_URL = "https://api.social0.app";
+
+/** Better Auth + Google OAuth callback host — never the React SPA URL. */
+export function getAuthApiBaseUrl(): string {
+  const e = loadServerEnv();
+  if (e.AUTH_API_URL?.trim()) {
+    return e.AUTH_API_URL.trim().replace(/\/$/, "");
+  }
+
+  const configured = e.BETTER_AUTH_URL.replace(/\/$/, "");
+  if (e.NODE_ENV !== "production") return configured;
+
+  let host: string;
+  try {
+    host = new URL(configured).hostname;
+  } catch {
+    return DEFAULT_AUTH_API_URL;
+  }
+
+  // ponytail: BETTER_AUTH_URL is often set to dev.social0.app by mistake
+  if (host === "api.social0.app") return configured;
+  if (host.endsWith(".social0.app") || host === "social0.app") {
+    return DEFAULT_AUTH_API_URL;
+  }
+  return configured;
 }
