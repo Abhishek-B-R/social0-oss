@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build && node scripts/generate-sitemap.mjs",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "vite preview --host"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
