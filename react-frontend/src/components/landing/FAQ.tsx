@@ -10,7 +10,7 @@ const faqs = [
   },
   {
     question: "Is there a free trial?",
-    answer: "Yes! All plans include a 7-day free trial. Cancel anytime.",
+    answer: "Yes! All plans include a 3-day free trial. Cancel anytime.",
   },
   {
     question: "Can I cancel anytime?",

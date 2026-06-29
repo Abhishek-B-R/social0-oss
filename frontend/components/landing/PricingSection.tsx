@@ -97,7 +97,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
         </div>
         <p className="mb-3 text-[15px] text-muted-foreground">
           Start free today. Upgrade when you&apos;re ready - every paid plan
-          includes a 7-day trial.
+          includes a 3-day trial.
         </p>
 
         <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-3">
@@ -185,10 +185,10 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                 href="/dashboard"
                 className={`${ctaBase} border-2 border-emerald-600/50 text-emerald-700 hover:border-emerald-500 hover:bg-emerald-600/10 dark:text-emerald-400`}
               >
-                {signedIn ? "Go to dashboard →" : "Start your 7-day free trial"}
+                {signedIn ? "Go to dashboard →" : "Start your 3-day free trial"}
               </Link>
               <p className={basePlanFooter}>
-                7-day free trial · Cancel anytime
+                3-day free trial · Cancel anytime
               </p>
             </div>
           </div>
@@ -251,10 +251,10 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
 
             <div className="relative z-10 mt-auto pt-8">
               <Link href="/dashboard" className={ctaPrimary}>
-                {signedIn ? "Go to dashboard →" : "Start your 7-day free trial"}
+                {signedIn ? "Go to dashboard →" : "Start your 3-day free trial"}
               </Link>
               <p className="mt-3 text-center text-[12px] text-white/25 dark:text-[#0A0A0A]/40">
-                7-day free trial · Cancel anytime · Lock in early-adopter
+                3-day free trial · Cancel anytime · Lock in early-adopter
                 pricing
               </p>
             </div>
@@ -308,11 +308,11 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
               href="/dashboard"
               className="block w-full rounded-[10px] border-2 border-foreground/10 bg-background py-3.5 text-center text-[14px] font-medium text-foreground transition-all hover:border-foreground/25 hover:bg-muted dark:border-white/10 dark:hover:border-white/20 dark:hover:bg-muted/50"
             >
-              Get started - 7-day free trial
+              Get started - 3-day free trial
             </Link>
 
             <p className="mt-3 text-center text-[12px] text-muted-foreground">
-              7-day free trial · Cancel anytime
+              3-day free trial · Cancel anytime
             </p>
           </div>
           */}

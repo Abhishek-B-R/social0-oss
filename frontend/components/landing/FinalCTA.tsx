@@ -20,7 +20,7 @@ export function FinalCTA({ signedIn = false }: { signedIn?: boolean }) {
           <span aria-hidden="true">→</span>
         </Link>
         <p className="mt-4 text-[12px] text-white/50">
-          7-day free trial · Cancel anytime
+          3-day free trial · Cancel anytime
         </p>
       </div>
     </section>

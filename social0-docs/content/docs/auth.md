@@ -13,7 +13,7 @@ You sign in or sign up on one page. You can use **Google** (one click) or **emai
 2. **With Google:** Click the Google button and sign in with your Google account. You’re done-we’ll take you to the Dashboard (or onboarding if you’re new).
 3. **With email:** Enter your name, email, and password. Click **Sign up**. Check your email for a 6-digit code, enter it on the verification page, and you’ll go to onboarding.
 
-No credit card is required to sign up. On the free tier you can only explore the dashboard. You need a paid plan to connect accounts and to post or schedule anything. You can start with a **7-day free trial** to try everything, then continue with a paid plan when the trial ends.
+No credit card is required to sign up. On the free tier you can only explore the dashboard. You need a paid plan to connect accounts and to post or schedule anything. You can start with a **3-day free trial** to try everything, then continue with a paid plan when the trial ends.
 
 ## How to sign in
 

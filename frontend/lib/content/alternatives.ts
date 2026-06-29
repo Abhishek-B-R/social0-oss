@@ -41,7 +41,7 @@ export const ALTERNATIVES: AlternativePage[] = [
       "One composer for text, images, videos, threads, and collections",
       "Publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest",
       "See per-platform results when a publish partially fails",
-      "7-day free trial on all plans - no credit card games",
+      "3-day free trial on all plans - no credit card games",
       "Transparent pricing without per-channel upsells",
     ],
     comparisonRows: [
@@ -268,7 +268,7 @@ export const ALTERNATIVES: AlternativePage[] = [
       "Parallel publish to all selected accounts at once",
       "No workspace complexity for solo creators",
       "Threads and Bluesky native support",
-      "7-day free trial on every plan",
+      "3-day free trial on every plan",
       "Clear per-platform publish feedback",
     ],
     comparisonRows: [
@@ -319,7 +319,7 @@ export const ALTERNATIVES: AlternativePage[] = [
     intro:
       "Sprout Social offers inbox management, listening, and reporting at a premium price point. Social0 deliberately focuses on the publish path - scheduling, drafts, calendar, and multi-platform posting - at a fraction of the cost for solo creators and small teams.",
     whySwitch: [
-      "Affordable plans with 7-day free trial",
+      "Affordable plans with 3-day free trial",
       "No per-seat enterprise pricing",
       "Publish-first UX without analytics clutter",
       "9+ platforms including Bluesky and Threads",

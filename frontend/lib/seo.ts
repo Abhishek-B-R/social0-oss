@@ -133,7 +133,7 @@ export function buildSoftwareApplicationJsonLd() {
       "@type": "Offer",
       price: "0",
       priceCurrency: "USD",
-      description: "7-day free trial on all plans",
+      description: "3-day free trial on all plans",
     },
     featureList: [
       "Multi-platform scheduling",
@@ -149,7 +149,7 @@ export const homePageTitle =
   "Social0 - Post and Schedule to All Your Socials from One Place";
 
 export const homePageDescription =
-  "Social0 lets you write once and publish everywhere. Schedule posts to Twitter, Instagram, LinkedIn, TikTok, YouTube, Pinterest, Bluesky, Threads, and Facebook from one dashboard. 7-day free trial.";
+  "Social0 lets you write once and publish everywhere. Schedule posts to Twitter, Instagram, LinkedIn, TikTok, YouTube, Pinterest, Bluesky, Threads, and Facebook from one dashboard. 3-day free trial.";
 
 export function buildHomeMetadata(path: "/" | "/home" = "/"): Metadata {
   const url = absoluteUrl(path);
