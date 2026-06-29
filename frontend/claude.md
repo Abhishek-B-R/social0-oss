@@ -185,7 +185,7 @@ Production Facebook connect should use **Facebook Login for Business** with a Me
 - **Checkout (`POST /api/billing/checkout`):**
   1. `evaluateCheckoutEligibility()` - block if active paid tier, or any open Dodo sub (`active` / `on_hold` / `pending`); returns `code: use_change_plan` or `use_portal`.
   2. `resolveCheckoutSession()` in `pending-checkout.ts` - **one pending checkout per user** (Redis, 1h TTL); double-tab returns same `cks_…` URL; concurrent creates serialized with Redis lock.
-  3. Passes `trial_period_days: 7 | 0` explicitly to Dodo (do not rely on product default alone).
+  3. Passes `trial_period_days: 3 | 0` explicitly to Dodo (do not rely on product default alone).
 - **Change plan (`POST /api/billing/change-plan`):** In-place `changePlan` on existing `subscriptionId`. Trial users (`previous_billing_date` empty) must use checkout (`trial_upgrade_requires_checkout`). `on_hold` → `use_portal`.
 - **Webhook (`POST /api/webhooks/dodo`):** Idempotent via `claimWebhookDelivery`. Tier updates only when subscription `active`. **Upgrades** require a recent **paid** payment (`total_amount > 0`) via `findRecentPaidUpgradePayment`. Ignores duplicate `subscription_id` when user already has canonical active sub. `subscription.on_hold` → revert user to `free`. Clears pending checkout on success. Records `trial_claims`.
 - **Sync:** `syncSubscriptionForUserId()` in `lib/billing-sync.ts` (client poll after checkout); webhook is primary source of truth.

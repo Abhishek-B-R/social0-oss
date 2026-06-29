@@ -864,14 +864,14 @@ export function BillingClient({
                         Opening…
                       </>
                     ) : showTrialInfo ? (
-                      "Start 7-day free trial"
+                      "Start 3-day free trial"
                     ) : (
                       "Upgrade to Starter"
                     )}
                   </Button>
                   {showTrialInfo && (
                     <p className="mt-2 text-center text-xs text-muted-foreground">
-                      7-day free trial included - you won&apos;t be charged
+                      3-day free trial included - you won&apos;t be charged
                       today.
                     </p>
                   )}
@@ -950,14 +950,14 @@ export function BillingClient({
                         Opening…
                       </>
                     ) : showTrialInfo ? (
-                      "Start 7-day free trial"
+                      "Start 3-day free trial"
                     ) : (
                       "Upgrade to Growth"
                     )}
                   </Button>
                   {showTrialInfo && (
                     <p className="mt-2 text-center text-xs text-muted-foreground">
-                      7-day free trial included - you won&apos;t be charged
+                      3-day free trial included - you won&apos;t be charged
                       today.
                     </p>
                   )}

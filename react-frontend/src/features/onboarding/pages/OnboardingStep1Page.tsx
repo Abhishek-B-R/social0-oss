@@ -236,7 +236,7 @@ function OnboardingWelcomeContent() {
             Need more? Upgrade anytime
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            7-day free trial · cancel anytime · lock in early-adopter pricing
+            3-day free trial · cancel anytime · lock in early-adopter pricing
           </p>
 
           <div className="mt-8 grid flex-1 gap-5 sm:grid-cols-2">

@@ -18,7 +18,7 @@ From there you can open the Composer and create your first post.
 
 ## Tips
 
-- On the free tier you can only explore the dashboard-you cannot connect accounts or post. You need a paid plan to connect accounts and to publish or schedule. You can start with a **7-day free trial** to try everything, then continue by paying when the trial ends-or skip plan selection during onboarding and upgrade from Billing later.
+- On the free tier you can only explore the dashboard-you cannot connect accounts or post. You need a paid plan to connect accounts and to publish or schedule. You can start with a **3-day free trial** to try everything, then continue by paying when the trial ends-or skip plan selection during onboarding and upgrade from Billing later.
 - If you just paid, the app may take a few seconds to recognize your new plan. Refresh if needed.
 
 ## Common questions
