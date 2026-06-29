@@ -11,7 +11,6 @@ import {
 } from "@/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { headers } from "../../lib/shim/request-cookies.js";
-import { revalidatePath } from "../../lib/shim/cache.js";
 import { isPostOlderThanAutoFeaturesEditWindow } from "@/lib/resurface-utils";
 
 const PLATFORM_X = "x";
@@ -209,8 +208,6 @@ export async function createAutoPlug(
       return { success: false, error: "Failed to create auto-plug" };
     }
 
-    revalidatePath("/dashboard/posts");
-    revalidatePath("/dashboard");
     return { success: true, autoPlugId: plug.id };
   } catch (e) {
     console.error("[createAutoPlug]", e);
@@ -350,8 +347,6 @@ export async function createResurfaceSchedule(
       nextExecuteAt: nextAt,
     });
 
-    revalidatePath("/dashboard/posts");
-    revalidatePath("/dashboard");
     return { success: true, scheduleId: schedule.id };
   } catch (e) {
     console.error("[createResurfaceSchedule]", e);
@@ -398,8 +393,6 @@ export async function disableResurfaceSchedule(
       .update(resurfaceSchedules)
       .set({ isActive: false, updatedAt: new Date() })
       .where(eq(resurfaceSchedules.id, scheduleId));
-    revalidatePath("/dashboard/posts");
-    revalidatePath("/dashboard");
     return { success: true };
   } catch (e) {
     console.error("[disableResurfaceSchedule]", e);
@@ -477,8 +470,6 @@ export async function updateAutoPlug(
         updatedAt: new Date(),
       })
       .where(eq(autoPlugs.id, row.id));
-    revalidatePath("/dashboard/posts");
-    revalidatePath(`/dashboard/posts/${postId}`);
     return { success: true };
   } catch (e) {
     console.error("[updateAutoPlug]", e);
@@ -520,8 +511,6 @@ export async function cancelAutoPlug(
 
   try {
     await db.delete(autoPlugs).where(eq(autoPlugs.id, row.id));
-    revalidatePath("/dashboard/posts");
-    revalidatePath(`/dashboard/posts/${postId}`);
     return { success: true };
   } catch (e) {
     console.error("[cancelAutoPlug]", e);
@@ -693,8 +682,6 @@ export async function updateResurfaceSchedule(
       }
     });
 
-    revalidatePath("/dashboard/posts");
-    revalidatePath(`/dashboard/posts/${schedule.postId}`);
     return { success: true };
   } catch (e) {
     console.error("[updateResurfaceSchedule]", e);

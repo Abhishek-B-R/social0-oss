@@ -1,12 +1,13 @@
 import { getRequestContext } from "../request-context.js";
 
+/** Fastify-compatible request wrapper (Web Request + parsed URL). */
 export class AppRequest extends Request {
-  readonly nextUrl: URL;
+  readonly parsedUrl: URL;
 
   constructor(input: string | URL, init?: RequestInit) {
-    const url = typeof input === "string" ? input : input.toString();
-    super(url, init);
-    this.nextUrl = new URL(url);
+    const href = typeof input === "string" ? input : input.toString();
+    super(href, init);
+    this.parsedUrl = new URL(href);
   }
 }
 

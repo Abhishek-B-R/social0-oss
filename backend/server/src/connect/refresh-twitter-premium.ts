@@ -7,7 +7,7 @@ import { RouteResponse } from "../lib/shim/http.js";
 import { refreshTwitterPremiumStatus } from "../lib/twitter-premium.js";
 import { twitterPremiumRefreshLimiter, enforceRateLimit } from "../lib/ratelimit.js";
 
-export async function POST() {
+export async function refreshTwitterPremium() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });

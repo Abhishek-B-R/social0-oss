@@ -1,4 +1,3 @@
-"use server";
 
 import { auth } from "@/lib/auth";
 import { headers } from "../../lib/shim/request-cookies.js";
@@ -8,8 +7,8 @@ import {
   POSTS_PAGE_SIZE,
   getPostDetail,
   getPostMedia,
-} from "@/app/dashboard/posts/posts-list-data";
-import type { PublicationRow, StatusFilter } from "@/app/dashboard/posts/posts-list-types";
+} from "@/lib/posts-list/posts-list-data";
+import type { PublicationRow, StatusFilter } from "@/lib/posts-list/posts-list-types";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { getPlanLimits } from "@/lib/plans";
 import { getUserSettingsSnapshot } from "@/bff/actions/settings";

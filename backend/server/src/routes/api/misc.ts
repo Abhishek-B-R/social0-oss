@@ -3,34 +3,37 @@ import { runRouteHandler } from "../../lib/run-route-handler.js";
 import { verifyCronSecretFromAuthorizationHeader } from "../../lib/cron-auth.js";
 import { enqueueCronJob } from "../../services/enqueue.js";
 import { JOB_NAMES } from "@social0/shared";
-import * as pinterestBoards from "../handlers/pinterest/boards.js";
-import * as pinterestDefaultBoard from "../handlers/pinterest/default-board.js";
-import * as changeEmailSendOtp from "../handlers/account/change-email-send-otp.js";
-import * as changeEmail from "../handlers/account/change-email.js";
-import * as cannySso from "../handlers/canny/sso.js";
-import * as cannyConfig from "../handlers/canny/config.js";
+import {
+  listPinterestBoards,
+  savePinterestBoard,
+} from "../../handlers/pinterest/boards.js";
+import { setDefaultPinterestBoard } from "../../handlers/pinterest/default-board.js";
+import { sendChangeEmailOtp } from "../../handlers/account/change-email-send-otp.js";
+import { changeEmail } from "../../handlers/account/change-email.js";
+import { cannySso } from "../../handlers/canny/sso.js";
+import { cannyConfig } from "../../handlers/canny/config.js";
 
 export async function registerMiscRoutes(app: FastifyInstance) {
   app.get("/pinterest/boards", async (req, reply) => {
-    await runRouteHandler(req, reply, pinterestBoards.GET);
+    await runRouteHandler(req, reply, listPinterestBoards);
   });
   app.post("/pinterest/boards", async (req, reply) => {
-    await runRouteHandler(req, reply, pinterestBoards.POST);
+    await runRouteHandler(req, reply, savePinterestBoard);
   });
   app.put("/pinterest/default-board", async (req, reply) => {
-    await runRouteHandler(req, reply, pinterestDefaultBoard.PUT);
+    await runRouteHandler(req, reply, setDefaultPinterestBoard);
   });
   app.post("/account/change-email/send-otp", async (req, reply) => {
-    await runRouteHandler(req, reply, changeEmailSendOtp.POST);
+    await runRouteHandler(req, reply, sendChangeEmailOtp);
   });
   app.post("/account/change-email", async (req, reply) => {
-    await runRouteHandler(req, reply, changeEmail.POST);
+    await runRouteHandler(req, reply, changeEmail);
   });
   app.get("/canny/sso", async (req, reply) => {
-    await runRouteHandler(req, reply, cannySso.GET);
+    await runRouteHandler(req, reply, cannySso);
   });
   app.get("/canny/config", async (req, reply) => {
-    await runRouteHandler(req, reply, cannyConfig.GET);
+    await runRouteHandler(req, reply, cannyConfig);
   });
 
   app.post("/dev/trigger-crons", async (request, reply) => {

@@ -3,7 +3,7 @@ import { verifyAdminRequest } from "../../lib/admin-auth.js";
 import { registerAccountsRoutes } from "./accounts.js";
 import { registerAuthRoutes } from "./auth.js";
 import { registerBillingRoutes } from "./billing.js";
-import { registerConnectRoutes } from "./connect/index.js";
+import { registerConnectRoutes } from "./connect-routes.js";
 import { registerCronRoutes } from "./cron.js";
 import { registerMediaApiRoutes } from "./media.js";
 import { registerPublishRoutes, registerJobRoutes } from "./publish.js";

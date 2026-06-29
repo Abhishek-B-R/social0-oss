@@ -9,8 +9,8 @@ import { clientIp } from "../../lib/client-ip.js";
 /**
  * Pre-sign-in email check. Does not reveal whether an account exists (enumeration-safe).
  */
-export async function GET(req: AppRequest) {
-  const email = req.nextUrl.searchParams.get("email");
+export async function checkEmail(req: AppRequest) {
+  const email = req.parsedUrl.searchParams.get("email");
   const normalized = typeof email === "string" ? email.trim().toLowerCase() : "";
   if (!normalized || !normalized.includes("@")) {
     return RouteResponse.json({ error: "Missing email" }, { status: 400 });

@@ -18,7 +18,7 @@ import {
 import { sanitizeReturnToPath } from "../lib/safe-return-to.js";
 import { redirectWithOAuthConnectBinding } from "../lib/oauth-connect-binding.js";
 
-export async function GET(
+export async function platformStart(
   req: AppRequest,
   { params }: { params: Promise<{ platform: string }> },
 ) {
@@ -46,11 +46,11 @@ export async function GET(
   }
 
   const returnToForConnect = sanitizeReturnToPath(
-    req.nextUrl.searchParams.get("returnTo"),
+    req.parsedUrl.searchParams.get("returnTo"),
   );
 
-  const reauthParam = req.nextUrl.searchParams.get("reauth");
-  const accountIdParam = req.nextUrl.searchParams.get("accountId");
+  const reauthParam = req.parsedUrl.searchParams.get("reauth");
+  const accountIdParam = req.parsedUrl.searchParams.get("accountId");
   let isReauth = false;
   let reauthAccountId: string | undefined;
   if (reauthParam === "1" && accountIdParam) {

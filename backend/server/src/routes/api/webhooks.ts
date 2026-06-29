@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { Readable } from "node:stream";
 import { runRouteHandler } from "../../lib/run-route-handler.js";
-import * as dodo from "../handlers/webhooks/dodo.js";
+import { handleDodoWebhook } from "../../handlers/webhooks/dodo.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -28,7 +28,7 @@ export async function registerWebhooksRoutes(app: FastifyInstance) {
     "/webhooks/dodo",
     { preParsing: captureRawBody },
     async (req, reply) => {
-      await runRouteHandler(req, reply, dodo.POST);
+      await runRouteHandler(req, reply, handleDodoWebhook);
     },
   );
 }

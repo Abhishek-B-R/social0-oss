@@ -9,7 +9,6 @@ import { logCronSkipped } from "../lib/plan-analytics.js";
 import { getPlanLimits, type SubscriptionTier } from "../lib/plans.js";
 import { env } from "../lib/env.js";
 
-export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(request: Request) {

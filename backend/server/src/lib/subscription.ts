@@ -1,4 +1,3 @@
-"use server";
 
 import { db } from "../db/index.js";
 import { userSettings } from "../db/schema.js";

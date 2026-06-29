@@ -21,7 +21,7 @@ const REFRESH_SUPPORTED_PLATFORMS = new Set<string>([
   "youtube",
 ]);
 
-export async function POST(req: AppRequest) {
+export async function refreshTokens(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });

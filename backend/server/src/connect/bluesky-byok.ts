@@ -21,7 +21,7 @@ const byokSchema = z.object({
   appPassword: z.string().min(1, "App password is required"),
 });
 
-export async function POST(req: AppRequest) {
+export async function blueskyByok(req: AppRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
 

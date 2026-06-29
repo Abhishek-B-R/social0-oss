@@ -13,7 +13,6 @@ import {
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { headers } from "../../lib/shim/request-cookies.js";
 import { decryptToken } from "@/lib/encryption";
-import { revalidatePath } from "../../lib/shim/cache.js";
 import { uploadLinkedInImage, uploadLinkedInVideo } from "@/lib/linkedin-media";
 import { publishToPlatform } from "@/lib/publish-platform";
 import {
@@ -1633,9 +1632,6 @@ export async function executePublish(
       }
     }
   }
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/posts");
-  revalidatePath(`/dashboard/posts/${postId}`);
 
   const errorSummary =
     failedList.length > 0

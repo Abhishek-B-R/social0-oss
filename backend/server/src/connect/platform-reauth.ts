@@ -18,7 +18,7 @@ const VALID_PLATFORMS = [
   "facebook",
 ] as const;
 
-export async function GET(
+export async function platformReauth(
   req: AppRequest,
   { params }: { params: Promise<{ platform: string }> },
 ) {
@@ -39,7 +39,7 @@ export async function GET(
     return RouteResponse.json({ error: "Invalid platform" }, { status: 400 });
   }
 
-  const accountId = req.nextUrl.searchParams.get("accountId");
+  const accountId = req.parsedUrl.searchParams.get("accountId");
   if (!accountId) {
     return RouteResponse.json(
       { error: "accountId required" },

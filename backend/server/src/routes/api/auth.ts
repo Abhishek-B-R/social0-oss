@@ -3,11 +3,11 @@ import { auth } from "../../lib/auth.js";
 import { getAuthApiBaseUrl } from "../../lib/env.js";
 import { isBlockedNativeSignUpPath } from "../../lib/block-native-sign-up.js";
 import { runRouteHandler } from "../../lib/run-route-handler.js";
-import { POST as signUpDev } from "./auth-sign-up.js";
-import { POST as signUpTurnstile } from "./auth-sign-up-turnstile.js";
-import { GET as checkEmail } from "./auth-check-email.js";
-import { GET as subscriptionCheck } from "./auth-subscription-check.js";
-import { GET as testSignin } from "./auth-test-signin.js";
+import { signUpDev } from "./auth-sign-up.js";
+import { signUpWithTurnstile } from "./auth-sign-up-turnstile.js";
+import { checkEmail } from "./auth-check-email.js";
+import { subscriptionCheck } from "./auth-subscription-check.js";
+import { testSignin } from "./auth-test-signin.js";
 
 async function handleBetterAuth(
   request: FastifyRequest,
@@ -66,7 +66,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
   });
 
   app.post("/auth/sign-up-with-turnstile", async (req, reply) => {
-    await runRouteHandler(req, reply, signUpTurnstile);
+    await runRouteHandler(req, reply, signUpWithTurnstile);
   });
 
   app.get("/auth/subscription-check", async (req, reply) => {

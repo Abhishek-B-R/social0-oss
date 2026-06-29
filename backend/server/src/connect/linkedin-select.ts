@@ -21,7 +21,7 @@ type LinkedInPayload = {
   companyPages: Array< { id: string; urn: string; name: string } >;
 };
 
-export async function GET(req: AppRequest) {
+export async function liSelectGet(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -70,7 +70,7 @@ export async function GET(req: AppRequest) {
   }
 }
 
-export async function POST(req: AppRequest) {
+export async function liSelectPost(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });

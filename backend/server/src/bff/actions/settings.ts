@@ -1,11 +1,9 @@
-"use server";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { userSettings, connectedAccounts, account, user } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { headers } from "../../lib/shim/request-cookies.js";
-import { revalidatePath } from "../../lib/shim/cache.js";
 import { redirect } from "../../lib/shim/route-redirect.js";
 import type { DateFormatKey } from "@/lib/date-format";
 import { requireSessionUserId } from "@/lib/require-session-user";
@@ -178,7 +176,6 @@ async function upsertSettings(
     });
   }
 
-  revalidatePath("/dashboard/settings");
 }
 
 export async function updateDisplayName(formData: FormData): Promise<void> {
@@ -198,8 +195,6 @@ export async function updateDisplayName(formData: FormData): Promise<void> {
     body: { name: displayName },
   });
 
-  revalidatePath("/dashboard/settings");
-  revalidatePath("/dashboard", "layout");
 }
 
 export async function updateUserImage(imageUrl: string): Promise<{ error?: string }> {
@@ -217,8 +212,6 @@ export async function updateUserImage(imageUrl: string): Promise<{ error?: strin
       headers: sessionHeaders,
       body: { image: url },
     });
-    revalidatePath("/dashboard/settings");
-    revalidatePath("/dashboard", "layout");
     return {};
   } catch {
     return { error: "Failed to update avatar" };
@@ -261,7 +254,6 @@ export async function updateConnectionAvatar(
     if (!updated) {
       return { error: "Connection not found or access denied" };
     }
-    revalidatePath("/dashboard/settings");
     return {};
   } catch {
     return { error: "Failed to update avatar" };

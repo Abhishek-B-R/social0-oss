@@ -16,9 +16,7 @@
   },
   "include": ["src/**/*"],
   "exclude": [
-    "src/components/**",
     "src/lib/platform-icons.tsx",
-    "src/lib/publish-order.ts",
     "src/lib/remembered-accounts.ts",
     "src/lib/remembered-autorepost-autoplug.ts",
     "src/lib/rpc.ts",
@@ -27,8 +25,7 @@
     "src/lib/utils.ts",
     "src/lib/preconnect.ts",
     "src/lib/sign-in-url.ts",
-    "src/lib/docs-url.ts",
-    "src/lib/seo.ts"
+    "src/lib/docs-url.ts"
   ],
   "references": [{ "path": "../shared" }]
 }

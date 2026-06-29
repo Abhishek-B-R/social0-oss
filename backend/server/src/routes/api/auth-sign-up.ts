@@ -19,7 +19,7 @@ import { eq } from "drizzle-orm";
 /**
  * Email/password sign-up. Better Auth emailOTP plugin sends the verification OTP; we redirect to verify-email (no Turnstile).
  */
-export async function POST(request: Request) {
+export async function signUpDev(request: Request) {
   if (process.env.NODE_ENV === "production") {
     return RouteResponse.json(
       {

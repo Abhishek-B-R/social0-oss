@@ -9,7 +9,7 @@ import { AppRequest } from "../lib/shim/http.js";
 import crypto from "crypto";
 import { connectSelectSuccessUrl } from "../lib/app-url.js";
 
-export async function GET(req: AppRequest) {
+export async function fbSelectGet(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -60,7 +60,7 @@ export async function GET(req: AppRequest) {
   }
 }
 
-export async function POST(req: AppRequest) {
+export async function fbSelectPost(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });

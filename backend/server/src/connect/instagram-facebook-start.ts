@@ -13,7 +13,7 @@ import { enforceRateLimit, oauthLimiter } from "../lib/ratelimit.js";
 import { sanitizeReturnToPath } from "../lib/safe-return-to.js";
 import { redirectWithOAuthConnectBinding } from "../lib/oauth-connect-binding.js";
 
-export async function GET(req: AppRequest) {
+export async function igFbStart(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session) {
@@ -37,7 +37,7 @@ export async function GET(req: AppRequest) {
 
   const redirectUri = `${getConnectCallbackBaseUrl()}/api/connect/instagram-facebook/callback`;
 
-  const returnTo = sanitizeReturnToPath(req.nextUrl.searchParams.get("returnTo"));
+  const returnTo = sanitizeReturnToPath(req.parsedUrl.searchParams.get("returnTo"));
 
   const state = encrypt({
     userId: session.user.id,

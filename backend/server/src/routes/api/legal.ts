@@ -1,13 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import { runRouteHandler } from "../../lib/run-route-handler.js";
-import { GET as legalStatus } from "./legal-status.js";
-import { POST as legalAccept } from "./legal-accept.js";
+import { legalStatus } from "./legal-status.js";
+import { acceptLegal } from "./legal-accept.js";
 
 export async function registerLegalRoutes(app: FastifyInstance) {
   app.get("/legal/status", async (req, reply) => {
     await runRouteHandler(req, reply, legalStatus);
   });
   app.post("/legal/accept", async (req, reply) => {
-    await runRouteHandler(req, reply, legalAccept);
+    await runRouteHandler(req, reply, acceptLegal);
   });
 }

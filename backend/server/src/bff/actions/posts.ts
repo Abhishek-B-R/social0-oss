@@ -1,4 +1,3 @@
-"use server";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
@@ -11,7 +10,6 @@ import {
 } from "@/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
 import { headers } from "../../lib/shim/request-cookies.js";
-import { revalidatePath } from "../../lib/shim/cache.js";
 import { enqueuePublishPostStandalone } from "../../services/enqueue.js";
 import { userOwnsQueueSlot } from "@/lib/queue-slot-validation";
 import {
@@ -19,7 +17,7 @@ import {
   getPostMedia,
   getQueuedSlotForPost,
   type PostMediaRow,
-} from "@/app/dashboard/posts/posts-list-data";
+} from "@/lib/posts-list/posts-list-data";
 import { isValidUUID } from "@/lib/validation";
 import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
 import { checkFreePostLimit, incrementFreePostsUsed } from "@/lib/plan-limits";
@@ -253,9 +251,6 @@ export async function createPost(
           userId: session.user.id,
         });
 
-        revalidatePath("/dashboard");
-        revalidatePath("/dashboard/posts");
-        revalidatePath("/dashboard/create");
 
         return {
           success: true,
@@ -266,9 +261,6 @@ export async function createPost(
         };
       }
 
-      revalidatePath("/dashboard");
-      revalidatePath("/dashboard/posts");
-      revalidatePath("/dashboard/create");
 
       return {
         success: true,
@@ -290,10 +282,6 @@ export async function createPost(
       });
     }
 
-    revalidatePath("/dashboard");
-    revalidatePath("/dashboard/posts");
-    revalidatePath("/dashboard/posts/scheduled");
-    revalidatePath("/dashboard/create");
 
     return { success: true, postId: postRow.id };
   } catch (e) {
@@ -333,10 +321,6 @@ export async function deletePost(postId: string): Promise<DeletePostResult> {
       .where(eq(postPublications.postId, postId));
     await db.delete(posts).where(eq(posts.id, postId));
 
-    revalidatePath("/dashboard");
-    revalidatePath("/dashboard/posts");
-    revalidatePath("/dashboard/posts/scheduled");
-    revalidatePath("/dashboard/posts/drafts");
     return { success: true };
   } catch (e) {
     console.error("deletePost error:", e);
@@ -457,11 +441,6 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
       userId: session.user.id,
     });
 
-    revalidatePath("/dashboard");
-    revalidatePath("/dashboard/posts");
-    revalidatePath("/dashboard/posts/posted");
-    revalidatePath(`/dashboard/posts/${postId}`);
-    revalidatePath(`/dashboard/posts/${newPost.id}`);
 
     return {
       success: true,
@@ -669,11 +648,6 @@ export async function updatePost(
       await incrementFreePostsUsed(session.user.id);
     }
 
-    revalidatePath("/dashboard");
-    revalidatePath("/dashboard/posts");
-    revalidatePath("/dashboard/posts/scheduled");
-    revalidatePath("/dashboard/posts/drafts");
-    revalidatePath(`/dashboard/posts/${postId}/edit`);
     return { success: true };
   } catch (e) {
     console.error("updatePost error:", e);
@@ -745,11 +719,6 @@ export async function updateScheduledPostAutoFeatures(
       .set({ metadata, updatedAt: new Date() })
       .where(eq(posts.id, postId));
 
-    revalidatePath("/dashboard");
-    revalidatePath("/dashboard/posts");
-    revalidatePath("/dashboard/posts/scheduled");
-    revalidatePath(`/dashboard/posts/${postId}`);
-    revalidatePath(`/dashboard/posts/${postId}/edit`);
     return { success: true };
   } catch (e) {
     console.error("updateScheduledPostAutoFeatures error:", e);
@@ -964,9 +933,6 @@ export async function deleteDraft(postId: string): Promise<DeleteDraftResult> {
       .delete(postPublications)
       .where(eq(postPublications.postId, postId));
     await db.delete(posts).where(eq(posts.id, postId));
-    revalidatePath("/dashboard");
-    revalidatePath("/dashboard/posts");
-    revalidatePath("/dashboard/posts/drafts");
     return { success: true };
   } catch (e) {
     console.error("deleteDraft error:", e);

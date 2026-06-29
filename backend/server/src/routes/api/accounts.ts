@@ -158,8 +158,10 @@ export async function registerAccountsRoutes(app: FastifyInstance) {
   app.post("/accounts/refresh-premium", async (request, reply) => {
     const userId = await requireUserId(request);
     if (!userId) return reply.status(401).send(unauthorized());
-    const { POST } = await import("../../connect/refresh-twitter-premium.js");
+    const { refreshTwitterPremium } = await import(
+      "../../connect/refresh-twitter-premium.js"
+    );
     const { runRouteHandler } = await import("../../lib/run-route-handler.js");
-    await runRouteHandler(request, reply, POST);
+    await runRouteHandler(request, reply, refreshTwitterPremium);
   });
 }

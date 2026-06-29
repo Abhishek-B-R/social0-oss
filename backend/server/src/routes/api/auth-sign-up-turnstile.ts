@@ -19,7 +19,7 @@ const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/sit
  * Sign-up with Cloudflare Turnstile verification.
  * Better Auth emailOTP plugin sends the verification OTP; we redirect to verify-email (email/password only).
  */
-export async function POST(request: Request) {
+export async function signUpWithTurnstile(request: Request) {
   const secret = env.TURNSTILE_SECRET_KEY;
   if (!secret) {
     return RouteResponse.json(

@@ -34,7 +34,7 @@ function isValidProfileImageUrl(url: unknown): url is string {
   return u.startsWith("http://") || u.startsWith("https://");
 }
 
-export async function GET(
+export async function platformCallback(
   req: AppRequest,
   { params }: { params: Promise<{ platform: string }> },
 ) {

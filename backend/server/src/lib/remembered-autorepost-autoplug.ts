@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
-import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import type { AutoResurfaceConfig } from "./auto-features-types.js";
+import type { AutoPlugConfig } from "./auto-features-types.js";
 
 const STORAGE_KEY = "remembered-autorepost-autoplug";
 
