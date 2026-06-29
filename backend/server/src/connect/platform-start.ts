@@ -3,7 +3,7 @@ import { PLATFORM_OAUTH_CONFIG, Platform } from "../lib/platforms.js";
 import { env } from "../lib/env.js";
 import { headers, cookies } from "../lib/shim/next-headers.js";
 import { encrypt } from "../lib/encryption.js";
-import { appUrlForPath, resolveAppUrlFromRequest } from "../lib/app-url.js";
+import { appUrlForPath, getConnectCallbackBaseUrl } from "../lib/app-url.js";
 import crypto from "crypto";
 import { db } from "../db/index.js";
 import { verification, connectedAccounts } from "../db/schema.js";
@@ -80,8 +80,8 @@ export async function GET(
         { status: 400 },
       );
     }
-    const baseUrl = resolveAppUrlFromRequest(req);
-    const callbackUrl = `${baseUrl}/api/connect/twitter_x/callback`;
+    const callbackBase = getConnectCallbackBaseUrl();
+    const callbackUrl = `${callbackBase}/api/connect/twitter_x/callback`;
 
     const client = new TwitterApi({ appKey: consumerKey, appSecret: consumerSecret });
     const { url: authUrl, oauth_token_secret } = await client.generateAuthLink(callbackUrl);
@@ -97,7 +97,7 @@ export async function GET(
     });
     cookieStore.set("twitter_oauth1_request_secret", state, {
       httpOnly: true,
-      secure: baseUrl.startsWith("https://"),
+      secure: callbackBase.startsWith("https://"),
       sameSite: "lax",
       maxAge: 600, // 10 minutes
     });
@@ -134,9 +134,7 @@ export async function GET(
     );
   }
 
-  // Construct redirect URI - normalize URL (https for production, http for localhost)
-  const baseUrl = resolveAppUrlFromRequest(req);
-  const redirectUri = `${baseUrl}/api/connect/${platform}/callback`;
+  const redirectUri = `${getConnectCallbackBaseUrl()}/api/connect/${platform}/callback`;
 
   // Use platform's auth URL
   const authUrl = config.authUrl;

@@ -1,4 +1,4 @@
-import { env, appBaseUrl } from "./env.js";
+import { env, appBaseUrl, getAuthApiBaseUrl } from "./env.js";
 import { forwardedRequestOrigin } from "./forwarded-request-url.js";
 import { getRequestContext } from "./request-context.js";
 import { sanitizeReturnToPath } from "./safe-return-to.js";
@@ -110,6 +110,11 @@ export function resolveAppUrlFromRequest(request?: Request): string {
   }
 
   return normalizeAppUrl(appBaseUrl());
+}
+
+/** Platform OAuth redirect_uri — API host on split deploys (not SPA referer). */
+export function getConnectCallbackBaseUrl(): string {
+  return normalizeAppUrl(getAuthApiBaseUrl());
 }
 
 /** Absolute frontend URL for a safe in-app path (OAuth / dashboard redirects). */

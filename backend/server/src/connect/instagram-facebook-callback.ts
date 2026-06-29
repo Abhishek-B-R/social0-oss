@@ -6,7 +6,7 @@ import { decrypt, encryptToken } from "../lib/encryption.js";
 import { assertOAuthCallbackSession } from "../lib/oauth-callback-session.js";
 import { sanitizeReturnToPath } from "../lib/safe-return-to.js";
 import crypto from "crypto";
-import { resolveAppUrlFromRequest } from "../lib/app-url.js";
+import { getConnectCallbackBaseUrl } from "../lib/app-url.js";
 import { safeRedirect, rethrowNextRedirect } from "../lib/redirect.js";
 import { checkAccountLimits } from "../lib/plan-limits.js";
 import { NextRequest } from "../lib/shim/next-server.js";
@@ -72,8 +72,7 @@ export async function GET(
     );
   }
 
-  const baseUrl = resolveAppUrlFromRequest(req);
-  const redirectUri = `${baseUrl}/api/connect/instagram-facebook/callback`;
+  const redirectUri = `${getConnectCallbackBaseUrl()}/api/connect/instagram-facebook/callback`;
   // Use latest API version (v21.0) to match OAuth dialog
   const tokenUrl = "https://graph.facebook.com/v21.0/oauth/access_token";
 
