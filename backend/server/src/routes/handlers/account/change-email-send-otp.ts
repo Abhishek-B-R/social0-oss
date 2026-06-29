@@ -2,8 +2,8 @@ import { auth } from "../../../lib/auth.js";
 import { db } from "../../../db/index.js";
 import { verification } from "../../../db/schema.js";
 import { sendEmail } from "../../../lib/mail.js";
-import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { headers } from "../../../lib/shim/request-cookies.js";
+import { RouteResponse } from "../../../lib/shim/http.js";
 import { randomUUID, randomInt } from "crypto";
 import { eq } from "drizzle-orm";
 import {
@@ -29,14 +29,14 @@ function generateOTP(): string {
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const ip = clientIp(request);
 
   const userRate = await enforceRateLimit(changeEmailOtpLimiter, session.user.id);
   if (!userRate.allowed) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: userRate.error },
       { status: userRate.status },
     );
@@ -44,13 +44,13 @@ export async function POST(request: Request) {
 
   const ipRate = await enforceRateLimit(changeEmailOtpIpLimiter, ip);
   if (!ipRate.allowed) {
-    return NextResponse.json({ error: ipRate.error }, { status: ipRate.status });
+    return RouteResponse.json({ error: ipRate.error }, { status: ipRate.status });
   }
 
   const body = await request.json().catch(() => ({}));
   const newEmail = body.newEmail ? String(body.newEmail).trim().toLowerCase() : "";
   if (!newEmail) {
-    return NextResponse.json({ error: "Missing newEmail" }, { status: 400 });
+    return RouteResponse.json({ error: "Missing newEmail" }, { status: 400 });
   }
 
   const targetRate = await enforceRateLimit(
@@ -58,14 +58,14 @@ export async function POST(request: Request) {
     newEmail,
   );
   if (!targetRate.allowed) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: targetRate.error },
       { status: targetRate.status },
     );
   }
 
   if (newEmail === session.user.email?.toLowerCase()) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "New email is the same as current email." },
       { status: 400 },
     );
@@ -98,5 +98,5 @@ export async function POST(request: Request) {
     `,
   });
 
-  return NextResponse.json({ success: true });
+  return RouteResponse.json({ success: true });
 }

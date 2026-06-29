@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/AppLink";
 
 export function FinalCTA({ signedIn = false }: { signedIn?: boolean }) {
   return (

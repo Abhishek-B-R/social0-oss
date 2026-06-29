@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { runNextRouteHandler, type NextRouteHandler } from "../../../lib/run-next-handler.js";
+import { runRouteHandler, type RouteHandler } from "../../../lib/run-route-handler.js";
 import { GET as igFbStart } from "../../../connect/instagram-facebook-start.js";
 import { GET as igFbCallback } from "../../../connect/instagram-facebook-callback.js";
 import {
@@ -23,69 +23,69 @@ import { GET as platformReauth } from "../../../connect/platform-reauth.js";
 
 export async function registerConnectRoutes(app: FastifyInstance) {
   app.get("/connect/instagram-facebook", async (req, reply) => {
-    await runNextRouteHandler(req, reply, igFbStart);
+    await runRouteHandler(req, reply, igFbStart);
   });
 
   app.get("/connect/instagram-facebook/callback", async (req, reply) => {
-    await runNextRouteHandler(req, reply, igFbCallback);
+    await runRouteHandler(req, reply, igFbCallback);
   });
 
   app.get("/connect/instagram-facebook/select", async (req, reply) => {
-    await runNextRouteHandler(req, reply, igFbSelectGet);
+    await runRouteHandler(req, reply, igFbSelectGet);
   });
 
   app.post("/connect/instagram-facebook/select", async (req, reply) => {
-    await runNextRouteHandler(req, reply, igFbSelectPost);
+    await runRouteHandler(req, reply, igFbSelectPost);
   });
 
   app.get("/connect/facebook/select", async (req, reply) => {
-    await runNextRouteHandler(req, reply, fbSelectGet);
+    await runRouteHandler(req, reply, fbSelectGet);
   });
 
   app.post("/connect/facebook/select", async (req, reply) => {
-    await runNextRouteHandler(req, reply, fbSelectPost);
+    await runRouteHandler(req, reply, fbSelectPost);
   });
 
   app.get("/connect/linkedin/select", async (req, reply) => {
-    await runNextRouteHandler(req, reply, liSelectGet);
+    await runRouteHandler(req, reply, liSelectGet);
   });
 
   app.post("/connect/linkedin/select", async (req, reply) => {
-    await runNextRouteHandler(req, reply, liSelectPost);
+    await runRouteHandler(req, reply, liSelectPost);
   });
 
   app.post("/connect/bluesky/byok", async (req, reply) => {
-    await runNextRouteHandler(req, reply, blueskyByok);
+    await runRouteHandler(req, reply, blueskyByok);
   });
 
   app.post("/connect/refresh-tokens", async (req, reply) => {
-    await runNextRouteHandler(req, reply, refreshTokens);
+    await runRouteHandler(req, reply, refreshTokens);
   });
 
   app.post("/connect/refresh-twitter-premium", async (req, reply) => {
-    await runNextRouteHandler(req, reply, refreshTwitterPremium);
+    await runRouteHandler(req, reply, refreshTwitterPremium);
   });
 
   app.get("/connect/:platform/callback", async (req, reply) => {
     const { platform } = req.params as { platform: string };
-    await runNextRouteHandler(
+    await runRouteHandler(
       req,
       reply,
-      platformCallback as unknown as NextRouteHandler,
+      platformCallback as unknown as RouteHandler,
       { platform },
     );
   });
 
   app.get("/connect/:platform/reauth", async (req, reply) => {
     const { platform } = req.params as { platform: string };
-    await runNextRouteHandler(req, reply, platformReauth as NextRouteHandler, {
+    await runRouteHandler(req, reply, platformReauth as RouteHandler, {
       platform,
     });
   });
 
   app.get("/connect/:platform", async (req, reply) => {
     const { platform } = req.params as { platform: string };
-    await runNextRouteHandler(req, reply, platformStart as NextRouteHandler, {
+    await runRouteHandler(req, reply, platformStart as RouteHandler, {
       platform,
     });
   });

@@ -1,23 +1,23 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { NextRequest } from "./shim/next-server.js";
+import { AppRequest } from "./shim/http.js";
 import { buildForwardedRequestUrl } from "./forwarded-request-url.js";
 import {
   runWithRequestContext,
   getRequestContext,
   type RequestContext,
 } from "./request-context.js";
-import { rethrowNextRedirect } from "./redirect.js";
+import { rethrowRouteRedirect } from "./redirect.js";
 
 type RouteContext = {
   params: Promise<Record<string, string>>;
 };
 
-export type NextRouteHandler = (
-  req: NextRequest,
+export type RouteHandler = (
+  req: AppRequest,
   ctx: RouteContext,
 ) => Promise<unknown>;
 
-function buildNextRequest(req: FastifyRequest): NextRequest {
+function buildAppRequest(req: FastifyRequest): AppRequest {
   const headers = new Headers();
   for (const [key, value] of Object.entries(req.headers)) {
     if (value === undefined) continue;
@@ -40,7 +40,7 @@ function buildNextRequest(req: FastifyRequest): NextRequest {
     }
   }
 
-  return new NextRequest(buildForwardedRequestUrl(req), init);
+  return new AppRequest(buildForwardedRequestUrl(req), init);
 }
 
 async function finalizeHandlerResult(result: unknown) {
@@ -77,22 +77,22 @@ async function sendWebResponse(result: Response, reply: FastifyReply) {
   else reply.send();
 }
 
-export async function runNextRouteHandler(
+export async function runRouteHandler(
   req: FastifyRequest,
   reply: FastifyReply,
-  handler: NextRouteHandler,
+  handler: RouteHandler,
   params: Record<string, string> = {},
 ): Promise<void> {
   const ctx: RequestContext = { req, reply };
   await runWithRequestContext(ctx, async () => {
-    const nextReq = buildNextRequest(req);
+    const appReq = buildAppRequest(req);
     try {
-      const result = await handler(nextReq, {
+      const result = await handler(appReq, {
         params: Promise.resolve(params),
       });
       await finalizeHandlerResult(result);
     } catch (err) {
-      rethrowNextRedirect(err);
+      rethrowRouteRedirect(err);
       if (!reply.sent) throw err;
     }
   });

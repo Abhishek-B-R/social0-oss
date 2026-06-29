@@ -2,11 +2,11 @@ import { auth } from "../lib/auth.js";
 import { db } from "../db/index.js";
 import { verification, connectedAccounts } from "../db/schema.js";
 import { eq, and } from "drizzle-orm";
-import { headers } from "../lib/shim/next-headers.js";
+import { headers } from "../lib/shim/request-cookies.js";
 import { decryptToken, encryptToken } from "../lib/encryption.js";
 import { checkAccountLimits } from "../lib/plan-limits.js";
 import { logConnectBlocked } from "../lib/plan-analytics.js";
-import { NextRequest } from "../lib/shim/next-server.js";
+import { AppRequest } from "../lib/shim/http.js";
 import crypto from "crypto";
 import { connectSelectSuccessUrl } from "../lib/app-url.js";
 
@@ -21,7 +21,7 @@ type LinkedInPayload = {
   companyPages: Array< { id: string; urn: string; name: string } >;
 };
 
-export async function GET(req: NextRequest) {
+export async function GET(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });

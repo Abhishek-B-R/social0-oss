@@ -2,8 +2,8 @@ import { auth } from "../../../lib/auth.js";
 import { db } from "../../../db/index.js";
 import { user, account, verification } from "../../../db/schema.js";
 import { eq, and, gt, ne } from "drizzle-orm";
-import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { headers } from "../../../lib/shim/request-cookies.js";
+import { RouteResponse } from "../../../lib/shim/http.js";
 import { timingSafeEqual } from "crypto";
 
 const MAX_OTP_ATTEMPTS = 5;
@@ -15,7 +15,7 @@ const MAX_OTP_ATTEMPTS = 5;
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   const otpTrimmed = otp ? String(otp).trim() : "";
 
   if (!email || !otpTrimmed) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Missing newEmail or otp" },
       { status: 400 },
     );
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     .limit(1);
 
   if (!row) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Invalid or expired code." },
       { status: 400 },
     );
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
   const otpUserId = parts[2] ?? "";
 
   if (!otpUserId || otpUserId !== session.user.id) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Invalid or expired code." },
       { status: 400 },
     );
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     const newAttempts = attempts + 1;
     if (newAttempts >= MAX_OTP_ATTEMPTS) {
       await db.delete(verification).where(eq(verification.id, row.id));
-      return NextResponse.json(
+      return RouteResponse.json(
         { error: "Too many failed attempts. Request a new code." },
         { status: 400 },
       );
@@ -77,14 +77,14 @@ export async function POST(request: Request) {
       .update(verification)
       .set({ value: `${storedOtp}:${newAttempts}:${session.user.id}` })
       .where(eq(verification.id, row.id));
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Invalid or expired code." },
       { status: 400 },
     );
   }
 
   const emailInUseResponse = () =>
-    NextResponse.json(
+    RouteResponse.json(
       { error: "This email is already in use by another account." },
       { status: 409 },
     );
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
       return emailInUseResponse();
     }
     console.error("[change-email] Failed to update email:", err);
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Could not update email. Please try again." },
       { status: 500 },
     );
@@ -140,5 +140,5 @@ export async function POST(request: Request) {
     query: { disableCookieCache: true },
   });
 
-  return NextResponse.json({ success: true, email });
+  return RouteResponse.json({ success: true, email });
 }

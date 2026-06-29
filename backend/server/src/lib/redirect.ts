@@ -1,5 +1,5 @@
 import { appUrlForPath } from "./app-url.js";
-import { redirect } from "./shim/next-navigation.js";
+import { redirect } from "./shim/route-redirect.js";
 import { sanitizeReturnToPath } from "./safe-return-to.js";
 
 /** Redirect only to a safe in-app path on the frontend origin. */
@@ -13,12 +13,12 @@ export function safeRedirect(
   return redirect(appUrlForPath(s, request));
 }
 
-/** Rethrow Next.js redirect errors so they propagate; call at the start of catch blocks in API routes. */
-export function rethrowNextRedirect(err: unknown): void {
-  if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+/** Rethrow route redirect errors so they propagate; call at the start of catch blocks. */
+export function rethrowRouteRedirect(err: unknown): void {
+  if ((err as { digest?: string })?.digest?.startsWith("ROUTE_REDIRECT")) {
     throw err;
   }
-  if (err instanceof Error && err.message === "NEXT_REDIRECT") {
+  if (err instanceof Error && err.message === "ROUTE_REDIRECT") {
     throw err;
   }
 }

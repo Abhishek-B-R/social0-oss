@@ -53,14 +53,6 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
-        "next/link": path.resolve(__dirname, "./src/shims/next-link.tsx"),
-        "next/navigation": path.resolve(
-          __dirname,
-          "./src/shims/next-navigation.ts",
-        ),
-        "next/image": path.resolve(__dirname, "./src/shims/next-image.tsx"),
-        "next/font/google": path.resolve(__dirname, "./src/shims/next-font.ts"),
-        "next": path.resolve(__dirname, "./src/shims/next.ts"),
       },
     },
     server: {

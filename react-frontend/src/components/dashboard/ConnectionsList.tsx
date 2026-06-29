@@ -4,8 +4,8 @@ import { apiUrl } from "@/lib/env";
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "@/components/AppLink";
+import { useRouter, useSearchParams } from "@/lib/router";
 import { getPlatformIcon } from "@/lib/platform-icons";
 import { PLATFORMS } from "@/lib/platforms";
 import { AccountAvatar } from "@/components/AccountAvatar";

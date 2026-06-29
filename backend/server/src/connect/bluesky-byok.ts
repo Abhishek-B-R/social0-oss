@@ -2,12 +2,12 @@ import { auth } from "../lib/auth.js";
 import { db } from "../db/index.js";
 import { connectedAccounts } from "../db/schema.js";
 import { eq, and } from "drizzle-orm";
-import { headers } from "../lib/shim/next-headers.js";
+import { headers } from "../lib/shim/request-cookies.js";
 import { encryptToken } from "../lib/encryption.js";
 import { checkAccountLimits } from "../lib/plan-limits.js";
 import crypto from "crypto";
 import { z } from "zod";
-import { NextRequest } from "../lib/shim/next-server.js";
+import { AppRequest } from "../lib/shim/http.js";
 import { blueskyByokLimiter, enforceRateLimit } from "../lib/ratelimit.js";
 
 const byokSchema = z.object({
@@ -21,7 +21,7 @@ const byokSchema = z.object({
   appPassword: z.string().min(1, "App password is required"),
 });
 
-export async function POST(req: NextRequest) {
+export async function POST(req: AppRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
 

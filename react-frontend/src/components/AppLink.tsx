@@ -4,18 +4,18 @@ import {
 } from "react-router-dom";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 
-type NextLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
+type AppLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
   href: string;
   children?: ReactNode;
   prefetch?: boolean;
 };
 
-export default function Link({
+export default function AppLink({
   href,
   children,
   prefetch: _prefetch,
   ...rest
-}: NextLinkProps) {
+}: AppLinkProps) {
   // API routes must be full page loads (OAuth redirects), not client-side router navigation.
   if (
     href.startsWith("http") ||

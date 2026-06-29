@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { runWithRequestContext } from "../../lib/request-context.js";
-import { rethrowNextRedirect } from "../../lib/redirect.js";
+import { rethrowRouteRedirect } from "../../lib/redirect.js";
 import { requireSessionUserId, unauthorized } from "../../middleware/auth.js";
 import {
   enforceRateLimit,
@@ -154,7 +154,7 @@ export async function registerRpcRoutes(app: FastifyInstance) {
         return result ?? null;
       }
     } catch (err) {
-      rethrowNextRedirect(err);
+      rethrowRouteRedirect(err);
       if (!reply.sent) throw err;
     }
   });

@@ -2,8 +2,8 @@ import { auth } from "../lib/auth.js";
 import { db } from "../db/index.js";
 import { connectedAccounts } from "../db/schema.js";
 import { and, eq } from "drizzle-orm";
-import { headers } from "../lib/shim/next-headers.js";
-import { NextRequest, NextResponse } from "../lib/shim/next-server.js";
+import { headers } from "../lib/shim/request-cookies.js";
+import { AppRequest, RouteResponse } from "../lib/shim/http.js";
 import { appUrlForPath, getConnectCallbackBaseUrl } from "../lib/app-url.js";
 import { enforceRateLimit, oauthLimiter } from "../lib/ratelimit.js";
 
@@ -19,29 +19,29 @@ const VALID_PLATFORMS = [
 ] as const;
 
 export async function GET(
-  req: NextRequest,
+  req: AppRequest,
   { params }: { params: Promise<{ platform: string }> },
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
-    return NextResponse.redirect(appUrlForPath("/dashboard/connections", req));
+    return RouteResponse.redirect(appUrlForPath("/dashboard/connections", req));
   }
 
   const rate = await enforceRateLimit(oauthLimiter, session.user.id);
   if (!rate.allowed) {
-    return NextResponse.redirect(
+    return RouteResponse.redirect(
       appUrlForPath("/dashboard/connections?error=rate_limited", req),
     );
   }
 
   const { platform: platformParam } = await params;
   if (!VALID_PLATFORMS.includes(platformParam as (typeof VALID_PLATFORMS)[number])) {
-    return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
+    return RouteResponse.json({ error: "Invalid platform" }, { status: 400 });
   }
 
   const accountId = req.nextUrl.searchParams.get("accountId");
   if (!accountId) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "accountId required" },
       { status: 400 },
     );
@@ -59,7 +59,7 @@ export async function GET(
     .limit(1);
 
   if (!account) {
-    return NextResponse.json({ error: "Account not found" }, { status: 403 });
+    return RouteResponse.json({ error: "Account not found" }, { status: 403 });
   }
 
   const reauthUrl = new URL(
@@ -69,5 +69,5 @@ export async function GET(
   reauthUrl.searchParams.set("reauth", "1");
   reauthUrl.searchParams.set("accountId", accountId);
 
-  return NextResponse.redirect(reauthUrl);
+  return RouteResponse.redirect(reauthUrl);
 }

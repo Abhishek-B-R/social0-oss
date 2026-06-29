@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter } from "@/lib/router";
+import Link from "@/components/AppLink";
 import { Settings } from "lucide-react";
 import { toast } from "sonner";
 import { useAccountsForForm } from "@/features/dashboard/create/useAccountsForForm";

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { RouteResponse } from "../../../lib/shim/http.js";
 import { auth } from "../../../lib/auth.js";
 import { db } from "../../../db/index.js";
 import {
@@ -8,7 +8,7 @@ import {
   posts,
 } from "../../../db/schema.js";
 import { eq, and, asc } from "drizzle-orm";
-import { headers } from "next/headers";
+import { headers } from "../../../lib/shim/request-cookies.js";
 import { getNextAvailableSlot } from "../../../lib/queue-utils.js";
 import { toZonedTime } from "date-fns-tz";
 import { format } from "date-fns";
@@ -16,7 +16,7 @@ import { format } from "date-fns";
 export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const [settings] = await db
@@ -39,7 +39,7 @@ export async function GET() {
   });
 
   if (slots.length === 0) {
-    return NextResponse.json({ available: false, timezone });
+    return RouteResponse.json({ available: false, timezone });
   }
 
   const pendingQueued = await db
@@ -86,7 +86,7 @@ export async function GET() {
   );
 
   if (!next) {
-    return NextResponse.json({ available: false, timezone });
+    return RouteResponse.json({ available: false, timezone });
   }
 
   const inTz = toZonedTime(next.utc, timezone);
@@ -104,7 +104,7 @@ export async function GET() {
     /* keep timezone as-is */
   }
 
-  return NextResponse.json({
+  return RouteResponse.json({
     available: true,
     slotId: next.slotId,
     scheduledFor: next.utc.toISOString(),

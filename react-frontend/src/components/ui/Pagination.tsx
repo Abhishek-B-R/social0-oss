@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const PAGE_SIZE = 12;

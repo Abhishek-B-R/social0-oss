@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import Link from "@/components/AppLink";
+import { useSearchParams } from "@/lib/router";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import { loadPostsPageData } from "@/actions/dashboard-data";

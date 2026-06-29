@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "@/lib/router";
 import { Filter, ChevronDown } from "lucide-react";
 
 type Option = { value: string; label: string };

@@ -2,8 +2,8 @@
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect, Suspense } from "react";
-import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import Link from "@/components/AppLink";
+import { useSearchParams, useRouter } from "@/lib/router";
 import { IconLoader2 } from "@tabler/icons-react";
 import { setOnboardingCompleted } from "@/actions/onboarding";
 import { DOCS_ONBOARDING_URL } from "@/lib/docs-url";

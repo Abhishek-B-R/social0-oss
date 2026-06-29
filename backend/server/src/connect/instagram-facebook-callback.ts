@@ -7,12 +7,12 @@ import { assertOAuthCallbackSession } from "../lib/oauth-callback-session.js";
 import { sanitizeReturnToPath } from "../lib/safe-return-to.js";
 import crypto from "crypto";
 import { getConnectCallbackBaseUrl } from "../lib/app-url.js";
-import { safeRedirect, rethrowNextRedirect } from "../lib/redirect.js";
+import { safeRedirect, rethrowRouteRedirect } from "../lib/redirect.js";
 import { checkAccountLimits } from "../lib/plan-limits.js";
-import { NextRequest } from "../lib/shim/next-server.js";
+import { AppRequest } from "../lib/shim/http.js";
 
 export async function GET(
-  req: NextRequest,
+  req: AppRequest,
 ) {
   const url = new URL(req.url);
   const { searchParams } = url;
@@ -54,7 +54,7 @@ export async function GET(
       );
     }
   } catch (err) {
-    rethrowNextRedirect(err);
+    rethrowRouteRedirect(err);
     console.error("Failed to decrypt state:", err);
     return safeRedirect(
       `/dashboard?error=invalid_state&platform=instagram`,
@@ -202,11 +202,11 @@ export async function GET(
               instagramProfilePictureUrl = rawUrl;
             }
           } catch (pfpErr) {
-          rethrowNextRedirect(pfpErr);
+          rethrowRouteRedirect(pfpErr);
             console.error("Instagram FB profile_picture_url parse failed:", pfpErr);
           }
         } catch (err) {
-          rethrowNextRedirect(err);
+          rethrowRouteRedirect(err);
           console.error(`Error fetching Instagram details for ${instagramBusinessAccountId}:`, err);
           continue;
         }
@@ -220,7 +220,7 @@ export async function GET(
           instagramProfilePictureUrl,
         });
       } catch (err) {
-        rethrowNextRedirect(err);
+        rethrowRouteRedirect(err);
         console.error(`Error checking Instagram for Page ${page.id}:`, err);
         continue;
       }
@@ -326,7 +326,7 @@ export async function GET(
       successRedirect,
     );
   } catch (err) {
-    rethrowNextRedirect(err);
+    rethrowRouteRedirect(err);
     console.error("Instagram-Facebook OAuth callback error:", err);
     return safeRedirect(
       `/dashboard?error=oauth_failed&platform=instagram`,

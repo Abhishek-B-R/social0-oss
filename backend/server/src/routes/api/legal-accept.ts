@@ -1,13 +1,13 @@
 import { auth } from "../../lib/auth.js";
 import { getLegalStatus, recordLegalAcceptances } from "../../lib/legal.js";
 import { clientIp } from "../../lib/client-ip.js";
-import { headers } from "../../lib/shim/next-headers.js";
-import { NextResponse } from "../../lib/shim/next-server.js";
+import { headers } from "../../lib/shim/request-cookies.js";
+import { RouteResponse } from "../../lib/shim/http.js";
 
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   };
 
   if (!acceptTerms || !acceptPrivacy) {
-    return NextResponse.json(
+    return RouteResponse.json(
       {
         error:
           "You must accept the Terms of Service and acknowledge the Privacy Policy.",
@@ -38,12 +38,12 @@ export async function POST(request: Request) {
       userAgent: request.headers.get("user-agent"),
     });
   } catch {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Could not record legal acceptance.", code: "LEGAL_CONSENT_REQUIRED" },
       { status: 400 },
     );
   }
 
   const status = await getLegalStatus(session.user.id);
-  return NextResponse.json(status);
+  return RouteResponse.json(status);
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams } from "@/lib/router";
 import { loadConnectionsPageData } from "@/actions/dashboard-data";
 import { OAuthErrorHandler } from "@/components/OAuthErrorHandler";
 import { ConnectionsList } from "@/components/dashboard/ConnectionsList";

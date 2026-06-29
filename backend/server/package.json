@@ -3,12 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "imports": {
-    "next/headers": "./src/lib/shim/next-headers.ts",
-    "next/server": "./src/lib/shim/next-server.ts",
-    "next/navigation": "./src/lib/shim/next-navigation.ts",
-    "next/cache": "./src/lib/shim/next-cache.ts"
-  },
   "scripts": {
     "build": "tsc && tsc-alias -p tsconfig.json",
     "dev": "tsx watch src/index.ts",

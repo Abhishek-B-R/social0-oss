@@ -2,9 +2,9 @@
 
 import type { ComponentType } from "react";
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import NextImage from "next/image";
-import { useRouter } from "next/navigation";
+import Link from "@/components/AppLink";
+import AppImage from "@/components/AppImage";
+import { useRouter } from "@/lib/router";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { PublishButton } from "./PublishButton";
@@ -387,7 +387,7 @@ export function PostDetailPageClient({ postId }: { postId: string }) {
                                   preload="metadata"
                                 />
                               ) : (
-                                <NextImage
+                                <AppImage
                                   src={m.thumbnailUrl ?? m.url ?? ""}
                                   alt={m.originalFilename}
                                   fill
@@ -443,7 +443,7 @@ export function PostDetailPageClient({ postId }: { postId: string }) {
                         poster={m.thumbnailUrl ?? undefined}
                       />
                     ) : (
-                      <NextImage
+                      <AppImage
                         src={m.thumbnailUrl ?? m.url ?? ""}
                         alt={m.originalFilename}
                         fill

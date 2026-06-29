@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { RouteResponse } from "../../../lib/shim/http.js";
 import { Webhook } from "standardwebhooks";
 import DodoPayments from "dodopayments";
 import { db } from "../../../db/index.js";
@@ -397,7 +397,7 @@ async function handleSubscriptionRenewed(payload: {
 export async function POST(request: Request) {
   if (!webhookSecret) {
     console.error("[dodo webhook] DODO_PAYMENTS_WEBHOOK_SECRET is not set");
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Webhook not configured" },
       { status: 503 },
     );
@@ -409,7 +409,7 @@ export async function POST(request: Request) {
   const webhookSignature = request.headers.get("webhook-signature");
 
   if (!webhookId || !webhookTimestamp || !webhookSignature) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Missing webhook headers" },
       { status: 400 },
     );
@@ -426,12 +426,12 @@ export async function POST(request: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Verification failed";
     console.error("[dodo webhook] Verification failed:", msg);
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    return RouteResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
   const isNewDelivery = await claimWebhookDelivery(webhookId);
   if (!isNewDelivery) {
-    return NextResponse.json({ received: true, duplicate: true });
+    return RouteResponse.json({ received: true, duplicate: true });
   }
 
   const eventType = payload.type ?? "";
@@ -459,11 +459,11 @@ export async function POST(request: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     console.error("[dodo webhook] Handler error:", msg);
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Webhook handler failed" },
       { status: 500 },
     );
   }
 
-  return NextResponse.json({ received: true });
+  return RouteResponse.json({ received: true });
 }

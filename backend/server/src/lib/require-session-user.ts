@@ -2,8 +2,8 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { user } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { headers } from "./shim/request-cookies.js";
+import { redirect } from "./shim/route-redirect.js";
 
 type Session = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>;
 

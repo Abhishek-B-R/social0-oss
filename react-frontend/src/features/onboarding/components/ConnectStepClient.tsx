@@ -2,8 +2,8 @@
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter } from "@/lib/router";
+import Link from "@/components/AppLink";
 import { PLATFORMS } from "@/lib/platforms";
 import { setOnboardingCompleted } from "@/actions/onboarding";
 import { getPlatformIcon } from "@/lib/platform-icons";

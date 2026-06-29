@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/router";
 import { postAgain } from "@/actions/posts";
 import { Repeat } from "lucide-react";
 import { UploadPublishOverlay } from "@/components/UploadPublishOverlay";

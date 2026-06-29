@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "../../lib/shim/next-server.js";
+import { AppRequest, RouteResponse } from "../../lib/shim/http.js";
 import {
   checkEmailLimiter,
   checkEmailPerEmailLimiter,
@@ -9,18 +9,18 @@ import { clientIp } from "../../lib/client-ip.js";
 /**
  * Pre-sign-in email check. Does not reveal whether an account exists (enumeration-safe).
  */
-export async function GET(req: NextRequest) {
+export async function GET(req: AppRequest) {
   const email = req.nextUrl.searchParams.get("email");
   const normalized = typeof email === "string" ? email.trim().toLowerCase() : "";
   if (!normalized || !normalized.includes("@")) {
-    return NextResponse.json({ error: "Missing email" }, { status: 400 });
+    return RouteResponse.json({ error: "Missing email" }, { status: 400 });
   }
 
   const ip = clientIp(req);
 
   const ipRate = await enforceRateLimit(checkEmailLimiter, `check_email:${ip}`);
   if (!ipRate.allowed) {
-    return NextResponse.json({ error: ipRate.error }, { status: ipRate.status });
+    return RouteResponse.json({ error: ipRate.error }, { status: ipRate.status });
   }
 
   const emailRate = await enforceRateLimit(
@@ -28,12 +28,12 @@ export async function GET(req: NextRequest) {
     `check_email_addr:${normalized}`,
   );
   if (!emailRate.allowed) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: emailRate.error },
       { status: emailRate.status },
     );
   }
 
   // Always report exists: true so callers cannot enumerate registered emails.
-  return NextResponse.json({ exists: true });
+  return RouteResponse.json({ exists: true });
 }

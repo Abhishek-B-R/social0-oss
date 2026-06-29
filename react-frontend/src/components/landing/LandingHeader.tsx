@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from "@/components/AppLink";
+import { usePathname } from "@/lib/router";
 import { useState, useEffect } from "react";
 import { Menu, X, Moon, Sun } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
-import Image from "next/image";
+import Image from "@/components/AppImage";
 
 type NavLink = { href: string; label: string };
 

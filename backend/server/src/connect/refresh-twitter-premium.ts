@@ -2,15 +2,15 @@ import { auth } from "../lib/auth.js";
 import { db } from "../db/index.js";
 import { connectedAccounts } from "../db/schema.js";
 import { and, eq } from "drizzle-orm";
-import { headers } from "../lib/shim/next-headers.js";
-import { NextResponse } from "../lib/shim/next-server.js";
+import { headers } from "../lib/shim/request-cookies.js";
+import { RouteResponse } from "../lib/shim/http.js";
 import { refreshTwitterPremiumStatus } from "../lib/twitter-premium.js";
 import { twitterPremiumRefreshLimiter, enforceRateLimit } from "../lib/ratelimit.js";
 
 export async function POST() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const rate = await enforceRateLimit(
@@ -18,7 +18,7 @@ export async function POST() {
     session.user.id,
   );
   if (!rate.allowed) {
-    return NextResponse.json(
+    return RouteResponse.json(
       {
         error:
           rate.status === 503
@@ -44,7 +44,7 @@ export async function POST() {
   for (const account of accounts) {
     const result = await refreshTwitterPremiumStatus(account.id);
     if (result?.ok === false && result.freeTierBlocked) {
-      return NextResponse.json(
+      return RouteResponse.json(
         {
           error:
             "X Premium check requires Twitter API Basic tier or higher. Upgrade at developer.twitter.com.",
@@ -57,5 +57,5 @@ export async function POST() {
     }
   }
 
-  return NextResponse.json({ success: true, updated });
+  return RouteResponse.json({ success: true, updated });
 }

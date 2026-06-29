@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/lib/router";
 import { OnboardingProgress } from "./OnboardingProgress";
 
 function stepFromPath(pathname: string): number {

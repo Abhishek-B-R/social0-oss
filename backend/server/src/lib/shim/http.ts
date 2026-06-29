@@ -1,6 +1,6 @@
 import { getRequestContext } from "../request-context.js";
 
-export class NextRequest extends Request {
+export class AppRequest extends Request {
   readonly nextUrl: URL;
 
   constructor(input: string | URL, init?: RequestInit) {
@@ -15,7 +15,7 @@ type PendingResponse = {
   finalize: () => void;
 };
 
-export class NextResponse {
+export class RouteResponse {
   static json(body: unknown, init?: { status?: number }) {
     const { reply } = getRequestContext();
     return reply.status(init?.status ?? 200).send(body);

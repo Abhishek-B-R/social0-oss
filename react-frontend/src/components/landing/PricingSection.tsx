@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/AppLink";
 
 const freeFeatures = [
   "Connect up to 3 accounts",

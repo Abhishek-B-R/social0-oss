@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { AccountBubbleSelector } from "@/components/AccountBubbleSelector";
 import { PLATFORMS } from "@/lib/platforms";
 import {

@@ -1,6 +1,6 @@
 import { auth } from "../../../lib/auth.js";
-import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { headers } from "../../../lib/shim/request-cookies.js";
+import { RouteResponse } from "../../../lib/shim/http.js";
 import DodoPayments from "dodopayments";
 import { PLAN_IDS } from "../../../lib/plans.js";
 import { resolveAppUrlFromRequest } from "../../../lib/app-url.js";
@@ -21,12 +21,12 @@ const client = new DodoPayments({ bearerToken: apiKey, environment });
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const rate = await enforceRateLimit(checkoutLimiter, session.user.id);
   if (!rate.allowed) {
-    return NextResponse.json({ error: rate.error }, { status: rate.status });
+    return RouteResponse.json({ error: rate.error }, { status: rate.status });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     !plan ||
     (plan !== "starter" && plan !== "growth") /* && plan !== "pro" */
   ) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Invalid plan. Use 'starter' or 'growth'." },
       { status: 400 },
     );
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         ? PLAN_IDS.growth
         : PLAN_IDS.pro; // unreachable while pro is commented out above
   if (!productId) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Billing is not configured for this plan." },
       { status: 503 },
     );
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 
   const userEmail = session.user.email?.trim() ?? "";
   if (!userEmail) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Your account must have an email before subscribing." },
       { status: 400 },
     );
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
       if (customerId) {
         const portalUrl = await createCustomerPortalUrl(customerId);
         if (portalUrl) {
-          return NextResponse.json(
+          return RouteResponse.json(
             {
               error: eligibility.error,
               code: eligibility.code,
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
         }
       }
     }
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: eligibility.error, code: eligibility.code },
       { status: eligibility.status },
     );
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
     });
 
     if (!resolved.ok) {
-      return NextResponse.json(
+      return RouteResponse.json(
         {
           error: resolved.error,
           code: resolved.code,
@@ -145,14 +145,14 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({
+    return RouteResponse.json({
       url: resolved.url,
       reused: resolved.reused,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Checkout failed";
     console.error("Dodo checkout create error:", msg);
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Failed to create checkout session." },
       { status: 500 },
     );

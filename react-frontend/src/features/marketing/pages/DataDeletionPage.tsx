@@ -1,9 +1,9 @@
-import type { Metadata } from "next";
-import Link from "next/link";
+import type { PageMetadata } from "@/lib/seo";
+import Link from "@/components/AppLink";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 
-export const metadata: Metadata = {
+export const metadata: PageMetadata = {
   title: "Data Deletion Request | Social0 - Social Media Scheduling Tool",
   description:
     "Disconnect accounts in Connections, or email to request deletion of post content and personal data from Social0.",

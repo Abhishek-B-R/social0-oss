@@ -3,11 +3,11 @@ import { db } from "../../../db/index.js";
 import { connectedAccounts } from "../../../db/schema.js";
 import { and, eq } from "drizzle-orm";
 import { getValidToken } from "../../../lib/token-refresh.js";
-import { headers } from "next/headers";
-import { NextRequest } from "next/server";
+import { headers } from "../../../lib/shim/request-cookies.js";
+import { AppRequest } from "../../../lib/shim/http.js";
 
 /** GET ?accountId=xxx – returns boards for the given Pinterest account (must be owned by current user). */
-export async function GET(req: NextRequest) {
+export async function GET(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -63,7 +63,7 @@ function toPinterestPrivacy(p: string): "PUBLIC" | "SECRET" {
 }
 
 /** POST { accountId, name, privacy: "PUBLIC"|"PRIVATE" } – create a board for the given Pinterest account. */
-export async function POST(req: NextRequest) {
+export async function POST(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });

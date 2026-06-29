@@ -1,4 +1,4 @@
-import { NextResponse } from "../lib/next-shim.js";
+import { RouteResponse } from "../lib/route-response.js";
 import { db } from "../db/index.js";
 import { autoPlugs, connectedAccounts, userSettings } from "../db/schema.js";
 import { eq, inArray } from "drizzle-orm";
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
   }
 
   if (nonExpiredPlugs.length === 0) {
-    return NextResponse.json({ checked, triggered, expired });
+    return RouteResponse.json({ checked, triggered, expired });
   }
 
   const plugAccountIds = nonExpiredPlugs.map((p) => p.connectedAccountId);
@@ -221,5 +221,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ checked, triggered, expired });
+  return RouteResponse.json({ checked, triggered, expired });
 }

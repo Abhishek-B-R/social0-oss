@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { AlertCircle, MoreHorizontal } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/router";
 import { formatDateTime } from "@/lib/date-format";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import type { PublicationRow } from "./posts-list-types";

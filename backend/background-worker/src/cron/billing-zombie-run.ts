@@ -1,4 +1,4 @@
-import { NextResponse } from "../lib/next-shim.js";
+import { RouteResponse } from "../lib/route-response.js";
 import { verifyCronAuth } from "../lib/cron-auth.js";
 import { sweepStaleZombieSubscriptions } from "../lib/billing-zombie-cleanup.js";
 
@@ -11,5 +11,5 @@ export async function GET(request: Request) {
   const force = forceParam === "1" || forceParam === "true";
 
   const result = await sweepStaleZombieSubscriptions({ force });
-  return NextResponse.json(result);
+  return RouteResponse.json(result);
 }

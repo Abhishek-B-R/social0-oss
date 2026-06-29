@@ -2,8 +2,8 @@
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from "@/components/AppLink";
+import { usePathname } from "@/lib/router";
 import { format } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import type { PublishMode } from "@/actions/posts";

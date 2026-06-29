@@ -17,12 +17,7 @@
     "types": ["vite/client", "node"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "next/link": ["./src/shims/next-link.tsx"],
-      "next/navigation": ["./src/shims/next-navigation.ts"],
-      "next/image": ["./src/shims/next-image.tsx"],
-      "next/font/google": ["./src/shims/next-font.ts"],
-      "next": ["./src/shims/next.ts"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src"],

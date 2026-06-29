@@ -10,8 +10,8 @@ import {
   queuedPosts,
 } from "@/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
-import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { headers } from "../../lib/shim/request-cookies.js";
+import { revalidatePath } from "../../lib/shim/cache.js";
 import { enqueuePublishPostStandalone } from "../../services/enqueue.js";
 import { userOwnsQueueSlot } from "@/lib/queue-slot-validation";
 import {

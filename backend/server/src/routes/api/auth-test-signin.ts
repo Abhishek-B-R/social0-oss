@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "../../lib/shim/next-server.js";
+import { AppRequest, RouteResponse } from "../../lib/shim/http.js";
 import { db } from "../../db/index.js";
 import { user, session } from "../../db/schema.js";
 import { eq } from "drizzle-orm";
@@ -27,13 +27,13 @@ function makeSignedCookieValue(token: string, secret: string): string {
 // redirects to /dashboard with the session cookie set.
 // Only active when ALLOW_TEST_SIGNIN=true (set in .env.test / .env.local).
 // Hard-blocked in production regardless of env var.
-export async function GET(req: NextRequest) {
+export async function GET(req: AppRequest) {
   // Hard production guard - never allow in production no matter what env vars say
   if (process.env.NODE_ENV === "production") {
-    return NextResponse.error(404);
+    return RouteResponse.error(404);
   }
   if (process.env.ALLOW_TEST_SIGNIN !== "true") {
-    return NextResponse.error(404);
+    return RouteResponse.error(404);
   }
 
   // Ensure the user row exists (no-op if they already signed in via Google)
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
   const maxAge = 7 * 24 * 60 * 60;
 
   const dashboardUrl = new URL("/dashboard", req.url);
-  const response = NextResponse.redirect(dashboardUrl);
+  const response = RouteResponse.redirect(dashboardUrl);
   response.headers.append(
     "set-cookie",
     `${cookieName}=${signedValue}; Path=/; HttpOnly; SameSite=Lax${isHttps ? "; Secure" : ""}; Max-Age=${maxAge}`,

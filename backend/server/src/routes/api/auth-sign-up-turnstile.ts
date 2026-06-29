@@ -1,8 +1,8 @@
 import { auth } from "../../lib/auth.js";
 import { env } from "../../lib/env.js";
 import { mapSignUpError, mapSignUpErrorFromResponse } from "../../lib/sign-up-errors.js";
-import { headers } from "../../lib/shim/next-headers.js";
-import { NextResponse } from "../../lib/shim/next-server.js";
+import { headers } from "../../lib/shim/request-cookies.js";
+import { RouteResponse } from "../../lib/shim/http.js";
 import { enforceRateLimit, signUpIpLimiter } from "../../lib/ratelimit.js";
 import { clientIp } from "../../lib/client-ip.js";
 import {
@@ -22,7 +22,7 @@ const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/sit
 export async function POST(request: Request) {
   const secret = env.TURNSTILE_SECRET_KEY;
   if (!secret) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Turnstile not configured" },
       { status: 503 },
     );
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
   const ipRate = await enforceRateLimit(signUpIpLimiter, `sign_up:${clientIp(request)}`);
   if (!ipRate.allowed) {
-    return NextResponse.json({ error: ipRate.error }, { status: ipRate.status });
+    return RouteResponse.json({ error: ipRate.error }, { status: ipRate.status });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
   const consentError = validateSignupLegalConsent({ acceptTerms, acceptPrivacy });
   if (consentError) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: consentError, code: "LEGAL_CONSENT_REQUIRED" },
       { status: 400 },
     );
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
 
   const normalizedEmail = email ? String(email).trim().toLowerCase() : "";
   if (!name || !normalizedEmail || !password || !turnstileToken) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Missing name, email, password, or turnstile token" },
       { status: 400 },
     );
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
   };
 
   if (!verifyData.success) {
-    return NextResponse.json(
+    return RouteResponse.json(
       {
         error: "Please complete the verification challenge and try again.",
         code: "turnstile_failed",
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const mapped = await mapSignUpErrorFromResponse(response);
-      return NextResponse.json(mapped, { status: response.status });
+      return RouteResponse.json(mapped, { status: response.status });
     }
 
     const created = await db.query.user.findFirst({
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
 
     const redirectUrl = new URL("/auth/verify-email", env.NEXT_PUBLIC_APP_URL);
     redirectUrl.searchParams.set("email", normalizedEmail);
-    const res = NextResponse.redirect(redirectUrl);
+    const res = RouteResponse.redirect(redirectUrl);
     const setCookies = response.headers.getSetCookie?.() ?? [];
     for (const cookie of setCookies) {
       res.headers.append("set-cookie", cookie);
@@ -136,6 +136,6 @@ export async function POST(request: Request) {
       ? (e as { status: number }).status
       : 500;
     const mapped = mapSignUpError(e);
-    return NextResponse.json(mapped, { status });
+    return RouteResponse.json(mapped, { status });
   }
 }

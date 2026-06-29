@@ -2,15 +2,15 @@ import { auth } from "../../../lib/auth.js";
 import { db } from "../../../db/index.js";
 import { connectedAccounts } from "../../../db/schema.js";
 import { and, eq } from "drizzle-orm";
-import { headers } from "next/headers";
-import { NextRequest } from "next/server";
+import { headers } from "../../../lib/shim/request-cookies.js";
+import { AppRequest } from "../../../lib/shim/http.js";
 
 /**
  * PUT { accountId, boardId } – save the user's default Pinterest board for this
  * connected account. Stored in platformMetadata.pinterestDefaultBoardId so the
  * board is pre-selected next time.
  */
-export async function PUT(req: NextRequest) {
+export async function PUT(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });

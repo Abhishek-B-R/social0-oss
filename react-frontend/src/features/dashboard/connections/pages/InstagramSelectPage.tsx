@@ -1,9 +1,9 @@
 "use client";
 import { fetchApi } from "@/lib/fetch-api";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams } from "@/lib/router";
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import {
   AccountPicker,
   type AccountPickerAccount,

@@ -2,7 +2,7 @@
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/router";
 
 const SYNC_SESSION_KEY = "billing_sync_attempted";
 

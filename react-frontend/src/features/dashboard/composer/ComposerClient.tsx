@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/router";
 import {
   ImagePlus,
   FileText,
@@ -11,7 +11,7 @@ import {
   ChevronRight,
   Loader2,
 } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import {
   setComposerPayload,
   type ComposerMediaItem,

@@ -2,8 +2,8 @@ import { db } from "../db/index.js";
 import { verification } from "../db/schema.js";
 import { and, eq, gt } from "drizzle-orm";
 import { randomBytes } from "crypto";
-import { cookies } from "./shim/next-headers.js";
-import { NextResponse } from "./shim/next-server.js";
+import { cookies } from "./shim/request-cookies.js";
+import { RouteResponse } from "./shim/http.js";
 import { resolveAppUrlFromRequest } from "./app-url.js";
 
 const COOKIE_NAME = "oauth_connect_binding";
@@ -59,11 +59,11 @@ export async function redirectWithOAuthConnectBinding(
   url: string,
   userId: string,
   platform: string,
-): Promise<NextResponse> {
+): Promise<RouteResponse> {
   const token = await createOAuthConnectBinding(userId, platform);
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, cookieOptions());
-  return NextResponse.redirect(url);
+  return RouteResponse.redirect(url);
 }
 
 function readBindingToken(request: Request): string | null {

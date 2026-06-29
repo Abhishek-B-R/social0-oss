@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import confetti from "canvas-confetti";
 import { Check } from "lucide-react";
 import { FaLinkedin } from "react-icons/fa";

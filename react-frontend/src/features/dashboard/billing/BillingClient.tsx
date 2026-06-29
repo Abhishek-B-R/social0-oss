@@ -2,7 +2,7 @@
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "@/lib/router";
 import { IconLoader2, IconX } from "@tabler/icons-react";
 import { toast } from "sonner";
 import type { SubscriptionState } from "@/lib/subscription";

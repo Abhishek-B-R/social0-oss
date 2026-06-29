@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
 import { getAppUrl } from "./env";
+
+export type PageMetadata = Record<string, unknown>;
 
 export const siteUrl = getAppUrl();
 
@@ -20,7 +21,7 @@ export function buildPageMetadata({
   description,
   path,
   keywords,
-}: PageMetadataInput): Metadata {
+}: PageMetadataInput): PageMetadata {
   const url = absoluteUrl(path);
 
   return {
@@ -152,7 +153,7 @@ export const homePageTitle =
 export const homePageDescription =
   "Social0 lets you write once and publish everywhere. Schedule posts to Twitter, Instagram, LinkedIn, TikTok, YouTube, Pinterest, Bluesky, Threads, and Facebook from one dashboard. 7-day free trial.";
 
-export function buildHomeMetadata(path: "/" | "/home" = "/"): Metadata {
+export function buildHomeMetadata(path: "/" | "/home" = "/"): PageMetadata {
   const url = absoluteUrl(path);
   const canonical = absoluteUrl("/");
 

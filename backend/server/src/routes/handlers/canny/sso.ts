@@ -1,7 +1,7 @@
 import { auth } from "../../../lib/auth.js";
 import { env } from "../../../lib/env.js";
-import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { headers } from "../../../lib/shim/request-cookies.js";
+import { RouteResponse } from "../../../lib/shim/http.js";
 import jwt from "jsonwebtoken";
 import { oauthLimiter, enforceRateLimit } from "../../../lib/ratelimit.js";
 
@@ -10,12 +10,12 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const rate = await enforceRateLimit(oauthLimiter, session.user.id);
   if (!rate.allowed) {
-    return NextResponse.json({ error: rate.error }, { status: rate.status });
+    return RouteResponse.json({ error: rate.error }, { status: rate.status });
   }
 
   const payload = {
@@ -26,7 +26,7 @@ export async function GET() {
 
   const privateKey = env.CANNY_PRIVATE_KEY;
   if (!privateKey) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Canny SSO not configured" },
       { status: 503 },
     );
@@ -37,5 +37,5 @@ export async function GET() {
     expiresIn: "1h",
   });
 
-  return NextResponse.json({ token });
+  return RouteResponse.json({ token });
 }

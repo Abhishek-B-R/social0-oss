@@ -2,8 +2,8 @@ import { auth } from "../lib/auth.js";
 import { db } from "../db/index.js";
 import { connectedAccounts } from "../db/schema.js";
 import { and, eq } from "drizzle-orm";
-import { headers } from "../lib/shim/next-headers.js";
-import { NextRequest, NextResponse } from "../lib/shim/next-server.js";
+import { headers } from "../lib/shim/request-cookies.js";
+import { AppRequest, RouteResponse } from "../lib/shim/http.js";
 import { getValidToken } from "../lib/token-refresh.js";
 import { PLATFORMS, type Platform } from "../lib/platforms.js";
 import { enforceRateLimit, tokenRefreshLimiter } from "../lib/ratelimit.js";
@@ -21,41 +21,41 @@ const REFRESH_SUPPORTED_PLATFORMS = new Set<string>([
   "youtube",
 ]);
 
-export async function POST(req: NextRequest) {
+export async function POST(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const rate = await enforceRateLimit(tokenRefreshLimiter, session.user.id);
   if (!rate.allowed) {
-    return NextResponse.json({ error: rate.error }, { status: rate.status });
+    return RouteResponse.json({ error: rate.error }, { status: rate.status });
   }
 
   let body: { platform?: string };
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return RouteResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
   const platform = body.platform;
   if (!platform || typeof platform !== "string") {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "platform required" },
       { status: 400 },
     );
   }
 
   if (!VALID_PLATFORM_IDS.has(platform)) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Invalid platform" },
       { status: 400 },
     );
   }
 
   if (!REFRESH_SUPPORTED_PLATFORMS.has(platform)) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Platform does not support token refresh" },
       { status: 400 },
     );
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({
+  return RouteResponse.json({
     success: true,
     refreshed,
     failed,

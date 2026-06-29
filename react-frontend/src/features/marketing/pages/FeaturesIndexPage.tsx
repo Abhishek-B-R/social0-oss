@@ -1,6 +1,6 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { notFound } from "next/navigation";
+import type { PageMetadata } from "@/lib/seo";
+import Link from "@/components/AppLink";
+import { notFound } from "@/lib/router";
 import { PSEO_PAGES_ENABLED } from "@/lib/content/pseo-enabled";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { PseoJsonLd } from "@/components/seo/PseoJsonLd";
@@ -12,7 +12,7 @@ import {
   buildWebPageJsonLd,
 } from "@/lib/seo";
 
-export const metadata: Metadata = buildPageMetadata({
+export const metadata: PageMetadata = buildPageMetadata({
   title: "Social Media Scheduling Features | Social0",
   description:
     "Platform schedulers and tools: Threads, Bluesky, TikTok, Instagram, LinkedIn, X, multi-platform publishing, and content calendar.",

@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { auth } from "../../lib/auth.js";
 import { getAuthApiBaseUrl } from "../../lib/env.js";
 import { isBlockedNativeSignUpPath } from "../../lib/block-native-sign-up.js";
-import { runNextRouteHandler } from "../../lib/run-next-handler.js";
+import { runRouteHandler } from "../../lib/run-route-handler.js";
 import { POST as signUpDev } from "./auth-sign-up.js";
 import { POST as signUpTurnstile } from "./auth-sign-up-turnstile.js";
 import { GET as checkEmail } from "./auth-check-email.js";
@@ -58,23 +58,23 @@ async function handleBetterAuth(
 
 export async function registerAuthRoutes(app: FastifyInstance) {
   app.get("/auth/check-email", async (req, reply) => {
-    await runNextRouteHandler(req, reply, checkEmail);
+    await runRouteHandler(req, reply, checkEmail);
   });
 
   app.post("/auth/sign-up", async (req, reply) => {
-    await runNextRouteHandler(req, reply, signUpDev);
+    await runRouteHandler(req, reply, signUpDev);
   });
 
   app.post("/auth/sign-up-with-turnstile", async (req, reply) => {
-    await runNextRouteHandler(req, reply, signUpTurnstile);
+    await runRouteHandler(req, reply, signUpTurnstile);
   });
 
   app.get("/auth/subscription-check", async (req, reply) => {
-    await runNextRouteHandler(req, reply, subscriptionCheck);
+    await runRouteHandler(req, reply, subscriptionCheck);
   });
 
   app.get("/auth/test-signin", async (req, reply) => {
-    await runNextRouteHandler(req, reply, testSignin);
+    await runRouteHandler(req, reply, testSignin);
   });
 
   app.all("/auth/*", async (req, reply) => {

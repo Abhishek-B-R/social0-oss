@@ -1,14 +1,14 @@
 import { auth } from "../lib/auth.js";
 import { PLATFORM_OAUTH_CONFIG, Platform } from "../lib/platforms.js";
 import { env } from "../lib/env.js";
-import { headers, cookies } from "../lib/shim/next-headers.js";
+import { headers, cookies } from "../lib/shim/request-cookies.js";
 import { encrypt } from "../lib/encryption.js";
 import { appUrlForPath, getConnectCallbackBaseUrl } from "../lib/app-url.js";
 import crypto from "crypto";
 import { db } from "../db/index.js";
 import { verification, connectedAccounts } from "../db/schema.js";
 import { and, eq } from "drizzle-orm";
-import { NextRequest, NextResponse } from "../lib/shim/next-server.js";
+import { AppRequest, RouteResponse } from "../lib/shim/http.js";
 import { TwitterApi } from "twitter-api-v2";
 import { oauthLimiter, enforceRateLimit } from "../lib/ratelimit.js";
 import {
@@ -19,7 +19,7 @@ import { sanitizeReturnToPath } from "../lib/safe-return-to.js";
 import { redirectWithOAuthConnectBinding } from "../lib/oauth-connect-binding.js";
 
 export async function GET(
-  req: NextRequest,
+  req: AppRequest,
   { params }: { params: Promise<{ platform: string }> },
 ) {
   const { platform: platformParam } = await params;
@@ -40,7 +40,7 @@ export async function GET(
   // TikTok and all other platforms: rate limit + connect-binding cookie on redirect.
   const rate = await enforceRateLimit(oauthLimiter, session.user.id);
   if (!rate.allowed) {
-    return NextResponse.redirect(
+    return RouteResponse.redirect(
       appUrlForPath("/dashboard/connections?error=rate_limited", req),
     );
   }

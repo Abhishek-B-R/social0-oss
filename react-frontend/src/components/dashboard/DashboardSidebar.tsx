@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Image from "@/components/AppImage";
+import Link from "@/components/AppLink";
+import { usePathname } from "@/lib/router";
 import { useTheme } from "next-themes";
 import {
   IconFilePlus,

@@ -1,4 +1,4 @@
-import { NextResponse } from "../lib/next-shim.js";
+import { RouteResponse } from "../lib/route-response.js";
 import { db } from "../db/index.js";
 import {
   resurfaceSchedules,
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
   const appSecret = env.TWITTER_CONSUMER_SECRET;
 
   if (pendingEvents.length === 0) {
-    return NextResponse.json({ processed });
+    return RouteResponse.json({ processed });
   }
 
   // ── Batch pre-fetch: 3 queries instead of 3N ──────────────────────────────
@@ -341,5 +341,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ processed });
+  return RouteResponse.json({ processed });
 }

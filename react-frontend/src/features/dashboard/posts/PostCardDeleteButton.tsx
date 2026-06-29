@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/router";
 import { deletePost } from "@/actions/posts";
 
 export function PostCardDeleteButton({

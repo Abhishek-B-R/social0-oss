@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect, Suspense } from "react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import Link from "@/components/AppLink";
+import { useSearchParams } from "@/lib/router";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";

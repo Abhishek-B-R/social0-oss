@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "@/lib/router";
 import { loadBillingPageData } from "@/actions/dashboard-data";
 import type { SubscriptionState } from "@/lib/subscription";
 import { BillingClient } from "./BillingClient";

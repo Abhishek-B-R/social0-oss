@@ -11,11 +11,7 @@
     "esModuleInterop": true,
     "jsx": "react-jsx",
     "paths": {
-      "@/*": ["./*"],
-      "next/headers": ["./lib/shim/next-headers.ts"],
-      "next/server": ["./lib/shim/next-server.ts"],
-      "next/navigation": ["./lib/shim/next-navigation.ts"],
-      "next/cache": ["./lib/shim/next-cache.ts"]
+      "@/*": ["./*"]
     }
   },
   "include": ["src/**/*"],

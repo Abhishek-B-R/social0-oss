@@ -1,6 +1,6 @@
 import { auth } from "../../../lib/auth.js";
-import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { headers } from "../../../lib/shim/request-cookies.js";
+import { RouteResponse } from "../../../lib/shim/http.js";
 import {
   createCustomerPortalUrl,
   resolveBillingCustomer,
@@ -18,11 +18,11 @@ const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
 export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   if (!apiKey) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Billing is not configured" },
       { status: 503 },
     );
@@ -30,7 +30,7 @@ export async function GET() {
 
   const userEmail = session.user.email?.trim() ?? "";
   if (!userEmail) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Your account must have an email to open billing." },
       { status: 400 },
     );
@@ -38,7 +38,7 @@ export async function GET() {
 
   const { customerId } = await resolveBillingCustomer(session.user.id, userEmail);
   if (!customerId) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "No subscription found. Subscribe to a plan first." },
       { status: 404 },
     );
@@ -46,22 +46,22 @@ export async function GET() {
 
   const link = await createCustomerPortalUrl(customerId);
   if (!link) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Could not open customer portal" },
       { status: 502 },
     );
   }
-  return NextResponse.redirect(link);
+  return RouteResponse.redirect(link);
 }
 
 export async function POST() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   if (!apiKey) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Billing is not configured" },
       { status: 503 },
     );
@@ -69,7 +69,7 @@ export async function POST() {
 
   const userEmail = session.user.email?.trim() ?? "";
   if (!userEmail) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Your account must have an email to open billing." },
       { status: 400 },
     );
@@ -77,7 +77,7 @@ export async function POST() {
 
   const { customerId } = await resolveBillingCustomer(session.user.id, userEmail);
   if (!customerId) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "No subscription found. Subscribe to a plan first." },
       { status: 404 },
     );
@@ -85,11 +85,11 @@ export async function POST() {
 
   const link = await createCustomerPortalUrl(customerId);
   if (!link) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Could not open customer portal" },
       { status: 502 },
     );
   }
 
-  return NextResponse.json({ url: link });
+  return RouteResponse.json({ url: link });
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from "@/components/AppLink";
+import { usePathname } from "@/lib/router";
 import { ScheduleDateTimePicker } from "@/components/ui/ScheduleDateTimePicker";
 import { AccountBubbleSelector } from "@/components/AccountBubbleSelector";
 import { PLATFORMS } from "@/lib/platforms";

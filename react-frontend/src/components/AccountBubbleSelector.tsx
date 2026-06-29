@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { cn } from "@/lib/utils";

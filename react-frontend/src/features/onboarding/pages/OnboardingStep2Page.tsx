@@ -2,7 +2,7 @@
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "@/lib/router";
 import { IconLoader2 } from "@tabler/icons-react";
 import confetti from "canvas-confetti";
 import { setOnboardingGoal } from "@/actions/onboarding";

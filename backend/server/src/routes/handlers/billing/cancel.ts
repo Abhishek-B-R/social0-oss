@@ -1,6 +1,6 @@
 import { auth } from "../../../lib/auth.js";
-import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { headers } from "../../../lib/shim/request-cookies.js";
+import { RouteResponse } from "../../../lib/shim/http.js";
 import DodoPayments from "dodopayments";
 import { db } from "../../../db/index.js";
 import { userSettings, subscriptionCancellations } from "../../../db/schema.js";
@@ -17,13 +17,13 @@ const environment =
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await request.json().catch(() => ({}));
   const reason = typeof body.reason === "string" ? body.reason.trim() : "";
   if (!reason) {
-    return NextResponse.json({ error: "Reason is required" }, { status: 400 });
+    return RouteResponse.json({ error: "Reason is required" }, { status: 400 });
   }
 
   const row = await db.query.userSettings.findFirst({
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   });
 
   if (!row?.subscriptionId) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "No subscription found" },
       { status: 404 },
     );
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   }
 
   if (!apiKey) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Billing is not configured" },
       { status: 503 },
     );
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
         subscriptionId: null,
         customerId: null,
       });
-      return NextResponse.json({ success: true, immediate: true });
+      return RouteResponse.json({ success: true, immediate: true });
     }
 
     await client.subscriptions.update(row.subscriptionId, {
@@ -86,11 +86,11 @@ export async function POST(request: Request) {
     await db.execute(sql`
       UPDATE user_settings SET subscription_cancel_at_period_end = true WHERE user_id = ${session.user.id}
     `);
-    return NextResponse.json({ success: true, scheduled: true });
+    return RouteResponse.json({ success: true, scheduled: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Cancel failed";
     console.error("[billing/cancel] Dodo cancel error:", msg);
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Failed to cancel subscription" },
       { status: 502 },
     );

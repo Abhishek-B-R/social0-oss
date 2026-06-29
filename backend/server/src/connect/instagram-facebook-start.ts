@@ -1,9 +1,9 @@
 import { auth } from "../lib/auth.js";
 import { env } from "../lib/env.js";
-import { headers } from "../lib/shim/next-headers.js";
+import { headers } from "../lib/shim/request-cookies.js";
 import { encrypt } from "../lib/encryption.js";
 import { getConnectCallbackBaseUrl } from "../lib/app-url.js";
-import { NextRequest } from "../lib/shim/next-server.js";
+import { AppRequest } from "../lib/shim/http.js";
 import {
   buildFacebookOAuthUrl,
   FACEBOOK_INSTAGRAM_PAGE_SCOPES,
@@ -13,7 +13,7 @@ import { enforceRateLimit, oauthLimiter } from "../lib/ratelimit.js";
 import { sanitizeReturnToPath } from "../lib/safe-return-to.js";
 import { redirectWithOAuthConnectBinding } from "../lib/oauth-connect-binding.js";
 
-export async function GET(req: NextRequest) {
+export async function GET(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session) {

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
-import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import Link from "@/components/AppLink";
+import { useSearchParams, useRouter } from "@/lib/router";
 import { FcGoogle } from "react-icons/fc";
 import { IconEye, IconEyeOff } from "@tabler/icons-react";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";

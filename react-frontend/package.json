@@ -12,8 +12,6 @@
     "start": "vite preview --host"
   },
   "dependencies": {
-    "@ffmpeg/ffmpeg": "^0.12.15",
-    "@ffmpeg/util": "^0.12.2",
     "@fontsource/geist-sans": "^5.2.5",
     "@marsidev/react-turnstile": "^1.4.2",
     "@radix-ui/react-dialog": "^1.1.17",

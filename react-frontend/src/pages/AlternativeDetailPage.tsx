@@ -1,5 +1,5 @@
 import { useParams, Navigate } from "react-router-dom";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { PseoJsonLd } from "@/components/seo/PseoJsonLd";
 import { PseoFaq } from "@/components/landing/PseoFaq";

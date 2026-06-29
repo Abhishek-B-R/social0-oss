@@ -8,8 +8,8 @@ import {
   useEffect,
   useTransition,
 } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter } from "@/lib/router";
+import Link from "@/components/AppLink";
 import {
   IconUser,
   IconLink,

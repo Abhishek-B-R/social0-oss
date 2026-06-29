@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { RouteResponse } from "../../../lib/shim/http.js";
 import { auth } from "../../../lib/auth.js";
 import { db } from "../../../db/index.js";
 import {
@@ -8,26 +8,26 @@ import {
   posts,
 } from "../../../db/schema.js";
 import { eq, and, asc } from "drizzle-orm";
-import { headers } from "next/headers";
+import { headers } from "../../../lib/shim/request-cookies.js";
 import { getNextAvailableSlot } from "../../../lib/queue-utils.js";
 import { toZonedTime } from "date-fns-tz";
 
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let body: { postId?: string };
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return RouteResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
   const { postId } = body;
   if (!postId || typeof postId !== "string") {
-    return NextResponse.json({ error: "postId required" }, { status: 400 });
+    return RouteResponse.json({ error: "postId required" }, { status: 400 });
   }
 
   const [post] = await db
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     .limit(1);
 
   if (!post) {
-    return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    return RouteResponse.json({ error: "Post not found" }, { status: 404 });
   }
 
   const [settings] = await db
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
   });
 
   if (slots.length === 0) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "No queue slots configured. Add slots in Settings → Queue." },
       { status: 400 },
     );
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
   );
 
   if (!next) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Could not find an available slot" },
       { status: 400 },
     );
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
     }),
   };
 
-  return NextResponse.json({
+  return RouteResponse.json({
     queuedPostId: queued.id,
     scheduledFor: next.utc.toISOString(),
     scheduledForUser,

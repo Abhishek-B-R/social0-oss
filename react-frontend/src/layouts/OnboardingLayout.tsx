@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import Link from "next/link";
-import Image from "next/image";
+import Link from "@/components/AppLink";
+import Image from "@/components/AppImage";
 import { useSession } from "@/lib/auth-client";
 import { getOnboardingStatus, type OnboardingStatus } from "@/actions/onboarding";
 import { OnboardingProgressClient } from "@/components/onboarding/OnboardingProgressClient";

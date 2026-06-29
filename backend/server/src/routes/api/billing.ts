@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { runNextRouteHandler } from "../../lib/run-next-handler.js";
+import { runRouteHandler } from "../../lib/run-route-handler.js";
 import * as checkout from "../handlers/billing/checkout.js";
 import * as portal from "../handlers/billing/portal.js";
 import * as changePlan from "../handlers/billing/change-plan.js";
@@ -12,33 +12,33 @@ import * as sync from "../handlers/billing/sync.js";
 
 export async function registerBillingRoutes(app: FastifyInstance) {
   app.post("/billing/checkout", async (req, reply) => {
-    await runNextRouteHandler(req, reply, checkout.POST);
+    await runRouteHandler(req, reply, checkout.POST);
   });
   app.post("/billing/portal", async (req, reply) => {
-    await runNextRouteHandler(req, reply, portal.POST);
+    await runRouteHandler(req, reply, portal.POST);
   });
   app.get("/billing/portal", async (req, reply) => {
-    await runNextRouteHandler(req, reply, portal.GET);
+    await runRouteHandler(req, reply, portal.GET);
   });
   app.post("/billing/change-plan", async (req, reply) => {
-    await runNextRouteHandler(req, reply, changePlan.POST);
+    await runRouteHandler(req, reply, changePlan.POST);
   });
   app.post("/billing/cancel", async (req, reply) => {
-    await runNextRouteHandler(req, reply, cancel.POST);
+    await runRouteHandler(req, reply, cancel.POST);
   });
   app.post("/billing/cancel-downgrade", async (req, reply) => {
-    await runNextRouteHandler(req, reply, cancelDowngrade.POST);
+    await runRouteHandler(req, reply, cancelDowngrade.POST);
   });
   app.post("/billing/undo-cancel", async (req, reply) => {
-    await runNextRouteHandler(req, reply, undoCancel.POST);
+    await runRouteHandler(req, reply, undoCancel.POST);
   });
   app.post("/billing/pause", async (req, reply) => {
-    await runNextRouteHandler(req, reply, pause.POST);
+    await runRouteHandler(req, reply, pause.POST);
   });
   app.post("/billing/preview-plan-change", async (req, reply) => {
-    await runNextRouteHandler(req, reply, previewPlanChange.POST);
+    await runRouteHandler(req, reply, previewPlanChange.POST);
   });
   app.post("/billing/sync", async (req, reply) => {
-    await runNextRouteHandler(req, reply, sync.POST);
+    await runRouteHandler(req, reply, sync.POST);
   });
 }

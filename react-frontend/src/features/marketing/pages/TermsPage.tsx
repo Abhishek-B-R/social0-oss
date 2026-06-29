@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
+import type { PageMetadata } from "@/lib/seo";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { MdQuestionMark } from "react-icons/md";
 import { DOCS_TERMS_URL } from "@/lib/docs-url";
 
-export const metadata: Metadata = {
+export const metadata: PageMetadata = {
   title: "Terms of Service | Social0 - Social Media Scheduling Tool",
   description:
     "Read the Social0 terms of service. Understand your rights and responsibilities when using our social media scheduling and publishing platform.",

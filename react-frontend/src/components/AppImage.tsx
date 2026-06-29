@@ -1,6 +1,6 @@
 import type { ImgHTMLAttributes } from "react";
 
-type ImageProps = ImgHTMLAttributes<HTMLImageElement> & {
+type AppImageProps = ImgHTMLAttributes<HTMLImageElement> & {
   src: string;
   alt: string;
   width?: number;
@@ -10,7 +10,7 @@ type ImageProps = ImgHTMLAttributes<HTMLImageElement> & {
   unoptimized?: boolean;
 };
 
-export default function Image({
+export default function AppImage({
   src,
   alt,
   width,
@@ -19,9 +19,16 @@ export default function Image({
   className,
   style,
   ...rest
-}: ImageProps) {
+}: AppImageProps) {
   const imgStyle = fill
-    ? { ...style, position: "absolute" as const, inset: 0, width: "100%", height: "100%", objectFit: "cover" as const }
+    ? {
+        ...style,
+        position: "absolute" as const,
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        objectFit: "cover" as const,
+      }
     : style;
 
   return (

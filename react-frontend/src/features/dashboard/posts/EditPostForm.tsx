@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter } from "@/lib/router";
+import Link from "@/components/AppLink";
 import { X, Upload } from "lucide-react";
 import { updatePost } from "@/actions/posts";
 import { PLATFORMS } from "@/lib/platforms";

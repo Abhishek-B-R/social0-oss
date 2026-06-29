@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/router";
 import { loadCalendarPageData } from "@/actions/dashboard-data";
 import { CalendarClient, type PostForCalendar } from "./CalendarClient";
 import { DOCS_CALENDAR_URL } from "@/lib/docs-url";

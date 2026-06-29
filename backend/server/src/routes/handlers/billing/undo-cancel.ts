@@ -1,6 +1,6 @@
 import { auth } from "../../../lib/auth.js";
-import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { headers } from "../../../lib/shim/request-cookies.js";
+import { RouteResponse } from "../../../lib/shim/http.js";
 import DodoPayments from "dodopayments";
 import { db } from "../../../db/index.js";
 import { userSettings } from "../../../db/schema.js";
@@ -16,7 +16,7 @@ const environment =
 export async function POST() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const row = await db.query.userSettings.findFirst({
@@ -25,14 +25,14 @@ export async function POST() {
   });
 
   if (!row?.subscriptionId) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "No subscription found" },
       { status: 404 },
     );
   }
 
   if (!apiKey) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Billing is not configured" },
       { status: 503 },
     );
@@ -42,7 +42,7 @@ export async function POST() {
 
   try {
     if (row.subscriptionExpiresAt && new Date() > new Date(row.subscriptionExpiresAt)) {
-      return NextResponse.json(
+      return RouteResponse.json(
         { error: "Subscription already expired" },
         { status: 409 },
       );
@@ -53,11 +53,11 @@ export async function POST() {
     await db.execute(sql`
       UPDATE user_settings SET subscription_cancel_at_period_end = false WHERE user_id = ${session.user.id}
     `);
-    return NextResponse.json({ success: true });
+    return RouteResponse.json({ success: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Undo cancel failed";
     console.error("[billing/undo-cancel] Dodo error:", msg);
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Failed to undo cancellation" },
       { status: 502 },
     );

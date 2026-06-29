@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { RouteResponse } from "../../../lib/shim/http.js";
 import { env } from "../../../lib/env.js";
 
 export const dynamic = "force-dynamic";
@@ -7,10 +7,10 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const boardToken = env.NEXT_PUBLIC_CANNY_BOARD_TOKEN?.trim() ?? "";
   if (!boardToken) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Canny board not configured" },
       { status: 503 },
     );
   }
-  return NextResponse.json({ boardToken });
+  return RouteResponse.json({ boardToken });
 }

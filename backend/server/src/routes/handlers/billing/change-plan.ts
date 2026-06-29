@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { auth } from "../../../lib/auth.js";
-import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { headers } from "../../../lib/shim/request-cookies.js";
+import { RouteResponse } from "../../../lib/shim/http.js";
 import DodoPayments from "dodopayments";
 import { db } from "../../../db/index.js";
 import { userSettings } from "../../../db/schema.js";
@@ -23,7 +23,7 @@ const client = new DodoPayments({ bearerToken: apiKey, environment });
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   const reason =
     typeof body.reason === "string" ? body.reason.trim().slice(0, 5000) : "";
   if (!plan) {
-    return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+    return RouteResponse.json({ error: "Invalid plan" }, { status: 400 });
   }
 
   const productId =
@@ -43,13 +43,13 @@ export async function POST(request: Request) {
         ? PLAN_IDS.growth
         : "";
   if (!productId) {
-    return NextResponse.json({ error: "Plan not configured" }, { status: 503 });
+    return RouteResponse.json({ error: "Plan not configured" }, { status: 503 });
   }
 
   const planTier = plan;
 
   if (!apiKey) {
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Billing is not configured" },
       { status: 503 },
     );
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       );
       if (openSubs.length > 0) {
         const hasActive = openSubs.some((s) => s.status === "active");
-        return NextResponse.json(
+        return RouteResponse.json(
           {
             error: hasActive
               ? "You already have an active subscription. Manage it from billing."
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
         );
       }
     }
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "no_active_subscription" },
       { status: 404 },
     );
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
   const currentTier = (row.subscriptionTier as string) ?? "free";
   if (!scheduleAtPeriodEnd && currentTier === plan) {
     const planLabel = plan === "growth" ? "Growth" : "Starter";
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: `Already on ${planLabel} plan` },
       { status: 400 },
     );
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
           subscriptionCancelAtPeriodEnd: false,
         })
         .where(eq(userSettings.userId, session.user.id));
-      return NextResponse.json({ success: true, scheduled: true });
+      return RouteResponse.json({ success: true, scheduled: true });
     }
 
     // Immediate upgrade: verify subscription is still active in Dodo before changing.
@@ -131,14 +131,14 @@ export async function POST(request: Request) {
     try {
       subscription = await client.subscriptions.retrieve(row.subscriptionId);
     } catch {
-      return NextResponse.json(
+      return RouteResponse.json(
         { error: "no_active_subscription" },
         { status: 404 },
       );
     }
     const status = subscription?.status;
     if (status === "on_hold") {
-      return NextResponse.json(
+      return RouteResponse.json(
         {
           error:
             "Your subscription payment failed. Update your payment method in the customer portal.",
@@ -148,7 +148,7 @@ export async function POST(request: Request) {
       );
     }
     if (status !== "active" && status !== "on_hold") {
-      return NextResponse.json(
+      return RouteResponse.json(
         { error: "no_active_subscription" },
         { status: 404 },
       );
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
         : null;
     const isTrialUpgrade = !previousBillingDate;
     if (isTrialUpgrade) {
-      return NextResponse.json(
+      return RouteResponse.json(
         {
           success: false,
           requireCheckout: true,
@@ -257,7 +257,7 @@ export async function POST(request: Request) {
               ? raw.url
               : null;
 
-    return NextResponse.json({
+    return RouteResponse.json({
       success: true,
       pending: true,
       ...(checkoutUrl ? { checkoutUrl } : {}),
@@ -275,7 +275,7 @@ export async function POST(request: Request) {
       lowerMsg.includes("payment_declined") ||
       lowerMsg.includes("declined");
     if (is409) {
-      return NextResponse.json(
+      return RouteResponse.json(
         {
           error:
             "Previous payment is not complete. Please wait a moment and try again.",
@@ -284,7 +284,7 @@ export async function POST(request: Request) {
       );
     }
     if (isDecline) {
-      return NextResponse.json(
+      return RouteResponse.json(
         {
           error:
             "Your payment could not be processed. Please check your card details or try a different payment method.",
@@ -293,7 +293,7 @@ export async function POST(request: Request) {
       );
     }
     console.error("[billing/change-plan] Dodo error:", msg);
-    return NextResponse.json(
+    return RouteResponse.json(
       { error: "Something went wrong. Please try again." },
       { status: 500 },
     );

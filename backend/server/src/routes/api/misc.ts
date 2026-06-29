@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { runNextRouteHandler } from "../../lib/run-next-handler.js";
+import { runRouteHandler } from "../../lib/run-route-handler.js";
 import { verifyCronSecretFromAuthorizationHeader } from "../../lib/cron-auth.js";
 import { enqueueCronJob } from "../../services/enqueue.js";
 import { JOB_NAMES } from "@social0/shared";
@@ -12,25 +12,25 @@ import * as cannyConfig from "../handlers/canny/config.js";
 
 export async function registerMiscRoutes(app: FastifyInstance) {
   app.get("/pinterest/boards", async (req, reply) => {
-    await runNextRouteHandler(req, reply, pinterestBoards.GET);
+    await runRouteHandler(req, reply, pinterestBoards.GET);
   });
   app.post("/pinterest/boards", async (req, reply) => {
-    await runNextRouteHandler(req, reply, pinterestBoards.POST);
+    await runRouteHandler(req, reply, pinterestBoards.POST);
   });
   app.put("/pinterest/default-board", async (req, reply) => {
-    await runNextRouteHandler(req, reply, pinterestDefaultBoard.PUT);
+    await runRouteHandler(req, reply, pinterestDefaultBoard.PUT);
   });
   app.post("/account/change-email/send-otp", async (req, reply) => {
-    await runNextRouteHandler(req, reply, changeEmailSendOtp.POST);
+    await runRouteHandler(req, reply, changeEmailSendOtp.POST);
   });
   app.post("/account/change-email", async (req, reply) => {
-    await runNextRouteHandler(req, reply, changeEmail.POST);
+    await runRouteHandler(req, reply, changeEmail.POST);
   });
   app.get("/canny/sso", async (req, reply) => {
-    await runNextRouteHandler(req, reply, cannySso.GET);
+    await runRouteHandler(req, reply, cannySso.GET);
   });
   app.get("/canny/config", async (req, reply) => {
-    await runNextRouteHandler(req, reply, cannyConfig.GET);
+    await runRouteHandler(req, reply, cannyConfig.GET);
   });
 
   app.post("/dev/trigger-crons", async (request, reply) => {

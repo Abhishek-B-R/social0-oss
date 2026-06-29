@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { Video, ImageIcon, Layers } from "lucide-react";
 import { getPlatformIcon } from "@/lib/platform-icons";
 import { CONTENT_TYPES } from "@/lib/content-types";

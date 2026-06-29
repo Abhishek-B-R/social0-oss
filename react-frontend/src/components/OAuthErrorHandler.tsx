@@ -1,7 +1,7 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { useSearchParams } from "@/lib/router";
+import Link from "@/components/AppLink";
 import { useEffect, useState } from "react";
 
 export function OAuthErrorHandler({
