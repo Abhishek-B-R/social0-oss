@@ -53,6 +53,11 @@ export function OAuthErrorHandler({
         case "no_facebook_pages":
           setMessage("No Facebook Pages found. You need a Page to connect.");
           break;
+        case "no_instagram_linked":
+          setMessage(
+            "Facebook login worked, but no Instagram Business account was found on your Pages. In Meta Business Suite, link a Professional Instagram profile to the Page, then try again.",
+          );
+          break;
         case "rate_limited":
           setMessage(
             "Too many connect attempts in a short time. Wait a few minutes, then try again.",

@@ -23,14 +23,14 @@ export async function GET(
   // Handle OAuth errors
   if (error) {
     return safeRedirect(
-      `/dashboard?error=oauth_failed&platform=instagram`,
+      `/dashboard/connections?error=oauth_failed&platform=instagram`,
       "/dashboard",
     );
   }
 
   if (!code || !state) {
     return safeRedirect(
-      `/dashboard?error=invalid_callback&platform=instagram`,
+      `/dashboard/connections?error=invalid_callback&platform=instagram`,
       "/dashboard",
     );
   }
@@ -49,7 +49,7 @@ export async function GET(
 
     if (decrypted.platform !== "instagram-facebook") {
       return safeRedirect(
-        `/dashboard?error=state_mismatch&platform=instagram`,
+        `/dashboard/connections?error=state_mismatch&platform=instagram`,
         "/dashboard",
       );
     }
@@ -57,7 +57,7 @@ export async function GET(
     rethrowRouteRedirect(err);
     console.error("Failed to decrypt state:", err);
     return safeRedirect(
-      `/dashboard?error=invalid_state&platform=instagram`,
+      `/dashboard/connections?error=invalid_state&platform=instagram`,
       "/dashboard",
     );
   }
@@ -67,7 +67,7 @@ export async function GET(
 
   if (!clientId || !clientSecret) {
     return safeRedirect(
-      `/dashboard?error=credentials_not_configured&platform=instagram`,
+      `/dashboard/connections?error=credentials_not_configured&platform=instagram`,
       "/dashboard",
     );
   }
@@ -95,7 +95,7 @@ export async function GET(
       const errorText = await tokenResponse.text();
       console.error("Facebook token exchange failed:", errorText);
       return safeRedirect(
-        `/dashboard?error=oauth_failed&platform=instagram`,
+        `/dashboard/connections?error=oauth_failed&platform=instagram`,
         "/dashboard",
       );
     }
@@ -106,7 +106,7 @@ export async function GET(
     if (!accessToken) {
       console.error("No access token in response:", tokens);
       return safeRedirect(
-        `/dashboard?error=oauth_failed&platform=instagram`,
+        `/dashboard/connections?error=oauth_failed&platform=instagram`,
         "/dashboard",
       );
     }
@@ -124,7 +124,7 @@ export async function GET(
     if (!pagesRes.ok) {
       console.error("Facebook pages fetch failed:", await pagesRes.text());
       return safeRedirect(
-        `/dashboard?error=oauth_failed&platform=instagram`,
+        `/dashboard/connections?error=oauth_failed&platform=instagram`,
         "/dashboard",
       );
     }
@@ -135,7 +135,7 @@ export async function GET(
 
     if (pages.length === 0) {
       return safeRedirect(
-        `/dashboard?error=no_facebook_pages&platform=instagram`,
+        `/dashboard/connections?error=no_facebook_pages&platform=instagram`,
         "/dashboard",
       );
     }
@@ -228,7 +228,7 @@ export async function GET(
 
     if (pagesWithInstagram.length === 0) {
       return safeRedirect(
-        `/dashboard?error=no_instagram_linked&platform=instagram`,
+        `/dashboard/connections?error=no_instagram_linked&platform=instagram`,
         "/dashboard",
       );
     }
@@ -329,7 +329,7 @@ export async function GET(
     rethrowRouteRedirect(err);
     console.error("Instagram-Facebook OAuth callback error:", err);
     return safeRedirect(
-      `/dashboard?error=oauth_failed&platform=instagram`,
+      `/dashboard/connections?error=oauth_failed&platform=instagram`,
       "/dashboard",
     );
   }
