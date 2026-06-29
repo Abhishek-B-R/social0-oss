@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
-import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
+import { completeConnectSelect } from "@/lib/connect-select-response";
 
 type PersonalProfile = {
   id: string;
@@ -100,29 +100,9 @@ export default function LinkedInSelectPage() {
             selectedIds: ids,
             returnTo,
           }),
-          redirect: "follow",
+          redirect: "manual",
         });
-        if (res.status === 403) {
-          const data = await res.json().catch(() => ({}));
-          toast.error(
-            data.message ??
-              "You need an active plan to connect accounts and post content.",
-          );
-          setSubmitLoading(false);
-          return;
-        }
-        if (res.redirected) {
-          if (!assignSafeRedirectUrl(res.url)) {
-            toast.error("Connection could not complete. Please try again.");
-          }
-          return;
-        }
-        const data = await res.json().catch(() => ({}));
-        if (data.error) {
-          toast.error(data.message ?? data.error);
-        } else {
-          window.location.href = returnTo;
-        }
+        await completeConnectSelect(res, returnTo);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Failed to connect");
       } finally {

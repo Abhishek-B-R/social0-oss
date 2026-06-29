@@ -6,10 +6,9 @@ import { headers } from "../lib/shim/next-headers.js";
 import { decryptToken, encryptToken } from "../lib/encryption.js";
 import { checkAccountLimits } from "../lib/plan-limits.js";
 import { logConnectBlocked } from "../lib/plan-analytics.js";
-import { NextRequest, NextResponse } from "../lib/shim/next-server.js";
+import { NextRequest } from "../lib/shim/next-server.js";
 import crypto from "crypto";
-import { resolveAppUrlFromRequest } from "../lib/app-url.js";
-import { sanitizeReturnToPath } from "../lib/safe-return-to.js";
+import { connectSelectSuccessUrl } from "../lib/app-url.js";
 
 type LinkedInPayload = {
   userId: string;
@@ -92,11 +91,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const safeReturnTo = sanitizeReturnToPath(returnTo);
-  const baseUrl = resolveAppUrlFromRequest(req);
-  const redirectTo = safeReturnTo
-    ? `${baseUrl}${safeReturnTo}${safeReturnTo.includes("?") ? "&" : "?"}success=linkedin`
-    : `${baseUrl}/dashboard/connections?success=linkedin`;
+  const redirectTo = connectSelectSuccessUrl("linkedin", returnTo, req);
 
   const record = await db.query.verification.findFirst({
     where: eq(verification.id, token),
@@ -154,7 +149,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (toSave.length === 0) {
-    return NextResponse.redirect(redirectTo);
+    return Response.json({ redirectUrl: redirectTo });
   }
 
   const tokenExpiresAt = new Date(Date.now() + 3600 * 1000); // LinkedIn tokens ~1h
@@ -227,5 +222,5 @@ export async function POST(req: NextRequest) {
 
   await db.delete(verification).where(eq(verification.id, token));
 
-  return NextResponse.redirect(redirectTo);
+  return Response.json({ redirectUrl: redirectTo });
 }

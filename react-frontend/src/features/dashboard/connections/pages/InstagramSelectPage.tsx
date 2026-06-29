@@ -10,7 +10,7 @@ import {
 } from "@/components/AccountPicker";
 import { toast } from "sonner";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
-import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
+import { completeConnectSelect } from "@/lib/connect-select-response";
 
 export default function InstagramSelectPage() {
   const searchParams = useSearchParams();
@@ -81,29 +81,9 @@ export default function InstagramSelectPage() {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ token, pageId, returnTo }),
-          redirect: "follow",
+          redirect: "manual",
         });
-        if (res.status === 403) {
-          const data = await res.json().catch(() => ({}));
-          toast.error(
-            data.message ??
-              "You need an active plan to connect accounts and post content.",
-          );
-          setSubmitLoading(false);
-          return;
-        }
-        if (res.redirected) {
-          if (!assignSafeRedirectUrl(res.url)) {
-            toast.error("Connection could not complete. Please try again.");
-          }
-          return;
-        }
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          toast.error(data.message ?? data.error ?? "Failed to connect");
-        } else {
-          window.location.href = returnTo;
-        }
+        await completeConnectSelect(res, returnTo);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Failed to connect");
       } finally {

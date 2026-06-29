@@ -126,3 +126,14 @@ export function appUrlForPath(path: unknown, request?: Request): string {
   const base = resolveAppUrlFromRequest(request);
   return new URL(safe, `${base}/`).toString();
 }
+
+/** Absolute frontend URL after account picker POST (split deploy: JSON, not HTTP redirect). */
+export function connectSelectSuccessUrl(
+  success: string,
+  returnTo?: string | null,
+  request?: Request,
+): string {
+  const safe = sanitizeReturnToPath(returnTo) ?? "/dashboard/connections";
+  const sep = safe.includes("?") ? "&" : "?";
+  return appUrlForPath(`${safe}${sep}success=${success}`, request);
+}

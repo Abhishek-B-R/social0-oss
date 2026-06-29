@@ -5,10 +5,9 @@ import { eq, and } from "drizzle-orm";
 import { headers } from "../lib/shim/next-headers.js";
 import { decryptToken, encryptToken } from "../lib/encryption.js";
 import { getRemainingSlots } from "../lib/connections.js";
-import { NextRequest, NextResponse } from "../lib/shim/next-server.js";
+import { NextRequest } from "../lib/shim/next-server.js";
 import crypto from "crypto";
-import { resolveAppUrlFromRequest } from "../lib/app-url.js";
-import { sanitizeReturnToPath } from "../lib/safe-return-to.js";
+import { connectSelectSuccessUrl } from "../lib/app-url.js";
 
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -82,11 +81,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const safeReturnTo = sanitizeReturnToPath(returnTo);
-  const baseUrl = resolveAppUrlFromRequest(req);
-  const redirectTo = safeReturnTo
-    ? `${baseUrl}${safeReturnTo}${safeReturnTo.includes("?") ? "&" : "?"}success=facebook`
-    : `${baseUrl}/dashboard/connections?success=facebook`;
+  const redirectTo = connectSelectSuccessUrl("facebook", returnTo, req);
 
   const record = await db.query.verification.findFirst({
     where: eq(verification.id, token),
@@ -179,5 +174,5 @@ export async function POST(req: NextRequest) {
 
   await db.delete(verification).where(eq(verification.id, token));
 
-  return NextResponse.redirect(redirectTo);
+  return Response.json({ redirectUrl: redirectTo });
 }
