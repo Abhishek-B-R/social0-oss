@@ -75,6 +75,8 @@ type UploadPublishOverlayProps = {
   onClose?: () => void;
   /** When uploading: called when user clicks cancel (X). Optional. */
   onCancelUpload?: () => void;
+  /** When publishing (in progress): called when user dismisses the overlay (X). Optional. */
+  onDismiss?: () => void;
 };
 
 function MediaTypeIcon({ type }: { type: "image" | "video" | "mixed" }) {
@@ -147,6 +149,7 @@ export function UploadPublishOverlay({
   allDone = false,
   onClose,
   onCancelUpload,
+  onDismiss,
 }: UploadPublishOverlayProps) {
   void onClose; // kept for API compatibility; success screen uses Links only
   const [showLongRunningEscape, setShowLongRunningEscape] = useState(false);
@@ -157,6 +160,22 @@ export function UploadPublishOverlay({
   const showPlatformRows =
     phase === "publishing" && platformStatuses.length > 0 && !isScheduling;
   const isFinalizing = typeof uploadPercent === "number" && uploadPercent >= 95;
+  const showDismissButton =
+    !!onDismiss &&
+    phase === "publishing" &&
+    !allDone &&
+    !(showLinks && !showPlatformRows);
+
+  const dismissButton = showDismissButton ? (
+    <button
+      type="button"
+      onClick={onDismiss}
+      className="absolute -top-2 -right-2 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-bg-elevated text-text-muted shadow-sm hover:bg-bg-muted hover:text-text transition-colors"
+      aria-label="Dismiss"
+    >
+      <X className="h-4 w-4" />
+    </button>
+  ) : null;
 
   const displayPlatformStatuses = useMemo(
     () => sortBySlowPlatformsLast(platformStatuses),
@@ -341,7 +360,8 @@ export function UploadPublishOverlay({
           </>
         ) : phase === "publishing" && showLongRunningEscape ? (
           <>
-            <div className="w-full max-w-md rounded-xl border border-border bg-bg-elevated p-6 sm:p-8 shadow-sm text-center">
+            <div className="relative w-full max-w-md rounded-xl border border-border bg-bg-elevated p-6 sm:p-8 shadow-sm text-center">
+              {dismissButton}
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/15 dark:bg-amber-500/20">
                 <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
               </div>
@@ -375,7 +395,8 @@ export function UploadPublishOverlay({
           </>
         ) : showPlatformRows ? (
           <>
-            <div className="w-full max-w-md rounded-xl border border-border bg-bg-elevated p-6 sm:p-8 shadow-sm text-left">
+            <div className="relative w-full max-w-md rounded-xl border border-border bg-bg-elevated p-6 sm:p-8 shadow-sm text-left">
+              {dismissButton}
               {allDone ? (
                 <>
                   <div className="flex flex-col items-center text-center">
@@ -474,6 +495,7 @@ export function UploadPublishOverlay({
           </>
         ) : (
           <>
+            {dismissButton}
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
               <Loader2 className="h-7 w-7 animate-spin text-emerald-600 dark:text-emerald-400" />
             </div>
