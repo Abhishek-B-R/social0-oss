@@ -6,7 +6,7 @@ import { PLAN_IDS, isActiveTier } from "@/lib/plans";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { env } from "@/lib/env";
 
-// ponytail: 3 days while free tier (10 posts/mo) exists; restore to 7 when free plan is removed
+// ponytail: 3 days while free tier (5 lifetime posts) exists; restore to 7 when free plan is removed
 export const TRIAL_PERIOD_DAYS = 3;
 
 const BLOCKING_DODO_STATUSES = ["active", "on_hold", "pending"] as const;
