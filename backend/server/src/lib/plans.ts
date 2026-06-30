@@ -22,7 +22,7 @@ export interface PlanLimits {
 
 const FREE_LIMITS: PlanLimits = {
   maxConnectedAccounts: 3,
-  maxFreePosts: 10,
+  maxFreePosts: 5,
   allowBulkTools: false,
   allowAutoPlug: false,
   allowResurface: false,

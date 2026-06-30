@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { getPlanLimits } from "@/lib/plans";
 
 const freeFeatures = [
   "Connect up to 3 accounts",
-  "10 posts to try it out before you commit",
+  `${getPlanLimits("free").maxFreePosts} posts to try it out before you commit`,
   "Schedule posts across your channels",
   "All 9 platforms - one dashboard",
   "No credit card required",

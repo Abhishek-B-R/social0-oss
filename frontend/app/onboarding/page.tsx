@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { IconLoader2 } from "@tabler/icons-react";
+import { getPlanLimits } from "@/lib/plans";
 import { setOnboardingCompleted } from "@/app/actions/onboarding";
 import { DOCS_ONBOARDING_URL } from "@/lib/docs-url";
 import { toast } from "sonner";
@@ -34,7 +35,7 @@ const FREE_FEATURES = [
     description: "Connect LinkedIn, Instagram, TikTok, X, and more.",
   },
   {
-    title: "10 free posts",
+    title: `${getPlanLimits("free").maxFreePosts} free posts`,
     description: "Try scheduling and publishing before you upgrade.",
   },
   {

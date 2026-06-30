@@ -6,6 +6,7 @@ import Link from "next/link";
 import { PLATFORMS } from "@/lib/platforms";
 import { setOnboardingCompleted } from "@/app/actions/onboarding";
 import { getPlatformIcon } from "@/lib/platform-icons";
+import { getPlanLimits } from "@/lib/plans";
 import { ConnectPlatformButton } from "@/components/dashboard/ConnectPlatformButton";
 
 const PLATFORM_UI: Record<string, { name: string; color: string }> = {
@@ -104,7 +105,7 @@ export function ConnectStepClient({
         </p>
         {limitTotal > 0 && limitTotal <= 3 && (
           <p className="text-center text-xs text-muted-foreground mb-6">
-            Free plan: up to {limitTotal} accounts · 10 posts included
+            Free plan: up to {limitTotal} accounts · {getPlanLimits("free").maxFreePosts} posts included
           </p>
         )}
         {(!limitTotal || limitTotal > 3) && <div className="mb-6" />}
