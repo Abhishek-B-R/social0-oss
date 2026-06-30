@@ -1,5 +1,10 @@
 import type { PublishOptions, PublishResult } from "@/app/actions/publish";
 import { getPostPublicationList, publishPost } from "@/app/actions/publish";
+import type {
+  PlatformResult,
+  PlatformStatus,
+} from "@/components/UploadPublishOverlay";
+import { PLATFORMS } from "@/lib/platforms";
 
 /**
  * TikTok / Threads are slow; list them last in the progress UI only.
@@ -33,6 +38,7 @@ export type PublicationListRow = {
 };
 
 export type PublicationProgressRow = PublicationListRow & {
+  platformUsername?: string | null;
   publicationStatus: string;
   platformPostUrl: string | null;
   lastError: string | null;
@@ -41,6 +47,105 @@ export type PublicationProgressRow = PublicationListRow & {
 const PROGRESS_POLL_MS = 1200;
 /** Client safety net when a server action hangs (e.g. platform API stall). */
 const PUBLISH_SERVER_ACTION_TIMEOUT_MS = 90_000;
+const POLL_UNTIL_DONE_MAX_MS = 90_000;
+
+function publicationStatusToPlatformStatus(
+  publicationStatus: string,
+  fallback: PlatformStatus = "waiting",
+): PlatformStatus {
+  if (publicationStatus === "published") return "published";
+  if (publicationStatus === "failed") return "failed";
+  if (publicationStatus === "publishing") return "processing";
+  return fallback;
+}
+
+export function publicationRowsToPlatformStatuses(
+  rows: PublicationProgressRow[],
+): PlatformResult[] {
+  return sortBySlowPlatformsLast(rows).map((pub) => ({
+    platform: pub.platform,
+    accountId: pub.connectedAccountId,
+    accountName: pub.platformUsername
+      ? `@${pub.platformUsername}`
+      : (PLATFORMS.find((p) => p.id === pub.platform)?.name ?? pub.platform),
+    status: publicationStatusToPlatformStatus(pub.publicationStatus),
+    error:
+      pub.publicationStatus === "failed"
+        ? (pub.lastError ?? undefined)
+        : undefined,
+    postUrl:
+      pub.publicationStatus === "published"
+        ? (pub.platformPostUrl ?? undefined)
+        : undefined,
+  }));
+}
+
+export function mergePublicationProgressIntoPlatformStatuses(
+  prev: PlatformResult[],
+  rows: PublicationProgressRow[],
+): PlatformResult[] {
+  return prev.map((p) => {
+    const row = rows.find((r) => r.connectedAccountId === p.accountId);
+    if (!row) return p;
+    return {
+      ...p,
+      status: publicationStatusToPlatformStatus(row.publicationStatus, p.status),
+      error:
+        row.publicationStatus === "failed"
+          ? (row.lastError ?? undefined)
+          : undefined,
+      postUrl:
+        row.publicationStatus === "published"
+          ? (row.platformPostUrl ?? undefined)
+          : undefined,
+    };
+  });
+}
+
+function allPublicationsResolved(rows: PublicationProgressRow[]): boolean {
+  return (
+    rows.length > 0 &&
+    rows.every(
+      (r) =>
+        r.publicationStatus === "published" ||
+        r.publicationStatus === "failed",
+    )
+  );
+}
+
+/** Poll publication rows until every platform is published or failed (publish already queued). */
+export async function pollPublicationProgressUntilDone(
+  postId: string,
+  onPoll: (rows: PublicationProgressRow[]) => void,
+): Promise<void> {
+  const pollOnce = async () => {
+    const rows = await getPostPublicationList(postId);
+    onPoll(rows);
+    return allPublicationsResolved(rows);
+  };
+
+  if (await pollOnce()) return;
+
+  const started = Date.now();
+  return new Promise((resolve) => {
+    const timer = setInterval(() => {
+      void (async () => {
+        try {
+          const done = await pollOnce();
+          if (done || Date.now() - started > POLL_UNTIL_DONE_MAX_MS) {
+            clearInterval(timer);
+            resolve();
+          }
+        } catch {
+          if (Date.now() - started > POLL_UNTIL_DONE_MAX_MS) {
+            clearInterval(timer);
+            resolve();
+          }
+        }
+      })();
+    }, PROGRESS_POLL_MS);
+  });
+}
 
 /**
  * One server action - executePublish runs all platforms in parallel via

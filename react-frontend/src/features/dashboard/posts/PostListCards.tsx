@@ -7,7 +7,8 @@ import { formatDateTime } from "@/lib/date-format";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import type { PublicationRow } from "./posts-list-types";
 import { publishPost } from "@/actions/publish";
-import { deletePost, postAgain } from "@/actions/posts";
+import { deletePost } from "@/actions/posts";
+import { PostAgainButton } from "./PostAgainButton";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -278,22 +279,11 @@ function QuickActionsMenu({
         >
           {status === "published" && (
             <>
-              <button
-                type="button"
-                disabled={loading}
-                className={menuClass}
-                onClick={() =>
-                  void run(async () => {
-                    const result = await postAgain(postId);
-                    if (!result.success) {
-                      toast.error("Failed to post again. Please try again.");
-                      throw new Error("post_again_failed");
-                    }
-                  })
-                }
-              >
-                Post again
-              </button>
+              <PostAgainButton
+                postId={postId}
+                variant="menu"
+                onStarted={() => setOpen(false)}
+              />
               <Link
                 href={`/dashboard/create/${composerSlug}?edit=${postId}`}
                 className={menuClass}
