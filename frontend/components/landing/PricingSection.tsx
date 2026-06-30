@@ -254,7 +254,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
               <Link href="/dashboard" className={ctaPrimary}>
                 {signedIn ? "Go to dashboard →" : "Start your 3-day free trial"}
               </Link>
-              <p className="mt-3 text-center text-[12px] text-white/25 dark:text-[#0A0A0A]/40">
+              <p className="mt-3 text-center text-[12px] text-white dark:text-[#0A0A0A]/40">
                 3-day free trial · Cancel anytime · Lock in early-adopter
                 pricing
               </p>
