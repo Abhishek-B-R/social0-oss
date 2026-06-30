@@ -39,6 +39,11 @@ export async function enforceEdgeRateLimit(
   key: string,
 ): Promise<EdgeRateLimitResult> {
   if (!limiter) return { allowed: true };
-  const { success } = await limiter.limit(key);
-  return success ? { allowed: true } : { allowed: false };
+  try {
+    const { success } = await limiter.limit(key);
+    return success ? { allowed: true } : { allowed: false };
+  } catch {
+    // ponytail: fail open on Upstash outage/quota — edge proxy must not brick the site
+    return { allowed: true };
+  }
 }
