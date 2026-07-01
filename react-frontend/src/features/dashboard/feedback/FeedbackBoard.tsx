@@ -245,8 +245,3 @@ export function FeedbackHeader() {
     </header>
   );
 }
-
-/** @deprecated Use FeedbackPageClient */
-export function FeedbackClient() {
-  return <FeedbackBoard />;
-}

@@ -1,8 +1,10 @@
-"use client";
 
+import { useNavigate } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
+import { usePostHog } from "@posthog/react";
+import { capturePostAction } from "@/lib/posthog-events";
 import { useState } from "react";
-import { useRouter } from "@/lib/router";
-import { deletePost } from "@/actions/posts";
+import { deletePost } from "@/api/posts";
 
 export function PostCardDeleteButton({
   postId,
@@ -14,7 +16,9 @@ export function PostCardDeleteButton({
   /** e.g. "Cancel" for scheduled posts; default "Delete" */
   buttonLabel?: string;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
+  const posthog = usePostHog();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -34,8 +38,13 @@ export function PostCardDeleteButton({
     const result = await deletePost(postId);
     setLoading(false);
     if (result.success) {
+      capturePostAction(
+        posthog,
+        isScheduled ? "post_cancelled" : "post_deleted",
+        { post_status: status ?? "unknown" },
+      );
       setOpen(false);
-      router.refresh();
+      invalidateQueries();
     }
   };
 

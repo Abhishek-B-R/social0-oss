@@ -1,4 +1,3 @@
-"use client";
 
 /** Skeleton for the connected-accounts grid while loading client-side. */
 export function AccountsGridSkeleton() {

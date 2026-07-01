@@ -1,4 +1,3 @@
-"use client";
 
 import { getPlatformIcon } from "@/lib/platform-icons";
 import { cn } from "@/lib/utils";

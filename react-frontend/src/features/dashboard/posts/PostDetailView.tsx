@@ -1,10 +1,10 @@
-"use client";
 
+import { useNavigate } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import type { ComponentType } from "react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/AppLink";
 import AppImage from "@/components/AppImage";
-import { useRouter } from "@/lib/router";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { PublishButton } from "./PublishButton";
@@ -30,7 +30,7 @@ import DocsInfoIcon from "@/components/info-icon";
 import {
   loadPostDetailCoreData,
   loadPostDetailMediaData,
-} from "@/actions/dashboard-data";
+} from "@/api/dashboard-data";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 
 const TYPE_ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
@@ -159,8 +159,9 @@ const DISPLAY_TYPE_TO_SLUG: Record<string, string> = {
   Collection: "collection",
 };
 
-export function PostDetailPageClient({ postId }: { postId: string }) {
-  const router = useRouter();
+export function PostDetailView({ postId }: { postId: string }) {
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
   const [core, setCore] = useState<CoreData | null>(null);
   const [coreLoading, setCoreLoading] = useState(true);
   const [coreError, setCoreError] = useState<string | null>(null);
@@ -175,11 +176,11 @@ export function PostDetailPageClient({ postId }: { postId: string }) {
       if (cancelled) return;
       if (!result.ok) {
         if (result.error === "Unauthorized") {
-          router.replace("/");
+          navigate("/");
           return;
         }
         if (result.error === "NotFound") {
-          router.replace("/dashboard/posts");
+          navigate("/dashboard/posts", { replace: true });
           return;
         }
         setCoreError(result.error);
@@ -192,7 +193,7 @@ export function PostDetailPageClient({ postId }: { postId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [postId, router]);
+  }, [postId, navigate, invalidateQueries]);
 
   useEffect(() => {
     let cancelled = false;
@@ -201,7 +202,7 @@ export function PostDetailPageClient({ postId }: { postId: string }) {
       if (cancelled) return;
       if (!result.ok) {
         if (result.error === "Unauthorized") {
-          router.replace("/");
+          navigate("/");
           return;
         }
         setMediaError(result.error);
@@ -214,7 +215,7 @@ export function PostDetailPageClient({ postId }: { postId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [postId, router]);
+  }, [postId, navigate, invalidateQueries]);
 
   const partsWithMedia = useMemo(
     () => (core ? getThreadPartsWithMedia(core.post) : []),
@@ -230,8 +231,8 @@ export function PostDetailPageClient({ postId }: { postId: string }) {
     if (!core) return;
     if (core.post.status !== "draft") return;
     if (mediaLoading) return;
-    router.replace(`/dashboard/create/${slug}?draft=${postId}`);
-  }, [core, mediaLoading, postId, router, slug]);
+    navigate(`/dashboard/create/${slug}?draft=${postId}`, { replace: true });
+  }, [core, mediaLoading, postId, navigate, slug]);
 
   if (coreLoading) {
     return <DashboardPageSkeleton message="Loading post details..." />;

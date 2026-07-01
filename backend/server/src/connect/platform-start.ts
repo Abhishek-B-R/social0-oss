@@ -1,14 +1,14 @@
 import { auth } from "../lib/auth.js";
 import { PLATFORM_OAUTH_CONFIG, Platform } from "../lib/platforms.js";
 import { env } from "../lib/env.js";
-import { headers, cookies } from "../lib/shim/request-cookies.js";
+import { headers, cookies } from "../lib/http/request-cookies.js";
 import { encrypt } from "../lib/encryption.js";
 import { appUrlForPath, getConnectCallbackBaseUrl } from "../lib/app-url.js";
 import crypto from "crypto";
 import { db } from "../db/index.js";
 import { verification, connectedAccounts } from "../db/schema.js";
 import { and, eq } from "drizzle-orm";
-import { AppRequest, RouteResponse } from "../lib/shim/http.js";
+import { AppRequest, RouteResponse } from "../lib/http/http.js";
 import { TwitterApi } from "twitter-api-v2";
 import { oauthLimiter, enforceRateLimit } from "../lib/ratelimit.js";
 import {

@@ -12,8 +12,8 @@ import { sanitizeReturnToPath } from "../lib/safe-return-to.js";
 import crypto from "crypto";
 import { getConnectCallbackBaseUrl } from "../lib/app-url.js";
 import { safeRedirect, rethrowRouteRedirect } from "../lib/redirect.js";
-import { AppRequest } from "../lib/shim/http.js";
-import { cookies } from "../lib/shim/request-cookies.js";
+import { AppRequest } from "../lib/http/http.js";
+import { cookies } from "../lib/http/request-cookies.js";
 import OAuth from "oauth-1.0a";
 import { TwitterApi } from "twitter-api-v2";
 import {

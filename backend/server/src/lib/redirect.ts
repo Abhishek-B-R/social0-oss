@@ -1,5 +1,5 @@
 import { appUrlForPath } from "./app-url.js";
-import { redirect } from "./shim/route-redirect.js";
+import { redirect } from "./http/route-redirect.js";
 import { sanitizeReturnToPath } from "./safe-return-to.js";
 
 /** Redirect only to a safe in-app path on the frontend origin. */

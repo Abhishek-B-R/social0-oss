@@ -13,11 +13,11 @@ import {
   DOCS_VIDEO_POST_TYPE_URL,
 } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
-import { CreatePostWithAccountsClient } from "@/features/dashboard/create/CreatePostWithAccountsClient";
+import { CreatePostWithAccounts } from "@/features/dashboard/create/CreatePostWithAccounts";
 import { useSession } from "@/lib/auth-client";
 import { useIsGuest } from "@/lib/use-is-guest";
 import { rpc } from "@/lib/rpc";
-import { getUserSettingsSnapshot } from "@/actions/settings";
+import { getUserSettingsSnapshot } from "@/api/settings";
 
 export function CreateTypePage() {
   const { type: typeSlug = "" } = useParams();
@@ -83,7 +83,7 @@ export function CreateTypePage() {
         </h2>
         <DocsInfoIcon url={url} />
       </div>
-      <CreatePostWithAccountsClient
+      <CreatePostWithAccounts
         contentTypeSlug={contentType.slug as "text" | "image" | "video" | "threads" | "collection"}
         supportedPlatforms={[...contentType.platforms]}
         use24HourTimeFormat={settings?.use24HourTimeFormat ?? false}

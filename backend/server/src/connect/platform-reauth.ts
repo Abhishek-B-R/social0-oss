@@ -2,8 +2,8 @@ import { auth } from "../lib/auth.js";
 import { db } from "../db/index.js";
 import { connectedAccounts } from "../db/schema.js";
 import { and, eq } from "drizzle-orm";
-import { headers } from "../lib/shim/request-cookies.js";
-import { AppRequest, RouteResponse } from "../lib/shim/http.js";
+import { headers } from "../lib/http/request-cookies.js";
+import { AppRequest, RouteResponse } from "../lib/http/http.js";
 import { appUrlForPath, getConnectCallbackBaseUrl } from "../lib/app-url.js";
 import { enforceRateLimit, oauthLimiter } from "../lib/ratelimit.js";
 

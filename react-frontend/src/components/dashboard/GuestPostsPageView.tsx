@@ -1,4 +1,3 @@
-"use client";
 
 import { GuestSignInPrompt } from "./GuestSignInPrompt";
 

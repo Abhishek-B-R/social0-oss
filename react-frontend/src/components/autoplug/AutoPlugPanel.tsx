@@ -1,4 +1,3 @@
-"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { AccountAvatar } from "@/components/AccountAvatar";

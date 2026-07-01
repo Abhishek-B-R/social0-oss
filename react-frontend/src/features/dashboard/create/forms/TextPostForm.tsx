@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-"use client";
-
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
-import { useRouter, useSearchParams } from "@/lib/router";
+import { usePostHog } from "@posthog/react";
+import { capturePostLifecycle } from "@/lib/posthog-events";
 import {
   freePublishBlockReason,
   getFreePostsRemaining,
@@ -19,16 +19,13 @@ import {
   updateAndPublish,
   updatePost,
   type PublishMode,
-} from "@/actions/posts";
-import { getPostPublicationList } from "@/actions/publish";
+} from "@/api/posts";
+import { getPostPublicationList } from "@/api/publish";
 import {
   sortBySlowPlatformsLast,
   publishPostWithParallelProgress,
 } from "@/lib/publish-order";
-import {
-  createAutoPlug,
-  createResurfaceSchedule,
-} from "@/actions/resurface";
+import { createAutoPlug, createResurfaceSchedule } from "@/api/resurface";
 import {
   useRememberedAccounts,
   useApplyRememberedSelectionWhenReady,
@@ -115,7 +112,9 @@ export function TextPostForm({
   freePostsUsed?: number;
   isGuest?: boolean;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
+  const posthog = usePostHog();
   const formRef = useRef<HTMLFormElement>(null);
   const intendedModeRef = useRef<PublishMode | null>(null);
   const intendedQueueSlotIdRef = useRef<string | null>(null);
@@ -136,6 +135,7 @@ export function TextPostForm({
   });
   const [mode, setMode] = useState<PublishMode>("now");
   const modeRef = useRef(mode);
+  // eslint-disable-next-line react-hooks/refs
   modeRef.current = mode;
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
@@ -177,7 +177,7 @@ export function TextPostForm({
   const [accountCaptionsState, setAccountCaptionsState] = useState<
     Record<string, AccountCaptionState>
   >({});
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -260,7 +260,10 @@ export function TextPostForm({
         setScheduledAt(
           scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null,
         );
-        const scheduledMeta = scheduled.metadata as Record<string, unknown> | null;
+        const scheduledMeta = scheduled.metadata as Record<
+          string,
+          unknown
+        > | null;
         if (scheduledMeta?.x && typeof scheduledMeta.x === "object") {
           const x = scheduledMeta.x as Record<string, unknown>;
           setXPostSettings({
@@ -332,6 +335,7 @@ export function TextPostForm({
     const payload = consumeComposerPayload();
     if (!payload) return;
     if (payload.text) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setContent((prev) => (prev ? prev : payload.text));
     }
     return () => {
@@ -384,6 +388,7 @@ export function TextPostForm({
     if (!rememberAutoFeatures) return;
     if (hasRestoredAutoFeaturesRef.current) return;
     const { autoRepostConfig, autoPlugConfig } = getAutoFeaturesInitialState();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (autoRepostConfig) setResurfaceConfig(autoRepostConfig);
     if (autoPlugConfig) setAutoPlugConfig(autoPlugConfig);
     hasRestoredAutoFeaturesRef.current = true;
@@ -452,6 +457,7 @@ export function TextPostForm({
     e.preventDefault();
     toast.dismiss();
     if (isGuest) {
+      // eslint-disable-next-line react-hooks/immutability
       window.location.href = signInUrl(
         window.location.pathname + window.location.search,
       );
@@ -531,7 +537,8 @@ export function TextPostForm({
       if (result.success) {
         setScheduledPostId(initialScheduledId);
         setOverlayPhase("done");
-        router.refresh();
+        capturePostLifecycle(posthog, "post_scheduled", "text", accountIds.length);
+        invalidateQueries();
       } else {
         setOverlayPhase("idle");
         toast.error(result.error);
@@ -552,7 +559,8 @@ export function TextPostForm({
         if (result.success) {
           setDraftSavedPostId(initialDraftId);
           setOverlayPhase("done");
-          router.refresh();
+          capturePostLifecycle(posthog, "post_drafted", "text", accountIds.length);
+          invalidateQueries();
         } else {
           setOverlayPhase("idle");
           toast.error(result.error);
@@ -575,8 +583,8 @@ export function TextPostForm({
         }
         if (result.allPlatformsFailed && result.postId) {
           setOverlayPhase("idle");
-          router.push(`/dashboard/posts/${result.postId}`);
-          router.refresh();
+          navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+          invalidateQueries();
           return;
         }
         if (!result.postId) {
@@ -587,7 +595,7 @@ export function TextPostForm({
         let list: Awaited<ReturnType<typeof getPostPublicationList>> = [];
         try {
           list = await getPostPublicationList(result.postId);
-        } catch (_) {
+        } catch {
           // Proceed with empty list so publish still runs (e.g. after ETIMEDOUT)
         }
         if (list.length === 0) {
@@ -601,8 +609,8 @@ export function TextPostForm({
               .length ?? 0;
           if (succeededCount === 0) {
             setOverlayPhase("idle");
-            router.push(`/dashboard/posts/${result.postId}`);
-            router.refresh();
+            navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+            invalidateQueries();
             return;
           }
           setOverlayPhase("done");
@@ -639,7 +647,9 @@ export function TextPostForm({
           (rows) => {
             setPlatformStatuses((prev) =>
               prev.map((p) => {
-                const row = rows.find((r) => r.connectedAccountId === p.accountId);
+                const row = rows.find(
+                  (r) => r.connectedAccountId === p.accountId,
+                );
                 if (!row) return p;
                 const status: PlatformStatus =
                   row.publicationStatus === "published"
@@ -678,9 +688,10 @@ export function TextPostForm({
           );
         }
         await setupAutoPlug(result.postId);
+        capturePostLifecycle(posthog, "post_published", "text", accountIds.length);
         setOverlayPhase("done");
-        router.push(`/dashboard/posts/${result.postId}`);
-        router.refresh();
+        navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+        invalidateQueries();
         return;
       }
       if (effectiveMode === "scheduled") {
@@ -700,7 +711,7 @@ export function TextPostForm({
         if (result.success) {
           setScheduledPostId(initialDraftId);
           setOverlayPhase("done");
-          router.refresh();
+          invalidateQueries();
         } else {
           setOverlayPhase("idle");
           toast.error(result.error);
@@ -728,7 +739,7 @@ export function TextPostForm({
         let list: Awaited<ReturnType<typeof getPostPublicationList>> = [];
         try {
           list = await getPostPublicationList(result.postId);
-        } catch (_) {
+        } catch {
           // Proceed with empty list so publish still runs (e.g. after ETIMEDOUT)
         }
         if (list.length === 0) {
@@ -742,8 +753,8 @@ export function TextPostForm({
               .length ?? 0;
           if (succeededCount === 0) {
             setOverlayPhase("idle");
-            router.push(`/dashboard/posts/${result.postId}`);
-            router.refresh();
+            navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+            invalidateQueries();
             return;
           }
           setOverlayPhase("done");
@@ -780,7 +791,9 @@ export function TextPostForm({
           (rows) => {
             setPlatformStatuses((prev) =>
               prev.map((p) => {
-                const row = rows.find((r) => r.connectedAccountId === p.accountId);
+                const row = rows.find(
+                  (r) => r.connectedAccountId === p.accountId,
+                );
                 if (!row) return p;
                 const status: PlatformStatus =
                   row.publicationStatus === "published"
@@ -819,20 +832,23 @@ export function TextPostForm({
           );
         }
         await setupAutoPlug(result.postId);
+        capturePostLifecycle(posthog, "post_published", "text", accountIds.length);
         setOverlayPhase("done");
-        router.push(`/dashboard/posts/${result.postId}`);
-        router.refresh();
+        navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+        invalidateQueries();
         return;
       }
       if (effectiveMode === "draft" && result.postId) {
         setDraftSavedPostId(result.postId);
         setOverlayPhase("done");
+        capturePostLifecycle(posthog, "post_drafted", "text", accountIds.length);
       }
       if (effectiveMode === "scheduled" && result.postId) {
         setScheduledPostId(result.postId);
         setOverlayPhase("done");
+        capturePostLifecycle(posthog, "post_scheduled", "text", accountIds.length);
       }
-      router.refresh();
+      invalidateQueries();
     } else {
       setOverlayPhase("idle");
       toast.error(result.error);
@@ -843,8 +859,8 @@ export function TextPostForm({
     if (!initialDraftId) return;
     const result = await deleteDraft(initialDraftId);
     if (result.success) {
-      router.push("/dashboard/posts/drafts");
-      router.refresh();
+      navigate("/dashboard/posts/drafts", { replace: true });
+      invalidateQueries();
     } else {
       toast.error(result.error);
     }
@@ -921,8 +937,10 @@ export function TextPostForm({
               platformStatuses.length > 0 &&
               platformStatuses.every((p) => p.status === "failed");
             if (allFailed && publishedPostId) {
-              router.push(`/dashboard/posts/${publishedPostId}`);
-              router.refresh();
+              navigate(`/dashboard/posts/${publishedPostId}`, {
+                replace: true,
+              });
+              invalidateQueries();
             } else {
               setScheduledPostId(null);
               setDraftSavedPostId(null);
@@ -1299,7 +1317,7 @@ export function TextPostForm({
                     username={previewAccount?.platformUsername}
                     platform={previewAccount?.platform}
                     size="md"
-                    className="!h-10 !w-10"
+                    className="h-10! w-10!"
                   />
                 </div>
                 <div className="min-w-0 flex-1 max-h-[320px] overflow-y-auto">
@@ -1309,7 +1327,6 @@ export function TextPostForm({
                       : (previewAccount?.platform ?? "Account")}
                     {previewAccount?.platform === "twitter_x" &&
                       previewAccount?.isTwitterPremium && (
-                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src="/icons/twitter-premium.svg"
                           alt=""

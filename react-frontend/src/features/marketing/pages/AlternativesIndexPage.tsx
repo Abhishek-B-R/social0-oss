@@ -1,6 +1,6 @@
+import { Navigate } from "react-router-dom";
 import type { PageMetadata } from "@/lib/seo";
 import Link from "@/components/AppLink";
-import { notFound } from "@/lib/router";
 import { PSEO_PAGES_ENABLED } from "@/lib/content/pseo-enabled";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { PseoJsonLd } from "@/components/seo/PseoJsonLd";
@@ -25,7 +25,7 @@ export const metadata: PageMetadata = buildPageMetadata({
 });
 
 export default function AlternativesIndexPage() {
-  if (!PSEO_PAGES_ENABLED) notFound();
+  if (!PSEO_PAGES_ENABLED) return <Navigate to="/404" replace />;
 
   const jsonLd = [
     buildWebPageJsonLd({

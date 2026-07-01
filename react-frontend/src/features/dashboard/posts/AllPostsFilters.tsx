@@ -1,6 +1,6 @@
-"use client";
 
-import { useRouter, useSearchParams } from "@/lib/router";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { Filter, ChevronDown } from "lucide-react";
 
 type Option = { value: string; label: string };
@@ -25,8 +25,9 @@ export function AllPostsFilters({
   accountOptions: Option[];
   basePath?: string;
 }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
+  const [searchParams] = useSearchParams();
 
   const sort = searchParams.get("sort") || "newest";
   const platform = searchParams.get("platform") || "all";
@@ -38,7 +39,7 @@ export function AllPostsFilters({
     if (value === "all" || !value) next.delete(key);
     else next.set(key, value);
     next.delete("page"); // reset to page 1 when filters change
-    router.push(`${basePath}?${next.toString()}`);
+    navigate(`${basePath}?${next.toString()}`);
   };
 
   const selectClass =

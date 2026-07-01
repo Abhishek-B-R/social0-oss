@@ -2,8 +2,8 @@ import { auth } from "../../lib/auth.js";
 import { db } from "../../db/index.js";
 import { verification } from "../../db/schema.js";
 import { sendEmail } from "../../lib/mail.js";
-import { headers } from "../../lib/shim/request-cookies.js";
-import { RouteResponse } from "../../lib/shim/http.js";
+import { headers } from "../../lib/http/request-cookies.js";
+import { RouteResponse } from "../../lib/http/http.js";
 import { randomUUID, randomInt } from "crypto";
 import { eq } from "drizzle-orm";
 import {

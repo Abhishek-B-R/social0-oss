@@ -1,16 +1,17 @@
-"use client";
 
+import { useNavigate } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useEffect, useState } from "react";
-import { useRouter } from "@/lib/router";
-import { loadCalendarPageData } from "@/actions/dashboard-data";
-import { CalendarClient, type PostForCalendar } from "./CalendarClient";
+import { loadCalendarPageData } from "@/api/dashboard-data";
+import { CalendarGrid, type PostForCalendar } from "./CalendarGrid";
 import { DOCS_CALENDAR_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 
-export function CalendarPageClient() {
-  const router = useRouter();
+export function CalendarPage() {
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(false);
@@ -43,7 +44,7 @@ export function CalendarPageClient() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [invalidateQueries]);
 
   if (loading && !isGuest) {
     return <DashboardPageSkeleton message="Loading calendar..." />;
@@ -82,7 +83,7 @@ export function CalendarPageClient() {
         </p>
       </div>
       <div className="mt-4 flex min-h-0 flex-1 flex-col sm:mt-6">
-        <CalendarClient
+        <CalendarGrid
           posts={data.posts}
           initialMonth={data.initialMonth}
           use24HourTimeFormat={data.use24HourTimeFormat}

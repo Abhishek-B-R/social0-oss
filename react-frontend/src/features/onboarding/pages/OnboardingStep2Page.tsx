@@ -1,11 +1,11 @@
-"use client";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams, useRouter } from "@/lib/router";
 import { IconLoader2 } from "@tabler/icons-react";
 import confetti from "canvas-confetti";
-import { setOnboardingGoal } from "@/actions/onboarding";
+import { setOnboardingGoal } from "@/api/onboarding";
 import { DOCS_ONBOARDING_GOAL_URL } from "@/lib/docs-url";
 
 const GOALS = [
@@ -16,8 +16,9 @@ const GOALS = [
 ] as const;
 
 export default function OnboardingGoalPage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
   const paid = searchParams.get("paid") === "1";
   const [selected, setSelected] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -38,16 +39,16 @@ export default function OnboardingGoalPage() {
         setVerifying(false);
         if (hasPaidTier) {
           setPaymentVerified(true);
-          router.refresh();
+          invalidateQueries();
         } else {
-          router.replace("/onboarding?payment_failed=1");
+          navigate("/onboarding?payment_failed=1", { replace: true });
         }
       })
       .catch(() => {
         setVerifying(false);
-        router.replace("/onboarding?payment_failed=1");
+        navigate("/onboarding?payment_failed=1", { replace: true });
       });
-  }, [paid, router]);
+  }, [paid, navigate, invalidateQueries]);
 
   useEffect(() => {
     if (paid && paymentVerified) {
@@ -79,7 +80,7 @@ export default function OnboardingGoalPage() {
     setSaving(true);
     try {
       await setOnboardingGoal(selected);
-      router.push("/onboarding/step3");
+      navigate("/onboarding/step3", { replace: true });
     } finally {
       setSaving(false);
     }
@@ -157,7 +158,7 @@ export default function OnboardingGoalPage() {
         </button>
         <button
           type="button"
-          onClick={() => router.push("/onboarding/step3")}
+          onClick={() => navigate("/onboarding/step3")}
           className="text-sm text-muted-foreground hover:text-foreground underline"
         >
           Skip for now

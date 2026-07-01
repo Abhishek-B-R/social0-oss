@@ -1,6 +1,6 @@
 
 import { auth } from "@/lib/auth";
-import { headers } from "../../lib/shim/request-cookies.js";
+import { headers } from "../lib/http/request-cookies.js";
 import {
   getPostsListData,
   hasPaymentFailedPosts,
@@ -11,7 +11,7 @@ import {
 import type { PublicationRow, StatusFilter } from "@/lib/posts-list/posts-list-types";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { getPlanLimits } from "@/lib/plans";
-import { getUserSettingsSnapshot } from "@/bff/actions/settings";
+import { getUserSettingsSnapshot } from "@/services/settings";
 import type { SubscriptionState } from "@/lib/subscription";
 import {
   checkAccountLimits,

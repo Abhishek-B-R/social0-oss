@@ -1,11 +1,11 @@
-"use client";
+import { useNavigate } from "react-router-dom";
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "@/lib/router";
+import { usePostHog } from "@posthog/react";
 import Link from "@/components/AppLink";
 import { PLATFORMS } from "@/lib/platforms";
-import { setOnboardingCompleted } from "@/actions/onboarding";
+import { setOnboardingCompleted } from "@/api/onboarding";
 import { getPlatformIcon } from "@/lib/platform-icons";
 import { getPlanLimits } from "@/lib/plans";
 import { ConnectPlatformButton } from "@/components/dashboard/ConnectPlatformButton";
@@ -36,7 +36,7 @@ type Account = {
   isActive: boolean | null;
 };
 
-type ConnectStepClientProps = {
+type ConnectStepProps = {
   initialAccounts?: Account[];
   /** Plan limit for connected accounts (e.g. 5 for starter, 15 for growth). */
   limitTotal: number;
@@ -44,15 +44,18 @@ type ConnectStepClientProps = {
   hasUsedTrial: boolean;
 };
 
-export function ConnectStepClient({
+export function ConnectStep({
   initialAccounts = [],
   limitTotal,
-  hasUsedTrial,
-}: ConnectStepClientProps) {
-  const router = useRouter();
+}: ConnectStepProps) {
+  const navigate = useNavigate();
+  const posthog = usePostHog();
   const [skipping, setSkipping] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>(initialAccounts);
   const pollStopped = useRef(initialAccounts.length >= 1);
+  const prevActiveCountRef = useRef(
+    initialAccounts.filter((a) => a.isActive !== false).length,
+  );
 
   const activeAccounts = accounts.filter((a) => a.isActive !== false);
   const hasConnected = activeAccounts.length > 0;
@@ -85,11 +88,22 @@ export function ConnectStepClient({
     if (activeAccounts.length >= 1) pollStopped.current = true;
   }, [activeAccounts.length]);
 
+  useEffect(() => {
+    const prev = prevActiveCountRef.current;
+    if (activeAccounts.length > prev) {
+      const newAccounts = activeAccounts.slice(prev);
+      newAccounts.forEach((account) => {
+        posthog?.capture("account_connected", { platform: account.platform });
+      });
+    }
+    prevActiveCountRef.current = activeAccounts.length;
+  }, [activeAccounts, posthog]);
+
   async function handleSkip() {
     setSkipping(true);
     try {
       await setOnboardingCompleted();
-      router.push("/dashboard");
+      navigate("/dashboard");
     } finally {
       setSkipping(false);
     }
@@ -106,7 +120,8 @@ export function ConnectStepClient({
         </p>
         {limitTotal > 0 && limitTotal <= 3 && (
           <p className="text-center text-xs text-muted-foreground mb-6">
-            Free plan: up to {limitTotal} accounts · {getPlanLimits("free").maxFreePosts} posts included
+            Free plan: up to {limitTotal} accounts ·{" "}
+            {getPlanLimits("free").maxFreePosts} posts included
           </p>
         )}
         {(!limitTotal || limitTotal > 3) && <div className="mb-6" />}

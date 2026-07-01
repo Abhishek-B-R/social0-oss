@@ -1,4 +1,4 @@
-import { RouteResponse } from "../../lib/shim/http.js";
+import { RouteResponse } from "../../lib/http/http.js";
 import { env } from "../../lib/env.js";
 
 

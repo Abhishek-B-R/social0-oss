@@ -7,12 +7,12 @@ import {
   rpcLimiter,
   rpcMutationLimiter,
 } from "../../lib/ratelimit.js";
-import * as dashboardData from "../../bff/actions/dashboard-data.js";
-import * as onboarding from "../../bff/actions/onboarding.js";
-import * as posts from "../../bff/actions/posts.js";
-import * as publish from "../../bff/actions/publish.js";
-import * as resurface from "../../bff/actions/resurface.js";
-import * as settings from "../../bff/actions/settings.js";
+import * as dashboardData from "../../services/dashboard-data.js";
+import * as onboarding from "../../services/onboarding.js";
+import * as posts from "../../services/posts.js";
+import * as publish from "../../services/publish.js";
+import * as resurface from "../../services/resurface.js";
+import * as settings from "../../services/settings.js";
 
 type RpcHandler = (...args: any[]) => Promise<unknown>;
 

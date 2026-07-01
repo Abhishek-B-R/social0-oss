@@ -1,5 +1,5 @@
-import type { PublishOptions, PublishResult } from "@/actions/publish";
-import { getPostPublicationList, publishPost } from "@/actions/publish";
+import type { PublishOptions, PublishResult } from "@/api/publish";
+import { getPostPublicationList, publishPost } from "@/api/publish";
 import type {
   PlatformResult,
   PlatformStatus,
@@ -45,7 +45,7 @@ export type PublicationProgressRow = PublicationListRow & {
 };
 
 const PROGRESS_POLL_MS = 1200;
-/** Client safety net when a server action hangs (e.g. platform API stall). */
+/** Client safety net when an RPC call hangs (e.g. platform API stall). */
 const PUBLISH_SERVER_ACTION_TIMEOUT_MS = 90_000;
 const POLL_UNTIL_DONE_MAX_MS = 90_000;
 
@@ -148,7 +148,7 @@ export async function pollPublicationProgressUntilDone(
 }
 
 /**
- * One server action - executePublish runs all platforms in parallel via
+ * Single RPC publish call — executePublish runs all platforms in parallel via
  * Promise.allSettled. Polls publication rows for per-platform progress UI.
  */
 export async function publishPostWithParallelProgress(

@@ -1,7 +1,6 @@
-"use client";
 
+import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
-import { usePathname } from "@/lib/router";
 import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -32,7 +31,7 @@ export function TiktokCreateButton({
   label = "Create",
   "aria-label": ariaLabel,
 }: CreateButtonProps) {
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
   const [navPending, setNavPending] = useState(false);
   useEffect(() => {
     setNavPending(false);

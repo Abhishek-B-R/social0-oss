@@ -1,7 +1,6 @@
-"use client";
+import { useSearchParams } from "react-router-dom";
 import { fetchApi } from "@/lib/fetch-api";
 
-import { useSearchParams } from "@/lib/router";
 import { useCallback, useEffect, useState } from "react";
 import Link from "@/components/AppLink";
 import { toast } from "sonner";
@@ -21,7 +20,7 @@ type CompanyPage = {
 };
 
 export default function LinkedInSelectPage() {
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const returnTo =
     sanitizeReturnToPath(searchParams.get("returnTo")) ??

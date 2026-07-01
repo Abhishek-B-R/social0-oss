@@ -9,8 +9,8 @@ import {
   queuedPosts,
 } from "@/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
-import { headers } from "../../lib/shim/request-cookies.js";
-import { enqueuePublishPostStandalone } from "../../services/enqueue.js";
+import { headers } from "../lib/http/request-cookies.js";
+import { enqueuePublishPostStandalone } from "./enqueue.js";
 import { userOwnsQueueSlot } from "@/lib/queue-slot-validation";
 import {
   getPostForEdit,
@@ -26,7 +26,7 @@ import type {
   AutoPlugConfig,
   AutoResurfaceConfig,
 } from "@/lib/auto-features-types";
-import { getUserSettingsSnapshot } from "@/bff/actions/settings";
+import { getUserSettingsSnapshot } from "@/services/settings";
 
 /**
  * Free-tier quota: exactly one free post is consumed when the user hits

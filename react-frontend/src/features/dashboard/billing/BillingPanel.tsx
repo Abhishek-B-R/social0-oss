@@ -1,8 +1,9 @@
-"use client";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "@/lib/router";
+import { usePostHog } from "@posthog/react";
 import { IconLoader2, IconX } from "@tabler/icons-react";
 import { toast } from "sonner";
 import type { SubscriptionState } from "@/lib/subscription";
@@ -127,7 +128,7 @@ const GROWTH_BILLING_FEATURES = [
 ];
 const POLL_MAX_ATTEMPTS = 45; // ~1.5 min
 
-type BillingClientProps = {
+type BillingPanelProps = {
   subscription: SubscriptionState;
   accountLimit: AccountLimitResult;
   justSubscribed?: boolean;
@@ -139,15 +140,17 @@ function redirectToComposer() {
   window.location.href = "/dashboard/composer";
 }
 
-export function BillingClient({
+export function BillingPanel({
   subscription,
   accountLimit,
   justSubscribed = false,
   dateFormat = "dd/MM/yyyy",
   timezone,
-}: BillingClientProps) {
-  const searchParams = useSearchParams();
-  const router = useRouter();
+}: BillingPanelProps) {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
+  const posthog = usePostHog();
   const [verifying, setVerifying] = useState(false);
   const [loading, setLoading] = useState<
     "portal" | "pause" | "cancel" | "undoCancel" | null
@@ -185,13 +188,14 @@ export function BillingClient({
     const status = searchParams.get("status");
 
     if (success === "1" && status === "failed") {
-      router.replace("/dashboard/billing");
+      navigate("/dashboard/billing", { replace: true });
       toast.error("Payment failed. Please try again.");
       return;
     }
 
     if (success !== "1") return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVerifying(true);
     let attempts = 0;
     const maxAttempts = 3;
@@ -203,7 +207,7 @@ export function BillingClient({
         method: "POST",
         credentials: "include",
       });
-      router.refresh();
+      invalidateQueries();
 
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
@@ -211,12 +215,12 @@ export function BillingClient({
         setTimeout(poll, 2000);
       } else {
         setVerifying(false);
-        router.replace("/dashboard/billing");
+        navigate("/dashboard/billing", { replace: true });
       }
     };
 
     poll();
-  }, [searchParams, router]);
+  }, [searchParams, navigate]);
 
   useEffect(() => {
     if (!waitingForWebhook) return;
@@ -369,12 +373,12 @@ export function BillingClient({
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
         setPauseOpen(false);
-        router.refresh();
+        invalidateQueries();
         return;
       }
       if (data.error === "not_supported") {
         setPauseOpen(false);
-        router.push("/dashboard/feedback");
+        navigate("/dashboard/feedback");
         return;
       }
       toast.error(
@@ -402,13 +406,13 @@ export function BillingClient({
           toast.success(
             "Subscription cancelled. You've been moved to the free plan.",
           );
-          router.refresh();
-          router.replace("/dashboard/billing");
+          invalidateQueries();
+          navigate("/dashboard/billing", { replace: true });
         } else {
           toast.info(
             `You'll keep full access until ${renewalDate ?? "your period end"}. No further charges.`,
           );
-          router.refresh();
+          invalidateQueries();
         }
         return;
       }
@@ -433,7 +437,7 @@ export function BillingClient({
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
         toast.success("Cancellation undone. Your subscription will continue.");
-        router.refresh();
+        invalidateQueries();
         return;
       }
       toast.error(
@@ -469,7 +473,7 @@ export function BillingClient({
         toast.info(
           `Downgrade scheduled. You'll move to ${targetDowngradePlan === "starter" ? "Starter" : "Growth"} on ${renewalDate ?? "your renewal date"}.`,
         );
-        router.refresh();
+        invalidateQueries();
         return;
       }
       if (res.status === 404 && data.error === "no_active_subscription") {
@@ -495,7 +499,7 @@ export function BillingClient({
       });
       if (res.ok) {
         toast.success("Downgrade cancelled.");
-        router.refresh();
+        invalidateQueries();
       } else {
         const data = await res.json().catch(() => ({}));
         toast.error(
@@ -511,6 +515,10 @@ export function BillingClient({
   };
 
   const handleUpgradePlan = async (plan: "starter" | "growth") => {
+    posthog?.capture("plan_upgrade_started", {
+      plan,
+      current_plan: subscription.tier,
+    });
     setLoadingChangePlan(plan);
     try {
       // For Starter → Growth, show preview first so user sees exact charge before confirming.
@@ -755,7 +763,12 @@ export function BillingClient({
           {subscription.tier !== "free" && !subscription.cancelAtPeriodEnd && (
             <Button
               variant="outline"
-              onClick={() => setCancelStep(1)}
+              onClick={() => {
+                posthog?.capture("plan_cancellation_started", {
+                  current_plan: subscription.tier,
+                });
+                setCancelStep(1);
+              }}
               disabled={loading !== null}
               className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
             >

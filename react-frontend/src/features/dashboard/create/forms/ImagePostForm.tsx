@@ -1,24 +1,26 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @next/next/no-img-element */
-"use client";
 
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
+import { usePostHog } from "@posthog/react";
+import { capturePostLifecycle } from "@/lib/posthog-events";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { useRouter, useSearchParams } from "@/lib/router";
 import {
   freePublishBlockReason,
   getFreePostsRemaining,
   isFreePublishBlocked,
 } from "@/lib/free-tier-publish";
 import { signInUrl } from "@/lib/sign-in-url";
-import { createPost, type PublishMode } from "@/actions/posts";
+import { createPost, type PublishMode } from "@/api/posts";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
-import { getPostPublicationList } from "@/actions/publish";
+import { getPostPublicationList } from "@/api/publish";
 import {
   sortBySlowPlatformsLast,
   publishPostWithParallelProgress,
 } from "@/lib/publish-order";
-import { createResurfaceSchedule, createAutoPlug } from "@/actions/resurface";
+import { createResurfaceSchedule, createAutoPlug } from "@/api/resurface";
 import {
   useRememberedAccounts,
   useApplyRememberedSelectionWhenReady,
@@ -137,8 +139,10 @@ export function ImagePostForm({
   freePostsUsed?: number;
   isGuest?: boolean;
 }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
+  const posthog = usePostHog();
+  const [searchParams] = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const captionTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -166,6 +170,7 @@ export function ImagePostForm({
   const [previewIndex, setPreviewIndex] = useState(0);
   const [mode, setMode] = useState<PublishMode>("now");
   const modeRef = useRef(mode);
+  // eslint-disable-next-line react-hooks/refs
   modeRef.current = mode;
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
@@ -318,7 +323,7 @@ export function ImagePostForm({
     let cancelled = false;
     (async () => {
       try {
-        const { getDraft } = await import("@/actions/posts");
+        const { getDraft } = await import("@/api/posts");
         const result = await getDraft(initialDraftId);
         if (cancelled) return;
         if (!result.success) {
@@ -421,7 +426,7 @@ export function ImagePostForm({
     let cancelled = false;
     (async () => {
       try {
-        const { getPostToEdit } = await import("@/actions/posts");
+        const { getPostToEdit } = await import("@/api/posts");
         const result = await getPostToEdit(initialEditId);
         if (cancelled) return;
         if (!result.success) {
@@ -523,7 +528,7 @@ export function ImagePostForm({
     let cancelled = false;
     (async () => {
       try {
-        const { getScheduledPost } = await import("@/actions/posts");
+        const { getScheduledPost } = await import("@/api/posts");
         const result = await getScheduledPost(initialScheduledId);
         if (cancelled) return;
         if (!result.success) {
@@ -697,11 +702,11 @@ export function ImagePostForm({
   const handleDeleteDraft = async () => {
     if (!initialDraftId) return;
     try {
-      const { deleteDraft } = await import("@/actions/posts");
+      const { deleteDraft } = await import("@/api/posts");
       const result = await deleteDraft(initialDraftId);
       if (result.success) {
-        router.push("/dashboard/posts/drafts");
-        router.refresh();
+        navigate("/dashboard/posts/drafts", { replace: true });
+        invalidateQueries();
       } else {
         toast.error(result.error);
       }
@@ -981,10 +986,101 @@ export function ImagePostForm({
     setDraggedIndex(null);
   };
 
+  const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
+  const previewAccount =
+    selectedAccounts.length > 0
+      ? selectedAccounts[selectedAccounts.length - 1]
+      : null;
+  const uniquePlatformsFromSelection = useMemo(
+    () => [...new Set(selectedAccounts.map((a) => a.platform))],
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
+    [selectedAccounts],
+  );
+  const showPlatformCaptionsSection = selectedIds.size >= 2;
+  const platformDisplayName = (platformId: string) =>
+    PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
+  const getPlatformCaptionPreview = (
+    platformId: string,
+    rawCaption: string,
+  ) => {
+    const trimmed = rawCaption.trim();
+    if (!trimmed) return "";
+    const platformAccounts = selectedAccounts.filter(
+      (account) => account.platform === platformId,
+    );
+    const limit =
+      platformAccounts.length > 0
+        ? Math.min(
+            ...platformAccounts.map((account) => getLimitForAccount(account)),
+          )
+        : getLimitForAccount({ platform: platformId, isTwitterPremium: false });
+    if (trimmed.length <= limit) return trimmed;
+    if (limit <= 3) return "...";
+    return `${trimmed.slice(0, limit - 3)}...`;
+  };
+  const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
+  const tiktokAccounts = selectedAccounts.filter(
+    (a) => a.platform === "tiktok",
+  );
+  const tiktokSettingsIncomplete =
+    hasTikTokSelected &&
+    tiktokAccounts.some((acc) => {
+      const s = tiktokSettings[acc.id] ?? defaultTiktokSettings;
+      return (s.privacy_level ?? "").trim() === "";
+    });
+  const hasPinterestSelected = selectedAccounts.some(
+    (a) => a.platform === "pinterest",
+  );
+  const hasXSelected = selectedAccounts.some((a) => a.platform === "twitter_x");
+  const pinterestAccounts = selectedAccounts.filter(
+    (a) => a.platform === "pinterest",
+  );
+  useEffect(() => {
+    if (!hasPinterestSelected) {
+      if (pinterestError) setPinterestError(null);
+      return;
+    }
+    if (
+      !hasMissingPinterestBoard(
+        pinterestAccounts,
+        pinterestSettingsByAccount,
+      ) &&
+      pinterestError
+    ) {
+      setPinterestError(null);
+    }
+  }, [
+    hasPinterestSelected,
+    pinterestAccounts,
+    pinterestSettingsByAccount,
+    pinterestError,
+  ]);
+
+  const hasTwitterXSelected = selectedAccounts.some(
+    (a) => a.platform === "twitter_x",
+  );
+  const setupAutoPlug = async (postId: string) => {
+    if (!autoPlugConfig) return true;
+    const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
+    // Stale config can linger (e.g. remembered settings) after X is deselected
+    if (!xAccount) return true;
+    const autoPlugResult = await createAutoPlug(
+      postId,
+      xAccount?.id ?? null,
+      autoPlugConfig,
+    );
+    if (!autoPlugResult.success) {
+      toast.error(autoPlugResult.error);
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     toast.dismiss();
     if (isGuest) {
+      // eslint-disable-next-line react-hooks/immutability
       window.location.href = signInUrl(
         window.location.pathname + window.location.search,
       );
@@ -1222,7 +1318,7 @@ export function ImagePostForm({
     }
 
     if (initialScheduledId && effectiveMode === "scheduled") {
-      const { updatePost } = await import("@/actions/posts");
+      const { updatePost } = await import("@/api/posts");
       const result = await updatePost(
         initialScheduledId,
         text,
@@ -1237,7 +1333,13 @@ export function ImagePostForm({
       if (result.success) {
         setScheduledPostId(initialScheduledId);
         setOverlayPhase("done");
-        router.refresh();
+        capturePostLifecycle(
+          posthog,
+          "post_scheduled",
+          "image",
+          accountIds.length,
+        );
+        invalidateQueries();
       } else {
         setOverlayPhase("idle");
         toast.error(result.error);
@@ -1247,7 +1349,7 @@ export function ImagePostForm({
 
     if (initialDraftId) {
       const { updateDraft, updateAndPublish, updatePost } =
-        await import("@/actions/posts");
+        await import("@/api/posts");
       if (effectiveMode === "draft") {
         const result = await updateDraft(
           initialDraftId,
@@ -1260,7 +1362,13 @@ export function ImagePostForm({
         if (result.success) {
           setDraftSavedPostId(initialDraftId);
           setOverlayPhase("done");
-          router.refresh();
+          capturePostLifecycle(
+            posthog,
+            "post_drafted",
+            "image",
+            accountIds.length,
+          );
+          invalidateQueries();
         } else {
           setOverlayPhase("idle");
           toast.error(result.error);
@@ -1283,13 +1391,13 @@ export function ImagePostForm({
         }
         if (result.allPlatformsFailed && result.postId) {
           setOverlayPhase("idle");
-          router.push(`/dashboard/posts/${result.postId}`);
-          router.refresh();
+          navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+          invalidateQueries();
           return;
         }
         setPublishedPostId(result.postId);
         setOverlayPhase("done");
-        router.refresh();
+        invalidateQueries();
         if (
           resurfaceConfig &&
           selectedAccounts.some((a) => a.platform === "twitter_x")
@@ -1303,6 +1411,12 @@ export function ImagePostForm({
           ).catch(() => {});
         }
         await setupAutoPlug(result.postId);
+        capturePostLifecycle(
+          posthog,
+          "post_published",
+          "image",
+          accountIds.length,
+        );
         return;
       }
       if (effectiveMode === "scheduled") {
@@ -1322,7 +1436,13 @@ export function ImagePostForm({
         if (result.success) {
           setScheduledPostId(initialDraftId);
           setOverlayPhase("done");
-          router.refresh();
+          capturePostLifecycle(
+            posthog,
+            "post_scheduled",
+            "image",
+            accountIds.length,
+          );
+          invalidateQueries();
         } else {
           setOverlayPhase("idle");
           toast.error(result.error);
@@ -1371,13 +1491,19 @@ export function ImagePostForm({
             .length ?? 0;
         if (succeededCount === 0) {
           setOverlayPhase("idle");
-          router.push(`/dashboard/posts/${result.postId}`);
-          router.refresh();
+          navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+          invalidateQueries();
           return;
         }
         setOverlayPhase("done");
-        router.push(`/dashboard/posts/${result.postId}`);
-        router.refresh();
+        capturePostLifecycle(
+          posthog,
+          "post_published",
+          "image",
+          accountIds.length,
+        );
+        navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+        invalidateQueries();
         return;
       }
       const orderedList = sortBySlowPlatformsLast(list);
@@ -1442,114 +1568,39 @@ export function ImagePostForm({
       }
       await setupAutoPlug(result.postId);
       setOverlayPhase("done");
-      router.push(`/dashboard/posts/${result.postId}`);
-      router.refresh();
+      capturePostLifecycle(
+        posthog,
+        "post_published",
+        "image",
+        accountIds.length,
+      );
+      navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+      invalidateQueries();
       return;
     }
     if (effectiveMode === "draft" && result.postId) {
       setDraftSavedPostId(result.postId);
       setOverlayPhase("done");
-      router.refresh();
+      capturePostLifecycle(posthog, "post_drafted", "image", accountIds.length);
+      invalidateQueries();
       return;
     }
     if (effectiveMode === "scheduled" && result.postId) {
       setScheduledPostId(result.postId);
       setOverlayPhase("done");
-      router.refresh();
+      capturePostLifecycle(
+        posthog,
+        "post_scheduled",
+        "image",
+        accountIds.length,
+      );
+      invalidateQueries();
       return;
     }
     setOverlayPhase("idle");
-    router.refresh();
+    invalidateQueries();
   };
 
-  const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
-  const previewAccount =
-    selectedAccounts.length > 0
-      ? selectedAccounts[selectedAccounts.length - 1]
-      : null;
-  const uniquePlatformsFromSelection = useMemo(
-    () => [...new Set(selectedAccounts.map((a) => a.platform))],
-    [selectedAccounts],
-  );
-  const showPlatformCaptionsSection = selectedIds.size >= 2;
-  const platformDisplayName = (platformId: string) =>
-    PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
-  const getPlatformCaptionPreview = (
-    platformId: string,
-    rawCaption: string,
-  ) => {
-    const trimmed = rawCaption.trim();
-    if (!trimmed) return "";
-    const platformAccounts = selectedAccounts.filter(
-      (account) => account.platform === platformId,
-    );
-    const limit =
-      platformAccounts.length > 0
-        ? Math.min(
-            ...platformAccounts.map((account) => getLimitForAccount(account)),
-          )
-        : getLimitForAccount({ platform: platformId, isTwitterPremium: false });
-    if (trimmed.length <= limit) return trimmed;
-    if (limit <= 3) return "...";
-    return `${trimmed.slice(0, limit - 3)}...`;
-  };
-  const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
-  const tiktokAccounts = selectedAccounts.filter(
-    (a) => a.platform === "tiktok",
-  );
-  const tiktokSettingsIncomplete =
-    hasTikTokSelected &&
-    tiktokAccounts.some((acc) => {
-      const s = tiktokSettings[acc.id] ?? defaultTiktokSettings;
-      return (s.privacy_level ?? "").trim() === "";
-    });
-  const hasPinterestSelected = selectedAccounts.some(
-    (a) => a.platform === "pinterest",
-  );
-  const hasXSelected = selectedAccounts.some((a) => a.platform === "twitter_x");
-  const pinterestAccounts = selectedAccounts.filter(
-    (a) => a.platform === "pinterest",
-  );
-  useEffect(() => {
-    if (!hasPinterestSelected) {
-      if (pinterestError) setPinterestError(null);
-      return;
-    }
-    if (
-      !hasMissingPinterestBoard(
-        pinterestAccounts,
-        pinterestSettingsByAccount,
-      ) &&
-      pinterestError
-    ) {
-      setPinterestError(null);
-    }
-  }, [
-    hasPinterestSelected,
-    pinterestAccounts,
-    pinterestSettingsByAccount,
-    pinterestError,
-  ]);
-
-  const hasTwitterXSelected = selectedAccounts.some(
-    (a) => a.platform === "twitter_x",
-  );
-  const setupAutoPlug = async (postId: string) => {
-    if (!autoPlugConfig) return true;
-    const xAccount = selectedAccounts.find((a) => a.platform === "twitter_x");
-    // Stale config can linger (e.g. remembered settings) after X is deselected
-    if (!xAccount) return true;
-    const autoPlugResult = await createAutoPlug(
-      postId,
-      xAccount?.id ?? null,
-      autoPlugConfig,
-    );
-    if (!autoPlugResult.success) {
-      toast.error(autoPlugResult.error);
-      return false;
-    }
-    return true;
-  };
   const hasBlueskySelected = selectedAccounts.some(
     (a) => a.platform === "bluesky",
   );
@@ -1670,8 +1721,10 @@ export function ImagePostForm({
               platformStatuses.length > 0 &&
               platformStatuses.every((p) => p.status === "failed");
             if (allFailed && publishedPostId) {
-              router.push(`/dashboard/posts/${publishedPostId}`);
-              router.refresh();
+              navigate(`/dashboard/posts/${publishedPostId}`, {
+                replace: true,
+              });
+              invalidateQueries();
             } else {
               setScheduledPostId(null);
               setDraftSavedPostId(null);

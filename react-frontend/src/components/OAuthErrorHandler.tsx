@@ -1,6 +1,5 @@
-"use client";
 
-import { useSearchParams } from "@/lib/router";
+import { useSearchParams } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { useEffect, useState } from "react";
 
@@ -10,7 +9,7 @@ export function OAuthErrorHandler({
   /** When true, show upgrade message; when false, show start-trial message. Used when error is limit_reached and no message in URL. */
   hasUsedTrial?: boolean;
 } = {}) {
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
   const error = searchParams.get("error");
   const messageParam = searchParams.get("message");
   const platform = searchParams.get("platform");

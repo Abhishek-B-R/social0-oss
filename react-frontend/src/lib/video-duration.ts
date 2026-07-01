@@ -1,6 +1,6 @@
 /**
  * Max allowed video duration in seconds (5 minutes).
- * Enforced in VideoPostForm, ThreadsPostForm, CollectionPostForm, and BulkToolsVideoClient.
+ * Enforced in VideoPostForm, ThreadsPostForm, CollectionPostForm, and BulkToolsVideo.
  */
 export const MAX_VIDEO_DURATION_SECONDS = 300;
 

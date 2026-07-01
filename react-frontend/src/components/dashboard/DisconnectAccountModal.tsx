@@ -1,7 +1,8 @@
-"use client";
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useState } from "react";
+import { usePostHog } from "@posthog/react";
+import { capturePostAction } from "@/lib/posthog-events";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -10,6 +11,7 @@ type DisconnectAccountModalProps = {
   onClose: () => void;
   accountId: string | null;
   accountLabel: string;
+  platform?: string;
   onDisconnected?: (accountId: string) => void;
 };
 
@@ -18,9 +20,11 @@ export function DisconnectAccountModal({
   onClose,
   accountId,
   accountLabel,
+  platform,
   onDisconnected,
 }: DisconnectAccountModalProps) {
   const [disconnecting, setDisconnecting] = useState(false);
+  const posthog = usePostHog();
 
   const handleDisconnect = async () => {
     if (!accountId) return;
@@ -35,6 +39,9 @@ export function DisconnectAccountModal({
         throw new Error(data.error || "Failed to disconnect");
       }
       onClose();
+      capturePostAction(posthog, "account_disconnected", {
+        platform: platform ?? "unknown",
+      });
       onDisconnected?.(accountId);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to disconnect");

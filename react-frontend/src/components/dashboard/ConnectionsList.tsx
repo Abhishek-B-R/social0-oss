@@ -1,11 +1,10 @@
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { fetchApi } from "@/lib/fetch-api";
 import { apiUrl } from "@/lib/env";
-/* eslint-disable @next/next/no-img-element */
-"use client";
 
 import { useState, useEffect } from "react";
 import Link from "@/components/AppLink";
-import { useRouter, useSearchParams } from "@/lib/router";
 import { getPlatformIcon } from "@/lib/platform-icons";
 import { PLATFORMS } from "@/lib/platforms";
 import { AccountAvatar } from "@/components/AccountAvatar";
@@ -84,12 +83,16 @@ export function ConnectionsList({
     null,
   );
   const [disconnectLabel, setDisconnectLabel] = useState("");
+  const [disconnectPlatform, setDisconnectPlatform] = useState<string | null>(
+    null,
+  );
   const [refreshingAllPremium, setRefreshingAllPremium] = useState(false);
   const [premiumRefreshError, setPremiumRefreshError] = useState<string | null>(
     null,
   );
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     const reauth = searchParams.get("reauth");
@@ -97,11 +100,11 @@ export function ConnectionsList({
       const t = setTimeout(() => {
         const url = new URL(window.location.href);
         url.searchParams.delete("reauth");
-        router.replace(url.pathname + url.search);
+        navigate(url.pathname + url.search);
       }, 4000);
       return () => clearTimeout(t);
     }
-  }, [searchParams, router]);
+  }, [searchParams, navigate]);
 
   const reauthStatus = searchParams.get("reauth");
 
@@ -158,6 +161,7 @@ export function ConnectionsList({
         ? `${account.platformDisplayName} (@${account.platformUsername})`
         : `@${account.platformUsername || "account"}`;
     setDisconnectLabel(`${label} (${platformName})`);
+    setDisconnectPlatform(account.platform);
     setDisconnectAccountId(account.id);
   };
 
@@ -484,6 +488,7 @@ export function ConnectionsList({
         onClose={() => setDisconnectAccountId(null)}
         accountId={disconnectAccountId}
         accountLabel={disconnectLabel}
+        platform={disconnectPlatform ?? undefined}
         onDisconnected={onAccountDisconnected}
       />
     </>

@@ -1,14 +1,13 @@
-"use client";
 
+import { useSearchParams } from "react-router-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "@/lib/router";
-import { loadConnectionsPageData } from "@/actions/dashboard-data";
+import { loadConnectionsPageData } from "@/api/dashboard-data";
 import { OAuthErrorHandler } from "@/components/OAuthErrorHandler";
 import { ConnectionsList } from "@/components/dashboard/ConnectionsList";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 
-export function ConnectionsPageClient() {
-  const searchParams = useSearchParams();
+export function ConnectionsPage() {
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(false);

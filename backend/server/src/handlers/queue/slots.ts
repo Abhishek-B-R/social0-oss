@@ -1,9 +1,9 @@
-import { RouteResponse } from "../../lib/shim/http.js";
+import { RouteResponse } from "../../lib/http/http.js";
 import { auth } from "../../lib/auth.js";
 import { db } from "../../db/index.js";
 import { queueSlots } from "../../db/schema.js";
 import { eq, and, asc } from "drizzle-orm";
-import { headers } from "../../lib/shim/request-cookies.js";
+import { headers } from "../../lib/http/request-cookies.js";
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 

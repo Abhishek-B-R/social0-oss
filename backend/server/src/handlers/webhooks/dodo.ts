@@ -1,4 +1,4 @@
-import { RouteResponse } from "../../lib/shim/http.js";
+import { RouteResponse } from "../../lib/http/http.js";
 import { Webhook } from "standardwebhooks";
 import DodoPayments from "dodopayments";
 import { db } from "../../db/index.js";

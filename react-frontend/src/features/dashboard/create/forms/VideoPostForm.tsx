@@ -1,25 +1,25 @@
-/* eslint-disable @next/next/no-img-element */
+/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable react-hooks/refs */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
 
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
+import { usePostHog } from "@posthog/react";
+import { capturePostLifecycle } from "@/lib/posthog-events";
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
-import { useRouter, useSearchParams } from "@/lib/router";
 import {
   freePublishBlockReason,
   getFreePostsRemaining,
   isFreePublishBlocked,
 } from "@/lib/free-tier-publish";
 import { signInUrl } from "@/lib/sign-in-url";
-import { createPost, type PublishMode } from "@/actions/posts";
-import { getPostPublicationList } from "@/actions/publish";
+import { createPost, type PublishMode } from "@/api/posts";
+import { getPostPublicationList } from "@/api/publish";
 import {
   sortBySlowPlatformsLast,
   publishPostWithParallelProgress,
 } from "@/lib/publish-order";
-import {
-  createResurfaceSchedule,
-  createAutoPlug,
-} from "@/actions/resurface";
+import { createResurfaceSchedule, createAutoPlug } from "@/api/resurface";
 import {
   useRememberedAccounts,
   useApplyRememberedSelectionWhenReady,
@@ -160,8 +160,10 @@ export function VideoPostForm({
   freePostsUsed?: number;
   isGuest?: boolean;
 }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
+  const posthog = usePostHog();
+  const [searchParams] = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const captionTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -218,9 +220,8 @@ export function VideoPostForm({
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [scheduledPostId, setScheduledPostId] = useState<string | null>(null);
   const [draftSavedPostId, setDraftSavedPostId] = useState<string | null>(null);
-  const [xPostSettings, setXPostSettings] = useState<XPostSettings>(
-    defaultXPostSettings,
-  );
+  const [xPostSettings, setXPostSettings] =
+    useState<XPostSettings>(defaultXPostSettings);
   const [platformStatuses, setPlatformStatuses] = useState<PlatformResult[]>(
     [],
   );
@@ -303,7 +304,10 @@ export function VideoPostForm({
   const showPlatformCaptionsSection = selectedIds.size >= 2;
   const platformDisplayName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
-  const getPlatformCaptionPreview = (platformId: string, rawCaption: string) => {
+  const getPlatformCaptionPreview = (
+    platformId: string,
+    rawCaption: string,
+  ) => {
     const trimmed = rawCaption.trim();
     if (!trimmed) return "";
     const platformAccounts = selectedAccounts.filter(
@@ -311,7 +315,9 @@ export function VideoPostForm({
     );
     const limit =
       platformAccounts.length > 0
-        ? Math.min(...platformAccounts.map((account) => getLimitForAccount(account)))
+        ? Math.min(
+            ...platformAccounts.map((account) => getLimitForAccount(account)),
+          )
         : getLimitForAccount({ platform: platformId, isTwitterPremium: false });
     if (trimmed.length <= limit) return trimmed;
     if (limit <= 3) return "...";
@@ -382,6 +388,49 @@ export function VideoPostForm({
 
   const hasTikTokSelected = accounts.some(
     (a) => selectedIds.has(a.id) && a.platform === "tiktok",
+  );
+  const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
+  const tiktokAccounts = selectedAccounts.filter(
+    (a) => a.platform === "tiktok",
+  );
+  const tiktokSettingsIncomplete =
+    hasTikTokSelected &&
+    tiktokAccounts.some((acc) => {
+      const s = tiktokSettings[acc.id] ?? defaultTiktokSettings;
+      return (s.privacy_level ?? "").trim() === "";
+    });
+  const hasPinterestSelected = selectedAccounts.some(
+    (a) => a.platform === "pinterest",
+  );
+  const hasXSelected = selectedAccounts.some((a) => a.platform === "twitter_x");
+  const pinterestAccounts = selectedAccounts.filter(
+    (a) => a.platform === "pinterest",
+  );
+  useEffect(() => {
+    if (!hasPinterestSelected) {
+      if (pinterestError) setPinterestError(null);
+      return;
+    }
+    if (
+      !hasMissingPinterestBoard(
+        pinterestAccounts,
+        pinterestSettingsByAccount,
+      ) &&
+      pinterestError
+    ) {
+      setPinterestError(null);
+    }
+  }, [
+    hasPinterestSelected,
+    pinterestAccounts,
+    pinterestSettingsByAccount,
+    pinterestError,
+  ]);
+  const hasYouTubeSelected = selectedAccounts.some(
+    (a) => a.platform === "youtube",
+  );
+  const hasInstagramSelected = selectedAccounts.some(
+    (a) => a.platform === "instagram",
   );
 
   const tiktokResolutionGuidance = useMemo(() => {
@@ -483,7 +532,7 @@ export function VideoPostForm({
     let cancelled = false;
     (async () => {
       try {
-        const { getScheduledPost } = await import("@/actions/posts");
+        const { getScheduledPost } = await import("@/api/posts");
         const result = await getScheduledPost(initialScheduledId);
         if (cancelled) return;
         if (!result.success) {
@@ -586,7 +635,7 @@ export function VideoPostForm({
     let cancelled = false;
     (async () => {
       try {
-        const { getDraft } = await import("@/actions/posts");
+        const { getDraft } = await import("@/api/posts");
         const result = await getDraft(initialDraftId);
         if (cancelled) return;
         if (!result.success) {
@@ -678,7 +727,7 @@ export function VideoPostForm({
     let cancelled = false;
     (async () => {
       try {
-        const { getPostToEdit } = await import("@/actions/posts");
+        const { getPostToEdit } = await import("@/api/posts");
         const result = await getPostToEdit(initialEditId);
         if (cancelled) return;
         if (!result.success) {
@@ -772,11 +821,11 @@ export function VideoPostForm({
 
   const handleDeleteDraft = async () => {
     if (!initialDraftId) return;
-    const { deleteDraft } = await import("@/actions/posts");
+    const { deleteDraft } = await import("@/api/posts");
     const result = await deleteDraft(initialDraftId);
     if (result.success) {
-      router.push("/dashboard/posts/drafts");
-      router.refresh();
+      navigate("/dashboard/posts/drafts", { replace: true });
+      invalidateQueries();
     } else {
       toast.error(result.error);
     }
@@ -1044,49 +1093,6 @@ export function VideoPostForm({
   //   setCustomThumbnailPreview(null);
   // };
 
-  const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
-  const tiktokAccounts = selectedAccounts.filter(
-    (a) => a.platform === "tiktok",
-  );
-  const tiktokSettingsIncomplete =
-    hasTikTokSelected &&
-    tiktokAccounts.some((acc) => {
-      const s = tiktokSettings[acc.id] ?? defaultTiktokSettings;
-      return (s.privacy_level ?? "").trim() === "";
-    });
-  const hasPinterestSelected = selectedAccounts.some(
-    (a) => a.platform === "pinterest",
-  );
-  const hasXSelected = selectedAccounts.some((a) => a.platform === "twitter_x");
-  const pinterestAccounts = selectedAccounts.filter(
-    (a) => a.platform === "pinterest",
-  );
-  useEffect(() => {
-    if (!hasPinterestSelected) {
-      if (pinterestError) setPinterestError(null);
-      return;
-    }
-    if (
-      !hasMissingPinterestBoard(
-        pinterestAccounts,
-        pinterestSettingsByAccount,
-      ) &&
-      pinterestError
-    ) {
-      setPinterestError(null);
-    }
-  }, [
-    hasPinterestSelected,
-    pinterestAccounts,
-    pinterestSettingsByAccount,
-    pinterestError,
-  ]);
-  const hasYouTubeSelected = selectedAccounts.some(
-    (a) => a.platform === "youtube",
-  );
-  const hasInstagramSelected = selectedAccounts.some(
-    (a) => a.platform === "instagram",
-  );
   const hasVideo = !!videoFile || !!existingVideoId;
   const submitDisabled =
     accounts.length === 0 ||
@@ -1100,6 +1106,7 @@ export function VideoPostForm({
     e.preventDefault();
     toast.dismiss();
     if (isGuest) {
+      // eslint-disable-next-line react-hooks/immutability
       window.location.href = signInUrl(
         window.location.pathname + window.location.search,
       );
@@ -1313,7 +1320,7 @@ export function VideoPostForm({
     }
 
     if (initialScheduledId && effectiveMode === "scheduled") {
-      const { updatePost } = await import("@/actions/posts");
+      const { updatePost } = await import("@/api/posts");
       const result = await updatePost(
         initialScheduledId,
         text,
@@ -1328,7 +1335,13 @@ export function VideoPostForm({
       if (result.success) {
         setScheduledPostId(initialScheduledId);
         setOverlayPhase("done");
-        router.refresh();
+        capturePostLifecycle(
+          posthog,
+          "post_scheduled",
+          "video",
+          accountIds.length,
+        );
+        invalidateQueries();
       } else {
         setOverlayPhase("idle");
         toast.error(result.error);
@@ -1338,7 +1351,7 @@ export function VideoPostForm({
 
     if (initialDraftId) {
       const { updateDraft, updateAndPublish, updatePost } =
-        await import("@/actions/posts");
+        await import("@/api/posts");
       if (effectiveMode === "draft") {
         const result = await updateDraft(
           initialDraftId,
@@ -1351,7 +1364,13 @@ export function VideoPostForm({
         if (result.success) {
           setDraftSavedPostId(initialDraftId);
           setOverlayPhase("done");
-          router.refresh();
+          capturePostLifecycle(
+            posthog,
+            "post_drafted",
+            "video",
+            accountIds.length,
+          );
+          invalidateQueries();
         } else {
           setOverlayPhase("idle");
           toast.error(result.error);
@@ -1374,13 +1393,13 @@ export function VideoPostForm({
         }
         if (result.allPlatformsFailed && result.postId) {
           setOverlayPhase("idle");
-          router.push(`/dashboard/posts/${result.postId}`);
-          router.refresh();
+          navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+          invalidateQueries();
           return;
         }
         setPublishedPostId(result.postId);
         setOverlayPhase("done");
-        router.refresh();
+        invalidateQueries();
         if (
           resurfaceConfig &&
           selectedAccounts.some((a) => a.platform === "twitter_x")
@@ -1394,6 +1413,12 @@ export function VideoPostForm({
           ).catch(() => {});
         }
         await setupAutoPlug(result.postId);
+        capturePostLifecycle(
+          posthog,
+          "post_published",
+          "video",
+          accountIds.length,
+        );
         return;
       }
       if (effectiveMode === "scheduled") {
@@ -1413,7 +1438,13 @@ export function VideoPostForm({
         if (result.success) {
           setScheduledPostId(initialDraftId);
           setOverlayPhase("done");
-          router.refresh();
+          capturePostLifecycle(
+            posthog,
+            "post_scheduled",
+            "video",
+            accountIds.length,
+          );
+          invalidateQueries();
         } else {
           setOverlayPhase("idle");
           toast.error(result.error);
@@ -1478,13 +1509,19 @@ export function VideoPostForm({
             .length ?? 0;
         if (succeededCount === 0) {
           setOverlayPhase("idle");
-          router.push(`/dashboard/posts/${result.postId}`);
-          router.refresh();
+          navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+          invalidateQueries();
           return;
         }
         setOverlayPhase("done");
-        router.push(`/dashboard/posts/${result.postId}`);
-        router.refresh();
+        capturePostLifecycle(
+          posthog,
+          "post_published",
+          "video",
+          accountIds.length,
+        );
+        navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+        invalidateQueries();
         return;
       }
       const orderedList = sortBySlowPlatformsLast(list);
@@ -1505,7 +1542,9 @@ export function VideoPostForm({
         (rows) => {
           setPlatformStatuses((prev) =>
             prev.map((p) => {
-              const row = rows.find((r) => r.connectedAccountId === p.accountId);
+              const row = rows.find(
+                (r) => r.connectedAccountId === p.accountId,
+              );
               if (!row) return p;
               const status: PlatformStatus =
                 row.publicationStatus === "published"
@@ -1545,24 +1584,37 @@ export function VideoPostForm({
       }
       await setupAutoPlug(result.postId);
       setOverlayPhase("done");
-      router.push(`/dashboard/posts/${result.postId}`);
-      router.refresh();
+      capturePostLifecycle(
+        posthog,
+        "post_published",
+        "video",
+        accountIds.length,
+      );
+      navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+      invalidateQueries();
       return;
     }
     if (effectiveMode === "draft" && result.postId) {
       setDraftSavedPostId(result.postId);
       setOverlayPhase("done");
-      router.refresh();
+      capturePostLifecycle(posthog, "post_drafted", "video", accountIds.length);
+      invalidateQueries();
       return;
     }
     if (effectiveMode === "scheduled" && result.postId) {
       setScheduledPostId(result.postId);
       setOverlayPhase("done");
-      router.refresh();
+      capturePostLifecycle(
+        posthog,
+        "post_scheduled",
+        "video",
+        accountIds.length,
+      );
+      invalidateQueries();
       return;
     }
     setOverlayPhase("idle");
-    router.refresh();
+    invalidateQueries();
   };
 
   const filteredAccounts = useMemo(() => {
@@ -1674,8 +1726,10 @@ export function VideoPostForm({
               platformStatuses.length > 0 &&
               platformStatuses.every((p) => p.status === "failed");
             if (allFailed && publishedPostId) {
-              router.push(`/dashboard/posts/${publishedPostId}`);
-              router.refresh();
+              navigate(`/dashboard/posts/${publishedPostId}`, {
+                replace: true,
+              });
+              invalidateQueries();
             } else {
               setScheduledPostId(null);
               setDraftSavedPostId(null);
@@ -2215,7 +2269,9 @@ export function VideoPostForm({
                           }
                         }}
                         mediaType="video"
-                        videoDurationSec={videoDuration > 0 ? videoDuration : null}
+                        videoDurationSec={
+                          videoDuration > 0 ? videoDuration : null
+                        }
                         showPreviewHint
                       />
                     </>
@@ -2242,7 +2298,9 @@ export function VideoPostForm({
                         }
                       }}
                       mediaType="video"
-                      videoDurationSec={videoDuration > 0 ? videoDuration : null}
+                      videoDurationSec={
+                        videoDuration > 0 ? videoDuration : null
+                      }
                       showPreviewHint
                     />
                   )}
@@ -2459,7 +2517,9 @@ export function VideoPostForm({
                         value: "",
                       } as PlatformCaptionState);
                     const displayName = platformDisplayName(platformId);
-                    const effectiveCaption = state.overridden ? state.value : content;
+                    const effectiveCaption = state.overridden
+                      ? state.value
+                      : content;
                     const previewCaption = getPlatformCaptionPreview(
                       platformId,
                       effectiveCaption,

@@ -1,8 +1,8 @@
-"use client";
+import { useNavigate } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "@/lib/router";
 
 const SYNC_SESSION_KEY = "billing_sync_attempted";
 
@@ -16,7 +16,8 @@ type SubscriptionSyncProps = {
  * Uses sessionStorage so we don't bombard the API on every dashboard navigation.
  */
 export function SubscriptionSync({ tier }: SubscriptionSyncProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
   const didRun = useRef(false);
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export function SubscriptionSync({ tier }: SubscriptionSyncProps) {
           data?.ok === true &&
           (data.tier === "starter" || data.tier === "growth" || data.tier === "pro")
         ) {
-          router.refresh();
+          invalidateQueries();
         }
       })
       .catch(() => {
@@ -51,7 +52,7 @@ export function SubscriptionSync({ tier }: SubscriptionSyncProps) {
           // ignore
         }
       });
-  }, [tier, router]);
+  }, [tier, invalidateQueries]);
 
   return null;
 }

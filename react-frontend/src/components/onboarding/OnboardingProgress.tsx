@@ -1,66 +1,16 @@
-"use client";
+import { useLocation } from "react-router-dom";
+import { OnboardingProgressBar } from "./OnboardingProgressBar";
 
-import { Check } from "lucide-react";
+function stepFromPath(pathname: string): number {
+  if (pathname === "/onboarding" || pathname === "/onboarding/") return 1;
+  if (pathname === "/onboarding/step2") return 1;
+  if (pathname === "/onboarding/step3") return 2;
+  if (pathname === "/onboarding/step4") return 3;
+  return 1;
+}
 
-const STEPS = [
-  { num: 1, label: "Welcome" },
-  { num: 2, label: "Connect" },
-  { num: 3, label: "All set" },
-] as const;
-
-type OnboardingProgressProps = {
-  currentStep: number; // 1–3
-};
-
-export function OnboardingProgress({ currentStep }: OnboardingProgressProps) {
-  return (
-    <nav
-      className="flex flex-wrap items-center justify-center gap-1 sm:gap-2 text-sm"
-      aria-label="Onboarding progress"
-    >
-      {STEPS.map((step, i) => {
-        const isCurrent = step.num === currentStep;
-        const isPast = step.num < currentStep;
-        return (
-          <span key={step.num} className="flex items-center gap-1 sm:gap-2">
-            {i > 0 && (
-              <span
-                className={`hidden sm:inline w-6 h-px ${
-                  isPast ? "bg-emerald-500" : "bg-border"
-                }`}
-                aria-hidden
-              />
-            )}
-            {isPast ? (
-              <span
-                className="flex items-center gap-1 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 font-medium cursor-default"
-                aria-label={`${step.num}. ${step.label} (completed)`}
-              >
-                <Check className="h-3.5 w-3.5" aria-hidden />
-                <span className="sr-only sm:not-sr-only">
-                  {step.num}. {step.label}
-                </span>
-              </span>
-            ) : isCurrent ? (
-              <span
-                className="flex items-center gap-1 rounded-full bg-emerald-500 text-white px-2.5 py-1 font-medium"
-                aria-current="step"
-              >
-                <span aria-hidden>{step.num}</span>
-                <span className="sr-only sm:not-sr-only">{step.label}</span>
-              </span>
-            ) : (
-              <span
-                className="flex items-center gap-1 rounded-full border border-border bg-muted/50 text-muted-foreground px-2.5 py-1"
-                aria-hidden
-              >
-                <span>{step.num}</span>
-                <span className="hidden sm:inline">{step.label}</span>
-              </span>
-            )}
-          </span>
-        );
-      })}
-    </nav>
-  );
+export function OnboardingProgress() {
+  const pathname = useLocation().pathname;
+  const step = stepFromPath(pathname ?? "");
+  return <OnboardingProgressBar currentStep={step} />;
 }

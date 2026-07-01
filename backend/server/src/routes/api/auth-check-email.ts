@@ -1,4 +1,4 @@
-import { AppRequest, RouteResponse } from "../../lib/shim/http.js";
+import { AppRequest, RouteResponse } from "../../lib/http/http.js";
 import {
   checkEmailLimiter,
   checkEmailPerEmailLimiter,

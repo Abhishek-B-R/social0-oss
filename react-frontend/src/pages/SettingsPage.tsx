@@ -1,8 +1,8 @@
 import { useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { loadSettingsPageData } from "@/actions/settings";
-import { SettingsClient } from "@/features/dashboard/settings/SettingsClient";
+import { loadSettingsPageData } from "@/api/settings";
+import { SettingsPanel } from "@/features/dashboard/settings/SettingsPanel";
 import { useSession } from "@/lib/auth-client";
 import { signInUrl } from "@/lib/sign-in-url";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
@@ -34,7 +34,7 @@ function sortTimezonesByOffset(tzList: string[]): string[] {
   });
 }
 
-export function SettingsPageClient() {
+export function SettingsPage() {
   const { data: session, isPending: sessionPending } = useSession();
   const navigate = useNavigate();
 
@@ -103,7 +103,7 @@ export function SettingsPageClient() {
   }
 
   return (
-    <SettingsClient
+    <SettingsPanel
       displayName={data.displayName}
       email={data.email}
       image={data.image}

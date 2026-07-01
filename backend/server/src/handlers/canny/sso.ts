@@ -1,7 +1,7 @@
 import { auth } from "../../lib/auth.js";
 import { env } from "../../lib/env.js";
-import { headers } from "../../lib/shim/request-cookies.js";
-import { RouteResponse } from "../../lib/shim/http.js";
+import { headers } from "../../lib/http/request-cookies.js";
+import { RouteResponse } from "../../lib/http/http.js";
 import jwt from "jsonwebtoken";
 import { oauthLimiter, enforceRateLimit } from "../../lib/ratelimit.js";
 

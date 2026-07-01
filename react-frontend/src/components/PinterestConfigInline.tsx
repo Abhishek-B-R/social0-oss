@@ -1,4 +1,3 @@
-"use client";
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect, useCallback } from "react";

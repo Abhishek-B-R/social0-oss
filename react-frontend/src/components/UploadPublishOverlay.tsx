@@ -1,4 +1,3 @@
-"use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "@/components/AppLink";

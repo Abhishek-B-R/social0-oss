@@ -1,8 +1,10 @@
-"use client";
 
+import { useNavigate } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
+import { usePostHog } from "@posthog/react";
+import { capturePostAction } from "@/lib/posthog-events";
 import { useState } from "react";
-import { useRouter } from "@/lib/router";
-import { publishPost } from "@/actions/publish";
+import { publishPost } from "@/api/publish";
 import { toast } from "sonner";
 
 export function PublishButton({
@@ -17,7 +19,9 @@ export function PublishButton({
   disabled?: boolean;
   label?: string;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
+  const posthog = usePostHog();
   const [loading, setLoading] = useState(false);
 
   const handlePublish = async () => {
@@ -35,7 +39,11 @@ export function PublishButton({
       );
       return;
     }
-    router.refresh();
+    capturePostAction(posthog, "post_published", {
+      source: publicationId ? "retry_publication" : "publish_button",
+      platform_count: result.results?.length ?? 0,
+    });
+    invalidateQueries();
   };
 
   return (

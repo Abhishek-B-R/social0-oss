@@ -1,4 +1,3 @@
-"use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Link from "@/components/AppLink";
@@ -11,7 +10,7 @@ import {
 } from "@/lib/remembered-accounts";
 import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { BulkUploadZone } from "./BulkUploadZone";
-import { VideoCard, type VideoItem } from "./VideoCard";
+import { ImageCard, type ImageItem } from "./ImageCard";
 import { BulkScheduleSettings } from "./BulkScheduleSettings";
 import {
   BulkScheduleOverlay,
@@ -25,19 +24,10 @@ import {
   computeBulkSchedule,
   formatSchedulePreview,
 } from "@/lib/bulk-schedule";
-import { createPost } from "@/actions/posts";
-import { measureVideoAspectRatio } from "@/lib/video-aspect-ratio";
-import {
-  getVideoDuration,
-  MAX_VIDEO_DURATION_SECONDS,
-  VIDEO_DURATION_MESSAGE,
-} from "@/lib/video-duration";
+import { createPost } from "@/api/posts";
 import { uploadFile } from "@/lib/upload-file";
-import {
-  CLIENT_MAX_VIDEO_UPLOAD_BYTES,
-  CLIENT_MAX_VIDEO_UPLOAD_LABEL,
-  formatBytes,
-} from "@/lib/media-limits";
+import { usePostHog } from "@posthog/react";
+import { captureBulkPostsScheduled } from "@/lib/posthog-events";
 import { toast } from "sonner";
 import {
   getPinterestBoardRequiredMessage,
@@ -52,15 +42,15 @@ import {
   type XPostSettings,
 } from "@/components/XPostSettingsInline";
 
-const MAX_VIDEO_BATCH = 40;
-const YOUTUBE_TITLE_MAX = 100;
 const LIMITS = {
-  /** Combined size of all videos in this bulk session - same cap as a single upload. */
-  totalSize: CLIENT_MAX_VIDEO_UPLOAD_BYTES,
-  perFile: CLIENT_MAX_VIDEO_UPLOAD_BYTES,
-  maxCount: MAX_VIDEO_BATCH,
+  totalSize: 250 * 1024 * 1024, // 250MB total batch
+  maxCount: 100, // 100 images max count (global)
+  maxPerSlot: 50, // 50 images per bulk slot/session
 };
-const VIDEO_ACCEPT = "video/mp4,video/quicktime,video/webm,video/x-msvideo";
+const MAX_IMAGES = LIMITS.maxCount;
+const MAX_IMAGES_PER_SLOT = LIMITS.maxPerSlot;
+const MAX_IMAGE_BYTES = 50 * 1024 * 1024; // 50MB - API may limit to 10MB
+const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 
 type Account = {
   id: string;
@@ -90,7 +80,7 @@ function getNowTimeStr(): string {
   );
 }
 
-export function BulkToolsVideoClient({
+export function BulkToolsImage({
   accounts,
   accountsLoading = false,
   supportedPlatforms,
@@ -99,6 +89,7 @@ export function BulkToolsVideoClient({
   accountsLoading?: boolean;
   supportedPlatforms?: string[];
 }) {
+  const posthog = usePostHog();
   const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
   const validIds = useMemo(
     () => new Set(selectableAccounts.map((a) => a.id)),
@@ -109,7 +100,7 @@ export function BulkToolsVideoClient({
     setRememberAndSelection,
     getInitialSelectedIds,
     persistSelection,
-  } = useRememberedAccounts(REMEMBERED_ACCOUNT_KEYS.bulkVideo);
+  } = useRememberedAccounts(REMEMBERED_ACCOUNT_KEYS.bulkImage);
   const {
     remember: rememberAutoFeatures,
     setRemember: setRememberAutoFeatures,
@@ -118,7 +109,7 @@ export function BulkToolsVideoClient({
     getInitialState: getAutoFeaturesInitialState,
   } = useRememberedAutoRepostAutoPlug();
 
-  const [items, setItems] = useState<VideoItem[]>([]);
+  const [items, setItems] = useState<ImageItem[]>([]);
   const totalSelectedBytes = useMemo(
     () => items.reduce((sum, it) => sum + (it.file?.size ?? 0), 0),
     [items],
@@ -132,18 +123,15 @@ export function BulkToolsVideoClient({
   const [startTime, setStartTime] = useState(getNowTimeStr);
   const [videosPerDay, setVideosPerDay] = useState(1);
   const [gapHours, setGapHours] = useState(2);
-  const effectiveGapHours = videosPerDay === 1 ? 24 : gapHours;
-  // const [coverFrame, setCoverFrame] = useState<CoverFrame>("middle");
   const [scheduling, setScheduling] = useState(false);
   const [schedulePhase, setSchedulePhase] =
     useState<BulkScheduleOverlayPhase>("uploading");
   const [overlayTotal, setOverlayTotal] = useState(0);
   const [creatingIndex, setCreatingIndex] = useState(0);
   const [progress, setProgress] = useState("");
+  const [uploadPercent, setUploadPercent] = useState(0);
   const [success, setSuccess] = useState(false);
   const cancelledRef = useRef(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadPercent, setUploadPercent] = useState(0);
   const [pinterestSettingsByAccount, setPinterestSettingsByAccount] = useState<
     Record<string, PinterestPostSettings>
   >({});
@@ -156,12 +144,6 @@ export function BulkToolsVideoClient({
     madeWithAi: false,
     paidPartnership: false,
   });
-  const [bulkYoutubeTitle, setBulkYoutubeTitle] = useState("");
-  const [showYoutubeModal, setShowYoutubeModal] = useState(false);
-  const [youtubeModalTitle, setYoutubeModalTitle] = useState("");
-  const [youtubeModalError, setYoutubeModalError] = useState<string | null>(
-    null,
-  );
 
   const [resurfaceConfig, setResurfaceConfig] =
     useState<AutoResurfaceConfig | null>(null);
@@ -172,20 +154,6 @@ export function BulkToolsVideoClient({
 
   const platformName = (id: string) =>
     PLATFORMS.find((p) => p.id === id)?.name ?? id;
-
-  const filteredAccounts = useMemo(() => {
-    if (!accountSearch.trim()) return accounts;
-    const q = accountSearch.toLowerCase().trim();
-    return accounts.filter((a) => {
-      const platformDisplay =
-        PLATFORMS.find((p) => p.id === a.platform)?.name ?? a.platform;
-      return (
-        a.platformUsername?.toLowerCase().includes(q) ||
-        a.platform?.toLowerCase().includes(q) ||
-        platformDisplay.toLowerCase().includes(q)
-      );
-    });
-  }, [accounts, accountSearch]);
 
   const { isHydrated } = useApplyRememberedSelectionWhenReady({
     skip: false,
@@ -215,25 +183,12 @@ export function BulkToolsVideoClient({
     () => accounts.filter((a) => selectedIds.has(a.id)),
     [accounts, selectedIds],
   );
-  const hasPinterestSelected = useMemo(
-    () => selectedAccounts.some((a) => a.platform === "pinterest"),
-    [selectedAccounts],
+  const hasPinterestSelected = selectedAccounts.some(
+    (a) => a.platform === "pinterest",
   );
-  const hasXSelected = useMemo(
-    () => selectedAccounts.some((a) => a.platform === "twitter_x"),
-    [selectedAccounts],
-  );
-  const pinterestAccounts = useMemo(
-    () => selectedAccounts.filter((a) => a.platform === "pinterest"),
-    [selectedAccounts],
-  );
-  const hasYouTubeSelected = useMemo(
-    () => selectedAccounts.some((a) => a.platform === "youtube"),
-    [selectedAccounts],
-  );
-  const hasTikTokSelected = useMemo(
-    () => selectedAccounts.some((a) => a.platform === "tiktok"),
-    [selectedAccounts],
+  const hasXSelected = selectedAccounts.some((a) => a.platform === "twitter_x");
+  const pinterestAccounts = selectedAccounts.filter(
+    (a) => a.platform === "pinterest",
   );
   const hasXForAutoFeatures = selectedAccounts.some(
     (a) => a.platform === "twitter_x",
@@ -258,28 +213,6 @@ export function BulkToolsVideoClient({
     pinterestSettingsByAccount,
     pinterestError,
   ]);
-
-  const openYoutubeModalForSchedule = useCallback(() => {
-    setYoutubeModalError(null);
-    const bulk = bulkYoutubeTitle.trim();
-    const nonEmptyTitles = items
-      .map((i) => i.youtubeTitle.trim())
-      .filter(Boolean);
-    const allSame =
-      items.length > 0 &&
-      nonEmptyTitles.length === items.length &&
-      new Set(nonEmptyTitles).size === 1;
-    const initial = (
-      bulk
-        ? bulk
-        : allSame
-          ? nonEmptyTitles[0]!
-          : (items.find((i) => i.youtubeTitle.trim())?.youtubeTitle.trim() ??
-            "")
-    ).slice(0, YOUTUBE_TITLE_MAX);
-    setYoutubeModalTitle(initial);
-    setShowYoutubeModal(true);
-  }, [bulkYoutubeTitle, items]);
 
   // Restore remembered auto features the first time X is selected.
   useEffect(() => {
@@ -313,6 +246,20 @@ export function BulkToolsVideoClient({
     setAutoPlugConfig(null);
   }, [hasXForAutoFeatures]);
 
+  const filteredAccounts = useMemo(() => {
+    if (!accountSearch.trim()) return accounts;
+    const q = accountSearch.toLowerCase().trim();
+    return accounts.filter((a) => {
+      const platformDisplay =
+        PLATFORMS.find((p) => p.id === a.platform)?.name ?? a.platform;
+      return (
+        a.platformUsername?.toLowerCase().includes(q) ||
+        a.platform?.toLowerCase().includes(q) ||
+        platformDisplay.toLowerCase().includes(q)
+      );
+    });
+  }, [accounts, accountSearch]);
+
   const toggleAccount = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -329,72 +276,56 @@ export function BulkToolsVideoClient({
 
   const addFiles = useCallback(
     (files: File[]) => {
-      toast.dismiss();
-      if (files.length === 0) return;
-      Promise.all(
-        files.map(async (file) => {
-          const [m, duration] = await Promise.all([
-            measureVideoAspectRatio(file),
-            getVideoDuration(file),
-          ]);
-          return { file, m, duration };
-        }),
-      ).then((rows) => {
-        const withinDuration: typeof rows = [];
-        let anyOverDuration = false;
-        for (const row of rows) {
-          if (row.duration > MAX_VIDEO_DURATION_SECONDS) {
-            anyOverDuration = true;
-          } else {
-            withinDuration.push(row);
-          }
-        }
-        if (anyOverDuration) toast.error(VIDEO_DURATION_MESSAGE);
-        if (withinDuration.length === 0) return;
+      setItems((prev) => {
+        const toAdd = files.slice(
+          0,
+          Math.max(0, MAX_IMAGES_PER_SLOT - prev.length),
+        );
+        if (toAdd.length === 0) return prev;
 
-        setItems((prev) => {
-          const toAdd = withinDuration.slice(
-            0,
-            Math.max(0, LIMITS.maxCount - prev.length),
-          );
-          if (toAdd.length === 0) return prev;
+        const [h, m] = startTime.split(":").map(Number);
+        const start = new Date(startDate + "T00:00:00");
+        const effectiveGapHours = videosPerDay === 1 ? 24 : gapHours;
+        const dates = computeBulkSchedule(
+          prev.length + toAdd.length,
+          start,
+          h ?? 0,
+          m ?? 0,
+          videosPerDay,
+          effectiveGapHours,
+        );
 
-          const [h, m] = startTime.split(":").map(Number);
-          const start = new Date(startDate + "T00:00:00");
-          const dates = computeBulkSchedule(
-            prev.length + toAdd.length,
-            start,
-            h ?? 0,
-            m ?? 0,
-            videosPerDay,
-            effectiveGapHours,
-          );
-          const newItems: VideoItem[] = toAdd.map((row, i) => ({
-            id: crypto.randomUUID(),
-            file: row.file,
-            previewUrl: URL.createObjectURL(row.file),
-            caption: "",
-            youtubeTitle: "",
-            scheduledAt: dates[prev.length + i] ?? new Date(),
-            aspectRatio: row.m.ratio,
-            videoWidth: row.m.width,
-            videoHeight: row.m.height,
-          }));
-          return [...prev, ...newItems];
-        });
+        const newItems: ImageItem[] = toAdd.map((file, i) => ({
+          id: crypto.randomUUID(),
+          file,
+          previewUrl: URL.createObjectURL(file),
+          caption: "",
+          scheduledAt: dates[prev.length + i] ?? new Date(),
+          collapsed: false,
+        }));
+        return [...prev, ...newItems];
       });
     },
-    [startDate, startTime, videosPerDay, effectiveGapHours],
+    [gapHours, startDate, startTime, videosPerDay],
   );
+
+  const toggleItemCollapsed = (id: string) => {
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === id ? { ...it, collapsed: it.collapsed !== true } : it,
+      ),
+    );
+  };
+  const collapseAll = () => {
+    setItems((prev) => prev.map((it) => ({ ...it, collapsed: true })));
+  };
+  const expandAll = () => {
+    setItems((prev) => prev.map((it) => ({ ...it, collapsed: false })));
+  };
 
   const updateCaption = (id: string, caption: string) => {
     setItems((prev) =>
       prev.map((it) => (it.id === id ? { ...it, caption } : it)),
-    );
-  };
-  const updateYoutubeTitle = (id: string, youtubeTitle: string) => {
-    setItems((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, youtubeTitle } : it)),
     );
   };
   const updateSchedule = (id: string, date: Date) => {
@@ -415,11 +346,6 @@ export function BulkToolsVideoClient({
     setItems((prev) => prev.map((it) => ({ ...it, caption: capped })));
   };
 
-  const applyBulkYoutubeTitle = () => {
-    const capped = bulkYoutubeTitle.slice(0, YOUTUBE_TITLE_MAX);
-    setItems((prev) => prev.map((it) => ({ ...it, youtubeTitle: capped })));
-  };
-
   const applyBulkSchedule = () => {
     const [h, m] = startTime.split(":").map(Number);
     const start = new Date(startDate + "T00:00:00");
@@ -429,47 +355,25 @@ export function BulkToolsVideoClient({
       h ?? 0,
       m ?? 0,
       videosPerDay,
-      effectiveGapHours,
+      gapHours,
     );
     setItems((prev) =>
       prev.map((it, i) => ({ ...it, scheduledAt: dates[i] ?? it.scheduledAt })),
     );
   };
 
-  useEffect(() => {
-    if (items.length === 0) return;
-    const [h, m] = startTime.split(":").map(Number);
-    const start = new Date(startDate + "T00:00:00");
-    const dates = computeBulkSchedule(
-      items.length,
-      start,
-      h ?? 0,
-      m ?? 0,
-      videosPerDay,
-      effectiveGapHours,
-    );
-    setItems((prev) =>
-      prev.map((it, i) => ({ ...it, scheduledAt: dates[i] ?? it.scheduledAt })),
-    );
-  }, [items.length, startDate, startTime, videosPerDay, effectiveGapHours]);
-
   const schedulePreview =
     items.length > 0
-      ? formatSchedulePreview(
-          items.length,
-          startTime,
-          videosPerDay,
-          effectiveGapHours,
-        )
+      ? formatSchedulePreview(items.length, startTime, videosPerDay, gapHours)
       : null;
 
   const runScheduleAll = async () => {
     if (selectedIds.size === 0 || items.length === 0) return;
 
-    // Require a caption for every video before scheduling
+    // Require a caption for every image before scheduling
     const missingCaption = items.some((item) => !item.caption.trim());
     if (missingCaption) {
-      toast.error("Caption is required for all videos before scheduling.");
+      toast.error("Caption is required for all images before scheduling.");
       return;
     }
     if (hasPinterestSelected) {
@@ -484,15 +388,6 @@ export function BulkToolsVideoClient({
         return;
       }
     }
-    if (hasYouTubeSelected) {
-      const missingYt = items.some((item) => !item.youtubeTitle.trim());
-      if (missingYt) {
-        toast.error(
-          "YouTube title is required for all videos before scheduling.",
-        );
-        return;
-      }
-    }
 
     toast.dismiss();
     cancelledRef.current = false;
@@ -500,9 +395,8 @@ export function BulkToolsVideoClient({
     setSchedulePhase("uploading");
     setOverlayTotal(items.length);
     setCreatingIndex(0);
-    setIsUploading(true);
     setUploadPercent(0);
-    setProgress("Uploading… 0%");
+    setProgress(`Uploading… 0%`);
     const accountIds = selectedAccountIds;
 
     const autoFeatures: BulkAutoFeaturesValue = {
@@ -512,13 +406,13 @@ export function BulkToolsVideoClient({
     const metadata: Record<string, unknown> =
       autoFeatures.autoRepost || autoFeatures.autoPlug
         ? {
-            contentType: "video",
+            contentType: "image",
             bulkAutoFeatures: {
               autoRepostConfig: autoFeatures.autoRepost,
               autoPlugConfig: autoFeatures.autoPlug,
             },
           }
-        : { contentType: "video" };
+        : { contentType: "image" };
     if (hasPinterestSelected) {
       metadata.pinterest = pinterestAccounts.reduce<
         Record<string, { boardId: string; title?: string; link?: string }>
@@ -543,13 +437,11 @@ export function BulkToolsVideoClient({
     }
 
     try {
-      // Phase 1: upload all videos in parallel
+      // Phase 1: upload all images in parallel
       const perFileProgress = new Array(items.length).fill(0);
       const uploadResults = await Promise.allSettled(
         items.map((item, index) =>
           uploadFile(item.file, index, (idx, percent) => {
-            // Use average progress across all files.
-            // We keep this local to avoid storing per-file state in React for bulk.
             perFileProgress[idx] = percent;
             const sum = perFileProgress.reduce((a, b) => a + b, 0);
             const avg =
@@ -573,16 +465,16 @@ export function BulkToolsVideoClient({
           } => entry.result.status === "fulfilled",
         );
 
-      const failedUploads = uploadResults
-        .map((result, index) => ({ result, index }))
-        .filter((entry) => entry.result.status === "rejected");
+      const failedUploads = uploadResults.filter(
+        (entry) => entry.status === "rejected",
+      );
 
       if (failedUploads.length > 0) {
-        toast.error(`${failedUploads.length} video(s) failed to upload.`);
+        toast.error(`${failedUploads.length} image(s) failed to upload.`);
       }
 
       if (successfulUploads.length === 0) {
-        throw new Error("No videos were uploaded successfully.");
+        throw new Error("No images were uploaded successfully.");
       }
 
       // Phase 2: create posts sequentially for successful uploads
@@ -597,19 +489,13 @@ export function BulkToolsVideoClient({
         setCreatingIndex(i + 1);
         setProgress(`Scheduling post ${i + 1} of ${successfulUploads.length}…`);
         const item = items[index];
-        const postMetadata: Record<string, unknown> = { ...metadata };
-        if (hasYouTubeSelected) {
-          postMetadata.youtube = {
-            title: item.youtubeTitle.trim().slice(0, YOUTUBE_TITLE_MAX),
-          };
-        }
         const createResult = await createPost(
           item.caption.trim() || "No caption",
           accountIds,
           "scheduled",
           item.scheduledAt,
           [result.value.id],
-          postMetadata,
+          metadata,
         );
         if (!createResult.success) {
           throw new Error(createResult.error);
@@ -617,12 +503,17 @@ export function BulkToolsVideoClient({
       }
 
       setSuccess(true);
+      captureBulkPostsScheduled(
+        posthog,
+        "image",
+        successfulUploads.length,
+        accountIds.length,
+      );
     } catch {
-      toast.error("Failed to schedule videos. Please try again.");
+      toast.error("Failed to schedule images. Please try again.");
     } finally {
       setScheduling(false);
       setProgress("");
-      setIsUploading(false);
       setUploadPercent(0);
     }
   };
@@ -638,28 +529,14 @@ export function BulkToolsVideoClient({
       setShowXModal(true);
       return;
     }
-    if (hasYouTubeSelected) {
-      openYoutubeModalForSchedule();
-      return;
-    }
     await runScheduleAll();
   };
 
-  useEffect(() => {
-    if (!isUploading) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [isUploading]);
-
   return (
-    <div className="space-y-6 -ml-2 sm:-ml-3 lg:-ml-4">
+    <div className="space-y-6">
       <div className="flex items-center gap-2">
         <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
-          Bulk Video Scheduling
+          Bulk Image Scheduling
         </h1>
         <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
           Beta
@@ -669,7 +546,7 @@ export function BulkToolsVideoClient({
       {success ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/40 p-6 text-center">
           <p className="font-semibold text-emerald-800 dark:text-emerald-200">
-            All videos scheduled successfully.
+            All images scheduled successfully.
           </p>
           <Link
             href="/dashboard/calendar"
@@ -680,7 +557,6 @@ export function BulkToolsVideoClient({
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left column */}
           <div className="lg:col-span-2 space-y-6">
             <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
               <p className="block text-sm font-semibold text-foreground mb-3">
@@ -749,77 +625,64 @@ export function BulkToolsVideoClient({
             </div>
 
             <BulkUploadZone
-              accept={VIDEO_ACCEPT}
-              maxFiles={LIMITS.maxCount}
-              maxSizeBytes={LIMITS.perFile}
+              accept={IMAGE_ACCEPT}
+              maxFiles={MAX_IMAGES_PER_SLOT}
+              maxSizeBytes={MAX_IMAGE_BYTES}
+              maxSizeLabel="JPG, PNG, WEBP, GIF. Max 50MB each."
               maxTotalBytes={LIMITS.totalSize}
               currentTotalBytes={totalSelectedBytes}
               currentCount={items.length}
-              maxSizeLabel={`MP4, MOV, AVI. Max ${CLIENT_MAX_VIDEO_UPLOAD_LABEL} each.`}
-              helperText={`Up to ${LIMITS.maxCount} videos · ${CLIENT_MAX_VIDEO_UPLOAD_LABEL} max per file · ${formatBytes(LIMITS.totalSize)} total combined`}
+              helperText={`Up to ${MAX_IMAGES_PER_SLOT} images per slot · 250MB total batch size`}
               onFilesSelected={addFiles}
-              disabled={items.length >= LIMITS.maxCount}
+              disabled={items.length >= MAX_IMAGES_PER_SLOT}
             />
 
-            <p className="text-xs text-muted-foreground">
-              {CLIENT_MAX_VIDEO_UPLOAD_LABEL} max per file and{" "}
-              {formatBytes(LIMITS.totalSize)} total combined are enforced
-              client-side.
-            </p>
-
-            {isUploading && !scheduling && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full bg-accent transition-all duration-200"
-                      style={{ width: `${uploadPercent}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-medium text-foreground">
-                    Uploading {items.length} video
-                    {items.length === 1 ? "" : "s"}… {uploadPercent}%
-                  </span>
-                </div>
-                <p className="text-[20px] text-amber-600 dark:text-amber-400">
-                  ⚠️ Do not close this tab - your videos will not be saved if
-                  you leave now.
-                </p>
-              </div>
-            )}
-
             <div>
-              <h2 className="text-lg font-semibold text-foreground mb-3">
-                Your Videos ({items.length})
-              </h2>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Your Images ({items.length})
+                </h2>
+                {items.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={collapseAll}
+                      className="rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted/80 transition-colors"
+                    >
+                      Collapse all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={expandAll}
+                      className="rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted/80 transition-colors"
+                    >
+                      Expand all
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="space-y-3">
-                {items.map((item) => (
-                  <VideoCard
+                {items.map((item, index) => (
+                  <ImageCard
                     key={item.id}
                     item={item}
-                    tikTokSelected={hasTikTokSelected}
-                    showYoutubeTitle={hasYouTubeSelected}
+                    index={index}
                     onCaptionChange={updateCaption}
-                    onYoutubeTitleChange={updateYoutubeTitle}
                     onScheduleChange={updateSchedule}
                     onDelete={removeItem}
+                    onToggleCollapsed={toggleItemCollapsed}
                   />
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Right column */}
           <div className="lg:col-span-1">
             <BulkScheduleSettings
-              variant="video"
+              variant="image"
               bulkCaption={bulkCaption}
               onBulkCaptionChange={setBulkCaption}
               onApplyCaption={applyBulkCaption}
-              showYoutubeTitleSection={hasYouTubeSelected}
-              bulkYoutubeTitle={bulkYoutubeTitle}
-              onBulkYoutubeTitleChange={setBulkYoutubeTitle}
-              onApplyYoutubeTitleToAll={applyBulkYoutubeTitle}
               startDate={startDate}
               startTime={startTime}
               videosPerDay={videosPerDay}
@@ -851,7 +714,7 @@ export function BulkToolsVideoClient({
               totalItems={items.length}
               selectedAccountCount={selectedIds.size}
               onScheduleAll={handleScheduleAll}
-              scheduling={scheduling || isUploading}
+              scheduling={scheduling}
               progressLabel={progress}
             />
           </div>
@@ -860,7 +723,7 @@ export function BulkToolsVideoClient({
 
       {scheduling && (
         <BulkScheduleOverlay
-          variant="video"
+          variant="image"
           phase={schedulePhase}
           uploadPercent={uploadPercent}
           totalItems={overlayTotal}
@@ -912,8 +775,7 @@ export function BulkToolsVideoClient({
                     }
                     value={
                       pinterestSettingsByAccount[
-                        pinterestAccounts[selectedPinterestAccountIndex]?.id ??
-                          ""
+                        pinterestAccounts[selectedPinterestAccountIndex]?.id ?? ""
                       ] ?? {
                         boardId: "",
                         title: "",
@@ -939,9 +801,7 @@ export function BulkToolsVideoClient({
                 <PinterestConfigInline
                   accountId={pinterestAccounts[0]?.id ?? ""}
                   value={
-                    pinterestSettingsByAccount[
-                      pinterestAccounts[0]?.id ?? ""
-                    ] ?? {
+                    pinterestSettingsByAccount[pinterestAccounts[0]?.id ?? ""] ?? {
                       boardId: "",
                       title: "",
                       link: "",
@@ -995,8 +855,6 @@ export function BulkToolsVideoClient({
                   setShowPinterestModal(false);
                   if (hasXSelected) {
                     setShowXModal(true);
-                  } else if (hasYouTubeSelected) {
-                    openYoutubeModalForSchedule();
                   } else {
                     await runScheduleAll();
                   }
@@ -1040,102 +898,8 @@ export function BulkToolsVideoClient({
               <button
                 type="button"
                 className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-                onClick={() => {
-                  setShowXModal(false);
-                  if (hasYouTubeSelected) {
-                    openYoutubeModalForSchedule();
-                  } else {
-                    void runScheduleAll();
-                  }
-                }}
-              >
-                Continue &amp; Schedule
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showYoutubeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div
-            className="w-full max-w-lg rounded-2xl border border-border bg-card p-5 shadow-xl"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="bulk-youtube-settings-title"
-          >
-            <h3
-              id="bulk-youtube-settings-title"
-              className="text-lg font-semibold text-foreground"
-            >
-              YouTube Settings
-            </h3>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Enter one title to apply to every video, or leave this blank if
-              each video already has a title below (max {YOUTUBE_TITLE_MAX}{" "}
-              characters).
-            </p>
-            <div className="mt-4">
-              <label
-                htmlFor="bulk-youtube-modal-title"
-                className="mb-1 block text-sm font-medium text-foreground"
-              >
-                YouTube title
-              </label>
-              <input
-                id="bulk-youtube-modal-title"
-                type="text"
-                value={youtubeModalTitle}
-                maxLength={YOUTUBE_TITLE_MAX}
-                onChange={(e) => {
-                  setYoutubeModalTitle(
-                    e.target.value.slice(0, YOUTUBE_TITLE_MAX),
-                  );
-                  if (youtubeModalError) setYoutubeModalError(null);
-                }}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                placeholder="Enter YouTube title…"
-                autoComplete="off"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                {youtubeModalTitle.length} / {YOUTUBE_TITLE_MAX}
-              </p>
-              {youtubeModalError && (
-                <p className="mt-3 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-                  {youtubeModalError}
-                </p>
-              )}
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                className="rounded-lg border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle"
-                onClick={() => setShowYoutubeModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
                 onClick={async () => {
-                  const t = youtubeModalTitle.trim();
-                  if (t) {
-                    const capped = t.slice(0, YOUTUBE_TITLE_MAX);
-                    setItems((prev) =>
-                      prev.map((it) => ({ ...it, youtubeTitle: capped })),
-                    );
-                    setBulkYoutubeTitle(capped);
-                  } else {
-                    const missing = items.some((it) => !it.youtubeTitle.trim());
-                    if (missing) {
-                      setYoutubeModalError(
-                        "Enter a YouTube title here to apply to all videos, or fill a title on every video card.",
-                      );
-                      return;
-                    }
-                  }
-                  setYoutubeModalError(null);
-                  setShowYoutubeModal(false);
+                  setShowXModal(false);
                   await runScheduleAll();
                 }}
               >

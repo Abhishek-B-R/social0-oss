@@ -1,10 +1,9 @@
 import { useEffect } from "react";
+import { usePostHog } from "@posthog/react";
 import { SeoHead } from "@/components/seo/SeoHead";
 import { dashboardSeo } from "@/lib/page-metadata";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Toaster } from "sonner";
-import { ThemeProvider } from "@/components/ThemeProvider";
 import { DevScheduledPostPoller } from "@/components/DevScheduledPostPoller";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardBottomNav } from "@/components/dashboard/DashboardBottomNav";
@@ -16,7 +15,7 @@ import { ConnectAccountsBanner } from "@/components/dashboard/ConnectAccountsBan
 import { LegalConsentGate } from "@/components/auth/LegalConsentGate";
 import { useSessionResolved } from "@/lib/use-is-guest";
 import { rpc } from "@/lib/rpc";
-import { getOnboardingStatus, type OnboardingStatus } from "@/actions/onboarding";
+import { getOnboardingStatus, type OnboardingStatus } from "@/api/onboarding";
 
 function getPlanLabel(tier: string): string {
   if (tier === "pro") return "Pro plan";
@@ -29,16 +28,27 @@ export function DashboardLayout() {
   const { session, isPending, isGuest } = useSessionResolved();
   const location = useLocation();
   const navigate = useNavigate();
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    const email = session?.user?.email?.trim().toLowerCase();
+    if (!email) return;
+    posthog?.identify(email, {
+      email,
+      name: session?.user.name ?? undefined,
+    });
+  }, [session, posthog]);
 
   const { data: layoutData } = useQuery({
     queryKey: ["dashboard-layout"],
-    queryFn: () => rpc<{
-      planLabel: string;
-      subscriptionTier: string;
-      freePostsBanner: { remaining: number; limit: number } | null;
-      profileName: string | null;
-      profileImage: string | null;
-    }>("dashboard-data.loadDashboardLayoutData"),
+    queryFn: () =>
+      rpc<{
+        planLabel: string;
+        subscriptionTier: string;
+        freePostsBanner: { remaining: number; limit: number } | null;
+        profileName: string | null;
+        profileImage: string | null;
+      }>("dashboard-data.loadDashboardLayoutData"),
     enabled: !!session,
     retry: false,
   });
@@ -79,7 +89,7 @@ export function DashboardLayout() {
           name: layoutData.profileName ?? session.user.name,
           image: layoutData.profileImage ?? session.user.image,
         }
-      : session?.user ?? null;
+      : (session?.user ?? null);
 
   return (
     <div className="flex h-screen overflow-hidden bg-bg">
@@ -89,7 +99,13 @@ export function DashboardLayout() {
       )}
       <DashboardSidebar
         user={sidebarUser}
-        planLabel={isGuest ? "Guest" : layoutData ? getPlanLabel(layoutData.subscriptionTier) : "…"}
+        planLabel={
+          isGuest
+            ? "Guest"
+            : layoutData
+              ? getPlanLabel(layoutData.subscriptionTier)
+              : "…"
+        }
         isGuest={isGuest}
         sessionPending={isPending}
       />

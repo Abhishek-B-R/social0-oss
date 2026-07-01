@@ -1,4 +1,3 @@
-"use client";
 
 import { CalendarClock, Loader2, Upload, X } from "lucide-react";
 

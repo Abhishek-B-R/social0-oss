@@ -1,17 +1,18 @@
-"use client";
 
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useEffect, useState, useMemo } from "react";
-import { useRouter, useSearchParams } from "@/lib/router";
-import { loadBillingPageData } from "@/actions/dashboard-data";
+import { loadBillingPageData } from "@/api/dashboard-data";
 import type { SubscriptionState } from "@/lib/subscription";
-import { BillingClient } from "./BillingClient";
+import { BillingPanel } from "./BillingPanel";
 import { DOCS_BILLING_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 
-export function BillingPageClient() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+export function BillingPage() {
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [raw, setRaw] = useState<
@@ -33,7 +34,7 @@ export function BillingPageClient() {
       if (cancelled) return;
       if (!result.ok) {
         if (result.error === "Unauthorized") {
-          router.replace("/");
+          navigate("/");
           return;
         }
         setError(result.error);
@@ -46,7 +47,7 @@ export function BillingPageClient() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [invalidateQueries]);
 
   const subscription: SubscriptionState | null = useMemo(() => {
     if (!raw) return null;
@@ -88,7 +89,7 @@ export function BillingPageClient() {
         </div>
       )}
       <div className="mt-5">
-        <BillingClient
+        <BillingPanel
           subscription={subscription}
           accountLimit={raw.accountLimit}
           justSubscribed={justSubscribed}

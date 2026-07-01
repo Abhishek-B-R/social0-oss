@@ -1,6 +1,6 @@
 import { auth } from "../../lib/auth.js";
-import { headers } from "../../lib/shim/request-cookies.js";
-import { RouteResponse } from "../../lib/shim/http.js";
+import { headers } from "../../lib/http/request-cookies.js";
+import { RouteResponse } from "../../lib/http/http.js";
 import { PLAN_IDS } from "../../lib/plans.js";
 import { syncSubscriptionForUserId } from "../../lib/billing-sync.js";
 import { billingSyncLimiter, enforceRateLimit } from "../../lib/ratelimit.js";

@@ -4,8 +4,8 @@ import {
   mapSignUpError,
   mapSignUpErrorFromResponse,
 } from "../../lib/sign-up-errors.js";
-import { headers } from "../../lib/shim/request-cookies.js";
-import { RouteResponse } from "../../lib/shim/http.js";
+import { headers } from "../../lib/http/request-cookies.js";
+import { RouteResponse } from "../../lib/http/http.js";
 import { enforceRateLimit, signUpIpLimiter } from "../../lib/ratelimit.js";
 import { clientIp } from "../../lib/client-ip.js";
 import {

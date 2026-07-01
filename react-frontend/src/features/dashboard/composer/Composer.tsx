@@ -1,7 +1,7 @@
-"use client";
 
+import { useNavigate } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useRouter } from "@/lib/router";
 import {
   ImagePlus,
   FileText,
@@ -76,8 +76,9 @@ type ThreadSlot = {
  * If Remember is added, use `REMEMBERED_ACCOUNT_KEYS.composer` → `remembered-accounts-composer`.
  * @see REMEMBERED_ACCOUNT_KEYS in `@/lib/remembered-accounts`
  */
-export function ComposerClient() {
-  const router = useRouter();
+export function Composer() {
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
   const [text, setText] = useState("");
   const [media, setMedia] = useState<(ComposerMediaItem & { id: string })[]>(
     [],
@@ -597,7 +598,7 @@ export function ComposerClient() {
       const search = new URLSearchParams();
       search.set("fromComposer", "1");
 
-      router.push(`/dashboard/create/${targetSlug}?${search.toString()}`);
+      navigate(`/dashboard/create/${targetSlug}?${search.toString()}`);
       // Leave loading true so spinner stays until navigation completes
     } catch {
       setLoading(false);
@@ -701,7 +702,6 @@ export function ComposerClient() {
                     className="group relative flex h-24 w-24 shrink-0 cursor-move items-center justify-center overflow-hidden rounded-xl border border-border bg-bg-muted hover:border-accent transition-colors"
                   >
                     {item.type === "image" ? (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={item.previewUrl}
                         alt=""
@@ -923,7 +923,6 @@ export function ComposerClient() {
                         className="group relative flex h-20 w-20 shrink-0 cursor-move items-center justify-center overflow-hidden rounded-xl border border-border bg-bg-muted hover:border-accent transition-colors"
                       >
                         {item.type === "image" ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
                           <img
                             src={item.previewUrl}
                             alt=""

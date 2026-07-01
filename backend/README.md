@@ -6,7 +6,7 @@ Fastify API + slim background-worker for long-running crons. Platform publish ru
 
 ```
 backend/
-├── server/              Fastify API — auth, HTTP, enqueue crons (202), CF publish fan-out
+├── server/              Fastify API — auth, HTTP, RPC services, enqueue
 ├── background-worker/   BullMQ — scheduled posts, repost, autoplug, token health only
 ├── shared/              Queues, job types, CF publish client
 └── docker-compose.yml   Optional local Redis (Upstash in prod)

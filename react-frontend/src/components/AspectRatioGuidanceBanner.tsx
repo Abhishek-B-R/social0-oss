@@ -1,4 +1,3 @@
-"use client";
 
 import type { AspectRatioGuidance } from "@/lib/video-aspect-ratio";
 import { AlertTriangle } from "lucide-react";

@@ -1,10 +1,12 @@
-"use client";
 
+import { useNavigate } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
+import { usePostHog } from "@posthog/react";
+import { capturePostAction } from "@/lib/posthog-events";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "@/lib/router";
 import Link from "@/components/AppLink";
 import { X, Upload } from "lucide-react";
-import { updatePost } from "@/actions/posts";
+import { updatePost } from "@/api/posts";
 import { PLATFORMS } from "@/lib/platforms";
 import { validateMediaFile } from "@/lib/media-limits";
 import { uploadFile } from "@/lib/upload-file";
@@ -41,7 +43,9 @@ export function EditPostForm({
   use24HourTimeFormat?: boolean;
   dateFormat?: string | null;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
+  const posthog = usePostHog();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [content, setContent] = useState(post.originalContent ?? "");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
@@ -165,8 +169,12 @@ export function EditPostForm({
         finalMediaIds,
       );
       if (result.success) {
-        router.push("/dashboard/posts");
-        router.refresh();
+        capturePostAction(posthog, "post_updated", {
+          post_status: post.status ?? "unknown",
+          platform_count: selectedIds.size,
+        });
+        navigate("/dashboard/posts", { replace: true });
+        invalidateQueries();
       } else {
         toast.error(result.error);
       }
@@ -231,7 +239,6 @@ export function EditPostForm({
                   <div className="h-20 w-24 bg-bg-muted flex items-center justify-center overflow-hidden">
                     {isVideo(m.mimeType) ? (
                       m.thumbnailUrl ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img
                           src={m.thumbnailUrl}
                           alt=""
@@ -247,7 +254,6 @@ export function EditPostForm({
                         />
                       )
                     ) : (
-                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={m.url ?? ""}
                         alt=""
@@ -286,7 +292,6 @@ export function EditPostForm({
                       preload="metadata"
                     />
                   ) : (
-                    /* eslint-disable-next-line @next/next/no-img-element */
                     <img
                       src={item.previewUrl}
                       alt=""

@@ -1,9 +1,8 @@
-"use client";
 
+import { useLocation } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import Image from "@/components/AppImage";
 import Link from "@/components/AppLink";
-import { usePathname } from "@/lib/router";
 import { useTheme } from "next-themes";
 import {
   IconFilePlus,
@@ -40,7 +39,7 @@ function NavLink({
   icon: Icon,
   isActive,
 }: NavItem & { isActive: boolean }) {
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
   const [navPending, setNavPending] = useState(false);
   useEffect(() => {
     setNavPending(false);
@@ -97,7 +96,7 @@ export function DashboardSidebar({
   isGuest = false,
   sessionPending = false,
 }: DashboardSidebarProps) {
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -359,7 +358,6 @@ export function DashboardSidebar({
               }
             >
               {user.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={user.image}
                   alt={user.name || "User"}

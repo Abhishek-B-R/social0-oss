@@ -1,7 +1,6 @@
-"use client";
+import { useSearchParams } from "react-router-dom";
 import { fetchApi } from "@/lib/fetch-api";
 
-import { useSearchParams } from "@/lib/router";
 import { useCallback, useEffect, useState } from "react";
 import Link from "@/components/AppLink";
 import {
@@ -13,7 +12,7 @@ import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 import { completeConnectSelect } from "@/lib/connect-select-response";
 
 export default function FacebookSelectPage() {
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const returnTo =
     sanitizeReturnToPath(searchParams.get("returnTo")) ??

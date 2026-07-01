@@ -1,6 +1,6 @@
 import { auth } from "./auth.js";
 import { safeRedirect } from "./redirect.js";
-import { headers } from "./shim/request-cookies.js";
+import { headers } from "./http/request-cookies.js";
 import {
   clearOAuthConnectBinding,
   verifyOAuthConnectBinding,

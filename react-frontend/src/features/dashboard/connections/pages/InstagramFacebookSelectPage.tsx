@@ -1,6 +1,5 @@
-"use client";
 
-import { useSearchParams } from "@/lib/router";
+import { useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
 
 /**
@@ -8,7 +7,7 @@ import { useEffect } from "react";
  * Keeps token and returnTo query params.
  */
 export default function InstagramFacebookSelectRedirectPage() {
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     const token = searchParams.get("token");

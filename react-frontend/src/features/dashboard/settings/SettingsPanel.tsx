@@ -1,4 +1,5 @@
-"use client";
+import { useNavigate } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { fetchApi } from "@/lib/fetch-api";
 
 import {
@@ -8,7 +9,6 @@ import {
   useEffect,
   useTransition,
 } from "react";
-import { useRouter } from "@/lib/router";
 import Link from "@/components/AppLink";
 import {
   IconUser,
@@ -22,7 +22,7 @@ import {
   updateTimezone,
   updateConnectionAvatar,
   type SettingsSnapshot,
-} from "@/actions/settings";
+} from "@/api/settings";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PLATFORMS } from "@/lib/platforms";
 import {
@@ -98,7 +98,8 @@ function ProfileSettingsSection({
   email: string;
   isCredentialUser: boolean;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [savingName, setSavingName] = useState(false);
 
@@ -112,7 +113,7 @@ function ProfileSettingsSection({
       return { error: error.message ?? "Failed to update profile picture" };
     }
     toast.success("Profile picture updated");
-    router.refresh();
+    invalidateQueries();
     return {};
   };
 
@@ -132,7 +133,7 @@ function ProfileSettingsSection({
         return;
       }
       toast.success("Display name updated");
-      router.refresh();
+      invalidateQueries();
     } catch {
       toast.error("Failed to update display name");
     } finally {
@@ -255,7 +256,8 @@ function ChangePasswordForm({
   onSuccess: () => void;
   setLoading: (v: boolean) => void;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -285,7 +287,7 @@ function ChangePasswordForm({
       setNewPassword("");
       setConfirmPassword("");
       onSuccess();
-      router.refresh();
+      invalidateQueries();
     } catch {
       onError("Failed to change password.");
     } finally {
@@ -357,7 +359,8 @@ function ChangeEmailForm({
   resendCooldown?: number;
   onResend?: () => void;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
   const setOtpFromString = useCallback(
     (s: string) => {
       const digits = s.replace(/\D/g, "").slice(0, OTP_LENGTH).split("");
@@ -434,7 +437,7 @@ function ChangeEmailForm({
       }
       onSuccess(email);
       void authClient.getSession({ query: { disableCookieCache: true } });
-      router.refresh();
+      invalidateQueries();
     } catch {
       onError("Failed to update email.");
     } finally {
@@ -813,7 +816,8 @@ function AvatarEditor({
   /** Shown after a successful save; omit when the parent handles feedback. */
   successMessage?: string;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [urlInput, setUrlInput] = useState("");
@@ -861,7 +865,7 @@ function AvatarEditor({
       if (successMessage) {
         toast.success(successMessage);
       }
-      router.refresh();
+      invalidateQueries();
     } finally {
       setLoading(false);
       e.target.value = "";
@@ -884,7 +888,7 @@ function AvatarEditor({
       if (successMessage) {
         toast.success(successMessage);
       }
-      router.refresh();
+      invalidateQueries();
     } finally {
       setLoading(false);
     }
@@ -894,7 +898,6 @@ function AvatarEditor({
     <div className="flex flex-wrap items-start gap-4">
       <div className="flex flex-col items-center gap-2">
         {displaySrc && !imgFailed ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             key={displaySrc}
             src={displaySrc}
@@ -996,7 +999,7 @@ function DetectTimezoneButton({
   );
 }
 
-export function SettingsClient({
+export function SettingsPanel({
   displayName,
   email,
   image,
@@ -1013,7 +1016,8 @@ export function SettingsClient({
   timeZones: string[];
   isCredentialUser: boolean;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
   const [activeTab, setActiveTab] = useState<SettingsTabId>("profile");
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [changeEmailSuccess, setChangeEmailSuccess] = useState(false);
@@ -1200,7 +1204,7 @@ export function SettingsClient({
                     try {
                       await updatePlatformPreferences(fd);
                       toast.success("Preferences saved");
-                      router.refresh();
+                      invalidateQueries();
                     } catch {
                       toast.error("Failed to save preferences");
                     }
@@ -1276,7 +1280,7 @@ export function SettingsClient({
                         String(fd.get("timezone") ?? "").trim() || "UTC";
                       setTimezoneValue(tz);
                       toast.success("Timezone updated");
-                      router.refresh();
+                      invalidateQueries();
                     } catch {
                       toast.error("Failed to save timezone");
                     }
@@ -1353,7 +1357,7 @@ export function SettingsClient({
                     try {
                       await updateAutomationEmails(fd);
                       toast.success("Email preferences saved");
-                      router.refresh();
+                      invalidateQueries();
                     } catch {
                       toast.error("Failed to save email preferences");
                     }

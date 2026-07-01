@@ -1,13 +1,15 @@
-"use client";
 
+import { useNavigate } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import Link from "@/components/AppLink";
 import { AlertCircle, MoreHorizontal } from "lucide-react";
-import { useRouter } from "@/lib/router";
 import { formatDateTime } from "@/lib/date-format";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import type { PublicationRow } from "./posts-list-types";
-import { publishPost } from "@/actions/publish";
-import { deletePost } from "@/actions/posts";
+import { publishPost } from "@/api/publish";
+import { deletePost } from "@/api/posts";
+import { usePostHog } from "@posthog/react";
+import { capturePostAction } from "@/lib/posthog-events";
 import { PostAgainButton } from "./PostAgainButton";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -223,7 +225,9 @@ function QuickActionsMenu({
   status: QuickActionStatus;
   composerSlug: "text" | "image" | "video" | "threads" | "collection";
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
+  const posthog = usePostHog();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -246,7 +250,7 @@ function QuickActionsMenu({
     try {
       await fn();
       setOpen(false);
-      router.refresh();
+      invalidateQueries();
     } finally {
       setLoading(false);
     }
@@ -306,6 +310,10 @@ function QuickActionsMenu({
                       toast.error("Failed to publish post. Please try again.");
                       throw new Error("retry_failed");
                     }
+                    capturePostAction(posthog, "post_published", {
+                      source: "posts_list_retry",
+                      post_status: status,
+                    });
                   })
                 }
               >
@@ -340,6 +348,10 @@ function QuickActionsMenu({
                       toast.error("Failed to publish post. Please try again.");
                       throw new Error("publish_now_failed");
                     }
+                    capturePostAction(posthog, "post_published", {
+                      source: "posts_list_publish_now",
+                      post_status: status,
+                    });
                   })
                 }
               >
@@ -356,6 +368,10 @@ function QuickActionsMenu({
                       toast.error("Failed to cancel post. Please try again.");
                       throw new Error("cancel_failed");
                     }
+                    capturePostAction(posthog, "post_cancelled", {
+                      source: "posts_list",
+                      post_status: status,
+                    });
                   })
                 }
               >
@@ -383,6 +399,10 @@ function QuickActionsMenu({
                       toast.error("Failed to delete draft. Please try again.");
                       throw new Error("delete_draft_failed");
                     }
+                    capturePostAction(posthog, "post_deleted", {
+                      source: "posts_list",
+                      post_status: status,
+                    });
                   })
                 }
               >

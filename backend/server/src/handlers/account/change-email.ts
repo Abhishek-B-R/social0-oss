@@ -2,8 +2,8 @@ import { auth } from "../../lib/auth.js";
 import { db } from "../../db/index.js";
 import { user, account, verification } from "../../db/schema.js";
 import { eq, and, gt, ne } from "drizzle-orm";
-import { headers } from "../../lib/shim/request-cookies.js";
-import { RouteResponse } from "../../lib/shim/http.js";
+import { headers } from "../../lib/http/request-cookies.js";
+import { RouteResponse } from "../../lib/http/http.js";
 import { timingSafeEqual } from "crypto";
 
 const MAX_OTP_ATTEMPTS = 5;

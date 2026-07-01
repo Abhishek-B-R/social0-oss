@@ -1,8 +1,7 @@
-"use client";
 
+import { useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Link from "@/components/AppLink";
-import { usePathname } from "@/lib/router";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +16,7 @@ import { signInUrl } from "@/lib/sign-in-url";
 const DISMISS_KEY = "social0-guest-dashboard-dialog-dismissed";
 
 export function GuestTestModeDialog() {
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
   const signInHref = signInUrl(pathname);
   const [open, setOpen] = useState(false);
 

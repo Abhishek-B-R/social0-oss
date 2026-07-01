@@ -3,8 +3,8 @@ import { db } from "../../db/index.js";
 import { connectedAccounts } from "../../db/schema.js";
 import { and, eq } from "drizzle-orm";
 import { getValidToken } from "../../lib/token-refresh.js";
-import { headers } from "../../lib/shim/request-cookies.js";
-import { AppRequest } from "../../lib/shim/http.js";
+import { headers } from "../../lib/http/request-cookies.js";
+import { AppRequest } from "../../lib/http/http.js";
 
 /** GET ?accountId=xxx – returns boards for the given Pinterest account (must be owned by current user). */
 export async function listPinterestBoards(req: AppRequest) {

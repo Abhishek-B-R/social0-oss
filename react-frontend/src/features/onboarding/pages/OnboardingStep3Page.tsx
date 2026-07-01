@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "@/lib/auth-client";
-import { loadConnectionsPageData } from "@/actions/dashboard-data";
-import { ConnectStepClient } from "@/features/onboarding/components/ConnectStepClient";
+import { loadConnectionsPageData } from "@/api/dashboard-data";
+import { ConnectStep } from "@/features/onboarding/components/ConnectStep";
 import { DOCS_ONBOARDING_CONNECT_URL } from "@/lib/docs-url";
 
 export default function OnboardingStep3Page() {
@@ -42,7 +42,7 @@ export default function OnboardingStep3Page() {
           />
         </svg>
       </a>
-      <ConnectStepClient
+      <ConnectStep
         initialAccounts={accounts.map((a) => ({
           id: a.id,
           platform: a.platform,

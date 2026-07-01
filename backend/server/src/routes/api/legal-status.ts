@@ -1,7 +1,7 @@
 import { auth } from "../../lib/auth.js";
 import { getLegalStatus } from "../../lib/legal.js";
-import { headers } from "../../lib/shim/request-cookies.js";
-import { RouteResponse } from "../../lib/shim/http.js";
+import { headers } from "../../lib/http/request-cookies.js";
+import { RouteResponse } from "../../lib/http/http.js";
 
 export async function legalStatus() {
   const session = await auth.api.getSession({ headers: await headers() });

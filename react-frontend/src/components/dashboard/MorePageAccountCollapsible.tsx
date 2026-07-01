@@ -1,4 +1,3 @@
-"use client";
 
 import { useState } from "react";
 import { IconChevronUp } from "@tabler/icons-react";
@@ -32,7 +31,6 @@ export function MorePageAccountCollapsible({
         id="more-account-trigger"
       >
         {image ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={image}
             alt={displayName}

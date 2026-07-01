@@ -1,12 +1,12 @@
-"use client";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect, Suspense } from "react";
+import { usePostHog } from "@posthog/react";
 import Link from "@/components/AppLink";
-import { useSearchParams, useRouter } from "@/lib/router";
 import { IconLoader2 } from "@tabler/icons-react";
 import { getPlanLimits } from "@/lib/plans";
-import { setOnboardingCompleted } from "@/actions/onboarding";
+import { setOnboardingCompleted } from "@/api/onboarding";
 import { DOCS_ONBOARDING_URL } from "@/lib/docs-url";
 import { toast } from "sonner";
 import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
@@ -61,8 +61,9 @@ const GROWTH_FEATURES = [
 ];
 
 function OnboardingWelcomeContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const posthog = usePostHog();
   const [loadingPlan, setLoadingPlan] = useState<
     "starter" | "growth" | "pro" | null
   >(null);
@@ -71,15 +72,16 @@ function OnboardingWelcomeContent() {
   useEffect(() => {
     if (searchParams.get("payment_failed") === "1") {
       toast.error(PAYMENT_FAILED_MESSAGE);
-      router.replace("/onboarding", { scroll: false });
+      navigate("/onboarding", { replace: true });
     }
-  }, [searchParams, router]);
+  }, [searchParams, navigate]);
 
   async function handleExploreDashboard() {
     setSkipping(true);
+    posthog?.capture("onboarding_skipped");
     try {
       await setOnboardingCompleted();
-      router.push("/dashboard");
+      navigate("/dashboard");
     } finally {
       setSkipping(false);
     }
@@ -88,6 +90,7 @@ function OnboardingWelcomeContent() {
   async function handleSelectPlan(plan: "starter" | "growth" | "pro") {
     if (loadingPlan !== null) return;
     toast.dismiss();
+    posthog?.capture("checkout_started", { plan });
     setLoadingPlan(plan);
     try {
       const res = await fetchApi("/api/billing/checkout", {
@@ -140,7 +143,7 @@ function OnboardingWelcomeContent() {
             ? data.error
             : "You already have a subscription. Go to billing to change your plan.",
         );
-        router.push("/dashboard/billing");
+        navigate("/dashboard/billing", { replace: true });
         return;
       }
       toast.error(

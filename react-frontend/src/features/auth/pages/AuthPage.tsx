@@ -1,8 +1,9 @@
-"use client";
 
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useState, useEffect, useRef, Suspense } from "react";
+import { usePostHog } from "@posthog/react";
 import Link from "@/components/AppLink";
-import { useSearchParams, useRouter } from "@/lib/router";
 import { FcGoogle } from "react-icons/fc";
 import { IconEye, IconEyeOff } from "@tabler/icons-react";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
@@ -104,9 +105,11 @@ function friendlyAuthError(err: unknown): string {
 }
 
 function AuthPageContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
   const { data: session, isPending } = useSession();
+  const posthog = usePostHog();
   const callbackUrl = resolveCallbackUrl(searchParams.get("callbackUrl"));
   const authCallbackUrl = absoluteCallbackUrl(callbackUrl);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -114,13 +117,13 @@ function AuthPageContent() {
   useEffect(() => {
     if (isPending || !session) return;
     if (session.user.emailVerified === false) {
-      router.replace(
+      navigate(
         `/auth/verify-email?email=${encodeURIComponent(session.user.email ?? "")}`,
       );
       return;
     }
     assignSafeRedirectUrl(callbackUrl);
-  }, [isPending, session, callbackUrl, router]);
+  }, [isPending, session, callbackUrl, navigate]);
   useEffect(() => {
     if (searchParams.get("reset") === "success") setResetSuccess(true);
     if (searchParams.get("session") === "expired") {
@@ -145,6 +148,7 @@ function AuthPageContent() {
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
+    posthog?.capture("user_signed_in_with_google");
     // Safety timeout: stop spinner if popup/redirect is blocked, but avoid noisy false errors.
     const timer = setTimeout(() => {
       setGoogleLoading(false);
@@ -181,6 +185,8 @@ function AuthPageContent() {
         toast.error(friendlyAuthError(err.message ?? err));
         return;
       }
+      posthog?.identify(normalizedEmail, { email: normalizedEmail });
+      posthog?.capture("user_signed_in", { method: "email" });
       assignSafeRedirectUrl(callbackUrl);
     } catch {
       toast.error("Something went wrong. Please try again later.");
@@ -313,12 +319,15 @@ function AuthPageContent() {
         return;
       }
       const data = await res.json().catch(() => ({}));
+      const normalizedSignUpEmail = email.trim().toLowerCase();
+      posthog?.identify(normalizedSignUpEmail, { email: normalizedSignUpEmail, name: name.trim() });
+      posthog?.capture("user_signed_up", { method: "email" });
       if (data.url) {
         if (!assignSafeRedirectUrl(data.url)) {
           toast.error("Sign-up could not continue. Please try again.");
         }
       } else {
-        window.location.href = `/auth/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`;
+        window.location.href = `/auth/verify-email?email=${encodeURIComponent(normalizedSignUpEmail)}`;
       }
     } catch (err) {
       const isTimeout =

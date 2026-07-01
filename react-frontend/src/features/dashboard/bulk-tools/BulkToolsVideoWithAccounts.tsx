@@ -1,6 +1,5 @@
-"use client";
 
-import { BulkToolsVideoClient } from "@/components/bulk-tools/BulkToolsVideoClient";
+import { BulkToolsVideo } from "@/components/bulk-tools/BulkToolsVideo";
 import { useAccountsForForm } from "@/features/dashboard/create/useAccountsForForm";
 
 export function BulkToolsVideoWithAccounts({
@@ -12,7 +11,7 @@ export function BulkToolsVideoWithAccounts({
 
   if (loading) {
     return (
-      <BulkToolsVideoClient
+      <BulkToolsVideo
         accounts={[]}
         accountsLoading={true}
         supportedPlatforms={supportedPlatforms}
@@ -21,7 +20,7 @@ export function BulkToolsVideoWithAccounts({
   }
 
   return (
-    <BulkToolsVideoClient
+    <BulkToolsVideo
       accounts={accounts}
       supportedPlatforms={supportedPlatforms}
     />

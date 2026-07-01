@@ -1,25 +1,21 @@
-"use client";
-
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
+import { usePostHog } from "@posthog/react";
+import { capturePostLifecycle } from "@/lib/posthog-events";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { useRouter, useSearchParams } from "@/lib/router";
 import {
   freePublishBlockReason,
   getFreePostsRemaining,
   isFreePublishBlocked,
 } from "@/lib/free-tier-publish";
 import { signInUrl } from "@/lib/sign-in-url";
-import { createPost, type PublishMode } from "@/actions/posts";
-import {
-  getPostPublicationList,
-} from "@/actions/publish";
+import { createPost, type PublishMode } from "@/api/posts";
+import { getPostPublicationList } from "@/api/publish";
 import {
   sortBySlowPlatformsLast,
   publishPostWithParallelProgress,
 } from "@/lib/publish-order";
-import {
-  createResurfaceSchedule,
-  createAutoPlug,
-} from "@/actions/resurface";
+import { createResurfaceSchedule, createAutoPlug } from "@/api/resurface";
 import {
   useRememberedAccounts,
   useApplyRememberedSelectionWhenReady,
@@ -122,10 +118,7 @@ function ThreadPreviewMediaGrid({ items }: { items: PreviewMediaItem[] }) {
 
   const renderSlot = (item: PreviewMediaItem, key: string) => {
     if (item.type === "image") {
-      return (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img key={key} src={item.preview} alt="" className={imgClass} />
-      );
+      return <img key={key} src={item.preview} alt="" className={imgClass} />;
     }
     return (
       <div
@@ -278,8 +271,10 @@ export function ThreadsPostForm({
   freePostsUsed?: number;
   isGuest?: boolean;
 }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
+  const posthog = usePostHog();
+  const [searchParams] = useSearchParams();
   const nextIdRef = useRef(1);
   const nextId = () => {
     nextIdRef.current += 1;
@@ -309,6 +304,7 @@ export function ThreadsPostForm({
   );
   const [mode, setMode] = useState<PublishMode>("now");
   const modeRef = useRef(mode);
+  // eslint-disable-next-line react-hooks/refs
   modeRef.current = mode;
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
@@ -437,7 +433,7 @@ export function ThreadsPostForm({
     let cancelled = false;
     (async () => {
       try {
-        const { getScheduledPost } = await import("@/actions/posts");
+        const { getScheduledPost } = await import("@/api/posts");
         const result = await getScheduledPost(initialScheduledId);
         if (cancelled) return;
         if (!result.success) {
@@ -536,7 +532,7 @@ export function ThreadsPostForm({
     let cancelled = false;
     (async () => {
       try {
-        const { getDraft } = await import("@/actions/posts");
+        const { getDraft } = await import("@/api/posts");
         const result = await getDraft(initialDraftId);
         if (cancelled) return;
         if (!result.success) {
@@ -631,7 +627,7 @@ export function ThreadsPostForm({
     let cancelled = false;
     (async () => {
       try {
-        const { getPostToEdit } = await import("@/actions/posts");
+        const { getPostToEdit } = await import("@/api/posts");
         const result = await getPostToEdit(initialEditId);
         if (cancelled) return;
         if (!result.success) {
@@ -754,11 +750,11 @@ export function ThreadsPostForm({
 
   const handleDeleteDraft = async () => {
     if (!initialDraftId) return;
-    const { deleteDraft } = await import("@/actions/posts");
+    const { deleteDraft } = await import("@/api/posts");
     const result = await deleteDraft(initialDraftId);
     if (result.success) {
-      router.push("/dashboard/posts/drafts");
-      router.refresh();
+      navigate("/dashboard/posts/drafts", { replace: true });
+      invalidateQueries();
     } else {
       toast.error(result.error);
     }
@@ -828,6 +824,7 @@ export function ThreadsPostForm({
       maxVideoDurationSeconds,
     );
     if (accountIds.size === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIds((prev) => {
       const next = new Set(prev);
       let changed = false;
@@ -876,6 +873,7 @@ export function ThreadsPostForm({
   );
   useEffect(() => {
     if (mediaSizeExceeded.accountIds.size === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIds((prev) => {
       let next: Set<string> = prev;
       for (const id of mediaSizeExceeded.accountIds) {
@@ -1284,6 +1282,7 @@ export function ThreadsPostForm({
     if (!rememberAutoFeatures) return;
     if (hasRestoredAutoFeaturesRef.current) return;
     const { autoRepostConfig, autoPlugConfig } = getAutoFeaturesInitialState();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (autoRepostConfig) setResurfaceConfig(autoRepostConfig);
     if (autoPlugConfig) setAutoPlugConfig(autoPlugConfig);
     hasRestoredAutoFeaturesRef.current = true;
@@ -1307,6 +1306,7 @@ export function ThreadsPostForm({
     e.preventDefault();
     toast.dismiss();
     if (isGuest) {
+      // eslint-disable-next-line react-hooks/immutability
       window.location.href = signInUrl(
         window.location.pathname + window.location.search,
       );
@@ -1532,7 +1532,7 @@ export function ThreadsPostForm({
     }
 
     if (initialScheduledId && effectiveMode === "scheduled") {
-      const { updatePost } = await import("@/actions/posts");
+      const { updatePost } = await import("@/api/posts");
       const result = await updatePost(
         initialScheduledId,
         content,
@@ -1547,7 +1547,13 @@ export function ThreadsPostForm({
       if (result.success) {
         setScheduledPostId(initialScheduledId);
         setOverlayPhase("done");
-        router.refresh();
+        capturePostLifecycle(
+          posthog,
+          "post_scheduled",
+          "threads",
+          accountIds.length,
+        );
+        invalidateQueries();
       } else {
         setOverlayPhase("idle");
         toast.error(result.error);
@@ -1557,7 +1563,7 @@ export function ThreadsPostForm({
 
     if (initialDraftId) {
       const { updateDraft, updateAndPublish, updatePost } =
-        await import("@/actions/posts");
+        await import("@/api/posts");
       if (effectiveMode === "draft") {
         const result = await updateDraft(
           initialDraftId,
@@ -1570,7 +1576,13 @@ export function ThreadsPostForm({
         if (result.success) {
           setDraftSavedPostId(initialDraftId);
           setOverlayPhase("done");
-          router.refresh();
+          capturePostLifecycle(
+            posthog,
+            "post_drafted",
+            "threads",
+            accountIds.length,
+          );
+          invalidateQueries();
         } else {
           setOverlayPhase("idle");
           toast.error(result.error);
@@ -1593,13 +1605,13 @@ export function ThreadsPostForm({
         }
         if (result.allPlatformsFailed && result.postId) {
           setOverlayPhase("idle");
-          router.push(`/dashboard/posts/${result.postId}`);
-          router.refresh();
+          navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+          invalidateQueries();
           return;
         }
         setPublishedPostId(result.postId);
         setOverlayPhase("done");
-        router.refresh();
+        invalidateQueries();
         if (
           resurfaceConfig &&
           selectedAccounts.some((a) => a.platform === "twitter_x")
@@ -1613,6 +1625,12 @@ export function ThreadsPostForm({
           ).catch(() => {});
         }
         await setupAutoPlug(result.postId);
+        capturePostLifecycle(
+          posthog,
+          "post_published",
+          "threads",
+          accountIds.length,
+        );
         return;
       }
       if (effectiveMode === "scheduled") {
@@ -1632,7 +1650,13 @@ export function ThreadsPostForm({
         if (result.success) {
           setScheduledPostId(initialDraftId);
           setOverlayPhase("done");
-          router.refresh();
+          capturePostLifecycle(
+            posthog,
+            "post_scheduled",
+            "threads",
+            accountIds.length,
+          );
+          invalidateQueries();
         } else {
           setOverlayPhase("idle");
           toast.error(result.error);
@@ -1679,13 +1703,19 @@ export function ThreadsPostForm({
             .length ?? 0;
         if (succeededCount === 0) {
           setOverlayPhase("idle");
-          router.push(`/dashboard/posts/${result.postId}`);
-          router.refresh();
+          navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+          invalidateQueries();
           return;
         }
         setOverlayPhase("done");
-        router.push(`/dashboard/posts/${result.postId}`);
-        router.refresh();
+        capturePostLifecycle(
+          posthog,
+          "post_published",
+          "threads",
+          accountIds.length,
+        );
+        navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+        invalidateQueries();
         return;
       }
       const orderedList = sortBySlowPlatformsLast(list);
@@ -1706,7 +1736,9 @@ export function ThreadsPostForm({
         (rows) => {
           setPlatformStatuses((prev) =>
             prev.map((p) => {
-              const row = rows.find((r) => r.connectedAccountId === p.accountId);
+              const row = rows.find(
+                (r) => r.connectedAccountId === p.accountId,
+              );
               if (!row) return p;
               const status: PlatformStatus =
                 row.publicationStatus === "published"
@@ -1746,24 +1778,42 @@ export function ThreadsPostForm({
       }
       await setupAutoPlug(result.postId);
       setOverlayPhase("done");
-      router.push(`/dashboard/posts/${result.postId}`);
-      router.refresh();
+      capturePostLifecycle(
+        posthog,
+        "post_published",
+        "threads",
+        accountIds.length,
+      );
+      navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+      invalidateQueries();
       return;
     }
     if (effectiveMode === "draft" && result.postId) {
       setDraftSavedPostId(result.postId);
       setOverlayPhase("done");
-      router.refresh();
+      capturePostLifecycle(
+        posthog,
+        "post_drafted",
+        "threads",
+        accountIds.length,
+      );
+      invalidateQueries();
       return;
     }
     if (effectiveMode === "scheduled" && result.postId) {
       setScheduledPostId(result.postId);
       setOverlayPhase("done");
-      router.refresh();
+      capturePostLifecycle(
+        posthog,
+        "post_scheduled",
+        "threads",
+        accountIds.length,
+      );
+      invalidateQueries();
       return;
     }
     setOverlayPhase("idle");
-    router.refresh();
+    invalidateQueries();
   };
 
   const firstPostText = posts[0]?.text.trim() ?? "";
@@ -1868,8 +1918,10 @@ export function ThreadsPostForm({
               platformStatuses.length > 0 &&
               platformStatuses.every((p) => p.status === "failed");
             if (allFailed && publishedPostId) {
-              router.push(`/dashboard/posts/${publishedPostId}`);
-              router.refresh();
+              navigate(`/dashboard/posts/${publishedPostId}`, {
+                replace: true,
+              });
+              invalidateQueries();
             } else {
               setScheduledPostId(null);
               setDraftSavedPostId(null);
@@ -2084,7 +2136,6 @@ export function ThreadsPostForm({
                                 draggable={false}
                               />
                             ) : (
-                              /* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */
                               <img
                                 src={item.preview}
                                 alt=""
@@ -2202,7 +2253,9 @@ export function ThreadsPostForm({
             </button>
             {hasXSelected && (
               <div className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm">
-                <p className="mb-3 text-xs text-text-muted">Post configurations & tools</p>
+                <p className="mb-3 text-xs text-text-muted">
+                  Post configurations & tools
+                </p>
                 <XPostSettingsInline
                   value={xPostSettings}
                   onChange={setXPostSettings}
@@ -2312,9 +2365,6 @@ export function ThreadsPostForm({
                     previewAccount?.platformUsername != null
                       ? `@${previewAccount.platformUsername}`
                       : "@username";
-                  const initial = (previewAccount?.platformUsername ?? "A")
-                    .charAt(0)
-                    .toUpperCase();
                   const hasContent =
                     post.text.trim() ||
                     post.images.length > 0 ||
@@ -2344,7 +2394,6 @@ export function ThreadsPostForm({
                           {displayName}
                           {previewAccount?.platform === "twitter_x" &&
                             previewAccount?.isTwitterPremium && (
-                              // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 src="/icons/twitter-premium.svg"
                                 alt=""

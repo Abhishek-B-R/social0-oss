@@ -9,7 +9,7 @@ import crypto from "crypto";
 import { getConnectCallbackBaseUrl } from "../lib/app-url.js";
 import { safeRedirect, rethrowRouteRedirect } from "../lib/redirect.js";
 import { checkAccountLimits } from "../lib/plan-limits.js";
-import { AppRequest } from "../lib/shim/http.js";
+import { AppRequest } from "../lib/http/http.js";
 
 export async function igFbCallback(
   req: AppRequest,

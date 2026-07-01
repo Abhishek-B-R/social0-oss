@@ -1,11 +1,10 @@
-"use client";
 
+import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
-import { usePathname } from "@/lib/router";
 import { signInUrl } from "@/lib/sign-in-url";
 
 export function GuestBanner() {
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
   const href = signInUrl(pathname);
 
   return (

@@ -1,25 +1,23 @@
-"use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
+import { usePostHog } from "@posthog/react";
+import { capturePostLifecycle } from "@/lib/posthog-events";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { useRouter, useSearchParams } from "@/lib/router";
 import {
   freePublishBlockReason,
   getFreePostsRemaining,
   isFreePublishBlocked,
 } from "@/lib/free-tier-publish";
 import { signInUrl } from "@/lib/sign-in-url";
-import { createPost, type PublishMode } from "@/actions/posts";
-import {
-  getPostPublicationList,
-} from "@/actions/publish";
+import { createPost, type PublishMode } from "@/api/posts";
+import { getPostPublicationList } from "@/api/publish";
 import {
   sortBySlowPlatformsLast,
   publishPostWithParallelProgress,
 } from "@/lib/publish-order";
-import {
-  createResurfaceSchedule,
-  createAutoPlug,
-} from "@/actions/resurface";
+import { createResurfaceSchedule, createAutoPlug } from "@/api/resurface";
 import {
   useRememberedAccounts,
   useApplyRememberedSelectionWhenReady,
@@ -133,7 +131,6 @@ function TweetPreviewMediaCell({
           preload="auto"
         />
       ) : (
-        /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={item.preview}
           alt=""
@@ -225,8 +222,10 @@ export function CollectionPostForm({
   freePostsUsed?: number;
   isGuest?: boolean;
 }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
+  const posthog = usePostHog();
+  const [searchParams] = useSearchParams();
   const unifiedInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const captionTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -259,6 +258,7 @@ export function CollectionPostForm({
   );
   const [mode, setMode] = useState<PublishMode>("now");
   const modeRef = useRef(mode);
+  // eslint-disable-next-line react-hooks/refs
   modeRef.current = mode;
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
@@ -361,7 +361,7 @@ export function CollectionPostForm({
     let cancelled = false;
     (async () => {
       try {
-        const { getScheduledPost } = await import("@/actions/posts");
+        const { getScheduledPost } = await import("@/api/posts");
         const result = await getScheduledPost(initialScheduledId);
         if (cancelled) return;
         if (!result.success) {
@@ -381,7 +381,10 @@ export function CollectionPostForm({
         setScheduledAt(
           scheduled.scheduledAt ? new Date(scheduled.scheduledAt) : null,
         );
-        const scheduledMeta = scheduled.metadata as Record<string, unknown> | null;
+        const scheduledMeta = scheduled.metadata as Record<
+          string,
+          unknown
+        > | null;
         if (scheduledMeta?.x && typeof scheduledMeta.x === "object") {
           const x = scheduledMeta.x as Record<string, unknown>;
           setXPostSettings({
@@ -436,7 +439,7 @@ export function CollectionPostForm({
     let cancelled = false;
     (async () => {
       try {
-        const { getDraft } = await import("@/actions/posts");
+        const { getDraft } = await import("@/api/posts");
         const result = await getDraft(initialDraftId);
         if (cancelled) return;
         if (!result.success) {
@@ -494,7 +497,7 @@ export function CollectionPostForm({
     let cancelled = false;
     (async () => {
       try {
-        const { getPostToEdit } = await import("@/actions/posts");
+        const { getPostToEdit } = await import("@/api/posts");
         const result = await getPostToEdit(initialEditId);
         if (cancelled) return;
         if (!result.success) {
@@ -581,11 +584,11 @@ export function CollectionPostForm({
 
   const handleDeleteDraft = async () => {
     if (!initialDraftId) return;
-    const { deleteDraft } = await import("@/actions/posts");
+    const { deleteDraft } = await import("@/api/posts");
     const result = await deleteDraft(initialDraftId);
     if (result.success) {
-      router.push("/dashboard/posts/drafts");
-      router.refresh();
+      navigate("/dashboard/posts/drafts", { replace: true });
+      invalidateQueries();
     } else {
       toast.error(result.error);
     }
@@ -1034,6 +1037,7 @@ export function CollectionPostForm({
     e.preventDefault();
     toast.dismiss();
     if (isGuest) {
+      // eslint-disable-next-line react-hooks/immutability
       window.location.href = signInUrl(
         window.location.pathname + window.location.search,
       );
@@ -1056,13 +1060,6 @@ export function CollectionPostForm({
         return;
       }
     }
-
-    const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
-    const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
-    const hasX = selectedAccounts.some((a) => a.platform === "twitter_x");
-    const tiktokAccounts = selectedAccounts.filter(
-      (a) => a.platform === "tiktok",
-    );
 
     if (hasTikTok) {
       for (const tiktokAccount of tiktokAccounts) {
@@ -1213,7 +1210,7 @@ export function CollectionPostForm({
         return acc;
       }, {});
     }
-    if (hasX) {
+    if (hasXSelected) {
       metadata.x = {
         madeWithAi: xPostSettings.madeWithAi,
         paidPartnership: xPostSettings.paidPartnership,
@@ -1239,7 +1236,7 @@ export function CollectionPostForm({
     }
 
     if (initialScheduledId && effectiveMode === "scheduled") {
-      const { updatePost } = await import("@/actions/posts");
+      const { updatePost } = await import("@/api/posts");
       const result = await updatePost(
         initialScheduledId,
         text,
@@ -1254,7 +1251,13 @@ export function CollectionPostForm({
       if (result.success) {
         setScheduledPostId(initialScheduledId);
         setOverlayPhase("done");
-        router.refresh();
+        capturePostLifecycle(
+          posthog,
+          "post_scheduled",
+          "collection",
+          accountIds.length,
+        );
+        invalidateQueries();
       } else {
         setOverlayPhase("idle");
         toast.error(result.error);
@@ -1264,7 +1267,7 @@ export function CollectionPostForm({
 
     if (initialDraftId) {
       const { updateDraft, updateAndPublish, updatePost } =
-        await import("@/actions/posts");
+        await import("@/api/posts");
       if (effectiveMode === "draft") {
         const result = await updateDraft(
           initialDraftId,
@@ -1277,7 +1280,13 @@ export function CollectionPostForm({
         if (result.success) {
           setDraftSavedPostId(initialDraftId);
           setOverlayPhase("done");
-          router.refresh();
+          capturePostLifecycle(
+            posthog,
+            "post_drafted",
+            "collection",
+            accountIds.length,
+          );
+          invalidateQueries();
         } else {
           setOverlayPhase("idle");
           toast.error(result.error);
@@ -1300,13 +1309,13 @@ export function CollectionPostForm({
         }
         if (result.allPlatformsFailed && result.postId) {
           setOverlayPhase("idle");
-          router.push(`/dashboard/posts/${result.postId}`);
-          router.refresh();
+          navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+          invalidateQueries();
           return;
         }
         setPublishedPostId(result.postId);
         setOverlayPhase("done");
-        router.refresh();
+        invalidateQueries();
         if (
           resurfaceConfig &&
           selectedAccounts.some((a) => a.platform === "twitter_x")
@@ -1320,6 +1329,12 @@ export function CollectionPostForm({
           ).catch(() => {});
         }
         await setupAutoPlug(result.postId);
+        capturePostLifecycle(
+          posthog,
+          "post_published",
+          "collection",
+          accountIds.length,
+        );
         return;
       }
       if (effectiveMode === "scheduled") {
@@ -1339,7 +1354,13 @@ export function CollectionPostForm({
         if (result.success) {
           setScheduledPostId(initialDraftId);
           setOverlayPhase("done");
-          router.refresh();
+          capturePostLifecycle(
+            posthog,
+            "post_scheduled",
+            "collection",
+            accountIds.length,
+          );
+          invalidateQueries();
         } else {
           setOverlayPhase("idle");
           toast.error(result.error);
@@ -1386,11 +1407,19 @@ export function CollectionPostForm({
             .length ?? 0;
         if (succeededCount === 0) {
           setOverlayPhase("idle");
-          router.push(`/dashboard/posts/${result.postId}`);
-          router.refresh();
+          navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+          invalidateQueries();
           return;
         }
         setOverlayPhase("done");
+        capturePostLifecycle(
+          posthog,
+          "post_published",
+          "collection",
+          accountIds.length,
+        );
+        navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+        invalidateQueries();
         return;
       }
       const orderedList = sortBySlowPlatformsLast(list);
@@ -1411,7 +1440,9 @@ export function CollectionPostForm({
         (rows) => {
           setPlatformStatuses((prev) =>
             prev.map((p) => {
-              const row = rows.find((r) => r.connectedAccountId === p.accountId);
+              const row = rows.find(
+                (r) => r.connectedAccountId === p.accountId,
+              );
               if (!row) return p;
               const status: PlatformStatus =
                 row.publicationStatus === "published"
@@ -1451,24 +1482,42 @@ export function CollectionPostForm({
       }
       await setupAutoPlug(result.postId);
       setOverlayPhase("done");
-      router.push(`/dashboard/posts/${result.postId}`);
-      router.refresh();
+      capturePostLifecycle(
+        posthog,
+        "post_published",
+        "collection",
+        accountIds.length,
+      );
+      navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+      invalidateQueries();
       return;
     }
     if (effectiveMode === "draft" && result.postId) {
       setDraftSavedPostId(result.postId);
       setOverlayPhase("done");
-      router.refresh();
+      capturePostLifecycle(
+        posthog,
+        "post_drafted",
+        "collection",
+        accountIds.length,
+      );
+      invalidateQueries();
       return;
     }
     if (effectiveMode === "scheduled" && result.postId) {
       setScheduledPostId(result.postId);
       setOverlayPhase("done");
-      router.refresh();
+      capturePostLifecycle(
+        posthog,
+        "post_scheduled",
+        "collection",
+        accountIds.length,
+      );
+      invalidateQueries();
       return;
     }
     setOverlayPhase("idle");
-    router.refresh();
+    invalidateQueries();
   };
 
   const selectedAccounts = accounts.filter((a) => selectedIds.has(a.id));
@@ -1635,8 +1684,10 @@ export function CollectionPostForm({
               platformStatuses.length > 0 &&
               platformStatuses.every((p) => p.status === "failed");
             if (allFailed && publishedPostId) {
-              router.push(`/dashboard/posts/${publishedPostId}`);
-              router.refresh();
+              navigate(`/dashboard/posts/${publishedPostId}`, {
+                replace: true,
+              });
+              invalidateQueries();
             } else {
               setScheduledPostId(null);
               setDraftSavedPostId(null);
@@ -1903,7 +1954,6 @@ export function CollectionPostForm({
                             draggable={false}
                           />
                         ) : (
-                          /* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */
                           <img
                             src={item.preview}
                             alt=""
@@ -2038,9 +2088,7 @@ export function CollectionPostForm({
                             setTiktokSettings((prev) => ({ ...prev, [id]: s }));
                         }}
                         onError={(err) => toast.error(err)}
-                        mediaType={
-                          videos.length > 0 ? "video" : "photo"
-                        }
+                        mediaType={videos.length > 0 ? "video" : "photo"}
                         showPreviewHint
                       />
                     </>
@@ -2206,7 +2254,6 @@ export function CollectionPostForm({
                         preload="auto"
                       />
                     ) : (
-                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={previewItem?.preview}
                         alt=""
@@ -2266,7 +2313,6 @@ export function CollectionPostForm({
                             preload="metadata"
                           />
                         ) : (
-                          /* eslint-disable-next-line @next/next/no-img-element */
                           <img
                             src={item.preview}
                             alt=""
@@ -2305,7 +2351,6 @@ export function CollectionPostForm({
                           : "@username"}
                         {previewAccount?.platform === "twitter_x" &&
                           previewAccount?.isTwitterPremium && (
-                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src="/icons/twitter-premium.svg"
                               alt=""

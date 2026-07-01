@@ -1,13 +1,12 @@
-"use client";
 
+import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
-import { usePathname } from "@/lib/router";
 import { ScheduleDateTimePicker } from "@/components/ui/ScheduleDateTimePicker";
 import { AccountBubbleSelector } from "@/components/AccountBubbleSelector";
 import { PLATFORMS } from "@/lib/platforms";
 import { signInUrl } from "@/lib/sign-in-url";
 import { getPlanLimits } from "@/lib/plans";
-import type { PublishMode } from "@/actions/posts";
+import type { PublishMode } from "@/api/posts";
 
 type Account = {
   id: string;
@@ -92,7 +91,7 @@ export function PostFormOptions({
   isGuest = false,
   freePostsRemaining = null,
 }: PostFormOptionsProps) {
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
   const platformName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
 

@@ -1,4 +1,3 @@
-"use client";
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "@/components/AppLink";
@@ -358,7 +357,7 @@ function DayCell({
 
 const WEEK_STARTS_ON = 1; // Monday
 
-export function CalendarClient({
+export function CalendarGrid({
   posts,
   initialMonth,
   use24HourTimeFormat = false,

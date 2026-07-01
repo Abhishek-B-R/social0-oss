@@ -1,4 +1,3 @@
-"use client";
 
 import { EditPostForm } from "./EditPostForm";
 import { useAccountsForForm } from "../create/useAccountsForForm";
@@ -6,19 +5,19 @@ import { AccountsGridSkeleton } from "../create/AccountsGridSkeleton";
 import type { PostForEdit } from "./post-types";
 import type { PostMediaRow } from "./post-types";
 
-type EditPostWithAccountsClientProps = {
+type EditPostWithAccountsProps = {
   post: PostForEdit;
   existingMedia: PostMediaRow[];
   use24HourTimeFormat: boolean;
   dateFormat: string | null;
 };
 
-export function EditPostWithAccountsClient({
+export function EditPostWithAccounts({
   post,
   existingMedia,
   use24HourTimeFormat,
   dateFormat,
-}: EditPostWithAccountsClientProps) {
+}: EditPostWithAccountsProps) {
   const { accounts, loading } = useAccountsForForm(null);
 
   if (loading) {

@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 import { Navigate } from "react-router-dom";
-import { PostsPageClient } from "@/features/dashboard/posts/PostsPageClient";
-import { BillingPageClient } from "@/features/dashboard/billing/BillingPageClient";
-import { CalendarPageClient } from "@/features/dashboard/calendar/CalendarPageClient";
-import { ConnectionsPageClient } from "@/features/dashboard/connections/ConnectionsPageClient";
-import { SettingsPageClient } from "@/pages/SettingsPage";
-import { FeedbackPage } from "@/pages/FeedbackPage";
+import { PostsPage as PostsPageView } from "@/features/dashboard/posts/PostsPage";
+import { BillingPage as BillingPageView } from "@/features/dashboard/billing/BillingPage";
+import { CalendarPage as CalendarPageView } from "@/features/dashboard/calendar/CalendarPage";
+import { ConnectionsPage as ConnectionsPageView } from "@/features/dashboard/connections/ConnectionsPage";
+import { SettingsPage as SettingsPageView } from "@/pages/SettingsPage";
+import { FeedbackPage as FeedbackPageView } from "@/features/dashboard/feedback/FeedbackPage";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 
 export function DashboardIndexPage() {
@@ -15,7 +15,7 @@ export function DashboardIndexPage() {
 export function PostsPage() {
   return (
     <Suspense fallback={<DashboardPageSkeleton message="Loading posts..." />}>
-      <PostsPageClient />
+      <PostsPageView />
     </Suspense>
   );
 }
@@ -23,23 +23,23 @@ export function PostsPage() {
 export function BillingPage() {
   return (
     <Suspense fallback={<DashboardPageSkeleton message="Loading billing..." />}>
-      <BillingPageClient />
+      <BillingPageView />
     </Suspense>
   );
 }
 
 export function CalendarPage() {
-  return <CalendarPageClient />;
+  return <CalendarPageView />;
 }
 
 export function ConnectionsPage() {
-  return <ConnectionsPageClient />;
+  return <ConnectionsPageView />;
 }
 
 export function SettingsPage() {
   return (
     <Suspense fallback={<DashboardPageSkeleton message="Loading settings..." />}>
-      <SettingsPageClient />
+      <SettingsPageView />
     </Suspense>
   );
 }
@@ -47,7 +47,7 @@ export function SettingsPage() {
 export function FeedbackPageRoute() {
   return (
     <Suspense fallback={<DashboardPageSkeleton message="Loading feedback..." />}>
-      <FeedbackPage />
+      <FeedbackPageView />
     </Suspense>
   );
 }

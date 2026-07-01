@@ -1,14 +1,17 @@
-"use client";
 
 import { useEffect } from "react";
-import { setOnboardingCompleted } from "@/actions/onboarding";
-import { OnboardingStep4Client } from "@/features/onboarding/components/OnboardingStep4Client";
+import { setOnboardingCompleted } from "@/api/onboarding";
+import { OnboardingStep4 } from "@/features/onboarding/components/OnboardingStep4";
 import { DOCS_ONBOARDING_COMPLETE_URL } from "@/lib/docs-url";
+import { usePostHog } from "@posthog/react";
 
 export default function OnboardingStep4Page() {
+  const posthog = usePostHog();
+
   useEffect(() => {
     void setOnboardingCompleted();
-  }, []);
+    posthog?.capture("onboarding_completed");
+  }, [posthog]);
 
   return (
     <>
@@ -33,7 +36,7 @@ export default function OnboardingStep4Page() {
           />
         </svg>
       </a>
-      <OnboardingStep4Client />
+      <OnboardingStep4 />
     </>
   );
 }

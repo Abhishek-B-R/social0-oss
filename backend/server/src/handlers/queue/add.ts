@@ -1,4 +1,4 @@
-import { RouteResponse } from "../../lib/shim/http.js";
+import { RouteResponse } from "../../lib/http/http.js";
 import { auth } from "../../lib/auth.js";
 import { db } from "../../db/index.js";
 import {
@@ -8,7 +8,7 @@ import {
   posts,
 } from "../../db/schema.js";
 import { eq, and, asc } from "drizzle-orm";
-import { headers } from "../../lib/shim/request-cookies.js";
+import { headers } from "../../lib/http/request-cookies.js";
 import { getNextAvailableSlot } from "../../lib/queue-utils.js";
 import { toZonedTime } from "date-fns-tz";
 

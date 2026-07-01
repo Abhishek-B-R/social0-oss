@@ -1,4 +1,3 @@
-"use client";
 
 import { DOCS_BULK_TOOLS_VIDEO_URL } from "@/lib/docs-url";
 import { HelpCircle } from "lucide-react";

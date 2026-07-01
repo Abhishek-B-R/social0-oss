@@ -3,8 +3,8 @@ import { Outlet, useNavigate } from "react-router-dom";
 import Link from "@/components/AppLink";
 import Image from "@/components/AppImage";
 import { useSession } from "@/lib/auth-client";
-import { getOnboardingStatus, type OnboardingStatus } from "@/actions/onboarding";
-import { OnboardingProgressClient } from "@/components/onboarding/OnboardingProgressClient";
+import { getOnboardingStatus, type OnboardingStatus } from "@/api/onboarding";
+import { OnboardingProgress } from "@/components/onboarding/OnboardingProgress";
 import { LegalConsentGate } from "@/components/auth/LegalConsentGate";
 import { useQuery } from "@tanstack/react-query";
 
@@ -63,7 +63,7 @@ export function OnboardingLayout() {
               Social0
             </span>
           </Link>
-          <OnboardingProgressClient />
+          <OnboardingProgress />
         </div>
       </header>
       <main className="flex flex-1 flex-col w-full px-5 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12">

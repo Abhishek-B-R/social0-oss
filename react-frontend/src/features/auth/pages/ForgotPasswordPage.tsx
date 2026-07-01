@@ -1,14 +1,15 @@
-"use client";
 
+import { useNavigate } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useState } from "react";
 import Link from "@/components/AppLink";
-import { useRouter } from "@/lib/router";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 
 export default function ForgotPasswordPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -29,7 +30,7 @@ export default function ForgotPasswordPage() {
         toast.error("Something went wrong. Try again.");
         return;
       }
-      router.push(
+      navigate(
         `/auth/reset-password?email=${encodeURIComponent(normalizedEmail)}`,
       );
     } catch {

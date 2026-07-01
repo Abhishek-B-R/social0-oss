@@ -1,6 +1,5 @@
-"use client";
 
-import { BulkToolsImageClient } from "@/components/bulk-tools/BulkToolsImageClient";
+import { BulkToolsImage } from "@/components/bulk-tools/BulkToolsImage";
 import { useAccountsForForm } from "@/features/dashboard/create/useAccountsForForm";
 
 export function BulkToolsImageWithAccounts({
@@ -12,7 +11,7 @@ export function BulkToolsImageWithAccounts({
 
   if (loading) {
     return (
-      <BulkToolsImageClient
+      <BulkToolsImage
         accounts={[]}
         accountsLoading={true}
         supportedPlatforms={supportedPlatforms}
@@ -21,7 +20,7 @@ export function BulkToolsImageWithAccounts({
   }
 
   return (
-    <BulkToolsImageClient
+    <BulkToolsImage
       accounts={accounts}
       supportedPlatforms={supportedPlatforms}
     />

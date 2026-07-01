@@ -1,11 +1,10 @@
-"use client";
 
+import { useSearchParams } from "react-router-dom";
 import { useMemo } from "react";
 import Link from "@/components/AppLink";
-import { useSearchParams } from "@/lib/router";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
-import { loadPostsPageData } from "@/actions/dashboard-data";
+import { loadPostsPageData } from "@/api/dashboard-data";
 import type { PublicationRow } from "@/features/dashboard/posts/posts-list-types";
 import { POSTS_PAGE_SIZE } from "@/features/dashboard/posts/posts-constants";
 import { AllPostsFilters } from "./AllPostsFilters";
@@ -83,8 +82,8 @@ function hydrateFromSerialized(data: {
   };
 }
 
-export function PostsPageClient() {
-  const searchParams = useSearchParams();
+export function PostsPage() {
+  const [searchParams] = useSearchParams();
   const { data: session, isPending: sessionPending } = useSession();
 
   const sort = searchParams.get("sort") || "newest";

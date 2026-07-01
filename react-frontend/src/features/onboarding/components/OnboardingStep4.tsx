@@ -1,4 +1,3 @@
-"use client";
 
 import { useEffect } from "react";
 import Link from "@/components/AppLink";
@@ -55,7 +54,7 @@ function fireConfetti() {
   frame();
 }
 
-export function OnboardingStep4Client() {
+export function OnboardingStep4() {
   useEffect(() => {
     fireConfetti();
   }, []);

@@ -1,4 +1,3 @@
-"use client";
 
 import Link from "@/components/AppLink";
 import { FaLinkedin } from "react-icons/fa";

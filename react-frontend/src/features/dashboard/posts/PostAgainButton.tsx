@@ -1,9 +1,11 @@
-"use client";
 
+import { useNavigate } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
+import { usePostHog } from "@posthog/react";
+import { capturePostAction } from "@/lib/posthog-events";
 import { useState, useRef } from "react";
-import { useRouter } from "@/lib/router";
-import { postAgain } from "@/actions/posts";
-import { getPostPublicationList } from "@/actions/publish";
+import { postAgain } from "@/api/posts";
+import { getPostPublicationList } from "@/api/publish";
 import { Repeat } from "lucide-react";
 import {
   UploadPublishOverlay,
@@ -33,7 +35,9 @@ export function PostAgainButton({
   onStarted?: () => void;
   onFinished?: () => void;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
+  const posthog = usePostHog();
   const [loading, setLoading] = useState(false);
   const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>("idle");
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
@@ -108,7 +112,8 @@ export function PostAgainButton({
       return;
     }
     setOverlayPhase("done");
-    router.refresh();
+    capturePostAction(posthog, "post_again_completed", { source: "post_detail" });
+    invalidateQueries();
     onFinished?.();
   };
 

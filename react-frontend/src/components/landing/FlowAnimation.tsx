@@ -1,6 +1,4 @@
-"use client";
 
-/* eslint-disable @next/next/no-img-element */
 
 import React, { createRef, forwardRef, useMemo, useRef } from "react";
 import { motion } from "framer-motion";

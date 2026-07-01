@@ -1,4 +1,3 @@
-"use client";
 
 export type ComposerMediaItem = {
   type: "image" | "video";

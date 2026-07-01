@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { loadPostsPageData } from "@/actions/dashboard-data";
+import { loadPostsPageData } from "@/api/dashboard-data";
 import { AllPostsFilters } from "@/features/dashboard/posts/AllPostsFilters";
 import { PostListCards } from "@/features/dashboard/posts/PostListCards";
 import { Pagination } from "@/components/ui/Pagination";

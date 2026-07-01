@@ -2,11 +2,11 @@ import { auth } from "../lib/auth.js";
 import { db } from "../db/index.js";
 import { verification, connectedAccounts } from "../db/schema.js";
 import { eq, and } from "drizzle-orm";
-import { headers } from "../lib/shim/request-cookies.js";
+import { headers } from "../lib/http/request-cookies.js";
 import { decryptToken, encryptToken } from "../lib/encryption.js";
 import { checkAccountLimits } from "../lib/plan-limits.js";
 import { logConnectBlocked } from "../lib/plan-analytics.js";
-import { AppRequest } from "../lib/shim/http.js";
+import { AppRequest } from "../lib/http/http.js";
 import crypto from "crypto";
 import { connectSelectSuccessUrl } from "../lib/app-url.js";
 

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { rpc } from "@/lib/rpc";
-import { EditPostWithAccountsClient } from "@/features/dashboard/posts/EditPostWithAccountsClient";
+import { EditPostWithAccounts } from "@/features/dashboard/posts/EditPostWithAccounts";
 import { useSession } from "@/lib/auth-client";
 import { signInUrl } from "@/lib/sign-in-url";
 import type { DateFormatKey } from "@/lib/date-format";
@@ -67,7 +67,7 @@ export function EditPostPage() {
       <p className="text-gray-500 mb-8 font-medium">
         Update content, accounts, or scheduled time.
       </p>
-      <EditPostWithAccountsClient
+      <EditPostWithAccounts
         post={data.post}
         existingMedia={data.existingMedia ?? []}
         use24HourTimeFormat={data.use24HourTimeFormat ?? false}

@@ -1,9 +1,9 @@
 import { auth } from "../lib/auth.js";
 import { env } from "../lib/env.js";
-import { headers } from "../lib/shim/request-cookies.js";
+import { headers } from "../lib/http/request-cookies.js";
 import { encrypt } from "../lib/encryption.js";
 import { getConnectCallbackBaseUrl } from "../lib/app-url.js";
-import { AppRequest } from "../lib/shim/http.js";
+import { AppRequest } from "../lib/http/http.js";
 import {
   buildFacebookOAuthUrl,
   FACEBOOK_INSTAGRAM_PAGE_SCOPES,

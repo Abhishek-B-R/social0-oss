@@ -1,7 +1,7 @@
-"use client";
 
+import { useNavigate } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useCallback, useState, type ReactNode } from "react";
-import { useRouter } from "@/lib/router";
 import Link from "@/components/AppLink";
 import { Settings } from "lucide-react";
 import { toast } from "sonner";
@@ -22,8 +22,8 @@ import {
   updateResurfaceSchedule,
   disableResurfaceSchedule,
   cancelAutoPlug,
-} from "@/actions/resurface";
-import { updateScheduledPostAutoFeatures } from "@/actions/posts";
+} from "@/api/resurface";
+import { updateScheduledPostAutoFeatures } from "@/api/posts";
 import {
   isWithinAutoPlugWindow,
   isWithinResurfaceWindow,
@@ -162,7 +162,8 @@ export function PostDetailAutoFeaturesSection({
   pendingAutoPlugFromServer?: Partial<AutoPlugConfig> | null;
   pendingResurfaceFromServer?: Partial<AutoResurfaceConfig> | null;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
   const { accounts, loading } = useAccountsForForm(null);
   const [plugModalOpen, setPlugModalOpen] = useState(false);
   const [resurfaceModalOpen, setResurfaceModalOpen] = useState(false);
@@ -252,8 +253,8 @@ export function PostDetailAutoFeaturesSection({
       resurfaceDetail.resurfacesDone < resurfaceDetail.maxResurfaces;
 
   const refresh = useCallback(() => {
-    router.refresh();
-  }, [router]);
+    invalidateQueries();
+  }, [invalidateQueries]);
 
   const handleSavePlugModal = useCallback(async () => {
     if (!draftPlug) {

@@ -10,7 +10,7 @@ import {
   autoPlugs,
 } from "@/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { headers } from "../../lib/shim/request-cookies.js";
+import { headers } from "../lib/http/request-cookies.js";
 import { isPostOlderThanAutoFeaturesEditWindow } from "@/lib/resurface-utils";
 
 const PLATFORM_X = "x";

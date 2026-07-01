@@ -1,5 +1,5 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { AppRequest } from "./shim/http.js";
+import { AppRequest } from "./http/http.js";
 import { buildForwardedRequestUrl } from "./forwarded-request-url.js";
 import {
   runWithRequestContext,

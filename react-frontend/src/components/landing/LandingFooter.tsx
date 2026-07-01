@@ -1,7 +1,6 @@
-"use client";
 
+import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
-import { usePathname } from "@/lib/router";
 
 const footerLinks = [
   // { href: "/features", label: "Features" },
@@ -14,7 +13,7 @@ const footerLinks = [
 ];
 
 export function LandingFooter() {
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
   const homeHref = pathname === "/home" ? "/home" : "/";
 
   return (

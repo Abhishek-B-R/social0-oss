@@ -1,7 +1,6 @@
-"use client";
 
+import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
-import { usePathname } from "@/lib/router";
 import { useState, useEffect } from "react";
 import { Menu, X, Moon, Sun } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
@@ -29,7 +28,7 @@ function navLinksForPath(_pathname: string | null): NavLink[] {
 }
 
 export function LandingHeader() {
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
   const navLinks = navLinksForPath(pathname);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -127,7 +126,6 @@ export function LandingHeader() {
               className="inline-flex rounded-full items-center gap-2.5 border border-border bg-background px-4 py-2 text-[14px] font-semibold text-foreground transition-colors hover:bg-muted"
             >
               {user.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={user.image}
                   alt="User profile photo"
@@ -206,7 +204,6 @@ export function LandingHeader() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {user.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={user.image}
                     alt="User profile photo"

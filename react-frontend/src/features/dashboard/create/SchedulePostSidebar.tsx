@@ -1,12 +1,11 @@
-"use client";
+import { useLocation } from "react-router-dom";
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/AppLink";
-import { usePathname } from "@/lib/router";
 import { format } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
-import type { PublishMode } from "@/actions/posts";
+import type { PublishMode } from "@/api/posts";
 import { formatDateTime, formatTimezoneLabel } from "@/lib/date-format";
 import { signInUrl } from "@/lib/sign-in-url";
 import { getPlanLimits } from "@/lib/plans";
@@ -109,7 +108,7 @@ export function SchedulePostSidebar({
   isGuest = false,
   freePostsRemaining = null,
 }: SchedulePostSidebarProps) {
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
   const isScheduled = mode === "scheduled";
 
   const defaultScheduledAt = useMemo(() => {

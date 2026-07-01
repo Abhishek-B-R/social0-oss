@@ -11,7 +11,7 @@ import {
   autoPlugs,
 } from "@/db/schema";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
-import { headers } from "../../lib/shim/request-cookies.js";
+import { headers } from "../lib/http/request-cookies.js";
 import { decryptToken } from "@/lib/encryption";
 import { uploadLinkedInImage, uploadLinkedInVideo } from "@/lib/linkedin-media";
 import { publishToPlatform } from "@/lib/publish-platform";

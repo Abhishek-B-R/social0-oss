@@ -1,7 +1,6 @@
-"use client";
 
+import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
-import { usePathname } from "@/lib/router";
 import { signInUrl } from "@/lib/sign-in-url";
 
 type GuestSignInPromptProps = {
@@ -13,7 +12,7 @@ export function GuestSignInPrompt({
   title,
   description,
 }: GuestSignInPromptProps) {
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
 
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-bg-muted/30 px-6 py-16 text-center">

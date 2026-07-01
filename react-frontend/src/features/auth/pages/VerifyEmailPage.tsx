@@ -1,8 +1,7 @@
-"use client";
 
+import { useSearchParams } from "react-router-dom";
 import { useState, useCallback, useEffect, Suspense } from "react";
 import Link from "@/components/AppLink";
-import { useSearchParams } from "@/lib/router";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
@@ -11,7 +10,7 @@ const RESEND_COOLDOWN_SEC = 30;
 const OTP_LENGTH = 6;
 
 function VerifyEmailContent() {
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
   const emailParam = searchParams.get("email") ?? "";
   const [email] = useState(decodeURIComponent(emailParam));
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));

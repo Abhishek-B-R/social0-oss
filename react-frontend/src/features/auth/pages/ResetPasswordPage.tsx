@@ -1,8 +1,8 @@
-"use client";
 
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useState, useCallback, Suspense } from "react";
 import Link from "@/components/AppLink";
-import { useSearchParams, useRouter } from "@/lib/router";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
@@ -10,8 +10,9 @@ import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 const OTP_LENGTH = 6;
 
 function ResetPasswordContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const invalidateQueries = useInvalidateQueries();
   const emailParam = searchParams.get("email") ?? "";
   const [email] = useState(decodeURIComponent(emailParam));
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
@@ -58,7 +59,7 @@ function ResetPasswordContent() {
         toast.error("Invalid or expired code. Try again.");
         return;
       }
-      router.push("/auth?reset=success");
+      navigate("/auth?reset=success", { replace: true });
     } catch {
       toast.error("Something went wrong. Try again.");
     } finally {

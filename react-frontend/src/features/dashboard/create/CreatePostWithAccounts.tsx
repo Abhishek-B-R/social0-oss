@@ -1,4 +1,3 @@
-"use client";
 
 import { TextPostForm } from "./forms/TextPostForm";
 import { ImagePostForm } from "./forms/ImagePostForm";
@@ -19,7 +18,7 @@ const FORM_MAP = {
 
 type ContentTypeSlug = keyof typeof FORM_MAP;
 
-export type CreatePostWithAccountsClientProps = {
+export type CreatePostWithAccountsProps = {
   contentTypeSlug: ContentTypeSlug;
   supportedPlatforms: string[];
   use24HourTimeFormat: boolean;
@@ -35,7 +34,7 @@ export type CreatePostWithAccountsClientProps = {
   isGuest?: boolean;
 };
 
-export function CreatePostWithAccountsClient({
+export function CreatePostWithAccounts({
   contentTypeSlug,
   supportedPlatforms,
   use24HourTimeFormat,
@@ -49,7 +48,7 @@ export function CreatePostWithAccountsClient({
   subscriptionTier = "free",
   freePostsUsed = 0,
   isGuest = false,
-}: CreatePostWithAccountsClientProps) {
+}: CreatePostWithAccountsProps) {
   const { accounts, loading } = useAccountsForForm(supportedPlatforms);
   const FormComponent = FORM_MAP[contentTypeSlug];
 
