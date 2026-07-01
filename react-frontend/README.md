@@ -6,7 +6,7 @@ Plain React + Vite SPA that mirrors `frontend/` (Next.js). All server logic live
 
 ```bash
 cd react-frontend
-npm install
+bun install
 cp .env.example .env
 ```
 
@@ -14,10 +14,10 @@ Run the API (`backend/server`) on port **3001** in a separate terminal, then:
 
 ```bash
 # Terminal 1 - API (loads env from backend/.env)
-cd backend/server && npm run dev
+cd backend/server && bun run dev
 
 # Terminal 2 - SPA
-cd react-frontend && npm run dev
+cd react-frontend && bun run dev
 ```
 
 The Vite dev server proxies `/api` and `/v1` to `VITE_API_PROXY_TARGET` (default `http://localhost:3001`). Leave `VITE_API_URL` empty in dev so the browser uses same-origin `/api` through the proxy.
@@ -34,6 +34,6 @@ The Vite dev server proxies `/api` and `/v1` to `VITE_API_PROXY_TARGET` (default
 
 | Command             | Description                              |
 | ------------------- | ---------------------------------------- |
-| `npm run dev`       | Vite dev server (https://localhost:3000) |
-| `npm run build`     | Production build                         |
-| `npm run typecheck` | TypeScript check                         |
+| `bun run dev`       | Vite dev server (https://localhost:3000) |
+| `bun run build`     | Production build                         |
+| `bun run typecheck` | TypeScript check                         |
