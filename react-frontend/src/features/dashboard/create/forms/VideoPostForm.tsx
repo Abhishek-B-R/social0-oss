@@ -2741,7 +2741,7 @@ export function VideoPostForm({
                       username={previewAccount?.platformUsername}
                       platform={previewAccount?.platform}
                       size="md"
-                      className="!h-10 !w-10"
+                      className="h-10! w-10!"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-text inline-flex items-center gap-0.5 flex-wrap">

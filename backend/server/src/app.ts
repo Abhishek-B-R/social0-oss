@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
+import { Sentry } from "./instrument.js";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import { registerQueuePlugin } from "./plugins/queue.js";
@@ -58,6 +59,10 @@ export async function buildApp() {
         process.env.NODE_ENV === "production"),
   });
 
+  if (process.env.SENTRY_DSN) {
+    Sentry.setupFastifyErrorHandler(app);
+  }
+
   const corsOrigins = getCorsOrigins();
   await app.register(cors, {
     origin: (origin, callback) => {
@@ -84,6 +89,15 @@ export async function buildApp() {
     service: "server",
     ts: new Date().toISOString(),
   }));
+
+  if (process.env.SENTRY_DSN && process.env.NODE_ENV !== "production") {
+    app.get("/debug-sentry", async () => {
+      Sentry.logger.info("User triggered test error", {
+        action: "test_error_endpoint",
+      });
+      throw new Error("My first Sentry error!");
+    });
+  }
 
   await app.register(registerV1Routes, { prefix: "/v1" });
   await app.register(registerApiRoutes, { prefix: "/api" });

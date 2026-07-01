@@ -2383,7 +2383,7 @@ export function ThreadsPostForm({
                           username={previewAccount?.platformUsername}
                           platform={previewAccount?.platform}
                           size="md"
-                          className="!h-10 !w-10"
+                          className="h-10! w-10!"
                         />
                         {!isLast && (
                           <div className="w-0.5 flex-1 min-h-[8px] bg-bg-muted" />

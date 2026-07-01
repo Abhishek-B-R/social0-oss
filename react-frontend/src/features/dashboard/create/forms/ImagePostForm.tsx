@@ -993,7 +993,6 @@ export function ImagePostForm({
       : null;
   const uniquePlatformsFromSelection = useMemo(
     () => [...new Set(selectedAccounts.map((a) => a.platform))],
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     [selectedAccounts],
   );
   const showPlatformCaptionsSection = selectedIds.size >= 2;
@@ -2570,7 +2569,7 @@ export function ImagePostForm({
                         username={previewAccount?.platformUsername}
                         platform={previewAccount?.platform}
                         size="md"
-                        className="!h-10 !w-10"
+                        className="h-10! w-10!"
                       />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-text inline-flex items-center gap-0.5 flex-wrap">

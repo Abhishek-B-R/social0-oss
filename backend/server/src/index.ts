@@ -1,11 +1,4 @@
-import { config } from "dotenv";
-import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
-// Must run before any module that reads process.env (ESM hoists static imports).
-config({
-  path: resolve(fileURLToPath(new URL("../..", import.meta.url)), ".env"),
-});
+import "./instrument.js";
 
 const { loadEnv } = await import("@social0/shared");
 const { buildApp } = await import("./app.js");

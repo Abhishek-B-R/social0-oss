@@ -1,4 +1,0 @@
-{
-  "typescript.tsdk": "react-frontend/node_modules/typescript/lib",
-  "typescript.enablePromptUseWorkspaceTsdk": true
-}
