@@ -231,7 +231,7 @@ export default function LinkedInSelectPage() {
           <button
             type="submit"
             disabled={submitLoading}
-            className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:bg-emerald-700 disabled:opacity-60"
+            className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground transition-opacity hover:bg-accent-hover disabled:opacity-60"
           >
             {submitLoading ? "Connecting…" : "Connect Selected"}
           </button>

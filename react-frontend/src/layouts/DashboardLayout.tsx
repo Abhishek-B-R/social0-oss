@@ -92,7 +92,7 @@ export function DashboardLayout() {
       : (session?.user ?? null);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-bg">
+    <div className="dashboard-shell flex h-screen overflow-hidden bg-bg">
       <SeoHead {...dashboardSeo} />
       {session && layoutData?.subscriptionTier && (
         <SubscriptionSync tier={layoutData.subscriptionTier} />

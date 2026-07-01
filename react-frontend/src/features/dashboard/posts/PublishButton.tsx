@@ -52,7 +52,7 @@ export function PublishButton({
         type="button"
         onClick={handlePublish}
         disabled={disabled || loading}
-        className="rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-3 py-1.5 text-sm font-medium transition-colors"
+        className="rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 text-accent-foreground px-3 py-1.5 text-sm font-medium transition-colors"
       >
         {loading ? "Publishing…" : label}
       </button>

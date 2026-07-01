@@ -187,7 +187,7 @@ function ProfileSettingsSection({
         <button
           type="submit"
           disabled={savingName}
-          className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           {savingName ? "Saving..." : "Save"}
         </button>
@@ -515,7 +515,7 @@ function ChangeEmailForm({
           prev?.focus();
         }
       }}
-      className="w-11 h-12 text-center text-lg font-semibold rounded-lg border border-input bg-bg text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      className="w-11 h-12 text-center text-lg font-semibold rounded-lg border border-input bg-bg text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
       aria-label={`Digit ${i + 1} of ${OTP_LENGTH}`}
     />
   ));
@@ -550,7 +550,7 @@ function ChangeEmailForm({
             <button
               type="button"
               onClick={onResend}
-              className="text-emerald-600 hover:text-emerald-700 font-medium"
+              className="text-accent hover:text-accent-hover font-medium"
             >
               Resend code
             </button>
@@ -613,7 +613,7 @@ function ChangePasswordModal({
               type="submit"
               form={CHANGE_PASSWORD_FORM_ID}
               disabled={loading}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+              className="bg-accent hover:bg-accent-hover text-accent-foreground gap-2"
             >
               {loading && (
                 <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -761,7 +761,7 @@ function ChangeEmailModal({
                   type="submit"
                   form={CHANGE_EMAIL_VERIFY_FORM_ID}
                   disabled={loading || otp.trim().length !== OTP_LENGTH}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                  className="bg-accent hover:bg-accent-hover text-accent-foreground gap-2"
                 >
                   {loading && (
                     <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -774,7 +774,7 @@ function ChangeEmailModal({
                 type="submit"
                 form={CHANGE_EMAIL_SEND_FORM_ID}
                 disabled={loading}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                className="bg-accent hover:bg-accent-hover text-accent-foreground gap-2"
               >
                 {loading && (
                   <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -1161,12 +1161,12 @@ export function SettingsPanel({
                     />
                   </div>
                   {passwordSuccess && (
-                    <p className="mt-2 text-sm text-emerald-600">
+                    <p className="mt-2 text-sm text-accent">
                       Password updated successfully.
                     </p>
                   )}
                   {changeEmailSuccess && (
-                    <p className="mt-2 text-sm text-emerald-600">
+                    <p className="mt-2 text-sm text-accent">
                       Email updated successfully.
                     </p>
                   )}
@@ -1256,7 +1256,7 @@ export function SettingsPanel({
                 <button
                   type="submit"
                   disabled={preferencesPending}
-                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {preferencesPending ? "Saving..." : "Save"}
                 </button>
@@ -1325,7 +1325,7 @@ export function SettingsPanel({
                 <button
                   type="submit"
                   disabled={timezonePending}
-                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {timezonePending ? "Saving..." : "Save timezone"}
                 </button>
@@ -1422,7 +1422,7 @@ export function SettingsPanel({
                 <button
                   type="submit"
                   disabled={emailPrefsPending}
-                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {emailPrefsPending ? "Saving..." : "Save"}
                 </button>

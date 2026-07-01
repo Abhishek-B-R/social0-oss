@@ -57,20 +57,20 @@ export function TiktokCreateButton({
       >
         {/* Left glow - darker green, subtle */}
         <div
-          className="absolute inset-0 rounded-xl bg-emerald-500/60 blur-sm"
+          className="absolute inset-0 rounded-xl bg-accent/60 blur-sm"
           style={{ transform: `translateX(-${TOKENS.glowOffset}px)` }}
           aria-hidden
         />
         {/* Right glow - lighter green / teal, subtle */}
         <div
-          className="absolute inset-0 rounded-xl bg-emerald-300/60 blur-sm"
+          className="absolute inset-0 rounded-xl bg-accent-light/60 blur-sm"
           style={{ transform: `translateX(${TOKENS.glowOffset}px)` }}
           aria-hidden
         />
         {/* Main button - primary green, clean */}
-        <div className="relative flex h-full w-full items-center justify-center rounded-xl bg-accent shadow-lg shadow-emerald-500/30">
+        <div className="relative flex h-full w-full items-center justify-center rounded-xl bg-accent shadow-lg shadow-accent/30">
           <Plus
-            className="h-5 w-5 shrink-0 stroke-[2.5] text-white"
+            className="h-5 w-5 shrink-0 stroke-[2.5] text-accent-foreground"
             strokeWidth={2.5}
             aria-hidden
           />

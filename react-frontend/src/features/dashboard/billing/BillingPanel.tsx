@@ -713,7 +713,7 @@ export function BillingPanel({
         <p className="text-sm text-muted-foreground">Current plan</p>
         <h2 className="text-2xl font-serif text-foreground">{tierLabel}</h2>
         {showRenewedTodayBanner && renewedOnDate && (
-          <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-1">
+          <p className="text-sm text-accent mt-1">
             Your plan renewed on{" "}
             {renewedOnDate.toLocaleDateString(undefined, {
               year: "numeric",
@@ -845,7 +845,7 @@ export function BillingPanel({
             <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
               {STARTER_BILLING_FEATURES.map((f) => (
                 <li key={f} className="flex items-center gap-2">
-                  <span className="text-emerald-500 shrink-0">✓</span>
+                  <span className="text-accent shrink-0">✓</span>
                   {f}
                 </li>
               ))}
@@ -926,7 +926,7 @@ export function BillingPanel({
             <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
               {GROWTH_BILLING_FEATURES.map((f) => (
                 <li key={f} className="flex items-center gap-2">
-                  <span className="text-emerald-500 shrink-0">✓</span>
+                  <span className="text-accent shrink-0">✓</span>
                   {f}
                 </li>
               ))}
@@ -938,7 +938,7 @@ export function BillingPanel({
                 </Button>
               ) : subscription.tier === "starter" ? (
                 <Button
-                  className="w-full bg-accent hover:bg-accent/90 text-white"
+                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
                   disabled={loadingChangePlan !== null || upgradePending}
                   onClick={() => handleUpgradePlan("growth")}
                 >
@@ -957,7 +957,7 @@ export function BillingPanel({
               ) : (
                 <>
                   <Button
-                    className="w-full bg-accent hover:bg-accent/90 text-white"
+                    className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
                     disabled={loadingChangePlan !== null}
                     onClick={() => handleUpgradeFromFree("growth")}
                   >
@@ -1034,7 +1034,7 @@ export function BillingPanel({
                 Your billing cycle will restart from today.
               </p>
               {subscription.cancelAtPeriodEnd && (
-                <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                <p className="text-xs text-accent">
                   Your cancellation will be removed after upgrade.
                 </p>
               )}

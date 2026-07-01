@@ -2214,7 +2214,7 @@ export function CollectionPostForm({
                   onClick={() => setPreviewCardMode("carousel")}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                     previewCardMode === "carousel"
-                      ? "bg-accent text-white"
+                      ? "bg-accent text-accent-foreground"
                       : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
                   }`}
                 >
@@ -2225,7 +2225,7 @@ export function CollectionPostForm({
                   onClick={() => setPreviewCardMode("post")}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                     previewCardMode === "post"
-                      ? "bg-accent text-white"
+                      ? "bg-accent text-accent-foreground"
                       : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
                   }`}
                 >

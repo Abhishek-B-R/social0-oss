@@ -442,7 +442,7 @@ export function EditPostForm({
             !content.trim() ||
             selectedIds.size === 0
           }
-          className="rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 shadow-lg transition-colors"
+          className="rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-accent-foreground font-semibold py-3 px-6 shadow-lg transition-colors"
         >
           {loading ? "Saving..." : "Save changes"}
         </button>

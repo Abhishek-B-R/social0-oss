@@ -159,7 +159,7 @@ function getStatusBadge(status: string | null): {
       return {
         label: "Posted",
         prefix: "●",
-        className: "bg-emerald-600 text-white",
+        className: "bg-accent text-accent-foreground",
       };
     case "partial":
       return {
@@ -531,7 +531,7 @@ export function PostListCards({
         return (
           <li
             key={post.id}
-            className="relative rounded-[12px] border border-border bg-card transition-shadow hover:border-emerald-500 hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
+            className="relative rounded-[12px] border border-border bg-card transition-shadow hover:border-accent hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
           >
             {quickStatus && (
               <div className="absolute right-2 top-2 z-10">

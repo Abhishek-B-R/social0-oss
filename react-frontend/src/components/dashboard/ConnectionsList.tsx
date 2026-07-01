@@ -169,7 +169,7 @@ export function ConnectionsList({
     <>
       <div className="space-y-3">
         {reauthStatus === "success" && (
-          <p className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200">
+          <p className="rounded-lg border border-accent/50 bg-accent/10 px-3 py-2 text-sm text-accent dark:text-accent-light">
             Account reconnected successfully.
           </p>
         )}

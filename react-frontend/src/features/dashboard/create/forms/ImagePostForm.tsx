@@ -2303,9 +2303,9 @@ export function ImagePostForm({
                           autoAddMusic: !prev.autoAddMusic,
                         }))
                       }
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 ${
                         tiktokConfig.autoAddMusic
-                          ? "bg-emerald-600"
+                          ? "bg-accent"
                           : "bg-gray-200"
                       }`}
                     >
@@ -2537,7 +2537,7 @@ export function ImagePostForm({
                     }}
                     className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                       previewCardMode === "post"
-                        ? "bg-accent text-white"
+                        ? "bg-accent text-accent-foreground"
                         : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
                     }`}
                   >
@@ -2551,7 +2551,7 @@ export function ImagePostForm({
                     }}
                     className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                       previewCardMode === "media"
-                        ? "bg-accent text-white"
+                        ? "bg-accent text-accent-foreground"
                         : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
                     }`}
                   >

@@ -49,7 +49,7 @@ export function GuestTestModeDialog() {
         <DialogFooter className="mt-2 flex-col gap-2 sm:flex-col sm:space-x-0">
           <Button
             asChild
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="w-full bg-accent hover:bg-accent-hover text-accent-foreground"
           >
             <Link href={signInHref}>Complete sign in</Link>
           </Button>

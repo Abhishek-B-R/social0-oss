@@ -58,7 +58,7 @@ function getPublicationStatusBadge(status: string | null): {
       return {
         label: "Posted",
         className:
-          "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60",
+          "bg-accent/10 dark:bg-accent/15 text-accent dark:text-accent-light border-accent/25 dark:border-accent/35",
       };
     case "partial":
       return {
@@ -471,7 +471,7 @@ export function PostDetailView({ postId }: { postId: string }) {
                 <span
                   className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
                     post.status === "published"
-                      ? "bg-emerald-600 text-white"
+                      ? "bg-accent text-accent-foreground"
                       : post.status === "partial"
                         ? "bg-purple-500/20 text-purple-800 dark:text-purple-200 border border-purple-500/30"
                         : post.status === "publishing"
@@ -617,7 +617,7 @@ export function PostDetailView({ postId }: { postId: string }) {
                               href={viewUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 transition-colors"
+                              className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
                             >
                               View
                             </a>

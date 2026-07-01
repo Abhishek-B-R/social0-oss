@@ -330,7 +330,7 @@ export function SchedulePostSidebar({
               <>
                 <Link
                   href={signInUrl(pathname)}
-                  className="flex w-full items-center justify-center rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover"
+                  className="flex w-full items-center justify-center rounded-xl bg-accent py-3 font-semibold text-accent-foreground shadow transition-colors hover:bg-accent-hover"
                 >
                   Sign in to post
                 </Link>
@@ -368,7 +368,7 @@ export function SchedulePostSidebar({
                               "Complete the form to post")
                             : undefined
                   }
-                  className="w-full rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-accent"
+                  className="w-full rounded-xl bg-accent py-3 font-semibold text-accent-foreground shadow transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-accent"
                 >
                   {loading ? "Saving..." : "Post now"}
                 </button>
@@ -392,7 +392,7 @@ export function SchedulePostSidebar({
           <div className="space-y-2">
             <Link
               href={signInUrl(pathname)}
-              className="flex w-full items-center justify-center rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover"
+              className="flex w-full items-center justify-center rounded-xl bg-accent py-3 font-semibold text-accent-foreground shadow transition-colors hover:bg-accent-hover"
             >
               Sign in to schedule
             </Link>
@@ -436,7 +436,7 @@ export function SchedulePostSidebar({
               Timezone: {formatTimezoneLabel(timezone)}
               <Link
                 href="/dashboard/settings#preferences"
-                className="inline-flex items-center gap-1.5 rounded-lg text-emerald-500 ml-2"
+                className="inline-flex items-center gap-1.5 rounded-lg text-accent ml-2"
               >
                 Edit
               </Link>
@@ -508,7 +508,7 @@ export function SchedulePostSidebar({
                             "Complete the form to schedule")
                           : undefined
               }
-              className="w-full rounded-xl bg-accent py-3 font-semibold text-white shadow transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-accent"
+              className="w-full rounded-xl bg-accent py-3 font-semibold text-accent-foreground shadow transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-accent"
             >
               {loading ? "Saving..." : "Schedule"}
             </button>
@@ -586,7 +586,7 @@ export function SchedulePostSidebar({
                     onClick={autoRepost.onToggle}
                     className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
                       autoRepost.enabled
-                        ? "bg-emerald-600"
+                        ? "bg-accent"
                         : "bg-gray-300 dark:bg-gray-600"
                     }`}
                   >
@@ -651,7 +651,7 @@ export function SchedulePostSidebar({
                     onClick={autoPlug.onToggle}
                     className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
                       autoPlug.enabled
-                        ? "bg-emerald-600"
+                        ? "bg-accent"
                         : "bg-gray-300 dark:bg-gray-600"
                     }`}
                   >

@@ -2463,7 +2463,7 @@ export function VideoPostForm({
                             }
                           }}
                         />
-                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                        <span className="text-xs font-medium text-accent">
                           Cover image set
                         </span>
                       </div>
@@ -2709,7 +2709,7 @@ export function VideoPostForm({
                   }}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                     previewCardMode === "post"
-                      ? "bg-accent text-white"
+                      ? "bg-accent text-accent-foreground"
                       : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
                   }`}
                 >
@@ -2723,7 +2723,7 @@ export function VideoPostForm({
                   }}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                     previewCardMode === "media"
-                      ? "bg-accent text-white"
+                      ? "bg-accent text-accent-foreground"
                       : "bg-transparent text-text-muted hover:bg-bg hover:text-text"
                   }`}
                 >
@@ -2878,7 +2878,7 @@ export function VideoPostForm({
                           alt="Cover"
                           className="h-12 w-12 rounded border border-border object-cover"
                         />
-                        <span className="text-xs font-medium text-emerald-600">
+                        <span className="text-xs font-medium text-accent">
                           Cover image set ✓
                         </span>
                       </div> 

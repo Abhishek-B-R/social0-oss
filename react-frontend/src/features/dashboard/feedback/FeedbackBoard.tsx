@@ -175,7 +175,7 @@ export function FeedbackBoard() {
             directly on Canny. Or you can always email us at{" "}
             <a
               href="mailto:support@social0.app"
-              className="text-emerald-600 dark:text-emerald-400 hover:underline"
+              className="text-accent hover:underline"
             >
               support@social0.app
             </a>
@@ -236,7 +236,7 @@ export function FeedbackHeader() {
         always email us at{" "}
         <a
           href="mailto:support@social0.app"
-          className="text-emerald-600 dark:text-emerald-400 hover:underline"
+          className="text-accent hover:underline"
         >
           support@social0.app
         </a>

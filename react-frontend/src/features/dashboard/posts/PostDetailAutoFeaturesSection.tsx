@@ -779,7 +779,7 @@ export function PostDetailAutoFeaturesSection({
             </Button>
             <Button
               type="button"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="bg-accent hover:bg-accent-hover text-accent-foreground"
               disabled={!draftPlug || savingPlug}
               onClick={() => void handleSavePlugModal()}
             >
@@ -822,7 +822,7 @@ export function PostDetailAutoFeaturesSection({
             </Button>
             <Button
               type="button"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="bg-accent hover:bg-accent-hover text-accent-foreground"
               disabled={!draftResurface || savingResurface}
               onClick={() => void handleSaveResurfaceModal()}
             >

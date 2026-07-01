@@ -1,6 +1,4 @@
-
 import { useNavigate } from "react-router-dom";
-import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
   ImagePlus,
@@ -78,7 +76,6 @@ type ThreadSlot = {
  */
 export function Composer() {
   const navigate = useNavigate();
-  const invalidateQueries = useInvalidateQueries();
   const [text, setText] = useState("");
   const [media, setMedia] = useState<(ComposerMediaItem & { id: string })[]>(
     [],
@@ -636,9 +633,9 @@ export function Composer() {
       </div>
 
       <div
-        className={`rounded-2xl border-2 bg-bg-elevated p-4 shadow-sm transition-all duration-200 hover:border-muted-foreground/30 focus-within:border-emerald-200 dark:focus-within:border-emerald-800 focus-within:ring-2 focus-within:ring-emerald-500/20 sm:rounded-2xl sm:p-5 sm:focus-within:ring-1 sm:focus-within:ring-emerald-500/30 ${
+        className={`rounded-2xl border-2 bg-bg-elevated p-4 shadow-sm transition-all duration-200 hover:border-muted-foreground/30 focus-within:border-accent/30 dark:focus-within:border-accent/40 focus-within:ring-2 focus-within:ring-accent/20 sm:rounded-2xl sm:p-5 sm:focus-within:ring-1 sm:focus-within:ring-accent/30 ${
           isFileDragOver
-            ? "border-emerald-500 ring-2 ring-emerald-500/30"
+            ? "border-accent ring-2 ring-accent/30"
             : "border-border"
         }`}
         onDragEnter={(e) => {
@@ -1024,7 +1021,7 @@ export function Composer() {
         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent">
           ✓
         </span>
-        You can connect your accounts from{" "}
+        You can connect your accounts from
         <Link
           href="/dashboard/connections"
           className="font-medium text-accent hover:text-accent-hover hover:underline"

@@ -203,7 +203,7 @@ function AutoResurfacePanelInner({
             aria-checked={enabled}
             onClick={() => setEnabled((e) => !e)}
             className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
-              enabled ? "bg-emerald-600" : "bg-muted"
+              enabled ? "bg-accent" : "bg-muted"
             }`}
           >
             <span
@@ -280,7 +280,7 @@ function AutoResurfacePanelInner({
             <button
               type="button"
               onClick={addExtraInterval}
-              className="flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+              className="flex items-center gap-2 text-sm font-medium text-accent hover:text-accent-hover"
             >
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-current">
                 +
