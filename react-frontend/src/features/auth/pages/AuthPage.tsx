@@ -1,4 +1,3 @@
-
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useState, useEffect, useRef, Suspense } from "react";
@@ -9,10 +8,7 @@ import { IconEye, IconEyeOff } from "@tabler/icons-react";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { isTurnstileTestSiteKey } from "@/lib/turnstile";
 import { signIn, useSession } from "@/lib/auth-client";
-import {
-  absoluteCallbackUrl,
-  resolveCallbackUrl,
-} from "@/lib/sign-in-url";
+import { absoluteCallbackUrl, resolveCallbackUrl } from "@/lib/sign-in-url";
 import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 import {
   EMAIL_ALREADY_EXISTS_MESSAGE,
@@ -320,7 +316,10 @@ function AuthPageContent() {
       }
       const data = await res.json().catch(() => ({}));
       const normalizedSignUpEmail = email.trim().toLowerCase();
-      posthog?.identify(normalizedSignUpEmail, { email: normalizedSignUpEmail, name: name.trim() });
+      posthog?.identify(normalizedSignUpEmail, {
+        email: normalizedSignUpEmail,
+        name: name.trim(),
+      });
       posthog?.capture("user_signed_up", { method: "email" });
       if (data.url) {
         if (!assignSafeRedirectUrl(data.url)) {
@@ -469,7 +468,7 @@ function AuthPageContent() {
                     </label>
                     <Link
                       href="/auth/forgot-password"
-                      className="text-sm text-accent hover:opacity-80"
+                      className="text-sm text-[#1a6b4a] dark:text-[#00ff77] hover:opacity-80"
                     >
                       Forgot password?
                     </Link>
@@ -504,7 +503,7 @@ function AuthPageContent() {
                 <button
                   type="submit"
                   disabled={loading || googleLoading}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-[10px] bg-accent hover:bg-accent-hover disabled:opacity-50 text-white font-medium py-3 px-4 transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#0A0A0A] text-white hover:bg-neutral-800 disabled:opacity-50 font-medium py-3 px-4 transition-colors dark:bg-white dark:text-[#0A0A0A] dark:hover:bg-neutral-100"
                 >
                   {loading ? (
                     <>
@@ -685,7 +684,7 @@ function AuthPageContent() {
                     !legalConsent.acceptPrivacy ||
                     (SIGN_UP.requiresTurnstileToken && !turnstileToken)
                   }
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-[10px] bg-accent hover:bg-accent-hover disabled:opacity-50 text-white font-medium py-3 px-4 transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#0A0A0A] text-white hover:bg-neutral-800 disabled:opacity-50 font-medium py-3 px-4 transition-colors dark:bg-white dark:text-[#0A0A0A] dark:hover:bg-neutral-100"
                 >
                   {loading ? (
                     <>
@@ -699,6 +698,16 @@ function AuthPageContent() {
               </form>
             )}
           </div>
+
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            Want to see how it works?{" "}
+            <Link
+              href="/dashboard"
+              className="font-medium text-[#1a6b4a] dark:text-[#00ff77] hover:text-[#059669] transition-colors"
+            >
+              Explore the dashboard →
+            </Link>
+          </p>
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
             <Link

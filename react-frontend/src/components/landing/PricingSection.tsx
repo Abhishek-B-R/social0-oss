@@ -183,7 +183,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
 
             <div className="relative z-10 mt-auto pt-8">
               <Link
-                href="/dashboard"
+                href={signedIn ? "/dashboard" : "/auth"}
                 className={`${ctaBase} border-2 border-emerald-600/50 text-emerald-700 hover:border-emerald-500 hover:bg-emerald-600/10 dark:text-emerald-400`}
               >
                 {signedIn ? "Go to dashboard →" : "Start your 3-day free trial"}
@@ -251,7 +251,10 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
             </ul>
 
             <div className="relative z-10 mt-auto pt-8">
-              <Link href="/dashboard" className={ctaPrimary}>
+              <Link
+                href={signedIn ? "/dashboard" : "/auth"}
+                className={ctaPrimary}
+              >
                 {signedIn ? "Go to dashboard →" : "Start your 3-day free trial"}
               </Link>
               <p className="mt-3 text-center text-[12px] text-white dark:text-[#0A0A0A]/40">

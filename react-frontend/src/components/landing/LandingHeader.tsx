@@ -143,7 +143,7 @@ export function LandingHeader() {
             </Link>
           ) : (
             <Link
-              href="/dashboard"
+              href="/auth"
               className="inline-flex items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-[14px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
             >
               Get started
@@ -221,7 +221,7 @@ export function LandingHeader() {
               </Link>
             ) : (
               <Link
-                href="/dashboard"
+                href="/auth"
                 className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-[14px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
                 onClick={() => setMobileMenuOpen(false)}
               >

@@ -49,7 +49,7 @@ function VideoPlayBadge({ compact }: { compact?: boolean }) {
       <svg
         viewBox="0 0 24 24"
         className={`fill-current ${
-          compact ? "h-3 w-3 translate-x-[1.5px]" : "h-4 w-4 translate-x-[1px]"
+          compact ? "h-3 w-3 translate-x-[1.5px]" : "h-4 w-4 translate-x-px"
         }`}
         aria-hidden
       >
@@ -151,7 +151,6 @@ export function Composer() {
   useEffect(() => {
     const el = mediaStripRef.current;
     if (!el) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     updateScrollArrows();
     const ro = new ResizeObserver(updateScrollArrows);
     ro.observe(el);
