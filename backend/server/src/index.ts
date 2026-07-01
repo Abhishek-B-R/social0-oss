@@ -1,4 +1,6 @@
-import "./instrument.js";
+import { initSentry } from "./instrument.js";
+
+await initSentry();
 
 const { loadEnv } = await import("@social0/shared");
 const { buildApp } = await import("./app.js");

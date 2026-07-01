@@ -24,8 +24,8 @@
   --accent-light: var(--brand-emerald-light);
   --hero-emerald: var(--brand-emerald-dark);
   --destructive: #ef4444;
-  --sidebar-bg: #f9fafb;
-  --sidebar-text: #111827;
+  --sidebar-bg: #ffffff;
+  --sidebar-text: #0a0a0a;
   --sidebar-muted: #6b7280;
   --sidebar-border: #e5e7eb;
   --sidebar-active: #e5e7eb;
