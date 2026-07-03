@@ -1,5 +1,6 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { redis } from "./redis.js";
+import { withRedisTimeout } from "./redis-safe.js";
 
 export { redis };
 
@@ -33,8 +34,13 @@ export async function enforceRateLimit(
     return { allowed: true };
   }
 
-  const { success } = await limiter.limit(key, options);
-  if (!success) {
+  // ponytail: Redis down/quota exceeded must not hang or 503 the whole app — skip limit.
+  const result = await withRedisTimeout(
+    `ratelimit:${key}`,
+    () => limiter.limit(key, options),
+    { success: true, limit: 0, remaining: 0, reset: 0, pending: Promise.resolve() },
+  );
+  if (!result.success) {
     return {
       allowed: false,
       status: 429,

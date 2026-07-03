@@ -33,8 +33,26 @@ export async function enforceRateLimit(
     return { allowed: true };
   }
 
-  const { success } = await limiter.limit(key, options);
-  if (!success) {
+  // ponytail: Redis down/quota exceeded must not hang the app — skip limit.
+  let result: { success: boolean };
+  try {
+    result = await Promise.race([
+      limiter.limit(key, options),
+      new Promise<{ success: boolean }>((_, reject) => {
+        setTimeout(
+          () => reject(new Error(`Redis timeout (ratelimit:${key})`)),
+          2_500,
+        );
+      }),
+    ]);
+  } catch (err) {
+    console.warn(
+      `[redis] ratelimit:${key} failed, allowing request:`,
+      err instanceof Error ? err.message : err,
+    );
+    return { allowed: true };
+  }
+  if (!result.success) {
     return {
       allowed: false,
       status: 429,
