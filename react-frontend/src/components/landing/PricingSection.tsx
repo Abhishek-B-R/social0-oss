@@ -141,7 +141,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
           </div>
 
           {/* STARTER - step up from Free: lifted surface + emerald accents */}
-          <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-foreground/15 bg-gradient-to-b from-muted/60 to-background p-8 shadow-md md:p-10">
+          <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-foreground/15 bg-linear-to-b from-muted/60 to-background p-8 shadow-md md:p-10">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(26,107,74,0.07),transparent_55%)]" />
 
             <div className="relative z-10 mb-6 min-h-[30px]">
