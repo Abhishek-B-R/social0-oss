@@ -1,26 +1,32 @@
-# Social0 Frontend - AI Guidance
+# Social0 Frontend (Next.js) — **archived / not in production**
 
-This document is the **single source of truth for AI assistants** working in the Social0 codebase. It describes what the product is, how code is organized, architecture rules, known mistakes, and operational constraints. Read it before making changes so behavior stays consistent and safe.
+> **Do not extend this app.** Social0’s live stack is **`react-frontend/`** (Vite + React Router SPA) + **`backend/server/`** (Fastify API). This `frontend/` folder is the former Next.js monolith, kept for reference and porting history only.
+>
+> **Active AI guidance:** [`backend/claude.md`](../backend/claude.md) (production API + SPA).  
+> **Product docs:** [`social0-docs/claude.md`](../social0-docs/claude.md).
 
-**Audience:** Any AI (Claude, Cursor, Copilot, etc.) or human contributor editing `frontend/`.
+The rest of this file documents the **legacy Next.js** codebase as it existed before the migration. Use it when comparing behavior or porting logic into `react-frontend/` / `backend/server/` — not as the source of truth for what runs today.
 
-**Related:** Product docs live in the separate **`social0-docs/`** Fumadocs app (`social0-docs/claude.md`). User-facing docs URLs are built in `lib/docs-url.ts`.
+**Audience:** Contributors doing archaeology in `frontend/` or tracing where a feature was ported from.
+
+**Related:** User-facing docs URLs are built in `lib/docs-url.ts` (mirrored in `react-frontend/src/lib/docs-url.ts`).
 
 ---
 
-## 0. Project overview
+## 0. Project overview (historical)
 
 ### What Social0 is
 
 Social0 is a **multi-platform social media scheduler and publisher**. Users connect accounts (LinkedIn, Facebook Pages, Instagram, YouTube, X/Twitter, Threads, Pinterest, TikTok, Bluesky), compose posts (text, image, video, threads, collections), schedule or publish immediately, and manage drafts, calendar, billing, auto-plug, and resurface features.
 
-### Monorepo layout
+### Monorepo layout (current)
 
 | Path                | Role                                                                                                                                                   |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **`frontend/`**     | **Main app** - Next.js 16 App Router, Drizzle/Postgres, Better Auth, publishing, dashboard, landing, billing. **All active development happens here.** |
+| **`react-frontend/`** | **Production UI** — Vite + React Router 7 SPA; calls `backend/server` via `/api/*` and `POST /api/rpc`. **All new UI work goes here.**              |
+| **`backend/`**      | **Production API** — Fastify server, BullMQ cron worker, shared packages; Cloudflare publish worker in `cloudflare/publish-worker/`.                  |
 | **`social0-docs/`** | Standalone Fumadocs site for product documentation.                                                                                                    |
-| **`backend/`**      | Legacy/skeleton Hono API (`/v1/posts` stubs). **Not wired into the frontend.** Do not assume it runs in production.                                    |
+| **`frontend/`**     | **Legacy (this folder)** — Next.js 16 App Router monolith. **Not deployed.** Reference only.                                                            |
 
 ### Supported platforms
 
@@ -365,7 +371,9 @@ Revoke token on platform (best effort), then DELETE `connected_accounts` row. `p
 
 | Area                        | Location / rule                                                                              |
 | --------------------------- | -------------------------------------------------------------------------------------------- |
-| **Main app**                | `frontend/` only; `backend/` is unused skeleton                                              |
+| **Production UI**           | `react-frontend/` — see `backend/claude.md` §4                                               |
+| **Production API**          | `backend/server/` — see `backend/claude.md`                                                  |
+| **This folder (`frontend/`)** | Legacy Next.js — not deployed; reference only                                              |
 | **Product docs**            | `social0-docs/`; URLs in `lib/docs-url.ts`                                                   |
 | Env (server)                | `lib/env.ts`; never import from client-bound modules                                         |
 | Client-safe scopes          | `lib/facebook-scopes.ts`                                                                     |
@@ -415,4 +423,4 @@ Revoke token on platform (best effort), then DELETE `connected_accounts` row. `p
 6. **Billing/checkout changes:** Preserve eligibility checks, pending-checkout idempotency, webhook payment verification, and trial_claims - do not create checkout without guards.
 7. **Edge rate limits:** Never count RSC flight requests toward page limits; use `isFullPageDocumentRequest()`.
 
-If something in this doc conflicts with code, **trust the code** and update this doc - but for Facebook page selection, parallel publish, client/env boundaries, billing guards, and edge rate-limit request classification, the code described here is authoritative as of the latest branch work (`cursor/billing-checkout-guards-trial-claims` and `main` proxy limits).
+If something in this doc conflicts with code, **trust the live stack** (`react-frontend/` + `backend/server/`) and update this archived doc only when documenting historical Next.js behavior.

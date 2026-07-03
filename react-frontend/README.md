@@ -1,6 +1,6 @@
 # Social0 React Frontend
 
-Plain React + Vite SPA that mirrors `frontend/` (Next.js). All server logic lives in `backend/server`.
+**Production UI** for Social0 — React + Vite SPA. All server logic lives in `backend/server`.
 
 ## Setup
 

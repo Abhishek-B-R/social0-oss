@@ -1,3 +1,5 @@
+> **Legacy — not deployed.** The live app is [`react-frontend/`](../react-frontend/) + [`backend/`](../backend/). This folder is the former Next.js monolith, kept for reference only. See [`frontend/claude.md`](claude.md).
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

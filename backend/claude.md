@@ -4,7 +4,7 @@ Single source of truth for AI assistants working on the **production stack**: Fa
 
 **Audience:** Anyone editing `backend/` or integrating with `react-frontend/`.
 
-**Legacy:** `frontend/` (Next.js App Router) still exists for reference; **new UI work goes in `react-frontend/`**. Both talk to the same Neon Postgres DB and `backend/server`.
+**Legacy:** `frontend/` (Next.js App Router) is **not deployed** — kept for reference and porting history only. Its AI doc (`frontend/claude.md`) is archived; do not treat it as the active app. **All new UI work goes in `react-frontend/`.** Both legacy and production stacks share the same Neon Postgres DB and `backend/server` API surface.
 
 **Branch:** `main`
 

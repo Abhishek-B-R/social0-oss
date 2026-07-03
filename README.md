@@ -10,23 +10,35 @@ Unified social media management platform to create, schedule, and publish conten
 - **Secure token management**: Enterprise-grade encryption for OAuth tokens
 - **Media storage**: Cloudflare R2 integration for images and videos
 
-## Tech Stack
+See [`FEATURES.md`](FEATURES.md) for the full product feature list.
 
-- **Frontend**: Next.js 16 (React, TypeScript)
-- **Database**: PostgreSQL with Drizzle ORM
-- **Authentication**: Better Auth
+## Tech stack (production)
+
+- **UI**: `react-frontend/` — React 19, Vite, React Router 7
+- **API**: `backend/server/` — Fastify, Better Auth, Drizzle ORM
+- **Workers**: `backend/background-worker/` (cron), `cloudflare/publish-worker/` (platform publish)
+- **Database**: PostgreSQL (Neon)
 - **Storage**: Cloudflare R2
-- **Deployment**: Vercel
 
-## Getting Started
+## Getting started
 
-See `frontend/README.md` for development setup.
+```bash
+# API
+cd backend && cp .env.example .env && bun install && bun run dev:server   # :3001
 
-## Project Structure
+# SPA (separate terminal)
+cd react-frontend && cp .env.example .env && bun install && bun run dev   # :3000
+```
+
+Details: [`backend/README.md`](backend/README.md), [`react-frontend/README.md`](react-frontend/README.md), [`backend/claude.md`](backend/claude.md).
+
+## Project structure
 
 ```
 social0/
-├── frontend/          # Next.js application
-├── backend/           # Separate backend API (optional)
-└── database/          # PostgreSQL data directory
+├── react-frontend/    # Production SPA (live UI)
+├── backend/           # Production API + cron worker
+├── cloudflare/        # Publish worker (edge)
+├── social0-docs/      # Product documentation site
+└── frontend/          # Legacy Next.js (archived, not deployed)
 ```
