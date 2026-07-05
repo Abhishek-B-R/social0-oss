@@ -6,7 +6,7 @@ import { logConnectBlocked } from "../lib/plan-analytics.js";
 import { syncSubscriptionForUserId } from "../lib/billing-sync.js";
 import { eq, and } from "drizzle-orm";
 import { env } from "../lib/env.js";
-import { decrypt, encryptToken } from "../lib/encryption.js";
+import { decrypt, encryptToken, decryptToken } from "../lib/encryption.js";
 import { assertOAuthCallbackSession } from "../lib/oauth-callback-session.js";
 import { sanitizeReturnToPath } from "../lib/safe-return-to.js";
 import crypto from "crypto";
@@ -355,7 +355,11 @@ export async function platformCallback(
         );
       }
 
-      codeVerifier = verifierRecord.value;
+      try {
+        codeVerifier = decryptToken(verifierRecord.value, decrypted.stateId);
+      } catch {
+        codeVerifier = verifierRecord.value;
+      }
 
       // Clean up verifier from DB (one-time use)
       await db

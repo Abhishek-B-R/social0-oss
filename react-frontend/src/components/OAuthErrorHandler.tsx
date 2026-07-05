@@ -26,9 +26,7 @@ export function OAuthErrorHandler({
         case "limit":
         case "limit_reached":
           setMessage(
-            messageParam
-              ? decodeURIComponent(messageParam)
-              : "You've reached your account limit. Upgrade to connect more accounts.",
+            "You've reached your account limit. Upgrade to connect more accounts.",
           );
           break;
         case "oauth_failed":

@@ -5,6 +5,7 @@ import { RouteSeo } from "@/components/seo/RouteSeo";
 import { Toaster } from "sonner";
 import { useSession } from "@/lib/auth-client";
 import { usePostHog } from "@posthog/react";
+import { sanitizeAnalyticsUrl } from "@/lib/sanitize-analytics-url";
 
 export function RootLayout() {
   const { data: session } = useSession();
@@ -13,7 +14,9 @@ export function RootLayout() {
   const posthog = usePostHog();
 
   useEffect(() => {
-    posthog.capture("$pageview", { $current_url: window.location.href });
+    posthog.capture("$pageview", {
+      $current_url: sanitizeAnalyticsUrl(window.location.href),
+    });
   }, [location, posthog]);
 
   return (

@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useSession } from "@/lib/auth-client";
 import { LandingPageView } from "@/components/landing/LandingPageView";
 import { PseoJsonLd } from "@/components/seo/PseoJsonLd";
-import { buildHomeJsonLd } from "@/lib/seo";
+import { buildFaqJsonLd, buildHomeJsonLd } from "@/lib/seo";
+import { landingFaqs } from "@/components/landing/FAQ";
 
 export function HomePage() {
   const { data: session, isPending } = useSession();
@@ -20,7 +21,7 @@ export function HomePage() {
 
   return (
     <>
-      <PseoJsonLd graphs={buildHomeJsonLd("/")} />
+      <PseoJsonLd graphs={[...buildHomeJsonLd("/"), buildFaqJsonLd(landingFaqs)]} />
       <LandingPageView signedIn={false} />
     </>
   );

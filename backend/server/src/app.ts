@@ -47,6 +47,7 @@ export async function buildApp() {
   const https = loadHttpsOptions();
   const app = Fastify({
     ...(https ? { https } : {}),
+    bodyLimit: 1_048_576,
     logger: {
       level: process.env.LOG_LEVEL ?? "info",
     },
@@ -67,6 +68,10 @@ export async function buildApp() {
   await app.register(cors, {
     origin: (origin, callback) => {
       if (!origin) {
+        if (process.env.NODE_ENV === "production") {
+          callback(new Error("CORS origin required"), false);
+          return;
+        }
         callback(null, true);
         return;
       }

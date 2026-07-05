@@ -6,7 +6,9 @@ export function PseoJsonLd({ graphs }: { graphs: JsonLd | JsonLd[] }) {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(payload) }}
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify(payload).replace(/</g, "\\u003c"),
+      }}
     />
   );
 }

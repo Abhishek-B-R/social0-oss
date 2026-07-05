@@ -3,8 +3,8 @@ import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
 
 const footerLinks = [
-  // { href: "/features", label: "Features" },
-  // { href: "/alternatives", label: "Alternatives" },
+  { href: "/features", label: "Features" },
+  { href: "/alternatives", label: "Alternatives" },
   { href: "/#platforms", label: "Platforms" },
   { href: "/#pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },

@@ -10,6 +10,7 @@ import {
 import { toast } from "sonner";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 import { completeConnectSelect } from "@/lib/connect-select-response";
+import { stripSensitiveQueryParams } from "@/lib/sanitize-analytics-url";
 
 export default function FacebookSelectPage() {
   const [searchParams] = useSearchParams();
@@ -21,6 +22,10 @@ export default function FacebookSelectPage() {
   const [accounts, setAccounts] = useState<AccountPickerAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
+
+  useEffect(() => {
+    stripSensitiveQueryParams(["token"]);
+  }, []);
 
   useEffect(() => {
     if (!token) {

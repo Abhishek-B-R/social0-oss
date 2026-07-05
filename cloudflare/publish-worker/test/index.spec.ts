@@ -1,5 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
-import worker from "../src/index";
+import { signPublishRequestBody } from "@social0/shared";
 
 function mockEnv(overrides: Partial<Env> = {}): Env {
   return {
@@ -13,6 +12,37 @@ function mockEnv(overrides: Partial<Env> = {}): Env {
   };
 }
 
+async function signedEnqueueRequest(
+  body: unknown,
+  secret = "secret",
+): Promise<Request> {
+  const rawBody = JSON.stringify(body);
+  const { timestamp, signature } = await signPublishRequestBody(rawBody, secret);
+  return new Request("https://worker/enqueue", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Publish-Timestamp": timestamp,
+      "X-Publish-Signature": signature,
+    },
+    body: rawBody,
+  });
+}
+
+// Mock postgres validation for enqueue tests
+vi.mock("postgres", () => ({
+  default: () => {
+    const sql = Object.assign(
+      async () => [{ ok: 1 }],
+      { end: async () => undefined },
+    );
+    return sql;
+  },
+}));
+
+import { describe, expect, it, vi } from "vitest";
+import worker from "../src/index";
+
 describe("fetch handler", () => {
   it("GET /health is public", async () => {
     const res = await worker.fetch!(
@@ -20,9 +50,8 @@ describe("fetch handler", () => {
       mockEnv(),
     );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { ok: boolean; service: string };
+    const body = (await res.json()) as { ok: boolean };
     expect(body.ok).toBe(true);
-    expect(body.service).toBe("social0-publish");
   });
 
   it("POST /enqueue requires auth", async () => {
@@ -36,22 +65,15 @@ describe("fetch handler", () => {
   it("POST /enqueue queues publish-now jobs", async () => {
     const env = mockEnv();
     const res = await worker.fetch!(
-      new Request("https://worker/enqueue", {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer secret",
-          "Content-Type": "application/json",
+      await signedEnqueueRequest({
+        priority: "now",
+        job: {
+          postId: "11111111-1111-4111-8111-111111111111",
+          userId: "u1",
+          publicationId: "22222222-2222-4222-8222-222222222222",
+          connectedAccountId: "33333333-3333-4333-8333-333333333333",
+          platform: "twitter_x",
         },
-        body: JSON.stringify({
-          priority: "now",
-          job: {
-            postId: "p1",
-            userId: "u1",
-            publicationId: "pub1",
-            connectedAccountId: "acc1",
-            platform: "twitter_x",
-          },
-        }),
       }),
       env,
     );
@@ -62,11 +84,19 @@ describe("fetch handler", () => {
   });
 
   it("POST /enqueue rejects invalid JSON", async () => {
+    const rawBody = "not-json";
+    const { timestamp, signature } = await signPublishRequestBody(
+      rawBody,
+      "secret",
+    );
     const res = await worker.fetch!(
       new Request("https://worker/enqueue", {
         method: "POST",
-        headers: { Authorization: "Bearer secret" },
-        body: "not-json",
+        headers: {
+          "X-Publish-Timestamp": timestamp,
+          "X-Publish-Signature": signature,
+        },
+        body: rawBody,
       }),
       mockEnv(),
     );

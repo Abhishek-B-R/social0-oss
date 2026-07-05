@@ -2,6 +2,7 @@ import { db } from "../db/index.js";
 import { verification } from "../db/schema.js";
 import { and, eq, gt } from "drizzle-orm";
 import { randomBytes } from "crypto";
+import { encryptToken, decryptToken } from "./encryption.js";
 import { cookies } from "./http/request-cookies.js";
 import { RouteResponse } from "./http/http.js";
 import { resolveAppUrlFromRequest } from "./app-url.js";
@@ -31,7 +32,7 @@ export async function createOAuthConnectBinding(
   await db.insert(verification).values({
     id: token,
     identifier: IDENTIFIER,
-    value: `${userId}:${platform}`,
+    value: encryptToken(`${userId}:${platform}`, token),
     expiresAt: new Date(Date.now() + MAX_AGE_SEC * 1000),
   });
   return token;
@@ -96,10 +97,17 @@ export async function verifyOAuthConnectBinding(
   });
   if (!row) return false;
 
-  const colon = row.value.indexOf(":");
+  let plainValue: string;
+  try {
+    plainValue = decryptToken(row.value, token);
+  } catch {
+    plainValue = row.value;
+  }
+
+  const colon = plainValue.indexOf(":");
   if (colon === -1) return false;
-  const userId = row.value.slice(0, colon);
-  const platform = row.value.slice(colon + 1);
+  const userId = plainValue.slice(0, colon);
+  const platform = plainValue.slice(colon + 1);
   return userId === expectedUserId && platform === expectedPlatform;
 }
 

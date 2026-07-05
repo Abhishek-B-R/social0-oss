@@ -5,9 +5,10 @@ export function fetchApi(
   path: string,
   init?: RequestInit,
 ): Promise<Response> {
+  const { credentials: _omit, ...rest } = init ?? {};
   return fetch(apiUrl(path), {
+    ...rest,
     credentials: "include",
-    ...init,
     headers: init?.headers,
   });
 }

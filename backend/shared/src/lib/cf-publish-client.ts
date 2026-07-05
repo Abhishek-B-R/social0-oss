@@ -3,6 +3,11 @@ import {
   CF_PUBLISH_QUEUES,
   type CfPublishPriority,
 } from "../constants/cf-publish-queues.js";
+import {
+  CF_PUBLISH_SIGNATURE_HEADER,
+  CF_PUBLISH_TIMESTAMP_HEADER,
+  signPublishRequestBody,
+} from "./cf-publish-hmac.js";
 
 export type CfPublishClientConfig = {
   workerUrl: string;
@@ -13,20 +18,27 @@ export function cfPublishQueueName(priority: CfPublishPriority): string {
   return priority === "now" ? CF_PUBLISH_QUEUES.NOW : CF_PUBLISH_QUEUES.SCHEDULED;
 }
 
-/** POST one platform job to the Cloudflare publish Worker. */
+/** POST one platform job to the Cloudflare publish Worker (HMAC-signed body). */
 export async function cfEnqueuePlatformJob(
   job: PublishPlatformJob,
   priority: CfPublishPriority,
   config: CfPublishClientConfig,
 ): Promise<void> {
   const base = config.workerUrl.replace(/\/$/, "");
+  const body = JSON.stringify({ priority, job });
+  const { timestamp, signature } = await signPublishRequestBody(
+    body,
+    config.hmacSecret,
+  );
+
   const res = await fetch(`${base}/enqueue`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${config.hmacSecret}`,
+      [CF_PUBLISH_TIMESTAMP_HEADER]: timestamp,
+      [CF_PUBLISH_SIGNATURE_HEADER]: signature,
     },
-    body: JSON.stringify({ priority, job }),
+    body,
   });
 
   if (!res.ok) {

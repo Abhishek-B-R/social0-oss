@@ -6,6 +6,7 @@
 
 import { TwitterApi } from "twitter-api-v2";
 import { formatTwitterMediaError } from "@/lib/twitter-errors";
+import { fetchAllowedMedia } from "@/lib/media-fetch";
 
 function getTwitterClient(accessToken: string, accessSecret: string): TwitterApi {
   const appKey = process.env.TWITTER_CONSUMER_KEY;
@@ -30,7 +31,7 @@ export async function uploadTwitterImage(
   accessToken: string,
   accessSecret: string,
 ): Promise<string> {
-  const imageRes = await fetch(imageUrl);
+  const imageRes = await fetchAllowedMedia(imageUrl);
   if (!imageRes.ok) {
     throw new Error(`Failed to fetch image from storage: ${imageRes.statusText}`);
   }
@@ -60,7 +61,7 @@ export async function uploadTwitterVideo(
 ): Promise<string> {
   let videoRes: Response;
   try {
-    videoRes = await fetch(videoUrl);
+    videoRes = await fetchAllowedMedia(videoUrl);
   } catch (fetchErr) {
     const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
     throw new Error(

@@ -39,7 +39,6 @@ function registerCronTrigger(
   path: string,
   handler: (request: FastifyRequest, reply: FastifyReply) => Promise<unknown>,
 ) {
-  app.get(path, handler);
   app.post(path, handler);
 }
 

@@ -1,6 +1,8 @@
 import axios, { type AxiosError, type AxiosInstance } from "axios";
 import { getApiBaseUrl } from "@/lib/env";
 
+import { toClientErrorMessage } from "@/lib/client-error-message";
+
 type ApiErrorBody = { error?: string };
 
 export function createApiClient(): AxiosInstance {
@@ -13,11 +15,13 @@ export function createApiClient(): AxiosInstance {
   client.interceptors.response.use(
     (res) => res,
     (error: AxiosError<ApiErrorBody>) => {
-      const message =
+      const raw =
         typeof error.response?.data?.error === "string"
           ? error.response.data.error
           : error.message;
-      return Promise.reject(new Error(message));
+      return Promise.reject(
+        new Error(toClientErrorMessage(raw, "Request failed")),
+      );
     },
   );
 

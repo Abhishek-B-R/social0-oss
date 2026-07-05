@@ -6,6 +6,7 @@ import Link from "@/components/AppLink";
 import { toast } from "sonner";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 import { completeConnectSelect } from "@/lib/connect-select-response";
+import { stripSensitiveQueryParams } from "@/lib/sanitize-analytics-url";
 
 type PersonalProfile = {
   id: string;
@@ -36,6 +37,10 @@ export default function LinkedInSelectPage() {
   const [selectedCompanyIds, setSelectedCompanyIds] = useState<Set<string>>(
     new Set(),
   );
+
+  useEffect(() => {
+    stripSensitiveQueryParams(["token"]);
+  }, []);
 
   useEffect(() => {
     if (!token) {
@@ -172,6 +177,7 @@ export default function LinkedInSelectPage() {
                 <img
                   src={personalProfile.pictureUrl}
                   alt=""
+                  referrerPolicy="no-referrer"
                   className="h-10 w-10 shrink-0 rounded-full object-cover"
                 />
               ) : (

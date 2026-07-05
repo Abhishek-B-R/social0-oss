@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 
-const faqs = [
+export const landingFaqs = [
   {
     question: "What platforms does Social0 support?",
     answer:
@@ -66,7 +66,7 @@ export function FAQ() {
 
         {/* FAQ accordion */}
         <div className="divide-y divide-border rounded-2xl border border-border bg-background dark:bg-background/50">
-          {faqs.map((faq, i) => (
+          {landingFaqs.map((faq, i) => (
             <div key={faq.question} className="px-6 py-5 md:px-8">
               <button
                 type="button"

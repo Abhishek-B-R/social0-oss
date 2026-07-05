@@ -131,9 +131,8 @@ export function buildSoftwareApplicationJsonLd() {
       "Multi-platform social media scheduler. Compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest.",
     offers: {
       "@type": "Offer",
-      price: "0",
       priceCurrency: "USD",
-      description: "3-day free trial on all plans",
+      description: "Paid plans with a 3-day free trial",
     },
     featureList: [
       "Multi-platform scheduling",

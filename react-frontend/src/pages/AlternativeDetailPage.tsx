@@ -55,6 +55,7 @@ export function AlternativeDetailPage() {
         title={page.metaTitle}
         description={page.metaDescription}
         path={`/alternatives/${slug}`}
+        keywords={page.keywords}
         canonical={absoluteUrl(`/alternatives/${slug}`)}
       />
       <PseoJsonLd graphs={jsonLd} />

@@ -3,9 +3,24 @@ import { desc, eq, isNull } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { publishFailures, publishJobs } from "../../db/schema.js";
 import { verifyAdminRequest } from "../../lib/admin-auth.js";
+import { enforceRateLimit, redis } from "../../lib/ratelimit.js";
+import { Ratelimit } from "@upstash/ratelimit";
+
+const adminIpLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(60, "1 m"),
+      prefix: "rl:admin_ip",
+    })
+  : null;
 
 export async function registerAdminRoutes(app: FastifyInstance) {
   app.addHook("onRequest", async (request, reply) => {
+    const ip = request.ip || "unknown";
+    const rate = await enforceRateLimit(adminIpLimiter, `admin:${ip}`);
+    if (!rate.allowed) {
+      return reply.status(rate.status).send({ error: rate.error });
+    }
     if (!verifyAdminRequest(request)) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
