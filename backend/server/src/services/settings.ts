@@ -208,8 +208,12 @@ export async function updateUserImage(imageUrl: string): Promise<{ error?: strin
   if (!url) {
     return { error: "Image URL is required" };
   }
-  if (!url.startsWith("https://")) {
-    return { error: "Image URL must use HTTPS" };
+  if (
+    !isSafeOutboundUrl(url, {
+      httpsOnly: process.env.NODE_ENV === "production",
+    })
+  ) {
+    return { error: "Image URL must be a public HTTPS address." };
   }
   try {
     await auth.api.updateUser({

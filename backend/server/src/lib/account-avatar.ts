@@ -168,7 +168,8 @@ export async function fetchRemoteAvatarUrl(
         }
       } else {
         const res = await fetch(
-          `https://graph.instagram.com/me?fields=profile_picture_url&access_token=${encodeURIComponent(accessToken)}`,
+          "https://graph.instagram.com/me?fields=profile_picture_url",
+          { headers: { Authorization: `Bearer ${accessToken}` } },
         );
         if (res.ok) {
           const data = (await res.json()) as { profile_picture_url?: string };
