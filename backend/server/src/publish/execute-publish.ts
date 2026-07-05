@@ -18,6 +18,8 @@ import { publishToPlatform } from "../lib/publish-platform.js";
 import {
   isValidPostId,
   validateCollectionMedia,
+  getAllowedMediaOrigins,
+  isAllowedMediaUrl,
 } from "../lib/publish-validation.js";
 import { truncateCaptionForPlatform } from "../lib/platform-limits.js";
 import { NEVER_EXPIRES_PLATFORMS } from "../lib/token-health.js";
@@ -875,6 +877,13 @@ export async function executePublish(
             .from(mediaUploads)
             .where(inArray(mediaUploads.id, uniqueDbMediaIds));
           for (const m of media) {
+            if (
+              !m.url ||
+              !m.mimeType ||
+              !isAllowedMediaUrl(m.url, getAllowedMediaOrigins())
+            ) {
+              continue;
+            }
             mediaByDbId.set(m.id, {
               url: m.url ?? null,
               mimeType: m.mimeType ?? null,
@@ -1091,6 +1100,9 @@ export async function executePublish(
         const order = new Map(post.mediaIds.map((id, i) => [id, i]));
         const ordered = media
           .filter((m) => m.url && m.mimeType)
+          .filter((m) =>
+            isAllowedMediaUrl(m.url!, getAllowedMediaOrigins()),
+          )
           .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
           .slice(0, 4) as { id: string; url: string; mimeType: string }[];
 

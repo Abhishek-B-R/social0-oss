@@ -1,6 +1,7 @@
 # Copy to .dev.vars for local `wrangler dev` (never commit .dev.vars)
+# PUBLISH_HMAC_SECRET signs enqueue requests (X-Publish-Timestamp + X-Publish-Signature headers)
 PUBLISH_HMAC_SECRET=dev-publish-secret-change-me
-ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+ENCRYPTION_KEY=
 APP_URL=http://localhost:3000
 R2_PUBLIC_URL=https://your-r2-public-url.example.com
 

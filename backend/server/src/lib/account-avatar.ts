@@ -1,4 +1,5 @@
 import { isSafeOutboundUrl, safeFetch } from "@social0/shared";
+import { isSafeResolvedOutboundUrl } from "./ssrf-resolve.js";
 import { getValidToken } from "./token-refresh.js";
 import { fetchTikTokConnectProfile } from "./tiktok-connect.js";
 
@@ -87,24 +88,12 @@ async function fetchAvatarCdnResponse(
 ): Promise<Response | null> {
   const httpsOnly = process.env.NODE_ENV === "production";
   if (!isSafeOutboundUrl(remoteUrl, { httpsOnly })) return null;
+  if (!(await isSafeResolvedOutboundUrl(remoteUrl, { httpsOnly }))) return null;
+  if (!isAvatarCdnUrl(remoteUrl)) return null;
 
   const headers = avatarCdnHeaders(platform, remoteUrl);
 
-  const safeRes = await safeFetch(remoteUrl, { headers, httpsOnly });
-  if (safeRes?.ok) return safeRes;
-
-  if (!isAvatarCdnUrl(remoteUrl)) return safeRes;
-
-  try {
-    const res = await fetch(remoteUrl, { redirect: "follow", headers });
-    if (!res.ok) return null;
-    const finalUrl = res.url || remoteUrl;
-    if (!isSafeOutboundUrl(finalUrl, { httpsOnly })) return null;
-    if (!isAvatarCdnUrl(finalUrl)) return null;
-    return res;
-  } catch {
-    return null;
-  }
+  return safeFetch(remoteUrl, { headers, httpsOnly });
 }
 
 /** Whether the browser should load this avatar via our proxy. */
@@ -179,7 +168,8 @@ export async function fetchRemoteAvatarUrl(
         }
       } else {
         const res = await fetch(
-          `https://graph.instagram.com/me?fields=profile_picture_url&access_token=${encodeURIComponent(accessToken)}`,
+          "https://graph.instagram.com/me?fields=profile_picture_url",
+          { headers: { Authorization: `Bearer ${accessToken}` } },
         );
         if (res.ok) {
           const data = (await res.json()) as { profile_picture_url?: string };

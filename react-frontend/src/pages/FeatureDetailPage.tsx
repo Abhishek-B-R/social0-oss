@@ -55,6 +55,7 @@ export function FeatureDetailPage() {
         title={page.metaTitle}
         description={page.metaDescription}
         path={`/features/${slug}`}
+        keywords={page.keywords}
         canonical={absoluteUrl(`/features/${slug}`)}
       />
       <PseoJsonLd graphs={jsonLd} />

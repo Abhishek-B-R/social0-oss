@@ -34,12 +34,22 @@ export async function enforceRateLimit(
     return { allowed: true };
   }
 
-  // ponytail: Redis down/quota exceeded must not hang or 503 the whole app — skip limit.
+  // ponytail: Redis down must fail closed in production; dev may skip limits.
   const result = await withRedisTimeout(
     `ratelimit:${key}`,
     () => limiter.limit(key, options),
-    { success: true, limit: 0, remaining: 0, reset: 0, pending: Promise.resolve() },
+    undefined,
   );
+  if (result === undefined) {
+    if (failClosed && isRateLimitingRequired()) {
+      return {
+        allowed: false,
+        status: 503,
+        error: "Rate limiting is unavailable. Try again later.",
+      };
+    }
+    return { allowed: true };
+  }
   if (!result.success) {
     return {
       allowed: false,

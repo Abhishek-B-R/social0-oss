@@ -2,6 +2,8 @@
  * LinkedIn media upload helpers for UGC posts
  */
 
+import { fetchAllowedMedia } from "@/lib/media-fetch.js";
+
 export type LinkedInMediaType = "image" | "video";
 
 /**
@@ -97,7 +99,7 @@ export async function uploadLinkedInImage(
   }
 
   // Step 2: Download image from R2 and upload to LinkedIn
-  const imageRes = await fetch(imageUrl);
+  const imageRes = await fetchAllowedMedia(imageUrl);
   if (!imageRes.ok) {
     throw new Error(`Failed to fetch image from storage: ${imageRes.statusText}`);
   }
@@ -153,7 +155,7 @@ export async function uploadLinkedInVideo(
   personUrn: string,
 ): Promise<string> {
   // Step 1: Download video from R2 to get file size
-  const videoRes = await fetch(videoUrl);
+  const videoRes = await fetchAllowedMedia(videoUrl);
   if (!videoRes.ok) {
     throw new Error(`Failed to fetch video from storage: ${videoRes.statusText}`);
   }

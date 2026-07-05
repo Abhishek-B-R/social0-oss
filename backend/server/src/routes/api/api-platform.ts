@@ -4,7 +4,9 @@ import { isSafeOutboundUrl } from "@social0/shared";
 import { db } from "../../db/index.js";
 import { apiKeys, userWebhookSubscriptions } from "../../db/schema.js";
 import { generateApiKey } from "../../lib/api-keys.js";
+import { encryptToken } from "../../lib/encryption.js";
 import { requireUserId } from "../../middleware/auth.js";
+import crypto from "node:crypto";
 
 function isAllowedWebhookUrl(url: string): boolean {
   const httpsOnly = process.env.NODE_ENV === "production";
@@ -82,12 +84,14 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
           "Webhook URL must be a public https URL (no localhost or private networks).",
       });
     }
+    const subscriptionId = crypto.randomUUID();
     const row = await db
       .insert(userWebhookSubscriptions)
       .values({
+        id: subscriptionId,
         userId,
         url: body.url,
-        secret: body.secret,
+        secret: encryptToken(body.secret, subscriptionId),
         events: body.events,
       })
       .returning({

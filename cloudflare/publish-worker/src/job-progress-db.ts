@@ -1,4 +1,5 @@
 import type { PublishPlatformJob } from "./types";
+import { assertPublishJobAuthorized } from "./validate-job";
 
 /** Write SSE events directly to Postgres (API streams DB changes). */
 export async function trackPlatformPhase(
@@ -8,6 +9,7 @@ export async function trackPlatformPhase(
   message: string,
 ): Promise<void> {
   if (!job.trackingId) return;
+  if (await assertPublishJobAuthorized(env, job)) return;
 
   const { default: postgres } = await import("postgres");
   const sql = postgres(env.HYPERDRIVE.connectionString, {
@@ -49,6 +51,7 @@ export async function recordPlatformResult(
   message: string,
 ): Promise<void> {
   if (!job.trackingId) return;
+  if (await assertPublishJobAuthorized(env, job)) return;
 
   const { default: postgres } = await import("postgres");
   const sql = postgres(env.HYPERDRIVE.connectionString, {

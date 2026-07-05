@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import { sortBySlowPlatformsLast } from "@/lib/publish-order";
+import { isSafeHttpsLink } from "@/lib/safe-external-url";
 
 const PUBLISH_ESCAPE_MS = 2 * 60 * 1000; // 4 minutes
 
@@ -423,7 +424,9 @@ export function UploadPublishOverlay({
                           </span>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          {p.status === "published" && p.postUrl && (
+                          {p.status === "published" &&
+                            p.postUrl &&
+                            isSafeHttpsLink(p.postUrl) && (
                             <a
                               href={p.postUrl}
                               target="_blank"

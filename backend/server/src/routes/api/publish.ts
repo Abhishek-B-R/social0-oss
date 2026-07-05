@@ -76,22 +76,31 @@ export async function registerPublishRoutes(app: FastifyInstance) {
     }
 
     const trackingId = createPublishTrackingId();
-    await app.jobProgress.initJob({
-      trackingId,
-      postId: body.data.postId,
-      userId,
-    });
 
-    const dispatched = await enqueuePublishPost(
-      app,
-      {
-        postId: body.data.postId,
-        userId,
-        trackingId,
-        connectedAccountIds: body.data.connectedAccountIds,
-      },
-      { trackingId },
-    );
+    let dispatched;
+    try {
+      dispatched = await enqueuePublishPost(
+        app,
+        {
+          postId: body.data.postId,
+          userId,
+          trackingId,
+          connectedAccountIds: body.data.connectedAccountIds,
+        },
+        { trackingId },
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to enqueue publish";
+      if (message.includes("No publication targets")) {
+        return reply.status(404).send({ error: "Post not found or not publishable" });
+      }
+      throw err;
+    }
+
+    if (dispatched.enqueued === 0) {
+      return reply.status(404).send({ error: "Post not found or not publishable" });
+    }
 
     return reply.status(202).send({
       trackingId,

@@ -12,7 +12,6 @@ export function OAuthErrorHandler({
 } = {}) {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
-  const messageParam = searchParams.get("message");
   const platform = searchParams.get("platform");
   const connected = searchParams.get("connected");
   const [showError, setShowError] = useState(false);
@@ -27,9 +26,9 @@ export function OAuthErrorHandler({
         case "limit":
         case "limit_reached":
           setMessage(
-            messageParam
-              ? decodeURIComponent(messageParam)
-              : "You've reached your account limit. Upgrade to connect more accounts.",
+            hasUsedTrial
+              ? "You've reached your account limit. Upgrade to connect more accounts."
+              : "You've reached your account limit. Start a trial to connect more accounts.",
           );
           break;
         case "oauth_failed":
@@ -86,7 +85,7 @@ export function OAuthErrorHandler({
       // Auto-hide after 3 seconds
       setTimeout(() => setShowSuccess(false), 3000);
     }
-  }, [error, messageParam, platform, connected, hasUsedTrial]);
+  }, [error, platform, connected, hasUsedTrial]);
 
   if (!showError && !showSuccess) {
     return null;

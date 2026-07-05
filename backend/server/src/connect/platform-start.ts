@@ -2,7 +2,7 @@ import { auth } from "../lib/auth.js";
 import { PLATFORM_OAUTH_CONFIG, Platform } from "../lib/platforms.js";
 import { env } from "../lib/env.js";
 import { headers, cookies } from "../lib/http/request-cookies.js";
-import { encrypt } from "../lib/encryption.js";
+import { encrypt, encryptToken } from "../lib/encryption.js";
 import { appUrlForPath, getConnectCallbackBaseUrl } from "../lib/app-url.js";
 import crypto from "crypto";
 import { db } from "../db/index.js";
@@ -160,7 +160,7 @@ export async function platformStart(
     await db.insert(verification).values({
       id: stateId,
       identifier: `pkce_${session.user.id}_${platform}`,
-      value: codeVerifier,
+      value: encryptToken(codeVerifier, stateId),
       expiresAt,
     });
 

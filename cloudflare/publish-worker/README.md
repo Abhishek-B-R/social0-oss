@@ -63,8 +63,8 @@ CF_PUBLISH_HMAC_SECRET=<same as worker>
 
 | Method | Path       | Auth   | Description                                                       |
 | ------ | ---------- | ------ | ----------------------------------------------------------------- |
-| GET    | `/health`  | No     | Liveness                                                          |
-| POST   | `/enqueue` | Bearer | Body: `{ priority: "now"\|"scheduled", job: PublishPlatformJob }` |
+| GET    | `/health`  | No     | Liveness (`{ ok: true }`)                                         |
+| POST   | `/enqueue` | HMAC   | Body: `{ priority: "now"\|"scheduled", job: PublishPlatformJob }`. Headers: `X-Publish-Timestamp`, `X-Publish-Signature` (HMAC-SHA256 of `{timestamp}.{body}` using `PUBLISH_HMAC_SECRET`) |
 
 ## SSE (Publish Now)
 

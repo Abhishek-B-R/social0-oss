@@ -6,6 +6,10 @@ import { resolveUserIdFromApiKey } from "../lib/api-keys.js";
 function devUserIdFromHeader(request: FastifyRequest): string | null {
   if (process.env.NODE_ENV === "production") return null;
   if (process.env.ALLOW_DEV_USER_HEADER !== "true") return null;
+  const ip = request.ip;
+  if (ip !== "127.0.0.1" && ip !== "::1" && ip !== "::ffff:127.0.0.1") {
+    return null;
+  }
   const header = request.headers["x-user-id"];
   if (typeof header === "string" && header.length > 0) return header;
   return null;

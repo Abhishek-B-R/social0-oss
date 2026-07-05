@@ -59,6 +59,7 @@ export function AccountPicker({
                 <img
                   src={account.pictureUrl}
                   alt=""
+                  referrerPolicy="no-referrer"
                   className="h-10 w-10 shrink-0 rounded-full object-cover"
                 />
               ) : (

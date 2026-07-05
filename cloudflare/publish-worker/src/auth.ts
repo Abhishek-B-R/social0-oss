@@ -1,18 +1,27 @@
 import {
-  CF_PUBLISH_QUEUES,
-  type CfPublishPriority,
+  CF_PUBLISH_SIGNATURE_HEADER,
+  CF_PUBLISH_TIMESTAMP_HEADER,
+  verifyPublishRequestBody,
 } from "@social0/shared";
+import { SUPPORTED_PLATFORMS, CF_PUBLISH_QUEUES } from "@social0/shared";
+import type { CfPublishPriority } from "@social0/shared";
 import type { PublishEnqueueRequest, PublishPlatformJob } from "./types";
+import { parsePublishPlatformJob } from "./validate-job";
 
 export { CF_PUBLISH_QUEUES };
 
-export function verifyBearerAuth(
+export async function verifyEnqueueAuth(
   request: Request,
   secret: string | undefined,
-): boolean {
+  rawBody: string,
+): Promise<boolean> {
   if (!secret) return false;
-  const auth = request.headers.get("Authorization");
-  return auth === `Bearer ${secret}`;
+  return verifyPublishRequestBody(
+    rawBody,
+    secret,
+    request.headers.get(CF_PUBLISH_TIMESTAMP_HEADER),
+    request.headers.get(CF_PUBLISH_SIGNATURE_HEADER),
+  );
 }
 
 export function parseEnqueueRequest(body: unknown): PublishEnqueueRequest | null {
@@ -21,20 +30,12 @@ export function parseEnqueueRequest(body: unknown): PublishEnqueueRequest | null
   if (o.priority !== "now" && o.priority !== "scheduled") return null;
   if (!o.job || typeof o.job !== "object") return null;
 
-  const job = o.job as Record<string, unknown>;
-  if (
-    typeof job.postId !== "string" ||
-    typeof job.userId !== "string" ||
-    typeof job.publicationId !== "string" ||
-    typeof job.connectedAccountId !== "string" ||
-    typeof job.platform !== "string"
-  ) {
-    return null;
-  }
+  const job = parsePublishPlatformJob(o.job as Record<string, unknown>);
+  if (!job) return null;
 
   return {
-    priority: o.priority,
-    job: job as PublishPlatformJob,
+    priority: o.priority as CfPublishPriority,
+    job,
   };
 }
 
@@ -50,3 +51,5 @@ export function isKnownConsumerQueue(queueName: string): boolean {
     queueName === CF_PUBLISH_QUEUES.SCHEDULED
   );
 }
+
+export { SUPPORTED_PLATFORMS };

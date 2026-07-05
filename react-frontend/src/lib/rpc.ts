@@ -12,6 +12,7 @@ function serializeArg(arg: unknown): unknown {
   return arg;
 }
 
+import { toClientErrorMessage } from "./client-error-message";
 import { assignSafeRedirectUrl } from "./safe-external-url";
 import { fetchApi } from "./fetch-api";
 
@@ -32,7 +33,7 @@ export async function rpc<T>(fn: string, ...args: unknown[]): Promise<T> {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `RPC ${fn} failed`);
+    throw new Error(toClientErrorMessage(text, `Request failed (${res.status})`));
   }
 
   const contentType = res.headers.get("content-type") ?? "";
