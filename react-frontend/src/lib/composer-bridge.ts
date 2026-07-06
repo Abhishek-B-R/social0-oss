@@ -3,6 +3,8 @@ export type ComposerMediaItem = {
   type: "image" | "video";
   file: File;
   previewUrl: string;
+  /** JPEG data-URL for reliable video thumbnails when blob playback is blocked */
+  posterUrl?: string;
 };
 
 export type ComposerThreadPost = {

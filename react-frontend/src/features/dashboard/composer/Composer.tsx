@@ -17,6 +17,7 @@ import {
 import {
   measureVideoAspectRatio,
   getAspectRatioGuidance,
+  captureVideoPoster,
   NON_STANDARD_VIDEO_ASPECT_GUIDANCE,
   type AspectRatioGuidance,
 } from "@/lib/video-aspect-ratio";
@@ -310,6 +311,17 @@ export function Composer() {
             }
             return next;
           });
+          for (const item of toAdd) {
+            if (item.type !== "video") continue;
+            void captureVideoPoster(item.file).then((posterUrl) => {
+              if (!posterUrl) return;
+              setMedia((prev) =>
+                prev.map((m) =>
+                  m.id === item.id ? { ...m, posterUrl } : m,
+                ),
+              );
+            });
+          }
           return [...prev, ...toAdd];
         });
       });
@@ -491,6 +503,7 @@ export function Composer() {
         }
         if (anyOverDuration) toast.error(VIDEO_DURATION_MESSAGE);
         if (validItems.length === 0) return;
+        const slotItemsToAdd: (ComposerMediaItem & { id: string })[] = [];
         setThreadSlots((prev) =>
           prev.map((s) => {
             if (s.id !== slotId) return s;
@@ -498,6 +511,7 @@ export function Composer() {
             if (maxNew <= 0) return s;
             const n = Math.min(maxNew, validItems.length);
             const toAdd = validItems.slice(0, n);
+            slotItemsToAdd.push(...toAdd);
             setAspectGuidanceByMediaId((gprev) => {
               const next = { ...gprev };
               for (const item of toAdd) {
@@ -509,6 +523,23 @@ export function Composer() {
             return { ...s, media: [...s.media, ...toAdd] };
           }),
         );
+        for (const item of slotItemsToAdd) {
+          if (item.type !== "video") continue;
+          void captureVideoPoster(item.file).then((posterUrl) => {
+            if (!posterUrl) return;
+            setThreadSlots((prev) =>
+              prev.map((s) => {
+                if (s.id !== slotId) return s;
+                return {
+                  ...s,
+                  media: s.media.map((m) =>
+                    m.id === item.id ? { ...m, posterUrl } : m,
+                  ),
+                };
+              }),
+            );
+          });
+        }
       });
     },
     [],
@@ -708,10 +739,11 @@ export function Composer() {
                       <>
                         <video
                           src={item.previewUrl}
+                          poster={item.posterUrl}
                           className="h-full w-full object-cover pointer-events-none"
                           muted
                           playsInline
-                          preload="metadata"
+                          preload="auto"
                           draggable={false}
                         />
                         <VideoPlayBadge />
@@ -929,10 +961,11 @@ export function Composer() {
                           <>
                             <video
                               src={item.previewUrl}
+                              poster={item.posterUrl}
                               className="h-full w-full object-cover pointer-events-none"
                               muted
                               playsInline
-                              preload="metadata"
+                              preload="auto"
                               draggable={false}
                             />
                             <VideoPlayBadge compact />

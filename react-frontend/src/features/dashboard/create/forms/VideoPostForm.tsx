@@ -65,6 +65,7 @@ import {
   measureVideoAspectRatio,
   getAspectRatioGuidance,
   getTikTokVideoResolutionGuidance,
+  captureVideoPoster,
   type AspectRatioGuidance,
 } from "@/lib/video-aspect-ratio";
 import {
@@ -172,6 +173,7 @@ export function VideoPostForm({
   const [content, setContent] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [videoPoster, setVideoPoster] = useState<string | null>(null);
   const [existingVideoId, setExistingVideoId] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(0);
   const [videoAspectGuidance, setVideoAspectGuidance] =
@@ -471,6 +473,12 @@ export function VideoPostForm({
     if (firstVideo) {
       setVideoFile(firstVideo.file);
       setVideoPreview(URL.createObjectURL(firstVideo.file));
+      setVideoPoster(firstVideo.posterUrl ?? null);
+      if (!firstVideo.posterUrl) {
+        void captureVideoPoster(firstVideo.file).then((poster) => {
+          if (poster) setVideoPoster(poster);
+        });
+      }
     }
     return () => {
       setTimeout(clearComposerPayload, 100);
@@ -939,6 +947,24 @@ export function VideoPostForm({
   const customThumbnailPreviewRef = useRef<string | null>(null);
   videoPreviewRef.current = videoPreview;
   customThumbnailPreviewRef.current = customThumbnailPreview;
+
+  const assignSelectedVideo = useCallback((file: File) => {
+    if (videoPreviewRef.current?.startsWith("blob:")) {
+      URL.revokeObjectURL(videoPreviewRef.current);
+    }
+    if (customThumbnailPreviewRef.current) {
+      URL.revokeObjectURL(customThumbnailPreviewRef.current);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setVideoFile(file);
+    setVideoPreview(URL.createObjectURL(file));
+    setVideoPoster(null);
+    setCustomThumbnail(null);
+    setCustomThumbnailPreview(null);
+    void captureVideoPoster(file).then((poster) => {
+      if (poster) setVideoPoster(poster);
+    });
+  }, []);
   useEffect(() => {
     if (!isUploadZoneHovered && !isCaptionFocused) return;
     const handlePaste = (e: ClipboardEvent) => {
@@ -967,22 +993,13 @@ export function VideoPostForm({
           toast.error(VIDEO_DURATION_MESSAGE);
           return;
         }
-        if (videoPreviewRef.current)
-          URL.revokeObjectURL(videoPreviewRef.current);
-        if (customThumbnailPreviewRef.current)
-          URL.revokeObjectURL(customThumbnailPreviewRef.current);
-        setVideoFile(file);
-        setVideoPreview(URL.createObjectURL(file));
+        assignSelectedVideo(file);
         setVideoDuration(duration);
-        setCustomThumbnail(null);
-        setCustomThumbnailPreview(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
       });
     };
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isUploadZoneHovered, isCaptionFocused]);
+  }, [isUploadZoneHovered, isCaptionFocused, assignSelectedVideo, accounts, selectedIds]);
 
   useEffect(() => {
     if (!isUploading) return;
@@ -1013,19 +1030,14 @@ export function VideoPostForm({
       return;
     }
     toast.dismiss();
-    if (fileInputRef.current) fileInputRef.current.value = "";
     getVideoDuration(file).then((duration) => {
       if (duration > MAX_VIDEO_DURATION_SECONDS) {
         toast.error(VIDEO_DURATION_MESSAGE);
+        if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
-      if (videoPreview) URL.revokeObjectURL(videoPreview);
-      if (customThumbnailPreview) URL.revokeObjectURL(customThumbnailPreview);
-      setVideoFile(file);
-      setVideoPreview(URL.createObjectURL(file));
+      assignSelectedVideo(file);
       setVideoDuration(duration);
-      setCustomThumbnail(null);
-      setCustomThumbnailPreview(null);
     });
   };
 
@@ -1034,6 +1046,7 @@ export function VideoPostForm({
     if (customThumbnailPreview) URL.revokeObjectURL(customThumbnailPreview);
     setVideoFile(null);
     setVideoPreview(null);
+    setVideoPoster(null);
     setVideoDuration(0);
     setVideoAspectGuidance(null);
     setExistingVideoId(null);
@@ -1060,21 +1073,13 @@ export function VideoPostForm({
       return;
     }
     toast.dismiss();
-    if (fileInputRef.current) fileInputRef.current.value = "";
     getVideoDuration(file).then((duration) => {
       if (duration > MAX_VIDEO_DURATION_SECONDS) {
         toast.error(VIDEO_DURATION_MESSAGE);
         return;
       }
-      if (videoPreviewRef.current) URL.revokeObjectURL(videoPreviewRef.current);
-      if (customThumbnailPreviewRef.current)
-        URL.revokeObjectURL(customThumbnailPreviewRef.current);
-      setVideoFile(file);
-      setVideoPreview(URL.createObjectURL(file));
+      assignSelectedVideo(file);
       setVideoDuration(duration);
-      setCustomThumbnail(null);
-      setCustomThumbnailPreview(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     });
   };
 
@@ -1227,6 +1232,7 @@ export function VideoPostForm({
         );
         setLoading(false);
         setOverlayPhase("idle");
+        if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       } finally {
         setIsUploading(false);
@@ -1879,10 +1885,10 @@ export function VideoPostForm({
                   <div className="relative flex h-12 w-16 shrink-0 overflow-hidden rounded border border-border">
                     <video
                       src={videoPreview}
-                      poster={customThumbnailPreview ?? undefined}
+                      poster={videoPoster ?? customThumbnailPreview ?? undefined}
                       muted
                       playsInline
-                      preload="metadata"
+                      preload="auto"
                       className="h-full w-full object-cover"
                       onLoadedMetadata={(e) => {
                         const v = e.currentTarget;
@@ -2773,7 +2779,7 @@ export function VideoPostForm({
                           <video
                             key={videoPreview}
                             src={videoPreview}
-                            poster={customThumbnailPreview ?? undefined}
+                            poster={videoPoster ?? customThumbnailPreview ?? undefined}
                             className="h-full w-full object-cover"
                             muted
                             autoPlay
@@ -2820,10 +2826,12 @@ export function VideoPostForm({
                       <div className="flex-1 min-h-0 flex items-center justify-center bg-black">
                         <video
                           src={videoPreview}
+                          poster={videoPoster ?? customThumbnailPreview ?? undefined}
                           controls
                           muted
                           autoPlay
                           playsInline
+                          preload="auto"
                           className={`h-full w-full ${isVertical ? "object-cover" : "object-contain"}`}
                           onLoadedMetadata={(e) => {
                             const v = e.currentTarget;

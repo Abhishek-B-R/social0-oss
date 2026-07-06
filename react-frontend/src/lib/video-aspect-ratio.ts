@@ -108,6 +108,49 @@ export function getTikTokVideoResolutionGuidance(
   };
 }
 
+/** Capture a JPEG data-URL poster frame for local video previews (thumbnails). */
+export function captureVideoPoster(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.preload = "auto";
+    video.muted = true;
+    video.playsInline = true;
+    const url = URL.createObjectURL(file);
+    const cleanup = () => URL.revokeObjectURL(url);
+    video.onerror = () => {
+      cleanup();
+      resolve("");
+    };
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        if (ctx && canvas.width > 0 && canvas.height > 0) {
+          ctx.drawImage(video, 0, 0);
+          cleanup();
+          resolve(canvas.toDataURL("image/jpeg", 0.85));
+          return;
+        }
+      } catch {
+        // fall through
+      }
+      cleanup();
+      resolve("");
+    };
+    video.onloadeddata = () => {
+      try {
+        video.currentTime = 0.1;
+      } catch {
+        cleanup();
+        resolve("");
+      }
+    };
+    video.src = url;
+  });
+}
+
 /**
  * Read video dimensions from a File (browser only).
  */
