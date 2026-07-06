@@ -1,12 +1,13 @@
+import type { FastifyRequest } from "fastify";
+
 /**
- * Resolve CORS for @fastify/cors origin callback.
- * Missing Origin = top-level browser navigation (OAuth redirect) — skip CORS headers, do not 500.
+ * Requests that legitimately have no Origin header in production:
+ * - GET/HEAD browser navigations (OAuth callbacks, connect, email links)
+ * - Cloudflare / uptime probes hitting GET /health
+ *
+ * Cross-origin fetch from the SPA (POST, PUT, …) always sends Origin, so we
+ * still reject missing Origin on mutating methods.
  */
-export function resolveCorsOrigin(
-  origin: string | undefined,
-  allowedOrigins: string[],
-): true | false | Error {
-  if (!origin) return false;
-  if (allowedOrigins.includes(origin)) return true;
-  return new Error("CORS origin not allowed");
+export function allowsMissingCorsOrigin(req: FastifyRequest): boolean {
+  return req.method === "GET" || req.method === "HEAD";
 }
