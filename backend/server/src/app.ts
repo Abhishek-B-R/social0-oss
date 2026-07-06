@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
-import Fastify from "fastify";
+import Fastify, { type FastifyRequest } from "fastify";
 import { setupFastifyErrorHandler, captureSentryTestError } from "./instrument.js";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
@@ -14,6 +14,7 @@ import { registerV1Routes } from "./routes/v1/index.js";
 import { registerApiRoutes } from "./routes/api/index.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
 import { getCorsOrigins } from "./lib/app-url.js";
+import { allowsMissingCorsOrigin } from "./lib/cors-policy.js";
 
 function loadHttpsOptions(): { key: Buffer; cert: Buffer } | undefined {
   const backendRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -65,23 +66,33 @@ export async function buildApp() {
   }
 
   const corsOrigins = getCorsOrigins();
-  await app.register(cors, {
-    origin: (origin, callback) => {
+  await app.register(cors, () => {
+    return (
+      req: FastifyRequest,
+      callback: (
+        err: Error | null,
+        options: { origin: boolean; credentials: boolean } | false,
+      ) => void,
+    ) => {
+      const origin = req.headers.origin;
+      const credentials = true;
       if (!origin) {
-        if (process.env.NODE_ENV === "production") {
-          callback(new Error("CORS origin required"), false);
+        if (
+          process.env.NODE_ENV !== "production" ||
+          allowsMissingCorsOrigin(req)
+        ) {
+          callback(null, { origin: false, credentials });
           return;
         }
-        callback(null, true);
+        callback(new Error("CORS origin required"), false);
         return;
       }
       if (corsOrigins.includes(origin)) {
-        callback(null, true);
+        callback(null, { origin: true, credentials });
         return;
       }
       callback(new Error("CORS origin not allowed"), false);
-    },
-    credentials: true,
+    };
   });
   await app.register(cookie);
   await app.register(registerSecurityHeadersPlugin);
