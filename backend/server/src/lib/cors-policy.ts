@@ -1,15 +1,12 @@
-import type { FastifyRequest } from "fastify";
-
 /**
- * Browser OAuth redirects (connect, Better Auth callbacks, email links) are
- * top-level GET navigations and do not send an Origin header. Production CORS
- * must allow these without throwing — fetch/XHR from the SPA always sends Origin.
+ * Resolve CORS for @fastify/cors origin callback.
+ * Missing Origin = top-level browser navigation (OAuth redirect) — skip CORS headers, do not 500.
  */
-export function allowsMissingCorsOrigin(req: FastifyRequest): boolean {
-  if (req.method !== "GET" && req.method !== "HEAD") return false;
-  const path = req.url.split("?")[0] ?? "";
-  return (
-    path.startsWith("/api/connect/") ||
-    path.startsWith("/api/auth/")
-  );
+export function resolveCorsOrigin(
+  origin: string | undefined,
+  allowedOrigins: string[],
+): true | false | Error {
+  if (!origin) return false;
+  if (allowedOrigins.includes(origin)) return true;
+  return new Error("CORS origin not allowed");
 }
