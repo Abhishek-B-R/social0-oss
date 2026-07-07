@@ -1,6 +1,4 @@
 */.env
 
 */node_modules/
-database/postgres_data/
 certificates
-*/.next/social0-docs/.next/
