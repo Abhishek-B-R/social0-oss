@@ -7,13 +7,18 @@
  * Unique key per attempt so TikTok does not serve cached stale images.
  */
 
-import sharp from "sharp";
 import {
   isR2Configured,
   uploadToR2,
   getR2KeyFromUrl,
   getR2PublicBaseUrl,
 } from "@/lib/r2";
+
+// Lazy: sharp cannot load on Cloudflare Workers (native bindings).
+async function getSharp() {
+  const mod = await import("sharp");
+  return mod.default;
+}
 
 const TIKTOK_PHOTO_W = 1080;
 const TIKTOK_PHOTO_H = 1920;
@@ -80,6 +85,7 @@ export async function processImageForTikTok(
   }
 
   const inputBuffer = Buffer.from(await res.arrayBuffer());
+  const sharp = await getSharp();
   const image = sharp(inputBuffer);
   const metadata = await image.metadata();
   const width = metadata.width ?? 0;

@@ -286,6 +286,16 @@ export async function createPost(
     return { success: true, postId: postRow.id };
   } catch (e) {
     console.error("createPost error:", e);
+    // Surface actionable enqueue/config errors; keep internals generic.
+    const message = e instanceof Error ? e.message : "";
+    if (
+      message &&
+      /CF publish|Cloudflare|No publication targets|not configured|BullMQ|redis/i.test(
+        message,
+      )
+    ) {
+      return { success: false, error: message };
+    }
     return {
       success: false,
       error: "Something went wrong. Please try again.",

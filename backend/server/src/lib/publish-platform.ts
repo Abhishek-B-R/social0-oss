@@ -25,7 +25,13 @@ import {
   resolveInstagramProfileUrl,
 } from "@/lib/platform-view-url";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
-import sharp from "sharp";
+
+// Lazy: sharp has native bindings and cannot load on Cloudflare Workers.
+// Video/TikTok paths never need it; only image compress/process does.
+async function getSharp() {
+  const mod = await import("sharp");
+  return mod.default;
+}
 
 export type PublishPlatformResult = {
   status: "published" | "failed";
@@ -609,6 +615,7 @@ async function prepareImageForPlatform(
     };
   }
 
+  const sharp = await getSharp();
   let quality = 85;
   let output = await sharp(buf).jpeg({ quality, mozjpeg: true }).toBuffer();
 

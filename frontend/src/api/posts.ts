@@ -8,7 +8,15 @@ export type PostAgainResult =
   | { success: false; error: string };
 
 export type CreatePostResult =
-  | { success: true; postId: string; allPlatformsFailed?: boolean }
+  | {
+      success: true;
+      postId: string;
+      allPlatformsFailed?: boolean;
+      /** True when createPost already fanned out to CF/BullMQ. */
+      queued?: boolean;
+      trackingId?: string;
+      streamUrl?: string;
+    }
   | { success: false; error: string };
 
 export type PublishMode = "draft" | "now" | "scheduled";

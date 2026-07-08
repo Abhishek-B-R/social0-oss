@@ -17,6 +17,7 @@ import { createPost, type PublishMode } from "@/api/posts";
 import { getPostPublicationList } from "@/api/publish";
 import {
   sortBySlowPlatformsLast,
+  pollPublicationProgressUntilDone,
   publishPostWithParallelProgress,
 } from "@/lib/publish-order";
 import { createResurfaceSchedule, createAutoPlug } from "@/api/resurface";
@@ -1504,7 +1505,8 @@ export function VideoPostForm({
       } catch (_) {
         // Proceed with empty list so publish still runs (e.g. after ETIMEDOUT)
       }
-      if (list.length === 0) {
+      // createPost already enqueued when result.queued - poll, don't call publishPost again.
+      if (list.length === 0 && !result.queued) {
         const publishResult = await publishPostWithParallelProgress(
           result.postId,
           publishOptions,
@@ -1542,10 +1544,8 @@ export function VideoPostForm({
       }));
       setPlatformStatuses(initial);
       setOverlayPhase("publishing");
-      await publishPostWithParallelProgress(
-        result.postId,
-        publishOptions,
-        (rows) => {
+      if (result.queued) {
+        await pollPublicationProgressUntilDone(result.postId, (rows) => {
           setPlatformStatuses((prev) =>
             prev.map((p) => {
               const row = rows.find(
@@ -1574,8 +1574,43 @@ export function VideoPostForm({
               };
             }),
           );
-        },
-      );
+        });
+      } else {
+        await publishPostWithParallelProgress(
+          result.postId,
+          publishOptions,
+          (rows) => {
+            setPlatformStatuses((prev) =>
+              prev.map((p) => {
+                const row = rows.find(
+                  (r) => r.connectedAccountId === p.accountId,
+                );
+                if (!row) return p;
+                const status: PlatformStatus =
+                  row.publicationStatus === "published"
+                    ? "published"
+                    : row.publicationStatus === "failed"
+                      ? "failed"
+                      : row.publicationStatus === "publishing"
+                        ? "processing"
+                        : p.status;
+                return {
+                  ...p,
+                  status,
+                  error:
+                    row.publicationStatus === "failed"
+                      ? (row.lastError ?? undefined)
+                      : undefined,
+                  postUrl:
+                    row.publicationStatus === "published"
+                      ? (row.platformPostUrl ?? undefined)
+                      : undefined,
+                };
+              }),
+            );
+          },
+        );
+      }
       if (
         resurfaceConfig &&
         selectedAccounts.some((a) => a.platform === "twitter_x")

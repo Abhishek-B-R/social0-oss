@@ -6,6 +6,9 @@
   "observability": {
     "enabled": true,
   },
+  "alias": {
+    "sharp": "./src/shims/sharp.ts",
+  },
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",

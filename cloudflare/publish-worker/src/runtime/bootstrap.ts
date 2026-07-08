@@ -1,9 +1,49 @@
 /** Inject CF Worker secrets into process.env before loading publish executor code. */
 export function bootstrapWorkerRuntime(env: Env): void {
+  // pg → detect-libc calls process.report.getReport(); unenv's stub throws.
+  // Return an empty report so libc detection falls through safely on Workers.
+  const report = {
+    excludeNetwork: false,
+    getReport: () => ({}),
+    writeReport: () => undefined,
+  };
+  try {
+    Object.defineProperty(process, "report", {
+      value: report,
+      configurable: true,
+      writable: true,
+    });
+  } catch {
+    (process as { report?: typeof report }).report = report;
+  }
+
+  // Publish path only needs DB + encryption + platform OAuth + R2.
+  // loadServerEnv() still parses the full server schema, so stub unused auth/billing keys.
+  // Don't assign process.env.NODE_ENV — wrangler defines it as a compile-time constant.
   process.env.DATABASE_URL = env.HYPERDRIVE.connectionString;
   process.env.ENCRYPTION_KEY = env.ENCRYPTION_KEY;
   process.env.NEXT_PUBLIC_APP_URL = env.APP_URL;
   process.env.APP_URL = env.APP_URL;
+  process.env.BETTER_AUTH_URL = env.APP_URL;
+  process.env.BETTER_AUTH_SECRET =
+    env.BETTER_AUTH_SECRET ?? env.ENCRYPTION_KEY;
+  process.env.GOOGLE_CLIENT_ID = env.GOOGLE_CLIENT_ID ?? "worker-unused";
+  process.env.GOOGLE_CLIENT_SECRET =
+    env.GOOGLE_CLIENT_SECRET ?? "worker-unused";
+  process.env.RESEND_API_KEY = env.RESEND_API_KEY ?? "worker-unused";
+  process.env.RESEND_FROM_EMAIL =
+    env.RESEND_FROM_EMAIL ?? "noreply@social0.app";
+
+  // Production schema refinements (unused on this Worker path).
+  process.env.CRON_SECRET = env.CRON_SECRET ?? "worker-unused-cron-secret";
+  process.env.ADMIN_API_KEY =
+    env.ADMIN_API_KEY ?? "worker-unused-admin-api-key";
+  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY =
+    env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "worker-unused";
+  process.env.TURNSTILE_SECRET_KEY =
+    env.TURNSTILE_SECRET_KEY ?? "worker-unused";
+  process.env.DODO_PAYMENTS_WEBHOOK_SECRET =
+    env.DODO_PAYMENTS_WEBHOOK_SECRET ?? "worker-unused";
 
   // Worker env schema requires Upstash even though CF path writes progress to Postgres.
   process.env.UPSTASH_REDIS_REST_URL =

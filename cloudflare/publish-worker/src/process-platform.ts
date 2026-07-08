@@ -14,14 +14,18 @@ type FinalizeModule = {
   maybeFinalizePostPublish: (postId: string, userId: string) => Promise<void>;
 };
 
+/**
+ * Static-path dynamic imports (no @vite-ignore, no string concat) so wrangler
+ * bundles the publish code, but module evaluation waits until after bootstrap
+ * injects Worker secrets into process.env.
+ */
 async function loadWorkerModules() {
-  const root = "../../../backend/server/src/publish/";
   const [executor, finalize] = await Promise.all([
     import(
-      /* @vite-ignore */ root + "execute-publish.js"
+      "../../../backend/server/src/publish/execute-publish.js"
     ) as Promise<ExecutorModule>,
     import(
-      /* @vite-ignore */ root + "finalize-post.js"
+      "../../../backend/server/src/publish/finalize-post.js"
     ) as Promise<FinalizeModule>,
   ]);
   return { executor, finalize };
