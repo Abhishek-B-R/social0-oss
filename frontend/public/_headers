@@ -1,0 +1,10 @@
+# Hashed Vite assets are immutable — long cache is safe.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Always revalidate shell HTML so browsers don't keep stale script hashes.
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/*
+  Cache-Control: public, max-age=0, must-revalidate
