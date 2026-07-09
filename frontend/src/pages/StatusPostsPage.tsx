@@ -160,6 +160,7 @@ export function StatusPostsPage({ config }: { config: StatusPostsConfig }) {
         )}
         firstMediaByPost={new Map(Object.entries(data.firstMediaByPost))}
         resurfaceByPostId={data.resurfaceByPostId}
+        queuedPostIds={new Set(data.queuedPostIds)}
         emptyMessage={config.emptyMessage}
         filterMessage={`No ${config.title.toLowerCase()} match your filters.`}
         hasActiveFilters={hasActiveFilters}

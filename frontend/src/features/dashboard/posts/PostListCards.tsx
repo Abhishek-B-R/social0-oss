@@ -123,6 +123,7 @@ function getTimestampLabel(
     use24HourTimeFormat: boolean;
     dateFormat?: string | null;
     timezone?: string | null;
+    isQueued?: boolean;
   },
 ): string {
   const effectiveStatus = getUiStatus(post);
@@ -133,7 +134,8 @@ function getTimestampLabel(
       timezone: options.timezone,
     });
   if (effectiveStatus === "scheduled" && post.scheduledAt) {
-    return `Scheduled for ${fmt(new Date(post.scheduledAt))}`;
+    const verb = options.isQueued ? "Queued" : "Scheduled";
+    return `${verb} for ${fmt(new Date(post.scheduledAt))}`;
   }
   if (effectiveStatus === "published") {
     const publishedAts = publications
@@ -490,10 +492,11 @@ export function PostListCards({
           isThread,
         );
         const uiStatus = getUiStatus(post);
+        const isQueued = queuedPostIds?.has(post.id) ?? false;
         const timestampLabel = getTimestampLabel(
           post,
           publicationsByPostId[post.id] ?? [],
-          { use24HourTimeFormat, dateFormat, timezone },
+          { use24HourTimeFormat, dateFormat, timezone, isQueued },
         );
 
         const PREVIEW_LEN = 120;
@@ -506,7 +509,6 @@ export function PostListCards({
           : "No caption";
 
         const publicationsList = publicationsByPostId[post.id] ?? [];
-        const isQueued = queuedPostIds?.has(post.id);
         const statusBadge = isQueued
           ? {
               label: "Queued",

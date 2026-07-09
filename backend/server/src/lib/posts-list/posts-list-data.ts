@@ -329,7 +329,7 @@ export async function getPostsListData({
 
   const pagePostIds = userPostsWithStatus.map((p) => p.id);
   const queuedPostIds =
-    statusFilter === "scheduled" && pagePostIds.length > 0
+    pagePostIds.length > 0
       ? new Set(
           (
             await db
