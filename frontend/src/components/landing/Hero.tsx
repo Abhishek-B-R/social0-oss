@@ -5,45 +5,45 @@ import { FlowAnimation } from "./FlowAnimation";
 
 export function Hero({ signedIn = false }: { signedIn?: boolean }) {
   return (
-    <section className="px-6 pb-8 pt-20 lg:px-8 lg:pt-28">
+    <section className="px-4 pb-8 pt-12 sm:px-6 sm:pt-16 lg:px-8 lg:pt-28">
       <div className="mx-auto max-w-[1180px]">
         {/* Two-column layout */}
         <div className="grid items-start gap-12 lg:grid-cols-[1fr_420px] lg:gap-16">
           {/* Left column - Copy */}
           <div>
             {/* Headline: only "all your socials" in serif italic emerald (1–2 words) */}
-            <h1 className="mb-6 mt-10 text-[clamp(44px,6vw,72px)] leading-[1.05] tracking-tight text-foreground">
-              <span className="font-serif text-[clamp(44px,6vw,72px)] leading-[1.05] tracking-tight text-foreground">
+            <h1 className="mb-6 mt-0 text-[clamp(36px,8vw,72px)] leading-[1.08] tracking-tight text-foreground sm:mt-4 lg:mt-10">
+              <span className="font-serif text-[clamp(36px,8vw,72px)] leading-[1.08] tracking-tight text-foreground">
                 Post and schedule to{" "}
               </span>
               <em className="font-serif italic text-[#1a6b4a] dark:text-[#00ff77]">
                 all your socials
               </em>
-              <span className="font-serif text-[clamp(44px,6vw,72px)] leading-[1.05] tracking-tight text-foreground">
+              <span className="font-serif text-[clamp(36px,8vw,72px)] leading-[1.08] tracking-tight text-foreground">
                 {" "}
                 from one place.
               </span>
             </h1>
 
             {/* Subtitle - benefit first, no feature names */}
-            <p className="mb-10 max-w-[480px] text-[17px] leading-relaxed text-muted-foreground">
+            <p className="mb-8 max-w-[480px] text-base leading-relaxed text-muted-foreground sm:mb-10 sm:text-[17px]">
               Simple to use, with built-in tools that keep your content working
               even after you publish.
             </p>
 
             {/* CTA */}
             <div className="flex flex-col gap-4">
-              <div className="flex flex-wrap items-center gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
                 <Link
                   href={signedIn ? "/dashboard" : "/auth"}
-                  className="inline-flex items-center gap-2 rounded-[10px] bg-foreground px-7 py-3.5 text-[15px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-foreground px-7 py-3.5 text-[15px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900 sm:w-auto"
                 >
                   {signedIn ? "Go to dashboard" : "Start posting"}
                   <span aria-hidden="true">→</span>
                 </Link>
-                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <CheckCircle className="h-3.5 w-3.5" /> Start free · No credit
-                  card required
+                <span className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground sm:justify-start">
+                  <CheckCircle className="h-3.5 w-3.5 shrink-0" /> Start free · No
+                  credit card required
                 </span>
               </div>
               {/* Social proof - under CTA to reinforce action */}

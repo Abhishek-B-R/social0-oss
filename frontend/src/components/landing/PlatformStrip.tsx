@@ -24,12 +24,12 @@ const PLATFORMS = [
 
 export function PlatformStrip() {
   return (
-    <div className="border-y border-border bg-muted/50 px-6 py-5 dark:bg-muted/30 lg:px-8">
-      <div className="mx-auto max-w-[1100px] flex-wrap items-center gap-3">
-        <div className="mr-2 shrink-0 text-[11px] font-medium uppercase tracking-widest text-muted-foreground text-center mb-4">
+    <div className="border-y border-border bg-muted/50 px-4 py-4 dark:bg-muted/30 sm:px-6 sm:py-5 lg:px-8">
+      <div className="mx-auto max-w-[1100px]">
+        <div className="mb-3 shrink-0 text-center text-[11px] font-medium uppercase tracking-widest text-muted-foreground sm:mb-4">
           Publishes to
         </div>
-        <span className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start sm:gap-3">
           {PLATFORMS.map((p) => (
             <div
               key={p.name}
@@ -39,7 +39,7 @@ export function PlatformStrip() {
               {p.name}
             </div>
           ))}
-        </span>
+        </div>
       </div>
     </div>
   );
