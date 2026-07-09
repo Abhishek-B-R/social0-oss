@@ -3,10 +3,10 @@ const YOUTUBE_DEMO_ID = "C0mspHvKg_o";
 export function DemoVideoSection() {
   return (
     <section
-      className="px-6 pb-24 lg:px-8"
+      className="px-4 pb-16 sm:px-6 sm:pb-24 lg:px-8"
       aria-label="Social0 product demo video"
     >
-      <div className="mx-auto mt-16 max-w-[1100px]">
+      <div className="mx-auto mt-8 max-w-[1100px] sm:mt-16">
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_40px_80px_rgba(0,0,0,0.12)] dark:shadow-[0_40px_80px_rgba(0,0,0,0.4)]">
           <div className="relative aspect-video w-full">
             <iframe

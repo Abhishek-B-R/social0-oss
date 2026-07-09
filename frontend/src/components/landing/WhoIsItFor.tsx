@@ -23,7 +23,7 @@ const personas = [
 
 export function WhoIsItFor() {
   return (
-    <section className="px-6 py-24 lg:px-8">
+    <section className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
       <div className="mx-auto max-w-[1100px]">
         {/* Section header */}
         <div className="mb-14">
@@ -40,7 +40,7 @@ export function WhoIsItFor() {
           {personas.map((persona) => (
             <div
               key={persona.title}
-              className="flex flex-col bg-background p-10 transition-colors hover:bg-muted/40 dark:hover:bg-muted/20 md:p-12"
+              className="flex flex-col bg-background p-6 transition-colors hover:bg-muted/40 dark:hover:bg-muted/20 sm:p-10 md:p-12"
             >
               {/* Persona icon at top */}
               <div className="mb-8">
