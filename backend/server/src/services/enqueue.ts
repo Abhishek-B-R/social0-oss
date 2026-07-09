@@ -111,17 +111,24 @@ export async function enqueuePublishPostStandalone(
   };
 }
 
+function cronJobId(name: string): string {
+  // BullMQ rejects custom ids containing ':' — use a stable, colon-free dedup key.
+  return `cron-${name.replace(/\./g, "-")}`;
+}
+
 export async function enqueueCronJob(app: FastifyInstance, name: string) {
-  const jobId = `cron:${name}`;
-  try {
-    return await app.queues.scheduler.add(
-      name,
-      { triggeredAt: Date.now() },
-      { jobId },
-    );
-  } catch {
-    const existing = await app.queues.scheduler.getJob(jobId);
-    if (existing) return existing;
-    throw new Error(`Failed to enqueue cron job: ${name}`);
+  const jobId = cronJobId(name);
+  const existing = await app.queues.scheduler.getJob(jobId);
+  if (existing) {
+    const state = await existing.getState();
+    if (state === "active" || state === "waiting" || state === "delayed") {
+      return existing;
+    }
+    await existing.remove();
   }
+  return app.queues.scheduler.add(
+    name,
+    { triggeredAt: Date.now() },
+    { jobId },
+  );
 }

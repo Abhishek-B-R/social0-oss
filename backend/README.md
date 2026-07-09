@@ -27,6 +27,8 @@ Publish now → server → CF publish worker
 Scheduled posts → cron → background-worker → CF scheduled queue
 ```
 
+**Production:** something must hit `/api/cron/*` on a schedule. Deploy `cloudflare/cron-worker` (every 5 min) or use system crontab — see `cloudflare/cron-worker/README.md`. Without it, scheduled posts never publish.
+
 ## Quick start
 
 ```bash
