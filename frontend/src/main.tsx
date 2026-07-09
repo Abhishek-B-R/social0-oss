@@ -10,10 +10,27 @@ import "@fontsource/geist-sans/500.css";
 import "@fontsource/geist-sans/600.css";
 import "@/index.css";
 
-posthog.init(import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN, {
-  api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
-  defaults: "2026-01-30",
-});
+const posthogToken = import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN?.trim();
+const posthogHost =
+  import.meta.env.VITE_PUBLIC_POSTHOG_HOST?.trim() || "https://us.i.posthog.com";
+
+if (posthogToken) {
+  posthog.init(posthogToken, {
+    api_host: posthogHost,
+    defaults: "2026-01-30",
+    // Keep the production project clean — local traffic stays in Activity only if you opt in.
+    loaded: (ph) => {
+      const host = window.location.hostname;
+      if (host === "localhost" || host === "127.0.0.1") {
+        ph.opt_out_capturing();
+      }
+    },
+  });
+} else if (import.meta.env.PROD) {
+  console.warn(
+    "[posthog] VITE_PUBLIC_POSTHOG_PROJECT_TOKEN missing at build time — analytics disabled",
+  );
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {

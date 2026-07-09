@@ -27,4 +27,5 @@ dist-ssr
 certificates
 
 .env.prod
+.env.production
 .env

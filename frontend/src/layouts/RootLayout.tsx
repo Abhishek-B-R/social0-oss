@@ -14,6 +14,7 @@ export function RootLayout() {
   const posthog = usePostHog();
 
   useEffect(() => {
+    if (!posthog?.__loaded) return;
     posthog.capture("$pageview", {
       $current_url: sanitizeAnalyticsUrl(window.location.href),
     });
