@@ -13,6 +13,7 @@ export default function DocsInfoIcon({ url, className }: InfoIconProps) {
       title="Documentation for this page"
       aria-label="Documentation for this page"
     >
+      <span className="sr-only">Documentation</span>
       <svg
         className="w-4 h-4"
         fill="currentColor"
