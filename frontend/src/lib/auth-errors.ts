@@ -42,8 +42,13 @@ function collectStrings(value: unknown, out: string[] = [], depth = 0): string[]
 }
 
 function errorCode(input: unknown): string {
-  if (!input || typeof input !== "object" || !("code" in input)) return "";
-  return String((input as { code: unknown }).code).trim();
+  if (!input || typeof input !== "object") return "";
+  const obj = input as Record<string, unknown>;
+  if (typeof obj.code === "string") return obj.code.trim();
+  if (obj.error && typeof obj.error === "object" && "code" in obj.error) {
+    return String((obj.error as { code: unknown }).code).trim();
+  }
+  return "";
 }
 
 /** Pull the best user-facing message from API / Better Auth error shapes. */

@@ -27,7 +27,11 @@ export function getCorsOrigins(): string[] {
     return [...origins];
   }
 
-  const origins = new Set<string>(["https://social0.app", "https://dev.social0.app"]);
+  const origins = new Set<string>([
+    "https://social0.app",
+    "https://www.social0.app",
+    "https://dev.social0.app",
+  ]);
   for (const candidate of [env.APP_URL, env.NEXT_PUBLIC_APP_URL]) {
     if (!candidate) continue;
     try {
