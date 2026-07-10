@@ -9,10 +9,8 @@ import { signIn, useSession } from "@/lib/auth-client";
 import { absoluteCallbackUrl, resolveCallbackUrl } from "@/lib/sign-in-url";
 import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 import {
-  EMAIL_ALREADY_EXISTS_MESSAGE,
-  RATE_LIMITED_MESSAGE,
   friendlyAuthError,
-  isEmailAlreadyExistsError,
+  messageForAuthResponse,
 } from "@/lib/auth-errors";
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
@@ -162,6 +160,8 @@ function AuthPageContent() {
         }),
         signal: controller.signal,
       });
+      clearTimeout(timeoutId);
+
       if (res.redirected && res.url) {
         if (!assignSafeRedirectUrl(res.url)) {
           toast.error("Sign-up could not continue. Please try again.");
@@ -169,43 +169,7 @@ function AuthPageContent() {
         return;
       }
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as {
-          error?: string | { message?: string };
-          message?: string;
-          code?: string;
-          retry?: boolean;
-        };
-        if (data.code === "EMAIL_ALREADY_EXISTS") {
-          toast.error(EMAIL_ALREADY_EXISTS_MESSAGE);
-          return;
-        }
-        if (data.code === "RATE_LIMITED" || res.status === 429) {
-          toast.error(
-            typeof data.error === "string" ? data.error : RATE_LIMITED_MESSAGE,
-          );
-          return;
-        }
-        if (data.code === "SERVICE_UNAVAILABLE" || res.status === 503) {
-          toast.error(
-            typeof data.error === "string"
-              ? data.error
-              : "Service temporarily unavailable. Please try again later.",
-          );
-          return;
-        }
-        if (data.code === "LEGAL_CONSENT_REQUIRED") {
-          toast.error(
-            typeof data.error === "string"
-              ? data.error
-              : "Please accept the Terms of Service and Privacy Policy.",
-          );
-          return;
-        }
-        if (isEmailAlreadyExistsError(data)) {
-          toast.error(EMAIL_ALREADY_EXISTS_MESSAGE);
-          return;
-        }
-        toast.error(friendlyAuthError(data));
+        toast.error(await messageForAuthResponse(res));
         return;
       }
       const data = await res.json().catch(() => ({}));

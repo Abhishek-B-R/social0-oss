@@ -78,6 +78,13 @@ export function isEmailAlreadyExistsError(input: unknown): boolean {
 
 /** Map auth errors to friendly copy, but keep real API messages when we have them. */
 export function friendlyAuthError(err: unknown): string {
+  if (err instanceof TypeError) {
+    const lower = err.message.toLowerCase();
+    if (lower.includes("failed to fetch") || lower.includes("networkerror")) {
+      return "Couldn't reach the server. Check your connection and try again.";
+    }
+  }
+
   const extracted = extractErrorMessage(err);
   const lower = extracted.toLowerCase();
 
@@ -111,4 +118,50 @@ export function friendlyAuthError(err: unknown): string {
 
   if (extracted) return extracted;
   return GENERIC_AUTH_ERROR;
+}
+
+type ApiErrorPayload = {
+  error?: string | { message?: string };
+  message?: string;
+  code?: string;
+  retry?: boolean;
+};
+
+export async function parseApiErrorPayload(
+  res: Response,
+): Promise<ApiErrorPayload> {
+  const text = await res.text().catch(() => "");
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as ApiErrorPayload;
+  } catch {
+    return { error: text };
+  }
+}
+
+/** Turn a failed auth API response into the toast message users should see. */
+export async function messageForAuthResponse(res: Response): Promise<string> {
+  const data = await parseApiErrorPayload(res);
+
+  if (res.status === 409 || data.code === "EMAIL_ALREADY_EXISTS") {
+    return EMAIL_ALREADY_EXISTS_MESSAGE;
+  }
+  if (data.code === "RATE_LIMITED" || res.status === 429) {
+    return typeof data.error === "string" ? data.error : RATE_LIMITED_MESSAGE;
+  }
+  if (data.code === "SERVICE_UNAVAILABLE" || res.status === 503) {
+    return typeof data.error === "string"
+      ? data.error
+      : "Service temporarily unavailable. Please try again later.";
+  }
+  if (data.code === "LEGAL_CONSENT_REQUIRED") {
+    return typeof data.error === "string"
+      ? data.error
+      : "Please accept the Terms of Service and Privacy Policy.";
+  }
+  if (isEmailAlreadyExistsError(data)) {
+    return EMAIL_ALREADY_EXISTS_MESSAGE;
+  }
+
+  return friendlyAuthError(data);
 }
