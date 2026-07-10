@@ -40,6 +40,8 @@ npm run deploy:setup
 npx wrangler secret put PUBLISH_HMAC_SECRET
 npx wrangler secret put ENCRYPTION_KEY
 npx wrangler secret put APP_URL
+npx wrangler secret put RESEND_API_KEY
+npx wrangler secret put RESEND_FROM_EMAIL
 # Platform OAuth + R2 secrets as needed
 ```
 
