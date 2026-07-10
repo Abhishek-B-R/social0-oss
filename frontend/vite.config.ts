@@ -44,11 +44,17 @@ export default defineConfig(({ mode }) => {
   const useHttps = Boolean(httpsCerts);
   const cannyBoardToken =
     env.VITE_CANNY_BOARD_TOKEN || env.NEXT_PUBLIC_CANNY_BOARD_TOKEN || "";
+  const appBuildId =
+    env.CF_PAGES_COMMIT_SHA ||
+    env.GITHUB_SHA ||
+    env.VERCEL_GIT_COMMIT_SHA ||
+    `${Date.now()}`;
 
   return {
     plugins: [react(), tailwindcss()],
     define: {
       "import.meta.env.VITE_CANNY_BOARD_TOKEN": JSON.stringify(cannyBoardToken),
+      "import.meta.env.VITE_APP_BUILD_ID": JSON.stringify(appBuildId),
     },
     resolve: {
       alias: {

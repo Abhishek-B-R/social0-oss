@@ -10,6 +10,7 @@ interface ImportMetaEnv {
   readonly VITE_DODO_PAYMENTS_STARTER_PRODUCT_ID?: string;
   readonly VITE_DODO_PAYMENTS_GROWTH_PRODUCT_ID?: string;
   readonly VITE_DODO_PAYMENTS_PRO_PRODUCT_ID?: string;
+  readonly VITE_APP_BUILD_ID?: string;
 }
 
 interface ImportMeta {
