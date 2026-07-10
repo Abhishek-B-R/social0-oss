@@ -225,6 +225,9 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                 Save 34%
               </span>
             </div>
+            <p className="relative z-10 mb-6 text-[13px] font-medium text-red-500">
+              Lock this pricing forever - subscribe now
+            </p>
 
             <p className="relative z-10 mb-8 text-[14px] leading-relaxed text-white/50 dark:text-[#0A0A0A]/60">
               Scale your reach with automation, reposting, and bulk scheduling
@@ -258,8 +261,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                 {signedIn ? "Go to dashboard →" : "Start your 3-day free trial"}
               </Link>
               <p className="mt-3 text-center text-[12px] text-white dark:text-[#0A0A0A]/40">
-                3-day free trial · Cancel anytime · Lock in early-adopter
-                pricing
+                3-day free trial · Cancel anytime
               </p>
             </div>
           </div>

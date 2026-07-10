@@ -1,4 +1,4 @@
-const YOUTUBE_DEMO_ID = "C0mspHvKg_o";
+const YOUTUBE_DEMO_ID = "yGADZAGW7ls";
 
 export function DemoVideoSection() {
   return (
