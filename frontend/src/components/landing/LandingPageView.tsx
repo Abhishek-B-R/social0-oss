@@ -1,3 +1,4 @@
+import { useLandingHashScroll } from "@/lib/scroll-to-hash";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Hero } from "@/components/landing/Hero";
 import { PlatformStrip } from "@/components/landing/PlatformStrip";
@@ -13,6 +14,8 @@ import { FinalCTA } from "@/components/landing/FinalCTA";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 
 export function LandingPageView({ signedIn }: { signedIn: boolean }) {
+  useLandingHashScroll();
+
   return (
     <div className="min-h-screen bg-background landing">
       <LandingHeader />
