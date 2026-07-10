@@ -1,4 +1,4 @@
-/** Block Better Auth native email sign-up in production (use Turnstile wrapper). */
+/** Block Better Auth native email sign-up in production (use /api/auth/sign-up wrapper). */
 export function isBlockedNativeSignUpPath(pathname: string): boolean {
   if (process.env.NODE_ENV !== "production") return false;
   const path = pathname.toLowerCase();

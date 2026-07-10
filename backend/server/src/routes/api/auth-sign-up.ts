@@ -15,32 +15,31 @@ import {
 import { db } from "../../db/index.js";
 import { user } from "../../db/schema.js";
 import { eq } from "drizzle-orm";
+import { verifyTurnstileIfConfigured } from "../../lib/turnstile.js";
 
 /**
- * Email/password sign-up. Better Auth emailOTP plugin sends the verification OTP; we redirect to verify-email (no Turnstile).
+ * Email/password sign-up. Better Auth emailOTP plugin sends the verification OTP; we redirect to verify-email.
  */
 export async function signUpDev(request: Request) {
-  if (process.env.NODE_ENV === "production") {
-    return RouteResponse.json(
-      {
-        error:
-          "Email sign-up must use the Turnstile-protected endpoint in production.",
-        code: "USE_TURNSTILE_SIGNUP",
-      },
-      { status: 403 },
-    );
-  }
-
   const ipRate = await enforceRateLimit(signUpIpLimiter, `sign_up:${clientIp(request)}`);
   if (!ipRate.allowed) {
     return RouteResponse.json({ error: ipRate.error }, { status: ipRate.status });
   }
 
   const body = await request.json().catch(() => ({}));
-  const { name, email, password, acceptTerms, acceptPrivacy, marketingOptIn } = body as {
+  const {
+    name,
+    email,
+    password,
+    turnstileToken,
+    acceptTerms,
+    acceptPrivacy,
+    marketingOptIn,
+  } = body as {
     name?: string;
     email?: string;
     password?: string;
+    turnstileToken?: string;
     acceptTerms?: boolean;
     acceptPrivacy?: boolean;
     marketingOptIn?: boolean;
@@ -59,6 +58,21 @@ export async function signUpDev(request: Request) {
     return RouteResponse.json(
       { error: "Missing name, email, or password" },
       { status: 400 },
+    );
+  }
+
+  const turnstile = await verifyTurnstileIfConfigured(
+    turnstileToken,
+    env.TURNSTILE_SECRET_KEY,
+  );
+  if (!turnstile.ok) {
+    return RouteResponse.json(
+      {
+        error: turnstile.error,
+        code: turnstile.code,
+        retry: turnstile.retry,
+      },
+      { status: turnstile.status },
     );
   }
 

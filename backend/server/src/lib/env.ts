@@ -87,20 +87,6 @@ const envSchema = z
         path: ["ADMIN_API_KEY"],
       });
     }
-    if (!data.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "NEXT_PUBLIC_TURNSTILE_SITE_KEY required in production",
-        path: ["NEXT_PUBLIC_TURNSTILE_SITE_KEY"],
-      });
-    }
-    if (!data.TURNSTILE_SECRET_KEY?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "TURNSTILE_SECRET_KEY required in production",
-        path: ["TURNSTILE_SECRET_KEY"],
-      });
-    }
     if (!data.DODO_PAYMENTS_WEBHOOK_SECRET?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

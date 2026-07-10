@@ -226,12 +226,6 @@ function AuthPageContent() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     toast.dismiss();
-    if (SIGN_UP.misconfigured) {
-      toast.error(
-        "Email sign-up is temporarily unavailable. Continue with Google or try again later.",
-      );
-      return;
-    }
     if (SIGN_UP.requiresTurnstileToken && !turnstileToken) {
       requireInteractiveTurnstile(
         "Complete the verification challenge below, then try again.",
@@ -248,30 +242,19 @@ function AuthPageContent() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const res = await fetch(apiUrl(SIGN_UP.signUpEndpoint), {
+      const res = await fetch(apiUrl("/api/auth/sign-up"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(
-          SIGN_UP.requiresTurnstileToken
-            ? {
-                name: name.trim(),
-                email: email.trim().toLowerCase(),
-                password,
-                turnstileToken,
-                acceptTerms: legalConsent.acceptTerms,
-                acceptPrivacy: legalConsent.acceptPrivacy,
-                marketingOptIn: legalConsent.marketingOptIn,
-              }
-            : {
-                name: name.trim(),
-                email: email.trim().toLowerCase(),
-                password,
-                acceptTerms: legalConsent.acceptTerms,
-                acceptPrivacy: legalConsent.acceptPrivacy,
-                marketingOptIn: legalConsent.marketingOptIn,
-              },
-        ),
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+          ...(turnstileToken ? { turnstileToken } : {}),
+          acceptTerms: legalConsent.acceptTerms,
+          acceptPrivacy: legalConsent.acceptPrivacy,
+          marketingOptIn: legalConsent.marketingOptIn,
+        }),
         signal: controller.signal,
       });
       if (res.redirected && res.url) {
@@ -588,16 +571,6 @@ function AuthPageContent() {
                     </button>
                   </div>
                 </div>
-                {SIGN_UP.misconfigured && (
-                  <div
-                    className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-foreground"
-                    role="alert"
-                  >
-                    Email sign-up is not configured on this deployment. Use
-                    Google to create an account, or contact support if this
-                    persists.
-                  </div>
-                )}
                 {SIGN_UP.turnstileSiteKey && (
                   <div className="space-y-3">
                     {turnstileFailed ? (
@@ -679,7 +652,6 @@ function AuthPageContent() {
                   disabled={
                     loading ||
                     googleLoading ||
-                    SIGN_UP.misconfigured ||
                     !legalConsent.acceptTerms ||
                     !legalConsent.acceptPrivacy ||
                     (SIGN_UP.requiresTurnstileToken && !turnstileToken)
