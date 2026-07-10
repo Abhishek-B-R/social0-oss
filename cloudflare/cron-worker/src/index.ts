@@ -9,8 +9,9 @@ export interface Env {
 }
 
 const CRON_JOBS: Record<string, readonly string[]> = {
-  "*/5 * * * *": ["publish-scheduled"],
-  "0 6 * * *": ["repost", "autoplug", "token-health", "billing-zombie-cleanup"],
+  "*/5 * * * *": ["publish-scheduled", "autoplug"],
+  "*/10 * * * *": ["repost"],
+  "0 6 * * *": ["token-health", "billing-zombie-cleanup"],
 };
 
 async function hitCron(env: Env, job: string): Promise<Response> {

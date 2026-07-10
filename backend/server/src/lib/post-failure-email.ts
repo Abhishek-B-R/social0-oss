@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { user, userSettings } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { posts, user, userSettings } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { sendEmail } from "@/lib/mail";
 import { PLATFORMS } from "@/lib/platforms";
@@ -10,6 +10,24 @@ export type PostFailureEmailItem = {
   platformUsername?: string | null;
   error?: string | null;
 };
+
+const FAILURE_EMAIL_SENT_KEY = "_failureEmailSentAt";
+
+/** One failure email per post (queue retries / parallel finalize safe). */
+async function claimPostFailureEmail(postId: string): Promise<boolean> {
+  const sentAt = new Date().toISOString();
+  const claimed = await db
+    .update(posts)
+    .set({
+      metadata: sql`coalesce(${posts.metadata}, '{}'::jsonb) || jsonb_build_object(${FAILURE_EMAIL_SENT_KEY}, ${sentAt})`,
+      updatedAt: new Date(),
+    })
+    .where(
+      sql`${posts.id} = ${postId} and (${posts.metadata}->>${FAILURE_EMAIL_SENT_KEY}) is null`,
+    )
+    .returning({ id: posts.id });
+  return claimed.length > 0;
+}
 
 function platformDisplayName(platformId: string): string {
   return PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
@@ -96,6 +114,8 @@ export async function maybeSendPostFailureEmail(input: {
 
     const email = userRow?.email?.trim();
     if (!email) return;
+
+    if (!(await claimPostFailureEmail(input.postId))) return;
 
     const postUrl = `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/dashboard/posts/${input.postId}`;
     const subject =

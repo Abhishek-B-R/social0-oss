@@ -6,7 +6,7 @@
     "enabled": true,
   },
   "triggers": {
-    // UTC: publish every 5 min; daily maintenance at 06:00
-    "crons": ["*/5 * * * *", "0 6 * * *"],
+    // UTC schedules — see CRON_JOBS in src/index.ts
+    "crons": ["*/5 * * * *", "*/10 * * * *", "0 6 * * *"],
   },
 }
