@@ -3,6 +3,9 @@ export const EMAIL_ALREADY_EXISTS_MESSAGE =
 
 export const GENERIC_SIGN_UP_ERROR = "Something went wrong. Please try again.";
 
+export const RATE_LIMITED_MESSAGE =
+  "Too many attempts. Please wait a few minutes and try again.";
+
 const EMAIL_EXISTS_PATTERNS = [
   /user_already_exists/i,
   /email_already_exists/i,

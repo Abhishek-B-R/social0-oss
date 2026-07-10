@@ -13,6 +13,7 @@ import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 import {
   EMAIL_ALREADY_EXISTS_MESSAGE,
   GENERIC_SIGN_UP_ERROR,
+  RATE_LIMITED_MESSAGE,
   isEmailAlreadyExistsError,
 } from "@/lib/sign-up-errors";
 import { toast } from "sonner";
@@ -63,13 +64,21 @@ function friendlyAuthError(err: unknown): string {
         : typeof err === "object" && err !== null && "message" in err
           ? String((err as { message: unknown }).message)
           : "";
-  const lower = msg.toLowerCase();
+  const trimmed = msg.trim();
+  const lower = trimmed.toLowerCase();
   if (
     lower.includes("timeout") ||
     lower.includes("aborted") ||
     lower.includes("abort")
   ) {
     return "Request timed out. Please try again.";
+  }
+  if (
+    lower.includes("too many requests") ||
+    lower.includes("rate limit") ||
+    lower.includes("rate limiting")
+  ) {
+    return trimmed || RATE_LIMITED_MESSAGE;
   }
   if (
     lower.includes("invalid") ||
@@ -98,6 +107,7 @@ function friendlyAuthError(err: unknown): string {
   ) {
     return GENERIC_SIGN_UP_ERROR;
   }
+  if (trimmed) return trimmed;
   return GENERIC_SIGN_UP_ERROR;
 }
 
@@ -281,6 +291,20 @@ function AuthPageContent() {
         }
         if (data.code === "EMAIL_ALREADY_EXISTS") {
           toast.error(EMAIL_ALREADY_EXISTS_MESSAGE);
+          return;
+        }
+        if (data.code === "RATE_LIMITED" || res.status === 429) {
+          toast.error(
+            typeof data.error === "string" ? data.error : RATE_LIMITED_MESSAGE,
+          );
+          return;
+        }
+        if (data.code === "SERVICE_UNAVAILABLE" || res.status === 503) {
+          toast.error(
+            typeof data.error === "string"
+              ? data.error
+              : "Service temporarily unavailable. Please try again later.",
+          );
           return;
         }
         if (data.code === "LEGAL_CONSENT_REQUIRED") {

@@ -24,7 +24,13 @@ import { verifyTurnstileIfConfigured } from "../../lib/turnstile.js";
 export async function signUpDev(request: Request) {
   const ipRate = await enforceRateLimit(signUpIpLimiter, `sign_up:${clientIp(request)}`);
   if (!ipRate.allowed) {
-    return RouteResponse.json({ error: ipRate.error }, { status: ipRate.status });
+    return RouteResponse.json(
+      {
+        error: ipRate.error,
+        code: ipRate.status === 429 ? "RATE_LIMITED" : "SERVICE_UNAVAILABLE",
+      },
+      { status: ipRate.status },
+    );
   }
 
   const body = await request.json().catch(() => ({}));
