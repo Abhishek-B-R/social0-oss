@@ -1,19 +1,23 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { usePostHog } from "@posthog/react";
 import Link from "@/components/AppLink";
 import { FcGoogle } from "react-icons/fc";
 import { IconEye, IconEyeOff } from "@tabler/icons-react";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
+import { isTurnstileTestSiteKey } from "@/lib/turnstile";
 import { signIn, useSession } from "@/lib/auth-client";
 import { absoluteCallbackUrl, resolveCallbackUrl } from "@/lib/sign-in-url";
 import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 import {
   EMAIL_ALREADY_EXISTS_MESSAGE,
   GENERIC_SIGN_UP_ERROR,
+  isEmailAlreadyExistsError,
 } from "@/lib/sign-up-errors";
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
+import { getClientSignUpConfig } from "@/lib/sign-up-config";
 import { apiUrl } from "@/lib/env";
 import {
   EMPTY_LEGAL_CONSENT,
@@ -21,6 +25,7 @@ import {
   type LegalConsentValues,
 } from "@/components/auth/LegalConsentCheckboxes";
 
+const SIGN_UP = getClientSignUpConfig();
 const TIMEOUT_MS = 10_000;
 
 function Spinner() {
@@ -125,6 +130,13 @@ function AuthPageContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileChallenge, setTurnstileChallenge] = useState<
+    "passive" | "interactive"
+  >("passive");
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
+  const [turnstileFailed, setTurnstileFailed] = useState(false);
+  const [turnstileWidgetKey, setTurnstileWidgetKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -134,6 +146,7 @@ function AuthPageContent() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     posthog?.capture("user_signed_in_with_google");
+    // Safety timeout: stop spinner if popup/redirect is blocked, but avoid noisy false errors.
     const timer = setTimeout(() => {
       setGoogleLoading(false);
     }, 15000);
@@ -142,6 +155,7 @@ function AuthPageContent() {
         provider: "google",
         callbackURL: authCallbackUrl,
       });
+      // If we actually got an error payload (no redirect happened), show it.
       if (error) {
         toast.error(friendlyAuthError(error.message ?? error));
       }
@@ -178,9 +192,47 @@ function AuthPageContent() {
     }
   };
 
+  const resetTurnstileChallenge = () => {
+    setTurnstileToken(null);
+    setTurnstileChallenge("passive");
+    setTurnstileFailed(false);
+    setTurnstileWidgetKey((k) => k + 1);
+    turnstileRef.current?.reset();
+  };
+
+  const markTurnstileNeedsRetry = () => {
+    setTurnstileToken(null);
+    setTurnstileChallenge("interactive");
+    setTurnstileFailed(true);
+  };
+
+  const retryTurnstileVerification = () => {
+    setTurnstileToken(null);
+    setTurnstileFailed(false);
+    setTurnstileChallenge("interactive");
+    setTurnstileWidgetKey((k) => k + 1);
+  };
+
+  const requireInteractiveTurnstile = (message?: string) => {
+    setTurnstileToken(null);
+    setTurnstileFailed(false);
+    setTurnstileChallenge("interactive");
+    setTurnstileWidgetKey((k) => k + 1);
+    toast.error(
+      message ??
+        "Please complete the verification challenge below, then try again.",
+    );
+  };
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     toast.dismiss();
+    if (SIGN_UP.requiresTurnstileToken && !turnstileToken) {
+      requireInteractiveTurnstile(
+        "Complete the verification challenge below, then try again.",
+      );
+      return;
+    }
     if (!legalConsent.acceptTerms || !legalConsent.acceptPrivacy) {
       toast.error(
         "Please accept the Terms of Service and acknowledge the Privacy Policy.",
@@ -199,6 +251,7 @@ function AuthPageContent() {
           name: name.trim(),
           email: email.trim().toLowerCase(),
           password,
+          ...(turnstileToken ? { turnstileToken } : {}),
           acceptTerms: legalConsent.acceptTerms,
           acceptPrivacy: legalConsent.acceptPrivacy,
           marketingOptIn: legalConsent.marketingOptIn,
@@ -216,7 +269,16 @@ function AuthPageContent() {
           error?: string | { message?: string };
           message?: string;
           code?: string;
+          retry?: boolean;
         };
+        if (data.code === "turnstile_failed" || data.retry) {
+          requireInteractiveTurnstile(
+            typeof data.error === "string"
+              ? data.error
+              : "Please complete the verification challenge below, then try again.",
+          );
+          return;
+        }
         if (data.code === "EMAIL_ALREADY_EXISTS") {
           toast.error(EMAIL_ALREADY_EXISTS_MESSAGE);
           return;
@@ -233,6 +295,10 @@ function AuthPageContent() {
           typeof data.error === "string"
             ? data.error
             : (data.error?.message ?? data.message ?? "");
+        if (isEmailAlreadyExistsError(data) || isEmailAlreadyExistsError(raw)) {
+          toast.error(EMAIL_ALREADY_EXISTS_MESSAGE);
+          return;
+        }
         toast.error(friendlyAuthError(raw));
         return;
       }
@@ -296,6 +362,7 @@ function AuthPageContent() {
                 onClick={() => {
                   setMode("signin");
                   toast.dismiss();
+                  resetTurnstileChallenge();
                 }}
                 className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
                   mode === "signin"
@@ -310,6 +377,7 @@ function AuthPageContent() {
                 onClick={() => {
                   setMode("signup");
                   toast.dismiss();
+                  resetTurnstileChallenge();
                   setLegalConsent(EMPTY_LEGAL_CONSENT);
                 }}
                 className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
@@ -508,6 +576,77 @@ function AuthPageContent() {
                     </button>
                   </div>
                 </div>
+                {SIGN_UP.turnstileSiteKey && (
+                  <div className="space-y-3">
+                    {turnstileFailed ? (
+                      <div
+                        className="rounded-xl border border-border bg-muted/30 p-4 text-center"
+                        role="alert"
+                      >
+                        <p className="text-sm font-medium text-foreground">
+                          Couldn&apos;t verify this browser
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                          Privacy extensions, VPNs, and some test browsers can
+                          block verification. Retry below or sign up with
+                          Google.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={retryTurnstileVerification}
+                          className="mt-3 rounded-[10px] bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+                        >
+                          Try verification again
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {turnstileChallenge === "interactive" && (
+                          <p className="text-center text-sm text-muted-foreground">
+                            Complete the verification challenge to create your
+                            account.
+                          </p>
+                        )}
+                        {isTurnstileTestSiteKey(SIGN_UP.turnstileSiteKey) && (
+                          <p className="text-center text-[11px] text-muted-foreground">
+                            Turnstile test key active - for local/Playwright use
+                            only.
+                          </p>
+                        )}
+                        <div className="flex justify-center overflow-hidden rounded-lg">
+                          <Turnstile
+                            key={`${turnstileChallenge}-${turnstileWidgetKey}`}
+                            ref={turnstileRef}
+                            siteKey={SIGN_UP.turnstileSiteKey}
+                            options={{
+                              appearance:
+                                turnstileChallenge === "interactive"
+                                  ? "always"
+                                  : "interaction-only",
+                              retry: "never",
+                              theme: "auto",
+                              refreshExpired: "auto",
+                              feedbackEnabled: false,
+                            }}
+                            onSuccess={(token) => {
+                              setTurnstileToken(token);
+                              setTurnstileFailed(false);
+                            }}
+                            onExpire={() => {
+                              setTurnstileToken(null);
+                            }}
+                            onError={() => {
+                              markTurnstileNeedsRetry();
+                            }}
+                            onTimeout={() => {
+                              markTurnstileNeedsRetry();
+                            }}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
                 <LegalConsentCheckboxes
                   values={legalConsent}
                   onChange={setLegalConsent}
@@ -519,7 +658,8 @@ function AuthPageContent() {
                     loading ||
                     googleLoading ||
                     !legalConsent.acceptTerms ||
-                    !legalConsent.acceptPrivacy
+                    !legalConsent.acceptPrivacy ||
+                    (SIGN_UP.requiresTurnstileToken && !turnstileToken)
                   }
                   className="w-full inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#0A0A0A] text-white hover:bg-neutral-800 disabled:opacity-50 font-medium py-3 px-4 transition-colors dark:bg-white dark:text-[#0A0A0A] dark:hover:bg-neutral-100"
                 >

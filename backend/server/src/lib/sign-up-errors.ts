@@ -6,10 +6,13 @@ export const GENERIC_SIGN_UP_ERROR = "Something went wrong. Please try again.";
 const EMAIL_EXISTS_PATTERNS = [
   /user_already_exists/i,
   /email_already_exists/i,
+  /USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL/i,
   /already exists/i,
   /already registered/i,
   /email taken/i,
   /duplicate/i,
+  /unique constraint/i,
+  /duplicate key/i,
 ];
 
 function collectStrings(value: unknown, out: string[] = [], depth = 0): string[] {
@@ -28,6 +31,10 @@ function collectStrings(value: unknown, out: string[] = [], depth = 0): string[]
 
 /** Detect Better Auth / DB errors indicating the email is already registered. */
 export function isEmailAlreadyExistsError(input: unknown): boolean {
+  if (input && typeof input === "object" && "code" in input) {
+    const code = String((input as { code: unknown }).code);
+    if (/USER_ALREADY|EMAIL_ALREADY/i.test(code)) return true;
+  }
   const strings = collectStrings(input);
   return strings.some(
     (s) =>

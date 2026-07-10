@@ -3,6 +3,7 @@ import { env } from "../../lib/env.js";
 import {
   mapSignUpError,
   mapSignUpErrorFromResponse,
+  EMAIL_ALREADY_EXISTS_MESSAGE,
 } from "../../lib/sign-up-errors.js";
 import { headers } from "../../lib/http/request-cookies.js";
 import { RouteResponse } from "../../lib/http/http.js";
@@ -58,6 +59,17 @@ export async function signUpDev(request: Request) {
     return RouteResponse.json(
       { error: "Missing name, email, or password" },
       { status: 400 },
+    );
+  }
+
+  const existingUser = await db.query.user.findFirst({
+    where: eq(user.email, normalizedEmail),
+    columns: { id: true },
+  });
+  if (existingUser) {
+    return RouteResponse.json(
+      { error: EMAIL_ALREADY_EXISTS_MESSAGE, code: "EMAIL_ALREADY_EXISTS" },
+      { status: 409 },
     );
   }
 
