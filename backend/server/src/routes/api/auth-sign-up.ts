@@ -15,8 +15,23 @@ import {
 } from "../../lib/legal.js";
 import { db } from "../../db/index.js";
 import { user } from "../../db/schema.js";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { verifyTurnstileIfConfigured } from "../../lib/turnstile.js";
+
+function emailAlreadyExistsResponse() {
+  return RouteResponse.json(
+    { error: EMAIL_ALREADY_EXISTS_MESSAGE, code: "EMAIL_ALREADY_EXISTS" },
+    { status: 409 },
+  );
+}
+
+async function findUserIdByNormalizedEmail(normalizedEmail: string) {
+  const row = await db.query.user.findFirst({
+    where: sql`lower(${user.email}) = ${normalizedEmail}`,
+    columns: { id: true },
+  });
+  return row?.id ?? null;
+}
 
 /**
  * Email/password sign-up. Better Auth emailOTP plugin sends the verification OTP; we redirect to verify-email.
@@ -68,15 +83,8 @@ export async function signUpDev(request: Request) {
     );
   }
 
-  const existingUser = await db.query.user.findFirst({
-    where: eq(user.email, normalizedEmail),
-    columns: { id: true },
-  });
-  if (existingUser) {
-    return RouteResponse.json(
-      { error: EMAIL_ALREADY_EXISTS_MESSAGE, code: "EMAIL_ALREADY_EXISTS" },
-      { status: 409 },
-    );
+  if (await findUserIdByNormalizedEmail(normalizedEmail)) {
+    return emailAlreadyExistsResponse();
   }
 
   const turnstile = await verifyTurnstileIfConfigured(
@@ -112,13 +120,29 @@ export async function signUpDev(request: Request) {
 
     if (!response.ok) {
       const mapped = await mapSignUpErrorFromResponse(response);
+      if (mapped.code !== "EMAIL_ALREADY_EXISTS") {
+        const existingId = await findUserIdByNormalizedEmail(normalizedEmail);
+        if (existingId) return emailAlreadyExistsResponse();
+      }
       return RouteResponse.json(mapped, { status: response.status });
     }
 
-    const created = await db.query.user.findFirst({
-      where: eq(user.email, normalizedEmail),
-      columns: { id: true },
-    });
+    const signUpPayload = (await response.clone().json().catch(() => ({}))) as {
+      user?: { id?: string };
+    };
+    const dbUserId = await findUserIdByNormalizedEmail(normalizedEmail);
+    const responseUserId = signUpPayload.user?.id;
+    // ponytail: Better Auth returns a synthetic user (fake id) for duplicate emails when email verification is required
+    if (dbUserId && responseUserId && dbUserId !== responseUserId) {
+      return emailAlreadyExistsResponse();
+    }
+
+    const created = dbUserId
+      ? { id: dbUserId }
+      : await db.query.user.findFirst({
+          where: eq(user.email, normalizedEmail),
+          columns: { id: true },
+        });
     if (created) {
       await recordLegalAcceptances({
         userId: created.id,
@@ -141,6 +165,9 @@ export async function signUpDev(request: Request) {
     }
     return res;
   } catch (e) {
+    if (await findUserIdByNormalizedEmail(normalizedEmail)) {
+      return emailAlreadyExistsResponse();
+    }
     const status =
       e && typeof (e as { status?: number }).status === "number"
         ? (e as { status: number }).status
