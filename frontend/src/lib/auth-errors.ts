@@ -1,7 +1,7 @@
 export const EMAIL_ALREADY_EXISTS_MESSAGE =
   "An account with this email already exists. Try signing in with Google instead, or use the sign in tab.";
 
-export const GENERIC_SIGN_UP_ERROR = "Something went wrong. Please try again.";
+export const GENERIC_AUTH_ERROR = "Something went wrong. Please try again.";
 
 export const RATE_LIMITED_MESSAGE =
   "Too many attempts. Please wait a few minutes and try again.";
@@ -32,6 +32,7 @@ function collectStrings(value: unknown, out: string[] = [], depth = 0): string[]
   return out;
 }
 
+/** Pull the best user-facing message from API / Better Auth error shapes. */
 export function extractErrorMessage(input: unknown): string {
   if (typeof input === "string") return input.trim();
   if (input instanceof Error) return input.message.trim();
@@ -75,45 +76,39 @@ export function isEmailAlreadyExistsError(input: unknown): boolean {
   );
 }
 
-export function mapSignUpError(input: unknown): {
-  error: string;
-  code?: "EMAIL_ALREADY_EXISTS";
-} {
-  if (isEmailAlreadyExistsError(input)) {
-    return { error: EMAIL_ALREADY_EXISTS_MESSAGE, code: "EMAIL_ALREADY_EXISTS" };
+/** Map auth errors to friendly copy, but keep real API messages when we have them. */
+export function friendlyAuthError(err: unknown): string {
+  const extracted = extractErrorMessage(err);
+  const lower = extracted.toLowerCase();
+
+  if (
+    lower.includes("abort") ||
+    lower.includes("timeout") ||
+    lower.includes("timed out")
+  ) {
+    return "Request timed out. Please try again.";
   }
-  const message = extractErrorMessage(input);
-  return { error: message || GENERIC_SIGN_UP_ERROR };
-}
 
-export async function mapSignUpErrorFromResponse(
-  response: Response,
-): Promise<{ error: string; code?: "EMAIL_ALREADY_EXISTS" }> {
-  const payload = await response.json().catch(() => ({}));
-  return mapSignUpError(payload);
-}
+  if (
+    lower.includes("too many requests") ||
+    lower.includes("rate limit") ||
+    lower.includes("rate limiting")
+  ) {
+    return extracted || RATE_LIMITED_MESSAGE;
+  }
 
-// ponytail: self-check — run via `npx tsx src/lib/sign-up-errors.ts` from backend/server
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const assert = (cond: boolean, msg: string) => {
-    if (!cond) throw new Error(msg);
-  };
-  assert(
-    isEmailAlreadyExistsError({ code: "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" }),
-    "Better Auth duplicate code",
-  );
-  assert(
-    isEmailAlreadyExistsError({ message: "User already exists." }),
-    "Better Auth duplicate message",
-  );
-  assert(
-    mapSignUpError({ code: "EMAIL_ALREADY_EXISTS" }).code === "EMAIL_ALREADY_EXISTS",
-    "mapped duplicate code",
-  );
-  assert(
-    mapSignUpError({ message: "duplicate key value violates unique constraint" }).code ===
-      "EMAIL_ALREADY_EXISTS",
-    "db unique violation",
-  );
-  assert(mapSignUpError({ message: "network error" }).code === undefined, "generic stays generic");
+  if (isEmailAlreadyExistsError(err) || isEmailAlreadyExistsError(extracted)) {
+    return EMAIL_ALREADY_EXISTS_MESSAGE;
+  }
+
+  if (
+    lower === "invalid email or password" ||
+    lower.includes("invalid credentials") ||
+    lower.includes("incorrect password")
+  ) {
+    return "Invalid email or password.";
+  }
+
+  if (extracted) return extracted;
+  return GENERIC_AUTH_ERROR;
 }

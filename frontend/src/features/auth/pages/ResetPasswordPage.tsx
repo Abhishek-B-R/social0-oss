@@ -4,6 +4,7 @@ import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useState, useCallback, Suspense } from "react";
 import Link from "@/components/AppLink";
 import { authClient } from "@/lib/auth-client";
+import { friendlyAuthError } from "@/lib/auth-errors";
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 
@@ -56,12 +57,12 @@ function ResetPasswordContent() {
         password,
       });
       if (err) {
-        toast.error("Invalid or expired code. Try again.");
+        toast.error(friendlyAuthError(err));
         return;
       }
       navigate("/auth?reset=success", { replace: true });
-    } catch {
-      toast.error("Something went wrong. Try again.");
+    } catch (err) {
+      toast.error(friendlyAuthError(err));
     } finally {
       setLoading(false);
     }

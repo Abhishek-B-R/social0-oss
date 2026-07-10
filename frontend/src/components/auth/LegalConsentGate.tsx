@@ -14,6 +14,7 @@ import {
   type LegalConsentValues,
 } from "@/components/auth/LegalConsentCheckboxes";
 import { toast } from "sonner";
+import { friendlyAuthError } from "@/lib/auth-errors";
 
 type LegalStatusResponse = {
   needsAcceptance: boolean;
@@ -73,8 +74,8 @@ export function LegalConsentGate() {
       }
       setOpen(false);
       toast.success("Thanks - you're all set.");
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (err) {
+      toast.error(friendlyAuthError(err));
     } finally {
       setSubmitting(false);
     }

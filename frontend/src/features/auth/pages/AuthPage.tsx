@@ -12,10 +12,10 @@ import { absoluteCallbackUrl, resolveCallbackUrl } from "@/lib/sign-in-url";
 import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 import {
   EMAIL_ALREADY_EXISTS_MESSAGE,
-  GENERIC_SIGN_UP_ERROR,
   RATE_LIMITED_MESSAGE,
+  friendlyAuthError,
   isEmailAlreadyExistsError,
-} from "@/lib/sign-up-errors";
+} from "@/lib/auth-errors";
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 import { getClientSignUpConfig } from "@/lib/sign-up-config";
@@ -53,62 +53,6 @@ function Spinner() {
       />
     </svg>
   );
-}
-
-function friendlyAuthError(err: unknown): string {
-  const msg =
-    typeof err === "string"
-      ? err
-      : err instanceof Error
-        ? err.message
-        : typeof err === "object" && err !== null && "message" in err
-          ? String((err as { message: unknown }).message)
-          : "";
-  const trimmed = msg.trim();
-  const lower = trimmed.toLowerCase();
-  if (
-    lower.includes("timeout") ||
-    lower.includes("aborted") ||
-    lower.includes("abort")
-  ) {
-    return "Request timed out. Please try again.";
-  }
-  if (
-    lower.includes("too many requests") ||
-    lower.includes("rate limit") ||
-    lower.includes("rate limiting")
-  ) {
-    return trimmed || RATE_LIMITED_MESSAGE;
-  }
-  if (
-    lower.includes("invalid") ||
-    lower.includes("incorrect") ||
-    lower.includes("wrong password") ||
-    lower.includes("credentials")
-  ) {
-    return "Invalid email or password.";
-  }
-  if (
-    lower.includes("already exists") ||
-    lower.includes("already registered") ||
-    lower.includes("email taken") ||
-    lower.includes("duplicate") ||
-    lower.includes("user_already") ||
-    lower.includes("email_already")
-  ) {
-    return EMAIL_ALREADY_EXISTS_MESSAGE;
-  }
-  if (
-    lower.includes("network") ||
-    lower.includes("fetch") ||
-    lower.includes("failed to fetch") ||
-    lower.includes("database") ||
-    lower.includes("internal")
-  ) {
-    return GENERIC_SIGN_UP_ERROR;
-  }
-  if (trimmed) return trimmed;
-  return GENERIC_SIGN_UP_ERROR;
 }
 
 function AuthPageContent() {
@@ -167,7 +111,7 @@ function AuthPageContent() {
       });
       // If we actually got an error payload (no redirect happened), show it.
       if (error) {
-        toast.error(friendlyAuthError(error.message ?? error));
+        toast.error(friendlyAuthError(error));
       }
     } catch (err) {
       toast.error(friendlyAuthError(err));
@@ -189,14 +133,14 @@ function AuthPageContent() {
         callbackURL: authCallbackUrl,
       });
       if (err) {
-        toast.error(friendlyAuthError(err.message ?? err));
+        toast.error(friendlyAuthError(err));
         return;
       }
       posthog?.identify(normalizedEmail, { email: normalizedEmail });
       posthog?.capture("user_signed_in", { method: "email" });
       assignSafeRedirectUrl(callbackUrl);
-    } catch {
-      toast.error("Something went wrong. Please try again later.");
+    } catch (err) {
+      toast.error(friendlyAuthError(err));
     } finally {
       setLoading(false);
     }
@@ -315,15 +259,11 @@ function AuthPageContent() {
           );
           return;
         }
-        const raw =
-          typeof data.error === "string"
-            ? data.error
-            : (data.error?.message ?? data.message ?? "");
-        if (isEmailAlreadyExistsError(data) || isEmailAlreadyExistsError(raw)) {
+        if (isEmailAlreadyExistsError(data)) {
           toast.error(EMAIL_ALREADY_EXISTS_MESSAGE);
           return;
         }
-        toast.error(friendlyAuthError(raw));
+        toast.error(friendlyAuthError(data));
         return;
       }
       const data = await res.json().catch(() => ({}));
@@ -341,15 +281,7 @@ function AuthPageContent() {
         window.location.href = `/auth/verify-email?email=${encodeURIComponent(normalizedSignUpEmail)}`;
       }
     } catch (err) {
-      const isTimeout =
-        err instanceof Error &&
-        (err.name === "AbortError" ||
-          err.message.toLowerCase().includes("abort"));
-      toast.error(
-        isTimeout
-          ? "Request timed out. Please try again."
-          : "Something went wrong. Please try again later.",
-      );
+      toast.error(friendlyAuthError(err));
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);

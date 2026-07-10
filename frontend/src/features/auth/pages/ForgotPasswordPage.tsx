@@ -4,6 +4,7 @@ import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useState } from "react";
 import Link from "@/components/AppLink";
 import { authClient } from "@/lib/auth-client";
+import { friendlyAuthError } from "@/lib/auth-errors";
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 
@@ -27,14 +28,14 @@ export default function ForgotPasswordPage() {
         email: normalizedEmail,
       });
       if (err) {
-        toast.error("Something went wrong. Try again.");
+        toast.error(friendlyAuthError(err));
         return;
       }
       navigate(
         `/auth/reset-password?email=${encodeURIComponent(normalizedEmail)}`,
       );
-    } catch {
-      toast.error("Something went wrong. Try again.");
+    } catch (err) {
+      toast.error(friendlyAuthError(err));
     } finally {
       setLoading(false);
     }

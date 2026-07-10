@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useState, useCallback, useEffect, Suspense } from "react";
 import Link from "@/components/AppLink";
 import { authClient } from "@/lib/auth-client";
+import { friendlyAuthError } from "@/lib/auth-errors";
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 
@@ -51,12 +52,12 @@ function VerifyEmailContent() {
         otp: otpString,
       });
       if (err) {
-        toast.error("Invalid or expired code. Try again.");
+        toast.error(friendlyAuthError(err));
         return;
       }
       window.location.href = "/dashboard";
-    } catch {
-      toast.error("Invalid or expired code. Try again.");
+    } catch (err) {
+      toast.error(friendlyAuthError(err));
     } finally {
       setVerifying(false);
     }
@@ -72,12 +73,12 @@ function VerifyEmailContent() {
         type: "email-verification",
       });
       if (err) {
-        toast.error("Failed to resend code.");
+        toast.error(friendlyAuthError(err));
         return;
       }
       setResendCooldown(RESEND_COOLDOWN_SEC);
-    } catch {
-      toast.error("Failed to resend code.");
+    } catch (err) {
+      toast.error(friendlyAuthError(err));
     } finally {
       setResending(false);
     }
