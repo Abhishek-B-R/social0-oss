@@ -22,6 +22,33 @@ export class RouteResponse {
     return reply.status(init?.status ?? 200).send(body);
   }
 
+  /** JSON body with Set-Cookie headers copied from a Better Auth response. */
+  static jsonWithCookies(
+    body: unknown,
+    cookieSource: Headers | Response,
+    init?: { status?: number },
+  ): PendingResponse {
+    const headers = new Headers({ "content-type": "application/json" });
+    const setCookies =
+      cookieSource instanceof Response
+        ? (cookieSource.headers.getSetCookie?.() ?? [])
+        : (cookieSource.getSetCookie?.() ?? []);
+    for (const cookie of setCookies) {
+      headers.append("set-cookie", cookie);
+    }
+    const status = init?.status ?? 200;
+    return {
+      headers,
+      finalize() {
+        const { reply } = getRequestContext();
+        for (const cookie of headers.getSetCookie?.() ?? []) {
+          reply.header("set-cookie", cookie);
+        }
+        if (!reply.sent) reply.status(status).send(body);
+      },
+    };
+  }
+
   static redirect(url: string | URL, status = 302): PendingResponse {
     const { reply } = getRequestContext();
     const target = typeof url === "string" ? url : url.toString();

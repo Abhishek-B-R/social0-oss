@@ -16,8 +16,6 @@ import {
 import { db } from "../../db/index.js";
 import { user } from "../../db/schema.js";
 import { eq, sql } from "drizzle-orm";
-import { verifyTurnstileIfConfigured } from "../../lib/turnstile.js";
-
 function emailAlreadyExistsResponse() {
   return RouteResponse.json(
     { error: EMAIL_ALREADY_EXISTS_MESSAGE, code: "EMAIL_ALREADY_EXISTS" },
@@ -49,23 +47,15 @@ export async function signUpDev(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const {
-    name,
-    email,
-    password,
-    turnstileToken,
-    acceptTerms,
-    acceptPrivacy,
-    marketingOptIn,
-  } = body as {
-    name?: string;
-    email?: string;
-    password?: string;
-    turnstileToken?: string;
-    acceptTerms?: boolean;
-    acceptPrivacy?: boolean;
-    marketingOptIn?: boolean;
-  };
+  const { name, email, password, acceptTerms, acceptPrivacy, marketingOptIn } =
+    body as {
+      name?: string;
+      email?: string;
+      password?: string;
+      acceptTerms?: boolean;
+      acceptPrivacy?: boolean;
+      marketingOptIn?: boolean;
+    };
 
   const consentError = validateSignupLegalConsent({ acceptTerms, acceptPrivacy });
   if (consentError) {
@@ -85,21 +75,6 @@ export async function signUpDev(request: Request) {
 
   if (await findUserIdByNormalizedEmail(normalizedEmail)) {
     return emailAlreadyExistsResponse();
-  }
-
-  const turnstile = await verifyTurnstileIfConfigured(
-    turnstileToken,
-    env.TURNSTILE_SECRET_KEY,
-  );
-  if (!turnstile.ok) {
-    return RouteResponse.json(
-      {
-        error: turnstile.error,
-        code: turnstile.code,
-        retry: turnstile.retry,
-      },
-      { status: turnstile.status },
-    );
   }
 
   const h = await headers();
@@ -156,14 +131,8 @@ export async function signUpDev(request: Request) {
 
     // OTP is sent by Better Auth emailOTP plugin on sign-up (single send path); do not call sendVerificationOTP here to avoid duplicate emails.
 
-    const redirectUrl = new URL("/auth/verify-email", env.NEXT_PUBLIC_APP_URL);
-    redirectUrl.searchParams.set("email", normalizedEmail);
-    const res = RouteResponse.redirect(redirectUrl);
-    const setCookies = response.headers.getSetCookie?.() ?? [];
-    for (const cookie of setCookies) {
-      res.headers.append("set-cookie", cookie);
-    }
-    return res;
+    const verifyPath = `/auth/verify-email?email=${encodeURIComponent(normalizedEmail)}`;
+    return RouteResponse.jsonWithCookies({ ok: true, url: verifyPath }, response);
   } catch (e) {
     if (await findUserIdByNormalizedEmail(normalizedEmail)) {
       return emailAlreadyExistsResponse();

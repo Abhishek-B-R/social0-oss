@@ -10,11 +10,12 @@ import { absoluteCallbackUrl, resolveCallbackUrl } from "@/lib/sign-in-url";
 import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 import {
   friendlyAuthError,
+  isEmailNotVerifiedError,
   messageForAuthResponse,
 } from "@/lib/auth-errors";
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
-import { apiUrl } from "@/lib/env";
+import { fetchApi } from "@/lib/fetch-api";
 import {
   EMPTY_LEGAL_CONSENT,
   LegalConsentCheckboxes,
@@ -120,7 +121,13 @@ function AuthPageContent() {
         callbackURL: authCallbackUrl,
       });
       if (err) {
-        toast.error(friendlyAuthError(err));
+        const msg = friendlyAuthError(err);
+        toast.error(msg);
+        if (isEmailNotVerifiedError(err)) {
+          navigate(
+            `/auth/verify-email?email=${encodeURIComponent(normalizedEmail)}`,
+          );
+        }
         return;
       }
       posthog?.identify(normalizedEmail, { email: normalizedEmail });
@@ -146,10 +153,9 @@ function AuthPageContent() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const res = await fetch(apiUrl("/api/auth/sign-up"), {
+      const res = await fetchApi("/api/auth/sign-up", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           name: name.trim(),
           email: email.trim().toLowerCase(),
@@ -162,29 +168,22 @@ function AuthPageContent() {
       });
       clearTimeout(timeoutId);
 
-      if (res.redirected && res.url) {
-        if (!assignSafeRedirectUrl(res.url)) {
-          toast.error("Sign-up could not continue. Please try again.");
-        }
-        return;
-      }
       if (!res.ok) {
         toast.error(await messageForAuthResponse(res));
         return;
       }
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as { url?: string };
       const normalizedSignUpEmail = email.trim().toLowerCase();
       posthog?.identify(normalizedSignUpEmail, {
         email: normalizedSignUpEmail,
         name: name.trim(),
       });
       posthog?.capture("user_signed_up", { method: "email" });
-      if (data.url) {
-        if (!assignSafeRedirectUrl(data.url)) {
-          toast.error("Sign-up could not continue. Please try again.");
-        }
-      } else {
-        window.location.href = `/auth/verify-email?email=${encodeURIComponent(normalizedSignUpEmail)}`;
+      const verifyUrl =
+        data.url ??
+        `/auth/verify-email?email=${encodeURIComponent(normalizedSignUpEmail)}`;
+      if (!assignSafeRedirectUrl(verifyUrl)) {
+        window.location.href = verifyUrl;
       }
     } catch (err) {
       toast.error(friendlyAuthError(err));

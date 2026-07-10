@@ -27,7 +27,15 @@ export function getCorsOrigins(): string[] {
     return [...origins];
   }
 
-  const origins = new Set<string>(["https://social0.app"]);
+  const origins = new Set<string>(["https://social0.app", "https://dev.social0.app"]);
+  for (const candidate of [env.APP_URL, env.NEXT_PUBLIC_APP_URL]) {
+    if (!candidate) continue;
+    try {
+      origins.add(toOrigin(candidate));
+    } catch {
+      // skip invalid URLs
+    }
+  }
   if (env.NODE_ENV !== "production") {
     origins.add("https://localhost:3000");
     origins.add("http://localhost:3000");

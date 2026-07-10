@@ -31,6 +31,7 @@ export default function ForgotPasswordPage() {
         toast.error(friendlyAuthError(err));
         return;
       }
+      toast.success("If an account exists, we sent a reset code.");
       navigate(
         `/auth/reset-password?email=${encodeURIComponent(normalizedEmail)}`,
       );

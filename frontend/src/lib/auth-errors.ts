@@ -6,6 +6,9 @@ export const GENERIC_AUTH_ERROR = "Something went wrong. Please try again.";
 export const RATE_LIMITED_MESSAGE =
   "Too many attempts. Please wait a few minutes and try again.";
 
+export const EMAIL_NOT_VERIFIED_MESSAGE =
+  "Please verify your email first. Check your inbox for the 6-digit code, or request a new one on the verify page.";
+
 const EMAIL_EXISTS_PATTERNS = [
   /user_already_exists/i,
   /email_already_exists/i,
@@ -16,6 +19,12 @@ const EMAIL_EXISTS_PATTERNS = [
   /duplicate/i,
   /unique constraint/i,
   /duplicate key/i,
+];
+
+const EMAIL_NOT_VERIFIED_PATTERNS = [
+  /email not verified/i,
+  /EMAIL_NOT_VERIFIED/i,
+  /verify your email/i,
 ];
 
 function collectStrings(value: unknown, out: string[] = [], depth = 0): string[] {
@@ -30,6 +39,11 @@ function collectStrings(value: unknown, out: string[] = [], depth = 0): string[]
     }
   }
   return out;
+}
+
+function errorCode(input: unknown): string {
+  if (!input || typeof input !== "object" || !("code" in input)) return "";
+  return String((input as { code: unknown }).code).trim();
 }
 
 /** Pull the best user-facing message from API / Better Auth error shapes. */
@@ -63,16 +77,23 @@ export function extractErrorMessage(input: unknown): string {
 }
 
 export function isEmailAlreadyExistsError(input: unknown): boolean {
-  if (input && typeof input === "object" && "code" in input) {
-    const code = String((input as { code: unknown }).code);
-    if (/USER_ALREADY|EMAIL_ALREADY/i.test(code)) return true;
-  }
+  const code = errorCode(input);
+  if (/USER_ALREADY|EMAIL_ALREADY/i.test(code)) return true;
   const strings = collectStrings(input);
   return strings.some(
     (s) =>
       EMAIL_EXISTS_PATTERNS.some((pattern) => pattern.test(s)) ||
       s.toUpperCase().includes("USER_ALREADY") ||
       s.toUpperCase().includes("EMAIL_ALREADY"),
+  );
+}
+
+export function isEmailNotVerifiedError(input: unknown): boolean {
+  const code = errorCode(input);
+  if (code === "EMAIL_NOT_VERIFIED") return true;
+  const strings = collectStrings(input);
+  return strings.some((s) =>
+    EMAIL_NOT_VERIFIED_PATTERNS.some((pattern) => pattern.test(s)),
   );
 }
 
@@ -87,6 +108,7 @@ export function friendlyAuthError(err: unknown): string {
 
   const extracted = extractErrorMessage(err);
   const lower = extracted.toLowerCase();
+  const code = errorCode(err);
 
   if (
     lower.includes("abort") ||
@@ -97,9 +119,13 @@ export function friendlyAuthError(err: unknown): string {
   }
 
   if (
+    code === "RATE_LIMITED" ||
+    code === "TOO_MANY_REQUESTS" ||
+    code === "TOO_MANY_ATTEMPTS" ||
     lower.includes("too many requests") ||
     lower.includes("rate limit") ||
-    lower.includes("rate limiting")
+    lower.includes("rate limiting") ||
+    lower.includes("too many attempts")
   ) {
     return extracted || RATE_LIMITED_MESSAGE;
   }
@@ -108,12 +134,29 @@ export function friendlyAuthError(err: unknown): string {
     return EMAIL_ALREADY_EXISTS_MESSAGE;
   }
 
+  if (isEmailNotVerifiedError(err) || isEmailNotVerifiedError(extracted)) {
+    return EMAIL_NOT_VERIFIED_MESSAGE;
+  }
+
   if (
     lower === "invalid email or password" ||
     lower.includes("invalid credentials") ||
     lower.includes("incorrect password")
   ) {
     return "Invalid email or password.";
+  }
+
+  if (
+    lower.includes("invalid otp") ||
+    lower.includes("otp expired") ||
+    lower.includes("otp is invalid") ||
+    code === "INVALID_OTP"
+  ) {
+    return "Invalid or expired code. Request a new one and try again.";
+  }
+
+  if (code === "turnstile_failed") {
+    return "Verification failed. Please refresh and try again.";
   }
 
   if (extracted) return extracted;
@@ -146,7 +189,11 @@ export async function messageForAuthResponse(res: Response): Promise<string> {
   if (res.status === 409 || data.code === "EMAIL_ALREADY_EXISTS") {
     return EMAIL_ALREADY_EXISTS_MESSAGE;
   }
-  if (data.code === "RATE_LIMITED" || res.status === 429) {
+  if (
+    data.code === "RATE_LIMITED" ||
+    data.code === "TOO_MANY_ATTEMPTS" ||
+    res.status === 429
+  ) {
     return typeof data.error === "string" ? data.error : RATE_LIMITED_MESSAGE;
   }
   if (data.code === "SERVICE_UNAVAILABLE" || res.status === 503) {

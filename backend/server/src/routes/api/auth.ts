@@ -20,7 +20,8 @@ async function handleBetterAuth(
   if (isBlockedNativeSignUpPath(url.pathname)) {
     reply.status(403);
     return reply.send({
-      error: "Use the Turnstile-protected sign-up endpoint.",
+      error: "Email sign-up must use POST /api/auth/sign-up.",
+      code: "USE_SIGN_UP_ENDPOINT",
     });
   }
 

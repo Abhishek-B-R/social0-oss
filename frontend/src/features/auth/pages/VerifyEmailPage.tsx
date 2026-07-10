@@ -76,6 +76,7 @@ function VerifyEmailContent() {
         toast.error(friendlyAuthError(err));
         return;
       }
+      toast.success("Code sent. Check your email.");
       setResendCooldown(RESEND_COOLDOWN_SEC);
     } catch (err) {
       toast.error(friendlyAuthError(err));
