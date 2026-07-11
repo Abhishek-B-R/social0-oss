@@ -260,13 +260,6 @@ export async function handleGetPublishStatus(input: GetPublishStatusInput): Prom
   try {
     const snapshot = await publishApi.getPublishStatus(input.tracking_id);
 
-    const errors = snapshot.platform_statuses
-      .filter((s) => s.phase === "platform_failed")
-      .map((s) => ({
-        platform: s.platform,
-        message: s.message ?? "Unknown error",
-      }));
-
     return jsonResult({
       tracking_id: snapshot.tracking_id,
       post_id: snapshot.post_id,
@@ -277,7 +270,8 @@ export async function handleGetPublishStatus(input: GetPublishStatusInput): Prom
         failed: snapshot.failed,
       },
       platform_statuses: snapshot.platform_statuses,
-      errors,
+      errors: snapshot.errors,
+      failure_reason: snapshot.failure_reason,
       created_at: snapshot.created_at,
       completed_at: snapshot.completed_at,
     });

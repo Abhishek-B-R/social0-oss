@@ -1,9 +1,13 @@
 import type { FastifyInstance } from "fastify";
-import type { JobProgressSnapshot } from "@social0/shared";
+import type { JobProgressEvent, JobProgressSnapshot } from "@social0/shared";
 import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { connectedAccounts, postPublications } from "../db/schema.js";
+import { connectedAccounts, postPublications, posts } from "../db/schema.js";
 import { loadJobSnapshotFromDb } from "./job-snapshot-from-db.js";
+
+export type EnrichedJobSnapshot = JobProgressSnapshot & {
+  failureReason?: string | null;
+};
 
 function isTerminal(status: JobProgressSnapshot["status"]): boolean {
   return status === "completed" || status === "failed";
@@ -36,81 +40,131 @@ export function pickBetterJobSnapshot(
     : a;
 }
 
-/** When CF publish updates publications but Redis/DB job rows lag, derive terminal status from publications. */
-async function reconcileFromPublications(
+type PubRow = {
+  status: string | null;
+  platform: string | null;
+  connectedAccountId: string | null;
+  lastError: string | null;
+};
+
+function phaseForPublication(status: string | null): JobProgressEvent["phase"] {
+  if (status === "published") return "platform_success";
+  if (status === "failed") return "platform_failed";
+  if (status === "publishing") return "platform_uploading";
+  return "platform_queued";
+}
+
+function messageForPublication(pub: PubRow): string {
+  if (pub.status === "published") return `Published to ${pub.platform}`;
+  if (pub.status === "failed") {
+    return pub.lastError?.trim() || `Failed on ${pub.platform}`;
+  }
+  if (pub.status === "publishing") return `Uploading to ${pub.platform}`;
+  return `Queued ${pub.platform}`;
+}
+
+/** Publications are source of truth for per-platform outcome (matches dashboard UI). */
+function mergeEventsFromPublications(
   snapshot: JobProgressSnapshot,
-): Promise<JobProgressSnapshot> {
-  if (isTerminal(snapshot.status)) return snapshot;
-
-  const pubs = await db
-    .select({
-      status: postPublications.status,
-      platform: connectedAccounts.platform,
-      connectedAccountId: postPublications.connectedAccountId,
-      lastError: postPublications.lastError,
-    })
-    .from(postPublications)
-    .innerJoin(
-      connectedAccounts,
-      eq(postPublications.connectedAccountId, connectedAccounts.id),
-    )
-    .where(eq(postPublications.postId, snapshot.postId));
-
-  if (pubs.length === 0) return snapshot;
-
-  const isDone = (status: string | null) =>
-    status === "published" || status === "failed";
-  if (!pubs.every((p) => isDone(p.status))) return snapshot;
-
+  pubs: PubRow[],
+): JobProgressEvent[] {
+  const now = new Date().toISOString();
   const completed = pubs.filter((p) => p.status === "published").length;
   const failed = pubs.filter((p) => p.status === "failed").length;
   const total = pubs.length;
-  const status: JobProgressSnapshot["status"] =
-    failed === total ? "failed" : "completed";
-  const now = new Date().toISOString();
+  const progress = { completed, failed, total };
 
-  const existingKeys = new Set(
-    snapshot.events
-      .filter((e) => e.platform)
-      .map((e) => `${e.platform}:${e.connectedAccountId}:${e.phase}`),
-  );
-
-  const events = [...snapshot.events];
-  for (const pub of pubs) {
-    if (!pub.platform || !pub.connectedAccountId) continue;
-    const phase =
-      pub.status === "published" ? "platform_success" : "platform_failed";
-    const key = `${pub.platform}:${pub.connectedAccountId}:${phase}`;
-    if (existingKeys.has(key)) continue;
-    events.push({
-      trackingId: snapshot.trackingId,
-      postId: snapshot.postId,
-      userId: snapshot.userId,
-      phase,
-      platform: pub.platform,
-      connectedAccountId: pub.connectedAccountId,
-      message:
-        pub.status === "published"
-          ? `Published to ${pub.platform}`
-          : (pub.lastError ?? `Failed on ${pub.platform}`),
-      progress: { completed, failed, total },
-      ts: now,
-    });
+  const latestByPlatform = new Map<string, JobProgressEvent>();
+  for (const event of snapshot.events) {
+    if (event.platform) latestByPlatform.set(event.platform, event);
   }
 
-  if (!events.some((e) => e.phase === "completed" || e.phase === "failed")) {
-    events.push({
-      trackingId: snapshot.trackingId,
-      postId: snapshot.postId,
-      userId: snapshot.userId,
-      phase: status,
-      message:
-        status === "completed"
-          ? `Published to all ${total} platforms`
-          : "Publish finished with failures",
-      progress: { completed, failed, total },
-      ts: now,
-    });
+  for (const pub of pubs) {
+    if (!pub.platform || !pub.connectedAccountId) continue;
+    const phase = phaseForPublication(pub.status);
+    const message = messageForPublication(pub);
+    const isTerminalPub =
+      pub.status === "published" || pub.status === "failed";
+    const existing = latestByPlatform.get(pub.platform);
+    const existingTerminal =
+      existing?.phase === "platform_success" ||
+      existing?.phase === "platform_failed";
+
+    if (isTerminalPub || !existing || !existingTerminal) {
+      latestByPlatform.set(pub.platform, {
+        trackingId: snapshot.trackingId,
+        postId: snapshot.postId,
+        userId: snapshot.userId,
+        phase,
+        platform: pub.platform as JobProgressEvent["platform"],
+        connectedAccountId: pub.connectedAccountId,
+        message,
+        progress,
+        ts: isTerminalPub ? now : (existing?.ts ?? now),
+      });
+    }
+  }
+
+  const nonPlatform = snapshot.events.filter((e) => !e.platform);
+  return [...nonPlatform, ...latestByPlatform.values()];
+}
+
+async function enrichSnapshotFromPublications(
+  snapshot: JobProgressSnapshot,
+): Promise<EnrichedJobSnapshot> {
+  const [pubs, postRow] = await Promise.all([
+    db
+      .select({
+        status: postPublications.status,
+        platform: connectedAccounts.platform,
+        connectedAccountId: postPublications.connectedAccountId,
+        lastError: postPublications.lastError,
+      })
+      .from(postPublications)
+      .innerJoin(
+        connectedAccounts,
+        eq(postPublications.connectedAccountId, connectedAccounts.id),
+      )
+      .where(eq(postPublications.postId, snapshot.postId)),
+    db
+      .select({ failureReason: posts.failureReason })
+      .from(posts)
+      .where(eq(posts.id, snapshot.postId))
+      .limit(1),
+  ]);
+
+  if (pubs.length === 0) {
+    return { ...snapshot, failureReason: postRow[0]?.failureReason ?? null };
+  }
+
+  const events = mergeEventsFromPublications(snapshot, pubs);
+  const completed = pubs.filter((p) => p.status === "published").length;
+  const failed = pubs.filter((p) => p.status === "failed").length;
+  const total = pubs.length;
+  const allDone = pubs.every(
+    (p) => p.status === "published" || p.status === "failed",
+  );
+
+  let status = snapshot.status;
+  let updatedAt = snapshot.updatedAt;
+
+  if (allDone) {
+    status = failed === total ? "failed" : "completed";
+    updatedAt = new Date().toISOString();
+    if (!events.some((e) => e.phase === "completed" || e.phase === "failed")) {
+      events.push({
+        trackingId: snapshot.trackingId,
+        postId: snapshot.postId,
+        userId: snapshot.userId,
+        phase: status,
+        message:
+          status === "completed"
+            ? `Published to all ${total} platforms`
+            : "Publish finished with failures",
+        progress: { completed, failed, total },
+        ts: updatedAt,
+      });
+    }
   }
 
   return {
@@ -120,14 +174,15 @@ async function reconcileFromPublications(
     completed,
     failed,
     events,
-    updatedAt: now,
+    updatedAt,
+    failureReason: postRow[0]?.failureReason ?? null,
   };
 }
 
 export async function resolveJobSnapshot(
   app: FastifyInstance,
   trackingId: string,
-): Promise<JobProgressSnapshot | null> {
+): Promise<EnrichedJobSnapshot | null> {
   const [redisSnapshot, dbSnapshot] = await Promise.all([
     app.jobProgress.getSnapshot(trackingId),
     loadJobSnapshotFromDb(trackingId),
@@ -136,5 +191,5 @@ export async function resolveJobSnapshot(
   let snapshot = pickBetterJobSnapshot(redisSnapshot, dbSnapshot);
   if (!snapshot) return null;
 
-  return reconcileFromPublications(snapshot);
+  return enrichSnapshotFromPublications(snapshot);
 }

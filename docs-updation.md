@@ -609,9 +609,12 @@ Returns the **current** job state. Status is reconciled from publish progress an
       "platform": "linkedin",
       "connected_account_id": "uuid",
       "phase": "platform_success",
-      "message": "Published to linkedin"
+      "message": "Published to linkedin",
+      "error": null
     }
   ],
+  "errors": [],
+  "failure_reason": null,
   "created_at": "2026-07-11T14:00:00.000Z",
   "completed_at": "2026-07-11T14:01:00.000Z"
 }
@@ -619,7 +622,11 @@ Returns the **current** job state. Status is reconciled from publish progress an
 
 **Job `status` values:** `queued`, `processing`, `completed`, `failed`
 
-**`platform_statuses`:** one entry per platform — **latest** phase only (not every intermediate event).
+**`platform_statuses`:** one entry per platform — **latest** phase only. On failure, `phase` is `platform_failed`, `message`/`error` contain the same human-readable reason as the dashboard (from `post_publications.last_error`).
+
+**`errors`:** convenience array of failed platforms only — `{ platform, connected_account_id, message }`.
+
+**`failure_reason`:** post-level summary when set (e.g. quota / billing), same as `GET /v1/posts/:id`.
 
 #### `GET /v1/jobs/:trackingId/stream`
 

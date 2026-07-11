@@ -96,7 +96,14 @@ export interface JobStatusResponse {
     connected_account_id: string | null;
     phase: string;
     message: string | null;
+    error: string | null;
   }>;
+  errors: Array<{
+    platform: string;
+    connected_account_id: string | null;
+    message: string;
+  }>;
+  failure_reason: string | null;
   created_at: string;
   completed_at: string | null;
 }

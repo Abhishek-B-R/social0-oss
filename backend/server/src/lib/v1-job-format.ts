@@ -1,4 +1,5 @@
 import type { JobProgressEvent, JobProgressSnapshot } from "@social0/shared";
+import type { EnrichedJobSnapshot } from "./resolve-job-snapshot.js";
 
 /** Phases worth surfacing on the public v1 API (skip queued/fan_out noise). */
 const V1_STREAM_PHASES = new Set([
@@ -16,21 +17,45 @@ function statusForPhase(phase: string): JobProgressSnapshot["status"] {
   return "processing";
 }
 
-export function formatV1JobResponse(snapshot: JobProgressSnapshot) {
-  const latestByPlatform = new Map<
-    string,
-    { platform: string; connected_account_id: string | null; phase: string; message: string | null }
-  >();
+type PlatformStatus = {
+  platform: string;
+  connected_account_id: string | null;
+  phase: string;
+  message: string | null;
+  error: string | null;
+};
 
-  for (const event of snapshot.events) {
+function buildPlatformStatuses(events: JobProgressEvent[]): PlatformStatus[] {
+  const latestByPlatform = new Map<string, PlatformStatus>();
+
+  for (const event of events) {
     if (!event.platform) continue;
+    const failed = event.phase === "platform_failed";
     latestByPlatform.set(event.platform, {
       platform: event.platform,
       connected_account_id: event.connectedAccountId ?? null,
       phase: event.phase,
       message: event.message ?? null,
+      error: failed ? (event.message ?? null) : null,
     });
   }
+
+  return [...latestByPlatform.values()];
+}
+
+function buildErrors(platformStatuses: PlatformStatus[]) {
+  return platformStatuses
+    .filter((p) => p.phase === "platform_failed")
+    .map((p) => ({
+      platform: p.platform,
+      connected_account_id: p.connected_account_id,
+      message: p.error ?? p.message ?? "Unknown error",
+    }));
+}
+
+export function formatV1JobResponse(snapshot: EnrichedJobSnapshot) {
+  const platform_statuses = buildPlatformStatuses(snapshot.events);
+  const errors = buildErrors(platform_statuses);
 
   return {
     tracking_id: snapshot.trackingId,
@@ -39,7 +64,9 @@ export function formatV1JobResponse(snapshot: JobProgressSnapshot) {
     total: snapshot.total,
     completed: snapshot.completed,
     failed: snapshot.failed,
-    platform_statuses: [...latestByPlatform.values()],
+    platform_statuses,
+    errors,
+    failure_reason: snapshot.failureReason ?? null,
     created_at: snapshot.events[0]?.ts ?? snapshot.updatedAt,
     completed_at:
       snapshot.status === "completed" || snapshot.status === "failed"
@@ -65,5 +92,6 @@ export function formatV1StreamEvent(
   };
   if (event.platform) payload.platform = event.platform;
   if (event.message) payload.message = event.message;
+  if (event.phase === "platform_failed") payload.error = event.message ?? null;
   return payload;
 }
