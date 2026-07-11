@@ -45,11 +45,13 @@ export function bootstrapWorkerRuntime(env: Env): void {
   process.env.DODO_PAYMENTS_WEBHOOK_SECRET =
     env.DODO_PAYMENTS_WEBHOOK_SECRET ?? "worker-unused";
 
-  // Worker env schema requires Upstash even though CF path writes progress to Postgres.
-  process.env.UPSTASH_REDIS_REST_URL =
-    env.UPSTASH_REDIS_REST_URL ?? "https://placeholder.upstash.io";
-  process.env.UPSTASH_REDIS_REST_TOKEN =
-    env.UPSTASH_REDIS_REST_TOKEN ?? "placeholder-token";
+  // Optional on publish worker — rate limits skip when unset (see plan-limits).
+  if (env.UPSTASH_REDIS_REST_URL) {
+    process.env.UPSTASH_REDIS_REST_URL = env.UPSTASH_REDIS_REST_URL;
+  }
+  if (env.UPSTASH_REDIS_REST_TOKEN) {
+    process.env.UPSTASH_REDIS_REST_TOKEN = env.UPSTASH_REDIS_REST_TOKEN;
+  }
 
   if (env.R2_PUBLIC_URL) process.env.R2_PUBLIC_URL = env.R2_PUBLIC_URL;
   if (env.R2_ACCOUNT_ID) process.env.R2_ACCOUNT_ID = env.R2_ACCOUNT_ID;

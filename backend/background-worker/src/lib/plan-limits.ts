@@ -134,6 +134,7 @@ export async function checkTwitterPublishRateLimit(
 
   const rate = await enforceRateLimit(twitterPublishLimiter, userId, {
     rate: pendingTweetCount,
+    failClosedWhenUnavailable: false,
   });
   if (!rate.allowed) {
     return {

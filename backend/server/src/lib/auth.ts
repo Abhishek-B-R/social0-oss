@@ -9,7 +9,7 @@ import { sendEmail } from "./mail.js";
 import { redis } from "./redis.js";
 import { user, session, account, verification } from "../db/schema.js";
 
-const secondaryStorage = createAuthSecondaryStorage(redis);
+const secondaryStorage = redis ? createAuthSecondaryStorage(redis) : undefined;
 
 const subjects: Record<string, string> = {
   "sign-in": "Your Social0 sign-in code",
