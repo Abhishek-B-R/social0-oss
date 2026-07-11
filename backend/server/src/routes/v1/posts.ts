@@ -1,97 +1,246 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { apiError } from "../../lib/api-errors.js";
+import { scheduledAtInputSchema, scheduleTimezoneSchema } from "../../lib/validation.js";
+import { resolveScheduledAt } from "../../lib/resolve-scheduled-at.js";
 import {
-  notImplemented,
-  requireUserId,
-  unauthorized,
-} from "../../middleware/auth.js";
+  claimIdempotencySlot,
+  getIdempotencyResponse,
+  storeIdempotencyResponse,
+} from "../../lib/api-idempotency.js";
+import { requireV1ApiKey, v1UserId } from "../../middleware/api-auth.js";
 import {
-  createPublishTrackingId,
-  enqueuePublishPost,
-  queueNameForJob,
-} from "../../services/enqueue.js";
-import { JOB_NAMES } from "@social0/shared";
+  v1CreateAndPublish,
+  v1CreateAndSchedule,
+  v1CreateDraft,
+  v1DeletePost,
+  v1GetPost,
+  v1ListPosts,
+  v1PublishPost,
+  v1SchedulePost,
+  v1UpdateDraft,
+} from "../../services/v1-posts.js";
 
 const createPostSchema = z.object({
-  caption: z.string(),
-  social_accounts: z.array(z.number()),
-  scheduled_at: z.string().nullable().optional(),
-  platform_configurations: z.record(z.unknown()).nullable().optional(),
-  account_configurations: z.record(z.unknown()).nullable().optional(),
-  media: z.array(z.string()).nullable().optional(),
-  media_urls: z.array(z.string()).nullable().optional(),
-  is_draft: z.boolean().nullable().optional(),
+  content: z.string(),
+  platforms: z.array(z.string().uuid()).min(1),
+  media: z.array(z.string().uuid()).optional(),
+  metadata: z.record(z.unknown()).optional(),
 });
 
+const updatePostSchema = createPostSchema.partial();
+
+const scheduleSchema = z.object({
+  scheduledAt: scheduledAtInputSchema,
+  timezone: scheduleTimezoneSchema,
+});
+
+async function withIdempotency(
+  request: Parameters<typeof requireV1ApiKey>[0],
+  reply: Parameters<typeof requireV1ApiKey>[1],
+  handler: () => Promise<{ status: number; body: unknown }>,
+): Promise<void> {
+  const key = request.headers["idempotency-key"] as string | undefined;
+  const userId = request.v1Auth?.userId;
+
+  if (key && userId) {
+    const cached = await getIdempotencyResponse(userId, key);
+    if (cached) {
+      reply.status(cached.statusCode).send(JSON.parse(cached.body));
+      return;
+    }
+    const claimed = await claimIdempotencySlot(userId, key);
+    if (!claimed) {
+      reply
+        .status(409)
+        .send(apiError("idempotency_conflict", "Request with this idempotency key is in progress."));
+      return;
+    }
+  }
+
+  const result = await handler();
+  if (key && userId && result.status < 500) {
+    await storeIdempotencyResponse(userId, key, result.status, result.body);
+  }
+  reply.status(result.status).send(result.body);
+}
+
 export async function registerPostsRoutes(app: FastifyInstance) {
-  app.get("/posts", async (request) => {
-    const userId = await requireUserId(request);
-    if (!userId) return unauthorized();
-    return notImplemented("GET /v1/posts");
+  app.addHook("preHandler", requireV1ApiKey);
+
+  app.get("/posts", async (request, reply) => {
+    const userId = v1UserId(request);
+    const query = request.query as Record<string, string | undefined>;
+    const result = await v1ListPosts(userId, {
+      page: query.page ? Number(query.page) : undefined,
+      limit: query.limit ? Number(query.limit) : undefined,
+      status: query.status,
+      platform: query.platform,
+      search: query.search,
+    });
+    return result;
   });
 
   app.post("/posts", async (request, reply) => {
-    const userId = await requireUserId(request);
-    if (!userId) return unauthorized();
+    const userId = v1UserId(request);
     const body = createPostSchema.safeParse(request.body);
     if (!body.success) {
-      return reply.status(400).send({ error: body.error.flatten() });
+      return reply
+        .status(400)
+        .send(apiError("validation_error", "Invalid request body.", { issues: body.error.flatten() }));
     }
-    return notImplemented("POST /v1/posts");
+    const result = await v1CreateDraft(userId, body.data);
+    if (!result.ok) {
+      return reply.status(400).send(apiError("validation_error", result.error));
+    }
+    return reply.status(201).send({ id: result.id });
   });
 
-  app.get("/posts/:id", async (request) => {
-    const userId = await requireUserId(request);
-    if (!userId) return unauthorized();
-    return notImplemented("GET /v1/posts/:id");
+  app.get("/posts/:id", async (request, reply) => {
+    const userId = v1UserId(request);
+    const { id } = request.params as { id: string };
+    const post = await v1GetPost(userId, id);
+    if (!post) {
+      return reply.status(404).send(apiError("not_found", "Post not found."));
+    }
+    return post;
   });
 
   app.patch("/posts/:id", async (request, reply) => {
-    const userId = await requireUserId(request);
-    if (!userId) return unauthorized();
-    return notImplemented("PATCH /v1/posts/:id");
+    const userId = v1UserId(request);
+    const { id } = request.params as { id: string };
+    const body = updatePostSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply
+        .status(400)
+        .send(apiError("validation_error", "Invalid request body.", { issues: body.error.flatten() }));
+    }
+    const result = await v1UpdateDraft(userId, id, body.data);
+    if (!result.ok) {
+      const status = result.error === "Post not found" ? 404 : 400;
+      return reply.status(status).send(apiError(status === 404 ? "not_found" : "validation_error", result.error));
+    }
+    const post = await v1GetPost(userId, id);
+    return post;
   });
 
-  app.delete("/posts/:id", async (request) => {
-    const userId = await requireUserId(request);
-    if (!userId) return unauthorized();
-    return notImplemented("DELETE /v1/posts/:id");
+  app.delete("/posts/:id", async (request, reply) => {
+    const userId = v1UserId(request);
+    const { id } = request.params as { id: string };
+    const result = await v1DeletePost(userId, id);
+    if (!result.ok) {
+      const status = result.error === "Post not found" ? 404 : 400;
+      return reply.status(status).send(apiError(status === 404 ? "not_found" : "validation_error", result.error));
+    }
+    return reply.status(204).send();
   });
 
-  /** Publish now - async via queue + SSE tracking. */
   app.post("/posts/:id/publish", async (request, reply) => {
-    const userId = await requireUserId(request);
-    if (!userId) return reply.status(401).send(unauthorized());
-    const { id: postId } = request.params as { id: string };
-
-    const trackingId = createPublishTrackingId();
-
-    let job;
-    try {
-      job = await enqueuePublishPost(
-        app,
-        { postId, userId, trackingId },
-        { trackingId },
-      );
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to enqueue publish";
-      if (message.includes("No publication targets")) {
-        return reply.status(404).send({ error: "Post not found or not publishable" });
+    await withIdempotency(request, reply, async () => {
+      const userId = v1UserId(request);
+      const { id } = request.params as { id: string };
+      const result = await v1PublishPost(app, userId, id);
+      if (!result.ok) {
+        const status = result.error.includes("not found") ? 404 : 400;
+        return {
+          status,
+          body: apiError(status === 404 ? "not_found" : "validation_error", result.error),
+        };
       }
-      throw err;
-    }
+      return {
+        status: 202,
+        body: {
+          tracking_id: result.tracking_id,
+          status: result.status,
+          stream_url: result.stream_url,
+        },
+      };
+    });
+  });
 
-    if (job.enqueued === 0) {
-      return reply.status(404).send({ error: "Post not found or not publishable" });
+  app.post("/posts/:id/schedule", async (request, reply) => {
+    const userId = v1UserId(request);
+    const { id } = request.params as { id: string };
+    const body = scheduleSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply
+        .status(400)
+        .send(apiError("validation_error", "scheduledAt is required (ISO datetime)."));
     }
+    const at = await resolveScheduledAt(
+      userId,
+      body.data.scheduledAt,
+      body.data.timezone,
+    );
+    if (!at.ok) {
+      return reply.status(400).send(apiError("validation_error", at.error));
+    }
+    const result = await v1SchedulePost(userId, id, at.utc.toISOString());
+    if (!result.ok) {
+      const status = result.error === "Post not found" ? 404 : 400;
+      return reply.status(status).send(apiError(status === 404 ? "not_found" : "validation_error", result.error));
+    }
+    return { post_id: id, scheduled_at: result.scheduled_at, status: "scheduled" };
+  });
 
-    return reply.status(202).send({
-      trackingId,
-      jobId: job.id!,
-      status: "queued",
-      queue: queueNameForJob(JOB_NAMES.PUBLISH_POST),
-      streamUrl: `/api/jobs/${trackingId}/stream`,
+  app.post("/posts/publish", async (request, reply) => {
+    await withIdempotency(request, reply, async () => {
+      const userId = v1UserId(request);
+      const body = createPostSchema.safeParse(request.body);
+      if (!body.success) {
+        return {
+          status: 400,
+          body: apiError("validation_error", "Invalid request body."),
+        };
+      }
+      const result = await v1CreateAndPublish(app, userId, body.data);
+      if (!result.ok) {
+        return { status: 400, body: apiError("validation_error", result.error) };
+      }
+      return {
+        status: 202,
+        body: {
+          post_id: result.post_id,
+          tracking_id: result.tracking_id,
+          status: "queued",
+          stream_url: result.stream_url,
+        },
+      };
+    });
+  });
+
+  app.post("/posts/schedule", async (request, reply) => {
+    const userId = v1UserId(request);
+    const body = createPostSchema
+      .extend({
+        scheduledAt: scheduledAtInputSchema,
+        timezone: scheduleTimezoneSchema,
+      })
+      .safeParse(request.body);
+    if (!body.success) {
+      return reply
+        .status(400)
+        .send(apiError("validation_error", "Invalid request body."));
+    }
+    const at = await resolveScheduledAt(
+      userId,
+      body.data.scheduledAt,
+      body.data.timezone,
+    );
+    if (!at.ok) {
+      return reply.status(400).send(apiError("validation_error", at.error));
+    }
+    const result = await v1CreateAndSchedule(userId, {
+      ...body.data,
+      scheduledAt: at.utc.toISOString(),
+    });
+    if (!result.ok) {
+      return reply.status(400).send(apiError("validation_error", result.error));
+    }
+    return reply.status(201).send({
+      post_id: result.post_id,
+      scheduled_at: result.scheduled_at,
+      status: "scheduled",
     });
   });
 }

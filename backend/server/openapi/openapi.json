@@ -1,0 +1,209 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Social0 API",
+    "version": "1.0.0",
+    "description": "Programmatic access to Social0 publishing. Authenticate with `Authorization: Bearer sk_live_...`.\n\n## Examples\n\n### cURL — list accounts\n```bash\ncurl https://api.social0.app/v1/accounts \\\n  -H \"Authorization: Bearer sk_live_YOUR_KEY\"\n```\n\n### JavaScript — create and publish\n```javascript\nconst res = await fetch('https://api.social0.app/v1/posts/publish', {\n  method: 'POST',\n  headers: {\n    'Authorization': 'Bearer sk_live_YOUR_KEY',\n    'Content-Type': 'application/json',\n    'Idempotency-Key': crypto.randomUUID(),\n  },\n  body: JSON.stringify({\n    content: 'Hello from the API!',\n    platforms: ['account-uuid-here'],\n  }),\n});\nconst { tracking_id } = await res.json();\n```\n\n### Python — schedule a post\n```python\nimport requests\n\nresp = requests.post(\n    'https://api.social0.app/v1/posts/schedule',\n    headers={'Authorization': 'Bearer sk_live_YOUR_KEY'},\n    json={\n        'content': 'Scheduled via API',\n        'platforms': ['account-uuid-here'],\n        'scheduledAt': '2026-07-15T10:00:00Z',\n    },\n)\nprint(resp.json())\n```"
+  },
+  "servers": [{ "url": "https://api.social0.app", "description": "Production" }],
+  "security": [{ "bearerAuth": [] }],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API key with prefix sk_live_"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" }
+            },
+            "required": ["code", "message"]
+          }
+        }
+      },
+      "Post": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "content": { "type": "string" },
+          "status": { "type": "string" },
+          "scheduled_at": { "type": "string", "format": "date-time", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "media_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } }
+        }
+      }
+    },
+    "headers": {
+      "X-Request-Id": { "schema": { "type": "string" }, "description": "Unique request ID for debugging" }
+    }
+  },
+  "paths": {
+    "/v1/accounts": {
+      "get": {
+        "summary": "List connected accounts",
+        "tags": ["Accounts"],
+        "responses": {
+          "200": { "description": "List of connected social accounts" },
+          "401": { "description": "Invalid API key", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/v1/accounts/connect": {
+      "post": {
+        "summary": "Get OAuth authorization URL",
+        "tags": ["Accounts"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "platform": { "type": "string", "example": "linkedin" } },
+                "required": ["platform"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Authorization URL" }
+        }
+      }
+    },
+    "/v1/accounts/{id}": {
+      "delete": {
+        "summary": "Disconnect account",
+        "tags": ["Accounts"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "204": { "description": "Disconnected" } }
+      }
+    },
+    "/v1/posts": {
+      "get": {
+        "summary": "List posts",
+        "tags": ["Posts"],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "maximum": 100 } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "platform", "in": "query", "schema": { "type": "string" } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Paginated posts" } }
+      },
+      "post": {
+        "summary": "Create draft post",
+        "tags": ["Posts"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "content": { "type": "string" },
+                  "platforms": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+                  "media": { "type": "array", "items": { "type": "string", "format": "uuid" } }
+                },
+                "required": ["content", "platforms"]
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Post created" } }
+      }
+    },
+    "/v1/posts/{id}": {
+      "get": { "summary": "Get post", "tags": ["Posts"], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Post details" } } },
+      "patch": { "summary": "Update draft", "tags": ["Posts"], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Updated post" } } },
+      "delete": { "summary": "Delete draft", "tags": ["Posts"], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "204": { "description": "Deleted" } } }
+    },
+    "/v1/posts/{id}/publish": {
+      "post": {
+        "summary": "Publish post immediately",
+        "tags": ["Posts"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "Idempotency-Key", "in": "header", "schema": { "type": "string" } }
+        ],
+        "responses": { "202": { "description": "Publish queued" } }
+      }
+    },
+    "/v1/posts/{id}/schedule": {
+      "post": {
+        "summary": "Schedule post",
+        "tags": ["Posts"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "scheduledAt": { "type": "string", "format": "date-time" } },
+                "required": ["scheduledAt"]
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Scheduled" } }
+      }
+    },
+    "/v1/posts/publish": {
+      "post": {
+        "summary": "Create and publish in one request",
+        "tags": ["Posts"],
+        "parameters": [{ "name": "Idempotency-Key", "in": "header", "schema": { "type": "string" } }],
+        "responses": { "202": { "description": "Created and queued" } }
+      }
+    },
+    "/v1/posts/schedule": {
+      "post": { "summary": "Create and schedule in one request", "tags": ["Posts"], "responses": { "201": { "description": "Created and scheduled" } } }
+    },
+    "/v1/jobs/{trackingId}": {
+      "get": {
+        "summary": "Get publish job status",
+        "tags": ["Jobs"],
+        "parameters": [{ "name": "trackingId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Job status and platform progress" } }
+      }
+    },
+    "/v1/media/presign": {
+      "post": {
+        "summary": "Get presigned upload URL",
+        "tags": ["Media"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "filename": { "type": "string" },
+                  "content_type": { "type": "string" },
+                  "size_bytes": { "type": "integer" }
+                },
+                "required": ["filename", "content_type", "size_bytes"]
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Presigned URL" } }
+      }
+    },
+    "/v1/media/confirm": {
+      "post": { "summary": "Confirm media upload", "tags": ["Media"], "responses": { "201": { "description": "Media ID" } } }
+    },
+    "/v1/webhooks": {
+      "get": { "summary": "List webhooks", "tags": ["Webhooks"], "responses": { "200": { "description": "Webhook subscriptions" } } },
+      "post": { "summary": "Create webhook", "tags": ["Webhooks"], "responses": { "201": { "description": "Webhook created with secret" } } }
+    },
+    "/v1/webhooks/{id}": {
+      "patch": { "summary": "Update webhook", "tags": ["Webhooks"], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Updated" } } },
+      "delete": { "summary": "Delete webhook", "tags": ["Webhooks"], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "204": { "description": "Deleted" } } }
+    }
+  }
+}

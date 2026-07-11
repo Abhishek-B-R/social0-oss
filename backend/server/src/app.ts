@@ -13,6 +13,7 @@ import { registerSecurityHeadersPlugin } from "./plugins/security-headers.js";
 import { registerV1Routes } from "./routes/v1/index.js";
 import { registerApiRoutes } from "./routes/api/index.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
+import { registerDocsRoutes } from "./routes/docs.js";
 import { getCorsOrigins } from "./lib/app-url.js";
 import { allowsMissingCorsOrigin } from "./lib/cors-policy.js";
 
@@ -113,6 +114,21 @@ export async function buildApp() {
   await app.register(registerV1Routes, { prefix: "/v1" });
   await app.register(registerApiRoutes, { prefix: "/api" });
   await app.register(registerAdminRoutes, { prefix: "/admin" });
+  await app.register(registerDocsRoutes);
+
+  app.setErrorHandler((error, request, reply) => {
+    request.log.error(error);
+    const isV1 = request.url.startsWith("/v1");
+    if (isV1) {
+      return reply.status(500).send({
+        error: {
+          code: "internal_error",
+          message: "An unexpected error occurred.",
+        },
+      });
+    }
+    return reply.status(500).send({ error: "Internal server error" });
+  });
 
   return app;
 }

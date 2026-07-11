@@ -23,6 +23,7 @@ import {
   IconBrandX,
   IconBook2,
   IconHome,
+  IconKey,
 } from "@tabler/icons-react";
 import { SignOutButton } from "@/components/SignOutButton";
 import { signInUrl } from "@/lib/sign-in-url";
@@ -276,6 +277,12 @@ export function DashboardSidebar({
               label="Billing"
               icon={IconWallet}
               isActive={isActive("/dashboard/billing")}
+            />
+            <NavLink
+              href="/dashboard/api-keys"
+              label="Developer"
+              icon={IconKey}
+              isActive={isActive("/dashboard/api-keys")}
             />
           </Section>
 
