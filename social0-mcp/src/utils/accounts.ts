@@ -1,0 +1,94 @@
+import type { ConnectedAccount, Platform } from "../types/index.js";
+import { SUPPORTED_PLATFORMS } from "../types/index.js";
+import { isUuid } from "../utils/index.js";
+
+const PLATFORM_ALIASES: Record<string, Platform> = {
+  linkedin: "linkedin",
+  li: "linkedin",
+  facebook: "facebook",
+  fb: "facebook",
+  instagram: "instagram",
+  ig: "instagram",
+  youtube: "youtube",
+  yt: "youtube",
+  pinterest: "pinterest",
+  pin: "pinterest",
+  tiktok: "tiktok",
+  twitter: "twitter_x",
+  x: "twitter_x",
+  twitter_x: "twitter_x",
+  threads: "threads",
+  bluesky: "bluesky",
+  bsky: "bluesky",
+};
+
+export function normalizePlatform(value: string): Platform | null {
+  const key = value.trim().toLowerCase();
+  return PLATFORM_ALIASES[key] ?? (SUPPORTED_PLATFORMS.includes(key as Platform) ? (key as Platform) : null);
+}
+
+export function resolveAccountIds(
+  platforms: string[],
+  accounts: ConnectedAccount[],
+): { accountIds: string[]; errors: string[] } {
+  const accountIds: string[] = [];
+  const errors: string[] = [];
+  const activeAccounts = accounts.filter((a) => a.isActive);
+
+  for (const item of platforms) {
+    if (isUuid(item)) {
+      const match = activeAccounts.find((a) => a.id === item);
+      if (match) {
+        accountIds.push(match.id);
+      } else {
+        errors.push(`No active connected account found for ID ${item}`);
+      }
+      continue;
+    }
+
+    const platform = normalizePlatform(item);
+    if (!platform) {
+      errors.push(`Unknown platform "${item}". Supported: ${SUPPORTED_PLATFORMS.join(", ")}`);
+      continue;
+    }
+
+    const matches = activeAccounts.filter((a) => a.platform === platform);
+    if (matches.length === 0) {
+      errors.push(`No connected ${platform} account. Connect it at https://social0.app/connections`);
+    } else if (matches.length > 1) {
+      errors.push(
+        `Multiple ${platform} accounts connected. Pass the account UUID instead of the platform name.`,
+      );
+    } else {
+      accountIds.push(matches[0]!.id);
+    }
+  }
+
+  return { accountIds: [...new Set(accountIds)], errors };
+}
+
+export function formatAccountsList(accounts: ConnectedAccount[]): string {
+  if (accounts.length === 0) {
+    return "No connected accounts. Connect platforms at https://social0.app/connections";
+  }
+
+  return accounts
+    .map((a) => {
+      const status = a.isActive ? a.tokenStatus : "inactive";
+      const username = a.platformUsername ? `@${a.platformUsername}` : "(no username)";
+      return `- ${a.platform} ${username} [${status}] id=${a.id}`;
+    })
+    .join("\n");
+}
+
+export function formatPostSummary(post: {
+  id: string;
+  caption: string;
+  status: string;
+  scheduled_at?: string | null;
+  is_draft?: boolean;
+}): string {
+  const preview = post.caption.length > 80 ? `${post.caption.slice(0, 80)}…` : post.caption;
+  const schedule = post.scheduled_at ? ` scheduled=${post.scheduled_at}` : "";
+  return `id=${post.id} [${post.status}]${schedule} — "${preview}"`;
+}
