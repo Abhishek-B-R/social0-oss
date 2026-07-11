@@ -20,7 +20,7 @@ Social0 now has a **versioned public REST API** at `/v1`. Users authenticate wit
 **Not supported via API (document clearly):**
 - **Twitter/X OAuth connect** — requires browser session; connect via dashboard → Connections.
 - **Bluesky BYOK** — dashboard only.
-- **API key scopes** — column exists for future use; all keys are full-access today.
+- **API key scopes** — not implemented; all keys are full-access today (scopes may be added in a future release).
 
 ---
 
@@ -82,6 +82,7 @@ The app links to these URLs — **keep slugs stable**:
 | API version prefix | `/v1` |
 | Auth header | `Authorization: Bearer sk_live_…` |
 | Content-Type | `application/json` (except media upload to presigned URL) |
+| `scheduledAt` format | ISO 8601 datetime — **absolute instant** (see §5.2 scheduling) |
 | Key prefix | `sk_live_` (legacy `s0_live_` still accepted) |
 | Interactive docs | `https://api.social0.app/docs` |
 | OpenAPI spec | `https://api.social0.app/openapi.json` |
@@ -155,9 +156,11 @@ Response (202):
   "post_id": "uuid",
   "tracking_id": "uuid",
   "status": "queued",
-  "stream_url": "/api/jobs/{tracking_id}/stream"
+  "stream_url": "/v1/jobs/{tracking_id}/stream"
 }
 ```
+
+`status: "queued"` on the **202** response means the publish job was **accepted** and is running asynchronously — not that the post is live yet. Poll `GET /v1/jobs/:trackingId` (or use the stream URL) until `status` is `completed` or `failed`.
 
 **Step 5 — Poll job status**
 
@@ -257,6 +260,14 @@ Link to billing/upgrade for higher limits.
 
 **Debugging**  
 Every response includes **`x-request-id`**. Users should include this when contacting support.
+
+**Common `validation_error` mistakes**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `"Expected object, received string"` | Request body sent as plain text, not JSON | Set `Content-Type: application/json` and send a JSON body (not Raw/Text in API clients) |
+| Invalid UUID on `platforms` | Used platform name (`"linkedin"`) instead of account ID | Use UUID from `GET /v1/accounts` → `data[].id` |
+| Accounts invalid / not yours | Wrong UUID or another user's account | Re-list accounts with the same API key |
 
 ---
 
@@ -491,6 +502,69 @@ Disconnect account. Revokes token on platform (best effort) and deletes row. **2
 }
 ```
 
+#### Scheduling & timezones (`scheduledAt`)
+
+**Accepted formats (pick one)**
+
+| Form | Example | Meaning |
+|------|---------|---------|
+| UTC | `"2026-07-20T10:00:00.000Z"` | Absolute instant: 10:00 **UTC** |
+| Explicit offset | `"2026-07-20T15:30:00+05:30"` | Absolute instant (same as `04:30Z` for IST) |
+| **`+default` suffix** | `"2026-07-20T10:00:00+default"` | **10:00 in the user's dashboard timezone** (`user_settings.timezone`) |
+| Naive + `timezone` field | `"scheduledAt": "2026-07-20T10:00:00", "timezone": "default"` | Same as `+default` — wall time in dashboard timezone |
+| Naive + IANA zone | `"scheduledAt": "2026-07-20T10:00:00", "timezone": "Asia/Kolkata"` | 10:00 in that zone |
+
+Optional body field on schedule endpoints:
+
+```json
+{
+  "timezone": "default"
+}
+```
+
+- `"default"` → reads **Settings → timezone** from the DB for the API key's user (falls back to `UTC`).
+- Or pass any IANA name (`"America/New_York"`, `"Asia/Kolkata"`, …) with a **naive** `scheduledAt` (no `Z`, no numeric offset).
+
+**Recommended for agents / no manual conversion:** use `+default` when the user means “10am my time” and they already set timezone in Social0 settings:
+
+```json
+{
+  "content": "Hello",
+  "platforms": ["account-uuid"],
+  "scheduledAt": "2026-07-20T10:00:00+default"
+}
+```
+
+**Rules**
+
+- Must be in the **future** (small grace for clock skew).
+- Must be within **1 year**.
+- Use `Content-Type: application/json`.
+- If `scheduledAt` includes `Z` or `+05:30`, the optional `timezone` field is **ignored** (already an absolute instant).
+
+**JavaScript examples**
+
+```javascript
+// User's dashboard timezone (easiest)
+const scheduledAt = "2026-07-20T10:00:00+default";
+
+// Or explicit UTC / offset
+const scheduledAt = "2026-07-20T04:30:00.000Z";
+const scheduledAt = "2026-07-20T10:00:00+05:30";
+```
+
+**Python — local → UTC (when not using +default)**
+
+```python
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+local = datetime(2026, 7, 20, 10, 0, tzinfo=ZoneInfo("Asia/Kolkata"))
+scheduled_at = local.astimezone(ZoneInfo("UTC")).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+```
+
+**Docs copy for agents:** *“Prefer `scheduledAt` ending in `+default` for the user's local wall time (uses their Social0 settings timezone). Otherwise send UTC (`Z`) or an explicit offset.”*
+
 **Post statuses:** `draft`, `scheduled`, `publishing`, `published`, `partial`, `failed`
 
 **Free tier:** Publishing or scheduling consumes free post quota (same as dashboard). Document link to billing.
@@ -501,11 +575,14 @@ Disconnect account. Revokes token on platform (best effort) and deletes row. **2
 {
   "tracking_id": "uuid",
   "status": "queued",
-  "stream_url": "/api/jobs/{tracking_id}/stream"
+  "stream_url": "/v1/jobs/{tracking_id}/stream"
 }
 ```
 
-Note: `stream_url` is the **SSE** endpoint on the same API host (`/api/jobs/…/stream`); usable with API key auth for live progress.
+- `status: "queued"` = job accepted; publish runs in the background. Use job endpoints for the real outcome.
+- `stream_url` is a **relative path** on the same API host. Full URL: `https://api.social0.app/v1/jobs/{tracking_id}/stream` (Bearer auth).
+
+**Create draft (`POST /v1/posts`)** returns **201** `{ "id": "post-uuid" }` only — no `tracking_id`. To publish that draft, call `POST /v1/posts/:id/publish`.
 
 ---
 
@@ -513,7 +590,9 @@ Note: `stream_url` is the **SSE** endpoint on the same API host (`/api/jobs/…/
 
 #### `GET /v1/jobs/:trackingId`
 
-Poll publish progress (alternative to SSE or webhooks).
+Poll publish progress (recommended for most integrations; alternative to SSE or webhooks).
+
+Returns the **current** job state. Status is reconciled from publish progress and post publications, so a completed post shows `status: "completed"` even if you poll after the fact.
 
 **Response 200**
 
@@ -539,6 +618,41 @@ Poll publish progress (alternative to SSE or webhooks).
 ```
 
 **Job `status` values:** `queued`, `processing`, `completed`, `failed`
+
+**`platform_statuses`:** one entry per platform — **latest** phase only (not every intermediate event).
+
+#### `GET /v1/jobs/:trackingId/stream`
+
+Optional **Server-Sent Events (SSE)** stream for live progress. Same Bearer API key auth as other `/v1` routes.
+
+**When to use:** building a UI that shows live publish progress. For backends/CI, polling `GET /v1/jobs/:trackingId` is usually enough.
+
+**Event types**
+
+| Event | When |
+|-------|------|
+| `progress` | Meaningful phase change (`platform_uploading`, `platform_success`, `platform_failed`) |
+| `done` | Job finished — payload is the same shape as `GET /v1/jobs/:trackingId` |
+
+**`progress` payload (slim — no `user_id`, no repeated tracking IDs):**
+
+```json
+{
+  "status": "processing",
+  "phase": "platform_uploading",
+  "platform": "bluesky",
+  "message": "Uploading to bluesky",
+  "completed": 0,
+  "failed": 0,
+  "total": 1
+}
+```
+
+**`done` payload:** full job snapshot (same as poll response), e.g. `{ "tracking_id", "post_id", "status": "completed", "platform_statuses", … }`.
+
+**Late subscribers:** if the job is already `completed` or `failed` when you open the stream, you receive a single `done` event (no replay of historical progress chunks).
+
+**Note:** Dashboard session UI may use `/api/jobs/…/stream` internally. **Public API integrations should use `/v1/jobs/…/stream` only.**
 
 ---
 
@@ -613,11 +727,12 @@ Returns metadata for owned media.
 ### 6.1 `/docs/api/guides/publish`
 
 Walkthrough:
-1. List accounts → pick UUID
+1. List accounts → pick UUID from `data[].id` (not the `platform` name)
 2. Optional: upload media
-3. `POST /v1/posts/publish` with `Idempotency-Key`
-4. Poll `GET /v1/jobs/:trackingId` until `completed` or `failed`
-5. Optional: set up `post.published` webhook
+3. `POST /v1/posts/publish` with `Content-Type: application/json` and `Idempotency-Key`
+4. Poll `GET /v1/jobs/:trackingId` until `status` is `completed` or `failed` (ignore `queued` on the initial 202)
+5. Optional: `GET /v1/jobs/:trackingId/stream` for live SSE in a UI
+6. Optional: set up `post.published` webhook
 
 Include full JS example:
 
@@ -654,9 +769,12 @@ async function waitForJob(trackingId) {
 ### 6.2 `/docs/api/guides/schedule`
 
 Explain:
-- Sets `scheduledAt` on post; cron dispatches at due time (Cloudflare scheduled queue).
+- Sets `scheduledAt` on post; cron dispatches at that **absolute** time (Cloudflare scheduled queue).
 - Do **not** expect instant publish.
 - `scheduledAt` must be future, within 1 year.
+- **Timezone:** Prefer `scheduledAt` with `+default` suffix for wall time in the user's dashboard timezone. Or use UTC/offset. `timezone: "default"` works with naive datetimes too.
+
+Include a short “I want to post at 9am New York time” walkthrough: compute `America/New_York` → UTC → `scheduledAt`.
 
 ### 6.3 `/docs/api/guides/media`
 
@@ -684,7 +802,9 @@ Call out Twitter/X and Bluesky exceptions.
 State that official SDKs are not shipped yet; users can generate clients from OpenAPI (openapi-generator, Stainless, Speakeasy, etc.).
 
 **SSE streaming:**  
-Document `GET /api/jobs/:trackingId/stream` (not under `/v1` prefix) for real-time progress with API key auth.
+Document `GET /v1/jobs/:trackingId/stream` for optional real-time progress (Bearer API key). See §5.3 for event shapes. Prefer polling `GET /v1/jobs/:trackingId` for server-side integrations.
+
+**Dashboard-only SSE:** `/api/jobs/:trackingId/stream` exists for the logged-in dashboard (session cookies). Third-party API clients should **not** use `/api/*` job routes.
 
 ---
 
@@ -697,7 +817,21 @@ curl "https://api.social0.app/v1/posts?status=draft&limit=10" \
   -H "Authorization: Bearer sk_live_YOUR_KEY"
 ```
 
-### cURL — schedule
+### cURL — schedule (UTC)
+
+```bash
+# 2026-07-14 09:00 UTC — adjust for your audience's timezone before sending
+curl -X POST https://api.social0.app/v1/posts/schedule \
+  -H "Authorization: Bearer sk_live_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Monday motivation",
+    "platforms": ["ACCOUNT_UUID"],
+    "scheduledAt": "2026-07-14T09:00:00.000Z"
+  }'
+```
+
+### cURL — schedule (explicit offset, same instant as above for IST 14:30)
 
 ```bash
 curl -X POST https://api.social0.app/v1/posts/schedule \
@@ -706,7 +840,7 @@ curl -X POST https://api.social0.app/v1/posts/schedule \
   -d '{
     "content": "Monday motivation",
     "platforms": ["ACCOUNT_UUID"],
-    "scheduledAt": "2026-07-14T09:00:00.000Z"
+    "scheduledAt": "2026-07-14T14:30:00+05:30"
   }'
 ```
 
@@ -770,10 +904,14 @@ console.log(pub.tracking_id);
 | Question | Answer |
 |----------|--------|
 | Where do I get my API key? | Dashboard → Developer (`/dashboard/api-keys`) |
-| What is `platforms` in the request body? | Array of **connected account IDs**, not platform names |
+| What is `platforms` in the request body? | Array of **connected account IDs** (UUIDs from `GET /v1/accounts`), not platform names like `"linkedin"` |
+| Why `Expected object, received string`? | Body was not sent as JSON — set `Content-Type: application/json` |
+| What does `status: "queued"` on publish mean? | Job accepted (202); poll `GET /v1/jobs/:trackingId` for `completed` / `failed` |
+| Poll or stream for job status? | **Poll** for backends/CI; **stream** optional for live UI (`GET /v1/jobs/:id/stream`) |
 | Can I use the API on the free plan? | Yes; 60 requests/hour + free post limits apply |
 | How do I connect Twitter/X? | Dashboard only (OAuth 1.0a) |
 | Publish vs schedule? | `publish` enqueues immediately; `schedule` sets `scheduledAt` for cron |
+| What timezone is `scheduledAt`? | Use `+default` for dashboard timezone, `timezone: "default"` with naive datetime, or UTC/offset (`Z`, `+05:30`) for absolute instants |
 | How do I avoid double-posting? | Use `Idempotency-Key` on publish endpoints |
 | How do I debug errors? | Note `x-request-id` header; check `error.code` in body |
 | Is there a sandbox? | No separate sandbox; use a test account and draft posts |
@@ -814,7 +952,7 @@ Use this as a task list for the docs agent:
 
 ## 12. Out of scope / do not document yet
 
-- API key **scopes** (not enforced)
+- API key **scopes** (not implemented; all keys full-access)
 - **Workspace / team** API scoping (not implemented)
 - Official **Node/Python SDK** packages (not shipped)
 - Webhook **automatic retries** (not implemented; handlers should be idempotent)
@@ -833,4 +971,4 @@ Use this as a task list for the docs agent:
 
 ---
 
-*Last updated: 2026-07-11 — matches Social0 public API PR `cursor/public-rest-api-da54`.*
+*Last updated: 2026-07-11 — includes v1 job tracking, `stream_url`, validation FAQ, and `scheduledAt` UTC/offset scheduling.*

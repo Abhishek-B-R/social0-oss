@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { apiError } from "../../lib/api-errors.js";
+import { scheduledAtInputSchema, scheduleTimezoneSchema } from "../../lib/validation.js";
+import { resolveScheduledAt } from "../../lib/resolve-scheduled-at.js";
 import {
   claimIdempotencySlot,
   getIdempotencyResponse,
@@ -29,7 +31,8 @@ const createPostSchema = z.object({
 const updatePostSchema = createPostSchema.partial();
 
 const scheduleSchema = z.object({
-  scheduledAt: z.string().datetime(),
+  scheduledAt: scheduledAtInputSchema,
+  timezone: scheduleTimezoneSchema,
 });
 
 async function withIdempotency(
@@ -164,7 +167,15 @@ export async function registerPostsRoutes(app: FastifyInstance) {
         .status(400)
         .send(apiError("validation_error", "scheduledAt is required (ISO datetime)."));
     }
-    const result = await v1SchedulePost(userId, id, body.data.scheduledAt);
+    const at = await resolveScheduledAt(
+      userId,
+      body.data.scheduledAt,
+      body.data.timezone,
+    );
+    if (!at.ok) {
+      return reply.status(400).send(apiError("validation_error", at.error));
+    }
+    const result = await v1SchedulePost(userId, id, at.utc.toISOString());
     if (!result.ok) {
       const status = result.error === "Post not found" ? 404 : 400;
       return reply.status(status).send(apiError(status === 404 ? "not_found" : "validation_error", result.error));
@@ -201,14 +212,28 @@ export async function registerPostsRoutes(app: FastifyInstance) {
   app.post("/posts/schedule", async (request, reply) => {
     const userId = v1UserId(request);
     const body = createPostSchema
-      .extend({ scheduledAt: z.string().datetime() })
+      .extend({
+        scheduledAt: scheduledAtInputSchema,
+        timezone: scheduleTimezoneSchema,
+      })
       .safeParse(request.body);
     if (!body.success) {
       return reply
         .status(400)
         .send(apiError("validation_error", "Invalid request body."));
     }
-    const result = await v1CreateAndSchedule(userId, body.data);
+    const at = await resolveScheduledAt(
+      userId,
+      body.data.scheduledAt,
+      body.data.timezone,
+    );
+    if (!at.ok) {
+      return reply.status(400).send(apiError("validation_error", at.error));
+    }
+    const result = await v1CreateAndSchedule(userId, {
+      ...body.data,
+      scheduledAt: at.utc.toISOString(),
+    });
     if (!result.ok) {
       return reply.status(400).send(apiError("validation_error", result.error));
     }

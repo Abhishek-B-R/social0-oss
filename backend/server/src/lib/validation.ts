@@ -1,6 +1,18 @@
 /**
  * UUID validation regex (RFC 4122)
  */
+import { z } from "zod";
+
+/** ISO 8601 datetime — UTC (`Z`) or explicit offset (`+05:30`). */
+export const isoDateTimeSchema = z.string().datetime({ offset: true });
+
+/** scheduledAt on schedule endpoints — parsed by resolveScheduledAt (supports +default). */
+export const scheduledAtInputSchema = z.string().min(1);
+
+export const scheduleTimezoneSchema = z
+  .union([z.literal("default"), z.string().min(1)])
+  .optional();
+
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -100,4 +112,10 @@ export function constantTimeEquals(a: string, b: string): boolean {
     result |= a.charCodeAt(i) ^ b.charCodeAt(i);
   }
   return result === 0;
+}
+
+// ponytail: self-check — offsets rejected before { offset: true }
+if (import.meta.url.endsWith(process.argv[1]?.replace(/\\/g, "/") ?? "")) {
+  console.assert(isoDateTimeSchema.safeParse("2026-07-20T15:30:00+05:30").success);
+  console.assert(isoDateTimeSchema.safeParse("2026-07-20T10:00:00.000Z").success);
 }

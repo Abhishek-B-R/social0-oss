@@ -448,7 +448,7 @@ export async function v1PublishPost(
     ok: true,
     tracking_id: trackingId,
     status: "queued",
-    stream_url: `/api/jobs/${trackingId}/stream`,
+    stream_url: `/v1/jobs/${trackingId}/stream`,
   };
 }
 

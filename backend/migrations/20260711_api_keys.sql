@@ -16,8 +16,6 @@ CREATE TABLE IF NOT EXISTS api_keys (
 CREATE INDEX IF NOT EXISTS api_keys_user_id_idx ON api_keys(user_id);
 CREATE INDEX IF NOT EXISTS api_keys_key_hash_idx ON api_keys(key_hash);
 
-ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS scopes TEXT[];
-
 CREATE TABLE IF NOT EXISTS user_webhook_subscriptions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
