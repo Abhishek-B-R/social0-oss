@@ -159,6 +159,7 @@ export async function v1ListPosts(
     limit?: number;
     status?: string;
     platform?: string;
+    connectedAccountId?: string;
     search?: string;
   },
 ) {
@@ -188,6 +189,16 @@ export async function v1ListPosts(
         SELECT 1 FROM post_publications pp
         INNER JOIN connected_accounts ca ON ca.id = pp.connected_account_id
         WHERE pp.post_id = ${posts.id} AND ca.platform = ${opts.platform}
+      )`,
+    );
+  }
+
+  if (opts.connectedAccountId) {
+    conditions.push(
+      sql`EXISTS (
+        SELECT 1 FROM post_publications pp
+        WHERE pp.post_id = ${posts.id}
+          AND pp.connected_account_id = ${opts.connectedAccountId}::uuid
       )`,
     );
   }

@@ -76,6 +76,7 @@ export async function registerPostsRoutes(app: FastifyInstance) {
       limit: query.limit ? Number(query.limit) : undefined,
       status: query.status,
       platform: query.platform,
+      connectedAccountId: query.connected_account_id,
       search: query.search,
     });
     return result;
