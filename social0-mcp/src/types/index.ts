@@ -1,0 +1,114 @@
+export const SUPPORTED_PLATFORMS = [
+  "linkedin",
+  "facebook",
+  "instagram",
+  "youtube",
+  "pinterest",
+  "tiktok",
+  "twitter_x",
+  "threads",
+  "bluesky",
+] as const;
+
+export type Platform = (typeof SUPPORTED_PLATFORMS)[number];
+
+export type PostStatus =
+  | "draft"
+  | "scheduled"
+  | "publishing"
+  | "published"
+  | "partial"
+  | "failed";
+
+export interface ConnectedAccount {
+  id: string;
+  platform: Platform | string;
+  username: string | null;
+  profile_image_url: string | null;
+  is_active: boolean;
+  token_expires_at: string | null;
+  token_status: "active" | "expired" | "unknown";
+  created_at: string | null;
+}
+
+export interface PostSummary {
+  id: string;
+  content: string;
+  status: PostStatus;
+  scheduled_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  media_ids: string[];
+}
+
+export interface PostDetail extends PostSummary {
+  failure_reason: string | null;
+  metadata: Record<string, unknown> | null;
+  platforms: Array<{
+    publication_id: string;
+    connected_account_id: string;
+    platform: string;
+    status: string;
+    platform_post_id: string | null;
+    platform_post_url: string | null;
+    published_at: string | null;
+    error: string | null;
+  }>;
+}
+
+export interface ListPostsResponse {
+  data: PostSummary[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    total_pages: number;
+  };
+}
+
+export interface MediaUploadResult {
+  id: string;
+  url: string;
+}
+
+export interface PublishNowResult {
+  post_id?: string;
+  tracking_id: string;
+  status: string;
+  stream_url?: string;
+}
+
+export interface ScheduleResult {
+  post_id: string;
+  scheduled_at: string;
+  status: "scheduled";
+}
+
+export interface JobStatusResponse {
+  tracking_id: string;
+  post_id: string;
+  status: "queued" | "processing" | "completed" | "failed";
+  total: number;
+  completed: number;
+  failed: number;
+  platform_statuses: Array<{
+    platform: string;
+    connected_account_id: string | null;
+    phase: string;
+    message: string | null;
+  }>;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface PlatformSuggestion {
+  platform: Platform;
+  recommended: boolean;
+  reason: string;
+}
+
+export interface ApiErrorBody {
+  error?: string | { code?: string; message?: string; issues?: unknown };
+  code?: string;
+  message?: string;
+}
