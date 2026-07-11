@@ -49,6 +49,15 @@ const TOOL_SCHEMAS: Record<ToolName, z.ZodTypeAny> = {
   suggest_best_platforms: suggestBestPlatformsInputSchema,
 };
 
+function formatZodError(error: z.ZodError): string {
+  return error.issues
+    .map((issue) => {
+      const path = issue.path.length > 0 ? issue.path.join(".") : "input";
+      return `- ${path}: ${issue.message}`;
+    })
+    .join("\n");
+}
+
 export function createMcpServer(): Server {
   const server = new Server(
     {
@@ -83,7 +92,7 @@ export function createMcpServer(): Server {
         content: [
           {
             type: "text",
-            text: `Invalid input for ${name}:\n${parsed.error.flatten().fieldErrors}`,
+            text: `Invalid input for ${name}:\n${formatZodError(parsed.error)}`,
           },
         ],
         isError: true,

@@ -36,6 +36,12 @@ export const listPostsInputSchema = z.object({
     .optional()
     .describe("Filter by post status"),
   platform: platformSchema.optional().describe("Filter by platform"),
+  account: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("Filter by connected account UUID or unambiguous platform name"),
+  connected_account_id: z.string().uuid().optional().describe("Filter by connected account UUID"),
   search: z.string().optional().describe("Search in post content"),
   limit: z.number().int().min(1).max(100).optional().default(20),
 });
@@ -50,6 +56,10 @@ export const publishPostInputSchema = z.object({
     .array(z.string().min(1))
     .optional()
     .describe("Optional subset of platforms/account IDs to publish to"),
+  media: z
+    .array(z.string().uuid())
+    .optional()
+    .describe("Optional media IDs from upload_media to attach before publishing"),
 });
 
 export const schedulePostInputSchema = z.object({
@@ -58,6 +68,10 @@ export const schedulePostInputSchema = z.object({
     .string()
     .describe("ISO 8601 datetime for when to publish, e.g. 2026-07-12T09:00:00.000Z"),
   platforms: z.array(z.string().min(1)).optional(),
+  media: z
+    .array(z.string().uuid())
+    .optional()
+    .describe("Optional media IDs from upload_media to attach before scheduling"),
 });
 
 export const uploadMediaInputSchema = z.object({
@@ -88,6 +102,7 @@ export const suggestBestPlatformsInputSchema = z.object({
   content: z.string().min(1).describe("Post content to analyze"),
   has_media: z.boolean().optional().default(false),
   media_is_video: z.boolean().optional(),
+  media_type: z.enum(["none", "image", "video"]).optional(),
 });
 
 export type ListAccountsInput = z.infer<typeof listAccountsInputSchema>;

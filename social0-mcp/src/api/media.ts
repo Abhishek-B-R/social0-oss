@@ -56,3 +56,13 @@ export async function uploadMediaBuffer(input: {
     fileSize: input.buffer.byteLength,
   });
 }
+
+export async function getMedia(mediaId: string): Promise<{
+  id: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  url: string | null;
+}> {
+  return apiClient.get(`/media/${mediaId}`);
+}

@@ -19,6 +19,7 @@ export interface UpdatePostPayload {
 export interface ListPostsParams {
   status?: string;
   platform?: string;
+  connected_account_id?: string;
   search?: string;
   limit?: number;
   page?: number;
@@ -33,6 +34,9 @@ function buildQuery(params: ListPostsParams): string {
   const query = new URLSearchParams();
   if (params.status) query.set("status", params.status);
   if (params.platform) query.set("platform", params.platform);
+  if (params.connected_account_id) {
+    query.set("connected_account_id", params.connected_account_id);
+  }
   if (params.search) query.set("search", params.search);
   if (params.limit !== undefined) query.set("limit", String(params.limit));
   if (params.page !== undefined) query.set("page", String(params.page));

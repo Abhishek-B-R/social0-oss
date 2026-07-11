@@ -1,7 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { Social0ApiError } from "../api/client.js";
 import { accountsApi, mediaApi, postsApi, publishApi } from "../api/index.js";
-import { formatPlatformSuggestions, suggestPlatforms } from "../api/platform-suggestions.js";
+import { formatPlatformSuggestions, suggestPlatforms, inferPostFormForSuggestion } from "../api/platform-suggestions.js";
 import type {
   CreatePostInput,
   DeletePostInput,
@@ -19,6 +19,7 @@ import type {
 import type { Platform } from "../types/index.js";
 import { formatAccountsList, formatPostSummary, resolveAccountIds } from "../utils/accounts.js";
 import { formatToolError, readLocalFile } from "../utils/index.js";
+import { resolvePostFormFromMediaIds, validatePlatformsForForm } from "../utils/post-form.js";
 
 function textResult(text: string, isError = false): CallToolResult {
   return {
@@ -39,6 +40,77 @@ function handleApiError(context: string, error: unknown): CallToolResult {
   return textResult(formatToolError(context, message), true);
 }
 
+async function resolveAccountsForPost(
+  context: string,
+  platforms: string[],
+  accounts: Awaited<ReturnType<typeof accountsApi.listAccounts>>,
+  media?: string[],
+): Promise<{ accountIds: string[]; error?: CallToolResult }> {
+  const { accountIds, errors } = resolveAccountIds(platforms, accounts);
+  if (errors.length > 0) {
+    return { accountIds: [], error: textResult(formatToolError(context, errors.join("; ")), true) };
+  }
+  if (accountIds.length === 0) {
+    return { accountIds: [], error: textResult(formatToolError(context, "No valid target accounts"), true) };
+  }
+
+  const { form } = await resolvePostFormFromMediaIds(media);
+  const formErrors = validatePlatformsForForm(form, accountIds, accounts);
+  if (formErrors.length > 0) {
+    return { accountIds: [], error: textResult(formatToolError(context, formErrors.join("; ")), true) };
+  }
+
+  return { accountIds };
+}
+
+async function updateExistingPostTargets(input: {
+  context: string;
+  postId: string;
+  platforms?: string[];
+  media?: string[];
+}): Promise<CallToolResult | null> {
+  if (input.platforms === undefined && input.media === undefined) return null;
+
+  const [post, accounts] = await Promise.all([
+    postsApi.getPost(input.postId),
+    accountsApi.listAccounts(),
+  ]);
+
+  let accountIds: string[];
+  if (input.platforms !== undefined) {
+    const resolved = resolveAccountIds(input.platforms, accounts);
+    if (resolved.errors.length > 0) {
+      return textResult(formatToolError(input.context, resolved.errors.join("; ")), true);
+    }
+    accountIds = resolved.accountIds;
+  } else {
+    accountIds = [
+      ...new Set(post.platforms.map((p) => p.connected_account_id).filter(Boolean)),
+    ];
+  }
+
+  if (accountIds.length === 0) {
+    return textResult(formatToolError(input.context, "No valid target accounts"), true);
+  }
+
+  const media = input.media ?? post.media_ids;
+  const { form } = await resolvePostFormFromMediaIds(media);
+  const formErrors = validatePlatformsForForm(form, accountIds, accounts);
+  if (formErrors.length > 0) {
+    return textResult(formatToolError(input.context, formErrors.join("; ")), true);
+  }
+
+  const payload: Parameters<typeof postsApi.updatePost>[1] = {};
+  if (input.platforms !== undefined) payload.platforms = accountIds;
+  if (input.media !== undefined) payload.media = input.media;
+
+  if (Object.keys(payload).length > 0) {
+    await postsApi.updatePost(input.postId, payload);
+  }
+
+  return null;
+}
+
 export async function handleListAccounts(): Promise<CallToolResult> {
   try {
     const accounts = await accountsApi.listAccounts();
@@ -51,13 +123,13 @@ export async function handleListAccounts(): Promise<CallToolResult> {
 export async function handleCreatePost(input: CreatePostInput): Promise<CallToolResult> {
   try {
     const accounts = await accountsApi.listAccounts();
-    const { accountIds, errors } = resolveAccountIds(input.platforms, accounts);
-    if (errors.length > 0) {
-      return textResult(formatToolError("create post", errors.join("; ")), true);
-    }
-    if (accountIds.length === 0) {
-      return textResult(formatToolError("create post", "No valid target accounts"), true);
-    }
+    const { accountIds, error } = await resolveAccountsForPost(
+      "create post",
+      input.platforms,
+      accounts,
+      input.media,
+    );
+    if (error) return error;
 
     const created = await postsApi.createPost({
       content: input.content,
@@ -92,6 +164,12 @@ export async function handleUpdatePost(input: UpdatePostInput): Promise<CallTool
       if (errors.length > 0) {
         return textResult(formatToolError("update post", errors.join("; ")), true);
       }
+      const media = input.media ?? (await postsApi.getPost(input.post_id)).media_ids;
+      const { form } = await resolvePostFormFromMediaIds(media);
+      const formErrors = validatePlatformsForForm(form, accountIds, accounts);
+      if (formErrors.length > 0) {
+        return textResult(formatToolError("update post", formErrors.join("; ")), true);
+      }
       payload.platforms = accountIds;
     }
 
@@ -117,6 +195,20 @@ export async function handleListPosts(input: ListPostsInput): Promise<CallToolRe
     if (input.status !== undefined) listParams.status = input.status;
     if (input.platform !== undefined) listParams.platform = input.platform;
     if (input.search !== undefined) listParams.search = input.search;
+    if (input.connected_account_id !== undefined) {
+      listParams.connected_account_id = input.connected_account_id;
+    } else if (input.account !== undefined) {
+      const accounts = await accountsApi.listAccounts();
+      const { accountIds, errors } = resolveAccountIds([input.account], accounts);
+      if (errors.length > 0) {
+        return textResult(formatToolError("list posts", errors.join("; ")), true);
+      }
+      const accountId = accountIds[0];
+      if (!accountId) {
+        return textResult(formatToolError("list posts", "No valid target account"), true);
+      }
+      listParams.connected_account_id = accountId;
+    }
 
     const response = await postsApi.listPosts(listParams);
 
@@ -152,6 +244,14 @@ export async function handleGetPost(input: GetPostInput): Promise<CallToolResult
 
 export async function handlePublishPost(input: PublishPostInput): Promise<CallToolResult> {
   try {
+    const updateError = await updateExistingPostTargets({
+      context: "publish post",
+      postId: input.post_id,
+      ...(input.platforms !== undefined ? { platforms: input.platforms } : {}),
+      ...(input.media !== undefined ? { media: input.media } : {}),
+    });
+    if (updateError) return updateError;
+
     const result = await postsApi.publishPost(input.post_id);
 
     return jsonResult({
@@ -168,6 +268,14 @@ export async function handlePublishPost(input: PublishPostInput): Promise<CallTo
 
 export async function handleSchedulePost(input: SchedulePostInput): Promise<CallToolResult> {
   try {
+    const updateError = await updateExistingPostTargets({
+      context: "schedule post",
+      postId: input.post_id,
+      ...(input.platforms !== undefined ? { platforms: input.platforms } : {}),
+      ...(input.media !== undefined ? { media: input.media } : {}),
+    });
+    if (updateError) return updateError;
+
     const result = await postsApi.schedulePost(input.post_id, {
       scheduledAt: input.scheduled_at,
     });
@@ -195,7 +303,7 @@ export async function handleUploadMedia(input: UploadMediaInput): Promise<CallTo
       success: true,
       mediaId: media.id,
       url: media.url,
-      message: `Uploaded ${file.filename}. Use mediaId in create_post, publish_now, or schedule_content.`,
+      message: `Uploaded ${file.filename}. Use mediaId in create_post, publish_post, schedule_post, publish_now, or schedule_content.`,
     });
   } catch (error) {
     return handleApiError("upload media", error);
@@ -205,10 +313,13 @@ export async function handleUploadMedia(input: UploadMediaInput): Promise<CallTo
 export async function handlePublishNow(input: PublishNowInput): Promise<CallToolResult> {
   try {
     const accounts = await accountsApi.listAccounts();
-    const { accountIds, errors } = resolveAccountIds(input.platforms, accounts);
-    if (errors.length > 0) {
-      return textResult(formatToolError("publish now", errors.join("; ")), true);
-    }
+    const { accountIds, error } = await resolveAccountsForPost(
+      "publish now",
+      input.platforms,
+      accounts,
+      input.media,
+    );
+    if (error) return error;
 
     const result = await postsApi.publishNow({
       content: input.content,
@@ -232,10 +343,13 @@ export async function handlePublishNow(input: PublishNowInput): Promise<CallTool
 export async function handleScheduleContent(input: ScheduleContentInput): Promise<CallToolResult> {
   try {
     const accounts = await accountsApi.listAccounts();
-    const { accountIds, errors } = resolveAccountIds(input.platforms, accounts);
-    if (errors.length > 0) {
-      return textResult(formatToolError("schedule content", errors.join("; ")), true);
-    }
+    const { accountIds, error } = await resolveAccountsForPost(
+      "schedule content",
+      input.platforms,
+      accounts,
+      input.media,
+    );
+    if (error) return error;
 
     const result = await postsApi.scheduleContent({
       content: input.content,
@@ -291,20 +405,32 @@ export async function handleSuggestBestPlatforms(
         .filter((a) => a.is_active)
         .map((a) => a.platform as Platform);
     } catch {
-      // ponytail: offline heuristic if accounts can't be fetched
+      // Fall back to offline heuristics if accounts cannot be fetched.
     }
+
+    const hasMedia =
+      input.has_media ||
+      input.media_is_video === true ||
+      input.media_type === "image" ||
+      input.media_type === "video";
+    const form = inferPostFormForSuggestion({
+      hasMedia,
+      ...(input.media_is_video !== undefined ? { mediaIsVideo: input.media_is_video } : {}),
+      ...(input.media_type !== undefined ? { mediaType: input.media_type } : {}),
+    });
 
     const suggestions = suggestPlatforms({
       content: input.content,
-      hasMedia: input.has_media,
+      hasMedia: input.has_media || input.media_is_video === true,
       ...(input.media_is_video !== undefined ? { mediaIsVideo: input.media_is_video } : {}),
+      ...(input.media_type ? { mediaType: input.media_type } : {}),
       ...(connectedPlatforms ? { connectedPlatforms } : {}),
     });
 
     const recommended = suggestions.filter((s) => s.recommended).map((s) => s.platform);
 
     return textResult(
-      `Platform recommendations:\n\n${formatPlatformSuggestions(suggestions)}\n\nRecommended: ${recommended.join(", ") || "none"}`,
+      `Platform recommendations:\n\n${formatPlatformSuggestions(suggestions, form)}\n\nRecommended: ${recommended.join(", ") || "none"}`,
     );
   } catch (error) {
     return handleApiError("suggest platforms", error);

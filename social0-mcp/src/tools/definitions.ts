@@ -101,12 +101,21 @@ export const TOOL_DEFINITIONS: Tool[] = [
   {
     name: "list_posts",
     description:
-      "List the user's Social0 posts with optional filters by status, platform, or search text. Use when the user asks to see drafts, scheduled posts, or published content. Example: 'Show all scheduled posts.'",
+      "List the user's Social0 posts with optional filters by status, platform, account, or search text. Use when the user asks to see drafts, scheduled posts, or published content. Example: 'Show all scheduled posts.'",
     inputSchema: {
       type: "object",
       properties: {
         status: { type: "string", enum: [...postStatusEnum], description: "Filter by post status" },
         platform: { type: "string", enum: [...platformEnum], description: "Filter by platform" },
+        account: {
+          type: "string",
+          description: "Filter by connected account UUID or unambiguous platform name",
+        },
+        connected_account_id: {
+          type: "string",
+          format: "uuid",
+          description: "Filter by connected account UUID",
+        },
         search: { type: "string", description: "Search in post content" },
         limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
       },
@@ -143,6 +152,11 @@ export const TOOL_DEFINITIONS: Tool[] = [
           items: { type: "string" },
           description: "Optional subset of platforms/account IDs to publish to",
         },
+        media: {
+          type: "array",
+          items: { type: "string", format: "uuid" },
+          description: "Optional media IDs from upload_media to attach before publishing",
+        },
       },
       required: ["post_id"],
       additionalProperties: false,
@@ -164,6 +178,11 @@ export const TOOL_DEFINITIONS: Tool[] = [
           type: "array",
           items: { type: "string" },
           description: "Optional subset of platforms/account IDs",
+        },
+        media: {
+          type: "array",
+          items: { type: "string", format: "uuid" },
+          description: "Optional media IDs from upload_media to attach before scheduling",
         },
       },
       required: ["post_id", "scheduled_at"],
@@ -260,6 +279,11 @@ export const TOOL_DEFINITIONS: Tool[] = [
         content: { type: "string", description: "Post content to analyze" },
         has_media: { type: "boolean", default: false },
         media_is_video: { type: "boolean", description: "Whether attached media is video" },
+        media_type: {
+          type: "string",
+          enum: ["none", "image", "video"],
+          description: "Explicit content type. Prefer video/image over only toggling has_media.",
+        },
       },
       required: ["content"],
       additionalProperties: false,
