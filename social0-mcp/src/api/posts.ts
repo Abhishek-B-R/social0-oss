@@ -1,26 +1,19 @@
-import { config } from "../config.js";
-import type { ListPostsResponse, PostDto } from "../types/index.js";
+import { randomUUID } from "node:crypto";
+import type { ListPostsResponse, PostDetail, PostSummary, ScheduleResult } from "../types/index.js";
 import { apiClient } from "./client.js";
 
 export interface CreatePostPayload {
-  caption: string;
-  social_accounts: string[];
-  scheduled_at?: string | null;
-  platform_configurations?: Record<string, unknown> | null;
-  account_configurations?: Record<string, unknown> | null;
-  media?: string[] | null;
-  media_urls?: string[] | null;
-  is_draft?: boolean;
+  content: string;
+  platforms: string[];
+  media?: string[];
+  metadata?: Record<string, unknown>;
 }
 
 export interface UpdatePostPayload {
-  caption?: string;
-  scheduled_at?: string | null;
-  platform_configurations?: Record<string, unknown> | null;
-  account_configurations?: Record<string, unknown> | null;
-  media?: string[] | null;
-  social_accounts?: string[];
-  is_draft?: boolean;
+  content?: string;
+  platforms?: string[];
+  media?: string[];
+  metadata?: Record<string, unknown>;
 }
 
 export interface ListPostsParams {
@@ -28,7 +21,12 @@ export interface ListPostsParams {
   platform?: string;
   search?: string;
   limit?: number;
-  offset?: number;
+  page?: number;
+}
+
+export interface SchedulePostPayload {
+  scheduledAt: string;
+  timezone?: string;
 }
 
 function buildQuery(params: ListPostsParams): string {
@@ -37,37 +35,61 @@ function buildQuery(params: ListPostsParams): string {
   if (params.platform) query.set("platform", params.platform);
   if (params.search) query.set("search", params.search);
   if (params.limit !== undefined) query.set("limit", String(params.limit));
-  if (params.offset !== undefined) query.set("offset", String(params.offset));
+  if (params.page !== undefined) query.set("page", String(params.page));
   const qs = query.toString();
   return qs ? `?${qs}` : "";
 }
 
-export async function createPost(payload: CreatePostPayload): Promise<PostDto> {
-  return apiClient.post<PostDto>(config.v1Base, "/posts", payload);
+export async function createPost(payload: CreatePostPayload): Promise<{ id: string }> {
+  return apiClient.post<{ id: string }>("/posts", payload);
 }
 
-export async function updatePost(postId: string, payload: UpdatePostPayload): Promise<PostDto> {
-  return apiClient.patch<PostDto>(config.v1Base, `/posts/${postId}`, payload);
+export async function updatePost(postId: string, payload: UpdatePostPayload): Promise<PostDetail> {
+  return apiClient.patch<PostDetail>(`/posts/${postId}`, payload);
 }
 
-export async function deletePost(postId: string): Promise<{ success: boolean }> {
-  return apiClient.delete<{ success: boolean }>(config.v1Base, `/posts/${postId}`);
+export async function deletePost(postId: string): Promise<void> {
+  await apiClient.delete(`/posts/${postId}`);
 }
 
 export async function listPosts(params: ListPostsParams = {}): Promise<ListPostsResponse> {
-  return apiClient.get<ListPostsResponse>(config.v1Base, `/posts${buildQuery(params)}`);
+  return apiClient.get<ListPostsResponse>(`/posts${buildQuery(params)}`);
 }
 
-export async function getPost(postId: string): Promise<PostDto> {
-  return apiClient.get<PostDto>(config.v1Base, `/posts/${postId}`);
+export async function getPost(postId: string): Promise<PostDetail> {
+  return apiClient.get<PostDetail>(`/posts/${postId}`);
 }
 
-export async function publishPostV1(postId: string): Promise<{
-  trackingId: string;
-  jobId: string;
-  status: "queued";
-  queue: string;
-  streamUrl: string;
+export async function publishPost(postId: string): Promise<{
+  tracking_id: string;
+  status: string;
+  stream_url: string;
 }> {
-  return apiClient.post(config.v1Base, `/posts/${postId}/publish`);
+  return apiClient.post(`/posts/${postId}/publish`, undefined, {
+    idempotencyKey: randomUUID(),
+  });
 }
+
+export async function schedulePost(
+  postId: string,
+  payload: SchedulePostPayload,
+): Promise<{ post_id: string; scheduled_at: string; status: "scheduled" }> {
+  return apiClient.post(`/posts/${postId}/schedule`, payload);
+}
+
+export async function publishNow(payload: CreatePostPayload): Promise<{
+  post_id: string;
+  tracking_id: string;
+  status: string;
+  stream_url: string;
+}> {
+  return apiClient.post("/posts/publish", payload, { idempotencyKey: randomUUID() });
+}
+
+export async function scheduleContent(
+  payload: CreatePostPayload & SchedulePostPayload,
+): Promise<ScheduleResult> {
+  return apiClient.post("/posts/schedule", payload);
+}
+
+export type { PostSummary };

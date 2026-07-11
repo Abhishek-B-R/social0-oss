@@ -23,96 +23,82 @@ export type PostStatus =
 export interface ConnectedAccount {
   id: string;
   platform: Platform | string;
-  platformUsername: string | null;
-  profileImageUrl: string | null;
-  isActive: boolean;
-  isTwitterPremium: boolean;
-  tokenExpiresAt: string | null;
-  tokenStatus: "active" | "expired" | "unknown";
-  platformMetadata: Record<string, unknown>;
+  username: string | null;
+  profile_image_url: string | null;
+  is_active: boolean;
+  token_expires_at: string | null;
+  token_status: "active" | "expired" | "unknown";
+  created_at: string | null;
 }
 
-export interface PostDto {
+export interface PostSummary {
   id: string;
-  caption: string;
+  content: string;
   status: PostStatus;
   scheduled_at: string | null;
-  platform_configurations: Record<string, unknown> | null;
-  social_accounts: string[];
-  account_configurations: Record<string, unknown> | null;
-  media: string[] | null;
-  created_at: string;
-  updated_at: string;
-  is_draft: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+  media_ids: string[];
 }
 
-export interface ListPostsMeta {
-  total: number;
-  offset: number;
-  limit: number;
-  next: string | null;
+export interface PostDetail extends PostSummary {
+  failure_reason: string | null;
+  metadata: Record<string, unknown> | null;
+  platforms: Array<{
+    publication_id: string;
+    connected_account_id: string;
+    platform: string;
+    status: string;
+    platform_post_id: string | null;
+    platform_post_url: string | null;
+    published_at: string | null;
+    error: string | null;
+  }>;
 }
 
 export interface ListPostsResponse {
-  data: PostDto[];
-  meta: ListPostsMeta;
+  data: PostSummary[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    total_pages: number;
+  };
 }
 
 export interface MediaUploadResult {
   id: string;
-  filename: string;
-  originalFilename: string;
-  mimeType: string;
-  sizeBytes: number;
-  status: string;
   url: string;
 }
 
 export interface PublishNowResult {
-  trackingId: string;
-  jobId: string;
-  status: "queued";
-  backend?: string;
-  enqueued?: number;
-  queue: string;
-  streamUrl: string;
+  post_id?: string;
+  tracking_id: string;
+  status: string;
+  stream_url?: string;
 }
 
 export interface ScheduleResult {
+  post_id: string;
+  scheduled_at: string;
   status: "scheduled";
-  postId: string;
-  scheduledAt: string;
-  jobId: string;
-  backend?: string;
-  message: string;
 }
 
-export interface JobProgressEvent {
-  trackingId: string;
-  postId: string;
-  userId: string;
-  phase: string;
-  platform?: Platform;
-  connectedAccountId?: string;
-  message?: string;
-  progress?: {
-    completed: number;
-    failed: number;
-    total: number;
-  };
-  ts: string;
-}
-
-export interface JobProgressSnapshot {
-  trackingId: string;
-  postId: string;
-  userId: string;
+export interface JobStatusResponse {
+  tracking_id: string;
+  post_id: string;
   status: "queued" | "processing" | "completed" | "failed";
   total: number;
   completed: number;
   failed: number;
-  events: JobProgressEvent[];
-  updatedAt: string;
+  platform_statuses: Array<{
+    platform: string;
+    connected_account_id: string | null;
+    phase: string;
+    message: string | null;
+  }>;
+  created_at: string;
+  completed_at: string | null;
 }
 
 export interface PlatformSuggestion {
@@ -122,8 +108,7 @@ export interface PlatformSuggestion {
 }
 
 export interface ApiErrorBody {
-  error?: string | Record<string, unknown>;
+  error?: string | { code?: string; message?: string; issues?: unknown };
   code?: string;
-  route?: string;
   message?: string;
 }

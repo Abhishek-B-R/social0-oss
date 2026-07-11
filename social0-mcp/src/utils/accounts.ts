@@ -33,7 +33,7 @@ export function resolveAccountIds(
 ): { accountIds: string[]; errors: string[] } {
   const accountIds: string[] = [];
   const errors: string[] = [];
-  const activeAccounts = accounts.filter((a) => a.isActive);
+  const activeAccounts = accounts.filter((a) => a.is_active);
 
   for (const item of platforms) {
     if (isUuid(item)) {
@@ -54,7 +54,7 @@ export function resolveAccountIds(
 
     const matches = activeAccounts.filter((a) => a.platform === platform);
     if (matches.length === 0) {
-      errors.push(`No connected ${platform} account. Connect it at https://social0.app/connections`);
+      errors.push(`No connected ${platform} account. Connect it at https://social0.app/dashboard/connections`);
     } else if (matches.length > 1) {
       errors.push(
         `Multiple ${platform} accounts connected. Pass the account UUID instead of the platform name.`,
@@ -69,13 +69,13 @@ export function resolveAccountIds(
 
 export function formatAccountsList(accounts: ConnectedAccount[]): string {
   if (accounts.length === 0) {
-    return "No connected accounts. Connect platforms at https://social0.app/connections";
+    return "No connected accounts. Connect platforms at https://social0.app/dashboard/connections";
   }
 
   return accounts
     .map((a) => {
-      const status = a.isActive ? a.tokenStatus : "inactive";
-      const username = a.platformUsername ? `@${a.platformUsername}` : "(no username)";
+      const status = a.is_active ? a.token_status : "inactive";
+      const username = a.username ? `@${a.username}` : "(no username)";
       return `- ${a.platform} ${username} [${status}] id=${a.id}`;
     })
     .join("\n");
@@ -83,12 +83,11 @@ export function formatAccountsList(accounts: ConnectedAccount[]): string {
 
 export function formatPostSummary(post: {
   id: string;
-  caption: string;
+  content: string;
   status: string;
   scheduled_at?: string | null;
-  is_draft?: boolean;
 }): string {
-  const preview = post.caption.length > 80 ? `${post.caption.slice(0, 80)}…` : post.caption;
+  const preview = post.content.length > 80 ? `${post.content.slice(0, 80)}…` : post.content;
   const schedule = post.scheduled_at ? ` scheduled=${post.scheduled_at}` : "";
   return `id=${post.id} [${post.status}]${schedule} — "${preview}"`;
 }

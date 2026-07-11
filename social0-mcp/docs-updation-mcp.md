@@ -4,7 +4,9 @@
 > **Purpose:** Implement all user-facing documentation for the new **Social0 MCP Server** — the official Model Context Protocol integration that lets AI assistants manage Social0 via natural language.  
 > **Source of truth:** `social0-mcp/` package in the main Social0 monorepo (or standalone `social0-mcp` GitHub repo once published).  
 > **Docs site:** `https://docs.social0.app`  
-> **Last reviewed:** 2026-07-11
+> **Last reviewed:** 2026-07-11 (updated after PR #39 — public REST API live)
+
+> **IMPORTANT — API is live:** As of PR #39 (`cursor/public-rest-api-da54`), the full `/v1` REST API is production-ready. The MCP server now calls **only `/v1/*` endpoints**. Use `sk_live_` API keys (legacy `s0_live_` accepted). Cross-reference the main API docs brief at `docs-updation.md` in the app repo and live OpenAPI at `https://api.social0.app/openapi.json`.
 
 ---
 
@@ -42,7 +44,7 @@ AI Assistant (Claude / Cursor / ChatGPT)
 - Not where OAuth / account connection happens (users still connect platforms in the app)
 - Not a place for business logic — it only translates MCP tool calls → REST API calls
 
-**Authentication:** Users need a Social0 **API key** (`s0_live_...`) created in the dashboard.
+**Authentication:** Users need a Social0 **API key** (`sk_live_...`) created at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys).
 
 **Repository:** `https://github.com/Abhishek-B-R/social0` → `social0-mcp/` (will become standalone `social0-mcp` repo).
 
@@ -152,25 +154,27 @@ Wire `ApiKeysPage.tsx` ("coming soon") → `DOCS_API_KEYS_URL` and `DOCS_MCP_URL
 
 ---
 
-## 4. Critical honesty block (include on MCP pages)
+## 4. API status (all live as of PR #39)
 
-**The docs MUST be accurate about what works today vs. what's rolling out.**
+> **Update:** The "rolling out" caveat below is **obsolete**. All `/v1` endpoints are live. Remove rolling-out callouts from docs when implementing.
 
-| Capability | REST endpoint | MCP tool(s) | Status (as of 2026-07-11) |
-|------------|---------------|-------------|---------------------------|
-| List connected accounts | `GET /api/accounts` | `list_accounts` | ✅ Live |
-| Upload media | `POST /api/media/presign` → PUT → `POST /api/media/confirm` | `upload_media` | ✅ Live |
-| Publish now | `POST /api/publish` | `publish_post`, `publish_now` | ✅ Live (needs `postId` for `publish_post`) |
-| Schedule post | `POST /api/publish` (with `scheduledAt`) | `schedule_post`, `schedule_content` | ✅ Live (needs `postId` for `schedule_post`) |
-| Publish status | `GET /api/jobs/:trackingId` | `get_publish_status` | ✅ Live |
-| Post CRUD | `/v1/posts` | `create_post`, `update_post`, `delete_post`, `list_posts`, `get_post` | 🚧 **Rolling out** — `/v1/posts` stubs exist; not fully wired |
-| Platform suggestions | Client-side heuristic in MCP | `suggest_best_platforms` | ✅ Works offline; may call accounts API |
+| Capability | REST endpoint | MCP tool(s) | Status |
+|------------|---------------|-------------|--------|
+| List connected accounts | `GET /v1/accounts` | `list_accounts` | ✅ Live |
+| Upload media | `POST /v1/media/presign` → PUT → `POST /v1/media/confirm` | `upload_media` | ✅ Live |
+| Publish now | `POST /v1/posts/:id/publish` or `POST /v1/posts/publish` | `publish_post`, `publish_now` | ✅ Live |
+| Schedule post | `POST /v1/posts/:id/schedule` or `POST /v1/posts/schedule` | `schedule_post`, `schedule_content` | ✅ Live |
+| Publish status | `GET /v1/jobs/:trackingId` | `get_publish_status` | ✅ Live |
+| Post CRUD | `GET/POST/PATCH/DELETE /v1/posts` | `create_post`, `update_post`, `delete_post`, `list_posts`, `get_post` | ✅ Live |
+| Platform suggestions | Client-side heuristic in MCP | `suggest_best_platforms` | ✅ Works offline |
 
-**Recommended callout box (use on MCP overview + quick start):**
+**API key format:** `sk_live_...` (legacy `s0_live_...` still accepted)
 
-> **Note:** Account listing, media upload, publishing, and status tracking work today via API key. Post create/list/update/delete via MCP will work automatically once the `/v1/posts` REST API is fully live. Until then, create posts in the [Social0 dashboard](https://social0.app/dashboard/composer) and use MCP to publish, schedule, or check status.
+**Interactive API reference:** https://api.social0.app/docs
 
-When `/v1/posts` ships, remove or downgrade this callout.
+---
+
+## 4b. Legacy honesty block (REMOVE from docs — kept for agent context only)
 
 ---
 

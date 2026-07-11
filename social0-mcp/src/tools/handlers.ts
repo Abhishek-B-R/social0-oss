@@ -16,7 +16,7 @@ import type {
   UpdatePostInput,
   UploadMediaInput,
 } from "../schemas/tools.js";
-import type { Platform, PublishNowResult, ScheduleResult } from "../types/index.js";
+import type { Platform } from "../types/index.js";
 import { formatAccountsList, formatPostSummary, resolveAccountIds } from "../utils/accounts.js";
 import { formatToolError, readLocalFile } from "../utils/index.js";
 
@@ -33,19 +33,10 @@ function jsonResult(data: unknown): CallToolResult {
 
 function handleApiError(context: string, error: unknown): CallToolResult {
   if (error instanceof Social0ApiError) {
-    return textResult(
-      formatToolError(context, error.toToolMessage(), error.isNotImplemented
-        ? "Post CRUD via API key is rolling out on the /v1 REST API. Media upload, publish, and job status work today."
-        : undefined),
-      true,
-    );
+    return textResult(formatToolError(context, error.toToolMessage()), true);
   }
   const message = error instanceof Error ? error.message : String(error);
   return textResult(formatToolError(context, message), true);
-}
-
-function isScheduleResult(result: PublishNowResult | ScheduleResult): result is ScheduleResult {
-  return "scheduledAt" in result;
 }
 
 export async function handleListAccounts(): Promise<CallToolResult> {
@@ -68,19 +59,20 @@ export async function handleCreatePost(input: CreatePostInput): Promise<CallTool
       return textResult(formatToolError("create post", "No valid target accounts"), true);
     }
 
-    const post = await postsApi.createPost({
-      caption: input.content,
-      social_accounts: accountIds,
-      media: input.media ?? null,
-      is_draft: input.is_draft,
+    const created = await postsApi.createPost({
+      content: input.content,
+      platforms: accountIds,
+      ...(input.media ? { media: input.media } : {}),
     });
+
+    const post = await postsApi.getPost(created.id);
 
     return jsonResult({
       success: true,
       post,
       message: input.is_draft
-        ? `Draft created (${post.id}). Use publish_post or schedule_post when ready.`
-        : `Post created (${post.id}).`,
+        ? `Draft created (${created.id}). Use publish_post or schedule_post when ready.`
+        : `Post created (${created.id}).`,
     });
   } catch (error) {
     return handleApiError("create post", error);
@@ -91,9 +83,8 @@ export async function handleUpdatePost(input: UpdatePostInput): Promise<CallTool
   try {
     const payload: Parameters<typeof postsApi.updatePost>[1] = {};
 
-    if (input.content !== undefined) payload.caption = input.content;
+    if (input.content !== undefined) payload.content = input.content;
     if (input.media !== undefined) payload.media = input.media;
-    if (input.is_draft !== undefined) payload.is_draft = input.is_draft;
 
     if (input.platforms) {
       const accounts = await accountsApi.listAccounts();
@@ -101,7 +92,7 @@ export async function handleUpdatePost(input: UpdatePostInput): Promise<CallTool
       if (errors.length > 0) {
         return textResult(formatToolError("update post", errors.join("; ")), true);
       }
-      payload.social_accounts = accountIds;
+      payload.platforms = accountIds;
     }
 
     const post = await postsApi.updatePost(input.post_id, payload);
@@ -133,16 +124,17 @@ export async function handleListPosts(input: ListPostsInput): Promise<CallToolRe
       return textResult("No posts found matching your filters.");
     }
 
-    const lines = response.data.map((p) => formatPostSummary({
-      id: p.id,
-      caption: p.caption,
-      status: p.status,
-      scheduled_at: p.scheduled_at,
-      is_draft: p.is_draft,
-    }));
+    const lines = response.data.map((p) =>
+      formatPostSummary({
+        id: p.id,
+        content: p.content,
+        status: p.status,
+        scheduled_at: p.scheduled_at,
+      }),
+    );
 
     return textResult(
-      `Posts (${response.data.length} of ${response.meta.total}):\n\n${lines.join("\n")}`,
+      `Posts (${response.data.length} of ${response.pagination.total}):\n\n${lines.join("\n")}`,
     );
   } catch (error) {
     return handleApiError("list posts", error);
@@ -160,32 +152,14 @@ export async function handleGetPost(input: GetPostInput): Promise<CallToolResult
 
 export async function handlePublishPost(input: PublishPostInput): Promise<CallToolResult> {
   try {
-    let connectedAccountIds: string[] | undefined;
-    if (input.platforms) {
-      const accounts = await accountsApi.listAccounts();
-      const resolved = resolveAccountIds(input.platforms, accounts);
-      if (resolved.errors.length > 0) {
-        return textResult(formatToolError("publish post", resolved.errors.join("; ")), true);
-      }
-      connectedAccountIds = resolved.accountIds;
-    }
-
-    const result = await publishApi.publishPost({
-      postId: input.post_id,
-      mode: "now",
-      ...(connectedAccountIds ? { connectedAccountIds } : {}),
-    });
-
-    if (isScheduleResult(result)) {
-      return jsonResult(result);
-    }
+    const result = await postsApi.publishPost(input.post_id);
 
     return jsonResult({
       success: true,
-      trackingId: result.trackingId,
+      tracking_id: result.tracking_id,
       status: result.status,
-      streamUrl: result.streamUrl,
-      message: `Publishing started. Use get_publish_status with tracking_id=${result.trackingId} to monitor.`,
+      stream_url: result.stream_url,
+      message: `Publishing started. Use get_publish_status with tracking_id=${result.tracking_id} to monitor.`,
     });
   } catch (error) {
     return handleApiError("publish post", error);
@@ -194,27 +168,14 @@ export async function handlePublishPost(input: PublishPostInput): Promise<CallTo
 
 export async function handleSchedulePost(input: SchedulePostInput): Promise<CallToolResult> {
   try {
-    let connectedAccountIds: string[] | undefined;
-    if (input.platforms) {
-      const accounts = await accountsApi.listAccounts();
-      const resolved = resolveAccountIds(input.platforms, accounts);
-      if (resolved.errors.length > 0) {
-        return textResult(formatToolError("schedule post", resolved.errors.join("; ")), true);
-      }
-      connectedAccountIds = resolved.accountIds;
-    }
-
-    const result = await publishApi.publishPost({
-      postId: input.post_id,
+    const result = await postsApi.schedulePost(input.post_id, {
       scheduledAt: input.scheduled_at,
-      mode: "schedule",
-      ...(connectedAccountIds ? { connectedAccountIds } : {}),
     });
 
     return jsonResult({
       success: true,
       ...result,
-      message: `Post scheduled for ${input.scheduled_at}.`,
+      message: `Post scheduled for ${result.scheduled_at}.`,
     });
   } catch (error) {
     return handleApiError("schedule post", error);
@@ -234,8 +195,6 @@ export async function handleUploadMedia(input: UploadMediaInput): Promise<CallTo
       success: true,
       mediaId: media.id,
       url: media.url,
-      mimeType: media.mimeType,
-      sizeBytes: media.sizeBytes,
       message: `Uploaded ${file.filename}. Use mediaId in create_post, publish_now, or schedule_content.`,
     });
   } catch (error) {
@@ -251,28 +210,18 @@ export async function handlePublishNow(input: PublishNowInput): Promise<CallTool
       return textResult(formatToolError("publish now", errors.join("; ")), true);
     }
 
-    const post = await postsApi.createPost({
-      caption: input.content,
-      social_accounts: accountIds,
-      media: input.media ?? null,
-      is_draft: false,
+    const result = await postsApi.publishNow({
+      content: input.content,
+      platforms: accountIds,
+      ...(input.media ? { media: input.media } : {}),
     });
-
-    const result = await publishApi.publishPost({
-      postId: post.id,
-      mode: "now",
-      connectedAccountIds: accountIds,
-    });
-
-    if (isScheduleResult(result)) {
-      return jsonResult(result);
-    }
 
     return jsonResult({
       success: true,
-      postId: post.id,
-      trackingId: result.trackingId,
+      post_id: result.post_id,
+      tracking_id: result.tracking_id,
       status: result.status,
+      stream_url: result.stream_url,
       message: "Post created and publishing started.",
     });
   } catch (error) {
@@ -288,27 +237,19 @@ export async function handleScheduleContent(input: ScheduleContentInput): Promis
       return textResult(formatToolError("schedule content", errors.join("; ")), true);
     }
 
-    const post = await postsApi.createPost({
-      caption: input.content,
-      social_accounts: accountIds,
-      media: input.media ?? null,
-      is_draft: false,
-      scheduled_at: input.scheduled_at,
-    });
-
-    const result = await publishApi.publishPost({
-      postId: post.id,
+    const result = await postsApi.scheduleContent({
+      content: input.content,
+      platforms: accountIds,
       scheduledAt: input.scheduled_at,
-      mode: "schedule",
-      connectedAccountIds: accountIds,
+      ...(input.media ? { media: input.media } : {}),
     });
 
     return jsonResult({
       success: true,
-      postId: post.id,
-      scheduledAt: input.scheduled_at,
-      ...result,
-      message: `Content created and scheduled for ${input.scheduled_at}.`,
+      post_id: result.post_id,
+      scheduled_at: result.scheduled_at,
+      status: result.status,
+      message: `Content created and scheduled for ${result.scheduled_at}.`,
     });
   } catch (error) {
     return handleApiError("schedule content", error);
@@ -319,33 +260,26 @@ export async function handleGetPublishStatus(input: GetPublishStatusInput): Prom
   try {
     const snapshot = await publishApi.getPublishStatus(input.tracking_id);
 
-    const platformEvents = snapshot.events.filter((e) => e.platform);
-    const platformStatuses = platformEvents.map((e) => ({
-      platform: e.platform,
-      phase: e.phase,
-      message: e.message,
-      accountId: e.connectedAccountId,
-    }));
-
-    const errors = snapshot.events
-      .filter((e) => e.phase === "platform_failed")
-      .map((e) => ({
-        platform: e.platform,
-        message: e.message ?? "Unknown error",
+    const errors = snapshot.platform_statuses
+      .filter((s) => s.phase === "platform_failed")
+      .map((s) => ({
+        platform: s.platform,
+        message: s.message ?? "Unknown error",
       }));
 
     return jsonResult({
-      trackingId: snapshot.trackingId,
-      postId: snapshot.postId,
-      overallStatus: snapshot.status,
+      tracking_id: snapshot.tracking_id,
+      post_id: snapshot.post_id,
+      overall_status: snapshot.status,
       progress: {
         total: snapshot.total,
         completed: snapshot.completed,
         failed: snapshot.failed,
       },
-      platformStatuses,
+      platform_statuses: snapshot.platform_statuses,
       errors,
-      updatedAt: snapshot.updatedAt,
+      created_at: snapshot.created_at,
+      completed_at: snapshot.completed_at,
     });
   } catch (error) {
     return handleApiError("get publish status", error);
@@ -360,7 +294,7 @@ export async function handleSuggestBestPlatforms(
     try {
       const accounts = await accountsApi.listAccounts();
       connectedPlatforms = accounts
-        .filter((a) => a.isActive)
+        .filter((a) => a.is_active)
         .map((a) => a.platform as Platform);
     } catch {
       // ponytail: offline heuristic if accounts can't be fetched

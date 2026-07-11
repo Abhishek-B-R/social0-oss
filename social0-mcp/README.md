@@ -39,13 +39,13 @@ npm run build
 npm start
 ```
 
-Create an API key at [social0.app/settings/api-keys](https://social0.app/settings/api-keys).
+Create an API key at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys).
 
 ## Environment variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `SOCIAL0_API_KEY` | Yes | — | API key (`s0_live_...`) |
+| `SOCIAL0_API_KEY` | Yes | — | API key (`sk_live_...`, legacy `s0_live_...`) |
 | `SOCIAL0_API_URL` | No | `https://api.social0.app/v1` | API base URL |
 | `SOCIAL0_MCP_VERBOSE` | No | `false` | Log requests to stderr |
 | `SOCIAL0_REQUEST_TIMEOUT_MS` | No | `30000` | Request timeout |
@@ -154,13 +154,13 @@ social0-mcp/
 
 | Capability | Endpoint | Status |
 |------------|----------|--------|
-| List accounts | `GET /api/accounts` | ✅ Live |
-| Upload media | `POST /api/media/presign` → PUT → `POST /api/media/confirm` | ✅ Live |
-| Publish / schedule | `POST /api/publish` | ✅ Live |
-| Publish status | `GET /api/jobs/:trackingId` | ✅ Live |
-| Post CRUD | `/v1/posts` | 🚧 Rolling out |
+| List accounts | `GET /v1/accounts` | ✅ Live |
+| Post CRUD | `GET/POST/PATCH/DELETE /v1/posts` | ✅ Live |
+| Upload media | `POST /v1/media/presign` → PUT → `POST /v1/media/confirm` | ✅ Live |
+| Publish / schedule | `POST /v1/posts/:id/publish`, `/schedule`, `/posts/publish`, `/posts/schedule` | ✅ Live |
+| Publish status | `GET /v1/jobs/:trackingId` | ✅ Live |
 
-Post CRUD tools are wired to `/v1/posts` and will work automatically as the public API ships. Until then, use `list_accounts`, `upload_media`, `publish_post` (with an existing post ID), and `get_publish_status`.
+API keys use the `sk_live_` prefix (legacy `s0_live_` still accepted). Interactive API docs: https://api.social0.app/docs
 
 ## Development
 

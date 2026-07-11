@@ -1,11 +1,10 @@
-import { config } from "../config.js";
 import type { MediaUploadResult } from "../types/index.js";
 import { apiClient } from "./client.js";
 
 interface PresignResponse {
-  presignedUrl: string;
+  upload_url: string;
   key: string;
-  storageFilename: string;
+  storage_filename: string;
 }
 
 export async function presignUpload(input: {
@@ -13,10 +12,10 @@ export async function presignUpload(input: {
   contentType: string;
   fileSize: number;
 }): Promise<PresignResponse> {
-  return apiClient.post<PresignResponse>(config.apiBase, "/media/presign", {
+  return apiClient.post<PresignResponse>("/media/presign", {
     filename: input.filename,
-    contentType: input.contentType,
-    fileSize: input.fileSize,
+    content_type: input.contentType,
+    size_bytes: input.fileSize,
   });
 }
 
@@ -27,7 +26,13 @@ export async function confirmUpload(input: {
   contentType: string;
   fileSize: number;
 }): Promise<MediaUploadResult> {
-  return apiClient.post<MediaUploadResult>(config.apiBase, "/media/confirm", input);
+  return apiClient.post<MediaUploadResult>("/media/confirm", {
+    key: input.key,
+    storage_filename: input.storageFilename,
+    original_filename: input.originalFilename,
+    content_type: input.contentType,
+    size_bytes: input.fileSize,
+  });
 }
 
 export async function uploadMediaBuffer(input: {
@@ -41,11 +46,11 @@ export async function uploadMediaBuffer(input: {
     fileSize: input.buffer.byteLength,
   });
 
-  await apiClient.putRaw(presign.presignedUrl, input.buffer, input.mimeType);
+  await apiClient.putRaw(presign.upload_url, input.buffer, input.mimeType);
 
   return confirmUpload({
     key: presign.key,
-    storageFilename: presign.storageFilename,
+    storageFilename: presign.storage_filename,
     originalFilename: input.filename,
     contentType: input.mimeType,
     fileSize: input.buffer.byteLength,

@@ -11,18 +11,11 @@ export class Social0ApiError extends Error {
     super(message);
     this.name = "Social0ApiError";
     this.status = status;
-    this.code = body?.code;
+    this.code = extractErrorCode(body);
     this.body = body;
   }
 
-  get isNotImplemented(): boolean {
-    return this.code === "NOT_IMPLEMENTED" || this.status === 501;
-  }
-
   toToolMessage(): string {
-    if (this.isNotImplemented) {
-      return `Social0 API endpoint not yet available (${this.message}). This feature is coming soon to the public REST API.`;
-    }
     return this.message;
   }
 }
@@ -34,6 +27,7 @@ interface RequestOptions {
   body?: unknown;
   headers?: Record<string, string>;
   timeoutMs?: number;
+  idempotencyKey?: string;
 }
 
 function buildUrl(base: string, path: string): string {
@@ -51,11 +45,17 @@ async function parseJsonSafe(response: Response): Promise<ApiErrorBody | undefin
   }
 }
 
+function extractErrorCode(body: ApiErrorBody | undefined): string | undefined {
+  if (!body) return undefined;
+  if (typeof body.error === "object" && body.error?.code) return body.error.code;
+  return body.code;
+}
+
 function errorMessage(body: ApiErrorBody | undefined, status: number): string {
   if (!body) return `HTTP ${status}`;
+  if (typeof body.error === "object" && body.error?.message) return body.error.message;
   if (typeof body.error === "string") return body.error;
   if (body.message) return body.message;
-  if (body.route) return `${body.route} is not implemented`;
   return `HTTP ${status}`;
 }
 
@@ -66,20 +66,20 @@ export class Social0ApiClient {
     this.apiKey = apiKey;
   }
 
-  async get<T>(base: string, path: string, options?: Omit<RequestOptions, "method" | "body">): Promise<T> {
-    return this.request<T>(base, path, { ...options, method: "GET" });
+  async get<T>(path: string, options?: Omit<RequestOptions, "method" | "body">): Promise<T> {
+    return this.request<T>(path, { ...options, method: "GET" });
   }
 
-  async post<T>(base: string, path: string, body?: unknown, options?: Omit<RequestOptions, "method">): Promise<T> {
-    return this.request<T>(base, path, { ...options, method: "POST", body });
+  async post<T>(path: string, body?: unknown, options?: Omit<RequestOptions, "method">): Promise<T> {
+    return this.request<T>(path, { ...options, method: "POST", body });
   }
 
-  async patch<T>(base: string, path: string, body?: unknown, options?: Omit<RequestOptions, "method">): Promise<T> {
-    return this.request<T>(base, path, { ...options, method: "PATCH", body });
+  async patch<T>(path: string, body?: unknown, options?: Omit<RequestOptions, "method">): Promise<T> {
+    return this.request<T>(path, { ...options, method: "PATCH", body });
   }
 
-  async delete<T>(base: string, path: string, options?: Omit<RequestOptions, "method" | "body">): Promise<T> {
-    return this.request<T>(base, path, { ...options, method: "DELETE" });
+  async delete<T>(path: string, options?: Omit<RequestOptions, "method" | "body">): Promise<T> {
+    return this.request<T>(path, { ...options, method: "DELETE" });
   }
 
   async putRaw(url: string, body: Buffer, contentType: string, timeoutMs?: number): Promise<void> {
@@ -111,9 +111,9 @@ export class Social0ApiClient {
     }
   }
 
-  private async request<T>(base: string, path: string, options: RequestOptions = {}): Promise<T> {
+  private async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const method = options.method ?? "GET";
-    const url = buildUrl(base, path);
+    const url = buildUrl(config.v1Base, path);
     let attempt = 0;
 
     while (true) {
@@ -130,6 +130,10 @@ export class Social0ApiClient {
           Accept: "application/json",
           ...options.headers,
         };
+
+        if (options.idempotencyKey) {
+          headers["Idempotency-Key"] = options.idempotencyKey;
+        }
 
         const init: RequestInit = {
           method,
