@@ -379,6 +379,8 @@ export const apiKeys = pgTable("api_keys", {
   name: text("name").notNull(),
   keyHash: text("key_hash").notNull(),
   keyPrefix: text("key_prefix").notNull(),
+  /** Future: restrict key to read-only, publish, etc. */
+  scopes: text("scopes").array(),
   lastUsedAt: timestamp("last_used_at"),
   expiresAt: timestamp("expires_at"),
   revokedAt: timestamp("revoked_at"),

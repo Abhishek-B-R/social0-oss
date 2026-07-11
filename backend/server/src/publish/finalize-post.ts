@@ -7,6 +7,7 @@ import {
   queuedPosts,
 } from "../db/schema.js";
 import { maybeSendPostFailureEmail } from "../lib/post-failure-email.js";
+import { emitUserWebhookEvent } from "../lib/user-webhook-delivery.js";
 
 /** After per-platform jobs finish, update aggregate post status and notify user. */
 export async function maybeFinalizePostPublish(
@@ -72,5 +73,22 @@ export async function maybeFinalizePostPublish(
         error: f.lastError,
       })),
     });
+  }
+
+  const webhookData = {
+    post_id: postId,
+    status: overallStatus,
+    platforms: pubs.map((p) => ({
+      platform: p.platform,
+      status: p.status,
+      connected_account_id: p.connectedAccountId,
+      error: p.lastError ?? null,
+    })),
+  };
+
+  if (overallStatus === "published" || overallStatus === "partial") {
+    emitUserWebhookEvent(userId, "post.published", webhookData);
+  } else if (overallStatus === "failed") {
+    emitUserWebhookEvent(userId, "post.failed", webhookData);
   }
 }

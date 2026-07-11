@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { isSafeOutboundUrl } from "@social0/shared";
 import { db } from "../../db/index.js";
 import { apiKeys, userWebhookSubscriptions } from "../../db/schema.js";
@@ -17,7 +17,7 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
   app.post("/api-keys", async (request, reply) => {
     const userId = await requireUserId(request);
     if (!userId) return reply.status(401).send({ error: "Unauthorized" });
-    const body = request.body as { name?: string };
+    const body = request.body as { name?: string; expiresAt?: string | null };
     if (!body?.name?.trim()) {
       return reply.status(400).send({ error: "name required" });
     }
@@ -29,10 +29,13 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
         name: body.name.trim(),
         keyHash: hash,
         keyPrefix: prefix,
+        expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
       })
       .returning({
         id: apiKeys.id,
+        name: apiKeys.name,
         keyPrefix: apiKeys.keyPrefix,
+        expiresAt: apiKeys.expiresAt,
         createdAt: apiKeys.createdAt,
       });
     return { key: raw, apiKey: row[0] };
@@ -52,8 +55,71 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
         createdAt: apiKeys.createdAt,
       })
       .from(apiKeys)
-      .where(eq(apiKeys.userId, userId));
+      .where(and(eq(apiKeys.userId, userId), isNull(apiKeys.revokedAt)))
+      .orderBy(desc(apiKeys.createdAt));
     return { keys };
+  });
+
+  app.patch("/api-keys/:id", async (request, reply) => {
+    const userId = await requireUserId(request);
+    if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+    const { id } = request.params as { id: string };
+    const body = request.body as { name?: string };
+    if (!body?.name?.trim()) {
+      return reply.status(400).send({ error: "name required" });
+    }
+    const [row] = await db
+      .update(apiKeys)
+      .set({ name: body.name.trim() })
+      .where(
+        and(eq(apiKeys.id, id), eq(apiKeys.userId, userId), isNull(apiKeys.revokedAt)),
+      )
+      .returning({
+        id: apiKeys.id,
+        name: apiKeys.name,
+        keyPrefix: apiKeys.keyPrefix,
+        lastUsedAt: apiKeys.lastUsedAt,
+        expiresAt: apiKeys.expiresAt,
+        createdAt: apiKeys.createdAt,
+      });
+    if (!row) return reply.status(404).send({ error: "API key not found" });
+    return { apiKey: row };
+  });
+
+  app.post("/api-keys/:id/regenerate", async (request, reply) => {
+    const userId = await requireUserId(request);
+    if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+    const { id } = request.params as { id: string };
+    const [existing] = await db
+      .select({ id: apiKeys.id, name: apiKeys.name })
+      .from(apiKeys)
+      .where(
+        and(eq(apiKeys.id, id), eq(apiKeys.userId, userId), isNull(apiKeys.revokedAt)),
+      )
+      .limit(1);
+    if (!existing) return reply.status(404).send({ error: "API key not found" });
+
+    await db
+      .update(apiKeys)
+      .set({ revokedAt: new Date() })
+      .where(eq(apiKeys.id, id));
+
+    const { raw, hash, prefix } = generateApiKey();
+    const [row] = await db
+      .insert(apiKeys)
+      .values({
+        userId,
+        name: existing.name,
+        keyHash: hash,
+        keyPrefix: prefix,
+      })
+      .returning({
+        id: apiKeys.id,
+        name: apiKeys.name,
+        keyPrefix: apiKeys.keyPrefix,
+        createdAt: apiKeys.createdAt,
+      });
+    return { key: raw, apiKey: row };
   });
 
   app.delete("/api-keys/:id", async (request, reply) => {
@@ -72,11 +138,10 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
     if (!userId) return reply.status(401).send({ error: "Unauthorized" });
     const body = request.body as {
       url?: string;
-      secret?: string;
       events?: string[];
     };
-    if (!body.url || !body.secret || !body.events?.length) {
-      return reply.status(400).send({ error: "url, secret, events required" });
+    if (!body.url || !body.events?.length) {
+      return reply.status(400).send({ error: "url and events required" });
     }
     if (!isAllowedWebhookUrl(body.url)) {
       return reply.status(400).send({
@@ -84,6 +149,7 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
           "Webhook URL must be a public https URL (no localhost or private networks).",
       });
     }
+    const secret = crypto.randomBytes(32).toString("base64url");
     const subscriptionId = crypto.randomUUID();
     const row = await db
       .insert(userWebhookSubscriptions)
@@ -91,7 +157,7 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
         id: subscriptionId,
         userId,
         url: body.url,
-        secret: encryptToken(body.secret, subscriptionId),
+        secret: encryptToken(secret, subscriptionId),
         events: body.events,
       })
       .returning({
@@ -101,7 +167,19 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
         active: userWebhookSubscriptions.active,
         createdAt: userWebhookSubscriptions.createdAt,
       });
-    return { subscription: row[0] };
+    return { subscription: row[0], secret };
+  });
+
+  app.delete("/webhooks/subscriptions/:id", async (request, reply) => {
+    const userId = await requireUserId(request);
+    if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+    const { id } = request.params as { id: string };
+    await db
+      .delete(userWebhookSubscriptions)
+      .where(
+        and(eq(userWebhookSubscriptions.id, id), eq(userWebhookSubscriptions.userId, userId)),
+      );
+    return { ok: true };
   });
 
   app.get("/webhooks/subscriptions", async (request, reply) => {

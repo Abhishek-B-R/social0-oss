@@ -4,21 +4,31 @@ import { db } from "../db/index.js";
 import { apiKeys } from "../db/schema.js";
 import { env } from "./env.js";
 
-const KEY_PREFIX = "s0_live_";
+export const KEY_PREFIX = "sk_live_";
+const LEGACY_PREFIX = "s0_live_";
+
+export type ApiKeyAuth = {
+  userId: string;
+  apiKeyId: string;
+};
+
+export function isApiKeyFormat(raw: string): boolean {
+  return raw.startsWith(KEY_PREFIX) || raw.startsWith(LEGACY_PREFIX);
+}
 
 export function generateApiKey(): { raw: string; hash: string; prefix: string } {
   const secret = randomBytes(24).toString("base64url");
   const raw = `${KEY_PREFIX}${secret}`;
   const hash = hashApiKey(raw);
-  return { raw, hash, prefix: raw.slice(0, 12) };
+  return { raw, hash, prefix: raw.slice(0, 16) };
 }
 
-/** HMAC-SHA256 with server secret (pepper). */
+/** SHA-256 with server secret pepper (HMAC-SHA256). */
 export function hashApiKey(raw: string): string {
   return createHmac("sha256", env.BETTER_AUTH_SECRET).update(raw).digest("hex");
 }
 
-/** Legacy SHA-256 hashes (pre-pepper); verified for migration only. */
+/** Legacy plain SHA-256 hashes (pre-pepper); verified for migration only. */
 function legacyHashApiKey(raw: string): string {
   return createHash("sha256").update(raw).digest("hex");
 }
@@ -30,19 +40,29 @@ async function lookupApiKeyRow(hash: string) {
       expiresAt: apiKeys.expiresAt,
       id: apiKeys.id,
       keyHash: apiKeys.keyHash,
+      revokedAt: apiKeys.revokedAt,
     })
     .from(apiKeys)
-    .where(and(eq(apiKeys.keyHash, hash), isNull(apiKeys.revokedAt)))
+    .where(eq(apiKeys.keyHash, hash))
     .limit(1);
   return rows[0] ?? null;
 }
 
-export async function resolveUserIdFromApiKey(
+function touchLastUsed(apiKeyId: string): void {
+  // ponytail: fire-and-forget; last_used_at is best-effort telemetry
+  void db
+    .update(apiKeys)
+    .set({ lastUsedAt: new Date() })
+    .where(eq(apiKeys.id, apiKeyId))
+    .catch(() => {});
+}
+
+export async function resolveApiKeyAuth(
   authorization: string | undefined,
-): Promise<string | null> {
+): Promise<ApiKeyAuth | null> {
   if (!authorization?.startsWith("Bearer ")) return null;
   const raw = authorization.slice("Bearer ".length).trim();
-  if (!raw.startsWith(KEY_PREFIX)) return null;
+  if (!isApiKeyFormat(raw)) return null;
 
   const pepperedHash = hashApiKey(raw);
   let row = await lookupApiKeyRow(pepperedHash);
@@ -58,15 +78,19 @@ export async function resolveUserIdFromApiKey(
     }
   }
 
-  if (!row) return null;
+  if (!row || row.revokedAt) return null;
   if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return null;
 
-  await db
-    .update(apiKeys)
-    .set({ lastUsedAt: new Date() })
-    .where(eq(apiKeys.id, row.id));
+  touchLastUsed(row.id);
+  return { userId: row.userId, apiKeyId: row.id };
+}
 
-  return row.userId;
+/** @deprecated Use resolveApiKeyAuth */
+export async function resolveUserIdFromApiKey(
+  authorization: string | undefined,
+): Promise<string | null> {
+  const auth = await resolveApiKeyAuth(authorization);
+  return auth?.userId ?? null;
 }
 
 export function safeCompareApiKey(a: string, b: string): boolean {

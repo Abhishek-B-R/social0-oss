@@ -35,6 +35,7 @@ const MORE_LINKS = [
   { href: "/dashboard/posts/posted", label: "Posted", icon: IconCircleCheck },
   { href: "/dashboard/posts/drafts", label: "Drafts", icon: IconFileText },
   { href: "/dashboard/settings", label: "Settings", icon: IconSettings },
+  { href: "/dashboard/api-keys", label: "Developer", icon: IconSettings },
   { href: "/dashboard/billing", label: "Billing", icon: IconCreditCard },
 ] as const;
 
