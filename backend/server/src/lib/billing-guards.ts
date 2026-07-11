@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { PLAN_IDS, isActiveTier } from "./plans.js";
 import { getSubscriptionForUser } from "./subscription.js";
 import { env } from "./env.js";
+import { normalizeBillingEmail } from "./email-billing.js";
 
 // ponytail: 3 days while free tier (5 lifetime posts) exists; restore to 7 when free plan is removed
 export const TRIAL_PERIOD_DAYS = 3;
@@ -18,24 +19,6 @@ export type DodoSubscriptionSummary = {
   customerId: string | null;
   previousBillingDate: string | null;
 };
-
-/** Normalize email for trial dedup (Gmail dots/plus aliases). */
-export function normalizeBillingEmail(email: string): string {
-  const trimmed = email.trim().toLowerCase();
-  const at = trimmed.indexOf("@");
-  if (at <= 0) return trimmed;
-
-  let local = trimmed.slice(0, at);
-  let domain = trimmed.slice(at + 1);
-  if (domain === "googlemail.com") domain = "gmail.com";
-
-  local = local.split("+")[0] ?? local;
-  if (domain === "gmail.com") {
-    local = local.replace(/\./g, "");
-  }
-
-  return `${local}@${domain}`;
-}
 
 function dodoClient(): DodoPayments | null {
   const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
