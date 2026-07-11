@@ -12,7 +12,14 @@
     "dev:background-worker": "bun run --filter @social0/background-worker dev",
     "dev": "bun run dev:server & bun run dev:background-worker",
     "start:server": "bun run --filter @social0/server start",
-    "start:background-worker": "bun run --filter @social0/background-worker start"
+    "start:background-worker": "bun run --filter @social0/background-worker start",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.7",
+    "drizzle-kit": "^0.31.4"
   },
   "engines": {
     "node": ">=20"
