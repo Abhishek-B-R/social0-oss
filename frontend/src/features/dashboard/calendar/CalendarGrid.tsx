@@ -16,7 +16,7 @@ import {
   parseISO,
   startOfDay,
 } from "date-fns";
-import { formatDate } from "@/lib/date-format";
+import { formatDate } from "@social0/shared";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import {
   ChevronLeft,

@@ -5,7 +5,7 @@ import { userSettings, connectedAccounts, account, user } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { headers } from "../lib/http/request-cookies.js";
 import { redirect } from "../lib/http/route-redirect.js";
-import type { DateFormatKey } from "@/lib/date-format";
+import type { DateFormatKey } from "@social0/shared";
 import { requireSessionUserId } from "@/lib/require-session-user";
 import { isSafeOutboundUrl } from "@social0/shared";
 import { getAllowedMediaOrigins, isAllowedMediaUrl } from "@/lib/publish-validation";

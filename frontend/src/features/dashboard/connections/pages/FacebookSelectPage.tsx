@@ -8,7 +8,7 @@ import {
   type AccountPickerAccount,
 } from "@/components/AccountPicker";
 import { toast } from "sonner";
-import { sanitizeReturnToPath } from "@/lib/safe-return-to";
+import { sanitizeReturnToPath } from "@social0/shared";
 import { completeConnectSelect } from "@/lib/connect-select-response";
 import { stripSensitiveQueryParams } from "@/lib/sanitize-analytics-url";
 

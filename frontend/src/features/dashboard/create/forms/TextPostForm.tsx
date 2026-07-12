@@ -34,7 +34,7 @@ import {
 import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
-import { getResurfacePlatforms } from "@/lib/resurface-utils";
+import { getResurfacePlatforms } from "@social0/shared";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type {
   AutoPlugConfig,

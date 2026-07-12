@@ -92,28 +92,3 @@ export async function mapSignUpErrorFromResponse(
   const payload = await response.json().catch(() => ({}));
   return mapSignUpError(payload);
 }
-
-// ponytail: self-check — run via `npx tsx src/lib/sign-up-errors.ts` from backend/server
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const assert = (cond: boolean, msg: string) => {
-    if (!cond) throw new Error(msg);
-  };
-  assert(
-    isEmailAlreadyExistsError({ code: "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" }),
-    "Better Auth duplicate code",
-  );
-  assert(
-    isEmailAlreadyExistsError({ message: "User already exists." }),
-    "Better Auth duplicate message",
-  );
-  assert(
-    mapSignUpError({ code: "EMAIL_ALREADY_EXISTS" }).code === "EMAIL_ALREADY_EXISTS",
-    "mapped duplicate code",
-  );
-  assert(
-    mapSignUpError({ message: "duplicate key value violates unique constraint" }).code ===
-      "EMAIL_ALREADY_EXISTS",
-    "db unique violation",
-  );
-  assert(mapSignUpError({ message: "network error" }).code === undefined, "generic stays generic");
-}

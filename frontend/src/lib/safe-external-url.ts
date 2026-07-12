@@ -1,4 +1,4 @@
-import { sanitizeReturnToPath } from "./safe-return-to";
+import { sanitizeReturnToPath } from "@social0/shared";
 
 export { sanitizeReturnToPath };
 

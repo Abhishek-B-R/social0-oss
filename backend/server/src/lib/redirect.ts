@@ -1,6 +1,6 @@
 import { appUrlForPath } from "./app-url.js";
 import { redirect } from "./http/route-redirect.js";
-import { sanitizeReturnToPath } from "./safe-return-to.js";
+import { sanitizeReturnToPath } from "@social0/shared";
 
 /** Redirect only to a safe in-app path on the frontend origin. */
 export function safeRedirect(

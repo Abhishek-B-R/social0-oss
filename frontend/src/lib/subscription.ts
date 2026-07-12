@@ -1,4 +1,4 @@
-import type { SubscriptionTier } from "@/lib/plans";
+import type { SubscriptionTier } from "@social0/shared";
 
 export type SubscriptionState = {
   tier: SubscriptionTier;

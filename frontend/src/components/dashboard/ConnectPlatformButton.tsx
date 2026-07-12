@@ -7,7 +7,7 @@ import { BlueskyByokModal } from "@/components/BlueskyByokModal";
 import { PreConnectModal } from "@/components/PreConnectModal";
 import { InstagramConnectionModal } from "@/components/InstagramConnectionModal";
 import { signInUrl } from "@/lib/sign-in-url";
-import { sanitizeReturnToPath } from "@/lib/safe-return-to";
+import { sanitizeReturnToPath } from "@social0/shared";
 import { apiUrl } from "@/lib/env";
 
 type Platform = (typeof PLATFORMS)[number];

@@ -4,12 +4,6 @@ import { enqueueCronJob, queueNameForJob } from "../../services/enqueue.js";
 import { verifyCronSecretFromAuthorizationHeader } from "../../lib/cron-auth.js";
 import { JOB_NAMES, type JobName } from "@social0/shared";
 
-function verifyCronSecret(request: FastifyRequest) {
-  const expected = process.env.CRON_SECRET?.trim();
-  if (!expected) return false;
-  return verifyCronSecretFromAuthorizationHeader(request.headers.authorization);
-}
-
 async function enqueueSchedulerCron(
   request: FastifyRequest,
   jobName: JobName,
@@ -44,28 +38,28 @@ function registerCronTrigger(
 
 export async function registerCronRoutes(app: FastifyInstance) {
   registerCronTrigger(app, "/cron/publish-scheduled", async (request, reply) => {
-    if (!verifyCronSecret(request)) {
+    if (!verifyCronSecretFromAuthorizationHeader(request.headers.authorization)) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
     return enqueueSchedulerCron(request, JOB_NAMES.CRON_PUBLISH_SCHEDULED, reply);
   });
 
   registerCronTrigger(app, "/cron/repost", async (request, reply) => {
-    if (!verifyCronSecret(request)) {
+    if (!verifyCronSecretFromAuthorizationHeader(request.headers.authorization)) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
     return enqueueSchedulerCron(request, JOB_NAMES.CRON_REPOST, reply);
   });
 
   registerCronTrigger(app, "/cron/autoplug", async (request, reply) => {
-    if (!verifyCronSecret(request)) {
+    if (!verifyCronSecretFromAuthorizationHeader(request.headers.authorization)) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
     return enqueueSchedulerCron(request, JOB_NAMES.CRON_AUTOPLUG, reply);
   });
 
   registerCronTrigger(app, "/cron/token-health", async (request, reply) => {
-    if (!verifyCronSecret(request)) {
+    if (!verifyCronSecretFromAuthorizationHeader(request.headers.authorization)) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
     return enqueueTokenHealthCron(request, reply);
@@ -75,7 +69,7 @@ export async function registerCronRoutes(app: FastifyInstance) {
     app,
     "/cron/billing-zombie-cleanup",
     async (request, reply) => {
-      if (!verifyCronSecret(request)) {
+      if (!verifyCronSecretFromAuthorizationHeader(request.headers.authorization)) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
       return enqueueSchedulerCron(

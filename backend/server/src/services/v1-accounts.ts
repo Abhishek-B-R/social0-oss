@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { connectedAccounts, verification } from "../db/schema.js";
-import { encrypt, encryptToken } from "../lib/encryption.js";
+import { encrypt, encryptToken } from "@social0/shared";
 import { env } from "../lib/env.js";
 import { getConnectCallbackBaseUrl } from "../lib/app-url.js";
 import {
@@ -11,7 +11,7 @@ import {
 } from "../lib/facebook-oauth.js";
 import { PLATFORM_OAUTH_CONFIG, type Platform } from "../lib/platforms.js";
 import { revokeTokenOnPlatform } from "../lib/revoke-token.js";
-import { decryptToken } from "../lib/encryption.js";
+import { decryptToken } from "@social0/shared";
 
 const VALID_PLATFORMS: Platform[] = [
   "linkedin",

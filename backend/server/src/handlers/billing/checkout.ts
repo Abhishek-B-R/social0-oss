@@ -6,7 +6,7 @@ import { PLAN_IDS } from "@social0/shared";
 import { resolveAppUrlFromRequest } from "../../lib/app-url.js";
 import { env } from "../../lib/env.js";
 import { checkoutLimiter, enforceRateLimit } from "../../lib/ratelimit.js";
-import { sanitizeReturnToPath } from "../../lib/safe-return-to.js";
+import { sanitizeReturnToPath } from "@social0/shared";
 import {
   createCustomerPortalUrl,
   evaluateCheckoutEligibility,

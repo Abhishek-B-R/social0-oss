@@ -59,6 +59,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
+        "@social0/shared": path.resolve(__dirname, "../backend/shared/src/index.ts"),
       },
     },
     server: {

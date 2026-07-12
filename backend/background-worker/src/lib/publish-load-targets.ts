@@ -22,7 +22,12 @@ export async function loadPublicationTargets(job: PublishPostJob): Promise<
     .where(and(eq(posts.id, job.postId), eq(posts.userId, job.userId)))
     .limit(1);
 
-  if (!post) return [];
+  if (!post) {
+    console.warn(
+      `[worker] loadPublicationTargets - post not found postId=${job.postId}`,
+    );
+    return [];
+  }
 
   const accountFilter = job.connectedAccountIds?.length
     ? inArray(connectedAccounts.id, job.connectedAccountIds)

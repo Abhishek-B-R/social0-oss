@@ -8,7 +8,7 @@ import {
   getPostDetail,
   getPostMedia,
 } from "@/lib/posts-list/posts-list-data";
-import type { PublicationRow, StatusFilter } from "@/lib/posts-list/posts-list-types";
+import type { PublicationRow, StatusFilter } from "@social0/shared";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { getPlanLimits } from "@social0/shared";
 import { getUserSettingsSnapshot } from "@/services/settings";

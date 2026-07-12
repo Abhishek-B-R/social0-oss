@@ -3,7 +3,7 @@ import { fetchApi } from "@/lib/fetch-api";
 import { useEffect, useState } from "react";
 import { Check, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { formatTimezoneLabel } from "@/lib/date-format";
+import { formatTimezoneLabel } from "@social0/shared";
 
 // Mon first for display (grid columns)
 const DAYS_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;

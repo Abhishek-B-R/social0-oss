@@ -2,7 +2,7 @@ import {
   getMostRestrictiveLimit,
   PLATFORM_DISPLAY_NAMES,
   getLimitForAccount,
-} from "@/lib/platform-limits";
+} from "@social0/shared";
 
 interface Account {
   platform: string;

@@ -6,7 +6,7 @@ import crypto from "node:crypto";
 import { db } from "../../db/index.js";
 import { userWebhookSubscriptions } from "../../db/schema.js";
 import { apiError } from "../../lib/api-errors.js";
-import { encryptToken } from "../../lib/encryption.js";
+import { encryptToken } from "@social0/shared";
 import { WEBHOOK_EVENTS } from "../../lib/user-webhook-delivery.js";
 import { requireV1ApiKey, v1UserId } from "../../middleware/api-auth.js";
 

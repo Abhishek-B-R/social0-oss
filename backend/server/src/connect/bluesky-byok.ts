@@ -3,7 +3,7 @@ import { db } from "../db/index.js";
 import { connectedAccounts } from "../db/schema.js";
 import { eq, and } from "drizzle-orm";
 import { headers } from "../lib/http/request-cookies.js";
-import { encryptToken } from "../lib/encryption.js";
+import { encryptToken } from "@social0/shared";
 import { checkAccountLimits } from "../lib/plan-limits.js";
 import crypto from "crypto";
 import { z } from "zod";

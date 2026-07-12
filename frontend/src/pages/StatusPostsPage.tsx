@@ -8,9 +8,9 @@ import { Pagination } from "@/components/ui/Pagination";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 import { DOCS_POSTS_DRAFTS_URL } from "@/lib/docs-url";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
-import { POSTS_PAGE_SIZE } from "@/features/dashboard/posts/posts-constants";
+import { POSTS_PAGE_SIZE } from "@social0/shared";
 import { useSession } from "@/lib/auth-client";
-import type { DateFormatKey } from "@/lib/date-format";
+import type { DateFormatKey } from "@social0/shared";
 
 type StatusPostsConfig = {
   statusFilter: "draft" | "scheduled" | "posted";

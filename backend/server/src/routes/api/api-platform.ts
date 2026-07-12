@@ -4,7 +4,7 @@ import { isSafeOutboundUrl } from "@social0/shared";
 import { db } from "../../db/index.js";
 import { apiKeys, userWebhookSubscriptions } from "../../db/schema.js";
 import { generateApiKey } from "../../lib/api-keys.js";
-import { encryptToken } from "../../lib/encryption.js";
+import { encryptToken } from "@social0/shared";
 import { requireUserId } from "../../middleware/auth.js";
 import crypto from "node:crypto";
 

@@ -12,6 +12,7 @@
     "start": "vite preview --host"
   },
   "dependencies": {
+    "@social0/shared": "file:../backend/shared",
     "@fontsource/geist-sans": "^5.2.5",
     "@posthog/react": "^1.10.3",
     "@radix-ui/react-dialog": "^1.1.17",

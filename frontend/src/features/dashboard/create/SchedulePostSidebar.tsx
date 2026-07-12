@@ -6,9 +6,9 @@ import Link from "@/components/AppLink";
 import { format } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import type { PublishMode } from "@/api/posts";
-import { formatDateTime, formatTimezoneLabel } from "@/lib/date-format";
+import { formatDateTime, formatTimezoneLabel } from "@social0/shared";
 import { signInUrl } from "@/lib/sign-in-url";
-import { getPlanLimits } from "@/lib/plans";
+import { getPlanLimits } from "@social0/shared";
 import { Settings, ListOrdered } from "lucide-react";
 
 export type SidebarAutoRepost = {

@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { isSafeOutboundUrl } from "@social0/shared";
 import { db } from "../db/index.js";
 import { userWebhookSubscriptions } from "../db/schema.js";
-import { decryptToken } from "./encryption.js";
+import { decryptToken } from "@social0/shared";
 import { fetchWithTimeout } from "./fetch-with-timeout.js";
 
 export const WEBHOOK_EVENTS = [

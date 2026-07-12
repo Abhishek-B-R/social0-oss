@@ -29,7 +29,7 @@ import {
   DATE_FORMAT_OPTIONS,
   formatTimezoneLabel,
   type DateFormatKey,
-} from "@/lib/date-format";
+} from "@social0/shared";
 import { uploadFile } from "@/lib/upload-file";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import { QueueScheduleSection } from "./QueueScheduleSection";

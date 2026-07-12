@@ -1,7 +1,7 @@
 import { db } from "../db/index.js";
 import { connectedAccounts } from "../db/schema.js";
 import { eq } from "drizzle-orm";
-import { decryptToken, encryptToken } from "./encryption.js";
+import { decryptToken, encryptToken } from "@social0/shared";
 import { env } from "./env.js";
 
 export const YOUTUBE_UPLOAD_SCOPE =

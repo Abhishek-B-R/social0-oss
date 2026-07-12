@@ -7,7 +7,7 @@
 import { db } from "../db/index.js";
 import { connectedAccounts } from "../db/schema.js";
 import { and, eq, or, lt, isNull, inArray } from "drizzle-orm";
-import { decryptToken } from "./encryption.js";
+import { decryptToken } from "@social0/shared";
 import OAuth from "oauth-1.0a";
 import crypto from "crypto";
 

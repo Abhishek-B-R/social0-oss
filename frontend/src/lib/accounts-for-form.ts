@@ -1,4 +1,5 @@
-import { NEVER_EXPIRES_PLATFORMS, PLATFORMS } from "@/lib/platforms";
+import { NEVER_EXPIRES_PLATFORMS } from "@social0/shared";
+import { PLATFORMS } from "@/lib/platforms";
 
 const platformOrder: string[] = PLATFORMS.map((p) => p.id);
 const skipExpiryDisplay = new Set(["youtube", "tiktok"]);

@@ -8,7 +8,7 @@ import { IconLoader2, IconX } from "@tabler/icons-react";
 import { toast } from "sonner";
 import type { SubscriptionState } from "@/lib/subscription";
 import type { AccountLimitResult } from "@/lib/plan-limits";
-import { formatDate } from "@/lib/date-format";
+import { formatDate } from "@social0/shared";
 import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 import { Button } from "@/components/ui/button";
 import {

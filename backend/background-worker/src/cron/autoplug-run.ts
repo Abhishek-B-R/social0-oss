@@ -3,9 +3,9 @@ import { db } from "../db/index.js";
 import { autoPlugs, connectedAccounts, userSettings } from "../db/schema.js";
 import { eq, inArray } from "drizzle-orm";
 import { TwitterApi } from "twitter-api-v2";
-import { decryptToken } from "../lib/encryption.js";
+import { decryptToken } from "@social0/shared";
 import { verifyCronAuth } from "../lib/cron-auth.js";
-import { logCronSkipped } from "../lib/plan-analytics.js";
+import { logCronSkipped } from "@social0/shared";
 import { getPlanLimits, type SubscriptionTier } from "@social0/shared";
 import { env } from "../lib/env.js";
 
