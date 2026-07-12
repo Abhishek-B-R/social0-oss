@@ -15,7 +15,6 @@ import {
 import { SeoHead } from "@/components/seo/SeoHead";
 import { Button } from "@/components/ui/button";
 import {
-  DOCS_API_KEYS_URL,
   DOCS_CONNECTIONS_URL,
   DOCS_MCP_QUICKSTART_URL,
   DOCS_MCP_URL,
@@ -231,10 +230,7 @@ function ChatBubble({
 }) {
   return (
     <div
-      className={cn(
-        "flex",
-        role === "user" ? "justify-end" : "justify-start",
-      )}
+      className={cn("flex", role === "user" ? "justify-end" : "justify-start")}
     >
       <div
         className={cn(
@@ -305,7 +301,9 @@ function McpConfigPanel() {
         ))}
       </div>
 
-      <p className="mb-6 text-[13px] text-muted-foreground">{hosts.find((h) => h.id === host)?.hint}</p>
+      <p className="mb-6 text-[13px] text-muted-foreground">
+        {hosts.find((h) => h.id === host)?.hint}
+      </p>
 
       <div className="mb-4 grid gap-4 sm:grid-cols-2">
         <label className="block">
@@ -345,7 +343,11 @@ function McpConfigPanel() {
           className="absolute right-3 top-3 gap-1.5"
           onClick={copyConfig}
         >
-          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? (
+            <Check className="h-3.5 w-3.5" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
+          )}
           {copied ? "Copied" : "Copy"}
         </Button>
       </div>
@@ -360,8 +362,11 @@ function McpConfigPanel() {
         >
           social0-mcp
         </a>
-        , run <code className="rounded bg-muted px-1">npm install && npm run build</code>, then
-        restart your AI host.
+        , run{" "}
+        <code className="rounded bg-muted px-1">
+          npm install && npm run build
+        </code>
+        , then restart your AI host.
       </p>
     </div>
   );
@@ -412,9 +417,9 @@ export default function McpPage() {
             <em className="text-[#1a6b4a] dark:text-[#00ff77]">from your AI</em>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-[17px] leading-relaxed text-muted-foreground">
-            Open-source MCP server for Social0. Let Claude, Cursor, or ChatGPT draft
-            posts, publish to every platform, upload media, and track progress — no
-            dashboard required.
+            Open-source MCP server for Social0. Let Claude, Cursor, or ChatGPT
+            draft posts, publish to every platform, upload media, and track
+            progress — no dashboard required.
           </p>
 
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -422,7 +427,7 @@ export default function McpPage() {
               href={DOCS_MCP_QUICKSTART_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-[#1a6b4a] px-6 py-3.5 text-[15px] font-medium text-white transition-all hover:-translate-y-px hover:bg-[#155a3d] sm:w-auto dark:bg-emerald-500 dark:text-black dark:hover:bg-emerald-400"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-foreground px-6 py-3.5 text-[15px] font-medium text-background transition-all hover:-translate-y-px hover:opacity-90 sm:w-auto dark:bg-[#ffffff] dark:text-[#0a0a0a]"
             >
               View setup docs
               <ArrowRight className="h-4 w-4" />
@@ -459,7 +464,7 @@ export default function McpPage() {
 
             <TerminalWindow title="social0 → list_accounts">
               <pre className="whitespace-pre-wrap text-[#8b949e]">
-{`platform      username        status
+                {`platform      username        status
 linkedin      acme-co         active
 twitter_x     acme            active
 instagram     acme.official   active
@@ -585,7 +590,8 @@ bluesky       acme.bsky       active`}
             Everything you need. Zero extra UI.
           </h2>
           <p className="mx-auto mb-12 max-w-xl text-center text-muted-foreground">
-            13 tools covering accounts, posts, media, publish, schedule, and status.
+            13 tools covering accounts, posts, media, publish, schedule, and
+            status.
           </p>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => (
@@ -622,10 +628,12 @@ bluesky       acme.bsky       active`}
           <div>
             <h3 className="font-medium text-foreground">Thin by design</h3>
             <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">
-              The MCP server has no database or OAuth — it translates tool calls to the
-              Social0 REST API using your API key. Multi-platform publishes fan out in
-              parallel; use{" "}
-              <code className="rounded bg-muted px-1 text-[13px]">get_publish_status</code>{" "}
+              The MCP server has no database or OAuth — it translates tool calls
+              to the Social0 REST API using your API key. Multi-platform
+              publishes fan out in parallel; use{" "}
+              <code className="rounded bg-muted px-1 text-[13px]">
+                get_publish_status
+              </code>{" "}
               to poll until each platform finishes.
             </p>
           </div>
@@ -648,7 +656,9 @@ bluesky       acme.bsky       active`}
                   aria-expanded={openFaq === i}
                 >
                   {item.q}
-                  <span className="text-muted-foreground">{openFaq === i ? "−" : "+"}</span>
+                  <span className="text-muted-foreground">
+                    {openFaq === i ? "−" : "+"}
+                  </span>
                 </button>
                 {openFaq === i ? (
                   <p className="px-5 pb-4 text-[14px] leading-relaxed text-muted-foreground">
@@ -661,13 +671,13 @@ bluesky       acme.bsky       active`}
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="border-t border-border bg-[#1a6b4a] px-6 py-16 text-center dark:bg-emerald-950 lg:px-8">
+      {/* Final CTA — avoid bg-white (remapped to --card in dark mode) */}
+      <section className="border-t border-border bg-foreground px-6 py-16 text-center dark:bg-[#0A0A0A] lg:px-8">
         <div className="mx-auto max-w-xl">
-          <h2 className="font-serif text-[clamp(28px,4vw,36px)] tracking-tight text-white">
+          <h2 className="font-serif text-[clamp(28px,4vw,36px)] tracking-tight text-background dark:text-white">
             Ready to post from AI?
           </h2>
-          <p className="mt-3 text-[16px] text-emerald-100">
+          <p className="mt-3 text-[16px] text-background/70 dark:text-white/70">
             Connect once, then manage every platform from natural language.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -675,13 +685,14 @@ bluesky       acme.bsky       active`}
               href={DOCS_MCP_QUICKSTART_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-white px-6 py-3.5 text-[15px] font-medium text-[#1a6b4a] transition-all hover:-translate-y-px sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-background px-6 py-3.5 text-[15px] font-medium text-foreground transition-all hover:-translate-y-px hover:opacity-90 sm:w-auto dark:bg-[#ffffff] dark:text-[#0a0a0a]"
             >
               View setup docs
             </a>
+
             <Link
               href="/auth"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] border border-white/30 px-6 py-3.5 text-[15px] font-medium text-white transition-all hover:bg-white/10 sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] border border-background/40 px-6 py-3.5 text-[15px] font-medium text-background transition-all hover:bg-background/10 sm:w-auto dark:border-white/40 dark:text-white dark:hover:bg-white/10"
             >
               Get started free
             </Link>

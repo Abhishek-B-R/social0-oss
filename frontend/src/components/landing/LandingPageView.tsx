@@ -7,6 +7,7 @@ import { WhoIsItFor } from "@/components/landing/WhoIsItFor";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
 import { SupportedPlatforms } from "@/components/landing/SupportedPlatforms";
+import { DevelopersSection } from "@/components/landing/DevelopersSection";
 import { FounderSection } from "@/components/landing/FounderSection";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { FAQ } from "@/components/landing/FAQ";
@@ -27,6 +28,7 @@ export function LandingPageView({ signedIn }: { signedIn: boolean }) {
         <HowItWorks />
         <FeaturesSection />
         <SupportedPlatforms />
+        <DevelopersSection />
         <FounderSection />
         <PricingSection signedIn={signedIn} />
         <FAQ />

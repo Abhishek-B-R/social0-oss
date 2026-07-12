@@ -27,6 +27,11 @@ export const landingFaqs = [
       "Yes. You can connect multiple accounts from the same platform and choose which ones to publish to for each post.",
   },
   {
+    question: "Does Social0 have an API?",
+    answer:
+      "Yes. Social0 has a REST API at api.social0.app/v1 with API keys, webhooks for publish events, and OpenAPI docs. There's also an MCP server for Claude, Cursor, and VS Code. Manage keys in Dashboard → Developer.",
+  },
+  {
     question: "How does parallel publishing work?",
     answer:
       "When you hit publish, Social0 sends your post to all selected platforms simultaneously. If one platform fails (API error, rate limit), the others still go through. You'll see exactly which succeeded and which failed.",

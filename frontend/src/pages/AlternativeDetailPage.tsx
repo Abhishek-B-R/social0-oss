@@ -59,18 +59,16 @@ export function AlternativeDetailPage() {
         canonical={absoluteUrl(`/alternatives/${slug}`)}
       />
       <PseoJsonLd graphs={jsonLd} />
-      <section className="border-b border-border px-6 pb-16 pt-12 lg:px-8 lg:pt-16">
+
+      <section className="border-b border-border px-6 pb-14 pt-12 lg:px-8 lg:pb-16 lg:pt-16">
         <div className="mx-auto max-w-[1100px]">
-          <nav className="mb-6 text-[13px] text-muted-foreground">
+          <nav className="mb-8 text-[13px] text-muted-foreground">
             <Link href="/alternatives" className="hover:text-foreground">
               Alternatives
             </Link>
             <span className="mx-2">/</span>
             <span className="text-foreground">{page.competitorName}</span>
           </nav>
-          <p className="mb-3 text-[11px] uppercase tracking-widest text-emerald-700">
-            {page.competitorName} alternative
-          </p>
           <h1 className="max-w-3xl font-serif text-[clamp(32px,5vw,52px)] leading-tight tracking-tight text-foreground">
             {page.heroHeadline}
           </h1>
@@ -82,7 +80,7 @@ export function AlternativeDetailPage() {
               href="/auth"
               className="inline-flex items-center gap-2 rounded-[10px] bg-foreground px-6 py-3 text-[15px] font-medium text-background transition-all hover:-translate-y-px dark:bg-white dark:text-black"
             >
-              Try Social0 free
+              Start posting
               <span aria-hidden="true">→</span>
             </Link>
             <Link
@@ -94,43 +92,53 @@ export function AlternativeDetailPage() {
           </div>
         </div>
       </section>
+
       <section className="px-6 py-16 lg:px-8">
         <div className="mx-auto max-w-[1100px]">
-          <p className="max-w-3xl text-[16px] leading-relaxed text-muted-foreground">
+          <p className="max-w-2xl text-[16px] leading-relaxed text-muted-foreground">
             {page.intro}
           </p>
-          <h2 className="mt-12 mb-6 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-foreground">
+
+          <h2 className="mt-14 mb-6 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-foreground">
             Why creators switch from {page.competitorName}
           </h2>
-          <ul className="grid gap-3 sm:grid-cols-2">
+          <ul className="max-w-2xl space-y-3">
             {page.whySwitch.map((item) => (
               <li
                 key={item}
-                className="rounded-xl border border-border bg-background px-5 py-4 text-[14px] leading-relaxed text-foreground dark:bg-background/50"
+                className="flex gap-3 text-[15px] leading-relaxed text-foreground"
               >
+                <span
+                  className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/40"
+                  aria-hidden
+                />
                 {item}
               </li>
             ))}
           </ul>
         </div>
       </section>
+
       {page.comparisonRows.length > 0 && (
-        <section className="border-y border-border bg-muted/30 px-6 py-16 lg:px-8">
+        <section className="border-y border-border px-6 py-16 lg:px-8">
           <div className="mx-auto max-w-[1100px]">
             <h2 className="mb-8 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-foreground">
               Social0 vs {page.competitorName}
             </h2>
-            <div className="overflow-x-auto rounded-xl border border-border">
+            <div className="overflow-x-auto">
               <table className="w-full min-w-[520px] text-left text-[14px]">
                 <thead>
-                  <tr className="border-b border-border bg-background">
-                    <th className="px-5 py-4 font-medium text-muted-foreground">
+                  <tr className="border-b border-border">
+                    <th className="pb-4 pr-6 font-medium text-muted-foreground">
                       Feature
                     </th>
-                    <th className="px-5 py-4 font-medium text-foreground">
+                    <th className="pb-4 pr-6 font-medium text-foreground">
                       Social0
+                      <span className="ml-2 text-[12px] font-normal text-muted-foreground">
+                        recommended
+                      </span>
                     </th>
-                    <th className="px-5 py-4 font-medium text-muted-foreground">
+                    <th className="pb-4 font-medium text-muted-foreground">
                       {page.competitorName}
                     </th>
                   </tr>
@@ -141,13 +149,13 @@ export function AlternativeDetailPage() {
                       key={row.feature}
                       className="border-b border-border last:border-0"
                     >
-                      <td className="px-5 py-4 text-foreground">
+                      <td className="py-4 pr-6 text-foreground">
                         {row.feature}
                       </td>
-                      <td className="px-5 py-4 text-foreground">
+                      <td className="py-4 pr-6 text-foreground">
                         {row.social0}
                       </td>
-                      <td className="px-5 py-4 text-muted-foreground">
+                      <td className="py-4 text-muted-foreground">
                         {row.competitor}
                       </td>
                     </tr>
@@ -158,6 +166,7 @@ export function AlternativeDetailPage() {
           </div>
         </section>
       )}
+
       <PseoFaq faqs={page.faq} />
       <PseoRelatedLinks title="Related features" links={relatedFeatures} />
       <PseoRelatedLinks

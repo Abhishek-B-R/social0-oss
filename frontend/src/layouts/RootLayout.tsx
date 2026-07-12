@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { RouteSeo } from "@/components/seo/RouteSeo";
@@ -12,6 +12,12 @@ export function RootLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const posthog = usePostHog();
+
+  // Client-side navigations keep window scroll; reset to top unless a hash targets a section.
+  useLayoutEffect(() => {
+    if (location.hash) return;
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [location.pathname, location.search, location.hash]);
 
   useEffect(() => {
     if (!posthog?.__loaded) return;

@@ -11,7 +11,7 @@ type NavLink = { href: string; label: string };
 const landingNavLinks: NavLink[] = [
   { href: "/#features", label: "Product" },
   { href: "/#platforms", label: "Platforms" },
-  { href: "/mcp", label: "MCP" },
+  { href: "/#developers", label: "Developers" },
   { href: "/#pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },
 ];
