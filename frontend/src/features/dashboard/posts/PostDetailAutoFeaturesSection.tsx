@@ -30,7 +30,7 @@ import {
   isPostOlderThanAutoFeaturesEditWindow,
   getResurfacePlatformForApi,
   getResurfacePlatforms,
-} from "@social0/shared/browser";
+} from "@/lib/resurface-utils";
 import type { AutoPlugDetail, ResurfaceDetail } from "./post-types";
 import {
   AutoPlugPanel,

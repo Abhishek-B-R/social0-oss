@@ -1,9 +1,9 @@
-export {
-  POSTS_PAGE_SIZE,
-  type PublicationRow,
-  type PostsListParams,
-  type StatusFilter,
-} from "@social0/shared/browser";
+export { POSTS_PAGE_SIZE } from "./posts-constants";
+export type {
+  PublicationRow,
+  PostsListParams,
+  StatusFilter,
+} from "./posts-list-types";
 
 export type PostForEdit = {
   id: string;
@@ -57,7 +57,7 @@ export type AutoPlugDetail = {
 
 export type PostDetailResult = {
   post: PostDetailRow;
-  publications: import("@social0/shared/browser").PublicationRow[];
+  publications: import("./posts-list-types").PublicationRow[];
   queuedSlot: QueuedSlotInfo | null;
   autoPlug: AutoPlugDetail | null;
   resurface: ResurfaceDetail | null;

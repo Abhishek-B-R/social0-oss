@@ -1,5 +1,5 @@
 import { rpc } from "@/lib/rpc";
-import type { DateFormatKey } from "@social0/shared/browser";
+import type { DateFormatKey } from "@/lib/date-format";
 
 export type SettingsSnapshot = {
   automationEmails: boolean;

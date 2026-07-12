@@ -1,5 +1,5 @@
 // Order: color groups - blues → reds → gradient → blacks (visually consistent everywhere)
-import { FACEBOOK_PAGE_SCOPES } from "@social0/shared/browser";
+import { FACEBOOK_PAGE_SCOPES } from "@/lib/facebook-scopes";
 
 export const PLATFORMS = [
   { id: "linkedin", name: "LinkedIn", icon: null },
@@ -14,6 +14,9 @@ export const PLATFORMS = [
 ] as const;
 
 export type Platform = (typeof PLATFORMS)[number]["id"];
+
+/** BYOK + Twitter: never show "expired" in UI. */
+export const NEVER_EXPIRES_PLATFORMS = new Set<string>(["bluesky", "twitter_x"]);
 
 export const PLATFORM_OAUTH_CONFIG: Record<
   Platform,

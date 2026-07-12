@@ -1,4 +1,4 @@
-import { sanitizeReturnToPath } from "@social0/shared/browser";
+import { sanitizeReturnToPath } from "./safe-return-to";
 
 export { sanitizeReturnToPath };
 

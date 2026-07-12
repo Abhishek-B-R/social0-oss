@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { DayPicker } from "react-day-picker";
 import { format, setHours, setMinutes, isBefore, startOfDay, startOfToday } from "date-fns";
-import { formatDateTimeAt } from "@social0/shared/browser";
+import { formatDateTimeAt } from "@/lib/date-format";
 import "react-day-picker/style.css";
 
 type ScheduleDateTimePickerProps = {

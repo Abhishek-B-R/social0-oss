@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getContentTypeBySlug } from "@/lib/content-types";
-import { getPlanLimits, type SubscriptionTier } from "@social0/shared/browser";
-import type { DateFormatKey } from "@social0/shared/browser";
+import { getPlanLimits, type SubscriptionTier } from "@/lib/plans";
+import type { DateFormatKey } from "@/lib/date-format";
 import {
   DOCS_COLLECTION_POST_TYPE_URL,
   DOCS_CREATE_TYPE_URL,

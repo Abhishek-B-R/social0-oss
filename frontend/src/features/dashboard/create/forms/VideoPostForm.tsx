@@ -29,7 +29,7 @@ import {
 import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
-import { getResurfacePlatforms } from "@social0/shared/browser";
+import { getResurfacePlatforms } from "@/lib/resurface-utils";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type {
   AutoPlugConfig,
@@ -78,7 +78,7 @@ import {
   getAccountsOverVideoLimit,
   type VideoLimitWarning,
   getLimitForAccount,
-} from "@social0/shared/browser";
+} from "@/lib/platform-limits";
 import {
   ChevronDown,
   ChevronUp,

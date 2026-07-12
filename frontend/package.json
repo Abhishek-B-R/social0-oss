@@ -5,14 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc -p ../backend/shared/tsconfig.json && tsc -b && node scripts/generate-sitemap.mjs && vite build",
+    "build": "tsc -b && node scripts/generate-sitemap.mjs && vite build",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "preview": "vite preview",
     "start": "vite preview --host"
   },
   "dependencies": {
-    "@social0/shared": "file:../backend/shared",
     "@fontsource/geist-sans": "^5.2.5",
     "@posthog/react": "^1.10.3",
     "@radix-ui/react-dialog": "^1.1.17",

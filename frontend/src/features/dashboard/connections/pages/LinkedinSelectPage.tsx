@@ -4,7 +4,7 @@ import { fetchApi } from "@/lib/fetch-api";
 import { useCallback, useEffect, useState } from "react";
 import Link from "@/components/AppLink";
 import { toast } from "sonner";
-import { sanitizeReturnToPath } from "@social0/shared/browser";
+import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 import { completeConnectSelect } from "@/lib/connect-select-response";
 import { stripSensitiveQueryParams } from "@/lib/sanitize-analytics-url";
 

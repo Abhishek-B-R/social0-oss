@@ -7,7 +7,7 @@ import Link from "@/components/AppLink";
 import { PLATFORMS } from "@/lib/platforms";
 import { setOnboardingCompleted } from "@/api/onboarding";
 import { getPlatformIcon } from "@/lib/platform-icons";
-import { getPlanLimits } from "@social0/shared/browser";
+import { getPlanLimits } from "@/lib/plans";
 import { ConnectPlatformButton } from "@/components/dashboard/ConnectPlatformButton";
 
 const PLATFORM_UI: Record<string, { name: string; color: string }> = {

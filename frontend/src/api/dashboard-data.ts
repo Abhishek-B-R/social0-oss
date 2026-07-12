@@ -1,5 +1,5 @@
 import { rpc } from "@/lib/rpc";
-import type { PublicationRow } from "@social0/shared/browser";
+import type { PublicationRow } from "@/features/dashboard/posts/posts-list-types";
 
 type SerializedPublication = Omit<PublicationRow, "publishedAt"> & {
   publishedAt: string | null;
