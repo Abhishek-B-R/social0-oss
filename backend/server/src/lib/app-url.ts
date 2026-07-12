@@ -1,7 +1,7 @@
 import { env, appBaseUrl, getAuthApiBaseUrl } from "./env.js";
 import { forwardedRequestOrigin } from "./forwarded-request-url.js";
 import { getRequestContext } from "./request-context.js";
-import { sanitizeReturnToPath } from "./safe-return-to.js";
+import { sanitizeReturnToPath } from "@social0/shared";
 import { normalizeAppUrl } from "./url-utils.js";
 
 function toOrigin(url: string): string {

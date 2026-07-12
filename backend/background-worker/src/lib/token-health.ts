@@ -7,7 +7,7 @@
 import { db } from "../db/index.js";
 import { connectedAccounts } from "../db/schema.js";
 import { and, eq, or, lt, isNull, inArray } from "drizzle-orm";
-import { decryptToken } from "./encryption.js";
+import { decryptToken } from "@social0/shared";
 import OAuth from "oauth-1.0a";
 import crypto from "crypto";
 
@@ -30,7 +30,7 @@ const PLATFORMS_WITH_EXPIRING_TOKENS = new Set([
 ]);
 
 /** Never show "expired" in UI for these platforms (BYOK + Twitter app passwords). */
-export const NEVER_EXPIRES_PLATFORMS = new Set(["bluesky", "twitter_x"]);
+export { NEVER_EXPIRES_PLATFORMS } from "@social0/shared";
 
 export type AccountForHealthCheck = {
   id: string;

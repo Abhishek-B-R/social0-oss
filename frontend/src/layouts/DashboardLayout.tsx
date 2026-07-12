@@ -5,7 +5,6 @@ import { dashboardSeo } from "@/lib/page-metadata";
 import { absoluteUrl } from "@/lib/seo";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { DevScheduledPostPoller } from "@/components/DevScheduledPostPoller";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardBottomNav } from "@/components/dashboard/DashboardBottomNav";
 import { SubscriptionSync } from "@/components/dashboard/SubscriptionSync";
@@ -128,7 +127,6 @@ export function DashboardLayout() {
         </div>
       </main>
       <DashboardBottomNav />
-      {session && <DevScheduledPostPoller />}
       {session && <LegalConsentGate />}
       {!isPending && isGuest && <GuestTestModeDialog />}
     </div>

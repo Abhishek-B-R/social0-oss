@@ -93,5 +93,3 @@ export async function registerConnectRoutes(app: FastifyInstance) {
     });
   });
 }
-
-export { getSessionFromRequest } from "../../lib/session.js";

@@ -1,7 +1,7 @@
 import { db } from "../db/index.js";
 import { userSettings } from "../db/schema.js";
 import { eq, sql } from "drizzle-orm";
-import type { SubscriptionTier } from "./plans.js";
+import type { SubscriptionTier } from "@social0/shared";
 
 export type SubscriptionState = {
   tier: SubscriptionTier;

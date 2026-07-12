@@ -3,7 +3,7 @@ import { db } from "../db/index.js";
 import { connectedAccounts, userSettings } from "../db/schema.js";
 import { eq, and, sql, asc, inArray } from "drizzle-orm";
 import { getSubscriptionForUser } from "./subscription.js";
-import { getPlanLimits, isActiveTier } from "./plans.js";
+import { getPlanLimits, isActiveTier } from "@social0/shared";
 import { twitterPublishLimiter, enforceRateLimit } from "./ratelimit.js";
 
 /**

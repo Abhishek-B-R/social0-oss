@@ -11,7 +11,7 @@ import {
 } from "@/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { headers } from "../lib/http/request-cookies.js";
-import { isPostOlderThanAutoFeaturesEditWindow } from "@/lib/resurface-utils";
+import { isPostOlderThanAutoFeaturesEditWindow } from "@social0/shared";
 
 const PLATFORM_X = "x";
 const MAX_RESURFACES_CAP = 10;

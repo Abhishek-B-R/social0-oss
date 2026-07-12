@@ -12,14 +12,14 @@ import {
 } from "@/db/schema";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { headers } from "../lib/http/request-cookies.js";
-import { decryptToken } from "@/lib/encryption";
+import { decryptToken } from "@social0/shared";
 import { uploadLinkedInImage, uploadLinkedInVideo } from "@/lib/linkedin-media";
 import { publishToPlatform } from "@/lib/publish-platform";
 import {
   isValidPostId,
   validateCollectionMedia,
 } from "@/lib/publish-validation";
-import { truncateCaptionForPlatform } from "@/lib/platform-limits";
+import { truncateCaptionForPlatform } from "@social0/shared";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import {
   checkAutoPlugAllowed,
