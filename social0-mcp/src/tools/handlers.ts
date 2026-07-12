@@ -18,7 +18,7 @@ import type {
 } from "../schemas/tools.js";
 import type { Platform } from "../types/index.js";
 import { formatAccountsList, formatPostSummary, resolveAccountIds } from "../utils/accounts.js";
-import { formatToolError, readLocalFile } from "../utils/index.js";
+import { formatToolError, resolveUploadMediaInput } from "../utils/index.js";
 import { resolvePostFormFromMediaIds, validatePlatformsForForm } from "../utils/post-form.js";
 
 function textResult(text: string, isError = false): CallToolResult {
@@ -311,7 +311,13 @@ export async function handleSchedulePost(input: SchedulePostInput): Promise<Call
 
 export async function handleUploadMedia(input: UploadMediaInput): Promise<CallToolResult> {
   try {
-    const file = await readLocalFile(input.file_path);
+    const file = await resolveUploadMediaInput({
+      ...(input.file_path !== undefined ? { file_path: input.file_path } : {}),
+      ...(input.url !== undefined ? { url: input.url } : {}),
+      ...(input.data !== undefined ? { data: input.data } : {}),
+      ...(input.filename !== undefined ? { filename: input.filename } : {}),
+      ...(input.mime_type !== undefined ? { mime_type: input.mime_type } : {}),
+    });
     const media = await mediaApi.uploadMediaBuffer({
       buffer: file.buffer,
       filename: file.filename,
@@ -322,7 +328,8 @@ export async function handleUploadMedia(input: UploadMediaInput): Promise<CallTo
       success: true,
       mediaId: media.id,
       url: media.url,
-      message: `Uploaded ${file.filename}. Use mediaId in create_post, publish_post, schedule_post, publish_now, or schedule_content.`,
+      source: file.source,
+      message: `Uploaded ${file.filename} via ${file.source}. Use mediaId in create_post, publish_post, schedule_post, publish_now, or schedule_content.`,
     });
   } catch (error) {
     return handleApiError("upload media", error);

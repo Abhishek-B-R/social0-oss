@@ -2,6 +2,13 @@
 
 All notable changes to the Social0 MCP server are documented here.
 
+## [0.1.2] - 2026-07-12
+
+### Added
+
+- `upload_media` accepts `url` (remote download) and `data` (base64 / data URLs) in addition to local `file_path`
+- Safer URL fetch (http/https only, blocks localhost / private hosts, size limits)
+
 ## [0.1.1] - 2026-07-12
 
 ### Changed

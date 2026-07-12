@@ -108,11 +108,19 @@ Convert local times to UTC unless the user specifies otherwise.
 
 ### `upload_media`
 
+Provide **exactly one** media source:
+
 | Param | Required | Notes |
 |-------|----------|--------|
-| `file_path` | yes | Absolute path preferred; must be readable by this process |
+| `url` | one-of | Public http(s) **direct** file URL the MCP server downloads (best for Claude.ai / ChatGPT / remote hosts) |
+| `data` | one-of | Base64 bytes or `data:image/png;base64,...` |
+| `file_path` | one-of | Local path on the **MCP server machine** only |
+| `filename` | for `data` | With extension (`photo.png`). Optional for `url` |
+| `mime_type` | optional | e.g. `image/png` — inferred from filename/url when possible |
 
 Returns media `id` for `create_post` / `publish_now` / etc.
+
+**Remote hosts:** always prefer `url` or `data`. Do **not** pass sandbox paths like `/home/claude/...` — the MCP process cannot see that disk.
 
 ---
 
@@ -197,7 +205,7 @@ Aliases: `x`/`twitter` → `twitter_x`; `ig` → `instagram`; `fb` → `facebook
 4. On `partial`, summarize which platforms failed and why.  
 5. Never invent account UUIDs or tracking IDs.  
 6. Never claim MCP can connect Instagram/Facebook/etc. — send users to the dashboard.  
-7. For media, use absolute paths; relative paths depend on the host cwd.  
+7. For media from remote AI hosts, use `upload_media` with `url` or `data` (base64) — never a sandbox filesystem path. `file_path` only works for files on the MCP server machine.  
 8. Schedule times: confirm timezone; default to UTC ISO-8601.
 
 ---

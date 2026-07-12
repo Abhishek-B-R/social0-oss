@@ -197,16 +197,36 @@ export const TOOL_DEFINITIONS: Tool[] = [
   {
     name: "upload_media",
     description:
-      "Upload a local image or video file to Social0 and get a media ID for use in posts. Example: 'Upload logo.png.' or 'Post this image to Twitter and LinkedIn.'",
+      "Upload an image or video to Social0 and get a media ID for posts. For remote AI hosts (Claude.ai, ChatGPT), pass url (public direct file URL) or data (base64). file_path only works when the MCP server can read that path on its own machine.",
     inputSchema: {
       type: "object",
       properties: {
         file_path: {
           type: "string",
-          description: "Absolute or relative path to a local image or video file",
+          description:
+            "Local path on the MCP server machine. Do not use for remote sandboxes.",
+        },
+        url: {
+          type: "string",
+          format: "uri",
+          description:
+            "Public http(s) URL to download. Must be a direct file link the server can fetch.",
+        },
+        data: {
+          type: "string",
+          description:
+            "Base64 file bytes or a data: URL (data:image/png;base64,...).",
+        },
+        filename: {
+          type: "string",
+          description:
+            "Filename with extension (required for bare base64 data; optional for url).",
+        },
+        mime_type: {
+          type: "string",
+          description: "MIME type if not clear from filename/url (e.g. image/png).",
         },
       },
-      required: ["file_path"],
       additionalProperties: false,
     },
   },

@@ -80,12 +80,60 @@ export const schedulePostInputSchema = z.object({
   platform_options: platformOptionsSchema.optional(),
 });
 
-export const uploadMediaInputSchema = z.object({
-  file_path: z
-    .string()
-    .min(1)
-    .describe("Absolute or relative path to a local image or video file"),
-});
+export const uploadMediaInputSchema = z
+  .object({
+    file_path: z
+      .string()
+      .min(1)
+      .optional()
+      .describe(
+        "Local filesystem path (same machine as the MCP server). Prefer url or data for remote AI hosts.",
+      ),
+    url: z
+      .string()
+      .url()
+      .optional()
+      .describe(
+        "Public https URL the MCP server can download (direct file URL, not a share page).",
+      ),
+    data: z
+      .string()
+      .min(1)
+      .optional()
+      .describe(
+        "Base64-encoded file bytes, or a data: URL (data:image/png;base64,...).",
+      ),
+    filename: z
+      .string()
+      .min(1)
+      .optional()
+      .describe("Original filename with extension. Required for data; optional for url."),
+    mime_type: z
+      .string()
+      .min(1)
+      .optional()
+      .describe("MIME type, e.g. image/png or video/mp4. Inferred from filename/url when possible."),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    const sources = [value.file_path, value.url, value.data].filter(
+      (v) => typeof v === "string" && v.length > 0,
+    );
+    if (sources.length !== 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Provide exactly one of: file_path (local MCP), url (remote download), or data (base64).",
+      });
+    }
+    if (value.data && !value.filename && !value.mime_type) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["filename"],
+        message: "filename (with extension) or mime_type is required when using data.",
+      });
+    }
+  });
 
 export const publishNowInputSchema = z.object({
   content: z.string().min(1).describe("Post caption"),

@@ -1,6 +1,6 @@
 {
   "name": "@social0/mcp-server",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Official Model Context Protocol server for Social0 — manage social posts from AI assistants",
   "type": "module",
   "main": "dist/index.js",
@@ -11,7 +11,8 @@
     "dist",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "AGENTS.md"
   ],
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -32,6 +33,15 @@
     "claude"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Abhishek-B-R/social0-mcp.git"
+  },
+  "homepage": "https://github.com/Abhishek-B-R/social0-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/Abhishek-B-R/social0-mcp/issues"
+  },
+  "mcpName": "io.github.Abhishek-B-R/social0-mcp",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
     "dotenv": "^16.5.0",
