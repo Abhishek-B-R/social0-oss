@@ -1,5 +1,6 @@
+import type { FastifyInstance } from "fastify";
 import { and, desc, eq } from "drizzle-orm";
-import type { PublishPlatformJob } from "@social0/shared";
+import type { JobProgressPhase, PublishPlatformJob } from "@social0/shared";
 import { db } from "../db/index.js";
 import {
   postPublications,
@@ -7,15 +8,30 @@ import {
   publishJobEvents,
   publishJobs,
 } from "../db/schema.js";
-import { safeDbPublishTracking } from "./publish-job-tracking.js";
+import {
+  resolveJobProgressStore,
+  safeDbPublishTracking,
+} from "./publish-job-tracking.js";
 
 /** Job progress for platform publishes that run on the API (not CF worker). */
 export async function trackPlatformPhaseServer(
+  app: FastifyInstance | null,
   job: PublishPlatformJob,
-  phase: string,
+  phase: JobProgressPhase,
   message: string,
 ): Promise<void> {
   if (!job.trackingId) return;
+
+  const progress = await resolveJobProgressStore(app);
+  await progress.emit({
+    trackingId: job.trackingId,
+    postId: job.postId,
+    userId: job.userId,
+    phase,
+    platform: job.platform,
+    connectedAccountId: job.connectedAccountId,
+    message,
+  });
 
   await safeDbPublishTracking(async () => {
     await db.insert(publishJobEvents).values({
@@ -36,6 +52,7 @@ export async function trackPlatformPhaseServer(
 }
 
 export async function recordPlatformResultServer(
+  app: FastifyInstance | null,
   job: PublishPlatformJob,
   success: boolean,
   message: string,
@@ -92,6 +109,18 @@ export async function recordPlatformResultServer(
 
   if (!job.trackingId) return;
 
+  const progress = await resolveJobProgressStore(app);
+  const phase: JobProgressPhase = success ? "platform_success" : "platform_failed";
+  await progress.emit({
+    trackingId: job.trackingId,
+    postId: job.postId,
+    userId: job.userId,
+    phase,
+    platform: job.platform,
+    connectedAccountId: job.connectedAccountId,
+    message,
+  });
+
   await safeDbPublishTracking(async () => {
     const [row] = await db
       .select({
@@ -109,8 +138,6 @@ export async function recordPlatformResultServer(
     const failed = row.failed + (success ? 0 : 1);
     const total = row.total;
     const progress = { completed, failed, total };
-    const phase = success ? "platform_success" : "platform_failed";
-
     await db.insert(publishJobEvents).values({
       trackingId: job.trackingId!,
       postId: job.postId,

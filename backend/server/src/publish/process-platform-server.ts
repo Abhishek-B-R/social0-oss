@@ -12,11 +12,12 @@ import { maybeFinalizePostPublish } from "./finalize-post.js";
  * ponytail: Twitter video needs twitter-api-v2 / Node https — not CF Workers fetch OAuth.
  */
 export async function runPlatformJobOnServer(
-  _app: FastifyInstance | null,
+  app: FastifyInstance | null,
   job: PublishPlatformJob,
 ): Promise<void> {
   if (job.trackingId) {
     await trackPlatformPhaseServer(
+      app,
       job,
       "platform_uploading",
       `Uploading to ${job.platform}`,
@@ -43,6 +44,7 @@ export async function runPlatformJobOnServer(
 
     if (job.trackingId) {
       await recordPlatformResultServer(
+        app,
         job,
         success,
         success ? `Published to ${job.platform}` : failureMessage,
@@ -55,7 +57,7 @@ export async function runPlatformJobOnServer(
       err instanceof Error ? err.message : "Platform publish failed";
     console.error("[runPlatformJobOnServer] failed", job.platform, err);
     if (job.trackingId) {
-      await recordPlatformResultServer(job, false, message);
+      await recordPlatformResultServer(app, job, false, message);
     }
   }
 }

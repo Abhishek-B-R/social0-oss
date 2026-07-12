@@ -213,6 +213,12 @@ async function enrichSnapshotFromPublications(
     }
   }
 
+  const showFailureReason =
+    allDone &&
+    (failed > 0 ||
+      postRow[0]?.status === "failed" ||
+      postRow[0]?.status === "partial");
+
   return {
     ...snapshot,
     status,
@@ -221,7 +227,7 @@ async function enrichSnapshotFromPublications(
     failed,
     events,
     updatedAt,
-    failureReason: postFailureReason,
+    failureReason: showFailureReason ? postFailureReason : null,
   };
 }
 
