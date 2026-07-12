@@ -1,0 +1,17 @@
+{
+  "name": "social0-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-03-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "API_BASE_URL": "https://api.social0.app",
+    "MCP_BASE_URL": "https://mcp.social0.app"
+  },
+  "alias": {
+    "node:fs/promises": "./src/shims/node-fs-promises.ts",
+    "node:path": "./src/shims/node-path.ts"
+  }
+}

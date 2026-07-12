@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { getRequestApiKey } from "../request-context.js";
 import type { ApiErrorBody } from "../types/index.js";
 import { logVerbose, parseRetryAfterMs, sleep } from "../utils/index.js";
 
@@ -62,8 +63,8 @@ function errorMessage(body: ApiErrorBody | undefined, status: number): string {
 export class Social0ApiClient {
   private readonly apiKey: string;
 
-  constructor(apiKey: string = config.apiKey) {
-    this.apiKey = apiKey;
+  constructor(apiKey?: string) {
+    this.apiKey = apiKey ?? getRequestApiKey();
   }
 
   async get<T>(path: string, options?: Omit<RequestOptions, "method" | "body">): Promise<T> {
@@ -191,4 +192,9 @@ export class Social0ApiClient {
   }
 }
 
-export const apiClient = new Social0ApiClient();
+export function getApiClient(): Social0ApiClient {
+  return new Social0ApiClient();
+}
+
+/** @deprecated Prefer getApiClient() for request-scoped credentials. */
+export const apiClient = getApiClient();

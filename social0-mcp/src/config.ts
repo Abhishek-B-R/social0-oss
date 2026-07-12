@@ -2,7 +2,9 @@ import { config as loadDotenv } from "dotenv";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-loadDotenv({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../.env") });
+if (process.env.SOCIAL0_MCP_NO_DOTENV !== "true") {
+  loadDotenv({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../.env") });
+}
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (!value) return fallback;
