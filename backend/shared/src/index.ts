@@ -13,4 +13,5 @@ export * from "./lib/cf-publish-hmac.js";
 export * from "./types/job-progress.js";
 export * from "./lib/ssrf-guard.js";
 export * from "./lib/safe-fetch.js";
+export * from "./lib/user-webhook-signature.js";
 export * from "./constants/legal.js";

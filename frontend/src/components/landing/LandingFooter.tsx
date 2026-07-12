@@ -4,6 +4,7 @@ import Link from "@/components/AppLink";
 
 const footerLinks = [
   { href: "/features", label: "Features" },
+  { href: "/mcp", label: "MCP" },
   { href: "/alternatives", label: "Alternatives" },
   { href: "/#platforms", label: "Platforms" },
   { href: "/#pricing", label: "Pricing" },

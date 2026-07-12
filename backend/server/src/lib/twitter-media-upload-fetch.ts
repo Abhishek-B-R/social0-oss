@@ -92,7 +92,7 @@ async function postAppendChunk(
   form.append("command", "APPEND");
   form.append("media_id", mediaId);
   form.append("segment_index", String(segmentIndex));
-  form.append("media", new Blob([chunk]), "media");
+  form.append("media", new Blob([Buffer.from(chunk)]), "media");
 
   const res = await fetch(UPLOAD_URL, {
     method: "POST",

@@ -7,14 +7,13 @@ import {
   queuedPosts,
 } from "../db/schema.js";
 import { maybeSendPostFailureEmail } from "../lib/post-failure-email.js";
-import { emitUserWebhookEvent } from "../lib/user-webhook-delivery.js";
+import {
+  emitUserWebhookEvent,
+  type WebhookEvent,
+} from "../lib/user-webhook-delivery.js";
 
-/** After per-platform jobs finish, update aggregate post status and notify user. */
-export async function maybeFinalizePostPublish(
-  postId: string,
-  userId: string,
-): Promise<void> {
-  const pubs = await db
+async function loadPublicationRows(postId: string) {
+  return db
     .select({
       status: postPublications.status,
       platform: connectedAccounts.platform,
@@ -28,6 +27,56 @@ export async function maybeFinalizePostPublish(
       eq(postPublications.connectedAccountId, connectedAccounts.id),
     )
     .where(eq(postPublications.postId, postId));
+}
+
+/** Emit post.published / post.failed when every platform row is terminal. */
+export async function emitPublishWebhooksForPost(
+  postId: string,
+  userId: string,
+): Promise<void> {
+  const pubs = await loadPublicationRows(postId);
+
+  if (
+    pubs.some(
+      (p) => p.status === "pending" || p.status === "publishing",
+    )
+  ) {
+    return;
+  }
+
+  const succeeded = pubs.filter((p) => p.status === "published").length;
+  const failed = pubs.filter((p) => p.status === "failed").length;
+  if (pubs.length === 0) return;
+
+  const overallStatus =
+    succeeded === 0 ? "failed" : failed === 0 ? "published" : "partial";
+
+  const webhookData = {
+    post_id: postId,
+    status: overallStatus,
+    platforms: pubs.map((p) => ({
+      platform: p.platform,
+      status: p.status,
+      connected_account_id: p.connectedAccountId,
+      error: p.lastError ?? null,
+    })),
+  };
+
+  let type: WebhookEvent | null = null;
+  if (overallStatus === "published" || overallStatus === "partial") {
+    type = "post.published";
+  } else if (overallStatus === "failed") {
+    type = "post.failed";
+  }
+  if (type) emitUserWebhookEvent(userId, type, webhookData);
+}
+
+/** After per-platform jobs finish, update aggregate post status and notify user. */
+export async function maybeFinalizePostPublish(
+  postId: string,
+  userId: string,
+): Promise<void> {
+  const pubs = await loadPublicationRows(postId);
 
   if (
     pubs.some(
@@ -75,20 +124,5 @@ export async function maybeFinalizePostPublish(
     });
   }
 
-  const webhookData = {
-    post_id: postId,
-    status: overallStatus,
-    platforms: pubs.map((p) => ({
-      platform: p.platform,
-      status: p.status,
-      connected_account_id: p.connectedAccountId,
-      error: p.lastError ?? null,
-    })),
-  };
-
-  if (overallStatus === "published" || overallStatus === "partial") {
-    emitUserWebhookEvent(userId, "post.published", webhookData);
-  } else if (overallStatus === "failed") {
-    emitUserWebhookEvent(userId, "post.failed", webhookData);
-  }
+  await emitPublishWebhooksForPost(postId, userId);
 }

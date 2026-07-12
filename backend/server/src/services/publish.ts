@@ -29,6 +29,7 @@ import { uploadTwitterImage, uploadTwitterVideo } from "@/lib/twitter-media";
 import { getTwitterErrorMessage } from "@/lib/twitter-errors";
 import { parseTikTokHandleFromProfileUrl } from "@/lib/platform-view-url";
 import { maybeSendPostFailureEmail } from "@/lib/post-failure-email";
+import { emitPublishWebhooksForPost } from "../publish/finalize-post.js";
 import { TwitterApi } from "twitter-api-v2";
 
 /** Extract a readable error from LinkedIn API response (status, message, serviceErrorCode). */
@@ -1607,6 +1608,9 @@ export async function executePublish(
           .map((r) => `${r.platform}: ${r.error ?? "Unknown error"}`.trim())
           .join(" - ")
       : undefined;
+
+  // Dashboard composer uses inline executePublish (not the async worker finalize path).
+  await emitPublishWebhooksForPost(postId, post.userId);
 
   return {
     success: !anyFailed,

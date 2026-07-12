@@ -4,9 +4,11 @@
 > **Purpose:** Implement all user-facing documentation for the new **Social0 MCP Server** — the official Model Context Protocol integration that lets AI assistants manage Social0 via natural language.  
 > **Source of truth:** `social0-mcp/` package in the main Social0 monorepo (or standalone `social0-mcp` GitHub repo once published).  
 > **Docs site:** `https://docs.social0.app`  
-> **Last reviewed:** 2026-07-11 (updated after PR #39 — public REST API live)
+> **Last reviewed:** 2026-07-12 (updated after multi-platform publish reliability fixes — see §14)
 
 > **IMPORTANT — API is live:** As of PR #39 (`cursor/public-rest-api-da54`), the full `/v1` REST API is production-ready. The MCP server now calls **only `/v1/*` endpoints**. Use `sk_live_` API keys (legacy `s0_live_` accepted). Cross-reference the main API docs brief at `docs-updation.md` in the app repo and live OpenAPI at `https://api.social0.app/openapi.json`.
+
+> **IMPORTANT — Multi-platform publish (2026-07-12):** Reliability fixes for V1/MCP publish are documented in **§14**. Read that section before writing publish, job status, or troubleshooting pages.
 
 ---
 
@@ -339,7 +341,7 @@ Dashboard → API keys → Delete. Revoked keys fail immediately with `401 Unaut
 | Upload media | ✅ |
 | Publish / schedule existing post | ✅ |
 | Check publish job status | ✅ |
-| Create / list / edit posts via REST | 🚧 Rolling out (`/v1/posts`) |
+| Create / list / edit posts via REST | ✅ |
 
 **Link:** [Set up MCP](/docs/integrations/mcp)
 
@@ -382,12 +384,12 @@ Document all **13 tools**. For each tool use this template:
 | `delete_post` | "Delete yesterday's draft" | `post_id` | `DELETE /v1/posts/:id` |
 | `list_posts` | "Show scheduled posts" | `status?`, `platform?`, `search?`, `limit?` | `GET /v1/posts` |
 | `get_post` | "Open post details" | `post_id` | `GET /v1/posts/:id` |
-| `publish_post` | "Publish my draft now" | `post_id`, `platforms?` | `POST /api/publish` |
-| `schedule_post` | "Schedule existing post" | `post_id`, `scheduled_at`, `platforms?` | `POST /api/publish` |
+| `publish_post` | "Publish my draft now" | `post_id`, `platforms?` | `POST /v1/posts/:id/publish` |
+| `schedule_post` | "Schedule existing post" | `post_id`, `scheduled_at`, `platforms?` | `POST /v1/posts/:id/schedule` |
 | `upload_media` | "Upload logo.png" | `file_path` | presign → PUT → confirm |
-| `publish_now` | "Post this now" (one step) | `content`, `platforms[]`, `media?` | `POST /v1/posts` + `POST /api/publish` |
-| `schedule_content` | "Schedule new post" (one step) | `content`, `platforms[]`, `scheduled_at`, `media?` | `POST /v1/posts` + `POST /api/publish` |
-| `get_publish_status` | "Did it publish?" | `tracking_id` | `GET /api/jobs/:id` |
+| `publish_now` | "Post this now" (one step) | `content`, `platforms[]`, `media?` | `POST /v1/posts/publish` |
+| `schedule_content` | "Schedule new post" (one step) | `content`, `platforms[]`, `scheduled_at`, `media?` | `POST /v1/posts/schedule` |
+| `get_publish_status` | "Did it publish?" | `tracking_id` | `GET /v1/jobs/:trackingId` |
 | `suggest_best_platforms` | "Where should I post this?" | `content`, `has_media?`, `media_is_video?` | heuristic (+ optional `GET /api/accounts`) |
 
 #### Platform names (document for users and agents)
@@ -471,6 +473,12 @@ Create four pages by adapting `social0-mcp/examples/*.md`. Each page needs:
 | `429` rate limit | Too many requests | MCP auto-retries; wait and retry |
 | MCP host shows no tools | Server not starting | Check stderr; run `node dist/index.js` manually |
 | `console.log` broke MCP | stdout pollution | MCP logs only to stderr |
+| `overall_status: processing` forever | One platform still running or stuck from pre-fix deploy | Poll again; if one platform stays `platform_queued` >2 min, retry publish for that post (see §14.6) |
+| `failure_reason` while still `processing` | Stale post row from a prior failed attempt (pre-2026-07-12) | Retry publish; on current API `failure_reason` is only set when the job is terminal |
+| Twitter/X shows `platform_failed` with "Publishing is temporarily unavailable" | Old Social0 internal throttle on CF worker (removed) | Redeploy API + worker; retry — real X errors will be different messages |
+| `failed: 0` but `platform_statuses` shows `platform_failed` | Job counter desync (fixed 2026-07-12) | Upgrade API; counters now reconcile from DB publications + events |
+| Dashboard shows Pending, API shows failed | `post_publications` row not synced (fixed 2026-07-12) | Upgrade API + worker; retry stuck publication from dashboard |
+| Multi-platform: one succeeds, one fails | Expected when a platform rejects the post | Job status becomes `partial`; check `errors[]` per platform; reconnect account if auth error |
 
 **Debug mode**
 
@@ -545,8 +553,69 @@ Responses: `202` + `trackingId` (now) or `200` + `status: scheduled`.
 **Job status**
 
 ```http
-GET /api/jobs/:trackingId
+GET /v1/jobs/:trackingId
+GET /v1/jobs/:trackingId/stream   # SSE live progress
 ```
+
+Response shape (document fully — MCP `get_publish_status` mirrors this):
+
+```json
+{
+  "tracking_id": "uuid",
+  "post_id": "uuid",
+  "status": "queued | processing | completed | failed | partial",
+  "total": 2,
+  "completed": 1,
+  "failed": 1,
+  "platform_statuses": [
+    {
+      "platform": "youtube",
+      "connected_account_id": "uuid",
+      "phase": "platform_success",
+      "message": "Published to youtube",
+      "error": null
+    },
+    {
+      "platform": "twitter_x",
+      "connected_account_id": "uuid",
+      "phase": "platform_failed",
+      "message": "Actual platform error message here",
+      "error": "Actual platform error message here"
+    }
+  ],
+  "errors": [
+    {
+      "platform": "twitter_x",
+      "connected_account_id": "uuid",
+      "message": "Actual platform error message here"
+    }
+  ],
+  "failure_reason": "First failure message (only when status is failed or partial)",
+  "created_at": "ISO-8601",
+  "completed_at": "ISO-8601 | null"
+}
+```
+
+**Status semantics (must document clearly):**
+
+| `status` | Meaning |
+|----------|---------|
+| `queued` | Job accepted, not yet fanning out to platforms |
+| `processing` | At least one platform still publishing |
+| `completed` | All platforms succeeded |
+| `failed` | All platforms failed |
+| `partial` | Mixed outcome — some succeeded, some failed (all platforms terminal) |
+
+**Platform `phase` values users/agents will see:**
+
+| `phase` | Meaning |
+|---------|---------|
+| `platform_queued` | Platform job accepted |
+| `platform_uploading` | Upload/publish in progress |
+| `platform_success` | Published on that platform |
+| `platform_failed` | Failed on that platform — read `error` / `message` |
+
+**Important:** Multi-platform publishes run **in parallel** (one job per platform). Poll `get_publish_status` until `status` is terminal (`completed`, `failed`, or `partial`). MCP maps API `status` → `overall_status` in its tool response.
 
 **Posts (v1 — document schema even if rolling out)**
 
@@ -643,7 +712,10 @@ A: MCP hosts are desktop apps (Claude Desktop, Cursor). Mobile not supported tod
 A: MCP is a translation layer for AI assistants. REST API is the underlying interface. MCP calls REST.
 
 **Q: Why does create post fail?**  
-A: Post CRUD via `/v1/posts` may still be rolling out. Create in dashboard or check [status callout](#4-critical-honesty-block).
+A: Ensure `/v1/posts` is reachable with a valid `sk_live_` key. Common causes: invalid platform name, no connected account for that platform, or media validation errors. See troubleshooting.
+
+**Q: What does `partial` mean for publish status?**  
+A: Multi-platform publish finished with mixed results — some platforms succeeded, some failed. Check `errors` in `get_publish_status`. See §14.2.
 
 **Q: What is `suggest_best_platforms`?**  
 A: Analyzes your caption length and media to recommend platforms. Uses heuristics + your connected accounts.
@@ -665,7 +737,9 @@ When implementing these changes:
 9. **Do not** promise OAuth via MCP.
 10. **Add** changelog entry: "Added MCP Server documentation" with date.
 11. **Verify** all internal links resolve.
-12. **After** `/v1/posts` ships: update status tables, remove rolling-out callouts, add full CRUD examples.
+12. **Read §14** before documenting publish, job status, or troubleshooting — multi-platform behavior changed July 2026.
+13. **Document** `partial` job status, `platform_statuses` phases, and polling pattern for `get_publish_status`.
+14. **Do not** document the removed error string "Publishing is temporarily unavailable" as a current failure — note it as historical (§14.6).
 
 ### Suggested docs PR checklist
 
@@ -749,8 +823,11 @@ Expected: list of platforms with IDs and token status.
 1. upload_media({ file_path: "./logo.png" })  → mediaId
 2. create_post({ content: "...", platforms: ["linkedin", "twitter_x"], media: [mediaId] })
 3. publish_post({ post_id: "..." })  → tracking_id
-4. get_publish_status({ tracking_id: "..." })
+4. get_publish_status({ tracking_id: "..." })  → poll until completed | failed | partial
+5. get_post({ post_id: "..." })  → final per-platform URLs and errors
 ```
+
+Multi-platform publishes fan out in parallel. Video uploads (YouTube, X, Instagram) may take minutes — document polling interval (2–5s) and terminal statuses. See §14.
 
 ---
 
@@ -767,6 +844,8 @@ Update docs when these ship:
 | Windsurf official MCP docs | Add dedicated page |
 | Platform suggestion API endpoint | Update `suggest_best_platforms` to mention backend AI |
 | Team / shared API keys | New section under API keys |
+| New platform added to SERVER_SIDE_PUBLISH_PLATFORMS | Update §14.5 platform routing table |
+| MCP tool for job SSE stream | Document `GET /v1/jobs/:id/stream` or add MCP wrapper |
 
 ---
 
@@ -782,7 +861,221 @@ Update docs when these ship:
 | `frontend/src/lib/docs-url.ts` | In-app doc URL constants to extend |
 | `FEATURES.md` § Developer & API | Product feature status |
 | `backend/server/src/routes/api/*` | Live REST endpoints |
-| `backend/server/src/routes/v1/*` | v1 API (posts rolling out) |
+| `backend/server/src/routes/v1/*` | v1 API (posts, jobs, publish) |
+| `backend/server/src/services/publish-enqueue.ts` | V1/MCP fan-out: one queue job per platform |
+| `backend/server/src/publish/process-platform-server.ts` | Twitter/X runs on API server (Node) |
+| `backend/server/src/lib/resolve-job-snapshot.ts` | Job status enrichment from DB publications |
+| `backend/server/src/lib/v1-job-format.ts` | V1 job response + `partial` status |
+| `backend/server/src/lib/posts-list/posts-list-data.ts` | Dashboard post detail normalization |
+| `cloudflare/publish-worker/src/` | CF worker for YouTube, Instagram, etc. |
+| `social0-mcp/src/tools/handlers.ts` | MCP `get_publish_status` response mapping |
+
+---
+
+## 14. Multi-platform publishing — architecture & docs context (2026-07-12)
+
+> **Audience:** Docs agent implementing publish/status/troubleshooting pages.  
+> **Background:** Extensive debugging session (dashboard vs V1/MCP parity, Twitter/X video, job status desync). This section is the authoritative context for documenting publish behavior accurately.
+
+### 14.1 Two publish paths (critical for docs)
+
+Social0 has **two ways** to publish. They intentionally diverge at the worker layer but share the same core publish logic (`executePublish`).
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ DASHBOARD (Composer → Publish)                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│  UI → RPC publish.publishPost → executePublish() inline on API server   │
+│       (Node.js, twitter-api-v2, full OAuth/media upload support)        │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ V1 REST API / MCP (publish_post, publish_now)                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│  POST /v1/posts/:id/publish                                             │
+│    → prepareAndEnqueuePublish()                                         │
+│    → one async job PER connected platform (parallel, not sequential)  │
+│                                                                         │
+│  Per platform routing (when CF dispatch enabled):                       │
+│    • twitter_x  → API server (runPlatformJobOnServer) — same Node path│
+│    • youtube, instagram, linkedin, … → Cloudflare publish worker      │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Docs must say:** MCP and REST publish are **not** slower “sequential” publishes — they fan out to all target platforms at once. Status is tracked via a single `tracking_id` with per-platform rows in `platform_statuses`.
+
+**Docs must NOT say:** “MCP uses the same code path as the dashboard button” verbatim — that's only true for **Twitter/X** (and dashboard always runs on server). Other platforms go through the CF worker queue in V1/MCP.
+
+### 14.2 End-to-end MCP publish flow (document as tutorial)
+
+```text
+1. list_accounts                          → confirm platforms connected
+2. upload_media (optional)                → media_id
+3. create_post OR publish_now             → post_id (+ tracking_id if publish_now)
+4. publish_post (if draft)                → tracking_id (HTTP 202)
+5. get_publish_status({ tracking_id })    → poll until terminal status
+6. get_post({ post_id })                  → final per-platform publication rows
+```
+
+**Polling guidance for docs:**
+
+- Poll every 2–5 seconds while `overall_status` is `processing`
+- Stop when `overall_status` is `completed`, `failed`, or `partial`
+- For video posts (YouTube, Instagram, X), uploads can take 30s–several minutes — document patience
+- `completed_at` is non-null only when the job is terminal
+
+**Example terminal responses:**
+
+| Outcome | `overall_status` | `progress` | User message |
+|---------|------------------|------------|--------------|
+| All ok | `completed` | `{ completed: N, failed: 0, total: N }` | "Published to all platforms" |
+| All failed | `failed` | `{ completed: 0, failed: N, total: N }` | Check `errors[]`, reconnect accounts |
+| Mixed | `partial` | `{ completed: 1, failed: 1, total: 2 }` | "Published to 1/2 platforms" — list which failed |
+
+### 14.3 `get_publish_status` MCP tool — full spec for docs agent
+
+MCP tool calls `GET /v1/jobs/:trackingId` and reshapes the response:
+
+| API field | MCP field | Notes |
+|-----------|-----------|-------|
+| `status` | `overall_status` | Includes `partial` |
+| `total`, `completed`, `failed` | `progress.total`, etc. | Nested under `progress` |
+| `platform_statuses` | `platform_statuses` | Same |
+| `errors` | `errors` | Same |
+| `failure_reason` | `failure_reason` | Only when job terminal with failures |
+| `created_at`, `completed_at` | same | same |
+
+**Expand `get_publish_status` in §5.3 with:**
+
+- **When to use:** After any `publish_post`, `publish_now`, or `POST /v1/posts/:id/publish`
+- **Parameters:** `tracking_id` (UUID from publish response)
+- **Returns:** See §5.6 job status JSON (with `overall_status` wrapper)
+- **Example user prompt:** "Did my post publish? Check tracking ID …"
+- **Example flow:**
+  1. User publishes to LinkedIn + X
+  2. First poll: `processing`, one `platform_uploading`, one `platform_queued`
+  3. Final poll: `partial` if X fails, `completed` if both succeed
+- **REST API called:** `GET /v1/jobs/:trackingId`
+- **Optional:** Mention SSE stream `GET /v1/jobs/:trackingId/stream` for integrators (not exposed as MCP tool today)
+
+### 14.4 Post status vs job status (avoid confusing users)
+
+| Concept | Values | Where seen |
+|---------|--------|------------|
+| **Publish job** (`tracking_id`) | `queued`, `processing`, `completed`, `failed`, `partial` | `get_publish_status`, `GET /v1/jobs/:id` |
+| **Post** (`post_id`) | `draft`, `scheduled`, `publishing`, `published`, `partial`, `failed` | `get_post`, `list_posts`, dashboard |
+
+During publish, post is usually `publishing`. When all platforms finish:
+
+- All success → post `published`
+- All failure → post `failed`
+- Mixed → post `partial`
+
+`get_post` returns per-platform `platforms[]` with `status`, `error`, `platform_post_url` — use this for final truth after job completes.
+
+### 14.5 Platform-specific notes (document in publish troubleshooting)
+
+| Platform | V1/MCP path | Notes for docs |
+|----------|-------------|----------------|
+| **twitter_x** | API server (Node) | Video upload needs `twitter-api-v2` + Node `https`; not run on CF worker. Same reliability as dashboard. |
+| **youtube** | Cloudflare worker | Large video uploads; may take minutes. Auth errors → reconnect YouTube in dashboard. |
+| **instagram** | Cloudflare worker | Reels/video have platform constraints. |
+| **linkedin, facebook, threads, tiktok, pinterest, bluesky** | Cloudflare worker (or BullMQ if configured) | Standard queue path. |
+
+**Multiple accounts on one platform:** User must pass account UUID in `platforms[]`, not just `twitter_x`. Document this prominently.
+
+### 14.6 Bugs fixed 2026-07-12 (historical — informs troubleshooting copy)
+
+These were **Social0 infrastructure bugs**, not user error. Document as resolved; include retry guidance for posts stuck before the fix.
+
+| Symptom | Root cause | Fix (commits) | User action if stuck |
+|---------|------------|---------------|----------------------|
+| `"Publishing is temporarily unavailable. Try again later."` on X | Internal `checkTwitterPublishRateLimit` failed when Redis unavailable on CF worker | `45e7d3f` — removed gate; `e840112` — route X to API server | Redeploy; retry publish. This exact string should **not** appear on current API. |
+| X `platform_queued` forever, never uploads | CF worker dropped jobs / stale `failureReason` blocked retry UX | `45e7d3f`, `e840112` — worker records failures, clears `failureReason` on new publish | Retry publication from dashboard or re-call `publish_post` |
+| `failed: 0` but `platform_failed` in `platform_statuses` | Job counters ignored failed events | `45e7d3f` — reconcile from publications + events | Upgrade API |
+| `failure_reason` set while `processing` | Stale post row from prior attempt | `45e7d3f` + `226ad9d` — only expose when job terminal | Retry publish |
+| Dashboard: post Failed, platforms all Pending | `post_publications` not updated on worker failure | `45e7d3f`, `e840112` — worker + `getPostDetail` normalization | Upgrade; retry |
+| Twitter job progress desync in Redis vs DB | Server-side X jobs wrote Postgres only | `226ad9d` — emit to Redis + DB | Upgrade API |
+
+**Stuck posts from before deploy:** Old queue messages may not resume. Users should **retry** the publication (dashboard retry or new `publish_post`). Do not promise automatic recovery.
+
+### 14.7 What can still fail (honesty block for publish docs)
+
+Social0 fixes covered **false failures** and **stuck state**. Real platform failures still happen:
+
+- Expired OAuth / disconnected account → reconnect in [Connections](/docs/dashboard/connections)
+- Platform API rejection (content policy, rate limits, media format)
+- X/Twitter media size or duration limits
+- YouTube quota or auth errors
+
+**Docs tone:** "If `platform_failed` shows an error from the platform (not the old 'temporarily unavailable' message), fix the underlying account or content issue and retry."
+
+### 14.8 Deploy / ops note (internal — optional callout for advanced docs)
+
+Publish reliability fixes require **both**:
+
+1. **API server** redeploy — Twitter routing, job snapshot enrichment, Redis sync for server-side jobs
+2. **Cloudflare publish worker** redeploy — YouTube/Instagram queue processing, failure recording
+
+MCP users only hit the public API; they don't deploy workers. If status looks wrong on production, it's an ops/deploy issue — not MCP config.
+
+### 14.9 Pages to add or expand from this context
+
+| Page | Add |
+|------|-----|
+| `/docs/integrations/mcp/tools` | Full `get_publish_status` section + `partial` status |
+| `/docs/integrations/api/jobs` | Job status schema, phases, SSE stream, polling guide |
+| `/docs/integrations/api/publish` | Multi-platform fan-out diagram, `tracking_id`, 202 response |
+| `/docs/integrations/mcp/troubleshooting` | Rows from §5.5 publish table + §14.6 |
+| `/docs/dashboard/posts` | How post status relates to publish job; retry failed platforms |
+| FAQ | "Why is my job `partial`?" "How long should I poll?" |
+
+### 14.10 Mermaid diagram for publish docs
+
+```mermaid
+sequenceDiagram
+  participant Agent as AI Agent / MCP
+  participant API as Social0 API
+  participant Q as CF Publish Worker
+  participant Node as API Server (Node)
+  participant X as X / Twitter API
+  participant YT as YouTube API
+
+  Agent->>API: POST /v1/posts/:id/publish
+  API-->>Agent: 202 { tracking_id }
+
+  par Platform fan-out
+    API->>Node: twitter_x job (inline)
+    Node->>X: upload + tweet
+    Node-->>API: platform_success / platform_failed
+  and
+    API->>Q: enqueue youtube job
+    Q->>YT: upload video
+    Q-->>API: platform_success / platform_failed
+  end
+
+  loop Poll until terminal
+    Agent->>API: GET /v1/jobs/:trackingId
+    API-->>Agent: processing → partial / completed
+  end
+```
+
+### 14.11 Copy-ready FAQ additions
+
+**Q: Why does `get_publish_status` show `partial`?**  
+A: Your post targeted multiple platforms and at least one succeeded and at least one failed. Check `errors` for the failed platform(s). The post itself will be `partial` in `get_post`.
+
+**Q: How long should I poll?**  
+A: Text posts usually finish in seconds. Video to YouTube or X can take 1–5+ minutes. Poll every few seconds until `overall_status` is `completed`, `failed`, or `partial`.
+
+**Q: One platform says `platform_queued` for a long time — is it broken?**  
+A: On current API, platforms should move to `platform_uploading` quickly. If stuck >2 minutes, retry the publish. Posts started before July 2026 reliability fixes may need a manual retry.
+
+**Q: Does MCP publish work the same as the dashboard Publish button?**  
+A: Same outcome, slightly different plumbing. Dashboard runs everything on the server. API/MCP fans out per platform; X always runs on the server; other platforms use a background worker. Reliability should match after the 2026-07-12 fixes.
+
+**Q: Can MCP retry a failed platform?**  
+A: Use dashboard retry for a specific publication, or `publish_post` again on a `failed`/`partial` post (API allows republish of failed platforms). Document exact API rules from `execute-publish.ts` retry logic if needed.
 
 ---
 
@@ -793,9 +1086,11 @@ Paste this as the agent's task header:
 ```text
 Implement Social0 MCP documentation on docs.social0.app per social0-mcp/docs-updation-mcp.md.
 
-Priority: (1) rewrite /docs/dashboard/api-keys, (2) create /docs/integrations/mcp hub + quick start, (3) create /docs/integrations/mcp/tools with all 13 tools, (4) create host setup pages from social0-mcp/examples/, (5) create troubleshooting, (6) add REST API reference under /docs/integrations/api.
+Priority: (1) rewrite /docs/dashboard/api-keys, (2) create /docs/integrations/mcp hub + quick start, (3) create /docs/integrations/mcp/tools with all 13 tools — especially get_publish_status + partial status, (4) create host setup pages from social0-mcp/examples/, (5) create troubleshooting including multi-platform publish issues (§14.6), (6) add REST API reference under /docs/integrations/api with full job status schema (§5.6, §14).
 
-Be honest: post CRUD via /v1/posts is rolling out — document workarounds. Use copy-pasteable JSON configs. Add sidebar Integrations section. Cross-link from dashboard docs. Match existing docs style.
+Read §14 in full before writing publish/status pages. Document multi-platform parallel fan-out, tracking_id polling, partial vs completed vs failed, and per-platform phases. Use sk_live_ API keys. Post CRUD via /v1/posts is live — no rolling-out callouts.
+
+Use copy-pasteable JSON configs. Add sidebar Integrations section. Cross-link from dashboard docs. Match existing docs style.
 ```
 
 ---

@@ -210,6 +210,16 @@ export function staticRouteSeo(pathname: string): PageSeoConfig | null {
         }) as Record<string, unknown>,
         "/alternatives",
       );
+    case "/mcp":
+      return metadataToSeoConfig(
+        buildPageMetadata({
+          title: "Social0 MCP Server — Manage social media from your AI",
+          description:
+            "Connect Claude, Cursor, or VS Code to Social0 with the official MCP server. Publish, schedule, and track posts across every platform from natural language.",
+          path: "/mcp",
+        }) as Record<string, unknown>,
+        "/mcp",
+      );
     default:
       if (pathname.startsWith("/onboarding")) {
         return {

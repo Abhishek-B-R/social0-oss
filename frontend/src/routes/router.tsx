@@ -63,6 +63,7 @@ export function AppRouter() {
           <Route path="alternatives" element={<MarketingPages.AlternativesIndex />} />
           <Route path="alternatives/:slug" element={<MarketingPages.AlternativeDetail />} />
           <Route path="home" element={<MarketingPages.Home />} />
+          <Route path="mcp" element={<MarketingPages.Mcp />} />
 
           <Route path="onboarding" element={<OnboardingLayout />}>
             <Route index element={<OnboardingPage />} />
