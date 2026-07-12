@@ -24,9 +24,7 @@ import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import {
   checkAutoPlugAllowed,
   checkResurfaceAllowed,
-  checkTwitterPublishRateLimit,
 } from "@/lib/plan-limits";
-import { logPublishBlocked } from "@/lib/plan-analytics";
 import { uploadTwitterImage, uploadTwitterVideo } from "@/lib/twitter-media";
 import { getTwitterErrorMessage } from "@/lib/twitter-errors";
 import { parseTikTokHandleFromProfileUrl } from "@/lib/platform-view-url";
@@ -217,35 +215,7 @@ export async function executePublish(
     return { success: true, results: [] };
   }
 
-  const pendingTwitterCount = publicationsWithAccounts.filter(
-    (p) => p.publicationStatus === "pending" && p.platform === "twitter_x",
-  ).length;
-  if (pendingTwitterCount > 0 && post.userId) {
-    const rateLimit = await checkTwitterPublishRateLimit(
-      post.userId,
-      pendingTwitterCount,
-    );
-    if (!rateLimit.allowed) {
-      logPublishBlocked("twitter_rate_limit", post.userId, post.id);
-      const failureReason =
-        rateLimit.reason ??
-        "You're posting to X too quickly. Please wait a few minutes and try again.";
-      await db
-        .update(posts)
-        .set({
-          status: "failed",
-          failureReason,
-          updatedAt: new Date(),
-        })
-        .where(eq(posts.id, postId));
-      return {
-        success: false,
-        error: failureReason,
-        results: [],
-      };
-    }
-  }
-
+  const results: PublishResult["results"] = [];
   // Mark post and pending publications as "publishing" so UI shows progress and we avoid double-publish.
   // Never demote an already published/partial post - follow-up calls on finished publications
   // (per-platform progress, safety-net republish) would otherwise erase the status that
@@ -281,8 +251,6 @@ export async function executePublish(
       .set({ status: "publishing", lastError: null, updatedAt: new Date() })
       .where(inArray(postPublications.id, publishingPublicationIds));
   }
-
-  const results: PublishResult["results"] = [];
 
   // For thread posts: non-Twitter platforms get clean text (no "---") so FB/Threads/Bluesky show readable content
   const contentForNonTwitter = (() => {

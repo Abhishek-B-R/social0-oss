@@ -3,6 +3,7 @@ import {
   parseEnqueueRequest,
   verifyEnqueueAuth,
 } from "./auth";
+import { recordPlatformResult } from "./job-progress-db";
 import { processPlatformJob } from "./process-platform";
 import { assertPublishJobAuthorized } from "./validate-job";
 import type { PublishPlatformJob } from "./types";
@@ -120,14 +121,26 @@ export default {
         const authError = await assertPublishJobAuthorized(env, job);
         if (authError) {
           console.error("[publish-worker] unauthorized job dropped", authError);
+          await recordPlatformResult(
+            env,
+            job,
+            false,
+            `Publish worker rejected job: ${authError}`,
+            { skipAuth: true },
+          );
           message.ack();
           continue;
         }
         await processPlatformJob(job, env);
         message.ack();
       } catch (err) {
+        const messageText =
+          err instanceof Error ? err.message : "Platform worker failed";
         console.error("[publish-worker] platform job failed", err);
-        message.retry();
+        await recordPlatformResult(env, job, false, messageText, {
+          skipAuth: true,
+        });
+        message.ack();
       }
     }
   },

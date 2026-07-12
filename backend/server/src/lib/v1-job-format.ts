@@ -1,6 +1,32 @@
 import type { JobProgressEvent, JobProgressSnapshot } from "@social0/shared";
 import type { EnrichedJobSnapshot } from "./resolve-job-snapshot.js";
 
+export type V1JobStatus =
+  | JobProgressSnapshot["status"]
+  | "partial";
+
+/** Mixed success/failure → partial (DB job row stays completed). */
+export function resolveV1JobStatus(snapshot: {
+  status: JobProgressSnapshot["status"];
+  total: number;
+  completed: number;
+  failed: number;
+}): V1JobStatus {
+  if (
+    snapshot.total > 0 &&
+    snapshot.completed > 0 &&
+    snapshot.failed > 0 &&
+    snapshot.completed + snapshot.failed >= snapshot.total
+  ) {
+    return "partial";
+  }
+  return snapshot.status;
+}
+
+function isTerminalV1Status(status: V1JobStatus): boolean {
+  return status === "completed" || status === "failed" || status === "partial";
+}
+
 /** Phases worth surfacing on the public v1 API (skip queued/fan_out noise). */
 const V1_STREAM_PHASES = new Set([
   "platform_uploading",
@@ -56,11 +82,12 @@ function buildErrors(platformStatuses: PlatformStatus[]) {
 export function formatV1JobResponse(snapshot: EnrichedJobSnapshot) {
   const platform_statuses = buildPlatformStatuses(snapshot.events);
   const errors = buildErrors(platform_statuses);
+  const status = resolveV1JobStatus(snapshot);
 
   return {
     tracking_id: snapshot.trackingId,
     post_id: snapshot.postId,
-    status: snapshot.status,
+    status,
     total: snapshot.total,
     completed: snapshot.completed,
     failed: snapshot.failed,
@@ -68,10 +95,7 @@ export function formatV1JobResponse(snapshot: EnrichedJobSnapshot) {
     errors,
     failure_reason: snapshot.failureReason ?? null,
     created_at: snapshot.events[0]?.ts ?? snapshot.updatedAt,
-    completed_at:
-      snapshot.status === "completed" || snapshot.status === "failed"
-        ? snapshot.updatedAt
-        : null,
+    completed_at: isTerminalV1Status(status) ? snapshot.updatedAt : null,
   };
 }
 

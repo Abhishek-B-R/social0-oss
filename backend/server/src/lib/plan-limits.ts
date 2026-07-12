@@ -137,12 +137,16 @@ export async function checkTwitterPublishRateLimit(
     failClosedWhenUnavailable: false,
   });
   if (!rate.allowed) {
+    // X publish throttling is an anti-automation guard, not a core availability
+    // dependency. If Redis/rate limiting is unavailable, let the platform publish
+    // attempt proceed and let X return the authoritative result.
+    if (rate.status === 503) {
+      return { allowed: true };
+    }
     return {
       allowed: false,
       reason:
-        rate.status === 503
-          ? "Publishing is temporarily unavailable. Try again later."
-          : "You're posting to X too quickly. Please wait a few minutes and try again.",
+        "You're posting to X too quickly. Please wait a few minutes and try again.",
     };
   }
 
