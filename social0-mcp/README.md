@@ -1,55 +1,56 @@
 # Social0 MCP Server
 
-Official [Model Context Protocol](https://modelcontextprotocol.io) server for [Social0](https://social0.app). Manage social media posts from AI assistants — Claude, Cursor, VS Code, ChatGPT, Windsurf, and more.
+Official [Model Context Protocol](https://modelcontextprotocol.io) server for [Social0](https://social0.app). Manage social media from AI assistants — Claude, Cursor, VS Code, ChatGPT, Windsurf, and more.
+
+**Repository:** https://github.com/Abhishek-B-R/social0-mcp  
+**API keys:** https://social0.app/dashboard/api-keys  
+**Docs:** https://docs.social0.app/docs/integrations/mcp  
+**REST API:** https://api.social0.app/docs  
 
 ```
-Claude / ChatGPT / Cursor
+AI assistant (Claude / Cursor / …)
             │
             ▼
-      Social0 MCP Server   ← you are here
+      Social0 MCP Server   ← this repo
             │
-     (translate tool calls)
-            │
-            ▼
-     Social0 Public REST API
+     (tool calls → REST)
             │
             ▼
-     Existing Backend
+     https://api.social0.app/v1
 ```
 
-The MCP server is intentionally **thin**. It does not contain business logic, OAuth flows, database access, or publishing retries. It authenticates with your API key, exposes tools, translates MCP calls to REST requests, and returns structured results.
+This server is intentionally **thin**. No OAuth, no database, no publish retries. It authenticates with your API key, exposes tools, and calls the public REST API.
 
-## Features
+> **Agents:** start with [AGENTS.md](./AGENTS.md) — tool inputs, platforms, publish flow, and failure modes in one place.
 
-- **13 MCP tools** — accounts, posts, publish, schedule, media upload, status tracking
-- **`suggest_best_platforms`** — AI-native platform recommendations based on your content
-- **Structured errors** — never throws raw exceptions to the host
-- **Production-ready** — strict TypeScript, Zod validation, retry on 429, request timeouts
-- **Zero backend imports** — talks only to the public REST API
+## Requirements
+
+- Node.js **20+**
+- A Social0 account with at least one [connected platform](https://social0.app/dashboard/connections)
+- An API key (`sk_live_…`) from [Dashboard → Developer](https://social0.app/dashboard/api-keys)
 
 ## Quick start
 
 ```bash
+git clone https://github.com/Abhishek-B-R/social0-mcp.git
 cd social0-mcp
 cp .env.example .env
-# Edit .env and set SOCIAL0_API_KEY
+# Set SOCIAL0_API_KEY=sk_live_...
 
 npm install
 npm run build
 npm start
 ```
 
-Create an API key at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys).
-
-Full setup guides: [docs.social0.app — MCP](https://docs.social0.app/docs/integrations/mcp)
+Then wire the built server into your AI host (see below). The process speaks **stdio MCP** — it must be launched by the host, not left as a long-running public HTTP server.
 
 ## Environment variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `SOCIAL0_API_KEY` | Yes | — | API key (`sk_live_...`, legacy `s0_live_...`) |
+| `SOCIAL0_API_KEY` | Yes | — | `sk_live_…` (legacy `s0_live_…` accepted) |
 | `SOCIAL0_API_URL` | No | `https://api.social0.app/v1` | API base URL |
-| `SOCIAL0_MCP_VERBOSE` | No | `false` | Log requests to stderr |
+| `SOCIAL0_MCP_VERBOSE` | No | `false` | Log REST calls to **stderr** |
 | `SOCIAL0_REQUEST_TIMEOUT_MS` | No | `30000` | Request timeout |
 | `SOCIAL0_MAX_RETRIES` | No | `3` | Retries on HTTP 429 |
 
@@ -57,19 +58,19 @@ Full setup guides: [docs.social0.app — MCP](https://docs.social0.app/docs/inte
 
 | Host | Guide |
 |------|-------|
-| Claude Desktop | [examples/claude-desktop.md](examples/claude-desktop.md) |
 | Cursor | [examples/cursor.md](examples/cursor.md) |
+| Claude Desktop | [examples/claude-desktop.md](examples/claude-desktop.md) |
 | VS Code | [examples/vscode.md](examples/vscode.md) |
 | ChatGPT | [examples/chatgpt.md](examples/chatgpt.md) |
 
-### Cursor example
+### Cursor (minimal)
 
 ```json
 {
   "mcpServers": {
     "social0": {
       "command": "node",
-      "args": ["/path/to/social0-mcp/dist/index.js"],
+      "args": ["/absolute/path/to/social0-mcp/dist/index.js"],
       "env": {
         "SOCIAL0_API_KEY": "sk_live_your_key_here"
       }
@@ -78,120 +79,145 @@ Full setup guides: [docs.social0.app — MCP](https://docs.social0.app/docs/inte
 }
 ```
 
-## Tools
+Use an **absolute** path to `dist/index.js`. Restart / reload MCP after saving.
 
-| Tool | Description |
-|------|-------------|
-| `list_accounts` | Show connected social accounts |
-| `create_post` | Create a draft post |
+## Tools (13)
+
+| Tool | What it does |
+|------|----------------|
+| `list_accounts` | List connected social accounts |
+| `create_post` | Create a draft |
 | `update_post` | Update a draft or scheduled post |
 | `delete_post` | Delete a post |
-| `list_posts` | List posts with filters |
-| `get_post` | Get full post details |
-| `publish_post` | Publish an existing draft immediately |
+| `list_posts` | List posts (status / platform / search filters) |
+| `get_post` | Full post details |
+| `publish_post` | Publish an existing draft → `tracking_id` |
 | `schedule_post` | Schedule an existing post |
-| `upload_media` | Upload a local image/video |
+| `upload_media` | Upload a local image/video → media UUID |
 | `publish_now` | Create + publish in one step |
 | `schedule_content` | Create + schedule in one step |
-| `get_publish_status` | Check publish progress by tracking ID |
-| `suggest_best_platforms` | Recommend platforms for your content |
+| `get_publish_status` | Poll publish job by `tracking_id` |
+| `suggest_best_platforms` | Recommend platforms for a caption |
+
+Full parameter reference: [AGENTS.md](./AGENTS.md).
+
+## Common workflows
+
+**Draft → publish**
+
+1. `list_accounts` (know targets / UUIDs)
+2. `create_post` with `content` + `platforms`
+3. `publish_post` → save `tracking_id`
+4. `get_publish_status` until `completed` / `failed` / `partial`
+
+**One-shot publish with media**
+
+1. `upload_media` with absolute `file_path`
+2. `publish_now` with `content`, `platforms`, `media: [id]`
+3. Poll `get_publish_status`
+
+**Schedule**
+
+- Existing draft: `schedule_post` with ISO-8601 `scheduled_at` (UTC preferred)
+- New content: `schedule_content`
+
+## Platforms
+
+Pass **platform names** or **connected-account UUIDs** in `platforms[]`:
+
+| Name | Aliases |
+|------|---------|
+| `linkedin` | `li` |
+| `twitter_x` | `x`, `twitter` |
+| `instagram` | `ig` |
+| `facebook` | `fb` |
+| `youtube` | `yt` |
+| `tiktok` | — |
+| `threads` | — |
+| `bluesky` | `bsky` |
+| `pinterest` | `pin` |
+
+If multiple accounts exist on one platform, pass the **account UUID** from `list_accounts`.
+
+Connect platforms in the [Social0 dashboard](https://social0.app/dashboard/connections) — MCP cannot OAuth for you.
 
 ## Example prompts
 
-Try these in your AI assistant after connecting:
+```
+Show my connected Social0 accounts.
+```
 
 ```
 Create a LinkedIn post about AI trends in 2026.
 ```
 
 ```
-Schedule tomorrow's product launch announcement at 9 AM on LinkedIn and X.
+Schedule tomorrow's product launch at 9 AM UTC on LinkedIn and X.
 ```
 
 ```
-Publish my latest draft.
+Upload /absolute/path/to/logo.png and publish it to Twitter and LinkedIn.
 ```
 
 ```
-Show all scheduled posts.
+Here's my post: "Just shipped v2!" — which platforms should I use?
 ```
 
 ```
-Delete yesterday's draft.
+Check publish status for tracking id <uuid>.
 ```
 
-```
-Upload logo.png and create a post with it for Twitter and LinkedIn.
-```
+## Troubleshooting
 
-```
-Here's my post: "Just shipped v2!" — which platforms should I publish it to?
-```
+| Symptom | Fix |
+|---------|-----|
+| `SOCIAL0_API_KEY is required` | Set the key in the host `env` block (not only `.env` if the host doesn't load it) |
+| Key format error | Key must start with `sk_live_` (or legacy `s0_live_`) |
+| `401` | Create a new key; old one may be revoked |
+| No connected `linkedin` account | Connect it in the dashboard first |
+| Multiple `twitter_x` accounts | Pass the account UUID, not `twitter_x` |
+| Media upload fails | Use an absolute path the MCP process can read; check type/size limits |
+| Host shows no tools | `npm run build`, absolute path to `dist/index.js`, restart host |
+| Publish stuck `processing` | Poll `get_publish_status`; video can take minutes |
 
-## Architecture
+Debug:
 
-```
-social0-mcp/
-├── src/
-│   ├── index.ts          # Entry point (stdio)
-│   ├── server.ts         # Server factory
-│   ├── config.ts         # Environment config
-│   ├── api/              # REST API client (no business logic)
-│   │   ├── client.ts     # HTTP client with auth, retry, timeout
-│   │   ├── accounts.ts
-│   │   ├── posts.ts
-│   │   ├── media.ts
-│   │   ├── publish.ts
-│   │   └── platform-suggestions.ts
-│   ├── tools/            # MCP tool handlers (thin wrappers)
-│   ├── schemas/          # Zod input validation
-│   ├── types/            # TypeScript types
-│   └── utils/            # Helpers
-├── examples/             # Per-host setup guides
-└── .env.example
+```bash
+SOCIAL0_MCP_VERBOSE=true SOCIAL0_API_KEY=sk_live_xxx node dist/index.js
+npx @modelcontextprotocol/inspector node dist/index.js
 ```
 
-**Rule:** API logic never lives in tools. Tools validate input, call the API layer, and format output.
+Log only to **stderr** — stdout is reserved for MCP.
 
-## API endpoints used
+## API surface
 
-| Capability | Endpoint | Status |
-|------------|----------|--------|
-| List accounts | `GET /v1/accounts` | ✅ Live |
-| Post CRUD | `GET/POST/PATCH/DELETE /v1/posts` | ✅ Live |
-| Upload media | `POST /v1/media/presign` → PUT → `POST /v1/media/confirm` | ✅ Live |
-| Publish / schedule | `POST /v1/posts/:id/publish`, `/schedule`, `/posts/publish`, `/posts/schedule` | ✅ Live |
-| Publish status | `GET /v1/jobs/:trackingId` | ✅ Live |
-
-API keys use the `sk_live_` prefix (legacy `s0_live_` still accepted). Interactive API docs: https://api.social0.app/docs · MCP docs: https://docs.social0.app/docs/integrations/mcp
+| Capability | Endpoint |
+|------------|----------|
+| Accounts | `GET /v1/accounts` |
+| Posts | `GET/POST/PATCH/DELETE /v1/posts` |
+| Publish | `POST /v1/posts/:id/publish`, `POST /v1/posts/publish` |
+| Schedule | `POST /v1/posts/:id/schedule`, `POST /v1/posts/schedule` |
+| Media | `POST /v1/media/presign` → PUT → `POST /v1/media/confirm` |
+| Jobs | `GET /v1/jobs/:trackingId` |
 
 ## Development
 
 ```bash
-npm run dev      # Hot reload with tsx
-npm run build    # Compile TypeScript
+npm run dev        # tsx watch
+npm run build
 npm run typecheck
-npm start        # Run compiled server
+npm start          # node dist/index.js
 ```
 
-### Debug with MCP Inspector
-
-```bash
-npx @modelcontextprotocol/inspector node dist/index.js
 ```
-
-Set `SOCIAL0_MCP_VERBOSE=true` to log every REST call, status code, and latency to stderr.
-
-## Copy to standalone repo
-
-This folder is designed to become its own GitHub repository (`social0-mcp`):
-
-```bash
-cp -r social0-mcp/ ../social0-mcp/
-cd ../social0-mcp
-git init
-git add .
-git commit -m "Initial Social0 MCP server"
+src/
+├── index.ts           # stdio entry
+├── config.ts
+├── api/               # REST client only
+├── tools/             # MCP definitions + handlers
+├── schemas/           # Zod
+├── types/
+└── utils/
 ```
 
 ## License

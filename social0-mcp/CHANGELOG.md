@@ -2,6 +2,16 @@
 
 All notable changes to the Social0 MCP server are documented here.
 
+## [0.1.1] - 2026-07-12
+
+### Changed
+
+- Standalone public repo documentation overhaul for agents and hosts
+- Added `AGENTS.md` (full tool params, platforms, publish polling, agent rules)
+- README quick start uses `git clone` of this repository
+- Host examples include clone + build steps
+- Removed internal `docs-updation-mcp.md` brief from the public package
+
 ## [0.1.0] - 2026-07-11
 
 ### Added

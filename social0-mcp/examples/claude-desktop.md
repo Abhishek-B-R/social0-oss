@@ -1,6 +1,19 @@
 # Claude Desktop
 
-Add to your Claude Desktop MCP config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+1. Clone and build:
+
+```bash
+git clone https://github.com/Abhishek-B-R/social0-mcp.git
+cd social0-mcp
+npm install && npm run build
+```
+
+2. Create an API key at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys).
+
+3. Edit Claude Desktop MCP config:
+
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
@@ -17,7 +30,7 @@ Add to your Claude Desktop MCP config (`~/Library/Application Support/Claude/cla
 }
 ```
 
-Or if installed globally:
+Or if installed globally (`npm link` / npm package bin):
 
 ```json
 {
@@ -32,12 +45,12 @@ Or if installed globally:
 }
 ```
 
-Restart Claude Desktop after saving.
+4. Fully quit and reopen Claude Desktop. Test: “Show my connected Social0 accounts.”
 
 ## Example prompts
 
 - "Show my connected Social0 accounts."
 - "Create a LinkedIn post about how AI is changing marketing."
-- "Schedule tomorrow's product announcement at 9 AM on LinkedIn and X."
+- "Schedule tomorrow's product announcement at 9 AM UTC on LinkedIn and X."
 - "Publish my latest draft."
 - "Which platforms should I use for this post?"

@@ -1,6 +1,16 @@
 # VS Code (GitHub Copilot / MCP)
 
-If your VS Code MCP extension supports stdio servers, add to your MCP config:
+1. Clone and build:
+
+```bash
+git clone https://github.com/Abhishek-B-R/social0-mcp.git
+cd social0-mcp
+npm install && npm run build
+```
+
+2. Create an API key at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys).
+
+3. If your VS Code MCP setup supports stdio servers, add:
 
 ```json
 {
@@ -18,13 +28,7 @@ If your VS Code MCP extension supports stdio servers, add to your MCP config:
 }
 ```
 
-Build first:
-
-```bash
-cd social0-mcp
-npm install
-npm run build
-```
+Exact config file location depends on your VS Code MCP extension / Copilot settings. Always use an **absolute** path to `dist/index.js`.
 
 ## Example prompts
 

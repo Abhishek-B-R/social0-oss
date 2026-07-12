@@ -1,6 +1,16 @@
 # Cursor
 
-Add to Cursor MCP settings (`.cursor/mcp.json` in your project or global Cursor settings):
+1. Clone and build:
+
+```bash
+git clone https://github.com/Abhishek-B-R/social0-mcp.git
+cd social0-mcp
+npm install && npm run build
+```
+
+2. Create an API key at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys).
+
+3. Add to Cursor MCP settings (`.cursor/mcp.json` in your project, or global Cursor MCP settings). **Use an absolute path:**
 
 ```json
 {
@@ -17,7 +27,7 @@ Add to Cursor MCP settings (`.cursor/mcp.json` in your project or global Cursor 
 }
 ```
 
-For development with hot reload:
+Development (hot reload):
 
 ```json
 {
@@ -34,11 +44,12 @@ For development with hot reload:
 }
 ```
 
-Restart Cursor or reload MCP servers after saving.
+4. Restart Cursor or reload MCP servers. Test: “Show my connected Social0 accounts.”
 
 ## Example prompts
 
 - "Use Social0 to draft a post about our Series A for LinkedIn and X."
-- "Upload `./assets/hero.png` and create a post with it for Instagram."
+- "Upload `/absolute/path/to/hero.png` and create a post with it for Instagram."
 - "Show all my scheduled Social0 posts."
 - "Publish the draft I created yesterday."
+- "Check the publish status for tracking id …"
