@@ -1,5 +1,5 @@
-import type { SubscriptionTier } from "@social0/shared";
-import { getPlanLimits } from "@social0/shared";
+import type { SubscriptionTier } from "@social0/shared/browser";
+import { getPlanLimits } from "@social0/shared/browser";
 
 export function getFreePostsRemaining(
   tier: SubscriptionTier,

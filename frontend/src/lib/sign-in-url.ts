@@ -1,5 +1,5 @@
 import { getAppUrl } from "./env";
-import { sanitizeReturnToPath } from "@social0/shared";
+import { sanitizeReturnToPath } from "@social0/shared/browser";
 
 const DEFAULT_CALLBACK = "/dashboard/composer";
 

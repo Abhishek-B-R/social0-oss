@@ -5,7 +5,7 @@ import { useState, useEffect, Suspense } from "react";
 import { usePostHog } from "@posthog/react";
 import Link from "@/components/AppLink";
 import { IconLoader2 } from "@tabler/icons-react";
-import { getPlanLimits } from "@social0/shared";
+import { getPlanLimits } from "@social0/shared/browser";
 import { setOnboardingCompleted } from "@/api/onboarding";
 import { DOCS_ONBOARDING_URL } from "@/lib/docs-url";
 import { toast } from "sonner";

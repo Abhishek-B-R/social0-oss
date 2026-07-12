@@ -5,7 +5,7 @@ import { rpc } from "@/lib/rpc";
 import { EditPostWithAccounts } from "@/features/dashboard/posts/EditPostWithAccounts";
 import { useSession } from "@/lib/auth-client";
 import { signInUrl } from "@/lib/sign-in-url";
-import type { DateFormatKey } from "@social0/shared";
+import type { DateFormatKey } from "@social0/shared/browser";
 
 export function EditPostPage() {
   const { id = "" } = useParams();

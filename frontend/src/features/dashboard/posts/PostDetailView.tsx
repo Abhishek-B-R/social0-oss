@@ -18,7 +18,7 @@ import {
   LayoutGrid,
 } from "lucide-react";
 import { PostDetailAutoFeaturesSection } from "./PostDetailAutoFeaturesSection";
-import { formatDateTime } from "@social0/shared";
+import { formatDateTime } from "@social0/shared/browser";
 import { sortBySlowPlatformsLast } from "@/lib/publish-order";
 import { getPublicationViewUrl } from "@/lib/platform-view-url";
 import {

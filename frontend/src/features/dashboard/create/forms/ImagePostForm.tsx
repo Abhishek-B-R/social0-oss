@@ -28,7 +28,7 @@ import {
 } from "@/lib/remembered-accounts";
 import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { PostFormOptions } from "../PostFormOptions";
-import { getResurfacePlatforms } from "@social0/shared";
+import { getResurfacePlatforms } from "@social0/shared/browser";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type {
   AutoPlugConfig,
@@ -78,7 +78,7 @@ import {
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
 import { DOCS_IMAGE_POST_TYPE_URL } from "@/lib/docs-url";
-import { getLimitForAccount } from "@social0/shared";
+import { getLimitForAccount } from "@social0/shared/browser";
 import { toast } from "sonner";
 import {
   getPinterestBoardRequiredMessage,

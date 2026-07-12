@@ -1,4 +1,4 @@
-import { sanitizeReturnToPath } from "@social0/shared";
+import { sanitizeReturnToPath } from "@social0/shared/browser";
 
 export { sanitizeReturnToPath };
 

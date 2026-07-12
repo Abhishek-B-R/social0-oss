@@ -1,5 +1,5 @@
 /**
- * Client-side Dodo product IDs (VITE_* env). Plan limits live in @social0/shared.
+ * Client-side Dodo product IDs (VITE_* env). Plan limits live in @social0/shared/browser.
  */
 import { getDodoProductId } from "./env";
 
@@ -9,7 +9,7 @@ export {
   isActiveTier,
   type PlanLimits,
   type SubscriptionTier,
-} from "@social0/shared";
+} from "@social0/shared/browser";
 
 export const PLAN_IDS = {
   starter: getDodoProductId("starter"),

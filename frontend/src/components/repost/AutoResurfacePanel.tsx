@@ -4,7 +4,7 @@ import {
   getResurfacePlatforms,
   getResurfacePlatformLabels,
   isWithinResurfaceWindow,
-} from "@social0/shared";
+} from "@social0/shared/browser";
 
 const INTERVAL_OPTIONS = [
   { value: 0.5, label: "0.5h" },

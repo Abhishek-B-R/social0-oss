@@ -1,4 +1,4 @@
-import type { SubscriptionTier } from "@social0/shared";
+import type { SubscriptionTier } from "@social0/shared/browser";
 
 export type SubscriptionState = {
   tier: SubscriptionTier;

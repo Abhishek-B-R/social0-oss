@@ -4,7 +4,7 @@ import { AccountAvatar } from "@/components/AccountAvatar";
 import {
   getResurfacePlatforms,
   isWithinAutoPlugWindow,
-} from "@social0/shared";
+} from "@social0/shared/browser";
 
 export type AutoPlugConfig = {
   metricType: "likes" | "retweets";

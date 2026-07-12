@@ -2,7 +2,7 @@ import {
   getMostRestrictiveLimit,
   PLATFORM_DISPLAY_NAMES,
   getLimitForAccount,
-} from "@social0/shared";
+} from "@social0/shared/browser";
 
 interface Account {
   platform: string;

@@ -1,4 +1,4 @@
-import { NEVER_EXPIRES_PLATFORMS } from "@social0/shared";
+import { NEVER_EXPIRES_PLATFORMS } from "@social0/shared/browser";
 import { PLATFORMS } from "@/lib/platforms";
 
 const platformOrder: string[] = PLATFORMS.map((p) => p.id);

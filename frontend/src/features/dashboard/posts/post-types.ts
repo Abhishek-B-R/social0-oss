@@ -3,7 +3,7 @@ export {
   type PublicationRow,
   type PostsListParams,
   type StatusFilter,
-} from "@social0/shared";
+} from "@social0/shared/browser";
 
 export type PostForEdit = {
   id: string;
@@ -57,7 +57,7 @@ export type AutoPlugDetail = {
 
 export type PostDetailResult = {
   post: PostDetailRow;
-  publications: import("@social0/shared").PublicationRow[];
+  publications: import("@social0/shared/browser").PublicationRow[];
   queuedSlot: QueuedSlotInfo | null;
   autoPlug: AutoPlugDetail | null;
   resurface: ResurfaceDetail | null;

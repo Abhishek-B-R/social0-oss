@@ -5,8 +5,8 @@ import { VideoPostForm } from "./forms/VideoPostForm";
 import { ThreadsPostForm } from "./forms/ThreadsPostForm";
 import { CollectionPostForm } from "./forms/CollectionPostForm";
 import { useAccountsForForm } from "./useAccountsForForm";
-import type { DateFormatKey } from "@social0/shared";
-import type { SubscriptionTier } from "@social0/shared";
+import type { DateFormatKey } from "@social0/shared/browser";
+import type { SubscriptionTier } from "@social0/shared/browser";
 
 const FORM_MAP = {
   text: TextPostForm,

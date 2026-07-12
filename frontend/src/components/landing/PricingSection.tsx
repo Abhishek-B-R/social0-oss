@@ -1,5 +1,5 @@
 import Link from "@/components/AppLink";
-import { getPlanLimits } from "@social0/shared";
+import { getPlanLimits } from "@social0/shared/browser";
 
 const freeFeatures = [
   "Connect up to 3 accounts",

@@ -26,7 +26,7 @@ import {
 import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
-import { getResurfacePlatforms } from "@social0/shared";
+import { getResurfacePlatforms } from "@social0/shared/browser";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type {
   AutoPlugConfig,
@@ -76,7 +76,7 @@ import {
 import {
   getAccountsOverVideoLimit,
   type VideoLimitWarning,
-} from "@social0/shared";
+} from "@social0/shared/browser";
 import { toast } from "sonner";
 
 type Account = {

@@ -5,7 +5,7 @@ import { ScheduleDateTimePicker } from "@/components/ui/ScheduleDateTimePicker";
 import { AccountBubbleSelector } from "@/components/AccountBubbleSelector";
 import { PLATFORMS } from "@/lib/platforms";
 import { signInUrl } from "@/lib/sign-in-url";
-import { getPlanLimits } from "@social0/shared";
+import { getPlanLimits } from "@social0/shared/browser";
 import type { PublishMode } from "@/api/posts";
 
 type Account = {

@@ -17,8 +17,7 @@
     "types": ["vite/client", "node"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@social0/shared": ["../backend/shared/src/index.ts"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src"]
