@@ -2,7 +2,7 @@ import { auth } from "../../lib/auth.js";
 import { headers } from "../../lib/http/request-cookies.js";
 import { RouteResponse } from "../../lib/http/http.js";
 import DodoPayments from "dodopayments";
-import { PLAN_IDS } from "../../lib/plans.js";
+import { PLAN_IDS } from "@social0/shared";
 import { resolveAppUrlFromRequest } from "../../lib/app-url.js";
 import { env } from "../../lib/env.js";
 import { checkoutLimiter, enforceRateLimit } from "../../lib/ratelimit.js";

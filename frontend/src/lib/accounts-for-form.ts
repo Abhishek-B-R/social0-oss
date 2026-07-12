@@ -1,8 +1,6 @@
-import { PLATFORMS } from "@/lib/platforms";
+import { NEVER_EXPIRES_PLATFORMS, PLATFORMS } from "@/lib/platforms";
 
 const platformOrder: string[] = PLATFORMS.map((p) => p.id);
-/** BYOK + Twitter: never show "expired" in UI. Inlined to avoid pulling token-health (and db/pg) into client bundle. */
-const NEVER_EXPIRES_PLATFORMS = new Set(["bluesky", "twitter_x"]);
 const skipExpiryDisplay = new Set(["youtube", "tiktok"]);
 
 export type ApiAccountRow = {

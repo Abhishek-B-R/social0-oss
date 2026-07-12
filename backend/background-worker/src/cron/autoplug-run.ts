@@ -6,7 +6,7 @@ import { TwitterApi } from "twitter-api-v2";
 import { decryptToken } from "../lib/encryption.js";
 import { verifyCronAuth } from "../lib/cron-auth.js";
 import { logCronSkipped } from "../lib/plan-analytics.js";
-import { getPlanLimits, type SubscriptionTier } from "../lib/plans.js";
+import { getPlanLimits, type SubscriptionTier } from "@social0/shared";
 import { env } from "../lib/env.js";
 
 export const maxDuration = 60;

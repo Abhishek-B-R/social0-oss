@@ -10,7 +10,7 @@ import {
 } from "@/lib/posts-list/posts-list-data";
 import type { PublicationRow, StatusFilter } from "@/lib/posts-list/posts-list-types";
 import { getSubscriptionForUser } from "@/lib/subscription";
-import { getPlanLimits } from "@/lib/plans";
+import { getPlanLimits } from "@social0/shared";
 import { getUserSettingsSnapshot } from "@/services/settings";
 import type { SubscriptionState } from "@/lib/subscription";
 import {
@@ -27,9 +27,9 @@ import { eq, inArray, and, or } from "drizzle-orm";
 import { format } from "date-fns";
 import { syncConnectedAccountsToLimit } from "@/lib/plan-limits";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
-import { isActiveTier } from "@/lib/plans";
+import { isActiveTier } from "@social0/shared";
 import { user } from "@/db/schema";
-import type { SubscriptionTier } from "@/lib/plans";
+import type { SubscriptionTier } from "@social0/shared";
 
 /** Dashboard layout bootstrap (subscription, profile, free-tier banner). */
 export async function loadDashboardLayoutData(): Promise<{

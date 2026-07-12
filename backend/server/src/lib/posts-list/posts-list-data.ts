@@ -11,7 +11,7 @@ import {
 import { eq, desc, asc, inArray, and, sql, gte, exists } from "drizzle-orm";
 import { startOfWeek, startOfMonth } from "date-fns";
 import { getSubscriptionForUser } from "@/lib/subscription";
-import { isActiveTier } from "@/lib/plans";
+import { isActiveTier } from "@social0/shared";
 import { POSTS_PAGE_SIZE } from "./posts-constants.js";
 import type {
   PublicationRow,

@@ -2,7 +2,7 @@ import DodoPayments from "dodopayments";
 import { db } from "../db/index.js";
 import { trialClaims, userSettings } from "../db/schema.js";
 import { eq } from "drizzle-orm";
-import { PLAN_IDS, isActiveTier } from "./plans.js";
+import { PLAN_IDS, isActiveTier } from "@social0/shared";
 import { getSubscriptionForUser } from "./subscription.js";
 import { env } from "./env.js";
 import { normalizeBillingEmail } from "./email-billing.js";

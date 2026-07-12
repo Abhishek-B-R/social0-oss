@@ -2,7 +2,7 @@ import { db } from "../db/index.js";
 import { user } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import DodoPayments from "dodopayments";
-import { getTierFromProductId, PLAN_IDS } from "./plans.js";
+import { getTierFromProductId, PLAN_IDS } from "@social0/shared";
 import { setSubscription } from "./subscription.js";
 import {
   backfillBillingIds,

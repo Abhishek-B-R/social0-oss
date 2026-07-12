@@ -4,14 +4,11 @@ import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { OnboardingLayout } from "@/layouts/OnboardingLayout";
 import { HomePage } from "@/pages/HomePage";
 import { AuthRoutePage } from "@/pages/AuthRoutePage";
-import {
-  ForgotPasswordRoutePage,
-  ResetPasswordRoutePage,
-  VerifyEmailRoutePage,
-} from "@/pages/AuthSubPages";
+import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage";
+import ResetPasswordPage from "@/features/auth/pages/ResetPasswordPage";
+import VerifyEmailPage from "@/features/auth/pages/VerifyEmailPage";
 import { ComposerPage } from "@/pages/ComposerPage";
 import {
-  DashboardIndexPage,
   PostsPage,
   BillingPage,
   CalendarPage,
@@ -33,7 +30,6 @@ import {
   PostedPostsPage,
 } from "@/pages/StatusPostsPage";
 import { ApiKeysPage } from "@/pages/ApiKeysPage";
-import { TeamsPage } from "@/pages/TeamsPage";
 import { MarketingPages } from "@/pages/MarketingPages";
 import OnboardingPage from "@/features/onboarding/pages/OnboardingStep1Page";
 import OnboardingStep2Page from "@/features/onboarding/pages/OnboardingStep2Page";
@@ -52,9 +48,9 @@ export function AppRouter() {
         <Route element={<RootLayout />}>
           <Route index element={<HomePage />} />
           <Route path="auth" element={<AuthRoutePage />} />
-          <Route path="auth/forgot-password" element={<ForgotPasswordRoutePage />} />
-          <Route path="auth/reset-password" element={<ResetPasswordRoutePage />} />
-          <Route path="auth/verify-email" element={<VerifyEmailRoutePage />} />
+          <Route path="auth/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="auth/reset-password" element={<ResetPasswordPage />} />
+          <Route path="auth/verify-email" element={<VerifyEmailPage />} />
           <Route path="terms" element={<MarketingPages.Terms />} />
           <Route path="privacy" element={<MarketingPages.Privacy />} />
           <Route path="data-deletion" element={<MarketingPages.DataDeletion />} />
@@ -73,7 +69,7 @@ export function AppRouter() {
           </Route>
 
           <Route path="dashboard" element={<DashboardLayout />}>
-            <Route index element={<DashboardIndexPage />} />
+            <Route index element={<Navigate to="/dashboard/composer" replace />} />
             <Route path="composer" element={<ComposerPage />} />
             <Route path="create" element={<CreateHubPage />} />
             <Route path="create/:type" element={<CreateTypePage />} />
@@ -97,7 +93,7 @@ export function AppRouter() {
             <Route path="api-keys" element={<ApiKeysPage />} />
             <Route path="feedback" element={<FeedbackPageRoute />} />
             <Route path="more" element={<MorePage />} />
-            <Route path="teams" element={<TeamsPage />} />
+            <Route path="teams" element={<Navigate to="/dashboard/more" replace />} />
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />

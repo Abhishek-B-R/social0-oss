@@ -10,7 +10,7 @@ import {
   getTierFromProductId,
   PLAN_IDS,
   isActiveTier,
-} from "../../lib/plans.js";
+} from "@social0/shared";
 import { env } from "../../lib/env.js";
 import { claimWebhookDelivery } from "../../lib/webhook-idempotency.js";
 import {

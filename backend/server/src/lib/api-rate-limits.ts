@@ -1,5 +1,5 @@
 import { Ratelimit } from "@upstash/ratelimit";
-import type { SubscriptionTier } from "./plans.js";
+import type { SubscriptionTier } from "@social0/shared";
 import { redis } from "./redis.js";
 import { enforceRateLimit } from "./ratelimit.js";
 

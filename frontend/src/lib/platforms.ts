@@ -15,6 +15,9 @@ export const PLATFORMS = [
 
 export type Platform = (typeof PLATFORMS)[number]["id"];
 
+/** BYOK + Twitter: never show "expired" in UI. */
+export const NEVER_EXPIRES_PLATFORMS = new Set<string>(["bluesky", "twitter_x"]);
+
 export const PLATFORM_OAUTH_CONFIG: Record<
   Platform,
   {
