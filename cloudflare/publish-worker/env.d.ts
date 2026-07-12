@@ -1,19 +1,23 @@
-/** Secrets / vars - set via `wrangler secret put` or `.dev.vars`. */
+/** Secrets / vars — set via `wrangler secret put` or `.dev.vars`. */
 interface Env {
-  PUBLISH_HMAC_SECRET: string;
-  ENCRYPTION_KEY: string;
-  APP_URL: string;
-  HYPERDRIVE: Hyperdrive;
-  PUBLISH_NOW_QUEUE: Queue;
-  PUBLISH_SCHEDULED_QUEUE: Queue;
-  R2_PUBLIC_URL?: string;
+  /** loadServerEnv() stubs — not used on the publish path */
+  BETTER_AUTH_SECRET?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  RESEND_API_KEY?: string;
+  RESEND_FROM_EMAIL?: string;
+  CRON_SECRET?: string;
+  ADMIN_API_KEY?: string;
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SECRET_KEY?: string;
+  DODO_PAYMENTS_WEBHOOK_SECRET?: string;
+  UPSTASH_REDIS_REST_URL?: string;
+  UPSTASH_REDIS_REST_TOKEN?: string;
   R2_ACCOUNT_ID?: string;
   R2_ACCESS_KEY_ID?: string;
   R2_SECRET_ACCESS_KEY?: string;
   R2_BUCKET_NAME?: string;
   R2_ENDPOINT?: string;
-  UPSTASH_REDIS_REST_URL?: string;
-  UPSTASH_REDIS_REST_TOKEN?: string;
   LINKEDIN_CLIENT_ID?: string;
   LINKEDIN_CLIENT_SECRET?: string;
   INSTAGRAM_CLIENT_ID?: string;

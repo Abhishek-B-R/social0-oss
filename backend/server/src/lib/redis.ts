@@ -4,6 +4,8 @@ import { resolveUpstashRedisConfig } from "@social0/shared";
 function createRedisClient(): Redis | null {
   try {
     const config = resolveUpstashRedisConfig(process.env);
+    // ponytail: CF publish worker stubs Redis so loadServerEnv() passes; never connect.
+    if (config.restUrl.includes("worker-unused")) return null;
     return new Redis({ url: config.restUrl, token: config.restToken });
   } catch {
     return null;

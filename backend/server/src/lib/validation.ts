@@ -115,7 +115,13 @@ export function constantTimeEquals(a: string, b: string): boolean {
 }
 
 // ponytail: self-check — offsets rejected before { offset: true }
-if (import.meta.url.endsWith(process.argv[1]?.replace(/\\/g, "/") ?? "")) {
+const validationSelfCheckEntry =
+  process.argv[1]?.replace(/\\/g, "/") ?? "";
+if (
+  validationSelfCheckEntry &&
+  typeof import.meta.url === "string" &&
+  import.meta.url.endsWith(validationSelfCheckEntry)
+) {
   console.assert(isoDateTimeSchema.safeParse("2026-07-20T15:30:00+05:30").success);
   console.assert(isoDateTimeSchema.safeParse("2026-07-20T10:00:00.000Z").success);
 }

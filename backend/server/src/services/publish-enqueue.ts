@@ -19,6 +19,10 @@ import {
   dispatchPlatformJob,
   useCloudflarePublishDispatch,
 } from "./publish-dispatch.js";
+import { runPlatformJobOnServer } from "../publish/process-platform-server.js";
+
+/** Platforms that must publish on the API server (Node-only SDKs / OAuth). */
+const SERVER_SIDE_PUBLISH_PLATFORMS = new Set(["twitter_x"]);
 
 export type PublishPriority = "now" | "scheduled";
 
@@ -185,7 +189,12 @@ export async function prepareAndEnqueuePublish(
       platform: t.platform,
     };
 
-    if (backend === "cloudflare") {
+    if (backend === "cloudflare" && SERVER_SIDE_PUBLISH_PLATFORMS.has(t.platform)) {
+      // Same path as dashboard RPC publish — twitter-api-v2 media upload on Node.
+      void runPlatformJobOnServer(app, platformJob).catch((err) => {
+        console.error("[publish] server-side platform job failed", err);
+      });
+    } else if (backend === "cloudflare") {
       await dispatchPlatformJob(platformJob, opts.priority);
     } else {
       await enqueueBullmqPlatformJob(app, platformJob, { delay: opts.delay });

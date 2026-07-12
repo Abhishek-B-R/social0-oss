@@ -7,6 +7,11 @@
 import { TwitterApi } from "twitter-api-v2";
 import { formatTwitterMediaError } from "@/lib/twitter-errors";
 import { fetchAllowedMedia } from "@/lib/media-fetch";
+import {
+  isPublishWorkerRuntime,
+  uploadTwitterImageFetch,
+  uploadTwitterVideoFetch,
+} from "@/lib/twitter-media-upload-fetch";
 
 function getTwitterClient(accessToken: string, accessSecret: string): TwitterApi {
   const appKey = process.env.TWITTER_CONSUMER_KEY;
@@ -38,6 +43,20 @@ export async function uploadTwitterImage(
 
   const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
   const contentType = imageRes.headers.get("content-type") || "image/jpeg";
+
+  if (isPublishWorkerRuntime()) {
+    try {
+      return await uploadTwitterImageFetch(
+        imageBuffer,
+        contentType,
+        accessToken,
+        accessSecret,
+      );
+    } catch (e) {
+      throw new Error(formatTwitterMediaError(e, "Twitter image upload"));
+    }
+  }
+
   const client = getTwitterClient(accessToken, accessSecret);
 
   try {
@@ -76,6 +95,20 @@ export async function uploadTwitterVideo(
 
   const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
   const contentType = videoRes.headers.get("content-type") || "video/mp4";
+
+  if (isPublishWorkerRuntime()) {
+    try {
+      return await uploadTwitterVideoFetch(
+        videoBuffer,
+        contentType,
+        accessToken,
+        accessSecret,
+      );
+    } catch (e) {
+      throw new Error(formatTwitterMediaError(e, "Twitter video upload"));
+    }
+  }
+
   const client = getTwitterClient(accessToken, accessSecret);
 
   try {
