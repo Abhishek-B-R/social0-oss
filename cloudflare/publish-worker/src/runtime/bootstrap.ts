@@ -14,12 +14,13 @@ export function bootstrapWorkerRuntime(env: Env): void {
       writable: true,
     });
   } catch {
-    (process as { report?: typeof report }).report = report;
+    (process as unknown as { report?: typeof report }).report = report;
   }
 
   // Publish path only needs DB + encryption + platform OAuth + R2.
   // loadServerEnv() still parses the full server schema, so stub unused auth/billing keys.
   // Don't assign process.env.NODE_ENV — wrangler defines it as a compile-time constant.
+  process.env.SOCIAL0_PUBLISH_WORKER = "1";
   process.env.DATABASE_URL = env.HYPERDRIVE.connectionString;
   process.env.ENCRYPTION_KEY = env.ENCRYPTION_KEY;
   process.env.NEXT_PUBLIC_APP_URL = env.APP_URL;
@@ -45,13 +46,11 @@ export function bootstrapWorkerRuntime(env: Env): void {
   process.env.DODO_PAYMENTS_WEBHOOK_SECRET =
     env.DODO_PAYMENTS_WEBHOOK_SECRET ?? "worker-unused";
 
-  // Optional on publish worker — rate limits skip when unset (see plan-limits).
-  if (env.UPSTASH_REDIS_REST_URL) {
-    process.env.UPSTASH_REDIS_REST_URL = env.UPSTASH_REDIS_REST_URL;
-  }
-  if (env.UPSTASH_REDIS_REST_TOKEN) {
-    process.env.UPSTASH_REDIS_REST_TOKEN = env.UPSTASH_REDIS_REST_TOKEN;
-  }
+  // loadServerEnv() requires these keys; publish worker does not use Redis.
+  process.env.UPSTASH_REDIS_REST_URL =
+    env.UPSTASH_REDIS_REST_URL ?? "https://worker-unused.upstash.io";
+  process.env.UPSTASH_REDIS_REST_TOKEN =
+    env.UPSTASH_REDIS_REST_TOKEN ?? "worker-unused-redis-token";
 
   if (env.R2_PUBLIC_URL) process.env.R2_PUBLIC_URL = env.R2_PUBLIC_URL;
   if (env.R2_ACCOUNT_ID) process.env.R2_ACCOUNT_ID = env.R2_ACCOUNT_ID;

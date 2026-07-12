@@ -7,6 +7,7 @@ export interface CreatePostPayload {
   platforms: string[];
   media?: string[];
   metadata?: Record<string, unknown>;
+  platform_options?: Record<string, unknown>;
 }
 
 export interface UpdatePostPayload {
@@ -14,6 +15,7 @@ export interface UpdatePostPayload {
   platforms?: string[];
   media?: string[];
   metadata?: Record<string, unknown>;
+  platform_options?: Record<string, unknown>;
 }
 
 export interface ListPostsParams {

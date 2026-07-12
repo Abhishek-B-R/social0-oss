@@ -26,9 +26,7 @@ import { NEVER_EXPIRES_PLATFORMS } from "../lib/token-health.js";
 import {
   checkAutoPlugAllowed,
   checkResurfaceAllowed,
-  checkTwitterPublishRateLimit,
 } from "../lib/plan-limits.js";
-import { logPublishBlocked } from "../lib/plan-analytics.js";
 import {
   uploadTwitterImage,
   uploadTwitterVideo,
@@ -223,35 +221,7 @@ export async function executePublish(
     return { success: true, results: [] };
   }
 
-  const pendingTwitterCount = publicationsWithAccounts.filter(
-    (p) => p.publicationStatus === "pending" && p.platform === "twitter_x",
-  ).length;
-  if (pendingTwitterCount > 0 && post.userId) {
-    const rateLimit = await checkTwitterPublishRateLimit(
-      post.userId,
-      pendingTwitterCount,
-    );
-    if (!rateLimit.allowed) {
-      logPublishBlocked("twitter_rate_limit", post.userId, post.id);
-      const failureReason =
-        rateLimit.reason ??
-        "You're posting to X too quickly. Please wait a few minutes and try again.";
-      await db
-        .update(posts)
-        .set({
-          status: "failed",
-          failureReason,
-          updatedAt: new Date(),
-        })
-        .where(eq(posts.id, postId));
-      return {
-        success: false,
-        error: failureReason,
-        results: [],
-      };
-    }
-  }
-
+  const results: PublishResult["results"] = [];
   // Mark post and pending publications as "publishing" so UI shows progress and we avoid double-publish.
   // Never demote an already published/partial post - follow-up calls on finished publications
   // (per-platform progress, safety-net republish) would otherwise erase the status that
@@ -288,8 +258,6 @@ export async function executePublish(
       .where(inArray(postPublications.id, publishingPublicationIds));
   }
 
-  const results: PublishResult["results"] = [];
-
   // For thread posts: non-Twitter platforms get clean text (no "---") so FB/Threads/Bluesky show readable content
   const contentForNonTwitter = (() => {
     const md = post.metadata;
@@ -315,6 +283,25 @@ export async function executePublish(
 
   async function handlePublication(pub: PublicationWithAccount) {
     let accessToken: string;
+    const effectiveMediaIds = (() => {
+      const md = post.metadata;
+      if (!md || typeof md !== "object") return post.mediaIds;
+      const accountMedia = (md as Record<string, unknown>)["accountMedia"];
+      if (!accountMedia || typeof accountMedia !== "object") return post.mediaIds;
+      const mediaForAccount = (accountMedia as Record<string, unknown>)[
+        pub.connectedAccountId
+      ];
+      const mediaForPlatform = (accountMedia as Record<string, unknown>)[
+        pub.platform
+      ];
+      const value = Array.isArray(mediaForAccount)
+        ? mediaForAccount
+        : Array.isArray(mediaForPlatform)
+          ? mediaForPlatform
+          : null;
+      if (!value) return post.mediaIds;
+      return value.filter((id): id is string => typeof id === "string");
+    })();
 
     if (pub.publicationStatus === "published") {
       results.push({
@@ -337,9 +324,9 @@ export async function executePublish(
     }
 
     // Collection/mixed media: log per-platform warnings (do not fail publish)
-    if (post.mediaIds?.length) {
+    if (effectiveMediaIds?.length) {
       const collectionCheck = validateCollectionMedia(
-        post.mediaIds,
+        effectiveMediaIds,
         pub.platform,
       );
       if (collectionCheck.warning) {
@@ -534,7 +521,7 @@ export async function executePublish(
       const mediaAssets: string[] = [];
       let shareMediaCategory: "NONE" | "IMAGE" | "VIDEO" = "NONE";
 
-      if (post.mediaIds && post.mediaIds.length > 0) {
+      if (effectiveMediaIds && effectiveMediaIds.length > 0) {
         const media = await db
           .select({
             id: mediaUploads.id,
@@ -542,7 +529,7 @@ export async function executePublish(
             mimeType: mediaUploads.mimeType,
           })
           .from(mediaUploads)
-          .where(inArray(mediaUploads.id, post.mediaIds));
+          .where(inArray(mediaUploads.id, effectiveMediaIds));
 
         if (media.length > 0) {
           const images = media.filter((m) => m.mimeType?.startsWith("image/"));
@@ -692,9 +679,9 @@ export async function executePublish(
         body: JSON.stringify(body),
       });
 
-      const responseData = await linkedInRes
+      const responseData = (await linkedInRes
         .json()
-        .catch(() => ({}) as Record<string, unknown>);
+        .catch(() => ({}))) as Record<string, unknown>;
 
       if (!linkedInRes.ok) {
         const errMessage = parseLinkedInError(responseData, linkedInRes.status);
@@ -1087,7 +1074,7 @@ export async function executePublish(
       const mediaIds: string[] = [];
 
       // Fetch media in post order; Twitter supports up to 4 attachments (any mix of images and videos)
-      if (post.mediaIds && post.mediaIds.length > 0) {
+      if (effectiveMediaIds && effectiveMediaIds.length > 0) {
         const media = await db
           .select({
             id: mediaUploads.id,
@@ -1095,9 +1082,9 @@ export async function executePublish(
             mimeType: mediaUploads.mimeType,
           })
           .from(mediaUploads)
-          .where(inArray(mediaUploads.id, post.mediaIds));
+          .where(inArray(mediaUploads.id, effectiveMediaIds));
 
-        const order = new Map(post.mediaIds.map((id, i) => [id, i]));
+        const order = new Map(effectiveMediaIds.map((id, i) => [id, i]));
         const ordered = media
           .filter((m) => m.url && m.mimeType)
           .filter((m) =>
@@ -1430,12 +1417,28 @@ export async function executePublish(
         let platformOptions:
           | { instagram?: { coverImageUrl?: string; isTrialReel: boolean } }
           | undefined;
-        if (pub.platform === "instagram" && options?.instagramConfig) {
+        if (pub.platform === "instagram") {
+          const instagramMeta = (() => {
+            const md = post.metadata;
+            if (!md || typeof md !== "object") return null;
+            const instagram = (md as Record<string, unknown>)["instagram"];
+            if (!instagram || typeof instagram !== "object") return null;
+            const accountOptions = (instagram as Record<string, unknown>)[
+              pub.connectedAccountId
+            ];
+            return accountOptions && typeof accountOptions === "object"
+              ? (accountOptions as Record<string, unknown>)
+              : null;
+          })();
           // coverImageUrl comes from our own uploadFile() flow - not user-supplied.
           // Instagram fetches the URL (not our server), so SSRF doesn't apply here.
           // We do a basic sanity check: must be a valid https URL.
           let coverImageUrl: string | undefined;
-          const rawUrl = options.instagramConfig.coverImageUrl?.trim();
+          const rawUrl =
+            options?.instagramConfig?.coverImageUrl?.trim() ||
+            (typeof instagramMeta?.coverImageUrl === "string"
+              ? instagramMeta.coverImageUrl.trim()
+              : undefined);
           if (rawUrl) {
             try {
               const parsed = new URL(rawUrl);
@@ -1453,7 +1456,9 @@ export async function executePublish(
           platformOptions = {
             instagram: {
               coverImageUrl,
-              isTrialReel: options.instagramConfig.isTrialReel === true,
+              isTrialReel:
+                options?.instagramConfig?.isTrialReel === true ||
+                instagramMeta?.isTrialReel === true,
             },
           };
         }
@@ -1469,7 +1474,7 @@ export async function executePublish(
           {
             id: post.id,
             finalContent: truncatedContent,
-            mediaIds: post.mediaIds,
+            mediaIds: effectiveMediaIds,
             metadata: post.metadata,
           },
           tokenForPublish,

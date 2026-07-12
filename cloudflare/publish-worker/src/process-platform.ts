@@ -47,6 +47,7 @@ export async function processPlatformJob(
       job,
       "platform_uploading",
       `Uploading to ${job.platform}`,
+      { skipAuth: true },
     );
   }
 
@@ -58,26 +59,25 @@ export async function processPlatformJob(
   );
 
   const pubResult = result.results.find(
-    (r) => r.connectedAccountId === job.connectedAccountId,
+    (r) =>
+      r.connectedAccountId === job.connectedAccountId ||
+      r.platform === job.platform,
   );
   const success = pubResult?.status === "published";
+  const failureMessage =
+    pubResult?.error ??
+    result.error ??
+    (pubResult ? "Platform publish failed" : "No publish result for platform");
 
   if (job.trackingId) {
     await recordPlatformResult(
       env,
       job,
       success,
-      success
-        ? `Published to ${job.platform}`
-        : (pubResult?.error ?? result.error ?? "Platform publish failed"),
+      success ? `Published to ${job.platform}` : failureMessage,
+      { skipAuth: true },
     );
   }
 
   await finalize.maybeFinalizePostPublish(job.postId, job.userId);
-
-  if (!success) {
-    throw new Error(
-      pubResult?.error ?? result.error ?? "Platform publish failed",
-    );
-  }
 }

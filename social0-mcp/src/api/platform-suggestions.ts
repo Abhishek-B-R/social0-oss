@@ -42,6 +42,17 @@ const FORM_PRIORITY: Record<PostForm, Platform[]> = {
     "tiktok",
     "youtube",
   ],
+  collection: [
+    "instagram",
+    "threads",
+    "twitter_x",
+    "linkedin",
+    "facebook",
+    "bluesky",
+    "pinterest",
+    "tiktok",
+    "youtube",
+  ],
   text: [
     "linkedin",
     "twitter_x",
@@ -66,7 +77,7 @@ function hasUrls(text: string): boolean {
 export function inferPostFormForSuggestion(input: {
   hasMedia?: boolean;
   mediaIsVideo?: boolean;
-  mediaType?: "none" | "image" | "video";
+  mediaType?: "none" | "image" | "video" | "collection";
 }): PostForm {
   return inferPostForm({
     ...(input.hasMedia !== undefined ? { hasMedia: input.hasMedia } : {}),
@@ -139,6 +150,19 @@ function scorePlatform(
     return { recommended: true, reason: "Supports image posts in Social0" };
   }
 
+  if (form === "collection") {
+    if (platform === "instagram") {
+      return { recommended: true, reason: "Strong fit for carousel-style mixed media" };
+    }
+    if (platform === "threads" || platform === "twitter_x") {
+      return { recommended: true, reason: "Supports multi-attachment collection posts" };
+    }
+    return {
+      recommended: false,
+      reason: "Collection posts in Social0 are for Instagram, Threads, and X",
+    };
+  }
+
   // text
   switch (platform) {
     case "linkedin":
@@ -183,7 +207,7 @@ export function suggestPlatforms(input: {
   content: string;
   hasMedia?: boolean;
   mediaIsVideo?: boolean;
-  mediaType?: "none" | "image" | "video";
+  mediaType?: "none" | "image" | "video" | "collection";
   connectedPlatforms?: Platform[];
 }): PlatformSuggestion[] {
   const form = inferPostFormForSuggestion(input);

@@ -564,7 +564,36 @@ export async function getPostDetail(
       queuedSlot = await getQueuedSlotForPost(postId, userId);
     }
 
-    const hasXPublished = pubs.some(
+    const hasStuckPubs = pubs.some(
+      (p) => p.status === "pending" || p.status === "publishing",
+    );
+    const hasTerminalPubs = pubs.some(
+      (p) => p.status === "published" || p.status === "failed",
+    );
+    const shouldNormalizeStuckPubs =
+      hasStuckPubs &&
+      (post.failureReason?.trim() ||
+        post.status === "failed" ||
+        post.status === "partial" ||
+        post.status === "published" ||
+        hasTerminalPubs);
+
+    const normalizedPubs = shouldNormalizeStuckPubs
+      ? pubs.map((pub) =>
+          pub.status === "pending" || pub.status === "publishing"
+            ? {
+                ...pub,
+                status: "failed" as const,
+                lastError:
+                  pub.lastError ??
+                  post.failureReason ??
+                  "Publish did not complete for this platform",
+              }
+            : pub,
+        )
+      : pubs;
+
+    const hasXPublished = normalizedPubs.some(
       (p) => p.platform === "twitter_x" && p.status === "published",
     );
     let autoPlug: AutoPlugDetail | null = null;
@@ -625,7 +654,7 @@ export async function getPostDetail(
         metadata: post.metadata ?? null,
         failureReason: post.failureReason ?? null,
       },
-      publications: pubs,
+      publications: normalizedPubs,
       queuedSlot,
       autoPlug,
       resurface,

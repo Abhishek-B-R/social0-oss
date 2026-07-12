@@ -19,13 +19,17 @@ import {
   dispatchPlatformJob,
   useCloudflarePublishDispatch,
 } from "./publish-dispatch.js";
+import { runPlatformJobOnServer } from "../publish/process-platform-server.js";
+
+/** Platforms that must publish on the API server (Node-only SDKs / OAuth). */
+const SERVER_SIDE_PUBLISH_PLATFORMS = new Set(["twitter_x"]);
 
 export type PublishPriority = "now" | "scheduled";
 
 async function markPostPublishing(postId: string, userId: string) {
   await db
     .update(posts)
-    .set({ status: "publishing", updatedAt: new Date() })
+    .set({ status: "publishing", failureReason: null, updatedAt: new Date() })
     .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
 }
 
@@ -69,7 +73,7 @@ export async function initPublishJobTracking(input: {
   });
 }
 
-async function emitPlatformQueuedEvents(
+async function initQueuedJobProgress(
   app: FastifyInstance | null,
   job: PublishPostJob,
   targets: Awaited<ReturnType<typeof loadPublicationTargets>>,
@@ -93,18 +97,24 @@ async function emitPlatformQueuedEvents(
     message: `Fanning out to ${targets.length} platforms`,
     setTotal: targets.length,
   });
+}
 
-  for (const t of targets) {
-    await progress.emit({
-      trackingId: job.trackingId,
-      postId: job.postId,
-      userId: job.userId,
-      phase: "platform_queued",
-      platform: t.platform,
-      connectedAccountId: t.connectedAccountId,
-      message: `Queued ${t.platform}`,
-    });
-  }
+async function emitPlatformQueuedEvent(
+  app: FastifyInstance | null,
+  job: PublishPostJob,
+  target: Awaited<ReturnType<typeof loadPublicationTargets>>[number],
+) {
+  if (!job.trackingId) return;
+  const progress = await resolveJobProgressStore(app);
+  await progress.emit({
+    trackingId: job.trackingId,
+    postId: job.postId,
+    userId: job.userId,
+    phase: "platform_queued",
+    platform: target.platform,
+    connectedAccountId: target.connectedAccountId,
+    message: `Queued ${target.platform}`,
+  });
 }
 
 async function enqueueBullmqPlatformJob(
@@ -167,7 +177,7 @@ export async function prepareAndEnqueuePublish(
     throw new Error("BullMQ redis connection not available");
   }
 
-  await emitPlatformQueuedEvents(app, job, targets);
+  await initQueuedJobProgress(app, job, targets);
 
   for (const t of targets) {
     const platformJob: PublishPlatformJob = {
@@ -179,11 +189,17 @@ export async function prepareAndEnqueuePublish(
       platform: t.platform,
     };
 
-    if (backend === "cloudflare") {
+    if (backend === "cloudflare" && SERVER_SIDE_PUBLISH_PLATFORMS.has(t.platform)) {
+      // Same path as dashboard RPC publish — twitter-api-v2 media upload on Node.
+      void runPlatformJobOnServer(app, platformJob).catch((err) => {
+        console.error("[publish] server-side platform job failed", err);
+      });
+    } else if (backend === "cloudflare") {
       await dispatchPlatformJob(platformJob, opts.priority);
     } else {
       await enqueueBullmqPlatformJob(app, platformJob, { delay: opts.delay });
     }
+    await emitPlatformQueuedEvent(app, job, t);
   }
 
   return {

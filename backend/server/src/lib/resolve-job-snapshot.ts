@@ -47,6 +47,14 @@ type PubRow = {
   lastError: string | null;
 };
 
+function platformEventKey(
+  platform: string | null | undefined,
+  connectedAccountId: string | null | undefined,
+): string | null {
+  if (!platform) return null;
+  return `${platform}:${connectedAccountId ?? platform}`;
+}
+
 function phaseForPublication(status: string | null): JobProgressEvent["phase"] {
   if (status === "published") return "platform_success";
   if (status === "failed") return "platform_failed";
@@ -76,22 +84,25 @@ function mergeEventsFromPublications(
 
   const latestByPlatform = new Map<string, JobProgressEvent>();
   for (const event of snapshot.events) {
-    if (event.platform) latestByPlatform.set(event.platform, event);
+    const key = platformEventKey(event.platform, event.connectedAccountId);
+    if (key) latestByPlatform.set(key, event);
   }
 
   for (const pub of pubs) {
     if (!pub.platform || !pub.connectedAccountId) continue;
+    const key = platformEventKey(pub.platform, pub.connectedAccountId);
+    if (!key) continue;
     const phase = phaseForPublication(pub.status);
     const message = messageForPublication(pub);
     const isTerminalPub =
       pub.status === "published" || pub.status === "failed";
-    const existing = latestByPlatform.get(pub.platform);
+    const existing = latestByPlatform.get(key);
     const existingTerminal =
       existing?.phase === "platform_success" ||
       existing?.phase === "platform_failed";
 
     if (isTerminalPub || !existing || !existingTerminal) {
-      latestByPlatform.set(pub.platform, {
+      latestByPlatform.set(key, {
         trackingId: snapshot.trackingId,
         postId: snapshot.postId,
         userId: snapshot.userId,
@@ -107,6 +118,37 @@ function mergeEventsFromPublications(
 
   const nonPlatform = snapshot.events.filter((e) => !e.platform);
   return [...nonPlatform, ...latestByPlatform.values()];
+}
+
+function terminalCountsFromPublicationsAndEvents(
+  pubs: PubRow[],
+  events: JobProgressEvent[],
+) {
+  const latestEvents = new Map<string, JobProgressEvent>();
+  for (const event of events) {
+    const key = platformEventKey(event.platform, event.connectedAccountId);
+    if (key) latestEvents.set(key, event);
+  }
+
+  let completed = 0;
+  let failed = 0;
+  for (const pub of pubs) {
+    if (pub.status === "published") {
+      completed++;
+      continue;
+    }
+    if (pub.status === "failed") {
+      failed++;
+      continue;
+    }
+
+    const key = platformEventKey(pub.platform, pub.connectedAccountId);
+    const event = key ? latestEvents.get(key) : undefined;
+    if (event?.phase === "platform_success") completed++;
+    if (event?.phase === "platform_failed") failed++;
+  }
+
+  return { completed, failed };
 }
 
 async function enrichSnapshotFromPublications(
@@ -127,23 +169,27 @@ async function enrichSnapshotFromPublications(
       )
       .where(eq(postPublications.postId, snapshot.postId)),
     db
-      .select({ failureReason: posts.failureReason })
+      .select({ status: posts.status, failureReason: posts.failureReason })
       .from(posts)
       .where(eq(posts.id, snapshot.postId))
       .limit(1),
   ]);
+  const postFailureReason =
+    postRow[0]?.status === "failed" || postRow[0]?.status === "partial"
+      ? (postRow[0]?.failureReason ?? null)
+      : null;
 
   if (pubs.length === 0) {
-    return { ...snapshot, failureReason: postRow[0]?.failureReason ?? null };
+    return { ...snapshot, failureReason: postFailureReason };
   }
 
   const events = mergeEventsFromPublications(snapshot, pubs);
-  const completed = pubs.filter((p) => p.status === "published").length;
-  const failed = pubs.filter((p) => p.status === "failed").length;
-  const total = pubs.length;
-  const allDone = pubs.every(
-    (p) => p.status === "published" || p.status === "failed",
+  const { completed, failed } = terminalCountsFromPublicationsAndEvents(
+    pubs,
+    events,
   );
+  const total = pubs.length;
+  const allDone = completed + failed >= total;
 
   let status = snapshot.status;
   let updatedAt = snapshot.updatedAt;
@@ -167,6 +213,12 @@ async function enrichSnapshotFromPublications(
     }
   }
 
+  const showFailureReason =
+    allDone &&
+    (failed > 0 ||
+      postRow[0]?.status === "failed" ||
+      postRow[0]?.status === "partial");
+
   return {
     ...snapshot,
     status,
@@ -175,7 +227,7 @@ async function enrichSnapshotFromPublications(
     failed,
     events,
     updatedAt,
-    failureReason: postRow[0]?.failureReason ?? null,
+    failureReason: showFailureReason ? postFailureReason : null,
   };
 }
 

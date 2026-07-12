@@ -7,6 +7,7 @@ function mockEnv(overrides: Partial<Env> = {}): Env {
     PUBLISH_HMAC_SECRET: "secret",
     ENCRYPTION_KEY: "a".repeat(64),
     APP_URL: "http://localhost:3000",
+    R2_PUBLIC_URL: "https://example.r2.dev",
     HYPERDRIVE: { connectionString: "postgres://x" } as Hyperdrive,
     ...overrides,
   };

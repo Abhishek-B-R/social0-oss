@@ -42,6 +42,15 @@ export const CONTENT_TYPES = [
       "instagram",
     ] as Platform[],
   },
+  {
+    slug: "collection" as const,
+    name: "Collection post",
+    platforms: [
+      "twitter_x",
+      "threads",
+      "instagram",
+    ] as Platform[],
+  },
 ] as const;
 
 export type PostForm = (typeof CONTENT_TYPES)[number]["slug"];

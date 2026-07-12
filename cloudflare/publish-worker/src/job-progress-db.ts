@@ -7,9 +7,10 @@ export async function trackPlatformPhase(
   job: PublishPlatformJob,
   phase: string,
   message: string,
+  opts?: { skipAuth?: boolean },
 ): Promise<void> {
   if (!job.trackingId) return;
-  if (await assertPublishJobAuthorized(env, job)) return;
+  if (!opts?.skipAuth && (await assertPublishJobAuthorized(env, job))) return;
 
   const { default: postgres } = await import("postgres");
   const sql = postgres(env.HYPERDRIVE.connectionString, {
@@ -49,9 +50,9 @@ export async function recordPlatformResult(
   job: PublishPlatformJob,
   success: boolean,
   message: string,
+  opts?: { skipAuth?: boolean },
 ): Promise<void> {
-  if (!job.trackingId) return;
-  if (await assertPublishJobAuthorized(env, job)) return;
+  if (!opts?.skipAuth && (await assertPublishJobAuthorized(env, job))) return;
 
   const { default: postgres } = await import("postgres");
   const sql = postgres(env.HYPERDRIVE.connectionString, {
@@ -60,6 +61,63 @@ export async function recordPlatformResult(
   });
 
   try {
+    if (!success) {
+      await sql`
+        UPDATE post_publications
+        SET status = 'failed', last_error = ${message}, updated_at = NOW()
+        WHERE id = ${job.publicationId}::uuid
+      `;
+    }
+
+    const [pubCounts] = await sql<
+      { total: number; published: number; failed: number }[]
+    >`
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE status = 'published')::int AS published,
+        COUNT(*) FILTER (WHERE status = 'failed')::int AS failed
+      FROM post_publications
+      WHERE post_id = ${job.postId}::uuid
+    `;
+
+    if (
+      pubCounts &&
+      pubCounts.total > 0 &&
+      pubCounts.published + pubCounts.failed >= pubCounts.total
+    ) {
+      const postStatus =
+        pubCounts.published === 0
+          ? "failed"
+          : pubCounts.failed === 0
+            ? "published"
+            : "partial";
+
+      let failureReason: string | null = null;
+      if (pubCounts.failed > 0) {
+        const [failedRow] = await sql<{ last_error: string | null }[]>`
+          SELECT last_error
+          FROM post_publications
+          WHERE post_id = ${job.postId}::uuid
+            AND status = 'failed'
+            AND last_error IS NOT NULL
+          ORDER BY updated_at DESC
+          LIMIT 1
+        `;
+        failureReason = failedRow?.last_error?.trim() || message;
+      }
+
+      await sql`
+        UPDATE posts
+        SET
+          status = ${postStatus},
+          failure_reason = ${failureReason},
+          updated_at = NOW()
+        WHERE id = ${job.postId}::uuid
+      `;
+    }
+
+    if (!job.trackingId) return;
+
     const [row] = await sql<
       { total: number; completed: number; failed: number }[]
     >`
@@ -119,7 +177,13 @@ export async function recordPlatformResult(
           ${job.postId}::uuid,
           ${job.userId},
           ${status},
-          ${status === "completed" ? "All platforms published" : "Publish finished with failures"},
+          ${
+            failed === total
+              ? "Publish finished with failures"
+              : completed > 0 && failed > 0
+                ? `Published to ${completed}/${total} platforms (${failed} failed)`
+                : "All platforms published"
+          },
           ${JSON.stringify(progress)}::jsonb
         )
       `;
