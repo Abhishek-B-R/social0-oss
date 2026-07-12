@@ -41,6 +41,8 @@ npm start
 
 Create an API key at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys).
 
+Full setup guides: [docs.social0.app — MCP](https://docs.social0.app/docs/integrations/mcp)
+
 ## Environment variables
 
 | Variable | Required | Default | Description |
@@ -69,7 +71,7 @@ Create an API key at [social0.app/dashboard/api-keys](https://social0.app/dashbo
       "command": "node",
       "args": ["/path/to/social0-mcp/dist/index.js"],
       "env": {
-        "SOCIAL0_API_KEY": "s0_live_your_key_here"
+        "SOCIAL0_API_KEY": "sk_live_your_key_here"
       }
     }
   }
@@ -139,7 +141,8 @@ social0-mcp/
 │   │   ├── accounts.ts
 │   │   ├── posts.ts
 │   │   ├── media.ts
-│   │   └── publish.ts
+│   │   ├── publish.ts
+│   │   └── platform-suggestions.ts
 │   ├── tools/            # MCP tool handlers (thin wrappers)
 │   ├── schemas/          # Zod input validation
 │   ├── types/            # TypeScript types
@@ -160,7 +163,7 @@ social0-mcp/
 | Publish / schedule | `POST /v1/posts/:id/publish`, `/schedule`, `/posts/publish`, `/posts/schedule` | ✅ Live |
 | Publish status | `GET /v1/jobs/:trackingId` | ✅ Live |
 
-API keys use the `sk_live_` prefix (legacy `s0_live_` still accepted). Interactive API docs: https://api.social0.app/docs
+API keys use the `sk_live_` prefix (legacy `s0_live_` still accepted). Interactive API docs: https://api.social0.app/docs · MCP docs: https://docs.social0.app/docs/integrations/mcp
 
 ## Development
 

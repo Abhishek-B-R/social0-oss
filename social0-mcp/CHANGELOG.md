@@ -16,5 +16,6 @@ All notable changes to the Social0 MCP server are documented here.
 
 ### Notes
 
-- Post CRUD tools call `/v1/posts` endpoints (rolling out on the Social0 API)
-- Accounts, media upload, publish, and job status use `/api/*` endpoints today
+- All MCP tools call **`/v1/*`** REST endpoints on `api.social0.app` (accounts, posts, media, publish, jobs).
+- API keys use the `sk_live_` prefix (`s0_live_` legacy keys still accepted).
+- Interactive API reference: https://api.social0.app/docs · User docs: https://docs.social0.app/docs/integrations/mcp

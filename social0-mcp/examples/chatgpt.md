@@ -5,7 +5,7 @@ When ChatGPT supports MCP connectors for your plan, configure a stdio MCP server
 ## Prerequisites
 
 1. Build the server: `npm install && npm run build`
-2. Create an API key at [social0.app/settings/api-keys](https://social0.app/settings/api-keys)
+2. Create an API key at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys)
 
 ## Configuration
 
@@ -19,7 +19,7 @@ Environment variables:
 
 | Variable | Value |
 |----------|-------|
-| `SOCIAL0_API_KEY` | `s0_live_...` |
+| `SOCIAL0_API_KEY` | `sk_live_...` (legacy `s0_live_...` accepted) |
 | `SOCIAL0_API_URL` | `https://api.social0.app/v1` |
 
 ## Example prompts

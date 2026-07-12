@@ -72,12 +72,12 @@ After this update, a user or AI agent reading `docs.social0.app` should be able 
 | MCP server | The `social0-mcp` Node process |
 | MCP host / client | Claude Desktop, Cursor, VS Code, etc. |
 | Tool | One MCP capability (e.g. `create_post`) |
-| API key | `s0_live_...` bearer token for REST API |
+| API key | `sk_live_...` bearer token for REST API (legacy `s0_live_...` accepted) |
 | Tracking ID | UUID returned when publishing; used to poll status |
 
 ---
 
-## 3. Information architecture changes
+> **REST API docs URL:** Shipped docs use **`/docs/api`** (not `/docs/integrations/api`). See `frontend/src/lib/docs-url.ts` — e.g. `DOCS_API_URL`, `DOCS_API_QUICKSTART_URL`, `DOCS_API_WEBHOOKS_URL`. MCP stays under **`/docs/integrations/mcp`**.
 
 ### 3.1 New top-level section: **Integrations**
 
@@ -96,13 +96,12 @@ Integrations
 │   ├── VS Code                 → /docs/integrations/mcp/vscode
 │   ├── ChatGPT                 → /docs/integrations/mcp/chatgpt
 │   └── Troubleshooting         → /docs/integrations/mcp/troubleshooting
-└── REST API                    → /docs/integrations/api          ← expand or link existing
-    ├── Authentication          → /docs/integrations/api/authentication
-    ├── Accounts                → /docs/integrations/api/accounts
-    ├── Posts                   → /docs/integrations/api/posts
-    ├── Media                   → /docs/integrations/api/media
-    ├── Publish                 → /docs/integrations/api/publish
-    └── Job status              → /docs/integrations/api/jobs
+└── REST API                    → /docs/api          ← live (see DOCS_API_* in app)
+    ├── Quickstart              → /docs/api/quickstart
+    ├── Authentication          → /docs/api/authentication
+    ├── Webhooks                → /docs/api/webhooks
+    ├── OpenAPI                 → /docs/api/openapi
+    └── Reference               → /docs/api/reference/*
 ```
 
 ### 3.2 Pages to **create** (priority order)
@@ -114,15 +113,15 @@ Integrations
 | P0 | MCP tools reference | `/docs/integrations/mcp/tools` | Every tool documented |
 | P1 | Per-host setup (4 pages) | `/docs/integrations/mcp/{host}` | Copy from `social0-mcp/examples/` |
 | P1 | MCP troubleshooting | `/docs/integrations/mcp/troubleshooting` | Reduce support load |
-| P1 | REST API authentication | `/docs/integrations/api/authentication` | Bearer token docs |
-| P2 | REST API endpoint reference | `/docs/integrations/api/*` | For developers not using MCP |
+| P1 | REST API authentication | `/docs/api/authentication` | Bearer token docs |
+| P2 | REST API endpoint reference | `/docs/api/reference/*` | For developers not using MCP |
 | P2 | Integrations overview | `/docs/integrations` | Hub page linking MCP + API |
 
 ### 3.3 Pages to **update** (existing)
 
 | Page | URL (existing in app) | Change |
 |------|----------------------|--------|
-| API keys | `/docs/dashboard/api-keys` | Replace "coming soon" with full guide; link to MCP |
+| API keys | `/docs/dashboard/api-keys` | Ensure full guide + MCP link (dashboard UI is live at `/dashboard/api-keys`) |
 | Dashboard overview | `/docs/dashboard` | Add "Manage with AI" callout → MCP docs |
 | Connections | `/docs/dashboard/connections` | Note: connect accounts here before using MCP |
 | Composer / Posts | `/docs/dashboard/composer`, `/docs/dashboard/posts` | Cross-link: "Prefer natural language? Try MCP" |
@@ -147,12 +146,11 @@ Under **Dashboard**, ensure **API keys** is visible (not buried).
 These constants exist in `frontend/src/lib/docs-url.ts` — add after docs ship:
 
 ```typescript
+export const DOCS_API_URL = `${DOCS_BASE_URL}/docs/api`;
 export const DOCS_MCP_URL = `${DOCS_BASE_URL}/docs/integrations/mcp`;
-export const DOCS_MCP_QUICKSTART_URL = `${DOCS_BASE_URL}/docs/integrations/mcp/quickstart`;
-export const DOCS_REST_API_URL = `${DOCS_BASE_URL}/docs/integrations/api`;
 ```
 
-Wire `ApiKeysPage.tsx` ("coming soon") → `DOCS_API_KEYS_URL` and `DOCS_MCP_URL`.
+`DOCS_MCP_URL`, `DOCS_API_*`, and related constants are wired in `frontend/src/lib/docs-url.ts`. `ApiKeysPage` links to REST API, quickstart, and webhooks docs.
 
 ---
 
@@ -212,7 +210,7 @@ flowchart TB
 **What you need before starting**
 
 1. Social0 account with at least one [connected platform](/docs/dashboard/connections)
-2. [API key](/docs/dashboard/api-keys) (`s0_live_...`)
+2. [API key](/docs/dashboard/api-keys) (`sk_live_...`)
 3. Node.js 20+ installed
 4. An MCP host (Claude Desktop, Cursor, etc.)
 
@@ -277,7 +275,7 @@ Which platforms should I publish this to: "Just shipped v2!"
 
 ### 5.2 `/docs/dashboard/api-keys` — API keys (UPDATE EXISTING)
 
-**Current state in product:** Dashboard page says "API keys management coming soon" but **backend already supports** `POST/GET/DELETE /api/api-keys`.
+**Current state in product:** Dashboard **Developer** page at `/dashboard/api-keys` supports create/list/revoke API keys and webhooks. Backend: `POST/GET/DELETE` on dashboard API-key routes (session auth) and Bearer auth on `/v1/*`.
 
 **This page must be rewritten completely.**
 
@@ -289,8 +287,10 @@ Programmatic access to Social0 without browser session cookies. Used by MCP serv
 **Key format**
 
 ```text
-s0_live_<secret>
+sk_live_<secret>
 ```
+
+(Legacy keys may use `s0_live_<secret>`.)
 
 Shown **once** at creation. Store securely. Never commit to git.
 
@@ -304,7 +304,7 @@ Shown **once** at creation. Store securely. Never commit to git.
 **Use in requests**
 
 ```http
-Authorization: Bearer s0_live_your_key_here
+Authorization: Bearer sk_live_your_key_here
 ```
 
 **Use with MCP**
@@ -316,7 +316,7 @@ Authorization: Bearer s0_live_your_key_here
       "command": "node",
       "args": ["/path/to/social0-mcp/dist/index.js"],
       "env": {
-        "SOCIAL0_API_KEY": "s0_live_your_key_here"
+        "SOCIAL0_API_KEY": "sk_live_your_key_here"
       }
     }
   }
@@ -378,11 +378,11 @@ Document all **13 tools**. For each tool use this template:
 
 | Tool | User intent | Key inputs | REST backing |
 |------|-------------|------------|--------------|
-| `list_accounts` | "Show my connected accounts" | — | `GET /api/accounts` |
+| `list_accounts` | "Show my connected accounts" | — | `GET /v1/accounts` |
 | `create_post` | "Draft a LinkedIn post about X" | `content`, `platforms[]`, `media[]?` | `POST /v1/posts` |
 | `update_post` | "Edit my draft" | `post_id`, optional fields | `PATCH /v1/posts/:id` |
 | `delete_post` | "Delete yesterday's draft" | `post_id` | `DELETE /v1/posts/:id` |
-| `list_posts` | "Show scheduled posts" | `status?`, `platform?`, `search?`, `limit?` | `GET /v1/posts` |
+| `list_posts` | "Show scheduled posts" | `status?`, `platform?`, `account?`, `connected_account_id?`, `search?`, `limit?` | `GET /v1/posts` |
 | `get_post` | "Open post details" | `post_id` | `GET /v1/posts/:id` |
 | `publish_post` | "Publish my draft now" | `post_id`, `platforms?` | `POST /v1/posts/:id/publish` |
 | `schedule_post` | "Schedule existing post" | `post_id`, `scheduled_at`, `platforms?` | `POST /v1/posts/:id/schedule` |
@@ -390,7 +390,7 @@ Document all **13 tools**. For each tool use this template:
 | `publish_now` | "Post this now" (one step) | `content`, `platforms[]`, `media?` | `POST /v1/posts/publish` |
 | `schedule_content` | "Schedule new post" (one step) | `content`, `platforms[]`, `scheduled_at`, `media?` | `POST /v1/posts/schedule` |
 | `get_publish_status` | "Did it publish?" | `tracking_id` | `GET /v1/jobs/:trackingId` |
-| `suggest_best_platforms` | "Where should I post this?" | `content`, `has_media?`, `media_is_video?` | heuristic (+ optional `GET /api/accounts`) |
+| `suggest_best_platforms` | "Where should I post this?" | `content`, `has_media?`, `media_is_video?`, `media_type?` | client heuristic (+ optional `GET /v1/accounts`) |
 
 #### Platform names (document for users and agents)
 
@@ -463,10 +463,10 @@ Create four pages by adapting `social0-mcp/examples/*.md`. Each page needs:
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | `SOCIAL0_API_KEY is required` | Missing env var | Set in MCP host config `env` block |
-| `must start with s0_live_` | Wrong key format | Create new key in dashboard |
+| `must start with sk_live_` (or legacy `s0_live_`) | Wrong key format | Create new key in dashboard |
 | `401 Unauthorized` | Revoked/expired key | Create new API key |
 | `Unknown tool` | Old MCP build | `npm run build`, restart host |
-| Post create fails / NOT_IMPLEMENTED | `/v1/posts` not live | Create post in dashboard; use `publish_post` with `post_id` |
+| Post create fails / validation_error | Invalid body or no connected account | Check platform name, connect account, media rules — see troubleshooting |
 | `No connected linkedin account` | Platform not connected | [Connect accounts](/docs/dashboard/connections) first |
 | `Multiple twitter_x accounts` | Ambiguous platform name | Use account UUID from `list_accounts` |
 | Media upload fails | File type/size | JPG, PNG, GIF, WebP ≤50MB; MP4/MOV/WebM ≤500MB |
@@ -483,7 +483,7 @@ Create four pages by adapting `social0-mcp/examples/*.md`. Each page needs:
 **Debug mode**
 
 ```bash
-SOCIAL0_MCP_VERBOSE=true SOCIAL0_API_KEY=s0_live_xxx node dist/index.js
+SOCIAL0_MCP_VERBOSE=true SOCIAL0_API_KEY=sk_live_xxx node dist/index.js
 ```
 
 **MCP Inspector**
@@ -494,61 +494,80 @@ npx @modelcontextprotocol/inspector node dist/index.js
 
 ---
 
-### 5.6 `/docs/integrations/api` — REST API reference (new or expanded)
+### 5.6 `/docs/api` — REST API reference (expand existing)
 
 Even though users may only use MCP, document the REST API the MCP calls. Developers and agents need this.
 
-#### Base URLs
+#### Base URL
+
+All MCP tools use the **v1** prefix:
 
 | Environment | URL |
 |-------------|-----|
-| Production API | `https://api.social0.app` |
-| v1 prefix | `https://api.social0.app/v1` |
-| Legacy/stable paths | `https://api.social0.app/api` |
+| Production API host | `https://api.social0.app` |
+| v1 REST base (MCP default) | `https://api.social0.app/v1` |
+| OpenAPI spec | `https://api.social0.app/openapi.json` |
+| Interactive reference | `https://api.social0.app/docs` |
 
-#### Authentication page (`/docs/integrations/api/authentication`)
+#### Authentication page (`/docs/api/authentication`)
 
 ```http
-Authorization: Bearer s0_live_<secret>
+Authorization: Bearer sk_live_<secret>
 Content-Type: application/json
 ```
 
-#### Endpoints to document
+Legacy keys: `s0_live_<secret>` still accepted.
+
+#### Endpoints to document (all under `/v1`)
 
 **Accounts**
 
 ```http
-GET /api/accounts
+GET /v1/accounts
 ```
 
-Response fields: `id`, `platform`, `platformUsername`, `isActive`, `tokenStatus`, etc.
+Response: `{ "data": [ { "id", "platform", "username", "profile_image_url", "is_active", "token_status", "token_expires_at", "created_at" } ] }`
 
 **Media upload (3-step)**
 
 ```http
-POST /api/media/presign
-Body: { "filename", "contentType", "fileSize" }
+POST /v1/media/presign
+Body: { "filename", "content_type", "size_bytes" }
 
-PUT <presignedUrl>
+PUT <upload_url from presign>
 Body: raw bytes
 
-POST /api/media/confirm
-Body: { "key", "storageFilename", "originalFilename", "contentType", "fileSize" }
+POST /v1/media/confirm
+Body: { "key", "storage_filename", "original_filename", "content_type", "size_bytes" }
 ```
 
-**Publish**
+**Posts CRUD**
 
 ```http
-POST /api/publish
-Body: {
-  "postId": "uuid",
-  "connectedAccountIds": ["uuid"],  // optional
-  "scheduledAt": "ISO-8601",        // optional
-  "mode": "now" | "schedule"        // optional
-}
+GET    /v1/posts
+POST   /v1/posts
+GET    /v1/posts/:id
+PATCH  /v1/posts/:id
+DELETE /v1/posts/:id
 ```
 
-Responses: `202` + `trackingId` (now) or `200` + `status: scheduled`.
+Create body: `{ "content", "platforms": ["<connected-account-uuid>", ...], "media"?: ["<media-uuid>", ...], "platform_options"?: {} }`
+
+**Publish & schedule**
+
+```http
+POST /v1/posts/:id/publish
+# 202 → { "tracking_id", "status", "stream_url" }
+
+POST /v1/posts/:id/schedule
+Body: { "scheduledAt": "ISO-8601", "timezone"?: "IANA" }
+
+POST /v1/posts/publish
+Body: same as create — create + publish in one step
+
+POST /v1/posts/schedule
+Body: create fields + scheduledAt (+ optional timezone)
+```
 
 **Job status**
 
@@ -617,7 +636,7 @@ Response shape (document fully — MCP `get_publish_status` mirrors this):
 
 **Important:** Multi-platform publishes run **in parallel** (one job per platform). Poll `get_publish_status` until `status` is terminal (`completed`, `failed`, or `partial`). MCP maps API `status` → `overall_status` in its tool response.
 
-**Posts (v1 — document schema even if rolling out)**
+**Posts (v1 — live)**
 
 ```http
 GET    /v1/posts
@@ -626,16 +645,17 @@ GET    /v1/posts/:id
 PATCH  /v1/posts/:id
 DELETE /v1/posts/:id
 POST   /v1/posts/:id/publish
+POST   /v1/posts/:id/schedule
+POST   /v1/posts/publish
+POST   /v1/posts/schedule
 ```
-
-Mark with badge: **Beta** or **Coming soon** until live.
 
 #### Error format
 
 ```json
 {
   "error": "Human-readable message",
-  "code": "UNAUTHORIZED | NOT_IMPLEMENTED | ..."
+  "code": "UNAUTHORIZED | validation_error | not_found | ..."
 }
 ```
 
@@ -689,7 +709,7 @@ Add section:
 ## Integrations
 - MCP Server: https://docs.social0.app/docs/integrations/mcp
 - API Keys: https://docs.social0.app/docs/dashboard/api-keys
-- REST API: https://docs.social0.app/docs/integrations/api
+- REST API: https://docs.social0.app/docs/api
 ```
 
 ---
@@ -729,11 +749,11 @@ When implementing these changes:
 1. **Read** `social0-mcp/README.md` and `social0-mcp/examples/*.md` as source material.
 2. **Create** pages in priority order: P0 → P1 → P2 (see §3.2).
 3. **Update** `/docs/dashboard/api-keys` first — MCP docs are useless without it.
-4. **Include** the honesty callout (§4) on every MCP page until `/v1/posts` is live.
+4. **Do not** add "rolling out" or "coming soon" callouts for `/v1/posts` — all `/v1` endpoints are live.
 5. **Use** copy-pasteable code blocks — users and AI agents rely on exact config JSON.
 6. **Add** screenshot placeholders as MDX components or HTML comments for later design pass.
 7. **Match** existing docs styling (headings, admonitions/callouts, code theme).
-8. **Do not** document internal RPC (`POST /api/rpc`) as the public integration path — document REST + MCP only.
+8. **Do not** document internal RPC (`POST /api/rpc`) or legacy `/api/publish` as the public integration path — document `/v1` REST + MCP only.
 9. **Do not** promise OAuth via MCP.
 10. **Add** changelog entry: "Added MCP Server documentation" with date.
 11. **Verify** all internal links resolve.
@@ -785,7 +805,7 @@ Claude / ChatGPT / Cursor
       "command": "node",
       "args": ["/absolute/path/to/social0-mcp/dist/index.js"],
       "env": {
-        "SOCIAL0_API_KEY": "s0_live_your_key_here",
+        "SOCIAL0_API_KEY": "sk_live_your_key_here",
         "SOCIAL0_API_URL": "https://api.social0.app/v1"
       }
     }
@@ -802,7 +822,7 @@ Claude / ChatGPT / Cursor
       "command": "node",
       "args": ["/absolute/path/to/social0-mcp/dist/index.js"],
       "env": {
-        "SOCIAL0_API_KEY": "s0_live_your_key_here"
+        "SOCIAL0_API_KEY": "sk_live_your_key_here"
       }
     }
   }
@@ -837,8 +857,8 @@ Update docs when these ship:
 
 | Event | Doc change |
 |-------|------------|
-| `/v1/posts` CRUD goes live | Remove rolling-out callouts; add full CRUD tutorials; update API keys table |
-| API keys UI leaves "coming soon" | Add screenshots of dashboard UI |
+| ~~`/v1/posts` CRUD goes live~~ | ✅ Done — no rolling-out callouts |
+| ~~API keys UI leaves "coming soon"~~ | ✅ Done — add screenshots when available |
 | `social0-mcp` standalone repo published | Update clone URLs to new repo |
 | npm package `@social0/mcp-server` published | Document `npx @social0/mcp-server` install path |
 | Windsurf official MCP docs | Add dedicated page |
@@ -860,8 +880,8 @@ Update docs when these ship:
 | `social0-mcp/.env.example` | Env var reference |
 | `frontend/src/lib/docs-url.ts` | In-app doc URL constants to extend |
 | `FEATURES.md` § Developer & API | Product feature status |
-| `backend/server/src/routes/api/*` | Live REST endpoints |
-| `backend/server/src/routes/v1/*` | v1 API (posts, jobs, publish) |
+| `backend/server/src/routes/v1/*` | **Public REST API** — all MCP calls (accounts, posts, media, jobs) |
+| `backend/server/src/routes/api/*` | Dashboard/session routes — not the MCP integration surface |
 | `backend/server/src/services/publish-enqueue.ts` | V1/MCP fan-out: one queue job per platform |
 | `backend/server/src/publish/process-platform-server.ts` | Twitter/X runs on API server (Node) |
 | `backend/server/src/lib/resolve-job-snapshot.ts` | Job status enrichment from DB publications |
@@ -1024,8 +1044,8 @@ MCP users only hit the public API; they don't deploy workers. If status looks wr
 | Page | Add |
 |------|-----|
 | `/docs/integrations/mcp/tools` | Full `get_publish_status` section + `partial` status |
-| `/docs/integrations/api/jobs` | Job status schema, phases, SSE stream, polling guide |
-| `/docs/integrations/api/publish` | Multi-platform fan-out diagram, `tracking_id`, 202 response |
+| `/docs/api/reference/jobs` (or publish guide) | Job status schema, phases, SSE stream, polling guide |
+| `/docs/api` publish section | Multi-platform fan-out diagram, `tracking_id`, 202 response |
 | `/docs/integrations/mcp/troubleshooting` | Rows from §5.5 publish table + §14.6 |
 | `/docs/dashboard/posts` | How post status relates to publish job; retry failed platforms |
 | FAQ | "Why is my job `partial`?" "How long should I poll?" |
@@ -1086,7 +1106,7 @@ Paste this as the agent's task header:
 ```text
 Implement Social0 MCP documentation on docs.social0.app per social0-mcp/docs-updation-mcp.md.
 
-Priority: (1) rewrite /docs/dashboard/api-keys, (2) create /docs/integrations/mcp hub + quick start, (3) create /docs/integrations/mcp/tools with all 13 tools — especially get_publish_status + partial status, (4) create host setup pages from social0-mcp/examples/, (5) create troubleshooting including multi-platform publish issues (§14.6), (6) add REST API reference under /docs/integrations/api with full job status schema (§5.6, §14).
+Priority: (1) rewrite /docs/dashboard/api-keys, (2) create /docs/integrations/mcp hub + quick start, (3) create /docs/integrations/mcp/tools with all 13 tools — especially get_publish_status + partial status, (4) create host setup pages from social0-mcp/examples/, (5) create troubleshooting including multi-platform publish issues (§14.6), (6) expand REST API reference under /docs/api with full job status schema (§5.6, §14).
 
 Read §14 in full before writing publish/status pages. Document multi-platform parallel fan-out, tracking_id polling, partial vs completed vs failed, and per-platform phases. Use sk_live_ API keys. Post CRUD via /v1/posts is live — no rolling-out callouts.
 

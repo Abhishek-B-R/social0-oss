@@ -9,7 +9,7 @@ Add to your Claude Desktop MCP config (`~/Library/Application Support/Claude/cla
       "command": "node",
       "args": ["/absolute/path/to/social0-mcp/dist/index.js"],
       "env": {
-        "SOCIAL0_API_KEY": "s0_live_your_key_here",
+        "SOCIAL0_API_KEY": "sk_live_your_key_here",
         "SOCIAL0_API_URL": "https://api.social0.app/v1"
       }
     }
@@ -25,7 +25,7 @@ Or if installed globally:
     "social0": {
       "command": "social0-mcp",
       "env": {
-        "SOCIAL0_API_KEY": "s0_live_your_key_here"
+        "SOCIAL0_API_KEY": "sk_live_your_key_here"
       }
     }
   }

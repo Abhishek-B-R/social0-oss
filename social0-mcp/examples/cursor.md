@@ -9,7 +9,7 @@ Add to Cursor MCP settings (`.cursor/mcp.json` in your project or global Cursor 
       "command": "node",
       "args": ["/absolute/path/to/social0-mcp/dist/index.js"],
       "env": {
-        "SOCIAL0_API_KEY": "s0_live_your_key_here",
+        "SOCIAL0_API_KEY": "sk_live_your_key_here",
         "SOCIAL0_API_URL": "https://api.social0.app/v1"
       }
     }
@@ -26,7 +26,7 @@ For development with hot reload:
       "command": "npx",
       "args": ["tsx", "/absolute/path/to/social0-mcp/src/index.ts"],
       "env": {
-        "SOCIAL0_API_KEY": "s0_live_your_key_here",
+        "SOCIAL0_API_KEY": "sk_live_your_key_here",
         "SOCIAL0_MCP_VERBOSE": "true"
       }
     }
