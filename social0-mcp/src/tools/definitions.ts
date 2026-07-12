@@ -281,8 +281,8 @@ export const TOOL_DEFINITIONS: Tool[] = [
         media_is_video: { type: "boolean", description: "Whether attached media is video" },
         media_type: {
           type: "string",
-          enum: ["none", "image", "video"],
-          description: "Explicit content type. Prefer video/image over only toggling has_media.",
+          enum: ["none", "image", "video", "collection"],
+          description: "Explicit content type. Prefer image/video/collection over only toggling has_media.",
         },
       },
       required: ["content"],

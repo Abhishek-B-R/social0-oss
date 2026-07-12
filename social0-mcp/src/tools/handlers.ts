@@ -54,8 +54,11 @@ async function resolveAccountsForPost(
     return { accountIds: [], error: textResult(formatToolError(context, "No valid target accounts"), true) };
   }
 
-  const { form } = await resolvePostFormFromMediaIds(media);
-  const formErrors = validatePlatformsForForm(form, accountIds, accounts);
+  const { form, mediaErrors } = await resolvePostFormFromMediaIds(media);
+  if (mediaErrors.length > 0) {
+    return { accountIds: [], error: textResult(formatToolError(context, mediaErrors.join("; ")), true) };
+  }
+  const formErrors = validatePlatformsForForm(form, accountIds, accounts, media);
   if (formErrors.length > 0) {
     return { accountIds: [], error: textResult(formatToolError(context, formErrors.join("; ")), true) };
   }
@@ -94,8 +97,11 @@ async function updateExistingPostTargets(input: {
   }
 
   const media = input.media ?? post.media_ids;
-  const { form } = await resolvePostFormFromMediaIds(media);
-  const formErrors = validatePlatformsForForm(form, accountIds, accounts);
+  const { form, mediaErrors } = await resolvePostFormFromMediaIds(media);
+  if (mediaErrors.length > 0) {
+    return textResult(formatToolError(input.context, mediaErrors.join("; ")), true);
+  }
+  const formErrors = validatePlatformsForForm(form, accountIds, accounts, media);
   if (formErrors.length > 0) {
     return textResult(formatToolError(input.context, formErrors.join("; ")), true);
   }
@@ -165,8 +171,11 @@ export async function handleUpdatePost(input: UpdatePostInput): Promise<CallTool
         return textResult(formatToolError("update post", errors.join("; ")), true);
       }
       const media = input.media ?? (await postsApi.getPost(input.post_id)).media_ids;
-      const { form } = await resolvePostFormFromMediaIds(media);
-      const formErrors = validatePlatformsForForm(form, accountIds, accounts);
+      const { form, mediaErrors } = await resolvePostFormFromMediaIds(media);
+      if (mediaErrors.length > 0) {
+        return textResult(formatToolError("update post", mediaErrors.join("; ")), true);
+      }
+      const formErrors = validatePlatformsForForm(form, accountIds, accounts, media);
       if (formErrors.length > 0) {
         return textResult(formatToolError("update post", formErrors.join("; ")), true);
       }
