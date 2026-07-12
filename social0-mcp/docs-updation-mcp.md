@@ -377,7 +377,7 @@ Document all **13 tools**. For each tool use this template:
 | Tool | User intent | Key inputs | REST backing |
 |------|-------------|------------|--------------|
 | `list_accounts` | "Show my connected accounts" | — | `GET /api/accounts` |
-| `create_post` | "Draft a LinkedIn post about X" | `content`, `platforms[]`, `media[]?`, `is_draft?` | `POST /v1/posts` |
+| `create_post` | "Draft a LinkedIn post about X" | `content`, `platforms[]`, `media[]?` | `POST /v1/posts` |
 | `update_post` | "Edit my draft" | `post_id`, optional fields | `PATCH /v1/posts/:id` |
 | `delete_post` | "Delete yesterday's draft" | `post_id` | `DELETE /v1/posts/:id` |
 | `list_posts` | "Show scheduled posts" | `status?`, `platform?`, `search?`, `limit?` | `GET /v1/posts` |

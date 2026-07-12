@@ -21,6 +21,13 @@ const postStatusEnum = [
   "failed",
 ] as const;
 
+const platformOptionsProperty = {
+  type: "object",
+  description:
+    "Advanced per-platform settings. Supports content/caption and media per platform, plus pinterest board_id/title/link/create_board, tiktok title/privacy/draft/comment/duet/stitch/commercial/AI flags, instagram cover_image_url/trial_reel, youtube title, and x/twitter_x madeWithAi/paidPartnership.",
+  additionalProperties: true,
+} as const;
+
 export const TOOL_DEFINITIONS: Tool[] = [
   {
     name: "list_accounts",
@@ -50,11 +57,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
           items: { type: "string", format: "uuid" },
           description: "Media upload IDs from upload_media",
         },
-        is_draft: {
-          type: "boolean",
-          description: "Create as draft (default true)",
-          default: true,
-        },
+        platform_options: platformOptionsProperty,
       },
       required: ["content", "platforms"],
       additionalProperties: false,
@@ -79,7 +82,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
           items: { type: "string", format: "uuid" },
           description: "Updated media IDs",
         },
-        is_draft: { type: "boolean" },
+        platform_options: platformOptionsProperty,
       },
       required: ["post_id"],
       additionalProperties: false,
@@ -157,6 +160,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
           items: { type: "string", format: "uuid" },
           description: "Optional media IDs from upload_media to attach before publishing",
         },
+        platform_options: platformOptionsProperty,
       },
       required: ["post_id"],
       additionalProperties: false,
@@ -184,6 +188,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
           items: { type: "string", format: "uuid" },
           description: "Optional media IDs from upload_media to attach before scheduling",
         },
+        platform_options: platformOptionsProperty,
       },
       required: ["post_id", "scheduled_at"],
       additionalProperties: false,
@@ -223,6 +228,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
           items: { type: "string", format: "uuid" },
           description: "Media IDs from upload_media",
         },
+        platform_options: platformOptionsProperty,
       },
       required: ["content", "platforms"],
       additionalProperties: false,
@@ -247,6 +253,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
           items: { type: "string", format: "uuid" },
           description: "Media IDs from upload_media",
         },
+        platform_options: platformOptionsProperty,
       },
       required: ["content", "platforms", "scheduled_at"],
       additionalProperties: false,

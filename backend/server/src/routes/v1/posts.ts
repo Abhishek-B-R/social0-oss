@@ -21,14 +21,40 @@ import {
   v1UpdateDraft,
 } from "../../services/v1-posts.js";
 
-const createPostSchema = z.object({
+const createPostBodySchema = z.object({
   content: z.string(),
-  platforms: z.array(z.string().uuid()).min(1),
+  platforms: z.array(z.string().uuid()).min(1).optional(),
+  accounts: z.array(z.string().uuid()).min(1).optional(),
   media: z.array(z.string().uuid()).optional(),
   metadata: z.record(z.unknown()).optional(),
+  platform_options: z.record(z.unknown()).optional(),
 });
 
-const updatePostSchema = createPostSchema.partial();
+const createPostSchema = createPostBodySchema
+  .refine((body) => body.platforms !== undefined || body.accounts !== undefined, {
+    message: "platforms or accounts is required",
+    path: ["platforms"],
+  })
+  .transform(({ accounts, platforms, ...body }) => ({
+    ...body,
+    platforms: platforms ?? accounts ?? [],
+  }));
+
+const updatePostSchema = z
+  .object({
+    content: z.string().optional(),
+    platforms: z.array(z.string().uuid()).min(1).optional(),
+    accounts: z.array(z.string().uuid()).min(1).optional(),
+    media: z.array(z.string().uuid()).optional(),
+    metadata: z.record(z.unknown()).optional(),
+    platform_options: z.record(z.unknown()).optional(),
+  })
+  .transform(({ accounts, platforms, ...body }) => ({
+    ...body,
+    ...(platforms !== undefined || accounts !== undefined
+      ? { platforms: platforms ?? accounts ?? [] }
+      : {}),
+  }));
 
 const scheduleSchema = z.object({
   scheduledAt: scheduledAtInputSchema,
@@ -212,11 +238,19 @@ export async function registerPostsRoutes(app: FastifyInstance) {
 
   app.post("/posts/schedule", async (request, reply) => {
     const userId = v1UserId(request);
-    const body = createPostSchema
+    const body = createPostBodySchema
       .extend({
         scheduledAt: scheduledAtInputSchema,
         timezone: scheduleTimezoneSchema,
       })
+      .refine((value) => value.platforms !== undefined || value.accounts !== undefined, {
+        message: "platforms or accounts is required",
+        path: ["platforms"],
+      })
+      .transform(({ accounts, platforms, ...value }) => ({
+        ...value,
+        platforms: platforms ?? accounts ?? [],
+      }))
       .safeParse(request.body);
     if (!body.success) {
       return reply

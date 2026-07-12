@@ -71,8 +71,15 @@ async function updateExistingPostTargets(input: {
   postId: string;
   platforms?: string[];
   media?: string[];
+  platform_options?: Record<string, unknown>;
 }): Promise<CallToolResult | null> {
-  if (input.platforms === undefined && input.media === undefined) return null;
+  if (
+    input.platforms === undefined &&
+    input.media === undefined &&
+    input.platform_options === undefined
+  ) {
+    return null;
+  }
 
   const [post, accounts] = await Promise.all([
     postsApi.getPost(input.postId),
@@ -109,6 +116,7 @@ async function updateExistingPostTargets(input: {
   const payload: Parameters<typeof postsApi.updatePost>[1] = {};
   if (input.platforms !== undefined) payload.platforms = accountIds;
   if (input.media !== undefined) payload.media = input.media;
+  if (input.platform_options !== undefined) payload.platform_options = input.platform_options;
 
   if (Object.keys(payload).length > 0) {
     await postsApi.updatePost(input.postId, payload);
@@ -141,6 +149,7 @@ export async function handleCreatePost(input: CreatePostInput): Promise<CallTool
       content: input.content,
       platforms: accountIds,
       ...(input.media ? { media: input.media } : {}),
+      ...(input.platform_options ? { platform_options: input.platform_options } : {}),
     });
 
     const post = await postsApi.getPost(created.id);
@@ -148,9 +157,7 @@ export async function handleCreatePost(input: CreatePostInput): Promise<CallTool
     return jsonResult({
       success: true,
       post,
-      message: input.is_draft
-        ? `Draft created (${created.id}). Use publish_post or schedule_post when ready.`
-        : `Post created (${created.id}).`,
+      message: `Draft created (${created.id}). Use publish_post or schedule_post when ready.`,
     });
   } catch (error) {
     return handleApiError("create post", error);
@@ -163,6 +170,7 @@ export async function handleUpdatePost(input: UpdatePostInput): Promise<CallTool
 
     if (input.content !== undefined) payload.content = input.content;
     if (input.media !== undefined) payload.media = input.media;
+    if (input.platform_options !== undefined) payload.platform_options = input.platform_options;
 
     if (input.platforms) {
       const accounts = await accountsApi.listAccounts();
@@ -258,6 +266,7 @@ export async function handlePublishPost(input: PublishPostInput): Promise<CallTo
       postId: input.post_id,
       ...(input.platforms !== undefined ? { platforms: input.platforms } : {}),
       ...(input.media !== undefined ? { media: input.media } : {}),
+      ...(input.platform_options !== undefined ? { platform_options: input.platform_options } : {}),
     });
     if (updateError) return updateError;
 
@@ -282,6 +291,7 @@ export async function handleSchedulePost(input: SchedulePostInput): Promise<Call
       postId: input.post_id,
       ...(input.platforms !== undefined ? { platforms: input.platforms } : {}),
       ...(input.media !== undefined ? { media: input.media } : {}),
+      ...(input.platform_options !== undefined ? { platform_options: input.platform_options } : {}),
     });
     if (updateError) return updateError;
 
@@ -334,6 +344,7 @@ export async function handlePublishNow(input: PublishNowInput): Promise<CallTool
       content: input.content,
       platforms: accountIds,
       ...(input.media ? { media: input.media } : {}),
+      ...(input.platform_options ? { platform_options: input.platform_options } : {}),
     });
 
     return jsonResult({
@@ -365,6 +376,7 @@ export async function handleScheduleContent(input: ScheduleContentInput): Promis
       platforms: accountIds,
       scheduledAt: input.scheduled_at,
       ...(input.media ? { media: input.media } : {}),
+      ...(input.platform_options ? { platform_options: input.platform_options } : {}),
     });
 
     return jsonResult({

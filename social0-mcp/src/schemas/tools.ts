@@ -3,6 +3,9 @@ import { SUPPORTED_PLATFORMS } from "../types/index.js";
 
 export const platformSchema = z.enum(SUPPORTED_PLATFORMS);
 const mediaIdSchema = z.string().uuid().transform((id) => id.toLowerCase());
+const platformOptionsSchema = z
+  .record(z.unknown())
+  .describe("Advanced per-platform settings, e.g. tiktok, instagram, pinterest, youtube, x/twitter_x, linkedin");
 
 export const listAccountsInputSchema = z.object({}).strict();
 
@@ -16,7 +19,7 @@ export const createPostInputSchema = z.object({
     .array(mediaIdSchema)
     .optional()
     .describe("Media upload IDs from upload_media"),
-  is_draft: z.boolean().optional().default(true).describe("Create as draft (default true)"),
+  platform_options: platformOptionsSchema.optional(),
 });
 
 export const updatePostInputSchema = z.object({
@@ -24,7 +27,7 @@ export const updatePostInputSchema = z.object({
   content: z.string().min(1).optional().describe("Updated caption"),
   platforms: z.array(z.string().min(1)).optional().describe("Updated target platforms or account IDs"),
   media: z.array(mediaIdSchema).optional().describe("Updated media IDs"),
-  is_draft: z.boolean().optional(),
+  platform_options: platformOptionsSchema.optional(),
 });
 
 export const deletePostInputSchema = z.object({
@@ -61,6 +64,7 @@ export const publishPostInputSchema = z.object({
     .array(mediaIdSchema)
     .optional()
     .describe("Optional media IDs from upload_media to attach before publishing"),
+  platform_options: platformOptionsSchema.optional(),
 });
 
 export const schedulePostInputSchema = z.object({
@@ -73,6 +77,7 @@ export const schedulePostInputSchema = z.object({
     .array(mediaIdSchema)
     .optional()
     .describe("Optional media IDs from upload_media to attach before scheduling"),
+  platform_options: platformOptionsSchema.optional(),
 });
 
 export const uploadMediaInputSchema = z.object({
@@ -86,6 +91,7 @@ export const publishNowInputSchema = z.object({
   content: z.string().min(1).describe("Post caption"),
   platforms: z.array(z.string().min(1)).min(1).describe("Target platforms or account IDs"),
   media: z.array(mediaIdSchema).optional().describe("Media IDs from upload_media"),
+  platform_options: platformOptionsSchema.optional(),
 });
 
 export const scheduleContentInputSchema = z.object({
@@ -93,6 +99,7 @@ export const scheduleContentInputSchema = z.object({
   platforms: z.array(z.string().min(1)).min(1).describe("Target platforms or account IDs"),
   scheduled_at: z.string().describe("ISO 8601 datetime to publish"),
   media: z.array(mediaIdSchema).optional(),
+  platform_options: platformOptionsSchema.optional(),
 });
 
 export const getPublishStatusInputSchema = z.object({

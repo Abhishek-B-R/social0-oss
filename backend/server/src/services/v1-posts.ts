@@ -9,6 +9,7 @@ import {
 } from "../db/schema.js";
 import { checkFreePostLimit, incrementFreePostsUsed } from "../lib/plan-limits.js";
 import { getPostDetail } from "../lib/posts-list/posts-list-data.js";
+import { getValidToken } from "../lib/token-refresh.js";
 import { isValidUUID } from "../lib/validation.js";
 import { emitUserWebhookEvent } from "../lib/user-webhook-delivery.js";
 import {
@@ -198,7 +199,326 @@ export type V1CreatePostInput = {
   platforms: string[];
   media?: string[];
   metadata?: Record<string, unknown>;
+  platform_options?: Record<string, unknown>;
 };
+
+type TargetAccount = { id: string; platform: string };
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readString(obj: Record<string, unknown>, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = obj[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+function readBoolean(obj: Record<string, unknown>, keys: string[]): boolean | undefined {
+  for (const key of keys) {
+    const value = obj[key];
+    if (typeof value === "boolean") return value;
+  }
+  return undefined;
+}
+
+function readMediaIds(obj: Record<string, unknown>): string[] | undefined {
+  const value = obj.media ?? obj.media_ids ?? obj.mediaIds;
+  if (!Array.isArray(value)) return undefined;
+  const ids = value.filter((id): id is string => typeof id === "string");
+  return ids.length > 0 ? normalizeUuidList(ids) : [];
+}
+
+function platformOption(
+  options: Record<string, unknown>,
+  ...keys: string[]
+): Record<string, unknown> | null {
+  for (const key of keys) {
+    const value = asRecord(options[key]);
+    if (value) return value;
+  }
+  return null;
+}
+
+function accountsForPlatform(accounts: TargetAccount[], platform: string): TargetAccount[] {
+  return accounts.filter((account) => account.platform === platform);
+}
+
+function optionForAccount(
+  platformOptions: Record<string, unknown>,
+  accountId: string,
+): Record<string, unknown> {
+  const accountOverrides = asRecord(platformOptions.accounts)?.[accountId];
+  return {
+    ...platformOptions,
+    ...(asRecord(accountOverrides) ?? {}),
+  };
+}
+
+function setAccountContent(
+  metadata: Record<string, unknown>,
+  accountId: string,
+  content: string | undefined,
+) {
+  if (!content) return;
+  const current = asRecord(metadata.accountCaptions) ?? {};
+  current[accountId] = content;
+  metadata.accountCaptions = current;
+}
+
+function setAccountMedia(
+  metadata: Record<string, unknown>,
+  accountId: string,
+  media: string[] | undefined,
+) {
+  if (!media) return;
+  const current = asRecord(metadata.accountMedia) ?? {};
+  current[accountId] = media;
+  metadata.accountMedia = current;
+}
+
+function normalizeTikTokPrivacy(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().toUpperCase();
+  const aliases: Record<string, string> = {
+    PUBLIC: "PUBLIC_TO_EVERYONE",
+    EVERYONE: "PUBLIC_TO_EVERYONE",
+    FRIENDS: "MUTUAL_FOLLOW_FRIENDS",
+    FOLLOWERS: "FOLLOWER_OF_CREATOR",
+    PRIVATE: "SELF_ONLY",
+    ONLY_ME: "SELF_ONLY",
+  };
+  return aliases[normalized] ?? normalized;
+}
+
+async function createPinterestBoard(input: {
+  accountId: string;
+  name: string;
+  privacy?: string;
+}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const accessToken = await getValidToken(input.accountId, "pinterest");
+  const privacy = input.privacy === "PRIVATE" ? "PRIVATE" : "PUBLIC";
+  const res = await fetch("https://api.pinterest.com/v5/boards", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name: input.name, privacy }),
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    id?: string;
+    message?: string;
+  };
+  if (!res.ok || !data.id) {
+    return {
+      ok: false,
+      error: data.message ?? `Pinterest board creation failed (HTTP ${res.status})`,
+    };
+  }
+  return { ok: true, id: data.id };
+}
+
+async function compilePlatformOptions(input: {
+  userId: string;
+  accountIds: string[];
+  mediaIds: string[];
+  metadata?: Record<string, unknown>;
+  platformOptions?: Record<string, unknown>;
+}): Promise<{ ok: true; metadata: Record<string, unknown> | null } | { ok: false; error: string }> {
+  const metadata: Record<string, unknown> = { ...(input.metadata ?? {}) };
+  const options = input.platformOptions;
+  if (!options) return { ok: true, metadata: Object.keys(metadata).length ? metadata : null };
+
+  const accountRows = await db
+    .select({ id: connectedAccounts.id, platform: connectedAccounts.platform })
+    .from(connectedAccounts)
+    .where(
+      and(
+        eq(connectedAccounts.userId, input.userId),
+        inArray(connectedAccounts.id, input.accountIds),
+      ),
+    );
+  const targetAccounts = accountRows.map((account) => ({
+    id: account.id,
+    platform: account.platform,
+  }));
+
+  for (const [platform, aliases] of Object.entries({
+    linkedin: ["linkedin"],
+    facebook: ["facebook"],
+    instagram: ["instagram"],
+    youtube: ["youtube"],
+    pinterest: ["pinterest"],
+    tiktok: ["tiktok"],
+    twitter_x: ["twitter_x", "twitter", "x"],
+    threads: ["threads"],
+    bluesky: ["bluesky"],
+  })) {
+    const platformConfig = platformOption(options, ...aliases);
+    if (!platformConfig) continue;
+    for (const account of accountsForPlatform(targetAccounts, platform)) {
+      const accountConfig = optionForAccount(platformConfig, account.id);
+      setAccountContent(metadata, account.id, readString(accountConfig, ["content", "caption"]));
+      setAccountMedia(metadata, account.id, readMediaIds(accountConfig));
+    }
+  }
+
+  const accountMedia = asRecord(metadata.accountMedia);
+  if (accountMedia) {
+    const allMediaIds = [
+      ...new Set(
+        Object.values(accountMedia)
+          .flatMap((value) => (Array.isArray(value) ? value : []))
+          .filter((id): id is string => typeof id === "string"),
+      ),
+    ];
+    const mediaErr = await validateOwnedMedia(input.userId, allMediaIds);
+    if (mediaErr) return { ok: false, error: mediaErr };
+  }
+
+  const youtube = platformOption(options, "youtube");
+  const youtubeTitle = youtube ? readString(youtube, ["title", "video_title"]) : undefined;
+  if (youtubeTitle) metadata.youtube = { ...(asRecord(metadata.youtube) ?? {}), title: youtubeTitle.slice(0, 100) };
+
+  const x = platformOption(options, "twitter_x", "twitter", "x");
+  if (x) {
+    const madeWithAi = readBoolean(x, ["madeWithAi", "made_with_ai", "is_ai_generated", "ai_generated"]);
+    const paidPartnership = readBoolean(x, ["paidPartnership", "paid_partnership"]);
+    if (madeWithAi !== undefined || paidPartnership !== undefined) {
+      metadata.x = {
+        ...(asRecord(metadata.x) ?? {}),
+        ...(madeWithAi !== undefined ? { madeWithAi } : {}),
+        ...(paidPartnership !== undefined ? { paidPartnership } : {}),
+      };
+    }
+  }
+
+  const pinterest = platformOption(options, "pinterest");
+  if (pinterest) {
+    const pinterestMeta = asRecord(metadata.pinterest) ?? {};
+    for (const account of accountsForPlatform(targetAccounts, "pinterest")) {
+      const accountConfig = optionForAccount(pinterest, account.id);
+      let boardId = readString(accountConfig, ["board_id", "boardId"]);
+      const createBoard = asRecord(accountConfig.create_board ?? accountConfig.createBoard);
+      if (!boardId && createBoard) {
+        const name = readString(createBoard, ["name", "title"]);
+        if (!name) return { ok: false, error: "Pinterest create_board.name is required" };
+        const created = await createPinterestBoard({
+          accountId: account.id,
+          name,
+          privacy: readString(createBoard, ["privacy"])?.toUpperCase(),
+        });
+        if (!created.ok) return created;
+        boardId = created.id;
+      }
+      const title = readString(accountConfig, ["title"]);
+      const link = readString(accountConfig, ["link", "destination_link", "destinationLink", "url"]);
+      if (boardId || title || link) {
+        pinterestMeta[account.id] = {
+          ...(asRecord(pinterestMeta[account.id]) ?? {}),
+          ...(boardId ? { boardId } : {}),
+          ...(title ? { title: title.slice(0, 100) } : {}),
+          ...(link ? { link } : {}),
+        };
+      }
+    }
+    if (Object.keys(pinterestMeta).length > 0) metadata.pinterest = pinterestMeta;
+  }
+
+  const instagram = platformOption(options, "instagram");
+  if (instagram) {
+    const instagramMeta = asRecord(metadata.instagram) ?? {};
+    for (const account of accountsForPlatform(targetAccounts, "instagram")) {
+      const accountConfig = optionForAccount(instagram, account.id);
+      const coverImageUrl = readString(accountConfig, ["cover_image_url", "coverImageUrl", "cover_url", "coverUrl"]);
+      const isTrialReel = readBoolean(accountConfig, ["trial_reel", "trialReel", "isTrialReel"]);
+      if (coverImageUrl || isTrialReel !== undefined) {
+        instagramMeta[account.id] = {
+          ...(asRecord(instagramMeta[account.id]) ?? {}),
+          ...(coverImageUrl ? { coverImageUrl } : {}),
+          ...(isTrialReel !== undefined ? { isTrialReel } : {}),
+        };
+      }
+    }
+    if (Object.keys(instagramMeta).length > 0) metadata.instagram = instagramMeta;
+  }
+
+  const tiktok = platformOption(options, "tiktok");
+  if (tiktok) {
+    const tiktokMeta = asRecord(metadata.tiktok) ?? {};
+    for (const account of accountsForPlatform(targetAccounts, "tiktok")) {
+      const accountConfig = optionForAccount(tiktok, account.id);
+      const existing = asRecord(tiktokMeta[account.id]) ?? {};
+      const allowComments = readBoolean(accountConfig, ["allow_comments", "allowComments"]);
+      const allowDuet = readBoolean(accountConfig, ["allow_duet", "allowDuet"]);
+      const allowStitch = readBoolean(accountConfig, ["allow_stitch", "allowStitch"]);
+      const brandOrganic = readBoolean(accountConfig, ["brand_organic", "brandOrganic", "your_brand", "yourBrand"]);
+      const brandContent = readBoolean(accountConfig, ["brand_content", "brandContent", "paid_partnership", "paidPartnership"]);
+      const commercialDisclosure = readBoolean(accountConfig, [
+        "brand_content_toggle",
+        "brandContentToggle",
+        "commercial_disclosure",
+        "commercialDisclosure",
+        "disclose_commercial_content",
+      ]);
+      const privacyLevel =
+        normalizeTikTokPrivacy(readString(accountConfig, ["privacy_level", "privacyLevel", "privacy"])) ??
+        (typeof existing.privacy_level === "string" ? existing.privacy_level : "PUBLIC_TO_EVERYONE");
+      const videoTitle =
+        readString(accountConfig, ["video_title", "videoTitle", "title"]) ??
+        (typeof existing.video_title === "string" ? existing.video_title : "");
+      const disableComment =
+        readBoolean(accountConfig, ["disable_comment", "disableComment"]) ??
+        (allowComments === undefined
+          ? existing.disable_comment === true
+          : !allowComments);
+      const disableDuet =
+        readBoolean(accountConfig, ["disable_duet", "disableDuet"]) ??
+        (allowDuet === undefined ? existing.disable_duet === true : !allowDuet);
+      const disableStitch =
+        readBoolean(accountConfig, ["disable_stitch", "disableStitch"]) ??
+        (allowStitch === undefined ? existing.disable_stitch === true : !allowStitch);
+      const resolvedBrandOrganic =
+        brandOrganic ?? (existing.brand_organic === true);
+      const resolvedBrandContent =
+        brandContent ?? (existing.brand_content === true);
+      tiktokMeta[account.id] = {
+        ...existing,
+        privacy_level: privacyLevel,
+        video_title: videoTitle.slice(0, 85),
+        disable_comment: disableComment,
+        disable_duet: disableDuet,
+        disable_stitch: disableStitch,
+        brand_content_toggle:
+          commercialDisclosure ??
+          (existing.brand_content_toggle === true ||
+            resolvedBrandOrganic ||
+            resolvedBrandContent),
+        brand_organic: resolvedBrandOrganic,
+        brand_content: resolvedBrandContent,
+        post_as_draft:
+          readBoolean(accountConfig, ["post_as_draft", "postAsDraft", "draft"]) ??
+          existing.post_as_draft === true,
+        mark_ai_generated:
+          readBoolean(accountConfig, ["mark_ai_generated", "markAiGenerated", "is_ai_generated", "isAiGenerated"]) ??
+          existing.mark_ai_generated === true,
+        tiktok_post_consent:
+          readBoolean(accountConfig, ["tiktok_post_consent", "tiktokPostConsent"]) ??
+          (typeof existing.tiktok_post_consent === "boolean"
+            ? existing.tiktok_post_consent
+            : true),
+      };
+    }
+    if (Object.keys(tiktokMeta).length > 0) metadata.tiktok = tiktokMeta;
+  }
+
+  return { ok: true, metadata: Object.keys(metadata).length ? metadata : null };
+}
 
 export async function v1CreateDraft(
   userId: string,
@@ -220,6 +540,15 @@ export async function v1CreateDraft(
   const targetErr = await validateTargetsForMedia(userId, uniqueAccounts, mediaIds);
   if (targetErr) return { ok: false, error: targetErr };
 
+  const compiled = await compilePlatformOptions({
+    userId,
+    accountIds: uniqueAccounts,
+    mediaIds,
+    metadata: input.metadata,
+    platformOptions: input.platform_options,
+  });
+  if (!compiled.ok) return compiled;
+
   const [row] = await db
     .insert(posts)
     .values({
@@ -228,7 +557,7 @@ export async function v1CreateDraft(
       finalContent: content,
       status: "draft",
       mediaIds,
-      metadata: input.metadata ?? null,
+      metadata: compiled.metadata,
     })
     .returning({ id: posts.id });
 
@@ -376,7 +705,12 @@ export async function v1UpdateDraft(
   if (!isValidUUID(postId)) return { ok: false, error: "Invalid post ID" };
 
   const [existing] = await db
-    .select({ id: posts.id, status: posts.status, mediaIds: posts.mediaIds })
+    .select({
+      id: posts.id,
+      status: posts.status,
+      mediaIds: posts.mediaIds,
+      metadata: posts.metadata,
+    })
     .from(posts)
     .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
     .limit(1);
@@ -426,8 +760,20 @@ export async function v1UpdateDraft(
     if (targetErr) return { ok: false, error: targetErr };
   }
 
-  if (input.metadata !== undefined) {
-    updates.metadata = input.metadata;
+  if (input.metadata !== undefined || input.platform_options !== undefined) {
+    const compiled = await compilePlatformOptions({
+      userId,
+      accountIds: finalAccountIds,
+      mediaIds: finalMediaIds,
+      metadata:
+        input.metadata ??
+        (existing.metadata && typeof existing.metadata === "object"
+          ? (existing.metadata as Record<string, unknown>)
+          : undefined),
+      platformOptions: input.platform_options,
+    });
+    if (!compiled.ok) return compiled;
+    updates.metadata = compiled.metadata;
   }
 
   await db.update(posts).set(updates).where(eq(posts.id, postId));
