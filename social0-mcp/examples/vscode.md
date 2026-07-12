@@ -1,34 +1,29 @@
 # VS Code (GitHub Copilot / MCP)
 
-1. Clone and build:
+## 1. API key
 
-```bash
-git clone https://github.com/Abhishek-B-R/social0-mcp.git
-cd social0-mcp
-npm install && npm run build
-```
+Create one at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys) (`sk_live_…`).
 
-2. Create an API key at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys).
+## 2. Add the MCP server
 
-3. If your VS Code MCP setup supports stdio servers, add:
+In your VS Code MCP / Copilot settings (exact UI varies):
 
 ```json
 {
   "servers": {
     "social0": {
       "type": "stdio",
-      "command": "node",
-      "args": ["/absolute/path/to/social0-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "social0-mcp"],
       "env": {
-        "SOCIAL0_API_KEY": "sk_live_your_key_here",
-        "SOCIAL0_API_URL": "https://api.social0.app/v1"
+        "SOCIAL0_API_KEY": "sk_live_your_key_here"
       }
     }
   }
 }
 ```
 
-Exact config file location depends on your VS Code MCP extension / Copilot settings. Always use an **absolute** path to `dist/index.js`.
+Requires **Node.js 20+** on your PATH so `npx` works.
 
 ## Example prompts
 

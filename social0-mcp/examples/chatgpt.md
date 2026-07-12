@@ -1,36 +1,44 @@
-# ChatGPT (Custom GPT / MCP)
+# ChatGPT (Desktop)
 
-When ChatGPT supports MCP connectors for your plan, point a stdio MCP server at this package.
+ChatGPT supports MCP servers. Availability varies by plan / region.
 
-## Prerequisites
+## 1. API key
 
-1. Clone and build:
+Create one at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys) (`sk_live_…`).
 
-```bash
-git clone https://github.com/Abhishek-B-R/social0-mcp.git
-cd social0-mcp
-npm install && npm run build
+## 2. Add the connector
+
+Open:
+
+**Settings → Connectors / MCP** (wording varies by version)
+
+Add:
+
+```json
+{
+  "name": "social0",
+  "command": "npx",
+  "args": ["-y", "social0-mcp"],
+  "env": {
+    "SOCIAL0_API_KEY": "sk_live_your_key_here"
+  }
+}
 ```
 
-2. Create an API key at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys).
+Save and restart ChatGPT if needed. You should see the Social0 tools available.
 
-## Configuration
-
-```
-node /absolute/path/to/social0-mcp/dist/index.js
-```
-
-| Variable | Value |
-|----------|-------|
-| `SOCIAL0_API_KEY` | `sk_live_…` (legacy `s0_live_…` accepted) |
-| `SOCIAL0_API_URL` | `https://api.social0.app/v1` |
+Requires **Node.js 20+** on the machine running ChatGPT Desktop.
 
 ## Example prompts
 
+- "Show my connected Social0 accounts."
 - "Post this to my connected Twitter and LinkedIn accounts."
+- "Upload this image from https://… and publish it."
 - "What platforms would work best for a 30-second product demo video?"
 - "Schedule a post for Friday at 10 AM Eastern (convert to UTC)."
 
-> ChatGPT MCP availability varies by plan and region. Claude Desktop or Cursor are more reliable today.
+## Media tip
 
-See [AGENTS.md](../AGENTS.md) for tool details.
+Prefer `upload_media` with a public `url` or base64 `data`. Sandbox paths like `/home/…` will fail with ENOENT.
+
+See [AGENTS.md](../AGENTS.md) for full tool details.

@@ -2,6 +2,19 @@
 
 All notable changes to the Social0 MCP server are documented here.
 
+## [0.2.1] - 2026-07-12
+
+### Changed
+
+- README is install/config-first for general users; troubleshooting and local-dev moved to AGENTS.md
+
+## [0.2.0] - 2026-07-12
+
+### Changed
+
+- **Breaking:** npm package renamed from `@social0/mcp-server` to `social0-mcp` (bin name unchanged). Use `npx -y social0-mcp`.
+- README and host examples use paste-ready `npx -y social0-mcp` configs. Local clone is optional for contributors only.
+
 ## [0.1.2] - 2026-07-12
 
 ### Added

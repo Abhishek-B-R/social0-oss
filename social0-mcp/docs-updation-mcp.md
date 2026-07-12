@@ -860,7 +860,7 @@ Update docs when these ship:
 | ~~`/v1/posts` CRUD goes live~~ | ✅ Done — no rolling-out callouts |
 | ~~API keys UI leaves "coming soon"~~ | ✅ Done — add screenshots when available |
 | `social0-mcp` standalone repo published | Update clone URLs to new repo |
-| npm package `@social0/mcp-server` published | Document `npx @social0/mcp-server` install path |
+| npm package `social0-mcp` published | Document `npx -y social0-mcp` install path |
 | Windsurf official MCP docs | Add dedicated page |
 | Platform suggestion API endpoint | Update `suggest_best_platforms` to mention backend AI |
 | Team / shared API keys | New section under API keys |

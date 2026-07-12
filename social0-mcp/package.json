@@ -1,7 +1,7 @@
 {
-  "name": "@social0/mcp-server",
-  "version": "0.1.2",
-  "description": "Official Model Context Protocol server for Social0 — manage social posts from AI assistants",
+  "name": "social0-mcp",
+  "version": "0.2.1",
+  "description": "Post to Instagram, TikTok, YouTube, X, LinkedIn, and more from Claude, Cursor, or ChatGPT",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -35,7 +35,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Abhishek-B-R/social0-mcp.git"
+    "url": "git+https://github.com/Abhishek-B-R/social0-mcp.git"
   },
   "homepage": "https://github.com/Abhishek-B-R/social0-mcp#readme",
   "bugs": {

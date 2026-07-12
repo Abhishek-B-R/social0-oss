@@ -36,7 +36,7 @@ import {
   Zap,
 } from "lucide-react";
 
-type HostId = "cursor" | "claude" | "vscode";
+type HostId = "cursor" | "claude" | "chatgpt" | "vscode";
 
 const MCP_TOOLS = [
   "list_accounts",
@@ -69,7 +69,7 @@ const FEATURES = [
     icon: Upload,
     title: "Media upload",
     description:
-      "Point your AI at a local image or video. Social0 handles presign, upload, and attach.",
+      "Pass a public URL, base64 data, or a local file path. Social0 handles presign, upload, and attach.",
   },
   {
     icon: Calendar,
@@ -128,7 +128,7 @@ const FAQ = [
   },
   {
     q: "Is my API key safe?",
-    a: "The MCP server runs locally on your machine. Your key is stored in your AI host's config and sent only to api.social0.app — same as any API client.",
+    a: "Your key stays in your AI host's MCP config. The server runs via npx on your machine and sends the key only to api.social0.app — same as any API client.",
   },
   {
     q: "What if one platform fails?",
@@ -148,24 +148,32 @@ const PLATFORM_ICONS = [
   { Icon: PinterestIcon, label: "Pinterest" },
 ] as const;
 
-function buildMcpConfig(host: HostId, apiKey: string, mcpPath: string) {
+function buildMcpConfig(host: HostId, apiKey: string) {
   const key = apiKey.trim() || "sk_live_your_key_here";
-  const path = mcpPath.trim() || "/absolute/path/to/social0-mcp/dist/index.js";
+  const env = { SOCIAL0_API_KEY: key };
+
+  if (host === "chatgpt") {
+    return JSON.stringify(
+      {
+        name: "social0",
+        command: "npx",
+        args: ["-y", "social0-mcp"],
+        env,
+      },
+      null,
+      2,
+    );
+  }
 
   if (host === "vscode") {
     return JSON.stringify(
       {
-        mcp: {
-          servers: {
-            social0: {
-              type: "stdio",
-              command: "node",
-              args: [path],
-              env: {
-                SOCIAL0_API_KEY: key,
-                SOCIAL0_API_URL: "https://api.social0.app/v1",
-              },
-            },
+        servers: {
+          social0: {
+            type: "stdio",
+            command: "npx",
+            args: ["-y", "social0-mcp"],
+            env,
           },
         },
       },
@@ -178,12 +186,9 @@ function buildMcpConfig(host: HostId, apiKey: string, mcpPath: string) {
     {
       mcpServers: {
         social0: {
-          command: "node",
-          args: [path],
-          env: {
-            SOCIAL0_API_KEY: key,
-            SOCIAL0_API_URL: "https://api.social0.app/v1",
-          },
+          command: "npx",
+          args: ["-y", "social0-mcp"],
+          env,
         },
       },
     },
@@ -249,13 +254,9 @@ function ChatBubble({
 function McpConfigPanel() {
   const [host, setHost] = useState<HostId>("cursor");
   const [apiKey, setApiKey] = useState("");
-  const [mcpPath, setMcpPath] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const config = useMemo(
-    () => buildMcpConfig(host, apiKey, mcpPath),
-    [host, apiKey, mcpPath],
-  );
+  const config = useMemo(() => buildMcpConfig(host, apiKey), [host, apiKey]);
 
   const copyConfig = () => {
     void navigator.clipboard.writeText(config);
@@ -267,17 +268,22 @@ function McpConfigPanel() {
     {
       id: "cursor",
       label: "Cursor",
-      hint: ".cursor/mcp.json or Cursor Settings → MCP",
+      hint: "Settings → MCP, or project .cursor/mcp.json",
     },
     {
       id: "claude",
       label: "Claude Desktop",
-      hint: "claude_desktop_config.json",
+      hint: "macOS: ~/Library/Application Support/Claude/claude_desktop_config.json",
+    },
+    {
+      id: "chatgpt",
+      label: "ChatGPT",
+      hint: "Settings → Connectors / MCP (Desktop; wording varies)",
     },
     {
       id: "vscode",
       label: "VS Code",
-      hint: "MCP extension settings.json",
+      hint: "Copilot / MCP settings (stdio server)",
     },
   ];
 
@@ -305,8 +311,8 @@ function McpConfigPanel() {
         {hosts.find((h) => h.id === host)?.hint}
       </p>
 
-      <div className="mb-4 grid gap-4 sm:grid-cols-2">
-        <label className="block">
+      <div className="mb-4">
+        <label className="block max-w-md">
           <span className="mb-1.5 block text-[13px] font-medium text-foreground">
             API key
           </span>
@@ -315,18 +321,6 @@ function McpConfigPanel() {
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="sk_live_…"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-[14px] outline-none ring-emerald-500/30 focus:ring-2"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1.5 block text-[13px] font-medium text-foreground">
-            Path to social0-mcp
-          </span>
-          <input
-            type="text"
-            value={mcpPath}
-            onChange={(e) => setMcpPath(e.target.value)}
-            placeholder="/path/to/social0-mcp/dist/index.js"
             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-[14px] outline-none ring-emerald-500/30 focus:ring-2"
           />
         </label>
@@ -353,20 +347,18 @@ function McpConfigPanel() {
       </div>
 
       <p className="mt-4 text-[12px] text-muted-foreground">
-        Clone{" "}
+        Paste into your host, save, and restart if needed. Uses{" "}
+        <code className="rounded bg-muted px-1">npx -y social0-mcp</code>{" "}
+        (Node.js 20+). Package:{" "}
         <a
-          href="https://github.com/Abhishek-B-R/social0/tree/main/social0-mcp"
+          href="https://www.npmjs.com/package/social0-mcp"
           target="_blank"
           rel="noopener noreferrer"
           className="text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
         >
           social0-mcp
         </a>
-        , run{" "}
-        <code className="rounded bg-muted px-1">
-          npm install && npm run build
-        </code>
-        , then restart your AI host.
+        .
       </p>
     </div>
   );
@@ -524,7 +516,7 @@ bluesky       acme.bsky       active`}
               {
                 step: "3",
                 title: "Add MCP to your AI",
-                body: "Paste the config below into Cursor, Claude Desktop, or VS Code. Restart the host and try list_accounts.",
+                body: "Paste the npx config below into Cursor, Claude Desktop, ChatGPT, or VS Code. Restart the host and try list_accounts.",
                 href: DOCS_MCP_URL,
                 link: "Full MCP docs",
                 external: true,
