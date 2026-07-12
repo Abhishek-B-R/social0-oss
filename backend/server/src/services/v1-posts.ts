@@ -45,6 +45,14 @@ function validateScheduledAt(scheduledAt: unknown): string | null {
   return null;
 }
 
+function normalizeUuid(id: string): string {
+  return id.toLowerCase();
+}
+
+function normalizeUuidList(ids: string[]): string[] {
+  return ids.map(normalizeUuid);
+}
+
 async function validateOwnedAccounts(
   userId: string,
   accountIds: string[],
@@ -55,17 +63,18 @@ async function validateOwnedAccounts(
   if (!accountIds.every((id) => isValidUUID(id))) {
     return "Invalid account ID format";
   }
+  const normalizedIds = normalizeUuidList(accountIds);
   const owned = await db
     .select({ id: connectedAccounts.id })
     .from(connectedAccounts)
     .where(
       and(
         eq(connectedAccounts.userId, userId),
-        inArray(connectedAccounts.id, accountIds),
+        inArray(connectedAccounts.id, normalizedIds),
       ),
     );
   const ownedSet = new Set(owned.map((a) => a.id));
-  const unique = [...new Set(accountIds)];
+  const unique = [...new Set(normalizedIds)];
   if (unique.length !== ownedSet.size || !unique.every((id) => ownedSet.has(id))) {
     return "One or more accounts are invalid or do not belong to you";
   }
@@ -80,20 +89,102 @@ async function validateOwnedMedia(
   if (!mediaIds.every((id) => isValidUUID(id))) {
     return "Invalid media ID format";
   }
+  const normalizedIds = normalizeUuidList(mediaIds);
   const owned = await db
     .select({ id: mediaUploads.id })
     .from(mediaUploads)
     .where(
       and(
         eq(mediaUploads.userId, userId),
-        inArray(mediaUploads.id, mediaIds),
+        inArray(mediaUploads.id, normalizedIds),
       ),
     );
   const ownedSet = new Set(owned.map((m) => m.id));
-  if (!mediaIds.every((id) => ownedSet.has(id))) {
+  if (!normalizedIds.every((id) => ownedSet.has(id))) {
     return "One or more media files are invalid or do not belong to you";
   }
   return null;
+}
+
+type V1PostForm = "text" | "image" | "video" | "collection";
+
+const FORM_PLATFORMS: Record<V1PostForm, string[]> = {
+  text: ["facebook", "bluesky", "twitter_x", "linkedin", "threads"],
+  image: [
+    "facebook",
+    "bluesky",
+    "twitter_x",
+    "linkedin",
+    "threads",
+    "pinterest",
+    "tiktok",
+    "instagram",
+  ],
+  video: [
+    "facebook",
+    "bluesky",
+    "twitter_x",
+    "linkedin",
+    "threads",
+    "youtube",
+    "pinterest",
+    "tiktok",
+    "instagram",
+  ],
+  collection: ["twitter_x", "threads", "instagram"],
+};
+
+function inferPostFormFromMimeTypes(mimeTypes: string[]): V1PostForm {
+  if (mimeTypes.length === 0) return "text";
+  const videoCount = mimeTypes.filter((m) => m.startsWith("video/")).length;
+  const imageCount = mimeTypes.filter((m) => m.startsWith("image/")).length;
+  const knownMediaCount = videoCount + imageCount;
+  if (knownMediaCount > 1 && videoCount > 0) return "collection";
+  if (videoCount === 1) return "video";
+  return "image";
+}
+
+async function validateTargetsForMedia(
+  userId: string,
+  accountIds: string[],
+  mediaIds: string[],
+): Promise<string | null> {
+  if (accountIds.length === 0) return "At least one platform account is required";
+
+  const [accounts, media] = await Promise.all([
+    db
+      .select({ id: connectedAccounts.id, platform: connectedAccounts.platform })
+      .from(connectedAccounts)
+      .where(
+        and(
+          eq(connectedAccounts.userId, userId),
+          inArray(connectedAccounts.id, accountIds),
+        ),
+      ),
+    mediaIds.length
+      ? db
+          .select({ id: mediaUploads.id, mimeType: mediaUploads.mimeType })
+          .from(mediaUploads)
+          .where(
+            and(
+              eq(mediaUploads.userId, userId),
+              inArray(mediaUploads.id, mediaIds),
+            ),
+          )
+      : Promise.resolve([]),
+  ]);
+
+  const form = inferPostFormFromMimeTypes(media.map((m) => m.mimeType ?? ""));
+  const allowed = new Set(FORM_PLATFORMS[form]);
+  const unsupported = accounts.filter((a) => !allowed.has(a.platform));
+  if (unsupported.length === 0) return null;
+
+  const platform = unsupported[0]!.platform;
+  const supported = FORM_PLATFORMS[form].join(", ");
+  if (form === "collection" && platform === "youtube") {
+    return `YouTube supports one video per post. You attached ${mediaIds.length} media items, so Social0 treats this as a collection. Remove extra media or publish the collection to: ${supported}.`;
+  }
+  return `${platform} does not support ${form} posts in Social0 (supported for this content: ${supported}).`;
 }
 
 async function gateFreeQuota(userId: string): Promise<string | null> {
@@ -121,11 +212,13 @@ export async function v1CreateDraft(
   const accountErr = await validateOwnedAccounts(userId, input.platforms);
   if (accountErr) return { ok: false, error: accountErr };
 
-  const mediaIds = input.media ?? [];
+  const mediaIds = normalizeUuidList(input.media ?? []);
   const mediaErr = await validateOwnedMedia(userId, mediaIds);
   if (mediaErr) return { ok: false, error: mediaErr };
 
-  const uniqueAccounts = [...new Set(input.platforms)];
+  const uniqueAccounts = [...new Set(normalizeUuidList(input.platforms))];
+  const targetErr = await validateTargetsForMedia(userId, uniqueAccounts, mediaIds);
+  if (targetErr) return { ok: false, error: targetErr };
 
   const [row] = await db
     .insert(posts)
@@ -283,7 +376,7 @@ export async function v1UpdateDraft(
   if (!isValidUUID(postId)) return { ok: false, error: "Invalid post ID" };
 
   const [existing] = await db
-    .select({ id: posts.id, status: posts.status })
+    .select({ id: posts.id, status: posts.status, mediaIds: posts.mediaIds })
     .from(posts)
     .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
     .limit(1);
@@ -294,10 +387,22 @@ export async function v1UpdateDraft(
   }
 
   const updates: Partial<typeof posts.$inferInsert> = { updatedAt: new Date() };
+  const existingPublications = input.platforms
+    ? []
+    : await db
+        .select({ connectedAccountId: postPublications.connectedAccountId })
+        .from(postPublications)
+        .where(eq(postPublications.postId, postId));
+  const finalMediaIds = normalizeUuidList(input.media ?? existing.mediaIds ?? []);
+  const finalAccountIds =
+    (input.platforms ? normalizeUuidList(input.platforms) : undefined) ??
+    existingPublications
+      .map((p) => p.connectedAccountId)
+      .filter((id): id is string => typeof id === "string");
 
   if (input.content !== undefined) {
     const trimmed = input.content.trim();
-    if (!trimmed && (!input.media || input.media.length === 0)) {
+    if (!trimmed && finalMediaIds.length === 0) {
       return { ok: false, error: "content or media is required" };
     }
     updates.originalContent = trimmed;
@@ -305,9 +410,20 @@ export async function v1UpdateDraft(
   }
 
   if (input.media !== undefined) {
-    const mediaErr = await validateOwnedMedia(userId, input.media);
+    const normalizedMedia = normalizeUuidList(input.media);
+    const mediaErr = await validateOwnedMedia(userId, normalizedMedia);
     if (mediaErr) return { ok: false, error: mediaErr };
-    updates.mediaIds = input.media;
+    updates.mediaIds = normalizedMedia;
+  }
+
+  if (input.platforms) {
+    const accountErr = await validateOwnedAccounts(userId, normalizeUuidList(input.platforms));
+    if (accountErr) return { ok: false, error: accountErr };
+  }
+
+  if (input.platforms || input.media) {
+    const targetErr = await validateTargetsForMedia(userId, finalAccountIds, finalMediaIds);
+    if (targetErr) return { ok: false, error: targetErr };
   }
 
   if (input.metadata !== undefined) {
@@ -317,10 +433,7 @@ export async function v1UpdateDraft(
   await db.update(posts).set(updates).where(eq(posts.id, postId));
 
   if (input.platforms) {
-    const accountErr = await validateOwnedAccounts(userId, input.platforms);
-    if (accountErr) return { ok: false, error: accountErr };
-
-    const uniqueAccounts = [...new Set(input.platforms)];
+    const uniqueAccounts = [...new Set(normalizeUuidList(input.platforms))];
     await db
       .delete(postPublications)
       .where(eq(postPublications.postId, postId));
