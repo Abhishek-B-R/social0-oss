@@ -53,7 +53,7 @@ export async function pollUntilComplete(
   while (true) {
     const status = await getJobStatus(trackingId);
     onUpdate?.(status);
-    if (status.status === "completed" || status.status === "failed") {
+    if (status.status === "completed" || status.status === "failed" || status.status === "partial") {
       return status;
     }
     await new Promise((r) => setTimeout(r, 1500));

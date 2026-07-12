@@ -31,6 +31,8 @@ export async function statusCommand(
         console.log("");
         if (final.status === "completed") {
           console.log(chalk.green("✓ All platforms published successfully."));
+        } else if (final.status === "partial") {
+          console.log(chalk.yellow("! Published to some platforms — some failed."));
         } else if (final.status === "failed") {
           console.log(chalk.red("✗ Publishing failed."));
           if (final.failure_reason) console.log(chalk.dim(`  ${final.failure_reason}`));

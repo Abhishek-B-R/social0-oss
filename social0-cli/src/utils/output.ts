@@ -59,10 +59,10 @@ function formatCell(column: string, value: string): string {
     if (value === "failed" || value === "expired" || value === "error") {
       return chalk.red(value);
     }
+    if (value === "partial") return chalk.yellow(value);
     if (value === "publishing" || value === "processing" || value === "queued" || value === "pending") {
       return chalk.yellow(value);
     }
-    if (value === "partial") return chalk.yellow(value);
     if (value === "draft" || value === "scheduled") return chalk.cyan(value);
   }
   return value;

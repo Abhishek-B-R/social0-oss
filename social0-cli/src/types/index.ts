@@ -89,7 +89,7 @@ export interface ScheduleResult {
 export interface JobStatusResponse {
   tracking_id: string;
   post_id: string;
-  status: "queued" | "processing" | "completed" | "failed";
+  status: "queued" | "processing" | "completed" | "failed" | "partial";
   total: number;
   completed: number;
   failed: number;
