@@ -197,7 +197,7 @@ async function publishThreadsThread(
         part: i + 1,
         status: createRes.status,
         body: createData,
-      })
+      });
       return {
         status: "failed",
         lastError: errMsg,
@@ -236,7 +236,7 @@ async function publishThreadsThread(
           part: i + 1,
           status,
           error_message: statusData.error_message,
-        })
+        });
         return {
           status: "failed",
           lastError: errMsg,
@@ -244,13 +244,13 @@ async function publishThreadsThread(
         };
       }
       if (pollAttempt < maxPollAttempts - 1) {
-        publishLog.info(`[Threads] Part ${i + 1} container status: ${status ?? "unknown"} (attempt ${pollAttempt + 1}/${maxPollAttempts})`,)
+        publishLog.info(`[Threads] Part ${i + 1} container status: ${status ?? "unknown"} (attempt ${pollAttempt + 1}/${maxPollAttempts})`,);
       }
     }
     if (pollAttempt >= maxPollAttempts) {
       const err =
         "Threads media container did not become ready in time. Try again.";
-      publishLog.error("[Threads]", err)
+      publishLog.error("[Threads]", err);
       return { status: "failed", lastError: err, error: "Timeout" };
     }
 
@@ -283,7 +283,7 @@ async function publishThreadsThread(
         part: i + 1,
         status: publishRes.status,
         body: publishData,
-      })
+      });
       return {
         status: "failed",
         lastError: errMsg,
@@ -351,7 +351,7 @@ export async function publishToThreads(
 
   // Handle carousel (multiple items: images and/or videos, up to 10)
   if (orderedMedia.length > 1) {
-    publishLog.info(`📸 Creating Threads carousel with ${orderedMedia.length} items (images + videos)...`,)
+    publishLog.info(`📸 Creating Threads carousel with ${orderedMedia.length} items (images + videos)...`,);
 
     const containerIds: string[] = [];
 
@@ -379,14 +379,14 @@ export async function publishToThreads(
 
       if (itemRes.ok && itemData.id) {
         containerIds.push(itemData.id);
-        publishLog.info(`✅ Threads carousel item ${containerIds.length} created: ${itemData.id}`,)
+        publishLog.info(`✅ Threads carousel item ${containerIds.length} created: ${itemData.id}`,);
 
         // If this item is a video, poll until FINISHED before creating next item
         if (isVideo) {
           const maxAttempts = 60;
           const delayMs = 3000;
           let attempts = 0;
-          publishLog.info(`⏳ Polling Threads video item ${itemData.id} until FINISHED...`,)
+          publishLog.info(`⏳ Polling Threads video item ${itemData.id} until FINISHED...`,);
           while (attempts < maxAttempts) {
             const statusRes = await fetch(
               `https://graph.threads.net/v1.0/${itemData.id}?fields=status&${threadParams.toString()}`,
@@ -397,7 +397,7 @@ export async function publishToThreads(
                 error?: { message?: string };
               };
               const status = statusData.status;
-              publishLog.info(`Threads video item status: ${status ?? "unknown"} (attempt ${attempts + 1}/${maxAttempts})`,)
+              publishLog.info(`Threads video item status: ${status ?? "unknown"} (attempt ${attempts + 1}/${maxAttempts})`,);
               if (status === "FINISHED") break;
               if (status === "ERROR") {
                 const errMsg =
@@ -415,14 +415,14 @@ export async function publishToThreads(
           }
           if (attempts >= maxAttempts) {
             const err = `Threads video item did not finish processing within ${maxAttempts * (delayMs / 1000)}s.`;
-            publishLog.error("❌", err)
+            publishLog.error("❌", err);
             return { status: "failed", lastError: err, error: "Timeout" };
           }
-          publishLog.info("✅ Threads video item finished processing.")
+          publishLog.info("✅ Threads video item finished processing.");
         }
       } else {
         publishLog.error("❌ Failed to create Threads carousel item:",
-          itemData.error,)
+          itemData.error,);
         return {
           status: "failed",
           lastError:
@@ -471,14 +471,14 @@ export async function publishToThreads(
       publishLog.error("Threads carousel creation failed:", {
         status: carouselRes.status,
         error: carouselData.error,
-      })
+      });
       return { status: "failed", lastError: err, error: err };
     }
 
     publishLog.info("✅ Threads carousel container created:", {
       containerId: carouselData.id,
       itemCount: containerIds.length,
-    })
+    });
 
     creationId = carouselData.id;
     isCarousel = true;
@@ -557,7 +557,7 @@ export async function publishToThreads(
     const maxAttempts = 30;
     const delayMs = 3000;
 
-    publishLog.info(`⏳ Polling Threads carousel status for container ${creationId}...`,)
+    publishLog.info(`⏳ Polling Threads carousel status for container ${creationId}...`,);
 
     while (attempts < maxAttempts) {
       const statusRes = await fetch(
@@ -567,7 +567,7 @@ export async function publishToThreads(
       if (!statusRes.ok) {
         const errorText = await statusRes.text().catch(() => "Unknown error");
         publishLog.warn(`⚠️ Threads carousel status check failed (attempt ${attempts + 1}/${maxAttempts}): HTTP ${statusRes.status}`,
-          errorText,)
+          errorText,);
       } else {
         const statusData = (await statusRes.json().catch(() => ({}))) as {
           status?: string;
@@ -577,10 +577,10 @@ export async function publishToThreads(
 
         publishLog.info(`Threads carousel status: ${status ?? "unknown"} (attempt ${
             attempts + 1
-          }/${maxAttempts})`,)
+          }/${maxAttempts})`,);
 
         if (status === "FINISHED" || status === "PUBLISHED") {
-          publishLog.info("✅ Threads carousel is ready to publish")
+          publishLog.info("✅ Threads carousel is ready to publish");
           break;
         }
 
@@ -588,7 +588,7 @@ export async function publishToThreads(
           const errMessage =
             statusData.error?.message ??
             "Threads carousel container failed to process.";
-          publishLog.error("❌ Threads carousel processing error:", errMessage)
+          publishLog.error("❌ Threads carousel processing error:", errMessage);
           return {
             status: "failed",
             lastError: errMessage,
@@ -604,7 +604,7 @@ export async function publishToThreads(
     if (attempts >= maxAttempts) {
       const err =
         "Threads carousel container was never ready to publish (timed out after 90s).";
-      publishLog.error("❌", err)
+      publishLog.error("❌", err);
       return { status: "failed", lastError: err, error: err };
     }
   } else {

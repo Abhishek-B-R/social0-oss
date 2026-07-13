@@ -35,7 +35,7 @@ export async function publishToFacebook(
 
   // Handle multi-photo posts (2+ images)
   if (images.length > 1) {
-    publishLog.info(`📸 Creating Facebook multi-photo post with ${images.length} images...`,)
+    publishLog.info(`📸 Creating Facebook multi-photo post with ${images.length} images...`,);
 
     // Upload all photos as unpublished first
     const photoIds: Array<{ media_fbid: string }> = [];
@@ -64,9 +64,9 @@ export async function publishToFacebook(
 
       if (photoRes.ok && photoData.id) {
         photoIds.push({ media_fbid: photoData.id });
-        publishLog.info(`✅ Photo ${photoIds.length} uploaded: ${photoData.id}`)
+        publishLog.info(`✅ Photo ${photoIds.length} uploaded: ${photoData.id}`);
       } else {
-        publishLog.error(`❌ Failed to upload photo:`, photoData.error)
+        publishLog.error(`❌ Failed to upload photo:`, photoData.error);
       }
     }
 
@@ -110,7 +110,7 @@ export async function publishToFacebook(
       publishLog.error("Facebook multi-photo post failed:", {
         status: postRes.status,
         error: data.error,
-      })
+      });
       return { status: "failed", lastError: err, error: err };
     }
 

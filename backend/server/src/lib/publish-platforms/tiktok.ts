@@ -311,7 +311,7 @@ export async function publishToTikTok(
     };
 
     publishLog.info("TikTok photo post request:",
-      JSON.stringify(requestBody, null, 2),)
+      JSON.stringify(requestBody, null, 2),);
 
     initRes = await tiktokApiFetch(
       "https://open.tiktokapis.com/v2/post/publish/content/init/",
@@ -356,7 +356,7 @@ export async function publishToTikTok(
   }
 
   const initData = (await initRes.json().catch((e) => {
-    publishLog.error("TikTok publish/init: failed to parse JSON", e)
+    publishLog.error("TikTok publish/init: failed to parse JSON", e);
     return {};
   })) as {
     data?: { publish_id?: string };
@@ -371,7 +371,7 @@ export async function publishToTikTok(
         body: initData,
         errorCode: initData.error?.code,
         errorMessage: initData.error?.message,
-      },)
+      },);
   }
 
   if (!initRes.ok) {
@@ -391,7 +391,7 @@ export async function publishToTikTok(
     publishLog.error("TikTok publish/init: no publish_id in response", {
       httpStatus: initRes.status,
       body: initData,
-    })
+    });
     return {
       status: "failed",
       lastError: "TikTok did not return a publish ID",
@@ -436,7 +436,7 @@ export async function publishToTikTok(
       },
     );
     const statusData = (await statusRes.json().catch((e) => {
-      publishLog.error("TikTok publish/status: failed to parse JSON", e)
+      publishLog.error("TikTok publish/status: failed to parse JSON", e);
       return {};
     })) as {
       data?: {
@@ -461,7 +461,7 @@ export async function publishToTikTok(
     try {
       ({ statusRes, statusData } = await fetchTikTokPublishStatus(publishId));
     } catch (err) {
-      publishLog.error("TikTok publish/status: request failed", err)
+      publishLog.error("TikTok publish/status: request failed", err);
       continue;
     }
     const status = statusData.data?.status;
@@ -475,7 +475,7 @@ export async function publishToTikTok(
         body: statusData,
         errorCode: statusData.error?.code,
         errorMessage: statusData.error?.message,
-      })
+      });
     }
 
     if (status === "FAILED") {
@@ -495,6 +495,6 @@ export async function publishToTikTok(
 
   // TikTok accepted the upload but is still processing - don't block the UI/server action.
   publishLog.warn("[TikTok] Publish status still processing after poll cap; marking published",
-    { publishId },)
+    { publishId },);
   return buildTikTokPublishedResult(pub, accessToken, null);
 }

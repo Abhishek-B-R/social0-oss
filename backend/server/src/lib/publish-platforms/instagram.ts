@@ -20,7 +20,7 @@ export async function publishToInstagram(
   publishLog.info("🔍 Instagram publish attempt:", {
     igUserId,
     tokenPrefix: accessToken.substring(0, 30),
-  })
+  });
   const caption = truncate(post.finalContent?.trim() ?? "", 2200);
   // Collection/carousel: up to 10 items in order, mixed images and videos
   const orderedMedia = post.mediaIds?.length
@@ -46,7 +46,7 @@ export async function publishToInstagram(
 
   // Handle carousel (multiple items: images and/or videos, up to 10)
   if (orderedMedia.length > 1) {
-    publishLog.info(`📸 Creating Instagram carousel with ${orderedMedia.length} items (images + videos)...`,)
+    publishLog.info(`📸 Creating Instagram carousel with ${orderedMedia.length} items (images + videos)...`,);
 
     const createdItems: { id: string; isVideo: boolean }[] = [];
 
@@ -58,7 +58,7 @@ export async function publishToInstagram(
         "mimeType:",
         item.mimeType,
         "isVideo:",
-        isVideo,)
+        isVideo,);
       const body: Record<string, string | boolean> = {
         is_carousel_item: true,
         media_type: isVideo ? "VIDEO" : "IMAGE",
@@ -84,9 +84,9 @@ export async function publishToInstagram(
 
       if (itemRes.ok && itemData.id) {
         createdItems.push({ id: itemData.id, isVideo });
-        publishLog.info(`✅ Carousel item ${createdItems.length} created: ${itemData.id}`,)
+        publishLog.info(`✅ Carousel item ${createdItems.length} created: ${itemData.id}`,);
       } else {
-        publishLog.error(`❌ Failed to create carousel item:`, itemData.error)
+        publishLog.error(`❌ Failed to create carousel item:`, itemData.error);
       }
     }
 
@@ -101,7 +101,7 @@ export async function publishToInstagram(
     // Second pass: wait for ALL video items to finish processing before creating container
     const videoItemIds = createdItems.filter((x) => x.isVideo).map((x) => x.id);
     if (videoItemIds.length > 0) {
-      publishLog.info(`⏳ Polling ${videoItemIds.length} Instagram video item(s) until FINISHED before container...`,)
+      publishLog.info(`⏳ Polling ${videoItemIds.length} Instagram video item(s) until FINISHED before container...`,);
       const maxAttempts = 60;
       const delayMs = 3000;
 
@@ -118,7 +118,7 @@ export async function publishToInstagram(
               error?: { message?: string };
             };
             const statusCode = statusData.status_code;
-            publishLog.info(`Instagram video item ${itemId} status: ${statusCode ?? "unknown"} (attempt ${attempts + 1}/${maxAttempts})`,)
+            publishLog.info(`Instagram video item ${itemId} status: ${statusCode ?? "unknown"} (attempt ${attempts + 1}/${maxAttempts})`,);
             if (statusCode === "FINISHED") break;
             if (statusCode === "ERROR") {
               const errMsg =
@@ -135,11 +135,11 @@ export async function publishToInstagram(
         }
         if (attempts >= maxAttempts) {
           const err = `Instagram video item ${itemId} did not finish processing within ${maxAttempts * (delayMs / 1000)}s.`;
-          publishLog.error("❌", err)
+          publishLog.error("❌", err);
           return { status: "failed", lastError: err, error: "Timeout" };
         }
       }
-      publishLog.info("✅ All Instagram video carousel items finished processing.")
+      publishLog.info("✅ All Instagram video carousel items finished processing.");
     }
 
     // Wait for items to settle before creating container
@@ -174,14 +174,14 @@ export async function publishToInstagram(
       publishLog.error("Instagram carousel creation failed:", {
         status: carouselRes.status,
         error: carouselData.error,
-      })
+      });
       return { status: "failed", lastError: err, error: err };
     }
 
     publishLog.info("✅ Instagram carousel container created:", {
       containerId: carouselData.id,
       itemCount: containerIds.length,
-    })
+    });
 
     containerData = carouselData;
   } else if (orderedMedia.length === 1 && imageUrl) {
@@ -218,14 +218,14 @@ export async function publishToInstagram(
         error: containerData.error,
         body: containerBody,
         response: containerData,
-      })
+      });
       return { status: "failed", lastError: err, error: err };
     }
 
     publishLog.info("✅ Instagram container created:", {
       containerId: containerData.id,
       mediaType: "image",
-    })
+    });
   } else if (orderedMedia.length === 1 && videoUrl) {
     // Single video (Reels)
     const containerBody: {
@@ -251,7 +251,7 @@ export async function publishToInstagram(
       cover_url: containerBody.cover_url
         ? `${containerBody.cover_url.slice(0, 60)}...`
         : undefined,
-    })
+    });
 
     const containerRes = await fetch(
       `https://graph.instagram.com/v21.0/${igUserId}/media`,
@@ -278,20 +278,20 @@ export async function publishToInstagram(
         error: containerData.error,
         body: containerBody,
         response: containerData,
-      })
+      });
       return { status: "failed", lastError: err, error: err };
     }
 
     if (containerData.error) {
       publishLog.warn("[Instagram Reels] Container response included error/warning:",
-        containerData.error,)
+        containerData.error,);
     }
     publishLog.info("✅ Instagram container created:", {
       containerId: containerData.id,
       mediaType: "video",
       hadCoverUrl: !!containerBody.cover_url,
       responseKeys: Object.keys(rawContainerJson),
-    })
+    });
   } else {
     return {
       status: "failed",
@@ -308,7 +308,7 @@ export async function publishToInstagram(
     let retries = 0;
     const maxRetries = 60; // 60 seconds max
 
-    publishLog.info("⏳ Starting video processing status polling...")
+    publishLog.info("⏳ Starting video processing status polling...");
 
     while (retries < maxRetries) {
       const statusRes = await fetch(
@@ -326,17 +326,17 @@ export async function publishToInstagram(
 
         const statusCode = statusData.status_code;
 
-        publishLog.info(`Instagram video processing status: ${statusCode ?? "unknown"} (attempt ${retries + 1}/${maxRetries})`,)
+        publishLog.info(`Instagram video processing status: ${statusCode ?? "unknown"} (attempt ${retries + 1}/${maxRetries})`,);
 
         if (statusCode === "FINISHED") {
-          publishLog.info("✅ Video processing completed, ready to publish")
+          publishLog.info("✅ Video processing completed, ready to publish");
           break; // Ready to publish
         }
 
         if (statusCode === "ERROR") {
           const errorMsg =
             statusData.error?.message ?? "Video processing failed on Instagram";
-          publishLog.error("❌ Instagram video processing error:", errorMsg)
+          publishLog.error("❌ Instagram video processing error:", errorMsg);
           return {
             status: "failed",
             lastError: errorMsg,
@@ -349,7 +349,7 @@ export async function publishToInstagram(
           statusCode &&
           !["IN_PROGRESS", "FINISHED", "ERROR"].includes(statusCode)
         ) {
-          publishLog.warn(`⚠️ Unknown status code: ${statusCode}`)
+          publishLog.warn(`⚠️ Unknown status code: ${statusCode}`);
         }
       } else {
         // Handle status check API errors
@@ -359,7 +359,7 @@ export async function publishToInstagram(
 
         if (isPermanentError) {
           publishLog.error(`❌ Status check failed with permanent error (attempt ${retries + 1}): HTTP ${statusRes.status}`,
-            errorText,)
+            errorText,);
           return {
             status: "failed",
             lastError: `Instagram API error: ${errorText || `HTTP ${statusRes.status}`}`,
@@ -369,7 +369,7 @@ export async function publishToInstagram(
 
         // Log transient errors but continue polling
         publishLog.warn(`⚠️ Status check failed (attempt ${retries + 1}): HTTP ${statusRes.status}`,
-          errorText,)
+          errorText,);
       }
 
       await new Promise((r) => setTimeout(r, 2000)); // Wait 2 seconds between checks
@@ -377,7 +377,7 @@ export async function publishToInstagram(
     }
 
     if (retries >= maxRetries) {
-      publishLog.error(`❌ Video processing timeout after ${maxRetries} attempts (${maxRetries * 2}s)`,)
+      publishLog.error(`❌ Video processing timeout after ${maxRetries} attempts (${maxRetries * 2}s)`,);
       return {
         status: "failed",
         lastError: "Video processing timeout (120s). Try a shorter video.",
@@ -390,7 +390,7 @@ export async function publishToInstagram(
     const delayMs = 3000;
     let attempts = 0;
 
-    publishLog.info(`⏳ Polling Instagram carousel container ${containerData.id} until FINISHED...`,)
+    publishLog.info(`⏳ Polling Instagram carousel container ${containerData.id} until FINISHED...`,);
 
     while (attempts < maxAttempts) {
       const statusRes = await fetch(
@@ -409,10 +409,10 @@ export async function publishToInstagram(
 
         publishLog.info(`Instagram carousel container status: ${statusCode ?? "unknown"} (attempt ${
             attempts + 1
-          }/${maxAttempts})`,)
+          }/${maxAttempts})`,);
 
         if (statusCode === "FINISHED") {
-          publishLog.info("✅ Instagram carousel container finished processing")
+          publishLog.info("✅ Instagram carousel container finished processing");
           break;
         }
 
@@ -420,7 +420,7 @@ export async function publishToInstagram(
           const errorMsg =
             statusData.error?.message ??
             "Instagram carousel container processing failed";
-          publishLog.error("❌ Instagram carousel container error:", errorMsg)
+          publishLog.error("❌ Instagram carousel container error:", errorMsg);
           return {
             status: "failed",
             lastError: errorMsg,
@@ -432,7 +432,7 @@ export async function publishToInstagram(
         publishLog.warn(`⚠️ Instagram carousel status check failed (attempt ${
             attempts + 1
           }/${maxAttempts}): HTTP ${statusRes.status}`,
-          errorText,)
+          errorText,);
       }
 
       attempts += 1;
@@ -442,17 +442,17 @@ export async function publishToInstagram(
     if (attempts >= maxAttempts) {
       const err =
         "Instagram carousel container did not finish processing in time";
-      publishLog.error("❌", err)
+      publishLog.error("❌", err);
       return { status: "failed", lastError: err, error: err };
     }
   } else {
     // Images-only, non-carousel posts process quickly
-    publishLog.info("⏳ Waiting 3s for image processing...")
+    publishLog.info("⏳ Waiting 3s for image processing...");
     await new Promise((r) => setTimeout(r, 3000));
   }
 
   // Step 3: Publish the container
-  publishLog.info("📤 Publishing Instagram container...")
+  publishLog.info("📤 Publishing Instagram container...");
   const publishRes = await fetch(
     `https://graph.instagram.com/v21.0/${igUserId}/media_publish`,
     {
@@ -476,7 +476,7 @@ export async function publishToInstagram(
       status: publishRes.status,
       error: publishData.error,
       response: publishData,
-    })
+    });
     return { status: "failed", lastError: err, error: err };
   }
 
@@ -489,7 +489,7 @@ export async function publishToInstagram(
   publishLog.info("✅ Instagram post published successfully:", {
     postId: publishData.id,
     url: platformPostUrl,
-  })
+  });
 
   return {
     status: "published",

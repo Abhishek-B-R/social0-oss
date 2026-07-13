@@ -36,7 +36,7 @@ import type {
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
 import { AccountAvatar } from "@/components/AccountAvatar";
-import { MdClose, MdQuestionMark } from "react-icons/md";
+import { MdClose } from "react-icons/md";
 import {
   TikTokSettings,
   type TikTokPostSettings,
@@ -76,7 +76,6 @@ import {
 } from "@/lib/composer-bridge";
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
-import { DOCS_IMAGE_POST_TYPE_URL } from "@/lib/docs-url";
 import { getLimitForAccount } from "@/lib/platform-limits";
 import { toast } from "sonner";
 import {
@@ -1457,7 +1456,7 @@ export function ImagePostForm({
       let list: Awaited<ReturnType<typeof getPostPublicationList>> = [];
       try {
         list = await getPostPublicationList(result.postId);
-      } catch (_) {
+      } catch {
         // Proceed with empty list so publish still runs (e.g. after ETIMEDOUT)
       }
       const publishOptions = hasTikTokSelected

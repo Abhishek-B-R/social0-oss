@@ -75,7 +75,7 @@ async function uploadPinterestVideo(
       message?: string;
     };
     publishLog.info(`[Pinterest] video status (attempt ${i + 1}):`,
-      statusData.status,)
+      statusData.status,);
     if (statusData.status === "succeeded") break;
     if (statusData.status === "failed") {
       throw new Error(
@@ -191,7 +191,7 @@ export async function publishToPinterest(
   if (link && link.length > 0) {
     pinPayload.destination_link = link;
   }
-  publishLog.info("[Pinterest] pinPayload:", JSON.stringify(pinPayload, null, 2))
+  publishLog.info("[Pinterest] pinPayload:", JSON.stringify(pinPayload, null, 2));
   const res = await fetch(`${PINTEREST_API_BASE}/pins`, {
     method: "POST",
     headers: {

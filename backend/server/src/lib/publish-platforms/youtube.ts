@@ -33,7 +33,7 @@ export async function publishToYouTube(
   publishLog.info("🔍 YouTube publish attempt:", {
     accountId: pub.connectedAccountId,
     videoMediaCount: post.mediaIds?.length ?? 0,
-  })
+  });
   const media = post.mediaIds?.length
     ? await getMediaWithUrls(post.mediaIds)
     : [];

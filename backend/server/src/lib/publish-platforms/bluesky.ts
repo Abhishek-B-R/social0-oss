@@ -335,7 +335,7 @@ export async function publishToBluesky(
     const selectedImages = images.slice(0, 4);
 
     if (selectedImages.length > 0) {
-      publishLog.info(`Bluesky collection: posting ${selectedImages.length} images, ignoring ${videos.length} videos`,)
+      publishLog.info(`Bluesky collection: posting ${selectedImages.length} images, ignoring ${videos.length} videos`,);
     }
 
     // Upload images and get blob refs (fetch with long timeout + retries so media server is reachable)
@@ -375,10 +375,10 @@ export async function publishToBluesky(
         } else {
           const errorText = await uploadRes.text().catch(() => "Unknown error");
           publishLog.warn(`Failed to upload blob for ${img.url}: ${uploadRes.status}`,
-            errorText,)
+            errorText,);
         }
       } catch (error) {
-        publishLog.error(`Error processing image ${img.url}:`, error)
+        publishLog.error(`Error processing image ${img.url}:`, error);
         // Continue with other images
       }
     }
@@ -428,7 +428,7 @@ export async function publishToBluesky(
           const errorText = await serviceAuthRes
             .text()
             .catch(() => "Unknown error");
-          publishLog.error("Failed to get service auth:", errorText)
+          publishLog.error("Failed to get service auth:", errorText);
           return {
             status: "failed",
             lastError: `Failed to authenticate with Bluesky video service: ${errorText}`,
@@ -477,7 +477,7 @@ export async function publishToBluesky(
             errorData.error === "already_exists" &&
             errorData.state === "JOB_STATE_COMPLETED"
           ) {
-            publishLog.info("Video already processed, using existing result")
+            publishLog.info("Video already processed, using existing result");
             if (errorData.blob) {
               videoBlob = errorData.blob;
             }
@@ -487,7 +487,7 @@ export async function publishToBluesky(
             };
           } else {
             publishLog.error(`Failed to upload video: ${uploadRes.status}`,
-              errorData,)
+              errorData,);
             return {
               status: "failed",
               lastError:
@@ -508,10 +508,10 @@ export async function publishToBluesky(
           // already handled above
         } else if (uploadData.blob) {
           videoBlob = uploadData.blob;
-          publishLog.info("✅ Video blob uploaded to Bluesky")
+          publishLog.info("✅ Video blob uploaded to Bluesky");
         } else if (uploadData.jobId) {
           // Step 3: Poll job status until video is processed
-          publishLog.info("⏳ Polling video processing status...")
+          publishLog.info("⏳ Polling video processing status...");
           let retries = 0;
           const maxRetries = 60; // 60 seconds max
 
@@ -541,16 +541,16 @@ export async function publishToBluesky(
               const jobState = statusData.jobStatus?.state;
               const blob = statusData.blob ?? statusData.jobStatus?.blob;
 
-              publishLog.info(`Video processing status: ${jobState} (attempt ${retries + 1}/${maxRetries})`,)
+              publishLog.info(`Video processing status: ${jobState} (attempt ${retries + 1}/${maxRetries})`,);
 
               if (jobState === "JOB_STATE_COMPLETED") {
                 if (blob) {
                   videoBlob = blob;
-                  publishLog.info("✅ Video processed and ready")
+                  publishLog.info("✅ Video processed and ready");
                   break;
                 }
                 publishLog.warn("Bluesky returned JOB_STATE_COMPLETED but no blob; full response:",
-                  JSON.stringify(statusData).slice(0, 500),)
+                  JSON.stringify(statusData).slice(0, 500),);
                 return {
                   status: "failed",
                   lastError:
@@ -617,7 +617,7 @@ export async function publishToBluesky(
           };
         }
       } catch (error) {
-        publishLog.error(`Error processing video ${video.url}:`, error)
+        publishLog.error(`Error processing video ${video.url}:`, error);
         return {
           status: "failed",
           lastError:
@@ -692,7 +692,7 @@ export async function publishToBluesky(
         status: createRes.status,
         error: createData,
         record,
-      })
+      });
       return { status: "failed", lastError: err, error: err };
     }
 
@@ -709,7 +709,7 @@ export async function publishToBluesky(
       publishedAt: new Date(),
     };
   } catch (error) {
-    publishLog.error("Bluesky publish error:", error)
+    publishLog.error("Bluesky publish error:", error);
     return {
       status: "failed",
       lastError: error instanceof Error ? error.message : "Unknown error",
