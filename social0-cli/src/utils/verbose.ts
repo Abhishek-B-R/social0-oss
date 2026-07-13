@@ -8,6 +8,18 @@ export function isVerbose(): boolean {
   return verboseEnabled || process.env.SOCIAL0_VERBOSE === "1";
 }
 
+/** Strip query strings — presigned URLs embed bearer-like signatures. */
+export function redactUrlForLog(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (!parsed.search) return `${parsed.origin}${parsed.pathname}`;
+    return `${parsed.origin}${parsed.pathname}?[redacted]`;
+  } catch {
+    const q = url.indexOf("?");
+    return q >= 0 ? `${url.slice(0, q)}?[redacted]` : url;
+  }
+}
+
 export function logVerbose(message: string, data?: Record<string, unknown>): void {
   if (!isVerbose()) return;
   const ts = new Date().toISOString();

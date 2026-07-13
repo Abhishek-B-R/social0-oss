@@ -66,11 +66,10 @@ function globalOpts(cmd: Command): GlobalOptions {
 // Auth
 program
   .command("login")
-  .description("Authenticate with your Social0 API key")
-  .option("--key <key>", "API key (non-interactive)")
-  .action(async (opts) => {
+  .description("Authenticate with your Social0 API key (stdin or masked prompt)")
+  .action(async () => {
     try {
-      await loginCommand(opts);
+      await loginCommand();
     } catch (err) {
       console.error(formatApiError(err));
       process.exit(1);

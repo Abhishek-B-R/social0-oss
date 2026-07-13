@@ -64,7 +64,10 @@ Get your API key from [social0.app/dashboard/api-keys](https://social0.app/dashb
 
 ```bash
 social0 login
-# Enter your API key (sk_live_...)
+# Enter your API key (sk_live_...) via masked prompt
+
+# Non-interactive (stdin — avoids shell history / process listings)
+echo "sk_live_..." | social0 login
 
 social0 whoami
 social0 logout
@@ -74,7 +77,8 @@ API keys are stored securely:
 - **macOS** → Keychain
 - **Linux** → Secret Service
 - **Windows** → Credential Manager
-- **Fallback** → Encrypted local config
+- **Fallback** → AES-encrypted file (requires a user passphrase, or `SOCIAL0_CREDENTIAL_PASSPHRASE`)
+- **CI/headless** → `SOCIAL0_API_KEY` environment variable (not written to disk)
 
 ## Commands
 
@@ -257,7 +261,8 @@ social0 completion powershell >> $PROFILE
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `SOCIAL0_API_KEY` | API key (overrides stored key) | — |
+| `SOCIAL0_API_KEY` | API key (overrides stored key; preferred for CI) | — |
+| `SOCIAL0_CREDENTIAL_PASSPHRASE` | Passphrase for encrypted local credential file | — |
 | `SOCIAL0_API_URL` | API base URL | `https://api.social0.app/v1` |
 | `SOCIAL0_REQUEST_TIMEOUT_MS` | Request timeout | `30000` |
 | `SOCIAL0_MAX_RETRIES` | Rate limit retries | `3` |

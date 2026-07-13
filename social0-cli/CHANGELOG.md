@@ -2,6 +2,14 @@
 
 All notable changes to `@social0/cli` will be documented in this file.
 
+## [0.1.1] - 2026-07-13
+
+### Security
+
+- Remove weak hostname-derived credential encryption; fallback now requires user passphrase
+- Remove `--key` flag from `login`; use masked prompt or stdin pipe instead
+- Redact presigned upload URL query strings in verbose logs
+
 ## [0.1.0] - 2026-07-11
 
 ### Added

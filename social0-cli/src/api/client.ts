@@ -1,7 +1,7 @@
 import { getApiKey } from "../config/credentials.js";
 import { resolveApiUrl, getRequestTimeoutMs, getMaxRetries } from "../config/settings.js";
 import type { ApiErrorBody } from "../types/index.js";
-import { logVerbose, parseRetryAfterMs, sleep } from "../utils/verbose.js";
+import { logVerbose, parseRetryAfterMs, sleep, redactUrlForLog } from "../utils/verbose.js";
 
 export class Social0ApiError extends Error {
   readonly status: number;
@@ -108,7 +108,7 @@ export class Social0ApiClient {
         signal: controller.signal,
       });
 
-      logVerbose(`PUT ${url}`, { status: response.status, latencyMs: Date.now() - started });
+      logVerbose(`PUT ${redactUrlForLog(url)}`, { status: response.status, latencyMs: Date.now() - started });
 
       if (!response.ok) {
         throw new Social0ApiError(`Media upload failed with HTTP ${response.status}`, response.status);
@@ -166,7 +166,7 @@ export class Social0ApiClient {
         const response = await fetch(url, init);
         const latencyMs = Date.now() - started;
 
-        logVerbose(`${method} ${url}`, {
+        logVerbose(`${method} ${redactUrlForLog(url)}`, {
           status: response.status,
           latencyMs,
           attempt: attempt + 1,
