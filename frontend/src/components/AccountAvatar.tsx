@@ -1,11 +1,10 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { accountAvatarSrc } from "@/lib/account-avatar-url";
 
 type AccountAvatarProps = {
   profileImageUrl: string | null | undefined;
-  /** When set, FB/IG/TikTok avatars load via /api/accounts/:id/avatar (fresh from platform API). */
+  /** Kept for call-site compatibility; avatars are stored on R2 and loaded directly. */
   accountId?: string;
   username?: string | null;
   /** Platform id for placeholder initial and Premium badge (e.g. "twitter_x") */
@@ -22,7 +21,6 @@ const sizeMap = { sm: 32, md: 36, lg: 48 };
 
 export function AccountAvatar({
   profileImageUrl,
-  accountId,
   username,
   platform,
   isTwitterPremium = false,
@@ -32,7 +30,7 @@ export function AccountAvatar({
 }: AccountAvatarProps) {
   const [failed, setFailed] = useState(false);
   const px = sizeMap[size];
-  const src = accountAvatarSrc(accountId, platform, profileImageUrl);
+  const src = profileImageUrl?.trim() || null;
 
   const initial =
     username?.charAt(0)?.toUpperCase() ||

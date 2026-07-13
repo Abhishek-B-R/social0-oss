@@ -10,6 +10,7 @@ import { getConnectCallbackBaseUrl } from "../lib/app-url.js";
 import { safeRedirect, rethrowRouteRedirect } from "../lib/redirect.js";
 import { checkAccountLimits } from "../lib/plan-limits.js";
 import { AppRequest } from "../lib/http/http.js";
+import { mirrorProfileImageToR2 } from "../lib/mirror-profile-image.js";
 
 export async function igFbCallback(
   req: AppRequest,
@@ -197,7 +198,7 @@ export async function igFbCallback(
           console.log("Instagram FB user data:", JSON.stringify(instagramData, null, 2));
           try {
             const rawUrl = instagramData.profile_picture_url;
-            // Store whatever URL is returned (may expire); AccountAvatar onError handles display. If URL is from cdninstagram.com or fbcdn.net, use referrerPolicy="no-referrer" on the img.
+            // Remote URL is mirrored to R2 before DB write; keep validation only.
             if (typeof rawUrl === "string" && (rawUrl.startsWith("http://") || rawUrl.startsWith("https://"))) {
               instagramProfilePictureUrl = rawUrl;
             }
@@ -249,6 +250,14 @@ export async function igFbCallback(
 
       if (existing) {
         // Update existing (reconnect: set isActive so it shows in UI)
+        const profileImageUrl = await mirrorProfileImageToR2(
+          pageData.instagramProfilePictureUrl,
+          {
+            userId,
+            accountId: existing.id,
+            platform: "instagram",
+          },
+        );
         await db
           .update(connectedAccounts)
           .set({
@@ -256,7 +265,7 @@ export async function igFbCallback(
             encryptedRefreshToken: null,
             tokenExpiresAt: null,
             platformUsername: pageData.instagramUsername,
-            profileImageUrl: pageData.instagramProfilePictureUrl,
+            profileImageUrl,
             platformMetadata: {
               facebookPageId: pageData.pageId,
               instagramBusinessAccountId: pageData.instagramAccountId,
@@ -279,13 +288,21 @@ export async function igFbCallback(
       }
 
       // Insert new account
+      const profileImageUrl = await mirrorProfileImageToR2(
+        pageData.instagramProfilePictureUrl,
+        {
+          userId,
+          accountId,
+          platform: "instagram",
+        },
+      );
       await db.insert(connectedAccounts).values({
         id: accountId,
         userId,
         platform: "instagram",
         platformUserId: pageData.instagramAccountId,
         platformUsername: pageData.instagramUsername,
-        profileImageUrl: pageData.instagramProfilePictureUrl,
+        profileImageUrl,
         encryptedAccessToken: encryptToken(pageData.pageAccessToken, accountId),
         encryptedRefreshToken: null,
         tokenExpiresAt: null,

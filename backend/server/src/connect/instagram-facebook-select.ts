@@ -8,6 +8,7 @@ import { getRemainingSlots } from "../lib/connections.js";
 import { AppRequest } from "../lib/http/http.js";
 import crypto from "crypto";
 import { connectSelectSuccessUrl } from "../lib/app-url.js";
+import { mirrorProfileImageToR2 } from "../lib/mirror-profile-image.js";
 
 export async function igFbSelectGet(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -139,6 +140,14 @@ export async function igFbSelectPost(req: AppRequest) {
   });
 
   if (existing) {
+    const profileImageUrl = await mirrorProfileImageToR2(
+      pageData.instagramProfilePictureUrl,
+      {
+        userId: session.user.id,
+        accountId: existing.id,
+        platform: "instagram",
+      },
+    );
     await db
       .update(connectedAccounts)
       .set({
@@ -149,7 +158,7 @@ export async function igFbSelectPost(req: AppRequest) {
         encryptedRefreshToken: null,
         tokenExpiresAt: null,
         platformUsername: pageData.instagramUsername,
-        profileImageUrl: pageData.instagramProfilePictureUrl,
+        profileImageUrl,
         platformMetadata: {
           facebookPageId: pageData.pageId,
           instagramBusinessAccountId: pageData.instagramAccountId,
@@ -172,13 +181,21 @@ export async function igFbSelectPost(req: AppRequest) {
       );
     }
     const accountId = crypto.randomUUID();
+    const profileImageUrl = await mirrorProfileImageToR2(
+      pageData.instagramProfilePictureUrl,
+      {
+        userId: session.user.id,
+        accountId,
+        platform: "instagram",
+      },
+    );
     await db.insert(connectedAccounts).values({
       id: accountId,
       userId: session.user.id,
       platform: "instagram",
       platformUserId: pageData.instagramAccountId,
       platformUsername: pageData.instagramUsername,
-      profileImageUrl: pageData.instagramProfilePictureUrl,
+      profileImageUrl,
       encryptedAccessToken: encryptToken(pageData.pageAccessToken, accountId),
       encryptedRefreshToken: null,
       tokenExpiresAt: null,

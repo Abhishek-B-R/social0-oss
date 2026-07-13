@@ -8,6 +8,7 @@ import { getRemainingSlots } from "../lib/connections.js";
 import { AppRequest } from "../lib/http/http.js";
 import crypto from "crypto";
 import { connectSelectSuccessUrl } from "../lib/app-url.js";
+import { mirrorProfileImageToR2 } from "../lib/mirror-profile-image.js";
 
 export async function fbSelectGet(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -143,6 +144,11 @@ export async function fbSelectPost(req: AppRequest) {
 
   const accountId = existing?.id ?? crypto.randomUUID();
   const encryptedAccess = encryptToken(page.access_token, accountId);
+  const profileImageUrl = await mirrorProfileImageToR2(page.pictureUrl, {
+    userId: session.user.id,
+    accountId,
+    platform: "facebook",
+  });
 
   if (existing) {
     await db
@@ -152,7 +158,7 @@ export async function fbSelectPost(req: AppRequest) {
         encryptedRefreshToken: null,
         tokenExpiresAt: null,
         platformUsername: page.name,
-        profileImageUrl: page.pictureUrl,
+        profileImageUrl,
         isActive: true,
         updatedAt: new Date(),
       })
@@ -164,7 +170,7 @@ export async function fbSelectPost(req: AppRequest) {
       platform: "facebook",
       platformUserId: page.id,
       platformUsername: page.name,
-      profileImageUrl: page.pictureUrl,
+      profileImageUrl,
       encryptedAccessToken: encryptedAccess,
       encryptedRefreshToken: null,
       tokenExpiresAt: null,

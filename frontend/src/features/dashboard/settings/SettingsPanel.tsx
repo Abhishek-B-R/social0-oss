@@ -50,7 +50,6 @@ import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import DocsInfoIcon from "@/components/info-icon";
 import { DOCS_SETTINGS_URL } from "@/lib/docs-url";
-import { accountAvatarSrc } from "@/lib/account-avatar-url";
 import { toast } from "sonner";
 import { SignOutAllDevicesButton } from "@/components/SignOutAllDevicesButton";
 
@@ -802,15 +801,13 @@ function AvatarEditor({
   displayLabel,
   onSave,
   size = "lg",
-  accountId,
-  platform,
   successMessage,
 }: {
   currentUrl: string | null;
   displayLabel: string;
   onSave: (url: string) => Promise<{ error?: string }>;
   size?: "md" | "lg";
-  /** When set, Meta/TikTok avatars load via /api/accounts/:id/avatar. */
+  /** Unused; kept so existing call sites compiling against older props stay valid. */
   accountId?: string;
   platform?: string;
   /** Shown after a successful save; omit when the parent handles feedback. */
@@ -829,7 +826,7 @@ function AvatarEditor({
     setPreviewUrl(currentUrl);
   }, [currentUrl]);
 
-  const displaySrc = accountAvatarSrc(accountId, platform, previewUrl);
+  const displaySrc = previewUrl?.trim() || null;
 
   useEffect(() => {
     setImgFailed(false);
