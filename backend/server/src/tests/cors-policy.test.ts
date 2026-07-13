@@ -21,6 +21,7 @@ describe("cors-policy MCP OAuth", () => {
   it("allows missing Origin on MCP OAuth POSTs (Worker proxy)", () => {
     expect(allowsMissingCorsOrigin(req("POST", "/oauth/register"))).toBe(true);
     expect(allowsMissingCorsOrigin(req("POST", "/oauth/token"))).toBe(true);
+    expect(allowsMissingCorsOrigin(req("POST", "/oauth/mcp/introspect"))).toBe(true);
     expect(allowsMissingCorsOrigin(req("POST", "/api/posts"))).toBe(false);
   });
 

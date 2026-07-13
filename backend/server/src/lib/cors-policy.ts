@@ -7,6 +7,7 @@ export function isMcpOAuthPublicPath(path: string): boolean {
     path === "/oauth/token" ||
     path === "/oauth/revoke" ||
     path === "/oauth/authorize" ||
+    path === "/oauth/mcp/introspect" ||
     path.startsWith("/.well-known/oauth-authorization-server") ||
     path.startsWith("/.well-known/oauth-protected-resource")
   );
@@ -28,7 +29,7 @@ export function isMcpOAuthCorsOrigin(origin: string): boolean {
  * - Cloudflare / uptime probes hitting GET /health
  * - Bearer-authenticated `/api/cron/*` (CF cron worker, curl, crontab)
  * - `/v1/*` public API (curl, Postman, server-side integrations — API key auth, not browser CORS)
- * - MCP OAuth register/token/revoke proxied from mcp.social0.app Worker (no Origin)
+ * - MCP OAuth register/token/revoke/introspect proxied from mcp.social0.app Worker (no Origin)
  *
  * Cross-origin fetch from the SPA (POST, PUT, …) always sends Origin, so we
  * still reject missing Origin on other mutating `/api/*` routes.
