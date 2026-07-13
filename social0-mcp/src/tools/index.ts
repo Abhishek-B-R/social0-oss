@@ -62,7 +62,16 @@ export function createMcpServer(): Server {
   const server = new Server(
     {
       name: "social0-mcp",
-      version: "0.1.0",
+      version: "0.2.1",
+      title: "Social0",
+      websiteUrl: "https://social0.app",
+      icons: [
+        {
+          src: "https://social0.app/logo.png",
+          mimeType: "image/png",
+          sizes: ["any"],
+        },
+      ],
     },
     {
       capabilities: {
