@@ -29,3 +29,6 @@ certificates
 .env.prod
 .env.production
 .env
+
+# TypeScript incremental
+*.tsbuildinfo

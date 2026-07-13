@@ -14,7 +14,7 @@ import {
   uploadLinkedInImage,
   uploadLinkedInVideo,
 } from "../lib/linkedin-media.js";
-import { publishToPlatform } from "../lib/publish-platform.js";
+import { publishToPlatform } from "../lib/publish-platforms/index.js";
 import {
   isValidPostId,
   validateCollectionMedia,
@@ -35,6 +35,7 @@ import { getTwitterErrorMessage } from "../lib/twitter-errors.js";
 import { parseTikTokHandleFromProfileUrl } from "../lib/platform-view-url.js";
 import { maybeSendPostFailureEmail } from "../lib/post-failure-email.js";
 import { TwitterApi } from "twitter-api-v2";
+import { publishLog } from "../lib/publish-log.js";
 
 /** Extract a readable error from LinkedIn API response (status, message, serviceErrorCode). */
 function parseLinkedInError(
@@ -130,7 +131,7 @@ export async function getPostPublicationList(
       lastError: r.lastError,
     }));
   } catch (err) {
-    console.error("[getPostPublicationList] failed, returning empty:", err);
+    publishLog.error("[getPostPublicationList] failed, returning empty:", err);
     return [];
   }
 }
@@ -147,7 +148,7 @@ export async function executePublish(
   publicationIdFilter?: string,
   options?: PublishOptions,
 ): Promise<PublishResult> {
-  console.log(
+  publishLog.info(
     "[executePublish] called - options:",
     JSON.stringify(options ?? null),
   );
@@ -330,7 +331,7 @@ export async function executePublish(
         pub.platform,
       );
       if (collectionCheck.warning) {
-        console.warn(
+        publishLog.warn(
           `[executePublish] ${pub.platform} collection media:`,
           collectionCheck.warning,
         );
@@ -401,7 +402,7 @@ export async function executePublish(
         pub.connectedAccountId,
       );
     } catch (e) {
-      console.error("[executePublish] Decrypt token failed:", e);
+      publishLog.error("[executePublish] Decrypt token failed:", e);
       const err = e instanceof Error ? e.message : "Failed to decrypt token";
       await db
         .update(postPublications)
@@ -448,7 +449,7 @@ export async function executePublish(
           pub.connectedAccountId,
         );
       } catch (e) {
-        console.error("[executePublish] Decrypt Twitter secret failed:", e);
+        publishLog.error("[executePublish] Decrypt Twitter secret failed:", e);
         const err =
           e instanceof Error ? e.message : "Failed to decrypt Twitter secret";
         await db
@@ -492,7 +493,7 @@ export async function executePublish(
         const { getValidToken } = await import("../lib/token-refresh.js");
         linkedInToken = await getValidToken(pub.connectedAccountId, "linkedin");
       } catch (err) {
-        console.error("[executePublish] LinkedIn getValidToken failed:", err);
+        publishLog.error("[executePublish] LinkedIn getValidToken failed:", err);
         const errorMsg =
           err instanceof Error ? err.message : "Failed to get valid token";
         await db
@@ -547,7 +548,7 @@ export async function executePublish(
               );
               mediaAssets.push(videoUrn);
             } catch (e) {
-              console.error(
+              publishLog.error(
                 "[executePublish] LinkedIn video upload failed:",
                 e,
               );
@@ -584,7 +585,7 @@ export async function executePublish(
                   mediaAssets.push(imageUrn);
                 }
               } catch (e) {
-                console.error(
+                publishLog.error(
                   "[executePublish] LinkedIn image upload failed:",
                   e,
                 );
@@ -1048,7 +1049,7 @@ export async function executePublish(
           });
         } catch (e) {
           const errorMessage = getTwitterErrorMessage(e);
-          console.error(
+          publishLog.error(
             "[executePublish] Twitter post failed:",
             errorMessage,
             e,
@@ -1101,7 +1102,7 @@ export async function executePublish(
               : await uploadTwitterImage(m.url, accessToken, accessSecret);
             mediaIds.push(twitterMediaId);
           } catch (e) {
-            console.error("[executePublish] Twitter media upload failed:", e);
+            publishLog.error("[executePublish] Twitter media upload failed:", e);
             const err =
               e instanceof Error ? e.message : "Failed to upload media";
             await db
@@ -1251,7 +1252,7 @@ export async function executePublish(
         });
       } catch (e) {
         const errorMessage = getTwitterErrorMessage(e);
-        console.error("[executePublish] Twitter post failed:", errorMessage, e);
+        publishLog.error("[executePublish] Twitter post failed:", errorMessage, e);
         await db
           .update(postPublications)
           .set({
@@ -1304,7 +1305,7 @@ export async function executePublish(
             pub.connectedAccountId,
           );
         } catch (e) {
-          console.error(
+          publishLog.error(
             "[executePublish] Bluesky decrypt app password failed:",
             e,
           );
@@ -1339,7 +1340,7 @@ export async function executePublish(
             "youtube",
           );
         } catch (err) {
-          console.error("[executePublish] YouTube getValidToken failed:", err);
+          publishLog.error("[executePublish] YouTube getValidToken failed:", err);
           const errorMsg =
             err instanceof Error ? err.message : "Failed to get valid token";
           await db
@@ -1366,7 +1367,7 @@ export async function executePublish(
             "tiktok",
           );
         } catch (err) {
-          console.error("[executePublish] TikTok getValidToken failed:", err);
+          publishLog.error("[executePublish] TikTok getValidToken failed:", err);
           const errorMsg =
             err instanceof Error ? err.message : "Failed to get valid token";
           await db
@@ -1447,7 +1448,7 @@ export async function executePublish(
               // invalid URL - leave undefined
             }
           }
-          console.log(
+          publishLog.info(
             "[Instagram cover] coverImageUrl from options:",
             rawUrl,
             "→ accepted:",
@@ -1481,7 +1482,7 @@ export async function executePublish(
           platformAccessSecret,
           platformOptions,
         );
-        console.log(
+        publishLog.info(
           `[${pub.platform}] publishToPlatform result:`,
           JSON.stringify(platformPostResult),
         );
@@ -1491,7 +1492,7 @@ export async function executePublish(
             platformPostResult.lastError ??
             platformPostResult.error ??
             "Unknown error";
-          console.error(
+          publishLog.error(
             `[executePublish] ${pub.platform} post failed:`,
             errMsg,
           );
@@ -1541,7 +1542,7 @@ export async function executePublish(
           error: platformPostResult.lastError ?? platformPostResult.error,
         });
       } catch (e) {
-        console.error("[executePublish] publishToPlatform threw:", e);
+        publishLog.error("[executePublish] publishToPlatform threw:", e);
         const err =
           e instanceof Error ? e.message : "Publish to platform failed";
         await db
@@ -1570,12 +1571,12 @@ export async function executePublish(
   await Promise.allSettled(publishTasks);
 
   // Always update post status so we never leave it stuck on "publishing"
-  console.log("Publication results:", results);
-  console.log(
+  publishLog.info("Publication results:", results);
+  publishLog.info(
     "Succeeded:",
     results.filter((r) => r.status === "published").length,
   );
-  console.log("Failed:", results.filter((r) => r.status === "failed").length);
+  publishLog.info("Failed:", results.filter((r) => r.status === "failed").length);
   const succeeded = results.filter((r) => r.status === "published").length;
   const failed = results.filter((r) => r.status === "failed").length;
   const failedList = results.filter((r) => r.status === "failed");
@@ -1705,7 +1706,7 @@ async function setupBulkAutoFeaturesIfPresent(args: {
         plugComment: (autoRepost.plugComment ?? "").trim() || null,
       });
     } catch (e) {
-      console.error("[bulk-auto-features] resurface setup failed:", e);
+      publishLog.error("[bulk-auto-features] resurface setup failed:", e);
     }
   }
   if (autoPlug) {
@@ -1718,7 +1719,7 @@ async function setupBulkAutoFeaturesIfPresent(args: {
         plugComment: autoPlug.plugComment,
       });
     } catch (e) {
-      console.error("[bulk-auto-features] auto-plug setup failed:", e);
+      publishLog.error("[bulk-auto-features] auto-plug setup failed:", e);
     }
   }
 }
