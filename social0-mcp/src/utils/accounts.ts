@@ -56,8 +56,11 @@ export function resolveAccountIds(
     if (matches.length === 0) {
       errors.push(`No connected ${platform} account. Connect it at https://social0.app/dashboard/connections`);
     } else if (matches.length > 1) {
+      const options = matches
+        .map((a) => `${a.id}${a.username ? ` (@${a.username})` : ""}`)
+        .join(", ");
       errors.push(
-        `Multiple ${platform} accounts connected. Pass the account UUID instead of the platform name.`,
+        `Multiple ${platform} accounts connected (${options}). Call list_accounts, then pass one account UUID instead of the platform name.`,
       );
     } else {
       accountIds.push(matches[0]!.id);
