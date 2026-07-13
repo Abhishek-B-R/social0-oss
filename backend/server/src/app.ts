@@ -16,7 +16,7 @@ import { registerSecurityHeadersPlugin } from "./plugins/security-headers.js";
 import { registerV1Routes } from "./routes/v1/index.js";
 import { registerApiRoutes } from "./routes/api/index.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
-import { registerDocsRoutes } from "./routes/v1/docs.js";
+import { registerDocsRoutes } from "./routes/docs.js";
 import { registerMcpOAuthPublicRoutes } from "./routes/oauth/mcp.js";
 import { getCorsOrigins } from "./lib/app-url.js";
 import {

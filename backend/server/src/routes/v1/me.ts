@@ -12,7 +12,7 @@ export async function registerMeRoutes(app: FastifyInstance) {
     const userId = v1UserId(request);
     const auth = request.v1Auth!;
 
-    const [profile, settings, key] = await Promise.all([
+    const [profile, settings, keyRows] = await Promise.all([
       db.query.user.findFirst({
         where: eq(user.id, userId),
         columns: {
@@ -27,15 +27,22 @@ export async function registerMeRoutes(app: FastifyInstance) {
         where: eq(userSettings.userId, userId),
         columns: { timezone: true },
       }),
-      db.query.apiKeys.findFirst({
-        where: eq(apiKeys.id, auth.apiKeyId),
-        columns: { id: true, name: true, keyPrefix: true },
-      }),
+      db
+        .select({
+          id: apiKeys.id,
+          name: apiKeys.name,
+          keyPrefix: apiKeys.keyPrefix,
+        })
+        .from(apiKeys)
+        .where(eq(apiKeys.id, auth.apiKeyId))
+        .limit(1),
     ]);
 
     if (!profile) {
       return reply.status(404).send(apiError("not_found", "User not found."));
     }
+
+    const key = keyRows[0];
 
     return {
       id: profile.id,
