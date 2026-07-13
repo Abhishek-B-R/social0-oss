@@ -1,5 +1,3 @@
-import { getClient } from "../api/client.js";
-import { exitWithError } from "../utils/errors.js";
 import { printOutput } from "../utils/output.js";
 import { applyGlobalOptions, getFormat } from "./helpers.js";
 import type { GlobalOptions } from "../types/index.js";
@@ -17,17 +15,12 @@ export async function aiCommand(
     process.exit(1);
   }
 
-  try {
-    const result = await getClient().post<Record<string, unknown>>(`/ai/${action}`, { content });
-    printOutput(result, format);
-  } catch (err) {
-    if (err instanceof Error && "status" in err && (err as { status: number }).status === 404) {
-      console.error(`AI feature "${action}" is not yet available on the API.`);
-      console.error("This command will work once the backend endpoint is enabled.");
-      process.exit(1);
-    }
-    exitWithError(err);
+  console.error(`AI command "${action}" is not available yet.`);
+  console.error("It will work once the Social0 API exposes /v1/ai endpoints.");
+  if (format === "json") {
+    printOutput({ available: false, action, content }, format);
   }
+  process.exit(1);
 }
 
 export function examplesCommand(): void {
@@ -58,5 +51,5 @@ platforms:
 schedule: tomorrow 9am
 ---
 
-Launching Social0 today 🚀`);
+Launching Social0 today`);
 }

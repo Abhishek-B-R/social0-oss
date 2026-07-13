@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { connectedAccounts, verification } from "../db/schema.js";
 import { encrypt, encryptToken } from "@social0/shared";
@@ -28,6 +28,7 @@ const VALID_PLATFORMS: Platform[] = [
 export async function v1ListAccounts(userId: string) {
   const accounts = await db.query.connectedAccounts.findMany({
     where: eq(connectedAccounts.userId, userId),
+    orderBy: [asc(connectedAccounts.createdAt), asc(connectedAccounts.id)],
     columns: {
       id: true,
       platform: true,

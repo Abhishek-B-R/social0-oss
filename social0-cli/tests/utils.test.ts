@@ -31,7 +31,7 @@ const mockAccounts: ConnectedAccount[] = [
     is_active: true,
     token_expires_at: null,
     token_status: "active",
-    created_at: "2026-01-01T00:00:00Z",
+    created_at: "2026-01-02T00:00:00Z",
   },
   {
     id: "uuid-instagram",
@@ -41,7 +41,7 @@ const mockAccounts: ConnectedAccount[] = [
     is_active: true,
     token_expires_at: null,
     token_status: "expired",
-    created_at: "2026-01-01T00:00:00Z",
+    created_at: "2026-01-03T00:00:00Z",
   },
 ];
 
@@ -51,6 +51,16 @@ describe("aliases", () => {
     expect(aliases).toHaveLength(3);
     expect(aliases[0].alias).toBe(1);
     expect(aliases[2].alias).toBe(3);
+  });
+
+  it("keeps numeric IDs stable when API order changes", () => {
+    const shuffled = [mockAccounts[2], mockAccounts[0], mockAccounts[1]];
+    const aliases = buildAliases(shuffled);
+    expect(aliases.map((a) => a.account.id)).toEqual([
+      "uuid-twitter",
+      "uuid-linkedin",
+      "uuid-instagram",
+    ]);
   });
 
   it("formats account labels for interactive display", () => {
@@ -81,14 +91,26 @@ describe("aliases", () => {
 });
 
 describe("dates", () => {
-  it("parses tomorrow", () => {
+  it("parses tomorrow as local wall-clock 9am", () => {
     const result = parseNaturalTime("tomorrow 9am");
     expect(result).toMatch(/T09:00:00\+default$/);
+  });
+
+  it("parses relative hours without UTC shifting", () => {
+    const result = parseNaturalTime("in 2 hours");
+    expect(result).toMatch(/T\d{2}:\d{2}:\d{2}\+default$/);
+    expect(result).not.toMatch(/Unable/);
+  });
+
+  it("parses in N days at time", () => {
+    const result = parseNaturalTime("in 2 days at 3pm");
+    expect(result).toMatch(/T15:00:00\+default$/);
   });
 
   it("passes through ISO dates", () => {
     const result = parseNaturalTime("2026-08-01 14:00");
     expect(result).toContain("2026-08-01");
+    expect(result).toMatch(/T14:00:00\+default$/);
   });
 });
 

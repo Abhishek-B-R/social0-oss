@@ -19,9 +19,6 @@ export async function statusCommand(
       const spinner = ora("Waiting...").start();
       const final = await pollUntilComplete(trackingId, (status) => {
         spinner.text = renderStatusLine(status);
-        if (format === "table") {
-          renderPlatformStatuses(status);
-        }
       });
       spinner.stop();
 

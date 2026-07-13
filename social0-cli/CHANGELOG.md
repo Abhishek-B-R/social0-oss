@@ -2,6 +2,19 @@
 
 All notable changes to `@social0/cli` will be documented in this file.
 
+## [0.1.2] - 2026-07-14
+
+### Fixed
+
+- Print full post/media UUIDs in tables and success hints; resolve short ID prefixes client-side
+- Natural-language schedule times keep local wall-clock (no UTC shift); support `in 2 hours` / `in 2 days at 3pm`
+- Skip interactive schedule prompt when non-TTY or `-c`/`-p` are provided
+- Accept a single JSON object (or array) for `schedule <file.json>`
+- Honor `schedule` / `scheduled_at` on `import`
+- Clear error for unknown platform/account refs
+- `status` no longer double-prints platform lines; `update` handles unpublished package; hide stub AI commands; non-interactive `link` flags
+- Stabilize numeric account IDs by connection order (`created_at`) so they don't reshuffle between runs
+
 ## [0.1.1] - 2026-07-13
 
 ### Changed

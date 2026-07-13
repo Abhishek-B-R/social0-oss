@@ -39,7 +39,8 @@ export async function accountsCommand(
       printOutput(formatAccountsTable(aliases), format);
       if (format === "table") {
         console.log("");
-        console.log(chalk.dim("  Use account IDs (1, 2, 3...) when creating posts."));
+        console.log(chalk.dim("  Use account IDs (1, 2, 3...) or platform names when creating posts."));
+        console.log(chalk.dim("  IDs follow connection order (stable). Prefer --platform facebook if unsure."));
       }
       return;
     }

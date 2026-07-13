@@ -2,6 +2,7 @@ import { schedulePost, scheduleContent } from "../api/posts.js";
 import { success } from "../utils/output.js";
 import { exitWithError } from "../utils/errors.js";
 import { parseNaturalTime, formatScheduleHelp } from "../utils/dates.js";
+import { resolvePostId } from "../utils/ids.js";
 import { readFileSync } from "node:fs";
 import {
   applyGlobalOptions,
@@ -22,6 +23,28 @@ interface ScheduleOptions extends GlobalOptions {
   platform?: string[];
 }
 
+interface ScheduleItem {
+  content: string;
+  platforms: Array<string | number>;
+  schedule: string;
+}
+
+function normalizeScheduleBatch(parsed: unknown): ScheduleItem[] {
+  const items = Array.isArray(parsed) ? parsed : [parsed];
+  for (const item of items) {
+    if (!item || typeof item !== "object") {
+      throw new Error("Schedule JSON must be an object or array of objects.");
+    }
+    const row = item as Partial<ScheduleItem>;
+    if (!row.content || !row.schedule || !row.platforms) {
+      throw new Error(
+        'Each schedule item needs "content", "platforms", and "schedule".',
+      );
+    }
+  }
+  return items as ScheduleItem[];
+}
+
 export async function scheduleCommand(
   target: string | undefined,
   opts: ScheduleOptions,
@@ -31,11 +54,8 @@ export async function scheduleCommand(
 
   try {
     if (target?.endsWith(".json")) {
-      const batch = JSON.parse(readFileSync(target, "utf8")) as Array<{
-        content: string;
-        platforms: Array<string | number>;
-        schedule: string;
-      }>;
+      const parsed = JSON.parse(readFileSync(target, "utf8")) as unknown;
+      const batch = normalizeScheduleBatch(parsed);
       const aliases = await ensureAccounts();
       for (const item of batch) {
         const platformRefs = item.platforms.map(String);
@@ -46,7 +66,7 @@ export async function scheduleCommand(
           scheduledAt: parseNaturalTime(item.schedule, getTimezone()),
           timezone: getTimezone(),
         });
-        success(`Scheduled post ${result.post_id.slice(0, 8)} for ${result.scheduled_at}`);
+        success(`Scheduled post ${result.post_id} for ${result.scheduled_at}`);
       }
       return;
     }
@@ -61,8 +81,9 @@ export async function scheduleCommand(
     const scheduledAt = parseNaturalTime(opts.time, getTimezone());
 
     if (target) {
+      const postId = await resolvePostId(target);
       const result = await withSpinner("Scheduling...", () =>
-        schedulePost(target, { scheduledAt, timezone: getTimezone() }),
+        schedulePost(postId, { scheduledAt, timezone: getTimezone() }),
       );
       success(`Post scheduled for ${result.scheduled_at}`);
       if (format !== "table") printOutput(result, format);

@@ -7,7 +7,7 @@ import { printOutput } from "../utils/output.js";
 import { applyGlobalOptions, getFormat } from "./helpers.js";
 import type { GlobalOptions } from "../types/index.js";
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.2";
 
 interface Diagnostic {
   check: string;
@@ -104,10 +104,16 @@ export async function updateCommand(): Promise<void> {
   console.log(`Current version: v${VERSION}`);
   try {
     const res = await fetch("https://registry.npmjs.org/@social0/cli/latest", {
-      signal: AbortSignal.timeout(5000),
+      headers: { Accept: "application/vnd.npm.install-v1+json" },
+      signal: AbortSignal.timeout(8000),
     });
+    if (res.status === 404) {
+      console.log("@social0/cli is not published on npm yet.");
+      console.log("Install from the repo: cd social0-cli && npm link");
+      return;
+    }
     if (!res.ok) {
-      console.log("Could not check for updates.");
+      console.log(`Could not check for updates (HTTP ${res.status}).`);
       return;
     }
     const data = (await res.json()) as { version: string };
@@ -118,7 +124,8 @@ export async function updateCommand(): Promise<void> {
       console.log("");
       console.log("  npm install -g @social0/cli@latest");
     }
-  } catch {
-    console.log("Could not check for updates. Check your internet connection.");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "unknown error";
+    console.log(`Could not check for updates (${message}).`);
   }
 }

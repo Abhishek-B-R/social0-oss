@@ -40,7 +40,7 @@ const program = new Command();
 program
   .name("social0")
   .description(chalk.bold("Social0 CLI") + " — manage social media from your terminal")
-  .version("0.1.0")
+  .version("0.1.2")
   .option("--json", "Output as JSON")
   .option("--yaml", "Output as YAML")
   .option("--table", "Output as table (default)")
@@ -255,24 +255,24 @@ program
     await updateCommand();
   });
 
-// AI features
+// AI features (hidden until API is live)
 program
-  .command("suggest <content>")
-  .description("Get AI content suggestions")
+  .command("suggest <content>", { hidden: true })
+  .description("Get AI content suggestions (not available yet)")
   .action(async (content, _, cmd) => {
     await aiCommand("suggest", content, globalOpts(cmd));
   });
 
 program
-  .command("improve <content>")
-  .description("Improve content with AI")
+  .command("improve <content>", { hidden: true })
+  .description("Improve content with AI (not available yet)")
   .action(async (content, _, cmd) => {
     await aiCommand("improve", content, globalOpts(cmd));
   });
 
 program
-  .command("hashtags <content>")
-  .description("Generate hashtag suggestions")
+  .command("hashtags <content>", { hidden: true })
+  .description("Generate hashtag suggestions (not available yet)")
   .action(async (content, _, cmd) => {
     await aiCommand("hashtags", content, globalOpts(cmd));
   });
@@ -288,8 +288,10 @@ program
 program
   .command("link")
   .description("Link current directory to Social0 project settings")
-  .action(async (_, cmd) => {
-    await linkCommand(globalOpts(cmd));
+  .option("-p, --platform <platforms...>", "Default platform IDs or names")
+  .option("-f, --format <format>", "Default output format (table/json/yaml)")
+  .action(async (opts, cmd) => {
+    await linkCommand({ ...globalOpts(cmd), ...opts });
   });
 
 program

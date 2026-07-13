@@ -44,7 +44,7 @@ export async function uploadCommand(
 
     if (format === "table") {
       printOutput(
-        results.map((r) => ({ FILENAME: r.filename, "MEDIA ID": r.id.slice(0, 12) + "...", URL: r.url })),
+        results.map((r) => ({ FILENAME: r.filename, "MEDIA ID": r.id, URL: r.url })),
         "table",
       );
     } else {

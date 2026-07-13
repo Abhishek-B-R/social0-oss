@@ -4,13 +4,13 @@ import {
   updatePost,
   deletePost,
   listPosts,
-  getPost,
   schedulePost,
 } from "../api/posts.js";
 import { pollUntilComplete } from "../api/jobs.js";
 import { printOutput, success, truncate } from "../utils/output.js";
 import { exitWithError } from "../utils/errors.js";
 import { parseNaturalTime } from "../utils/dates.js";
+import { resolvePost, resolvePostId, shortId } from "../utils/ids.js";
 import { readStdin } from "../utils/files.js";
 import {
   applyGlobalOptions,
@@ -54,11 +54,6 @@ export async function postCreateCommand(opts: PostCreateOptions): Promise<void> 
     let platformIds: string[] = [];
     if (opts.platform?.length) {
       platformIds = resolveAccountRefs(opts.platform, aliases.map((a) => a.account));
-      if (platformIds.length === 0) {
-        console.error("No matching accounts for the specified platforms.");
-        console.error("Run `social0 accounts` to see available account IDs.");
-        process.exit(1);
-      }
     } else {
       platformIds = await promptAccountSelection();
     }
@@ -104,25 +99,32 @@ export async function postCreateCommand(opts: PostCreateOptions): Promise<void> 
       return;
     }
 
-    const scheduleTime = await promptSchedule().catch(() => undefined);
+    // Skip interactive schedule prompt when non-TTY or flags already supply content+platforms
+    const skipSchedulePrompt =
+      !process.stdin.isTTY || (!!opts.content && !!opts.platform?.length);
+
+    const scheduleTime = skipSchedulePrompt
+      ? undefined
+      : await promptSchedule().catch(() => undefined);
+
     if (scheduleTime) {
       const scheduledAt = parseNaturalTime(scheduleTime, getTimezone());
       const draft = await createPost(payload);
       const result = await withSpinner("Scheduling...", () =>
         schedulePost(draft.id, { scheduledAt, timezone: getTimezone() }),
       );
-      success(`Post scheduled for ${result.scheduled_at}`);
+      success(`Post scheduled for ${result.scheduled_at} (ID: ${result.post_id})`);
       return;
     }
 
     const result = await withSpinner("Creating draft...", () => createPost(payload));
-    success(`Draft created (ID: ${result.id.slice(0, 8)}...)`);
+    success(`Draft created (ID: ${result.id})`);
     if (format !== "table") {
       printOutput(result, format);
     } else {
       console.log("");
-      console.log(`  Publish now:    social0 publish ${result.id.slice(0, 8)}`);
-      console.log(`  Schedule:       social0 schedule ${result.id.slice(0, 8)} --time "tomorrow 9am"`);
+      console.log(`  Publish now:    social0 publish ${result.id}`);
+      console.log(`  Schedule:       social0 schedule ${result.id} --time "tomorrow 9am"`);
     }
   } catch (err) {
     exitWithError(err);
@@ -135,15 +137,20 @@ export async function postListCommand(opts: GlobalOptions & { status?: string })
 
   try {
     const result = await listPosts({ status: opts.status, limit: 50 });
+    if (format === "json" || format === "yaml") {
+      printOutput(result, format);
+      return;
+    }
+
     const rows = result.data.map((p) => ({
-      ID: p.id.slice(0, 8),
+      ID: p.id,
       STATUS: p.status,
       CONTENT: truncate(p.content, 50),
       SCHEDULED: p.scheduled_at ? new Date(p.scheduled_at).toLocaleString() : "—",
       CREATED: p.created_at ? new Date(p.created_at).toLocaleDateString() : "—",
     }));
-    printOutput(rows, format);
-    if (format === "table" && result.pagination.total > result.data.length) {
+    printOutput(rows, "table");
+    if (result.pagination.total > result.data.length) {
       console.log("");
       console.log(`  Showing ${result.data.length} of ${result.pagination.total} posts.`);
     }
@@ -157,7 +164,7 @@ export async function postShowCommand(postId: string, opts: GlobalOptions): Prom
   const format = getFormat(opts);
 
   try {
-    const post = await getPost(postId);
+    const post = await resolvePost(postId);
     if (format === "table") {
       printOutput({
         id: post.id,
@@ -192,6 +199,7 @@ export async function postEditCommand(
   applyGlobalOptions(opts);
 
   try {
+    const id = await resolvePostId(postId);
     const aliases = await ensureAccounts();
     const payload: { content?: string; platforms?: string[] } = {};
     if (opts.content) payload.content = opts.content;
@@ -202,7 +210,7 @@ export async function postEditCommand(
       const content = await promptContent();
       payload.content = content;
     }
-    await withSpinner("Updating post...", () => updatePost(postId, payload));
+    await withSpinner("Updating post...", () => updatePost(id, payload));
     success("Post updated.");
   } catch (err) {
     exitWithError(err);
@@ -213,16 +221,17 @@ export async function postDeleteCommand(postId: string, opts: GlobalOptions): Pr
   applyGlobalOptions(opts);
 
   try {
-    const confirmed = await confirmAction(`Delete post ${postId.slice(0, 8)}...?`);
+    const id = await resolvePostId(postId);
+    const confirmed = await confirmAction(`Delete post ${shortId(id)}… (${id})?`);
     if (!confirmed) return;
-    await withSpinner("Deleting...", () => deletePost(postId));
+    await withSpinner("Deleting...", () => deletePost(id));
     success("Post deleted.");
   } catch (err) {
     exitWithError(err);
   }
 }
 
-export async function postInitCommand(opts: GlobalOptions): Promise<void> {
+export async function postInitCommand(_opts: GlobalOptions): Promise<void> {
   const template = {
     content: "Your post content here",
     platforms: [1, 2],

@@ -1,10 +1,10 @@
 import ora from "ora";
-import { readFileSync } from "node:fs";
-import { publishPost, publishNow, getPost, listPosts } from "../api/posts.js";
+import { publishPost, publishNow, listPosts } from "../api/posts.js";
 import { pollUntilComplete } from "../api/jobs.js";
 import { printOutput, success } from "../utils/output.js";
 import { exitWithError } from "../utils/errors.js";
 import { readStdin, parseMarkdownFrontMatter, readFileContent } from "../utils/files.js";
+import { resolvePostId } from "../utils/ids.js";
 import {
   applyGlobalOptions,
   ensureAccounts,
@@ -12,12 +12,12 @@ import {
   promptAccountSelection,
   promptContent,
   withSpinner,
+  getTimezone,
 } from "./helpers.js";
 import { resolveAccountRefs, formatPlatformName } from "../utils/aliases.js";
 import type { GlobalOptions } from "../types/index.js";
 import { parseNaturalTime } from "../utils/dates.js";
 import { scheduleContent } from "../api/posts.js";
-import { getTimezone } from "./helpers.js";
 
 interface PublishOptions extends GlobalOptions {
   content?: string;
@@ -50,12 +50,11 @@ export async function publishCommand(
         : await promptAccountSelection();
 
       if (parsed.schedule) {
-        const scheduleAt = parsed.schedule;
         const result = await withSpinner("Scheduling...", () =>
           scheduleContent({
             content: parsed.content,
             platforms: platformIds,
-            scheduledAt: parseNaturalTime(scheduleAt, getTimezone()),
+            scheduledAt: parseNaturalTime(parsed.schedule!, getTimezone()),
             timezone: getTimezone(),
           }),
         );
@@ -73,9 +72,10 @@ export async function publishCommand(
       return;
     }
 
-    if (target && !target.includes("*")) {
+    if (target && !target.includes("*") && !target.endsWith(".json")) {
+      const postId = await resolvePostId(target);
       const spinner = ora("Publishing...").start();
-      const result = await publishPost(target);
+      const result = await publishPost(postId);
       const final = await pollUntilComplete(result.tracking_id, (s) => {
         spinner.text = `Publishing... ${s.completed}/${s.total}`;
       });
@@ -106,12 +106,9 @@ export async function publishCommand(
     }
 
     const aliases = await ensureAccounts();
-    let platformIds: string[] = [];
-    if (opts.platform?.length) {
-      platformIds = resolveAccountRefs(opts.platform, aliases.map((a) => a.account));
-    } else {
-      platformIds = await promptAccountSelection();
-    }
+    const platformIds = opts.platform?.length
+      ? resolveAccountRefs(opts.platform, aliases.map((a) => a.account))
+      : await promptAccountSelection();
 
     const spinner = ora("Publishing...").start();
     const result = await publishNow({
@@ -135,7 +132,12 @@ function printPublishResult(
 ): void {
   const rows = final.platform_statuses.map((ps) => ({
     PLATFORM: formatPlatformName(ps.platform),
-    STATUS: ps.phase.includes("success") || ps.phase === "completed" ? "success" : ps.phase.includes("fail") ? "failed" : "publishing",
+    STATUS:
+      ps.phase.includes("success") || ps.phase === "completed"
+        ? "success"
+        : ps.phase.includes("fail")
+          ? "failed"
+          : "publishing",
     DETAIL: ps.error ?? ps.message ?? "—",
   }));
   if (format === "table") {

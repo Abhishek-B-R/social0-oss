@@ -11,7 +11,14 @@ export function getAccountCache(): ConnectedAccount[] {
 }
 
 export function buildAliases(accounts: ConnectedAccount[]): AccountAlias[] {
-  return accounts.map((account, i) => ({ alias: i + 1, account }));
+  // Stable ordering so numeric IDs don't reshuffle between runs
+  const sorted = [...accounts].sort((a, b) => {
+    const ac = a.created_at ?? "";
+    const bc = b.created_at ?? "";
+    if (ac !== bc) return ac < bc ? -1 : 1;
+    return a.id.localeCompare(b.id);
+  });
+  return sorted.map((account, i) => ({ alias: i + 1, account }));
 }
 
 export function formatPlatformName(platform: string): string {
@@ -69,15 +76,23 @@ export function resolveAccountRefs(
 ): string[] {
   const list = accounts ?? cachedAccounts;
   const ids: string[] = [];
+  const unmatched: string[] = [];
   for (const ref of refs) {
     const num = Number(ref);
-    if (!Number.isNaN(num) && Number.isInteger(num)) {
+    if (!Number.isNaN(num) && Number.isInteger(num) && String(num) === ref.trim()) {
       const id = resolveAliasToId(num, list);
       if (id) ids.push(id);
+      else unmatched.push(ref);
     } else {
       const platformIds = resolvePlatformToIds([ref], list);
-      ids.push(...platformIds);
+      if (platformIds.length === 0) unmatched.push(ref);
+      else ids.push(...platformIds);
     }
+  }
+  if (unmatched.length > 0) {
+    throw new Error(
+      `No matching accounts for: ${unmatched.join(", ")}. Run \`social0 accounts\` to see available IDs/platforms.`,
+    );
   }
   return [...new Set(ids)];
 }
