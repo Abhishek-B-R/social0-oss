@@ -5,6 +5,7 @@ import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { SeoHead } from "@/components/seo/SeoHead";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
+import { fetchApi } from "@/lib/fetch-api";
 import { Bot, ExternalLink, ShieldCheck } from "lucide-react";
 
 type SessionDetails = {
@@ -32,37 +33,41 @@ export default function McpOAuthConnectPage() {
         return;
       }
 
-      const [current, detailsResponse] = await Promise.all([
-        authClient.getSession(),
-        fetch(`/api/oauth/mcp/session?session=${encodeURIComponent(session)}`, {
-          credentials: "include",
-        }),
-      ]);
+      try {
+        const [current, detailsResponse] = await Promise.all([
+          authClient.getSession(),
+          fetchApi(`/api/oauth/mcp/session?session=${encodeURIComponent(session)}`),
+        ]);
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      if (!detailsResponse.ok) {
+        if (!detailsResponse.ok) {
+          setStatus("error");
+          setError("This authorization request expired. Start again from your AI assistant.");
+          return;
+        }
+
+        const details = (await detailsResponse.json()) as SessionDetails;
+        setSessionDetails(details);
+
+        if (!current.data?.session) {
+          const returnTo = `/oauth/mcp/connect?session=${encodeURIComponent(session)}`;
+          navigate(`/auth?callbackUrl=${encodeURIComponent(returnTo)}`, { replace: true });
+          return;
+        }
+
+        if (!details.consentToken) {
+          setStatus("error");
+          setError("Could not prepare a secure consent token. Reload the page and try again.");
+          return;
+        }
+
+        setStatus("ready");
+      } catch {
+        if (cancelled) return;
         setStatus("error");
-        setError("This authorization request expired. Start again from your AI assistant.");
-        return;
+        setError("Could not load this authorization request. Reload the page and try again.");
       }
-
-      const details = (await detailsResponse.json()) as SessionDetails;
-      setSessionDetails(details);
-
-      if (!current.data?.session) {
-        const returnTo = `/oauth/mcp/connect?session=${encodeURIComponent(session)}`;
-        navigate(`/auth?callbackUrl=${encodeURIComponent(returnTo)}`, { replace: true });
-        return;
-      }
-
-      if (!details.consentToken) {
-        setStatus("error");
-        setError("Could not prepare a secure consent token. Reload the page and try again.");
-        return;
-      }
-
-      setStatus("ready");
     }
 
     void ensureSession();
@@ -80,9 +85,8 @@ export default function McpOAuthConnectPage() {
     setError(null);
 
     try {
-      const response = await fetch("/api/oauth/mcp/approve", {
+      const response = await fetchApi("/api/oauth/mcp/approve", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session, consentToken: sessionDetails.consentToken }),
       });
@@ -106,9 +110,8 @@ export default function McpOAuthConnectPage() {
     }
 
     try {
-      const response = await fetch("/api/oauth/mcp/deny", {
+      const response = await fetchApi("/api/oauth/mcp/deny", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session }),
       });
@@ -190,6 +193,10 @@ export default function McpOAuthConnectPage() {
             </p>
           </div>
 
+          {status === "loading" ? (
+            <p className="mb-4 text-sm text-muted-foreground">Preparing secure connection…</p>
+          ) : null}
+
           {error ? (
             <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
               {error}
@@ -202,9 +209,17 @@ export default function McpOAuthConnectPage() {
               disabled={status !== "ready" || !session || !sessionDetails?.consentToken}
               className="min-w-40"
             >
-              {status === "approving" ? "Connecting…" : "Connect Social0"}
+              {status === "loading"
+                ? "Loading…"
+                : status === "approving"
+                  ? "Connecting…"
+                  : "Connect Social0"}
             </Button>
-            <Button variant="outline" onClick={handleDeny} disabled={status !== "ready"}>
+            <Button
+              variant="outline"
+              onClick={() => void handleDeny()}
+              disabled={status === "loading" || status === "approving"}
+            >
               Deny
             </Button>
             <Button variant="ghost" asChild>
