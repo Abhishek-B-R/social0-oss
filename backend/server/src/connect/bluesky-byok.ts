@@ -9,6 +9,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { AppRequest } from "../lib/http/http.js";
 import { blueskyByokLimiter, enforceRateLimit } from "../lib/ratelimit.js";
+import { mirrorProfileImageToR2 } from "../lib/mirror-profile-image.js";
 
 const byokSchema = z.object({
   handle: z
@@ -155,6 +156,14 @@ export async function blueskyByok(req: AppRequest) {
       validated.appPassword,
       accountId,
     );
+    const profileImageUrl = await mirrorProfileImageToR2(
+      userInfo.profileImageUrl,
+      {
+        userId: session.user.id,
+        accountId,
+        platform: "bluesky",
+      },
+    );
 
     if (existing) {
       // Update existing account (reconnect: set isActive so it shows in UI)
@@ -165,7 +174,7 @@ export async function blueskyByok(req: AppRequest) {
           encryptedRefreshToken,
           platformUserId: userInfo.id,
           platformUsername: userInfo.username,
-          profileImageUrl: userInfo.profileImageUrl,
+          profileImageUrl,
           isActive: true,
           updatedAt: new Date(),
         })
@@ -195,7 +204,7 @@ export async function blueskyByok(req: AppRequest) {
         platform: "bluesky",
         platformUserId: userInfo.id,
         platformUsername: userInfo.username,
-        profileImageUrl: userInfo.profileImageUrl,
+        profileImageUrl,
         encryptedAccessToken,
         encryptedRefreshToken,
         tokenExpiresAt: null, // App passwords don't expire

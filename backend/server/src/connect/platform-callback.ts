@@ -26,12 +26,19 @@ import {
   resolveEncryptedRefreshToken,
   youtubeTokenExpiresAt,
 } from "../lib/youtube-token.js";
+import { mirrorProfileImageToR2 } from "../lib/mirror-profile-image.js";
+import { getR2PublicBaseUrl } from "../lib/r2.js";
 
-/** Validate URL is http/https before storing as profile image. */
+/** Validate URL is http/https before treating it as a fetchable profile image. */
 function isValidProfileImageUrl(url: unknown): url is string {
   if (typeof url !== "string" || !url.trim()) return false;
   const u = url.trim();
   return u.startsWith("http://") || u.startsWith("https://");
+}
+
+function isStoredOnR2(url: string | null | undefined): boolean {
+  const base = getR2PublicBaseUrl();
+  return !!(base && url && url.startsWith(base));
 }
 
 export async function platformCallback(
@@ -227,6 +234,10 @@ export async function platformCallback(
       const accountId = existing?.id ?? crypto.randomUUID();
       const encryptedAccess = encryptToken(accessToken, accountId);
       const encryptedSecret = encryptToken(accessSecret, accountId);
+      const profileImageUrl = await mirrorProfileImageToR2(
+        userInfo.profileImageUrl,
+        { userId, accountId, platform: "twitter_x" },
+      );
 
       if (existing) {
         await db
@@ -237,7 +248,7 @@ export async function platformCallback(
             tokenExpiresAt: null,
             platformUserId: userInfo.id,
             platformUsername: userInfo.username,
-            profileImageUrl: userInfo.profileImageUrl,
+            profileImageUrl,
             isActive: true,
             updatedAt: new Date(),
           })
@@ -268,7 +279,7 @@ export async function platformCallback(
           platform: "twitter_x",
           platformUserId: userInfo.id,
           platformUsername: userInfo.username,
-          profileImageUrl: userInfo.profileImageUrl,
+          profileImageUrl,
           encryptedAccessToken: encryptedAccess,
           encryptedRefreshToken: encryptedSecret,
           tokenExpiresAt: null,
@@ -680,12 +691,16 @@ export async function platformCallback(
       const tokenExpiresAt = tokens.expires_in
         ? new Date(Date.now() + tokens.expires_in * 1000)
         : null;
+      const profileImageUrl = await mirrorProfileImageToR2(
+        userInfo.profileImageUrl,
+        { userId, accountId, platform: "pinterest" },
+      );
       if (existing) {
         await db
           .update(connectedAccounts)
           .set({
             platformUsername: userInfo.username,
-            profileImageUrl: userInfo.profileImageUrl,
+            profileImageUrl,
             encryptedAccessToken: encryptToken(
               tokens.access_token,
               existing.id,
@@ -728,7 +743,7 @@ export async function platformCallback(
           platform: "pinterest",
           platformUserId: userInfo.id,
           platformUsername: userInfo.username,
-          profileImageUrl: userInfo.profileImageUrl,
+          profileImageUrl,
           encryptedAccessToken: encryptToken(tokens.access_token, accountId),
           encryptedRefreshToken: tokens.refresh_token
             ? encryptToken(tokens.refresh_token, accountId)
@@ -1006,6 +1021,13 @@ export async function platformCallback(
       if (platform === "tiktok" && tokens.expires_in) {
         tokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
       }
+      const mirroredProfileImageUrl = userInfo.profileImageUrl
+        ? await mirrorProfileImageToR2(userInfo.profileImageUrl, {
+            userId,
+            accountId: existing.id,
+            platform,
+          })
+        : null;
       const updateData: {
         encryptedAccessToken: string;
         encryptedRefreshToken: string | null;
@@ -1030,7 +1052,13 @@ export async function platformCallback(
           userInfo.username != null && userInfo.username !== ""
             ? userInfo.username
             : existing.platformUsername,
-        profileImageUrl: userInfo.profileImageUrl ?? existing.profileImageUrl,
+        profileImageUrl:
+          mirroredProfileImageUrl ??
+          (!userInfo.profileImageUrl
+            ? existing.profileImageUrl
+            : isStoredOnR2(existing.profileImageUrl)
+              ? existing.profileImageUrl
+              : null),
         isActive: true,
         updatedAt: new Date(),
         ...(platform === "tiktok" && isLikelyTikTokOpenId(userInfo.id)
@@ -1116,7 +1144,11 @@ export async function platformCallback(
       platform: platform,
       platformUserId: userInfo.id,
       platformUsername: userInfo.username,
-      profileImageUrl: userInfo.profileImageUrl,
+      profileImageUrl: await mirrorProfileImageToR2(userInfo.profileImageUrl, {
+        userId,
+        accountId,
+        platform,
+      }),
       encryptedAccessToken: encryptToken(tokens.access_token, accountId),
       encryptedRefreshToken: tokens.refresh_token
         ? encryptToken(tokens.refresh_token, accountId)
@@ -1247,7 +1279,7 @@ async function fetchPlatformUserInfo(
         let profileImageUrl: string | null = null;
         try {
           const raw = data.profile_picture_url;
-          // Store whatever URL is returned (may expire); AccountAvatar onError handles display. If URL is from cdninstagram.com or fbcdn.net, use referrerPolicy="no-referrer" on the img.
+          // Remote URL is mirrored to R2 before DB write; keep validation only.
           if (
             typeof raw === "string" &&
             (raw.startsWith("http://") || raw.startsWith("https://"))
