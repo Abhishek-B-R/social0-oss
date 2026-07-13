@@ -12,6 +12,7 @@ Local stdio install via `npx @social0/mcp-server` is unchanged.
 | `https://mcp.social0.app/oauth/authorize` | OAuth authorization (proxied to API) |
 | `https://mcp.social0.app/oauth/token` | Token exchange |
 | `https://mcp.social0.app/oauth/register` | Dynamic client registration |
+| `https://mcp.social0.app/oauth/revoke` | Token revocation (RFC 7009) |
 | `https://mcp.social0.app/.well-known/oauth-authorization-server` | OAuth metadata |
 | `https://mcp.social0.app/.well-known/oauth-protected-resource/mcp` | Protected resource metadata |
 | `https://mcp.social0.app/health` | Liveness probe |
@@ -106,5 +107,6 @@ Direct API key auth also works for testing: `Authorization: Bearer sk_live_...`
 
 ## Notes
 
-- `upload_media` on hosted MCP accepts `file_base64` (+ optional `filename`, `content_type`) instead of `file_path`.
+- `upload_media` on hosted MCP accepts `url` or `data` (base64) (+ optional `filename`, `mime_type`) — not `file_path`.
+- Re-approving OAuth revokes the previous **Claude MCP Connector** API key and mints a new one; existing Claude sessions must reconnect.
 - Keep the stdio package for Cursor, Claude Desktop, VS Code, and local workflows.

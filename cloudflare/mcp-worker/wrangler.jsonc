@@ -8,7 +8,8 @@
   },
   "vars": {
     "API_BASE_URL": "https://api.social0.app",
-    "MCP_BASE_URL": "https://mcp.social0.app"
+    "MCP_BASE_URL": "https://mcp.social0.app",
+    "SOCIAL0_MCP_NO_DOTENV": "true"
   },
   "alias": {
     "node:fs/promises": "./src/shims/node-fs-promises.ts",

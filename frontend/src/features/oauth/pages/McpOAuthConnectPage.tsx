@@ -11,6 +11,7 @@ type SessionDetails = {
   clientId: string;
   clientName: string;
   redirectUri: string;
+  consentToken?: string;
 };
 
 export default function McpOAuthConnectPage() {
@@ -55,6 +56,12 @@ export default function McpOAuthConnectPage() {
         return;
       }
 
+      if (!details.consentToken) {
+        setStatus("error");
+        setError("Could not prepare a secure consent token. Reload the page and try again.");
+        return;
+      }
+
       setStatus("ready");
     }
 
@@ -65,7 +72,10 @@ export default function McpOAuthConnectPage() {
   }, [navigate, session]);
 
   async function handleApprove() {
-    if (!session) return;
+    if (!session || !sessionDetails?.consentToken) {
+      setError("Missing consent token. Reload the page and try again.");
+      return;
+    }
     setStatus("approving");
     setError(null);
 
@@ -74,7 +84,7 @@ export default function McpOAuthConnectPage() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session }),
+        body: JSON.stringify({ session, consentToken: sessionDetails.consentToken }),
       });
 
       const data = (await response.json()) as { redirectUrl?: string; error?: string };
@@ -89,7 +99,28 @@ export default function McpOAuthConnectPage() {
     }
   }
 
-  function handleDeny() {
+  async function handleDeny() {
+    if (!session) {
+      navigate("/mcp");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/oauth/mcp/deny", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session }),
+      });
+      const data = (await response.json()) as { redirectUrl?: string | null };
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl;
+        return;
+      }
+    } catch {
+      // Fall through to client-side redirect if deny API is unavailable
+    }
+
     if (!sessionDetails?.redirectUri) {
       navigate("/mcp");
       return;
@@ -139,7 +170,12 @@ export default function McpOAuthConnectPage() {
           <div className="mb-6 space-y-3 text-sm text-muted-foreground">
             <p className="flex items-start gap-2">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-              Social0 will create a dedicated connector API key you can revoke anytime in Dashboard → API Keys.
+              Social0 will create a dedicated connector API key you can revoke anytime in Dashboard →
+              API Keys.
+            </p>
+            <p>
+              Connecting again replaces any previous Claude MCP Connector key — existing Claude
+              sessions will need to reconnect.
             </p>
             <p>
               By connecting, you agree to our{" "}
@@ -163,7 +199,7 @@ export default function McpOAuthConnectPage() {
           <div className="flex flex-wrap gap-3">
             <Button
               onClick={() => void handleApprove()}
-              disabled={status !== "ready" || !session}
+              disabled={status !== "ready" || !session || !sessionDetails?.consentToken}
               className="min-w-40"
             >
               {status === "approving" ? "Connecting…" : "Connect Social0"}

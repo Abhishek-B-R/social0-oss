@@ -13,6 +13,7 @@ export function getOAuthAuthorizationServerMetadata(baseUrl: string) {
     authorization_endpoint: `${issuer}/oauth/authorize`,
     token_endpoint: `${issuer}/oauth/token`,
     registration_endpoint: `${issuer}/oauth/register`,
+    revocation_endpoint: `${issuer}/oauth/revoke`,
     scopes_supported: MCP_OAUTH_SCOPES,
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code", "refresh_token"],
@@ -33,6 +34,7 @@ export function getProtectedResourceMetadata(baseUrl: string) {
     resource_documentation: "https://social0.app/mcp",
     resource_policy_uri: "https://social0.app/privacy",
     resource_tos_uri: "https://social0.app/terms",
+    resource_icon: "https://social0.app/logo.png",
   };
 }
 

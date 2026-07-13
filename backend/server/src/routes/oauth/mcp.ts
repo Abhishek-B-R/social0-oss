@@ -3,14 +3,17 @@ import { env } from "../../lib/env.js";
 import {
   approveMcpOAuthSession,
   createMcpOAuthSession,
+  denyMcpOAuthSession,
   exchangeMcpAuthorizationCode,
   getMcpOAuthClient,
   getMcpOAuthMetadata,
   getMcpOAuthSessionDetails,
   getMcpProtectedResourceMetadata,
   introspectMcpAccessToken,
+  mintMcpConsentToken,
   refreshMcpAccessToken,
   registerMcpOAuthClient,
+  revokeMcpToken,
   verifyMcpIntrospectSecret,
 } from "../../lib/mcp-oauth.js";
 import { requireSessionUserId } from "../../middleware/auth.js";
@@ -128,10 +131,25 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
     }
 
     try {
-      const client = await registerMcpOAuthClient(body);
+      const client = await registerMcpOAuthClient({
+        redirect_uris: body.redirect_uris,
+        ...(body.client_name ? { client_name: body.client_name } : {}),
+        ...(body.token_endpoint_auth_method
+          ? { token_endpoint_auth_method: body.token_endpoint_auth_method }
+          : {}),
+        ...(body.grant_types ? { grant_types: body.grant_types } : {}),
+        ...(body.response_types ? { response_types: body.response_types } : {}),
+      });
       return reply.status(201).send(client);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Registration failed";
+      if (
+        message.includes("redirect_uri") ||
+        message.includes("redirect_uris") ||
+        message.includes("Invalid redirect")
+      ) {
+        return oauthError(reply, "invalid_client_metadata", message);
+      }
       return oauthError(reply, "server_error", message, 503);
     }
   });
@@ -180,6 +198,30 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
     }
   });
 
+  app.post("/oauth/revoke", async (request, reply) => {
+    const body = parseFormBody(request.body);
+    if (!body.token) {
+      return oauthError(reply, "invalid_request", "token required");
+    }
+
+    try {
+      await revokeMcpToken({
+        token: body.token,
+        ...(body.client_id ? { clientId: body.client_id } : {}),
+        ...(body.client_secret ? { clientSecret: body.client_secret } : {}),
+        ...(body.token_type_hint ? { tokenTypeHint: body.token_type_hint } : {}),
+      });
+      // RFC 7009: revocation always returns 200 with empty body on success
+      return reply.status(200).send();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "revoke_error";
+      if (message === "invalid_client") {
+        return oauthError(reply, "invalid_client", undefined, 401);
+      }
+      return oauthError(reply, "server_error", message, 503);
+    }
+  });
+
   app.post("/oauth/mcp/introspect", async (request, reply) => {
     const secret = request.headers.authorization?.replace(/^Bearer\s+/i, "");
     if (!verifyMcpIntrospectSecret(secret, process.env.MCP_OAUTH_INTROSPECT_SECRET)) {
@@ -206,10 +248,42 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: "OAuth session expired or not found" });
     }
 
+    const userId = await requireSessionUserId(request);
+    if (userId) {
+      try {
+        const consentToken = await mintMcpConsentToken(query.session, userId);
+        if (consentToken) {
+          return reply.send({ ...details, consentToken });
+        }
+      } catch {
+        // Redis unavailable — fall through without consent token (approve will fail closed)
+      }
+    }
+
     return reply.send(details);
   });
 
   app.post("/api/oauth/mcp/approve", async (request, reply) => {
+    const userId = await requireSessionUserId(request);
+    if (!userId) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
+
+    const body = request.body as { session?: string; consentToken?: string };
+    if (!body.session) {
+      return reply.status(400).send({ error: "session required" });
+    }
+
+    try {
+      const result = await approveMcpOAuthSession(body.session, userId, body.consentToken);
+      return reply.send(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Approval failed";
+      return reply.status(400).send({ error: message });
+    }
+  });
+
+  app.post("/api/oauth/mcp/deny", async (request, reply) => {
     const userId = await requireSessionUserId(request);
     if (!userId) {
       return reply.status(401).send({ error: "Unauthorized" });
@@ -221,10 +295,10 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
     }
 
     try {
-      const result = await approveMcpOAuthSession(body.session, userId);
+      const result = await denyMcpOAuthSession(body.session);
       return reply.send(result);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Approval failed";
+      const message = error instanceof Error ? error.message : "Deny failed";
       return reply.status(400).send({ error: message });
     }
   });

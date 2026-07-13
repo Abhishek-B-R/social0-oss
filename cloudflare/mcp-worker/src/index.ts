@@ -32,6 +32,7 @@ export default {
         documentation: "https://social0.app/mcp",
         privacy_policy: "https://social0.app/privacy",
         terms_of_service: "https://social0.app/terms",
+        icon: "https://social0.app/logo.png",
         oauth: `${baseUrl}/.well-known/oauth-authorization-server`,
       });
     }
@@ -47,7 +48,8 @@ export default {
     if (
       pathname === "/oauth/authorize" ||
       pathname === "/oauth/token" ||
-      pathname === "/oauth/register"
+      pathname === "/oauth/register" ||
+      pathname === "/oauth/revoke"
     ) {
       return proxyOAuthRequest(request, env, pathname);
     }

@@ -2,7 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { apiKeys } from "../db/schema.js";
-import { generateApiKey, hashApiKey, isApiKeyFormat } from "./api-keys.js";
+import { generateApiKey, isApiKeyFormat, resolveRawApiKey } from "./api-keys.js";
 import { redis } from "./redis.js";
 
 const MCP_CONNECTOR_KEY_NAME = "Claude MCP Connector";
@@ -91,6 +91,10 @@ function codeKey(code: string): string {
 
 function sessionKey(sessionId: string): string {
   return `mcp:oauth:session:${sessionId}`;
+}
+
+function consentKey(sessionId: string): string {
+  return `mcp:oauth:consent:${sessionId}`;
 }
 
 function clientKey(clientId: string): string {
@@ -182,6 +186,40 @@ export async function getMcpOAuthSessionDetails(sessionId: string): Promise<{
   };
 }
 
+/** One-time token bound to session + user; required on approve to harden consent CSRF. */
+export async function mintMcpConsentToken(
+  sessionId: string,
+  userId: string,
+): Promise<string | null> {
+  const store = requireRedis();
+  const session = await getMcpOAuthSession(sessionId);
+  if (!session) return null;
+
+  const token = randomBytes(24).toString("base64url");
+  await store.set(
+    consentKey(sessionId),
+    { userId, token },
+    { ex: SESSION_TTL_SECONDS },
+  );
+  return token;
+}
+
+async function consumeMcpConsentToken(
+  sessionId: string,
+  userId: string,
+  consentToken: string | undefined,
+): Promise<boolean> {
+  if (!consentToken) return false;
+  const store = requireRedis();
+  const stored = await store.get<{ userId: string; token: string }>(consentKey(sessionId));
+  if (!stored) return false;
+  if (stored.userId !== userId) return false;
+  if (stored.token.length !== consentToken.length) return false;
+  if (!timingSafeEqual(Buffer.from(stored.token), Buffer.from(consentToken))) return false;
+  await store.del(consentKey(sessionId));
+  return true;
+}
+
 async function createConnectorApiKey(userId: string): Promise<string> {
   await db
     .update(apiKeys)
@@ -204,14 +242,38 @@ async function createConnectorApiKey(userId: string): Promise<string> {
   return raw;
 }
 
+export async function denyMcpOAuthSession(sessionId: string): Promise<{
+  redirectUrl: string | null;
+}> {
+  const store = requireRedis();
+  const session = await getMcpOAuthSession(sessionId);
+  if (!session) {
+    return { redirectUrl: null };
+  }
+
+  await store.del(sessionKey(sessionId));
+  await store.del(consentKey(sessionId));
+
+  const redirect = new URL(session.redirectUri);
+  redirect.searchParams.set("error", "access_denied");
+  redirect.searchParams.set("error_description", "User denied the connection request");
+  if (session.state) redirect.searchParams.set("state", session.state);
+  return { redirectUrl: redirect.toString() };
+}
+
 export async function approveMcpOAuthSession(
   sessionId: string,
   userId: string,
+  consentToken?: string,
 ): Promise<{ redirectUrl: string }> {
   const store = requireRedis();
   const session = await getMcpOAuthSession(sessionId);
   if (!session) {
     throw new Error("OAuth session expired or not found");
+  }
+
+  if (!(await consumeMcpConsentToken(sessionId, userId, consentToken))) {
+    throw new Error("Invalid or missing consent token. Reload the page and try again.");
   }
 
   const client = await getMcpOAuthClient(session.clientId);
@@ -222,6 +284,8 @@ export async function approveMcpOAuthSession(
     throw new Error("Invalid redirect URI");
   }
 
+  // Re-approving replaces the previous Claude MCP Connector key so only one
+  // active connector credential exists per user (existing Claude sessions must reconnect).
   const apiKeyRaw = await createConnectorApiKey(userId);
   const code = randomBytes(24).toString("base64url");
   const payload: StoredAuthCode = {
@@ -376,6 +440,52 @@ export async function refreshMcpAccessToken(input: {
   };
 }
 
+export async function revokeMcpToken(input: {
+  token: string;
+  clientId?: string;
+  clientSecret?: string;
+  tokenTypeHint?: string;
+}): Promise<void> {
+  const store = requireRedis();
+
+  // RFC 7009: always succeed from the client's perspective; authenticate when possible.
+  if (input.clientId) {
+    const client = await getMcpOAuthClient(input.clientId);
+    if (!client) return;
+    if (client.client_secret) {
+      if (!input.clientSecret || input.clientSecret !== client.client_secret) {
+        throw new Error("invalid_client");
+      }
+    }
+  }
+
+  const tryRevokeAccess = async () => {
+    const access = await store.get<StoredAccessToken>(tokenKey(input.token));
+    if (!access) return false;
+    if (input.clientId && access.clientId !== input.clientId) return false;
+    await store.del(tokenKey(input.token));
+    return true;
+  };
+
+  const tryRevokeRefresh = async () => {
+    const refresh = await store.get<StoredRefreshToken>(refreshKey(input.token));
+    if (!refresh) return false;
+    if (input.clientId && refresh.clientId !== input.clientId) return false;
+    await store.del(refreshKey(input.token));
+    await store.del(tokenKey(refresh.accessToken));
+    return true;
+  };
+
+  if (input.tokenTypeHint === "refresh_token") {
+    if (await tryRevokeRefresh()) return;
+    await tryRevokeAccess();
+    return;
+  }
+
+  if (await tryRevokeAccess()) return;
+  await tryRevokeRefresh();
+}
+
 export async function introspectMcpAccessToken(token: string): Promise<{
   active: boolean;
   scope?: string;
@@ -386,15 +496,8 @@ export async function introspectMcpAccessToken(token: string): Promise<{
   if (!redis) return { active: false };
 
   if (isApiKeyFormat(token)) {
-    const pepperedHash = hashApiKey(token);
-    const rows = await db
-      .select({ userId: apiKeys.userId, expiresAt: apiKeys.expiresAt, revokedAt: apiKeys.revokedAt })
-      .from(apiKeys)
-      .where(eq(apiKeys.keyHash, pepperedHash))
-      .limit(1);
-    const row = rows[0];
-    if (!row || row.revokedAt) return { active: false };
-    if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return { active: false };
+    const auth = await resolveRawApiKey(token);
+    if (!auth) return { active: false };
     return {
       active: true,
       scope: MCP_OAUTH_SCOPES.join(" "),
@@ -422,6 +525,7 @@ export function getMcpOAuthMetadata(baseUrl: string) {
     authorization_endpoint: `${issuer}/oauth/authorize`,
     token_endpoint: `${issuer}/oauth/token`,
     registration_endpoint: `${issuer}/oauth/register`,
+    revocation_endpoint: `${issuer}/oauth/revoke`,
     scopes_supported: [...MCP_OAUTH_SCOPES],
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code", "refresh_token"],
@@ -442,6 +546,8 @@ export function getMcpProtectedResourceMetadata(baseUrl: string) {
     resource_documentation: "https://social0.app/mcp",
     resource_policy_uri: "https://social0.app/privacy",
     resource_tos_uri: "https://social0.app/terms",
+    // Directory / connector branding
+    resource_icon: "https://social0.app/logo.png",
   };
 }
 

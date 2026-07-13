@@ -57,11 +57,8 @@ function touchLastUsed(apiKeyId: string): void {
     .catch(() => {});
 }
 
-export async function resolveApiKeyAuth(
-  authorization: string | undefined,
-): Promise<ApiKeyAuth | null> {
-  if (!authorization?.startsWith("Bearer ")) return null;
-  const raw = authorization.slice("Bearer ".length).trim();
+/** Resolve a raw API key (peppered hash, with legacy SHA-256 migrate-on-read). */
+export async function resolveRawApiKey(raw: string): Promise<ApiKeyAuth | null> {
   if (!isApiKeyFormat(raw)) return null;
 
   const pepperedHash = hashApiKey(raw);
@@ -83,6 +80,14 @@ export async function resolveApiKeyAuth(
 
   touchLastUsed(row.id);
   return { userId: row.userId, apiKeyId: row.id };
+}
+
+export async function resolveApiKeyAuth(
+  authorization: string | undefined,
+): Promise<ApiKeyAuth | null> {
+  if (!authorization?.startsWith("Bearer ")) return null;
+  const raw = authorization.slice("Bearer ".length).trim();
+  return resolveRawApiKey(raw);
 }
 
 /** @deprecated Use resolveApiKeyAuth */
