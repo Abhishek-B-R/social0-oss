@@ -2,7 +2,7 @@ import { db } from "../db/index.js";
 import { connectedAccounts } from "../db/schema.js";
 import { eq, and, sql } from "drizzle-orm";
 import { getSubscriptionForUser } from "./subscription.js";
-import { getPlanLimits } from "./plans.js";
+import { getPlanLimits } from "@social0/shared";
 
 /**
  * Returns how many more accounts the user can connect (0 = at or over limit).

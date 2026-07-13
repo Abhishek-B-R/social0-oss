@@ -1,5 +1,5 @@
 // Order: color groups - blues → reds → gradient → blacks (visually consistent everywhere)
-import { FACEBOOK_PAGE_SCOPES } from "./facebook-scopes.js";
+import { FACEBOOK_PAGE_SCOPES } from "@social0/shared";
 
 export const PLATFORMS = [
   { id: "linkedin", name: "LinkedIn", icon: null },

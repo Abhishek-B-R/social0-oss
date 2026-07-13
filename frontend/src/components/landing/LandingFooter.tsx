@@ -1,9 +1,12 @@
 
 import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
+import { DOCS_API_URL } from "@/lib/docs-url";
 
 const footerLinks = [
   { href: "/features", label: "Features" },
+  { href: DOCS_API_URL, label: "API", external: true },
+  { href: "/mcp", label: "MCP" },
   { href: "/alternatives", label: "Alternatives" },
   { href: "/#platforms", label: "Platforms" },
   { href: "/#pricing", label: "Pricing" },
@@ -27,15 +30,27 @@ export function LandingFooter() {
         </Link>
 
         <nav className="flex flex-wrap gap-6 md:gap-8">
-          {footerLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {link.label}
-            </Link>
-          ))}
+          {footerLinks.map((link) =>
+            "external" in link && link.external ? (
+              <a
+                key={link.href}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {link.label}
+              </a>
+            ) : (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {link.label}
+              </Link>
+            ),
+          )}
         </nav>
 
         <span className="text-[12px] text-muted-foreground">

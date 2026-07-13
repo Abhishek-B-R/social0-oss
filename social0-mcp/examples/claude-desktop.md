@@ -1,43 +1,38 @@
 # Claude Desktop
 
-Add to your Claude Desktop MCP config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+## 1. API key
+
+Create one at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys) (`sk_live_…`).
+
+## 2. Edit the MCP config
+
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "social0": {
-      "command": "node",
-      "args": ["/absolute/path/to/social0-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "social0-mcp"],
       "env": {
-        "SOCIAL0_API_KEY": "s0_live_your_key_here",
-        "SOCIAL0_API_URL": "https://api.social0.app/v1"
+        "SOCIAL0_API_KEY": "sk_live_your_key_here"
       }
     }
   }
 }
 ```
 
-Or if installed globally:
+## 3. Restart
 
-```json
-{
-  "mcpServers": {
-    "social0": {
-      "command": "social0-mcp",
-      "env": {
-        "SOCIAL0_API_KEY": "s0_live_your_key_here"
-      }
-    }
-  }
-}
-```
+Fully quit and reopen Claude Desktop. Test: “Show my connected Social0 accounts.”
 
-Restart Claude Desktop after saving.
+Requires **Node.js 20+** on your PATH so `npx` works.
 
 ## Example prompts
 
 - "Show my connected Social0 accounts."
 - "Create a LinkedIn post about how AI is changing marketing."
-- "Schedule tomorrow's product announcement at 9 AM on LinkedIn and X."
+- "Schedule tomorrow's product announcement at 9 AM UTC on LinkedIn and X."
 - "Publish my latest draft."
 - "Which platforms should I use for this post?"

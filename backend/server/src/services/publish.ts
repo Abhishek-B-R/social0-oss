@@ -12,14 +12,14 @@ import {
 } from "@/db/schema";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { headers } from "../lib/http/request-cookies.js";
-import { decryptToken } from "@/lib/encryption";
+import { decryptToken } from "@social0/shared";
 import { uploadLinkedInImage, uploadLinkedInVideo } from "@/lib/linkedin-media";
 import { publishToPlatform } from "@/lib/publish-platform";
 import {
   isValidPostId,
   validateCollectionMedia,
 } from "@/lib/publish-validation";
-import { truncateCaptionForPlatform } from "@/lib/platform-limits";
+import { truncateCaptionForPlatform } from "@social0/shared";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import {
   checkAutoPlugAllowed,
@@ -29,6 +29,7 @@ import { uploadTwitterImage, uploadTwitterVideo } from "@/lib/twitter-media";
 import { getTwitterErrorMessage } from "@/lib/twitter-errors";
 import { parseTikTokHandleFromProfileUrl } from "@/lib/platform-view-url";
 import { maybeSendPostFailureEmail } from "@/lib/post-failure-email";
+import { emitPublishWebhooksForPost } from "../publish/finalize-post.js";
 import { TwitterApi } from "twitter-api-v2";
 
 /** Extract a readable error from LinkedIn API response (status, message, serviceErrorCode). */
@@ -1607,6 +1608,9 @@ export async function executePublish(
           .map((r) => `${r.platform}: ${r.error ?? "Unknown error"}`.trim())
           .join(" - ")
       : undefined;
+
+  // Dashboard composer uses inline executePublish (not the async worker finalize path).
+  await emitPublishWebhooksForPost(postId, post.userId);
 
   return {
     success: !anyFailed,

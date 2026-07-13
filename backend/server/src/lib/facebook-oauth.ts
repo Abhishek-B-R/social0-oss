@@ -2,7 +2,7 @@ import { env } from "./env.js";
 import {
   FACEBOOK_INSTAGRAM_PAGE_SCOPES,
   FACEBOOK_PAGE_SCOPES,
-} from "./facebook-scopes.js";
+} from "@social0/shared";
 
 export { FACEBOOK_INSTAGRAM_PAGE_SCOPES, FACEBOOK_PAGE_SCOPES };
 

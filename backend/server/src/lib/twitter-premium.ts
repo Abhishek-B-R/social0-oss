@@ -3,7 +3,7 @@ import { connectedAccounts } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
 import OAuth from "oauth-1.0a";
-import { decryptToken } from "./encryption.js";
+import { decryptToken } from "@social0/shared";
 
 function getOAuth() {
   const consumerKey = process.env.TWITTER_CONSUMER_KEY;

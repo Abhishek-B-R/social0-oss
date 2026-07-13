@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { isSafeOutboundUrl } from "@social0/shared";
 import { db } from "../db/index.js";
 import { userWebhookSubscriptions } from "../db/schema.js";
-import { decryptToken } from "./encryption.js";
+import { decryptToken } from "@social0/shared";
 import { fetchWithTimeout } from "./fetch-with-timeout.js";
 
 export const WEBHOOK_EVENTS = [
@@ -22,9 +22,15 @@ export type WebhookPayload = {
   data: Record<string, unknown>;
 };
 
-function signPayload(secret: string, timestamp: number, body: string): string {
-  const signed = `${timestamp}.${body}`;
-  return createHmac("sha256", secret).update(signed).digest("hex");
+function signWebhookPayload(
+  secret: string,
+  timestamp: number,
+  body: string,
+): string {
+  // Keep in sync with @social0/shared user-webhook-signature.ts
+  return createHmac("sha256", secret)
+    .update(`${timestamp}.${body}`)
+    .digest("hex");
 }
 
 async function deliverOne(
@@ -38,7 +44,7 @@ async function deliverOne(
 
   const body = JSON.stringify(payload);
   const timestamp = Math.floor(Date.now() / 1000);
-  const signature = signPayload(secret, timestamp, body);
+  const signature = signWebhookPayload(secret, timestamp, body);
 
   await fetchWithTimeout(url, {
     method: "POST",

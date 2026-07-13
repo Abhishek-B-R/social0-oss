@@ -2,7 +2,7 @@ import { db } from "../db/index.js";
 import { verification } from "../db/schema.js";
 import { and, eq, gt } from "drizzle-orm";
 import { randomBytes } from "crypto";
-import { encryptToken, decryptToken } from "./encryption.js";
+import { encryptToken, decryptToken } from "@social0/shared";
 import { cookies } from "./http/request-cookies.js";
 import { RouteResponse } from "./http/http.js";
 import { resolveAppUrlFromRequest } from "./app-url.js";

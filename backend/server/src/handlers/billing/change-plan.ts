@@ -6,7 +6,7 @@ import DodoPayments from "dodopayments";
 import { db } from "../../db/index.js";
 import { userSettings } from "../../db/schema.js";
 import { eq } from "drizzle-orm";
-import { PLAN_IDS } from "../../lib/plans.js";
+import { PLAN_IDS } from "@social0/shared";
 import { env } from "../../lib/env.js";
 import { listOpenDodoSubscriptions } from "../../lib/billing-guards.js";
 

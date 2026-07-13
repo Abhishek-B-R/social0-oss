@@ -2,7 +2,7 @@ import { auth } from "../../lib/auth.js";
 import { headers } from "../../lib/http/request-cookies.js";
 import { RouteResponse } from "../../lib/http/http.js";
 import { getSubscriptionForUser } from "../../lib/subscription.js";
-import { isActiveTier } from "../../lib/plans.js";
+import { isActiveTier } from "@social0/shared";
 
 
 /**

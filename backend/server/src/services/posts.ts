@@ -21,7 +21,7 @@ import {
 import { isValidUUID } from "@/lib/validation";
 import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
 import { checkFreePostLimit, incrementFreePostsUsed } from "@/lib/plan-limits";
-import { logPublishBlocked } from "@/lib/plan-analytics";
+import { logPublishBlocked } from "@social0/shared";
 import type {
   AutoPlugConfig,
   AutoResurfaceConfig,

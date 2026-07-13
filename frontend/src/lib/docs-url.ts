@@ -46,8 +46,42 @@ export const DOCS_FEEDBACK_URL = `${DOCS_BASE_URL}/docs/dashboard/feedback`;
 /** Teams. */
 export const DOCS_TEAMS_URL = `${DOCS_BASE_URL}/docs/dashboard/teams`;
 
-/** API keys. */
+/** API keys & Developer portal (dashboard guide). */
 export const DOCS_API_KEYS_URL = `${DOCS_BASE_URL}/docs/dashboard/api-keys`;
+
+// ─── Public REST API (docs.social0.app/docs/api) ─────────────────────────────
+
+/** API overview. */
+export const DOCS_API_URL = `${DOCS_BASE_URL}/docs/api`;
+
+/** 5-minute API quickstart. */
+export const DOCS_API_QUICKSTART_URL = `${DOCS_BASE_URL}/docs/api/quickstart`;
+
+/** API authentication (Bearer keys). */
+export const DOCS_API_AUTH_URL = `${DOCS_BASE_URL}/docs/api/authentication`;
+
+/** Webhooks — events, signing, verification. */
+export const DOCS_API_WEBHOOKS_URL = `${DOCS_BASE_URL}/docs/api/webhooks`;
+
+/** Webhooks API reference (manage subscriptions). */
+export const DOCS_API_REFERENCE_WEBHOOKS_URL = `${DOCS_BASE_URL}/docs/api/reference/webhooks`;
+
+/** OpenAPI spec & SDKs. */
+export const DOCS_API_OPENAPI_URL = `${DOCS_BASE_URL}/docs/api/openapi`;
+
+/** @deprecated Use DOCS_API_URL */
+export const DOCS_REST_API_URL = DOCS_API_URL;
+
+// ─── Integrations (MCP) ─────────────────────────────────────────────────────
+
+/** MCP server overview. */
+export const DOCS_MCP_URL = `${DOCS_BASE_URL}/docs/integrations/mcp`;
+
+/** MCP quick start. */
+export const DOCS_MCP_QUICKSTART_URL = `${DOCS_BASE_URL}/docs/integrations/mcp/quickstart`;
+
+/** MCP tools reference. */
+export const DOCS_MCP_TOOLS_URL = `${DOCS_BASE_URL}/docs/integrations/mcp/tools`;
 
 // ─── Posts ──────────────────────────────────────────────────────────────────
 

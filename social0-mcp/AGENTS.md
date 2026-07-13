@@ -1,0 +1,302 @@
+# AGENTS.md — Social0 MCP
+
+Guidance for AI agents (and humans) using this MCP server.
+
+## What this is
+
+- **Package:** `social0-mcp` (local stdio via `npx`) **or** hosted HTTPS MCP at `https://mcp.social0.app/mcp` (Claude Connectors / OAuth)
+- **Auth (stdio):** `SOCIAL0_API_KEY` → `Authorization: Bearer …` on `https://api.social0.app/v1`
+- **Auth (hosted):** OAuth 2.0 + PKCE (Claude Connectors) or Bearer API key
+- **Account connect:** Users link Instagram/X/etc. in the Social0 dashboard (not via MCP)
+
+## Setup checklist
+
+### Local stdio
+
+1. User has Social0 account + connected platforms  
+2. API key created at https://social0.app/dashboard/api-keys (`sk_live_…`)  
+3. Host config runs `npx -y social0-mcp` with `SOCIAL0_API_KEY` in `env` (see README)  
+4. Verify with `list_accounts`
+
+### Hosted (Claude Connectors)
+
+1. Point connector at `https://mcp.social0.app/mcp`  
+2. Complete OAuth consent on social0.app  
+3. Prefer `upload_media` with `url` or `data` (base64) — `file_path` is unavailable on hosted MCP  
+4. Re-connecting OAuth replaces the previous connector API key; Claude must reconnect after that
+
+## Tool reference
+
+### `list_accounts`
+
+No inputs. Returns connected accounts (`id`, `platform`, `username`, `is_active`, `token_status`).
+
+**Use first** when the user is ambiguous about accounts or has multiple profiles per network.
+
+---
+
+### `create_post`
+
+| Param | Required | Notes |
+|-------|----------|--------|
+| `content` | yes | Caption text |
+| `platforms` | yes | Platform names and/or account UUIDs |
+| `media` | no | Media UUIDs from `upload_media` |
+| `platform_options` | no | Advanced per-platform settings (object) |
+
+Creates a **draft**. Does not publish.
+
+---
+
+### `update_post`
+
+| Param | Required | Notes |
+|-------|----------|--------|
+| `post_id` | yes | UUID |
+| `content` | no | |
+| `platforms` | no | |
+| `media` | no | |
+| `platform_options` | no | |
+
+---
+
+### `delete_post`
+
+| Param | Required |
+|-------|----------|
+| `post_id` | yes |
+
+---
+
+### `list_posts`
+
+| Param | Required | Notes |
+|-------|----------|--------|
+| `status` | no | `draft` \| `scheduled` \| `publishing` \| `published` \| `partial` \| `failed` |
+| `platform` | no | Canonical platform enum |
+| `account` / `connected_account_id` | no | Filter by account |
+| `search` | no | Caption search |
+| `limit` | no | 1–100, default 20 |
+
+---
+
+### `get_post`
+
+| Param | Required |
+|-------|----------|
+| `post_id` | yes |
+
+Includes per-platform publication rows and URLs when available.
+
+---
+
+### `publish_post`
+
+| Param | Required | Notes |
+|-------|----------|--------|
+| `post_id` | yes | Draft or scheduled |
+| `platforms` | no | Subset / re-target |
+| `media` | no | Attach before publish |
+| `platform_options` | no | |
+
+Returns `tracking_id`. **Always poll** `get_publish_status` for multi-platform or video posts.
+
+---
+
+### `schedule_post`
+
+| Param | Required | Notes |
+|-------|----------|--------|
+| `post_id` | yes | |
+| `scheduled_at` | yes | ISO-8601, e.g. `2026-07-15T09:00:00.000Z` |
+| `platforms` / `media` / `platform_options` | no | |
+
+Convert local times to UTC unless the user specifies otherwise.
+
+---
+
+### `upload_media`
+
+Provide **exactly one** media source:
+
+| Param | Required | Notes |
+|-------|----------|--------|
+| `url` | one-of | Public http(s) **direct** file URL the MCP server downloads (best for Claude.ai / ChatGPT / remote hosts) |
+| `data` | one-of | Base64 bytes or `data:image/png;base64,...` |
+| `file_path` | one-of | Local path on the **MCP server machine** only |
+| `filename` | for `data` | With extension (`photo.png`). Optional for `url` |
+| `mime_type` | optional | e.g. `image/png` — inferred from filename/url when possible |
+
+Returns media `id` for `create_post` / `publish_now` / etc.
+
+**Remote hosts:** always prefer `url` or `data`. Do **not** pass sandbox paths like `/home/claude/...` — the MCP process cannot see that disk.
+
+---
+
+### `publish_now`
+
+| Param | Required |
+|-------|----------|
+| `content` | yes |
+| `platforms` | yes |
+| `media` | no |
+| `platform_options` | no |
+
+Create + publish. Returns `post_id` + `tracking_id`.
+
+---
+
+### `schedule_content`
+
+| Param | Required |
+|-------|----------|
+| `content` | yes |
+| `platforms` | yes |
+| `scheduled_at` | yes |
+| `media` | no |
+| `platform_options` | no |
+
+---
+
+### `get_publish_status`
+
+| Param | Required |
+|-------|----------|
+| `tracking_id` | yes |
+
+Response highlights:
+
+| Field | Meaning |
+|-------|---------|
+| `overall_status` | `queued` \| `processing` \| `completed` \| `failed` \| `partial` |
+| `progress` | `{ total, completed, failed }` |
+| `platform_statuses` | Per-platform `phase` + messages |
+| `errors` | Failed platforms only |
+| `failure_reason` | Set when terminal failure / partial |
+
+**Terminal statuses:** `completed`, `failed`, `partial`.  
+**`partial`:** some platforms succeeded, some failed — inspect `errors` / `platform_statuses`.
+
+Phases you will see: `platform_queued`, `platform_uploading`, `platform_success`, `platform_failed`.
+
+Poll every 2–5s for video / multi-platform jobs.
+
+---
+
+### `suggest_best_platforms`
+
+| Param | Required | Notes |
+|-------|----------|--------|
+| `content` | yes | |
+| `has_media` | no | |
+| `media_is_video` | no | |
+| `media_type` | no | `none` \| `image` \| `video` \| `collection` |
+
+Heuristic (+ connected accounts when available). Does not publish.
+
+---
+
+## Platform names
+
+Canonical: `linkedin`, `facebook`, `instagram`, `youtube`, `pinterest`, `tiktok`, `twitter_x`, `threads`, `bluesky`.
+
+Aliases: `x`/`twitter` → `twitter_x`; `ig` → `instagram`; `fb` → `facebook`; `yt` → `youtube`; `li` → `linkedin`; `bsky` → `bluesky`; `pin` → `pinterest`.
+
+**Rule:** one account per platform name → name is fine. Multiple → use UUID from `list_accounts`.
+
+---
+
+## Recommended agent behavior
+
+1. Call `list_accounts` before first publish in a session.  
+2. Prefer `publish_now` / `schedule_content` for simple one-shots; use draft tools when the user wants to edit first.  
+3. After any publish, return `tracking_id` and poll until terminal (or tell the user how to check).  
+4. On `partial`, summarize which platforms failed and why.  
+5. Never invent account UUIDs or tracking IDs.  
+6. Never claim MCP can connect Instagram/Facebook/etc. — send users to the dashboard.  
+7. For media from remote AI hosts, use `upload_media` with `url` or `data` (base64) — never a sandbox filesystem path. `file_path` only works for files on the MCP server machine.  
+8. Schedule times: confirm timezone; default to UTC ISO-8601.
+
+---
+
+## Errors
+
+MCP tools return structured text errors (`isError: true`) — they do not crash the host.
+
+Common:
+
+- Missing / invalid API key  
+- No connected account for platform  
+- Ambiguous platform (multiple accounts)  
+- Validation (media type unsupported on target, empty content, etc.)  
+- HTTP 401 / 429 / 4xx from API  
+
+---
+
+## Out of scope
+
+- Connecting or refreshing OAuth in-app  
+- Analytics / inbox / social listening  
+- Dashboard-only features not exposed on `/v1`
+
+Use https://api.social0.app/docs for full REST schemas.
+
+---
+
+## Troubleshooting (humans)
+
+### `SOCIAL0_API_KEY is required`
+
+Put the key in the MCP host `env` block and reload MCP.
+
+### Wrong key format
+
+Keys start with `sk_live_` (legacy `s0_live_` still works).
+
+### `401 Unauthorized`
+
+Key revoked or wrong — create a new key.
+
+### `npx` / command not found
+
+Install [Node.js 20+](https://nodejs.org/), then use `"command": "npx"` with `"args": ["-y", "social0-mcp"]`. Always include `-y` so the first run does not prompt.
+
+### No connected account / multiple accounts
+
+Connect platforms at https://social0.app/dashboard/connections. If several accounts share a platform, pass the account UUID from `list_accounts`.
+
+### Media upload failed / ENOENT
+
+Remote hosts cannot use sandbox paths. Use `upload_media` with public `url` or base64 `data` (+ `filename`). `file_path` only works on the machine running MCP.
+
+### One platform failed, others succeeded
+
+Expected for multi-platform jobs. Poll `get_publish_status` with the tracking ID.
+
+---
+
+## Local development
+
+```bash
+git clone https://github.com/Abhishek-B-R/social0-mcp.git
+cd social0-mcp
+npm install && npm run build
+```
+
+Point your host at the built file:
+
+```json
+{
+  "mcpServers": {
+    "social0": {
+      "command": "node",
+      "args": ["/absolute/path/to/social0-mcp/dist/index.js"],
+      "env": {
+        "SOCIAL0_API_KEY": "sk_live_your_key_here",
+        "SOCIAL0_MCP_VERBOSE": "true"
+      }
+    }
+  }
+}
+```
+

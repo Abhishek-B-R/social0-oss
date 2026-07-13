@@ -46,33 +46,36 @@ export default function AlternativesIndexPage() {
   return (
     <MarketingPageLayout>
       <PseoJsonLd graphs={jsonLd} />
-      <section className="px-6 py-16 lg:px-8 lg:py-20">
+      <section className="px-6 py-16 lg:px-8 lg:py-24">
         <div className="mx-auto max-w-[1100px]">
-          <p className="mb-3 text-[11px] uppercase tracking-widest text-emerald-700">
+          <p className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
             Alternatives
           </p>
           <h1 className="max-w-2xl font-serif text-[clamp(32px,5vw,48px)] leading-tight tracking-tight text-foreground">
             Social0 vs popular schedulers
           </h1>
-          <p className="mt-5 max-w-2xl text-[16px] leading-relaxed text-muted-foreground">
-            Honest comparisons for creators evaluating a switch. Each page
-            covers features, workflow differences, and who Social0 is best for.
+          <p className="mt-5 max-w-xl text-[16px] leading-relaxed text-muted-foreground">
+            Straight comparisons for creators evaluating a switch — what
+            Social0 does differently, and who it&apos;s for.
           </p>
-          <ul className="mt-12 grid gap-4 sm:grid-cols-2">
+
+          <ul className="mt-14 divide-y divide-border border-y border-border">
             {ALTERNATIVES.map((alt) => (
               <li key={alt.slug}>
                 <Link
                   href={`/alternatives/${alt.slug}`}
-                  className="block rounded-2xl border border-border bg-background p-6 transition-colors hover:border-emerald-600/30 dark:bg-background/50"
+                  className="group flex flex-col gap-1 py-6 transition-colors sm:flex-row sm:items-baseline sm:justify-between sm:gap-8"
                 >
-                  <h2 className="font-serif text-xl text-foreground">
-                    {alt.competitorName} alternative
-                  </h2>
-                  <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-                    {alt.heroSubheadline}
-                  </p>
-                  <span className="mt-4 inline-block text-[13px] font-medium text-emerald-700">
-                    Read comparison →
+                  <div className="min-w-0">
+                    <h2 className="font-serif text-xl tracking-tight text-foreground group-hover:text-foreground/80">
+                      {alt.competitorName} alternative
+                    </h2>
+                    <p className="mt-1.5 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
+                      {alt.heroSubheadline}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-[13px] text-muted-foreground transition-colors group-hover:text-foreground sm:pt-1">
+                    Compare →
                   </span>
                 </Link>
               </li>

@@ -2,7 +2,7 @@ import { auth } from "../lib/auth.js";
 import { PLATFORM_OAUTH_CONFIG, Platform } from "../lib/platforms.js";
 import { env } from "../lib/env.js";
 import { headers, cookies } from "../lib/http/request-cookies.js";
-import { encrypt, encryptToken } from "../lib/encryption.js";
+import { encrypt, encryptToken } from "@social0/shared";
 import { appUrlForPath, getConnectCallbackBaseUrl } from "../lib/app-url.js";
 import crypto from "crypto";
 import { db } from "../db/index.js";
@@ -15,7 +15,7 @@ import {
   buildFacebookOAuthUrl,
   getFacebookLoginConfigId,
 } from "../lib/facebook-oauth.js";
-import { sanitizeReturnToPath } from "../lib/safe-return-to.js";
+import { sanitizeReturnToPath } from "@social0/shared";
 import { redirectWithOAuthConnectBinding } from "../lib/oauth-connect-binding.js";
 
 export async function platformStart(

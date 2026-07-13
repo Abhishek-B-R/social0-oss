@@ -9,7 +9,7 @@ import {
   autoPlugs,
 } from "../db/schema.js";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
-import { decryptToken } from "../lib/encryption.js";
+import { decryptToken } from "@social0/shared";
 import {
   uploadLinkedInImage,
   uploadLinkedInVideo,
@@ -21,7 +21,7 @@ import {
   getAllowedMediaOrigins,
   isAllowedMediaUrl,
 } from "../lib/publish-validation.js";
-import { truncateCaptionForPlatform } from "../lib/platform-limits.js";
+import { truncateCaptionForPlatform } from "@social0/shared";
 import { NEVER_EXPIRES_PLATFORMS } from "../lib/token-health.js";
 import {
   checkAutoPlugAllowed,

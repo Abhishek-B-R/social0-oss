@@ -14,8 +14,13 @@ import { registerV1Routes } from "./routes/v1/index.js";
 import { registerApiRoutes } from "./routes/api/index.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
 import { registerDocsRoutes } from "./routes/docs.js";
+import { registerMcpOAuthPublicRoutes } from "./routes/oauth/mcp.js";
 import { getCorsOrigins } from "./lib/app-url.js";
-import { allowsMissingCorsOrigin } from "./lib/cors-policy.js";
+import {
+  allowsMissingCorsOrigin,
+  isMcpOAuthCorsOrigin,
+  isMcpOAuthPublicPath,
+} from "./lib/cors-policy.js";
 
 function loadHttpsOptions(): { key: Buffer; cert: Buffer } | undefined {
   const backendRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -77,6 +82,7 @@ export async function buildApp() {
     ) => {
       const origin = req.headers.origin;
       const credentials = true;
+      const path = req.url.split("?")[0] ?? "";
       if (!origin) {
         if (
           process.env.NODE_ENV !== "production" ||
@@ -89,6 +95,11 @@ export async function buildApp() {
         return;
       }
       if (corsOrigins.includes(origin)) {
+        callback(null, { origin: true, credentials });
+        return;
+      }
+      // Claude Connectors hit MCP OAuth endpoints with Origin: https://claude.ai
+      if (isMcpOAuthPublicPath(path) && isMcpOAuthCorsOrigin(origin)) {
         callback(null, { origin: true, credentials });
         return;
       }
@@ -114,6 +125,7 @@ export async function buildApp() {
   await app.register(registerV1Routes, { prefix: "/v1" });
   await app.register(registerApiRoutes, { prefix: "/api" });
   await app.register(registerAdminRoutes, { prefix: "/admin" });
+  await app.register(registerMcpOAuthPublicRoutes);
   await app.register(registerDocsRoutes);
 
   app.setErrorHandler((error, request, reply) => {

@@ -3,7 +3,7 @@ import { and, count, eq } from "drizzle-orm";
 import { requireUserId, unauthorized } from "../../middleware/auth.js";
 import { db } from "../../db/index.js";
 import { connectedAccounts, postPublications } from "../../db/schema.js";
-import { decryptToken } from "../../lib/encryption.js";
+import { decryptToken } from "@social0/shared";
 import { revokeTokenOnPlatform } from "../../lib/revoke-token.js";
 import {
   fetchAvatarBytes,

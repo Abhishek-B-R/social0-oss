@@ -34,25 +34,25 @@ export const ALTERNATIVES: AlternativePage[] = [
     ],
     heroHeadline: "The Buffer alternative built for multi-platform publishing",
     heroSubheadline:
-      "Compose once, publish everywhere - without juggling queues per network or paying for platforms you do not use.",
+      "Compose once, publish everywhere — without juggling separate queues per network.",
     intro:
-      "Buffer is great for queue-based scheduling, but teams that post across many networks often end up duplicating captions, switching tabs, and paying for add-ons. Social0 is built around one composer and parallel publishing to 9+ platforms, with scheduling, drafts, and a calendar in the same workflow.",
+      "Buffer is solid for queue-based scheduling. If you post across many networks, you often end up rewriting captions, hopping between channels, and losing track of what actually went live. Social0 is built around one composer, parallel publishing to nine platforms, and clear per-platform results.",
     whySwitch: [
-      "One composer for text, images, videos, threads, and collections",
+      "One composer for text, images, video, threads, and carousels",
       "Publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest",
-      "See per-platform results when a publish partially fails",
-      "3-day free trial on all plans - no credit card games",
-      "Transparent pricing without per-channel upsells",
+      "Parallel publishing — every selected account at once",
+      "Per-platform captions when you need a different hook",
+      "Calendar, drafts, and scheduled posts in the same workflow",
     ],
     comparisonRows: [
       {
         feature: "Compose once, publish everywhere",
-        social0: "Yes - single composer",
+        social0: "Single composer",
         competitor: "Mostly per-channel queues",
       },
       {
-        feature: "Platforms supported",
-        social0: "9+ including Bluesky & Threads",
+        feature: "Platforms",
+        social0: "9 including Bluesky & Threads",
         competitor: "Strong core set; varies by plan",
       },
       {
@@ -61,31 +61,31 @@ export const ALTERNATIVES: AlternativePage[] = [
         competitor: "Sequential / per-queue",
       },
       {
-        feature: "Free trial",
-        social0: "7 days on every plan",
-        competitor: "Limited free tier",
+        feature: "Per-platform captions",
+        social0: "Yes",
+        competitor: "Limited",
       },
       {
-        feature: "Built for indie creators & small teams",
-        social0: "Yes",
-        competitor: "Yes",
+        feature: "Publish feedback",
+        social0: "Clear success / fail per platform",
+        competitor: "Varies by channel",
       },
     ],
     faq: [
       {
         question: "Is Social0 a good Buffer alternative?",
         answer:
-          "If you post to more than one or two platforms and want one workflow instead of separate queues, Social0 is a strong Buffer alternative. You write once, pick accounts, and publish or schedule in a single step.",
+          "If you post to more than one or two platforms and want one workflow instead of separate queues, yes. Write once, pick accounts, and publish or schedule in a single step.",
       },
       {
         question: "Can I migrate scheduled posts from Buffer?",
         answer:
-          "Export your content from Buffer and recreate posts in Social0's composer. There is no automatic importer yet, but drafts and scheduling are quick once accounts are connected.",
+          "Export your content from Buffer and recreate posts in Social0. There is no automatic importer yet — drafts and scheduling are quick once your accounts are connected.",
       },
       {
         question: "Does Social0 support the same platforms as Buffer?",
         answer:
-          "Social0 supports X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest. Compare your current Buffer channels against this list before switching.",
+          "Social0 supports X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest. Check your current Buffer channels against that list before switching.",
       },
     ],
     relatedFeatureSlugs: [
@@ -99,7 +99,7 @@ export const ALTERNATIVES: AlternativePage[] = [
     competitorName: "Hootsuite",
     metaTitle: "Hootsuite Alternative - Social0 | Simpler Social Scheduling",
     metaDescription:
-      "Hootsuite alternative for creators and small teams. Social0 offers focused scheduling and publishing without enterprise complexity or per-seat pricing.",
+      "Hootsuite alternative for creators and small teams. Social0 offers focused scheduling and publishing without enterprise complexity.",
     keywords: [
       "hootsuite alternative",
       "hootsuite vs social0",
@@ -107,26 +107,26 @@ export const ALTERNATIVES: AlternativePage[] = [
     ],
     heroHeadline: "A Hootsuite alternative without the enterprise overhead",
     heroSubheadline:
-      "Schedule and publish across major platforms from one clean dashboard - built for speed, not boardrooms.",
+      "Schedule and publish across major platforms from one clean dashboard — built for speed, not boardrooms.",
     intro:
-      "Hootsuite pioneered social media management for agencies and enterprises. If you need a lighter tool that still handles multi-platform publishing, scheduling, and multiple accounts per network, Social0 focuses on the workflow creators actually use daily.",
+      "Hootsuite pioneered social management for agencies and enterprises. If you want a lighter tool that still handles multi-platform publishing, scheduling, and multiple accounts, Social0 focuses on the daily workflow: connect, compose, schedule or post.",
     whySwitch: [
-      "Faster onboarding - connect accounts and post in minutes",
-      "No per-seat pricing maze for small teams",
-      "Unified composer instead of separate stream tabs",
+      "Connect accounts and post in minutes",
+      "Unified composer instead of stream-heavy tabs",
       "Scheduling calendar and drafts built in",
-      "OAuth-only connections - we never store your passwords",
+      "OAuth-only connections — we never store passwords",
+      "Clear per-platform publish results",
     ],
     comparisonRows: [
       {
-        feature: "Target user",
+        feature: "Best for",
         social0: "Creators & lean teams",
         competitor: "Agencies & enterprise",
       },
       {
-        feature: "Pricing complexity",
-        social0: "Simple tiered plans",
-        competitor: "Higher tiers & add-ons",
+        feature: "Setup complexity",
+        social0: "Simple",
+        competitor: "Heavier onboarding",
       },
       {
         feature: "Multi-platform composer",
@@ -136,19 +136,19 @@ export const ALTERNATIVES: AlternativePage[] = [
       {
         feature: "Time to first post",
         social0: "Minutes",
-        competitor: "Often longer setup",
+        competitor: "Often longer",
       },
     ],
     faq: [
       {
         question: "Who should pick Social0 over Hootsuite?",
         answer:
-          "Solo creators, indie founders, and small teams who want scheduling and publishing without enterprise analytics suites or per-user fees are a better fit for Social0.",
+          "Solo creators, indie founders, and small teams who want scheduling and publishing without an enterprise suite or a long setup path.",
       },
       {
         question: "Does Social0 have team features?",
         answer:
-          "Team collaboration is on the roadmap. Today Social0 is optimized for individuals and small teams who manage their own accounts.",
+          "Yes — you can invite teammates from the dashboard. Social0 stays focused on publishing rather than full enterprise social suites.",
       },
     ],
     relatedFeatureSlugs: ["multi-platform-scheduler", "linkedin-scheduler"],
@@ -158,19 +158,19 @@ export const ALTERNATIVES: AlternativePage[] = [
     competitorName: "Later",
     metaTitle: "Later Alternative - Social0 | Schedule Beyond Instagram",
     metaDescription:
-      "Later alternative for scheduling across X, LinkedIn, TikTok, YouTube, Threads, Bluesky, and more - not just visual-first networks.",
+      "Later alternative for scheduling across X, LinkedIn, TikTok, YouTube, Threads, Bluesky, and more — not just visual-first networks.",
     keywords: ["later alternative", "later vs social0", "instagram scheduler"],
     heroHeadline: "A Later alternative for every platform you post on",
     heroSubheadline:
-      "Later excels at visual planning. Social0 is built for creators who need one place to schedule text, images, and video everywhere.",
+      "Later excels at visual planning. Social0 is for creators who need one place for text, images, and video everywhere.",
     intro:
-      "Later is popular for Instagram planning and link-in-bio. Social0 targets the same creators who also post on X, LinkedIn, TikTok, YouTube, and newer networks like Threads and Bluesky - without maintaining separate tools per platform.",
+      "Later is popular for Instagram planning. Social0 targets creators who also post on X, LinkedIn, TikTok, YouTube, Threads, and Bluesky — without stacking a separate tool per network.",
     whySwitch: [
       "Strong support for text-first platforms (X, LinkedIn, Bluesky, Threads)",
-      "Video and image posts with per-platform validation",
-      "Calendar view for all scheduled content",
-      "Multiple accounts per platform on supported plans",
-      "One bill instead of stacking single-network tools",
+      "Image and video posts with per-platform validation",
+      "Calendar view for everything scheduled",
+      "Multiple accounts per platform on paid plans",
+      "One workflow instead of stacking single-network tools",
     ],
     comparisonRows: [
       {
@@ -181,7 +181,7 @@ export const ALTERNATIVES: AlternativePage[] = [
       {
         feature: "X / LinkedIn / Bluesky",
         social0: "Native",
-        competitor: "Limited vs visual focus",
+        competitor: "Secondary to visual focus",
       },
       {
         feature: "Unified composer",
@@ -189,16 +189,16 @@ export const ALTERNATIVES: AlternativePage[] = [
         competitor: "Visual-first workflow",
       },
       {
-        feature: "Free trial",
-        social0: "7 days",
-        competitor: "Free tier available",
+        feature: "Parallel publishing",
+        social0: "All selected accounts at once",
+        competitor: "Per-network flow",
       },
     ],
     faq: [
       {
         question: "Is Social0 better than Later for Instagram?",
         answer:
-          "Both support Instagram scheduling. Choose Social0 if Instagram is one of several platforms you publish to and you want one dashboard for all of them.",
+          "Both support Instagram scheduling. Choose Social0 when Instagram is one of several platforms you publish to and you want one dashboard for all of them.",
       },
     ],
     relatedFeatureSlugs: ["instagram-scheduler", "tiktok-scheduler"],
@@ -212,15 +212,15 @@ export const ALTERNATIVES: AlternativePage[] = [
     keywords: ["metricool alternative", "metricool vs social0"],
     heroHeadline: "A Metricool alternative focused on publishing speed",
     heroSubheadline:
-      "When your bottleneck is posting - not reporting - Social0 gets content live faster.",
+      "When your bottleneck is posting — not reporting — Social0 gets content live faster.",
     intro:
-      "Metricool bundles scheduling with analytics and ads reporting. Social0 deliberately focuses on the publish path: connect accounts, compose, schedule or post now, and see clear per-platform results.",
+      "Metricool bundles scheduling with analytics and ads reporting. Social0 focuses on the publish path: connect accounts, compose, schedule or post now, and see clear per-platform results.",
     whySwitch: [
       "Publish-first UX without analytics clutter",
       "Parallel publishing to every selected account",
-      "Drafts, scheduled posts, and calendar in one app",
+      "Drafts, scheduled posts, and calendar in one place",
       "Encrypted OAuth token storage",
-      "Affordable plans for indie creators",
+      "Built for indie creators and small teams",
     ],
     comparisonRows: [
       {
@@ -238,12 +238,17 @@ export const ALTERNATIVES: AlternativePage[] = [
         social0: "Not included",
         competitor: "Included",
       },
+      {
+        feature: "Per-platform publish status",
+        social0: "Yes",
+        competitor: "Varies",
+      },
     ],
     faq: [
       {
         question: "Does Social0 replace Metricool analytics?",
         answer:
-          "No. Social0 does not try to replace full analytics suites. It replaces the friction of posting and scheduling across many platforms.",
+          "No. Social0 does not try to replace full analytics suites. It removes the friction of posting and scheduling across many platforms.",
       },
     ],
     relatedFeatureSlugs: ["multi-platform-scheduler", "twitter-scheduler"],
@@ -261,21 +266,21 @@ export const ALTERNATIVES: AlternativePage[] = [
     ],
     heroHeadline: "A Publer alternative with parallel publishing",
     heroSubheadline:
-      "Publer handles many networks well. Social0 focuses on one composer and simultaneous publishing to every account you select.",
+      "Publer covers many networks. Social0 focuses on one composer and simultaneous publishing to every account you select.",
     intro:
-      "Publer is a capable scheduler with workspaces and analytics. Social0 is leaner: connect accounts, compose once, publish in parallel, and see per-platform results - ideal when speed matters more than agency-style workspaces.",
+      "Publer is a capable scheduler with workspaces and analytics. Social0 is leaner: connect accounts, compose once, publish in parallel, and see per-platform results — ideal when speed matters more than agency-style workspaces.",
     whySwitch: [
       "Parallel publish to all selected accounts at once",
       "No workspace complexity for solo creators",
-      "Threads and Bluesky native support",
-      "3-day free trial on every plan",
-      "Clear per-platform publish feedback",
+      "Native Threads and Bluesky support",
+      "Per-platform captions and validation",
+      "Clear success / fail feedback per network",
     ],
     comparisonRows: [
       {
         feature: "Compose once",
-        social0: "Yes - parallel publish",
-        competitor: "Yes - per-network queues",
+        social0: "Yes — parallel publish",
+        competitor: "Yes — per-network queues",
       },
       {
         feature: "Threads & Bluesky",
@@ -283,7 +288,7 @@ export const ALTERNATIVES: AlternativePage[] = [
         competitor: "Supported",
       },
       {
-        feature: "Analytics focus",
+        feature: "Focus",
         social0: "Publish-first",
         competitor: "Scheduling + analytics",
       },
@@ -297,7 +302,7 @@ export const ALTERNATIVES: AlternativePage[] = [
       {
         question: "Is Social0 a good Publer alternative?",
         answer:
-          "If you want a faster compose-once workflow without workspace overhead, Social0 is a strong Publer alternative for multi-platform publishing.",
+          "If you want a faster compose-once workflow without workspace overhead, Social0 is a strong fit for multi-platform publishing.",
       },
     ],
     relatedFeatureSlugs: ["multi-platform-scheduler", "threads-scheduler"],
@@ -305,25 +310,25 @@ export const ALTERNATIVES: AlternativePage[] = [
   {
     slug: "sprout-social",
     competitorName: "Sprout Social",
-    metaTitle: "Sprout Social Alternative - Social0 | Affordable Scheduling",
+    metaTitle: "Sprout Social Alternative - Social0 | Focused Scheduling",
     metaDescription:
-      "Sprout Social alternative for creators who need scheduling and publishing without enterprise pricing or analytics suites.",
+      "Sprout Social alternative for creators who need scheduling and publishing without enterprise suites or heavy onboarding.",
     keywords: [
       "sprout social alternative",
       "sprout social vs social0",
-      "cheap social media scheduler",
+      "social media scheduler",
     ],
-    heroHeadline: "A Sprout Social alternative without enterprise pricing",
+    heroHeadline: "A Sprout Social alternative without enterprise weight",
     heroSubheadline:
       "Sprout Social is built for large teams and analytics. Social0 is built for getting content published across every platform you use.",
     intro:
-      "Sprout Social offers inbox management, listening, and reporting at a premium price point. Social0 deliberately focuses on the publish path - scheduling, drafts, calendar, and multi-platform posting - at a fraction of the cost for solo creators and small teams.",
+      "Sprout Social offers inbox management, listening, and reporting for larger orgs. Social0 focuses on the publish path — scheduling, drafts, calendar, and multi-platform posting — for creators and small teams who just need content live.",
     whySwitch: [
-      "Affordable plans with 3-day free trial",
-      "No per-seat enterprise pricing",
       "Publish-first UX without analytics clutter",
-      "9+ platforms including Bluesky and Threads",
+      "Nine platforms including Bluesky and Threads",
       "Minutes to first scheduled post",
+      "Parallel publishing with clear per-platform results",
+      "Simple plans without enterprise seat mazes",
     ],
     comparisonRows: [
       {
@@ -332,9 +337,9 @@ export const ALTERNATIVES: AlternativePage[] = [
         competitor: "Enterprise social suite",
       },
       {
-        feature: "Pricing",
-        social0: "Creator-friendly tiers",
-        competitor: "Higher per-seat cost",
+        feature: "Onboarding",
+        social0: "Minutes",
+        competitor: "Longer setup",
       },
       {
         feature: "Social listening",
@@ -342,9 +347,9 @@ export const ALTERNATIVES: AlternativePage[] = [
         competitor: "Included",
       },
       {
-        feature: "Time to value",
-        social0: "Minutes",
-        competitor: "Longer onboarding",
+        feature: "Parallel publishing",
+        social0: "Yes",
+        competitor: "Available in suite",
       },
     ],
     faq: [

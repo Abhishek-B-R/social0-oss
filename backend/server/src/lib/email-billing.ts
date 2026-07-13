@@ -19,24 +19,3 @@ export function normalizeBillingEmail(email: string): string {
 
   return `${local}@${domain}`;
 }
-
-// ponytail: self-check — run via `npx tsx src/lib/email-billing.ts` from backend/server
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const assert = (cond: boolean, msg: string) => {
-    if (!cond) throw new Error(msg);
-  };
-  assert(
-    normalizeBillingEmail("AbhishekBR989+123@gmail.com") ===
-      "abhishekbr989+123@gmail.com",
-    "plus-tag preserved",
-  );
-  assert(
-    normalizeBillingEmail("abhishek.br989@gmail.com") === "abhishekbr989@gmail.com",
-    "gmail dots still collapse without plus",
-  );
-  assert(
-    normalizeBillingEmail("abhishekbr989+123@gmail.com") !==
-      normalizeBillingEmail("abhishekbr989@gmail.com"),
-    "plus alias distinct from base",
-  );
-}

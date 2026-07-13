@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { normalizeDatabaseUrl } from "../lib/database-url.js";
+import { normalizeDatabaseUrl } from "@social0/shared";
 import { loadServerEnv } from "../lib/env.js";
 import {
   user,

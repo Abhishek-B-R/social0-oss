@@ -3,7 +3,7 @@ import { db } from "../db/index.js";
 import { verification, connectedAccounts } from "../db/schema.js";
 import { eq, and } from "drizzle-orm";
 import { headers } from "../lib/http/request-cookies.js";
-import { decryptToken, encryptToken } from "../lib/encryption.js";
+import { decryptToken, encryptToken } from "@social0/shared";
 import { getRemainingSlots } from "../lib/connections.js";
 import { AppRequest } from "../lib/http/http.js";
 import crypto from "crypto";

@@ -1,9 +1,13 @@
 {
-  "name": "@social0/mcp-server",
-  "version": "0.1.0",
-  "description": "Official Model Context Protocol server for Social0 — manage social posts from AI assistants",
+  "name": "social0-mcp",
+  "version": "0.2.2",
+  "description": "Post to Instagram, TikTok, YouTube, X, LinkedIn, and more from Claude, Cursor, or ChatGPT",
   "type": "module",
   "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./server": "./dist/server.js"
+  },
   "bin": {
     "social0-mcp": "dist/index.js"
   },
@@ -11,7 +15,9 @@
     "dist",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "AGENTS.md",
+    "server.json"
   ],
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -32,6 +38,15 @@
     "claude"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Abhishek-B-R/social0-mcp.git"
+  },
+  "homepage": "https://github.com/Abhishek-B-R/social0-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/Abhishek-B-R/social0-mcp/issues"
+  },
+  "mcpName": "io.github.Abhishek-B-R/social0-mcp",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
     "dotenv": "^16.5.0",

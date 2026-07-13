@@ -1,9 +1,14 @@
-
+import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { CheckCircle } from "lucide-react";
 import { FlowAnimation } from "./FlowAnimation";
 
+function developersHref(pathname: string) {
+  return pathname === "/home" ? "/home#developers" : "/#developers";
+}
+
 export function Hero({ signedIn = false }: { signedIn?: boolean }) {
+  const { pathname } = useLocation();
   return (
     <section className="px-4 pb-8 pt-12 sm:px-6 sm:pt-16 lg:px-8 lg:pt-28">
       <div className="mx-auto max-w-[1180px]">
@@ -50,6 +55,15 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="h-1.5 w-1.5 ml-2 shrink-0 rounded-full bg-emerald-500/80" />
                 Be among the first to try Social0
+              </p>
+              <p className="text-[13px] text-muted-foreground/90">
+                <Link
+                  href={developersHref(pathname)}
+                  className="text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  REST API & MCP
+                </Link>
+                {" · "}for builders and AI workflows
               </p>
             </div>
           </div>

@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { Navigate } from "react-router-dom";
 import { PostsPage as PostsPageView } from "@/features/dashboard/posts/PostsPage";
 import { BillingPage as BillingPageView } from "@/features/dashboard/billing/BillingPage";
 import { CalendarPage as CalendarPageView } from "@/features/dashboard/calendar/CalendarPage";
@@ -7,10 +6,6 @@ import { ConnectionsPage as ConnectionsPageView } from "@/features/dashboard/con
 import { SettingsPage as SettingsPageView } from "@/pages/SettingsPage";
 import { FeedbackPage as FeedbackPageView } from "@/features/dashboard/feedback/FeedbackPage";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
-
-export function DashboardIndexPage() {
-  return <Navigate to="/dashboard/composer" replace />;
-}
 
 export function PostsPage() {
   return (

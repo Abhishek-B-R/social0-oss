@@ -6,6 +6,7 @@ import AlternativesPage from "@/features/marketing/pages/AlternativesIndexPage";
 import { FeatureDetailPage } from "@/pages/FeatureDetailPage";
 import { AlternativeDetailPage } from "@/pages/AlternativeDetailPage";
 import { HomeMarketingPage } from "@/pages/HomeMarketingPage";
+import McpPage from "@/features/marketing/pages/McpPage";
 
 export const MarketingPages = {
   Terms: TermsPage,
@@ -16,4 +17,5 @@ export const MarketingPages = {
   AlternativesIndex: AlternativesPage,
   AlternativeDetail: AlternativeDetailPage,
   Home: HomeMarketingPage,
+  Mcp: McpPage,
 };

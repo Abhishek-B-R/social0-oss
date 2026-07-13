@@ -14,7 +14,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { fetchApi } from "@/lib/fetch-api";
-import { DOCS_API_KEYS_URL } from "@/lib/docs-url";
+import {
+  DOCS_API_KEYS_URL,
+  DOCS_API_QUICKSTART_URL,
+  DOCS_API_URL,
+  DOCS_API_WEBHOOKS_URL,
+} from "@/lib/docs-url";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -198,7 +203,7 @@ export default function ApiKeysPage() {
   };
 
   return (
-    <div className="max-w-4xl">
+    <div className="mx-auto w-full max-w-4xl sm:mt-10">
       <div className="flex items-center gap-2">
         <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
           Developer
@@ -208,12 +213,30 @@ export default function ApiKeysPage() {
       <p className="mt-2 text-text-muted">
         API keys and webhooks for programmatic access.{" "}
         <a
-          href="/docs"
+          href={DOCS_API_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="text-primary underline-offset-2 hover:underline"
         >
-          API documentation
+          REST API docs
+        </a>
+        {" · "}
+        <a
+          href={DOCS_API_QUICKSTART_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline-offset-2 hover:underline"
+        >
+          Quickstart
+        </a>
+        {" · "}
+        <a
+          href={DOCS_API_WEBHOOKS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline-offset-2 hover:underline"
+        >
+          Webhooks
         </a>
       </p>
 
@@ -325,7 +348,16 @@ export default function ApiKeysPage() {
         <div className="mt-6">
           <div className="flex items-center justify-between gap-4 mb-4">
             <p className="text-sm text-text-muted">
-              Receive HTTP POST notifications when posts are published, failed, scheduled, or deleted.
+              Receive HTTP POST notifications when posts are published, failed, scheduled, or
+              deleted.{" "}
+              <a
+                href={DOCS_API_WEBHOOKS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline-offset-2 hover:underline"
+              >
+                Webhook docs
+              </a>
             </p>
             <Button onClick={() => setWebhookOpen(true)} size="sm">
               <Plus className="h-4 w-4 mr-1" />
@@ -494,7 +526,17 @@ export default function ApiKeysPage() {
           <DialogHeader>
             <DialogTitle>Webhook signing secret</DialogTitle>
             <DialogDescription>
-              Verify payloads with HMAC-SHA256 using this secret.
+              Verify the{" "}
+              <code className="text-xs">X-Social0-Signature</code> header with
+              HMAC-SHA256 and this secret.{" "}
+              <a
+                href={DOCS_API_WEBHOOKS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline-offset-2 hover:underline"
+              >
+                Webhook docs
+              </a>
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2">

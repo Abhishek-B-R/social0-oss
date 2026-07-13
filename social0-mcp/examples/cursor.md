@@ -1,44 +1,51 @@
 # Cursor
 
-Add to Cursor MCP settings (`.cursor/mcp.json` in your project or global Cursor settings):
+## Remote URL (recommended)
+
+If your Cursor build supports HTTP MCP servers:
+
+**Settings → MCP**, or project `.cursor/mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "social0": {
-      "command": "node",
-      "args": ["/absolute/path/to/social0-mcp/dist/index.js"],
-      "env": {
-        "SOCIAL0_API_KEY": "s0_live_your_key_here",
-        "SOCIAL0_API_URL": "https://api.social0.app/v1"
-      }
+      "url": "https://mcp.social0.app/mcp"
     }
   }
 }
 ```
 
-For development with hot reload:
+Authorize with Social0 when prompted (OAuth). No API key in config.
+
+## Local npx (fallback)
+
+Create a key at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys) (`sk_live_…`):
 
 ```json
 {
   "mcpServers": {
     "social0": {
       "command": "npx",
-      "args": ["tsx", "/absolute/path/to/social0-mcp/src/index.ts"],
+      "args": ["-y", "social0-mcp"],
       "env": {
-        "SOCIAL0_API_KEY": "s0_live_your_key_here",
-        "SOCIAL0_MCP_VERBOSE": "true"
+        "SOCIAL0_API_KEY": "sk_live_your_key_here"
       }
     }
   }
 }
 ```
 
-Restart Cursor or reload MCP servers after saving.
+Requires **Node.js 20+** on your PATH so `npx` works.
+
+## Reload
+
+Restart Cursor or reload MCP servers. Test: “Show my connected Social0 accounts.”
 
 ## Example prompts
 
 - "Use Social0 to draft a post about our Series A for LinkedIn and X."
-- "Upload `./assets/hero.png` and create a post with it for Instagram."
+- "Upload this image from a URL and create a post with it for Instagram."
 - "Show all my scheduled Social0 posts."
 - "Publish the draft I created yesterday."
+- "Check the publish status for tracking id …"
