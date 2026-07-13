@@ -1,11 +1,9 @@
-
-
 import React, { createRef, forwardRef, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { User } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { AnimatedBeam } from "@/components/magicui/animated-beam";
+import { AnimatedBeam } from "@/components/animated-beam";
 import {
   XIcon,
   InstagramIcon,
