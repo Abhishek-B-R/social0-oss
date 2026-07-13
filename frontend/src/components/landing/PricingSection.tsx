@@ -6,6 +6,7 @@ const freeFeatures = [
   `${getPlanLimits("free").maxFreePosts} posts to try it out before you commit`,
   "Schedule posts across your channels",
   "All 9 platforms - one dashboard",
+  "REST API & MCP included",
   "No credit card required",
   "No trial that auto-charges you",
   "Activated instantly when you sign up",
@@ -43,6 +44,7 @@ const starterFeatures = [
   "Up to 5 connected accounts",
   "Multiple accounts per platform",
   "Unlimited posts",
+  "REST API & MCP included",
   "Carousel posts",
   "Threads & Collections support",
   "Human support",
@@ -52,6 +54,7 @@ const growthFeatures = [
   { text: "Everything in Starter", highlight: true },
   { text: "Up to 15 connected accounts", highlight: true },
   { text: "Unlimited posts across all 9 platforms", highlight: false },
+  { text: "REST API & MCP included", highlight: false },
   { text: "Multiple accounts per platform", highlight: false },
   { text: "Auto-plug high performing tweets", highlight: false },
   { text: "Auto-repost on autopilot", highlight: false },
@@ -97,8 +100,8 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
           </div>
         </div>
         <p className="mb-3 text-[15px] text-muted-foreground">
-          Start free today. Upgrade when you&apos;re ready - every paid plan
-          includes a 3-day trial.
+          Start free today. Upgrade when you&apos;re ready — every plan includes
+          REST API &amp; MCP. Paid plans include a 3-day trial.
         </p>
 
         <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-3">
