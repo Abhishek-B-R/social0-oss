@@ -1,0 +1,26 @@
+{
+  "name": "social0",
+  "private": true,
+  "description": "Orchestration scripts only — frontend and backend stay separate packages (Pages deploys frontend/ alone).",
+  "scripts": {
+    "install:all": "npm install --prefix frontend && npm install --prefix backend",
+    "dev": "npm run dev --prefix backend/server & npm run dev --prefix backend/background-worker & npm run dev --prefix frontend & wait",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:server": "npm run dev --prefix backend/server",
+    "dev:worker": "npm run dev --prefix backend/background-worker",
+    "dev:backend": "npm run dev --prefix backend",
+    "build": "npm run build --prefix backend && npm run build --prefix frontend",
+    "build:backend": "npm run build --prefix backend",
+    "build:frontend": "npm run build --prefix frontend",
+    "lint": "npm run lint --prefix frontend",
+    "typecheck": "npm run typecheck:backend && npm run typecheck:frontend",
+    "typecheck:frontend": "npm run typecheck --prefix frontend",
+    "typecheck:backend": "npm run build --prefix backend/shared && npx --prefix backend tsc -p backend/server/tsconfig.json --noEmit",
+    "db:generate": "npm run db:generate --prefix backend",
+    "db:migrate": "npm run db:migrate --prefix backend",
+    "db:studio": "npm run db:studio --prefix backend"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
