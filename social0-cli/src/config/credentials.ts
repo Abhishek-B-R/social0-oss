@@ -1,12 +1,23 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
 import { readFileSync, writeFileSync, unlinkSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { password } from "@inquirer/prompts";
+import { confirm, password } from "@inquirer/prompts";
 import { ensureConfigDir, getConfigDir } from "./settings.js";
 
 const SERVICE_NAME = "social0-cli";
 const ACCOUNT_NAME = "api-key";
-const FALLBACK_FILE = "credentials.enc";
+const ENCRYPTED_FILE = "credentials.enc";
+const PLAIN_FILE = "credentials";
+
+/** How to handle passphrase when OS keychain is unavailable. */
+export type PassphraseMode = "ask" | "require" | "skip";
+
+export type CredentialStorage =
+  | "env"
+  | "keychain"
+  | "encrypted"
+  | "plaintext"
+  | "none";
 
 // ponytail: in-process only; avoids re-prompting every command in one session
 let sessionPassphrase: string | null = null;
@@ -45,20 +56,20 @@ function decryptWithPassphrase(ciphertext: string, passphrase: string): string {
   return Buffer.concat([decipher.update(data), decipher.final()]).toString("utf8");
 }
 
-async function resolvePassphrase(confirm = false): Promise<string> {
+async function resolvePassphrase(confirmCreate = false): Promise<string> {
   const env = process.env.SOCIAL0_CREDENTIAL_PASSPHRASE;
   if (env) return env;
   if (sessionPassphrase) return sessionPassphrase;
 
   const pass = await password({
-    message: confirm
-      ? "Create a local encryption passphrase (required without OS keychain):"
+    message: confirmCreate
+      ? "Create a local encryption passphrase:"
       : "Enter your credential encryption passphrase:",
     mask: "•",
     validate: (v) => (v.length >= 8 ? true : "Passphrase must be at least 8 characters"),
   });
 
-  if (confirm) {
+  if (confirmCreate) {
     const confirmPass = await password({
       message: "Confirm passphrase:",
       mask: "•",
@@ -72,30 +83,65 @@ async function resolvePassphrase(confirm = false): Promise<string> {
   return pass;
 }
 
-function fallbackPath(): string {
-  return join(getConfigDir(), FALLBACK_FILE);
+function encryptedPath(): string {
+  return join(getConfigDir(), ENCRYPTED_FILE);
 }
 
-function removeFallbackFile(): void {
-  const path = fallbackPath();
+function plainPath(): string {
+  return join(getConfigDir(), PLAIN_FILE);
+}
+
+function removeFile(path: string): void {
   if (existsSync(path)) unlinkSync(path);
 }
 
-export async function storeApiKey(apiKey: string): Promise<void> {
+function writeEncrypted(apiKey: string, passphrase: string): void {
+  writeFileSync(encryptedPath(), encryptWithPassphrase(apiKey, passphrase), { mode: 0o600 });
+  removeFile(plainPath());
+}
+
+function writePlain(apiKey: string): void {
+  writeFileSync(plainPath(), apiKey, { mode: 0o600 });
+  removeFile(encryptedPath());
+}
+
+async function shouldUsePassphrase(mode: PassphraseMode): Promise<boolean> {
+  if (mode === "require") return true;
+  if (mode === "skip") return false;
+  if (process.env.SOCIAL0_CREDENTIAL_PASSPHRASE) return true;
+  // Non-interactive: skip unless env passphrase is set (handled above)
+  if (!process.stdin.isTTY) return false;
+
+  return confirm({
+    message: "Protect local credentials with a passphrase? (optional)",
+    default: true,
+  });
+}
+
+export async function storeApiKey(
+  apiKey: string,
+  options: { passphrase?: PassphraseMode } = {},
+): Promise<void> {
   ensureConfigDir();
   const keytar = await tryKeytar();
   if (keytar) {
     try {
       await keytar.setPassword(SERVICE_NAME, ACCOUNT_NAME, apiKey);
-      removeFallbackFile();
+      removeFile(encryptedPath());
+      removeFile(plainPath());
       return;
     } catch {
-      // fall through to passphrase-encrypted file
+      // fall through to local file storage
     }
   }
 
-  const passphrase = await resolvePassphrase(true);
-  writeFileSync(fallbackPath(), encryptWithPassphrase(apiKey, passphrase), { mode: 0o600 });
+  const mode = options.passphrase ?? "ask";
+  if (await shouldUsePassphrase(mode)) {
+    const passphrase = await resolvePassphrase(true);
+    writeEncrypted(apiKey, passphrase);
+  } else {
+    writePlain(apiKey);
+  }
 }
 
 export async function getApiKey(): Promise<string | null> {
@@ -112,16 +158,26 @@ export async function getApiKey(): Promise<string | null> {
     }
   }
 
-  const path = fallbackPath();
-  if (!existsSync(path)) return null;
-
-  try {
-    const passphrase = await resolvePassphrase();
-    return decryptWithPassphrase(readFileSync(path, "utf8"), passphrase);
-  } catch {
-    removeFallbackFile();
-    return null;
+  if (existsSync(encryptedPath())) {
+    try {
+      const passphrase = await resolvePassphrase();
+      return decryptWithPassphrase(readFileSync(encryptedPath(), "utf8"), passphrase);
+    } catch {
+      throw new Error(
+        "Could not decrypt credentials (wrong passphrase?). Try again, or run `social0 logout` then `social0 login`.",
+      );
+    }
   }
+
+  if (existsSync(plainPath())) {
+    try {
+      return readFileSync(plainPath(), "utf8").trim() || null;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
 }
 
 export async function deleteApiKey(): Promise<void> {
@@ -134,7 +190,8 @@ export async function deleteApiKey(): Promise<void> {
       // ignore
     }
   }
-  removeFallbackFile();
+  removeFile(encryptedPath());
+  removeFile(plainPath());
 }
 
 export async function hasApiKey(): Promise<boolean> {
@@ -149,7 +206,54 @@ export async function hasApiKey(): Promise<boolean> {
     }
   }
 
-  return existsSync(fallbackPath());
+  return existsSync(encryptedPath()) || existsSync(plainPath());
+}
+
+export async function getCredentialStorage(): Promise<CredentialStorage> {
+  if (process.env.SOCIAL0_API_KEY) return "env";
+
+  const keytar = await tryKeytar();
+  if (keytar) {
+    try {
+      if (await keytar.getPassword(SERVICE_NAME, ACCOUNT_NAME)) return "keychain";
+    } catch {
+      // fall through
+    }
+  }
+
+  if (existsSync(encryptedPath())) return "encrypted";
+  if (existsSync(plainPath())) return "plaintext";
+  return "none";
+}
+
+/** Enable passphrase encryption for an existing local API key. */
+export async function enablePassphrase(): Promise<"encrypted" | "keychain" | "none"> {
+  const storage = await getCredentialStorage();
+  if (storage === "keychain" || storage === "env") return "keychain";
+  if (storage === "none") return "none";
+
+  const apiKey = await getApiKey();
+  if (!apiKey) return "none";
+
+  const passphrase = await resolvePassphrase(true);
+  writeEncrypted(apiKey, passphrase);
+  sessionPassphrase = passphrase;
+  return "encrypted";
+}
+
+/** Drop passphrase protection and store the API key as a local plaintext file (0600). */
+export async function disablePassphrase(): Promise<"plaintext" | "keychain" | "none" | "already"> {
+  const storage = await getCredentialStorage();
+  if (storage === "keychain" || storage === "env") return "keychain";
+  if (storage === "none") return "none";
+  if (storage === "plaintext") return "already";
+
+  const apiKey = await getApiKey();
+  if (!apiKey) return "none";
+
+  writePlain(apiKey);
+  sessionPassphrase = null;
+  return "plaintext";
 }
 
 /** @internal — exposed for unit tests only */

@@ -33,6 +33,21 @@ export interface ConnectedAccount {
   created_at: string | null;
 }
 
+export interface MeResponse {
+  id: string;
+  email: string;
+  name: string | null;
+  image: string | null;
+  plan: string;
+  timezone: string;
+  created_at: string | null;
+  api_key: {
+    id: string;
+    name: string;
+    prefix: string;
+  } | null;
+}
+
 export interface PostSummary {
   id: string;
   content: string;

@@ -1,9 +1,9 @@
 import { hasApiKey } from "../config/credentials.js";
 import { loadConfig } from "../config/settings.js";
-import { listAccounts } from "../api/accounts.js";
+import { getMe } from "../api/me.js";
 import { printOutput } from "../utils/output.js";
 import { exitWithError } from "../utils/errors.js";
-import { applyGlobalOptions, ensureAccounts, formatAccountsTable, getFormat } from "./helpers.js";
+import { applyGlobalOptions, getFormat } from "./helpers.js";
 import type { GlobalOptions } from "../types/index.js";
 
 export async function whoamiCommand(opts: GlobalOptions): Promise<void> {
@@ -16,27 +16,32 @@ export async function whoamiCommand(opts: GlobalOptions): Promise<void> {
   }
 
   try {
-    const aliases = await ensureAccounts();
+    const me = await getMe();
     const config = loadConfig();
 
     const data = {
-      authenticated: true,
-      connected_accounts: aliases.length,
+      id: me.id,
+      name: me.name,
+      email: me.email,
+      plan: me.plan,
+      timezone: me.timezone,
       api_url: config.apiUrl,
-      default_timezone: config.defaultTimezone,
-      accounts: formatAccountsTable(aliases),
+      api_key: me.api_key,
+      created_at: me.created_at,
     };
 
     if (format === "table") {
       console.log("");
-      console.log("  Authenticated:  yes");
-      console.log(`  API URL:        ${config.apiUrl}`);
-      console.log(`  Accounts:       ${aliases.length} connected`);
-      console.log(`  Timezone:       ${config.defaultTimezone}`);
-      console.log("");
-      if (aliases.length > 0) {
-        printOutput(data.accounts, "table");
+      console.log(`  Name:     ${me.name ?? "—"}`);
+      console.log(`  Email:    ${me.email}`);
+      console.log(`  Plan:     ${me.plan}`);
+      console.log(`  Timezone: ${me.timezone}`);
+      if (me.api_key) {
+        console.log(`  API key:  ${me.api_key.name} (${me.api_key.prefix}…)`);
       }
+      console.log(`  API URL:  ${config.apiUrl}`);
+      console.log("");
+      console.log("  Run `social0 accounts` to list connected social accounts.");
     } else {
       printOutput(data, format);
     }

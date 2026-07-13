@@ -22,7 +22,7 @@ _social0_completions() {
   COMPREPLY=()
   cur="\${COMP_WORDS[COMP_CWORD]}"
   prev="\${COMP_WORDS[COMP_CWORD-1]}"
-  opts="login logout whoami accounts post publish schedule upload status drafts config doctor version update completion link watch logs export import suggest improve hashtags examples help"
+  opts="login logout whoami passphrase accounts post publish schedule upload status drafts config doctor version update completion link watch logs export import suggest improve hashtags examples help"
 
   if [[ \${COMP_CWORD} -eq 1 ]]; then
     COMPREPLY=( $(compgen -W "\${opts}" -- \${cur}) )
@@ -42,6 +42,9 @@ _social0_completions() {
     config)
       COMPREPLY=( $(compgen -W "get set" -- \${cur}) )
       ;;
+    passphrase)
+      COMPREPLY=( $(compgen -W "status set remove" -- \${cur}) )
+      ;;
     completion)
       COMPREPLY=( $(compgen -W "bash zsh fish powershell" -- \${cur}) )
       ;;
@@ -60,6 +63,7 @@ _social0() {
     'login:Authenticate with API key'
     'logout:Remove stored credentials'
     'whoami:Show current user info'
+    'passphrase:Manage local credential passphrase'
     'accounts:Manage connected accounts'
     'post:Create and manage posts'
     'publish:Publish posts'
@@ -86,6 +90,7 @@ complete -c social0 -f
 complete -c social0 -n "__fish_use_subcommand" -a "login" -d "Authenticate"
 complete -c social0 -n "__fish_use_subcommand" -a "logout" -d "Remove credentials"
 complete -c social0 -n "__fish_use_subcommand" -a "whoami" -d "Show user info"
+complete -c social0 -n "__fish_use_subcommand" -a "passphrase" -d "Manage credential passphrase"
 complete -c social0 -n "__fish_use_subcommand" -a "accounts" -d "Manage accounts"
 complete -c social0 -n "__fish_use_subcommand" -a "post" -d "Manage posts"
 complete -c social0 -n "__fish_use_subcommand" -a "publish" -d "Publish posts"

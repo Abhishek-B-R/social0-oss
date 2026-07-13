@@ -3,7 +3,10 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import Fastify, { type FastifyRequest } from "fastify";
-import { setupFastifyErrorHandler, captureSentryTestError } from "./instrument.js";
+import {
+  setupFastifyErrorHandler,
+  captureSentryTestError,
+} from "./instrument.js";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import { registerQueuePlugin } from "./plugins/queue.js";
@@ -13,7 +16,7 @@ import { registerSecurityHeadersPlugin } from "./plugins/security-headers.js";
 import { registerV1Routes } from "./routes/v1/index.js";
 import { registerApiRoutes } from "./routes/api/index.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
-import { registerDocsRoutes } from "./routes/docs.js";
+import { registerDocsRoutes } from "./routes/v1/docs.js";
 import { registerMcpOAuthPublicRoutes } from "./routes/oauth/mcp.js";
 import { getCorsOrigins } from "./lib/app-url.js";
 import {

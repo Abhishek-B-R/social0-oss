@@ -5,6 +5,7 @@ import chalk from "chalk";
 import { loginCommand } from "./commands/login.js";
 import { logoutCommand } from "./commands/logout.js";
 import { whoamiCommand } from "./commands/whoami.js";
+import { passphraseCommand } from "./commands/passphrase.js";
 import { configCommand } from "./commands/config.js";
 import { accountsCommand } from "./commands/accounts.js";
 import {
@@ -67,9 +68,14 @@ function globalOpts(cmd: Command): GlobalOptions {
 program
   .command("login")
   .description("Authenticate with your Social0 API key (stdin or masked prompt)")
-  .action(async () => {
+  .option("--require-passphrase", "Require a local encryption passphrase (when OS keychain is unavailable)")
+  .option("--skip-passphrase", "Skip passphrase; store API key in a local file (mode 0600)")
+  .action(async (opts) => {
     try {
-      await loginCommand();
+      await loginCommand({
+        passphrase: !!opts.requirePassphrase,
+        noPassphrase: !!opts.skipPassphrase,
+      });
     } catch (err) {
       console.error(formatApiError(err));
       process.exit(1);
@@ -93,6 +99,14 @@ program
       console.error(formatApiError(err));
       process.exit(1);
     }
+  });
+
+program
+  .command("passphrase")
+  .description("Manage optional local credential passphrase")
+  .argument("[action]", "status, set, or remove")
+  .action(async (action) => {
+    await passphraseCommand(action);
   });
 
 // Config

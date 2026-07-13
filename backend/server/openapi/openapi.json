@@ -46,6 +46,43 @@
     }
   },
   "paths": {
+    "/v1/me": {
+      "get": {
+        "summary": "Get current user",
+        "tags": ["Auth"],
+        "responses": {
+          "200": {
+            "description": "Authenticated user profile (name, email, plan)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "email": { "type": "string" },
+                    "name": { "type": "string", "nullable": true },
+                    "image": { "type": "string", "nullable": true },
+                    "plan": { "type": "string" },
+                    "timezone": { "type": "string" },
+                    "created_at": { "type": "string", "format": "date-time", "nullable": true },
+                    "api_key": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": { "type": "string", "format": "uuid" },
+                        "name": { "type": "string" },
+                        "prefix": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Invalid API key", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
     "/v1/accounts": {
       "get": {
         "summary": "List connected accounts",

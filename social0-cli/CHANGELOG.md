@@ -4,9 +4,15 @@ All notable changes to `@social0/cli` will be documented in this file.
 
 ## [0.1.1] - 2026-07-13
 
+### Changed
+
+- Local credential passphrase is now optional; `social0 login` asks whether to enable it when OS keychain is unavailable
+- Add `social0 login --skip-passphrase` / `--require-passphrase` and `social0 passphrase [status|set|remove]`
+- `whoami` now shows Social0 user name, email, and plan (via `GET /v1/me`) instead of connected accounts
+
 ### Security
 
-- Remove weak hostname-derived credential encryption; fallback now requires user passphrase
+- Remove weak hostname-derived credential encryption; fallback supports optional user passphrase
 - Remove `--key` flag from `login`; use masked prompt or stdin pipe instead
 - Redact presigned upload URL query strings in verbose logs
 

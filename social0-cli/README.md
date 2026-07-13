@@ -77,8 +77,21 @@ API keys are stored securely:
 - **macOS** → Keychain
 - **Linux** → Secret Service
 - **Windows** → Credential Manager
-- **Fallback** → AES-encrypted file (requires a user passphrase, or `SOCIAL0_CREDENTIAL_PASSPHRASE`)
+- **Fallback** → local file under `~/.social0/` (mode `0600`). Optionally AES-encrypted with a passphrase (`social0 login` asks, or set `SOCIAL0_CREDENTIAL_PASSPHRASE`)
 - **CI/headless** → `SOCIAL0_API_KEY` environment variable (not written to disk)
+
+```bash
+# Login and skip the optional passphrase prompt
+social0 login --skip-passphrase
+
+# Login and always set a passphrase (when keychain unavailable)
+social0 login --require-passphrase
+
+# Manage passphrase later without re-entering your API key
+social0 passphrase status
+social0 passphrase set
+social0 passphrase remove
+```
 
 ## Commands
 

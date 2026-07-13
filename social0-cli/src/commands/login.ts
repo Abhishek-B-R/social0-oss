@@ -1,4 +1,4 @@
-import { storeApiKey } from "../config/credentials.js";
+import { storeApiKey, type PassphraseMode } from "../config/credentials.js";
 import { getClient } from "../api/client.js";
 import { listAccounts } from "../api/accounts.js";
 import { success } from "../utils/output.js";
@@ -10,7 +10,15 @@ function validateApiKey(key: string): boolean {
   return key.startsWith("sk_live_") || key.startsWith("s0_live_");
 }
 
-export async function loginCommand(): Promise<void> {
+export async function loginCommand(options: {
+  passphrase?: boolean;
+  noPassphrase?: boolean;
+} = {}): Promise<void> {
+  if (options.passphrase && options.noPassphrase) {
+    console.error("Use either --passphrase or --no-passphrase, not both.");
+    process.exit(1);
+  }
+
   let apiKey = await readStdin();
   if (!apiKey) {
     apiKey = await promptApiKey();
@@ -21,7 +29,11 @@ export async function loginCommand(): Promise<void> {
     process.exit(1);
   }
 
-  await storeApiKey(apiKey);
+  let passphraseMode: PassphraseMode = "ask";
+  if (options.passphrase) passphraseMode = "require";
+  if (options.noPassphrase) passphraseMode = "skip";
+
+  await storeApiKey(apiKey, { passphrase: passphraseMode });
 
   const client = getClient();
   client.setApiKey(apiKey);
@@ -33,7 +45,8 @@ export async function loginCommand(): Promise<void> {
     console.log("  Run `social0 accounts` to see your connected accounts.");
     console.log("  Run `social0 post create` to create your first post.");
     console.log("");
-    console.log("  Non-interactive: echo \"sk_live_...\" | social0 login");
+    console.log("  Non-interactive: echo \"sk_live_...\" | social0 login --skip-passphrase");
+    console.log("  Passphrase later: social0 passphrase set | social0 passphrase remove");
   } catch (err) {
     exitWithError(err);
   }
