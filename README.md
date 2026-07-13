@@ -14,7 +14,7 @@ See [`FEATURES.md`](FEATURES.md) for the full product feature list.
 
 ## Tech stack (production)
 
-- **UI**: `frontend/` — React 19, Vite, React Router 7
+- **UI**: `frontend/` — React 19, Vite, React Router 7 (Cloudflare Pages)
 - **API**: `backend/server/` — Fastify, Better Auth, Drizzle ORM
 - **Workers**: `backend/background-worker/` (cron), `cloudflare/publish-worker/` (platform publish)
 - **Database**: PostgreSQL (Neon)
@@ -22,45 +22,50 @@ See [`FEATURES.md`](FEATURES.md) for the full product feature list.
 
 ## Getting started
 
-From the repo root (Bun recommended):
+Frontend and backend are **separate packages** (Pages builds `frontend/` only — do not link `backend/shared` into the SPA).
 
 ```bash
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 
-bun install
-bun run dev
-```
+# One-shot installs both trees
+npm run install:all
 
-That starts the API (`:3001`), background worker, and SPA (`:3000`) together.
+# Or install independently (same as deploy setups)
+cd backend && npm install && cd ../frontend && npm install
+
+# Then from repo root
+npm run dev
+```
 
 Useful scripts:
 
 | Command | Description |
 | --- | --- |
-| `bun run dev` | Frontend + API + background worker |
-| `bun run dev:frontend` | Vite SPA only |
-| `bun run dev:server` | Fastify API only |
-| `bun run dev:worker` | Background worker only |
-| `bun run build` | Build shared, backend, and frontend |
-| `bun run lint` | Frontend ESLint |
-| `bun run typecheck` | Typecheck backend + frontend |
+| `npm run install:all` | Install frontend + backend deps separately |
+| `npm run dev` | Frontend + API + background worker |
+| `npm run dev:frontend` | Vite SPA only (`frontend/`) |
+| `npm run dev:server` | Fastify API only |
+| `npm run build` | Build backend then frontend |
+| `npm run build:frontend` | Frontend only (what Pages needs) |
+| `npm run lint` | Frontend ESLint |
+| `npm run typecheck` | Typecheck backend + frontend |
 
-Package-specific details: [`backend/README.md`](backend/README.md), [`frontend/README.md`](frontend/README.md), [`backend/claude.md`](backend/claude.md).
+Package-specific details: [`backend/README.md`](backend/README.md), [`frontend/README.md`](frontend/README.md), [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Project structure
 
 ```
 social0/
-├── frontend/                 # Production SPA
+├── frontend/                 # SPA — Cloudflare Pages root directory
 ├── backend/
 │   ├── server/               # Fastify API + publish engine
 │   │   └── src/lib/publish-platforms/  # Per-platform publish (add Mastodon here)
 │   ├── background-worker/    # Cron / queue consumers
-│   └── shared/               # Shared backend packages
+│   └── shared/               # Backend-only shared package (not used by frontend)
 ├── cloudflare/               # Edge publish / cron / MCP workers
 ├── social0-cli/              # Public CLI
 └── social0-mcp/              # Public MCP server
 ```
 
-Platform publish lives under `backend/server/src/lib/publish-platforms/` (`twitter`/`x` and LinkedIn use dedicated media helpers; Meta/TikTok/YouTube/etc. are one file each). Prefer that layout when adding a new network.
+Platform publish lives under `backend/server/src/lib/publish-platforms/`. Prefer that layout when adding a new network.

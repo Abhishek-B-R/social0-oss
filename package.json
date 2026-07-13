@@ -1,21 +1,14 @@
 {
   "name": "social0",
   "private": true,
-  "packageManager": "bun@1.3.14",
-  "workspaces": [
-    "frontend",
-    "backend/shared",
-    "backend/server",
-    "backend/background-worker",
-    "social0-cli",
-    "social0-mcp"
-  ],
+  "description": "Orchestration scripts only — frontend and backend stay separate packages (Pages deploys frontend/ alone).",
   "scripts": {
-    "dev": "bun run --cwd backend/server dev & bun run --cwd backend/background-worker dev & bun run --cwd frontend dev & wait",
+    "install:all": "npm install --prefix frontend && npm install --prefix backend",
+    "dev": "npm run dev --prefix backend/server & npm run dev --prefix backend/background-worker & npm run dev --prefix frontend & wait",
     "dev:frontend": "npm run dev --prefix frontend",
     "dev:server": "npm run dev --prefix backend/server",
     "dev:worker": "npm run dev --prefix backend/background-worker",
-    "dev:backend": "bun run --cwd backend dev",
+    "dev:backend": "npm run dev --prefix backend",
     "build": "npm run build --prefix backend && npm run build --prefix frontend",
     "build:backend": "npm run build --prefix backend",
     "build:frontend": "npm run build --prefix frontend",
@@ -23,9 +16,9 @@
     "typecheck": "npm run typecheck:backend && npm run typecheck:frontend",
     "typecheck:frontend": "npm run typecheck --prefix frontend",
     "typecheck:backend": "npm run build --prefix backend/shared && npx --prefix backend tsc -p backend/server/tsconfig.json --noEmit",
-    "db:generate": "bun run --cwd backend db:generate",
-    "db:migrate": "bun run --cwd backend db:migrate",
-    "db:studio": "bun run --cwd backend db:studio"
+    "db:generate": "npm run db:generate --prefix backend",
+    "db:migrate": "npm run db:migrate --prefix backend",
+    "db:studio": "npm run db:studio --prefix backend"
   },
   "engines": {
     "node": ">=20"

@@ -2,11 +2,18 @@
 
 ## Setup
 
+Frontend and backend install separately — Cloudflare Pages deploys `frontend/` alone and must not depend on `backend/shared`.
+
 ```bash
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
-bun install
-bun run dev
+
+npm run install:all
+# equivalent:
+#   npm install --prefix backend
+#   npm install --prefix frontend
+
+npm run dev
 ```
 
 ## Where to change things
@@ -20,9 +27,10 @@ bun run dev
 
 | Command | Description |
 | --- | --- |
-| `bun run dev` | API + worker + SPA |
-| `bun run typecheck` | Backend + frontend TypeScript |
-| `bun run lint` | Frontend ESLint |
-| `bun run build` | Production builds |
+| `npm run install:all` | Install frontend + backend independently |
+| `npm run dev` | API + worker + SPA |
+| `npm run build:frontend` | Frontend production build (Pages) |
+| `npm run typecheck` | Backend + frontend TypeScript |
+| `npm run lint` | Frontend ESLint |
 
 Prefer `publishLog` (not `console.log`) in backend publish paths.
