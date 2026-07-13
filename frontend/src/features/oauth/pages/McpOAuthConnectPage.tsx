@@ -136,7 +136,7 @@ export default function McpOAuthConnectPage() {
   }
 
   return (
-    <MarketingPageLayout>
+    <MarketingPageLayout showCta={false}>
       <SeoHead
         title="Connect Social0 MCP"
         description="Authorize Claude or another AI assistant to manage your Social0 posts."
