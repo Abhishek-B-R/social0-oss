@@ -10,7 +10,7 @@ import { getConnectCallbackBaseUrl } from "../lib/app-url.js";
 import { safeRedirect, rethrowRouteRedirect } from "../lib/redirect.js";
 import { checkAccountLimits } from "../lib/plan-limits.js";
 import { AppRequest } from "../lib/http/http.js";
-import { mirrorProfileImageToR2 } from "../lib/mirror-profile-image.js";
+import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-profile-image.js";
 
 export async function igFbCallback(
   req: AppRequest,
@@ -250,13 +250,13 @@ export async function igFbCallback(
 
       if (existing) {
         // Update existing (reconnect: set isActive so it shows in UI)
-        const profileImageUrl = await mirrorProfileImageToR2(
-          pageData.instagramProfilePictureUrl,
-          {
+        const profileImageUrl = resolveProfileImageUrl(
+          await mirrorProfileImageToR2(pageData.instagramProfilePictureUrl, {
             userId,
             accountId: existing.id,
             platform: "instagram",
-          },
+          }),
+          existing.profileImageUrl,
         );
         await db
           .update(connectedAccounts)

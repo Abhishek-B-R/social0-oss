@@ -9,7 +9,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { AppRequest } from "../lib/http/http.js";
 import { blueskyByokLimiter, enforceRateLimit } from "../lib/ratelimit.js";
-import { mirrorProfileImageToR2 } from "../lib/mirror-profile-image.js";
+import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-profile-image.js";
 
 const byokSchema = z.object({
   handle: z
@@ -156,13 +156,13 @@ export async function blueskyByok(req: AppRequest) {
       validated.appPassword,
       accountId,
     );
-    const profileImageUrl = await mirrorProfileImageToR2(
-      userInfo.profileImageUrl,
-      {
+    const profileImageUrl = resolveProfileImageUrl(
+      await mirrorProfileImageToR2(userInfo.profileImageUrl, {
         userId: session.user.id,
         accountId,
         platform: "bluesky",
-      },
+      }),
+      existing?.profileImageUrl,
     );
 
     if (existing) {

@@ -8,7 +8,7 @@ import { getRemainingSlots } from "../lib/connections.js";
 import { AppRequest } from "../lib/http/http.js";
 import crypto from "crypto";
 import { connectSelectSuccessUrl } from "../lib/app-url.js";
-import { mirrorProfileImageToR2 } from "../lib/mirror-profile-image.js";
+import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-profile-image.js";
 
 export async function igFbSelectGet(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -140,13 +140,13 @@ export async function igFbSelectPost(req: AppRequest) {
   });
 
   if (existing) {
-    const profileImageUrl = await mirrorProfileImageToR2(
-      pageData.instagramProfilePictureUrl,
-      {
+    const profileImageUrl = resolveProfileImageUrl(
+      await mirrorProfileImageToR2(pageData.instagramProfilePictureUrl, {
         userId: session.user.id,
         accountId: existing.id,
         platform: "instagram",
-      },
+      }),
+      existing.profileImageUrl,
     );
     await db
       .update(connectedAccounts)

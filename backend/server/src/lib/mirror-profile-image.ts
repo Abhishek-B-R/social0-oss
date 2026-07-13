@@ -51,6 +51,10 @@ function fetchHeaders(url: string, platform?: string): Record<string, string> {
     lower.includes("byteimg.com") ||
     lower.includes("ibytedtos.com") ||
     lower.includes("muscdn.com");
+  const isTwitterCdn =
+    platform === "twitter_x" ||
+    lower.includes("twimg.com") ||
+    lower.includes("twitter.com");
   const headers: Record<string, string> = {
     Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
   };
@@ -58,8 +62,26 @@ function fetchHeaders(url: string, platform?: string): Record<string, string> {
     headers["User-Agent"] =
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     headers.Referer = "https://www.tiktok.com/";
+  } else if (isTwitterCdn) {
+    headers["User-Agent"] =
+      "Mozilla/5.0 (compatible; Social0Bot/1.0; +https://social0.app)";
   }
   return headers;
+}
+
+export function isStoredOnR2(url: string | null | undefined): boolean {
+  const base = getR2PublicBaseUrl();
+  return !!(base && url && url.startsWith(base));
+}
+
+/** Prefer newly mirrored R2 URL; otherwise keep prior R2 avatar (never platform CDN). */
+export function resolveProfileImageUrl(
+  mirrored: string | null,
+  existing: string | null | undefined,
+): string | null {
+  if (mirrored) return mirrored;
+  if (isStoredOnR2(existing)) return existing ?? null;
+  return null;
 }
 
 /**
@@ -86,7 +108,15 @@ export async function mirrorProfileImageToR2(
 
   const httpsOnly = process.env.NODE_ENV === "production";
   if (!isSafeOutboundUrl(url, { httpsOnly })) return null;
-  if (!(await isSafeResolvedOutboundUrl(url, { httpsOnly }))) return null;
+
+  if (!(await isSafeResolvedOutboundUrl(url, { httpsOnly }))) {
+    console.warn(
+      "[mirror-profile-image] blocked by SSRF check:",
+      opts.platform,
+      url.slice(0, 80),
+    );
+    return null;
+  }
 
   try {
     const res = await safeFetch(url, {

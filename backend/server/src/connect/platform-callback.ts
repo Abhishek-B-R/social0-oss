@@ -26,19 +26,13 @@ import {
   resolveEncryptedRefreshToken,
   youtubeTokenExpiresAt,
 } from "../lib/youtube-token.js";
-import { mirrorProfileImageToR2 } from "../lib/mirror-profile-image.js";
-import { getR2PublicBaseUrl } from "../lib/r2.js";
+import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-profile-image.js";
 
 /** Validate URL is http/https before treating it as a fetchable profile image. */
 function isValidProfileImageUrl(url: unknown): url is string {
   if (typeof url !== "string" || !url.trim()) return false;
   const u = url.trim();
   return u.startsWith("http://") || u.startsWith("https://");
-}
-
-function isStoredOnR2(url: string | null | undefined): boolean {
-  const base = getR2PublicBaseUrl();
-  return !!(base && url && url.startsWith(base));
 }
 
 export async function platformCallback(
@@ -234,9 +228,13 @@ export async function platformCallback(
       const accountId = existing?.id ?? crypto.randomUUID();
       const encryptedAccess = encryptToken(accessToken, accountId);
       const encryptedSecret = encryptToken(accessSecret, accountId);
-      const profileImageUrl = await mirrorProfileImageToR2(
+      const mirroredProfileImageUrl = await mirrorProfileImageToR2(
         userInfo.profileImageUrl,
         { userId, accountId, platform: "twitter_x" },
+      );
+      const profileImageUrl = resolveProfileImageUrl(
+        mirroredProfileImageUrl,
+        existing?.profileImageUrl,
       );
 
       if (existing) {
@@ -700,7 +698,10 @@ export async function platformCallback(
           .update(connectedAccounts)
           .set({
             platformUsername: userInfo.username,
-            profileImageUrl,
+            profileImageUrl: resolveProfileImageUrl(
+              profileImageUrl,
+              existing.profileImageUrl,
+            ),
             encryptedAccessToken: encryptToken(
               tokens.access_token,
               existing.id,
@@ -1053,12 +1054,11 @@ export async function platformCallback(
             ? userInfo.username
             : existing.platformUsername,
         profileImageUrl:
-          mirroredProfileImageUrl ??
-          (!userInfo.profileImageUrl
-            ? existing.profileImageUrl
-            : isStoredOnR2(existing.profileImageUrl)
-              ? existing.profileImageUrl
-              : null),
+          resolveProfileImageUrl(
+            mirroredProfileImageUrl,
+            existing.profileImageUrl,
+          ) ??
+          (!userInfo.profileImageUrl ? existing.profileImageUrl : null),
         isActive: true,
         updatedAt: new Date(),
         ...(platform === "tiktok" && isLikelyTikTokOpenId(userInfo.id)

@@ -9,7 +9,7 @@ import { logConnectBlocked } from "@social0/shared";
 import { AppRequest } from "../lib/http/http.js";
 import crypto from "crypto";
 import { connectSelectSuccessUrl } from "../lib/app-url.js";
-import { mirrorProfileImageToR2 } from "../lib/mirror-profile-image.js";
+import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-profile-image.js";
 
 type LinkedInPayload = {
   userId: string;
@@ -187,11 +187,14 @@ export async function liSelectPost(req: AppRequest) {
 
     const accountId = existing?.id ?? crypto.randomUUID();
     const encryptedAccess = encryptToken(accessToken, accountId);
-    const profileImageUrl = await mirrorProfileImageToR2(acc.profileImageUrl, {
-      userId: session.user.id,
-      accountId,
-      platform: "linkedin",
-    });
+    const profileImageUrl = resolveProfileImageUrl(
+      await mirrorProfileImageToR2(acc.profileImageUrl, {
+        userId: session.user.id,
+        accountId,
+        platform: "linkedin",
+      }),
+      existing?.profileImageUrl,
+    );
 
     if (existing) {
       await db
