@@ -1,0 +1,52 @@
+{
+  "name": "@social0/cli",
+  "version": "0.1.0",
+  "description": "Official CLI for Social0 — manage social media from your terminal",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "social0": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "social0",
+    "social-media",
+    "cli",
+    "twitter",
+    "linkedin",
+    "scheduling"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@inquirer/prompts": "^7.5.0",
+    "chalk": "^5.4.1",
+    "commander": "^13.1.0",
+    "keytar": "^7.9.0",
+    "ora": "^8.2.0",
+    "yaml": "^2.8.0",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
