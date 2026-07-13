@@ -101,6 +101,22 @@ Same idea — add an MCP server with:
 
 ---
 
+## Hosted MCP (Claude Connectors / remote)
+
+For one-click Claude Connectors Directory install, Social0 also ships a **remote Streamable HTTP** endpoint at `https://mcp.social0.app/mcp` with **OAuth 2.0 + PKCE** (no API key in config).
+
+| | Local stdio (`npx`) | Hosted (`mcp.social0.app`) |
+|--|---------------------|----------------------------|
+| Transport | stdio | HTTPS Streamable HTTP |
+| Auth | `SOCIAL0_API_KEY` in config | OAuth Connect flow |
+| Media upload | `file_path` | `url` or `data` (base64) |
+
+Deploy guide: [`cloudflare/mcp-worker/README.md`](../cloudflare/mcp-worker/README.md) in the monorepo.
+
+The stdio package above is unchanged — keep using `npx social0-mcp` for Cursor, Claude Desktop, and VS Code.
+
+---
+
 ## What you can do
 
 - Publish or schedule to any connected platforms

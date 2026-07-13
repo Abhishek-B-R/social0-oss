@@ -2,7 +2,20 @@ import { config as loadDotenv } from "dotenv";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-loadDotenv({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../.env") });
+/**
+ * Load local .env for stdio/npx only.
+ * Hosted MCP (Cloudflare Workers) skips this — no filesystem / no file: import.meta.url.
+ */
+if (process.env.SOCIAL0_MCP_NO_DOTENV !== "true") {
+  try {
+    const metaUrl = import.meta.url;
+    if (typeof metaUrl === "string" && metaUrl.startsWith("file:")) {
+      loadDotenv({ path: resolve(dirname(fileURLToPath(metaUrl)), "../.env") });
+    }
+  } catch {
+    // Workers and other non-Node runtimes: rely on process.env only.
+  }
+}
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (!value) return fallback;

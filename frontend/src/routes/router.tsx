@@ -40,6 +40,7 @@ import InstagramSelectPage from "@/features/dashboard/connections/pages/Instagra
 import LinkedinSelectPage from "@/features/dashboard/connections/pages/LinkedinSelectPage";
 import ConnectInstagramFacebookSelectPage from "@/features/dashboard/connections/pages/InstagramFacebookSelectPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import McpOAuthConnectPage from "@/features/oauth/pages/McpOAuthConnectPage";
 
 export function AppRouter() {
   return (
@@ -60,6 +61,7 @@ export function AppRouter() {
           <Route path="alternatives/:slug" element={<MarketingPages.AlternativeDetail />} />
           <Route path="home" element={<MarketingPages.Home />} />
           <Route path="mcp" element={<MarketingPages.Mcp />} />
+          <Route path="oauth/mcp/connect" element={<McpOAuthConnectPage />} />
 
           <Route path="onboarding" element={<OnboardingLayout />}>
             <Route index element={<OnboardingPage />} />

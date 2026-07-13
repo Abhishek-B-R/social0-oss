@@ -1,0 +1,3 @@
+API_BASE_URL=https://api.social0.app
+MCP_BASE_URL=https://mcp.social0.app
+MCP_OAUTH_INTROSPECT_SECRET=replace-with-long-random-secret-shared-with-api
