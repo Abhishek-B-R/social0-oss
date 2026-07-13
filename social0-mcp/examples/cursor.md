@@ -1,12 +1,26 @@
 # Cursor
 
-## 1. API key
+## Remote URL (recommended)
 
-Create one at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys) (`sk_live_…`).
-
-## 2. Add the MCP server
+If your Cursor build supports HTTP MCP servers:
 
 **Settings → MCP**, or project `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "social0": {
+      "url": "https://mcp.social0.app/mcp"
+    }
+  }
+}
+```
+
+Authorize with Social0 when prompted (OAuth). No API key in config.
+
+## Local npx (fallback)
+
+Create a key at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api-keys) (`sk_live_…`):
 
 ```json
 {
@@ -22,11 +36,11 @@ Create one at [social0.app/dashboard/api-keys](https://social0.app/dashboard/api
 }
 ```
 
-## 3. Reload
+Requires **Node.js 20+** on your PATH so `npx` works.
+
+## Reload
 
 Restart Cursor or reload MCP servers. Test: “Show my connected Social0 accounts.”
-
-Requires **Node.js 20+** on your PATH so `npx` works.
 
 ## Example prompts
 

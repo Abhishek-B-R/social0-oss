@@ -25,9 +25,12 @@ describe("cors-policy MCP OAuth", () => {
     expect(allowsMissingCorsOrigin(req("POST", "/api/posts"))).toBe(false);
   });
 
-  it("recognizes Claude browser origins", () => {
+  it("recognizes AI host browser origins for MCP OAuth CORS", () => {
     expect(isMcpOAuthCorsOrigin("https://claude.ai")).toBe(true);
     expect(isMcpOAuthCorsOrigin("https://www.claude.ai")).toBe(true);
+    expect(isMcpOAuthCorsOrigin("https://chatgpt.com")).toBe(true);
+    expect(isMcpOAuthCorsOrigin("https://chat.openai.com")).toBe(true);
+    expect(isMcpOAuthCorsOrigin("https://cursor.com")).toBe(true);
     expect(isMcpOAuthCorsOrigin("https://social0.app")).toBe(false);
   });
 });

@@ -16,8 +16,13 @@ export function DevelopersSection() {
                 Automate from your stack
               </h2>
               <p className="mt-3 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-                REST API with webhooks, plus an MCP server for Claude, Cursor,
-                and VS Code. Same publish pipeline as the dashboard.
+                REST API with webhooks, plus MCP for AI apps. Point any remote
+                MCP client at{" "}
+                <code className="rounded bg-background px-1 text-[12px]">
+                  mcp.social0.app/mcp
+                </code>{" "}
+                and authorize with Social0 — or use local npx. Same publish
+                pipeline as the dashboard.
               </p>
               <p className="mt-5">
                 <code className="inline-block rounded-md border border-border bg-background px-2.5 py-1 font-mono text-[12px] text-muted-foreground dark:bg-background/80">

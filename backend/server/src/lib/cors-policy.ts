@@ -13,11 +13,28 @@ export function isMcpOAuthPublicPath(path: string): boolean {
   );
 }
 
-/** Browser origins Claude uses when talking to MCP OAuth endpoints. */
+/** Browser origins AI hosts use when talking to MCP OAuth endpoints. */
 export function isMcpOAuthCorsOrigin(origin: string): boolean {
   try {
-    const host = new URL(origin).hostname;
-    return host === "claude.ai" || host.endsWith(".claude.ai");
+    const host = new URL(origin).hostname.toLowerCase();
+    const allowedExact = new Set([
+      "claude.ai",
+      "chatgpt.com",
+      "openai.com",
+      "cursor.com",
+      "cursor.sh",
+      "www.chatgpt.com",
+      "www.openai.com",
+      "www.cursor.com",
+    ]);
+    if (allowedExact.has(host)) return true;
+    return (
+      host.endsWith(".claude.ai") ||
+      host.endsWith(".chatgpt.com") ||
+      host.endsWith(".openai.com") ||
+      host.endsWith(".cursor.com") ||
+      host.endsWith(".cursor.sh")
+    );
   } catch {
     return false;
   }

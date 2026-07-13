@@ -36,7 +36,9 @@ import {
   Zap,
 } from "lucide-react";
 
-type HostId = "cursor" | "claude" | "chatgpt" | "vscode";
+type HostId = "remote" | "cursor" | "claude-desktop" | "vscode";
+
+const HOSTED_MCP_URL = "https://mcp.social0.app/mcp";
 
 const MCP_TOOLS = [
   "list_accounts",
@@ -115,6 +117,10 @@ const FAQ = [
     a: "Model Context Protocol is an open standard that lets AI assistants call tools on your behalf. Social0's MCP server exposes posting, scheduling, and account tools to Claude, Cursor, VS Code, and other hosts.",
   },
   {
+    q: "Do I need an API key?",
+    a: "Not for remote connectors — use https://mcp.social0.app/mcp and sign in with Social0 OAuth (Claude.ai, ChatGPT, and other hosts that accept a remote MCP URL). Cursor / Claude Desktop / VS Code local setups still use npx with a sk_live_ API key.",
+  },
+  {
     q: "Do I need a separate Social0 plan?",
     a: "No. MCP uses your existing account and the same posting limits as the dashboard.",
   },
@@ -123,12 +129,8 @@ const FAQ = [
     a: "Not directly. Connect platforms in the dashboard first, then MCP can publish to those accounts.",
   },
   {
-    q: "Where do I get an API key?",
-    a: "Create one at Dashboard → API keys. Keys start with sk_live_. Legacy s0_live_ keys still work.",
-  },
-  {
-    q: "Is my API key safe?",
-    a: "Your key stays in your AI host's MCP config. The server runs via npx on your machine and sends the key only to api.social0.app — same as any API client.",
+    q: "Is my API key / OAuth safe?",
+    a: "Remote MCP uses OAuth and creates a dedicated connector API key you can revoke in Dashboard → API keys. Local npx configs keep your key in the AI host env and send it only to api.social0.app.",
   },
   {
     q: "What if one platform fails?",
@@ -149,21 +151,12 @@ const PLATFORM_ICONS = [
 ] as const;
 
 function buildMcpConfig(host: HostId, apiKey: string) {
+  if (host === "remote") {
+    return HOSTED_MCP_URL;
+  }
+
   const key = apiKey.trim() || "sk_live_your_key_here";
   const env = { SOCIAL0_API_KEY: key };
-
-  if (host === "chatgpt") {
-    return JSON.stringify(
-      {
-        name: "social0",
-        command: "npx",
-        args: ["-y", "social0-mcp"],
-        env,
-      },
-      null,
-      2,
-    );
-  }
 
   if (host === "vscode") {
     return JSON.stringify(
@@ -252,11 +245,12 @@ function ChatBubble({
 }
 
 function McpConfigPanel() {
-  const [host, setHost] = useState<HostId>("cursor");
+  const [host, setHost] = useState<HostId>("remote");
   const [apiKey, setApiKey] = useState("");
   const [copied, setCopied] = useState(false);
 
   const config = useMemo(() => buildMcpConfig(host, apiKey), [host, apiKey]);
+  const isHosted = host === "remote";
 
   const copyConfig = () => {
     void navigator.clipboard.writeText(config);
@@ -266,19 +260,19 @@ function McpConfigPanel() {
 
   const hosts: { id: HostId; label: string; hint: string }[] = [
     {
+      id: "remote",
+      label: "Remote URL",
+      hint: "Claude.ai, ChatGPT, and any host that accepts a remote MCP URL. Authorize with Social0 — no API key.",
+    },
+    {
       id: "cursor",
       label: "Cursor",
-      hint: "Settings → MCP, or project .cursor/mcp.json",
+      hint: "Settings → MCP, or project .cursor/mcp.json (needs Node.js + API key)",
     },
     {
-      id: "claude",
+      id: "claude-desktop",
       label: "Claude Desktop",
       hint: "macOS: ~/Library/Application Support/Claude/claude_desktop_config.json",
-    },
-    {
-      id: "chatgpt",
-      label: "ChatGPT",
-      hint: "Settings → Connectors / MCP (Desktop; wording varies)",
     },
     {
       id: "vscode",
@@ -311,20 +305,34 @@ function McpConfigPanel() {
         {hosts.find((h) => h.id === host)?.hint}
       </p>
 
-      <div className="mb-4">
-        <label className="block max-w-md">
-          <span className="mb-1.5 block text-[13px] font-medium text-foreground">
-            API key
-          </span>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="sk_live_…"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-[14px] outline-none ring-emerald-500/30 focus:ring-2"
-          />
-        </label>
-      </div>
+      {isHosted ? (
+        <ol className="mb-6 list-decimal space-y-2 pl-5 text-[14px] leading-relaxed text-muted-foreground">
+          <li>Open your AI app’s MCP / Connectors settings</li>
+          <li>
+            Add a remote server with URL{" "}
+            <code className="rounded bg-muted px-1 text-[13px] text-foreground">
+              {HOSTED_MCP_URL}
+            </code>
+          </li>
+          <li>Connect and approve Social0 in your browser (OAuth)</li>
+          <li>Ask: “Show my connected Social0 accounts”</li>
+        </ol>
+      ) : (
+        <div className="mb-4">
+          <label className="block max-w-md">
+            <span className="mb-1.5 block text-[13px] font-medium text-foreground">
+              API key
+            </span>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="sk_live_…"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-[14px] outline-none ring-emerald-500/30 focus:ring-2"
+            />
+          </label>
+        </div>
+      )}
 
       <div className="relative">
         <pre className="max-h-[280px] overflow-auto rounded-xl border border-border bg-[#0d1117] p-4 text-[12px] leading-relaxed text-[#e6edf3] sm:text-[13px]">
@@ -347,18 +355,28 @@ function McpConfigPanel() {
       </div>
 
       <p className="mt-4 text-[12px] text-muted-foreground">
-        Paste into your host, save, and restart if needed. Uses{" "}
-        <code className="rounded bg-muted px-1">npx -y social0-mcp</code>{" "}
-        (Node.js 20+). Package:{" "}
-        <a
-          href="https://www.npmjs.com/package/social0-mcp"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
-        >
-          social0-mcp
-        </a>
-        .
+        {isHosted ? (
+          <>
+            Same URL for every remote-capable host:{" "}
+            <code className="rounded bg-muted px-1">{HOSTED_MCP_URL}</code> —
+            OAuth only, no npx.
+          </>
+        ) : (
+          <>
+            Paste into your host, save, and restart if needed. Uses{" "}
+            <code className="rounded bg-muted px-1">npx -y social0-mcp</code>{" "}
+            (Node.js 20+). Package:{" "}
+            <a
+              href="https://www.npmjs.com/package/social0-mcp"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
+            >
+              social0-mcp
+            </a>
+            .
+          </>
+        )}
       </p>
     </div>
   );
@@ -371,12 +389,13 @@ export default function McpPage() {
     <MarketingPageLayout showCta={false}>
       <SeoHead
         title="Social0 MCP Server — Manage social media from your AI"
-        description="Connect Claude, Cursor, or VS Code to Social0 with the official MCP server. Create posts, publish to multiple platforms, schedule content, and track progress — all from natural language."
+        description="Connect Claude, ChatGPT, Cursor, or VS Code to Social0 with the official MCP server. Use https://mcp.social0.app/mcp for remote OAuth, or local npx — create posts, publish, and schedule from natural language."
         path="/mcp"
         keywords={[
           "Social0 MCP",
           "Model Context Protocol",
           "Claude social media",
+          "ChatGPT MCP",
           "Cursor MCP",
           "AI social scheduling",
         ]}
@@ -409,9 +428,17 @@ export default function McpPage() {
             <em className="text-[#1a6b4a] dark:text-[#00ff77]">from your AI</em>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-[17px] leading-relaxed text-muted-foreground">
-            Open-source MCP server for Social0. Let Claude, Cursor, or ChatGPT
-            draft posts, publish to every platform, upload media, and track
-            progress — no dashboard required.
+            Add{" "}
+            <code className="rounded bg-muted px-1.5 py-0.5 text-[14px]">
+              https://mcp.social0.app/mcp
+            </code>{" "}
+            in any AI that supports remote MCP, then authorize with Social0. Or
+            use{" "}
+            <code className="rounded bg-muted px-1.5 py-0.5 text-[14px]">
+              npx social0-mcp
+            </code>{" "}
+            locally in Cursor and Desktop. Draft, publish, and schedule across
+            every connected platform from chat.
           </p>
 
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -445,7 +472,7 @@ export default function McpPage() {
           </h2>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <TerminalWindow title="You → Claude">
+            <TerminalWindow title="You → AI">
               <p className="text-white/50">$</p>
               <p className="mt-1 text-emerald-400">
                 Post our v2 launch to LinkedIn and X with ./assets/hero.png
@@ -507,16 +534,16 @@ bluesky       acme.bsky       active`}
               },
               {
                 step: "2",
-                title: "Create an API key",
-                body: "Generate a sk_live_ key from Dashboard → API keys. One key per AI assistant is recommended.",
-                href: "/dashboard/api-keys",
-                link: "Open API keys",
-                external: false,
+                title: "Add Social0 to your AI",
+                body: "Remote hosts: paste https://mcp.social0.app/mcp and authorize with Social0. Local Cursor / Desktop: use the npx config below with an API key.",
+                href: DOCS_MCP_QUICKSTART_URL,
+                link: "Setup guide",
+                external: true,
               },
               {
                 step: "3",
-                title: "Add MCP to your AI",
-                body: "Paste the npx config below into Cursor, Claude Desktop, ChatGPT, or VS Code. Restart the host and try list_accounts.",
+                title: "Ask in chat",
+                body: "Try “Show my connected Social0 accounts” or “Post this to LinkedIn and X.”",
                 href: DOCS_MCP_URL,
                 link: "Full MCP docs",
                 external: true,
@@ -568,7 +595,7 @@ bluesky       acme.bsky       active`}
               Connect in under a minute
             </p>
             <h2 className="font-serif text-[clamp(28px,4vw,40px)] tracking-tight text-foreground">
-              Copy your MCP config
+              One URL for remote AIs
             </h2>
           </div>
           <McpConfigPanel />
@@ -618,15 +645,26 @@ bluesky       acme.bsky       active`}
         <div className="mx-auto flex max-w-[1100px] flex-col items-start gap-4 rounded-2xl border border-border bg-card p-6 sm:flex-row sm:items-center">
           <Terminal className="h-8 w-8 shrink-0 text-emerald-700 dark:text-emerald-400" />
           <div>
-            <h3 className="font-medium text-foreground">Thin by design</h3>
+            <h3 className="font-medium text-foreground">Two ways to connect</h3>
             <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">
-              The MCP server has no database or OAuth — it translates tool calls
-              to the Social0 REST API using your API key. Multi-platform
-              publishes fan out in parallel; use{" "}
+              <strong className="font-medium text-foreground">Remote:</strong>{" "}
+              Any host that accepts a remote MCP URL uses{" "}
+              <code className="rounded bg-muted px-1 text-[13px]">
+                https://mcp.social0.app/mcp
+              </code>{" "}
+              with Social0 OAuth (no API key in config).{" "}
+              <strong className="font-medium text-foreground">Local:</strong>{" "}
+              Cursor and Desktop can run{" "}
+              <code className="rounded bg-muted px-1 text-[13px]">
+                npx social0-mcp
+              </code>{" "}
+              with a{" "}
+              <code className="rounded bg-muted px-1 text-[13px]">sk_live_</code>{" "}
+              key. Both call the same Social0 REST API — poll{" "}
               <code className="rounded bg-muted px-1 text-[13px]">
                 get_publish_status
               </code>{" "}
-              to poll until each platform finishes.
+              after multi-platform publishes.
             </p>
           </div>
         </div>
