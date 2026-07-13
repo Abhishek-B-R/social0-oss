@@ -4,6 +4,10 @@
   "description": "Post to Instagram, TikTok, YouTube, X, LinkedIn, and more from Claude, Cursor, or ChatGPT",
   "type": "module",
   "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./server": "./dist/server.js"
+  },
   "bin": {
     "social0-mcp": "dist/index.js"
   },
@@ -12,7 +16,8 @@
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
-    "AGENTS.md"
+    "AGENTS.md",
+    "server.json"
   ],
   "scripts": {
     "dev": "tsx watch src/index.ts",

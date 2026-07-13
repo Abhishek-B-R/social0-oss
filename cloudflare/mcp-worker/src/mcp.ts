@@ -1,5 +1,5 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { createMcpServer, runWithApiKeyAsync } from "@social0/mcp-server/server";
+import { createMcpServer, runWithApiKeyAsync } from "social0-mcp/server";
 import type { Env } from "./env.js";
 
 export async function handleMcpRequest(
