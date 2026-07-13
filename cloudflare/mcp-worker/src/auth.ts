@@ -107,6 +107,25 @@ export async function resolveCredential(
   return { apiKey: payload.api_key };
 }
 
+/** OAuth register/token/revoke payloads are tiny; keep well under API bodyLimit (1 MB). */
+export const OAUTH_PROXY_BODY_LIMIT_BYTES = 64 * 1024;
+
+function limitedRequestBody(body: ReadableStream<Uint8Array>, limit: number): ReadableStream<Uint8Array> {
+  let seen = 0;
+  return body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        seen += chunk.byteLength;
+        if (seen > limit) {
+          controller.error(new Error("oauth_body_too_large"));
+          return;
+        }
+        controller.enqueue(chunk);
+      },
+    }),
+  );
+}
+
 export async function proxyOAuthRequest(request: Request, env: Env, path: string): Promise<Response> {
   const apiBase = env.API_BASE_URL.replace(/\/$/, "");
   const url = new URL(request.url);
@@ -116,17 +135,57 @@ export async function proxyOAuthRequest(request: Request, env: Env, path: string
   const contentType = request.headers.get("content-type");
   if (contentType) headers.set("content-type", contentType);
 
-  const init: RequestInit = {
+  const init: RequestInit & { duplex?: "half" } = {
     method: request.method,
     headers,
     redirect: "manual",
   };
 
   if (request.method !== "GET" && request.method !== "HEAD") {
-    init.body = await request.text();
+    const contentLengthHeader = request.headers.get("content-length");
+    if (contentLengthHeader !== null) {
+      const contentLength = Number(contentLengthHeader);
+      if (!Number.isFinite(contentLength) || contentLength < 0 || contentLength > OAUTH_PROXY_BODY_LIMIT_BYTES) {
+        return withCors(
+          jsonResponse(
+            {
+              error: "invalid_request",
+              error_description: `Request body must be at most ${OAUTH_PROXY_BODY_LIMIT_BYTES} bytes`,
+            },
+            413,
+          ),
+        );
+      }
+      headers.set("content-length", String(contentLength));
+    }
+
+    if (!request.body) {
+      init.body = null;
+    } else {
+      // Stream through — never buffer the full body in the Worker isolate.
+      init.body = limitedRequestBody(request.body, OAUTH_PROXY_BODY_LIMIT_BYTES);
+      init.duplex = "half";
+    }
   }
 
-  const upstream = await fetch(target, init);
+  let upstream: Response;
+  try {
+    upstream = await fetch(target, init);
+  } catch (error) {
+    if (error instanceof Error && /oauth_body_too_large/.test(error.message)) {
+      return withCors(
+        jsonResponse(
+          {
+            error: "invalid_request",
+            error_description: `Request body must be at most ${OAUTH_PROXY_BODY_LIMIT_BYTES} bytes`,
+          },
+          413,
+        ),
+      );
+    }
+    throw error;
+  }
+
   const responseHeaders = new Headers(upstream.headers);
   responseHeaders.set("Access-Control-Allow-Origin", "*");
   return new Response(upstream.body, {
