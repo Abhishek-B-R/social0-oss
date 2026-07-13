@@ -2,6 +2,12 @@
 
 All notable changes to the Social0 MCP server are documented here.
 
+## [0.2.2] - 2026-07-13
+
+### Fixed
+
+- Account collision errors list matching account UUIDs and point agents to `list_accounts`
+
 ## [0.2.1] - 2026-07-12
 
 ### Changed
