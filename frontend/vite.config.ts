@@ -62,12 +62,22 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      modulePreload: {
+        resolveDependencies: (_filename, deps) =>
+          deps.filter(
+            (dep) =>
+              !dep.includes("/motion-") &&
+              !dep.includes("/posthog-") &&
+              !dep.includes("framer-motion"),
+          ),
+      },
       rollupOptions: {
         output: {
           manualChunks(id) {
             if (!id.includes("node_modules")) return;
+            // Keep framer-motion with FlowAnimation — a shared "motion" chunk
+            // gets modulepreloaded on every landing visit and tanks mobile LCP.
             if (id.includes("posthog")) return "posthog";
-            if (id.includes("framer-motion")) return "motion";
             if (
               id.includes("/react/") ||
               id.includes("/react-dom/") ||
