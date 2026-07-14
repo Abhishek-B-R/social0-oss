@@ -61,7 +61,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
                   href={developersHref(pathname)}
                   className="text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  REST API & MCP
+                  REST API, MCP & CLI
                 </Link>
                 {" · "}for builders and AI workflows
               </p>

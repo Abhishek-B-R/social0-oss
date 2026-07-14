@@ -12,8 +12,10 @@
     "/*.ico",
     "/*.xml",
     "/*.txt",
+    "/*.sh",
     "/favicon.svg",
     "/robots.txt",
-    "/sitemap.xml"
+    "/sitemap.xml",
+    "/install.sh"
   ]
 }

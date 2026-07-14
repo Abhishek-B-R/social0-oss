@@ -72,7 +72,16 @@ export const DOCS_API_OPENAPI_URL = `${DOCS_BASE_URL}/docs/api/openapi`;
 /** @deprecated Use DOCS_API_URL */
 export const DOCS_REST_API_URL = DOCS_API_URL;
 
-// ─── Integrations (MCP) ─────────────────────────────────────────────────────
+// ─── Integrations (CLI + MCP) ────────────────────────────────────────────────
+
+/** CLI overview. */
+export const DOCS_CLI_URL = `${DOCS_BASE_URL}/docs/integrations/cli`;
+
+/** CLI quick start. */
+export const DOCS_CLI_QUICKSTART_URL = `${DOCS_BASE_URL}/docs/integrations/cli/quickstart`;
+
+/** CLI commands reference. */
+export const DOCS_CLI_COMMANDS_URL = `${DOCS_BASE_URL}/docs/integrations/cli/commands`;
 
 /** MCP server overview. */
 export const DOCS_MCP_URL = `${DOCS_BASE_URL}/docs/integrations/mcp`;

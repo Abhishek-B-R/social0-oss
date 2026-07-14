@@ -1,0 +1,39 @@
+{
+  "version": "0.1.2",
+  "description": "Official CLI for Social0 — manage social media from your terminal",
+  "homepage": "https://github.com/Abhishek-B-R/social0-cli",
+  "license": "MIT",
+  "depends": ["nodejs"],
+  "url": "https://registry.npmjs.org/social0/-/social0-0.1.2.tgz",
+  "hash": "sha256:f71fe51fa100fd09f47c5c2a9eecc1eb06bdb378a61db5b5a87c5ca87584b464",
+  "extract_dir": "package",
+  "bin": [
+    [
+      "bin\\social0.cmd",
+      "social0"
+    ],
+    [
+      "bin\\social0.ps1",
+      "social0"
+    ]
+  ],
+  "pre_install": [
+    "New-Item -ItemType Directory -Force -Path \"$dir\\bin\" | Out-Null",
+    "@('#!/usr/bin/env pwsh', 'node \"$PSScriptRoot\\..\\dist\\index.js\" @args') | Set-Content -Encoding UTF8 \"$dir\\bin\\social0.ps1\"",
+    "@('@echo off', 'node \"%~dp0..\\dist\\index.js\" %*') | Set-Content -Encoding ASCII \"$dir\\bin\\social0.cmd\""
+  ],
+  "post_install": [
+    "Push-Location $dir; npm install --omit=dev --no-fund --no-audit --loglevel=error; Pop-Location"
+  ],
+  "checkver": {
+    "url": "https://registry.npmjs.org/social0/latest",
+    "jsonpath": "$.version"
+  },
+  "autoupdate": {
+    "url": "https://registry.npmjs.org/social0/-/social0-$version.tgz"
+  },
+  "notes": [
+    "Create an API key at https://social0.app/dashboard/api-keys then run: social0 login",
+    "Docs: https://docs.social0.app/docs/integrations/cli"
+  ]
+}

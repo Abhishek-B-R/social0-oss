@@ -29,7 +29,7 @@ export const landingFaqs = [
   {
     question: "Does Social0 have an API?",
     answer:
-      "Yes. Social0 has a REST API at api.social0.app/v1 with API keys, webhooks for publish events, and OpenAPI docs. There's also an MCP server at mcp.social0.app/mcp for Claude, ChatGPT, Cursor, and other AI apps. Manage keys in Dashboard → Developer.",
+      "Yes. Social0 has a REST API at api.social0.app/v1, an MCP server at mcp.social0.app/mcp for AI apps, and an official CLI (`npm install -g social0`). Create API keys in Dashboard → Developer.",
   },
   {
     question: "How does parallel publishing work?",

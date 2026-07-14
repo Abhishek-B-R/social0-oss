@@ -15,6 +15,7 @@ import {
 import { SeoHead } from "@/components/seo/SeoHead";
 import { Button } from "@/components/ui/button";
 import {
+  DOCS_CLI_QUICKSTART_URL,
   DOCS_CONNECTIONS_URL,
   DOCS_MCP_QUICKSTART_URL,
   DOCS_MCP_URL,
@@ -457,6 +458,15 @@ export default function McpPage() {
             >
               Get API keys
             </Link>
+            <a
+              href={DOCS_CLI_QUICKSTART_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] border border-border bg-background px-6 py-3.5 text-[15px] font-medium text-foreground transition-all hover:bg-muted sm:w-auto"
+            >
+              Prefer the terminal? CLI docs
+              <ArrowRight className="h-4 w-4" />
+            </a>
           </div>
         </div>
       </section>
@@ -645,22 +655,31 @@ bluesky       acme.bsky       active`}
         <div className="mx-auto flex max-w-[1100px] flex-col items-start gap-4 rounded-2xl border border-border bg-card p-6 sm:flex-row sm:items-center">
           <Terminal className="h-8 w-8 shrink-0 text-emerald-700 dark:text-emerald-400" />
           <div>
-            <h3 className="font-medium text-foreground">Two ways to connect</h3>
+            <h3 className="font-medium text-foreground">Three ways to connect</h3>
             <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">
-              <strong className="font-medium text-foreground">Remote:</strong>{" "}
+              <strong className="font-medium text-foreground">Remote MCP:</strong>{" "}
               Any host that accepts a remote MCP URL uses{" "}
               <code className="rounded bg-muted px-1 text-[13px]">
                 https://mcp.social0.app/mcp
               </code>{" "}
               with Social0 OAuth (no API key in config).{" "}
-              <strong className="font-medium text-foreground">Local:</strong>{" "}
+              <strong className="font-medium text-foreground">Local MCP:</strong>{" "}
               Cursor and Desktop can run{" "}
               <code className="rounded bg-muted px-1 text-[13px]">
                 npx social0-mcp
               </code>{" "}
               with a{" "}
               <code className="rounded bg-muted px-1 text-[13px]">sk_live_</code>{" "}
-              key. Both call the same Social0 REST API — poll{" "}
+              key.{" "}
+              <strong className="font-medium text-foreground">CLI:</strong>{" "}
+              <code className="rounded bg-muted px-1 text-[13px]">
+                npm install -g social0
+              </code>{" "}
+              then{" "}
+              <code className="rounded bg-muted px-1 text-[13px]">
+                social0 login
+              </code>
+              . All call the same Social0 REST API — poll{" "}
               <code className="rounded bg-muted px-1 text-[13px]">
                 get_publish_status
               </code>{" "}

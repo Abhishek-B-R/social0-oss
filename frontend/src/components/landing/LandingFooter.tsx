@@ -1,11 +1,12 @@
 
 import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
-import { DOCS_API_URL } from "@/lib/docs-url";
+import { DOCS_API_URL, DOCS_CLI_URL } from "@/lib/docs-url";
 
 const footerLinks = [
   { href: "/features", label: "Features" },
   { href: DOCS_API_URL, label: "API", external: true },
+  { href: DOCS_CLI_URL, label: "CLI", external: true },
   { href: "/mcp", label: "MCP" },
   { href: "/alternatives", label: "Alternatives" },
   { href: "/#platforms", label: "Platforms" },

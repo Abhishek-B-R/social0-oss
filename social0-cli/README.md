@@ -36,26 +36,28 @@ social0 publish --content "Launching today!" --platform twitter linkedin
 
 ```bash
 npm install -g social0
+# or
+npx social0
+```
+
+### One-line installer
+
+```bash
+curl -fsSL https://social0.app/install.sh | sh
 ```
 
 ### Homebrew
 
 ```bash
-brew tap social0/tap
+brew tap Abhishek-B-R/tap
 brew install social0
 ```
 
 ### Windows (Scoop)
 
 ```powershell
-scoop bucket add social0 https://github.com/social0/scoop-bucket
+scoop bucket add social0 https://github.com/Abhishek-B-R/scoop-bucket
 scoop install social0
-```
-
-### Linux
-
-```bash
-curl -fsSL https://social0.app/install.sh | sh
 ```
 
 ## Authentication

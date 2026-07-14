@@ -1,5 +1,8 @@
 import Link from "@/components/AppLink";
-import { DOCS_API_QUICKSTART_URL } from "@/lib/docs-url";
+import {
+  DOCS_API_QUICKSTART_URL,
+  DOCS_CLI_QUICKSTART_URL,
+} from "@/lib/docs-url";
 import { ArrowRight } from "lucide-react";
 
 export function DevelopersSection() {
@@ -16,15 +19,21 @@ export function DevelopersSection() {
                 Automate from your stack
               </h2>
               <p className="mt-3 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-                REST API with webhooks, plus MCP for AI apps. Point any remote
-                MCP client at{" "}
+                REST API with webhooks, MCP for AI apps, and an official CLI.
+                Install with{" "}
+                <code className="rounded bg-background px-1 text-[12px]">
+                  npm install -g social0
+                </code>
+                , or point any remote MCP client at{" "}
                 <code className="rounded bg-background px-1 text-[12px]">
                   mcp.social0.app/mcp
-                </code>{" "}
-                and authorize with Social0 — or use local npx. Same publish
-                pipeline as the dashboard.
+                </code>
+                . Same publish pipeline as the dashboard.
               </p>
-              <p className="mt-5">
+              <p className="mt-5 flex flex-wrap gap-2">
+                <code className="inline-block rounded-md border border-border bg-background px-2.5 py-1 font-mono text-[12px] text-muted-foreground dark:bg-background/80">
+                  npm install -g social0
+                </code>
                 <code className="inline-block rounded-md border border-border bg-background px-2.5 py-1 font-mono text-[12px] text-muted-foreground dark:bg-background/80">
                   api.social0.app/v1
                 </code>
@@ -32,6 +41,15 @@ export function DevelopersSection() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
+              <a
+                href={DOCS_CLI_QUICKSTART_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-5 py-2.5 text-[14px] font-medium text-foreground transition-colors hover:bg-muted"
+              >
+                CLI docs
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </a>
               <a
                 href={DOCS_API_QUICKSTART_URL}
                 target="_blank"

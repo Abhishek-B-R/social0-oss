@@ -6,5 +6,10 @@
 /index.html
   Cache-Control: public, max-age=0, must-revalidate
 
+# CLI installer must be returned as a shell script, not HTML.
+/install.sh
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=300
+
 /*
   Cache-Control: public, max-age=0, must-revalidate
