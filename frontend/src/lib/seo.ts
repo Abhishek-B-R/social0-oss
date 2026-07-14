@@ -38,7 +38,7 @@ export function buildPageMetadata({
       type: "website",
       images: [
         {
-          url: "/og-image.png",
+          url: "/og-image.jpg",
           width: 1200,
           height: 630,
           alt: title,
@@ -49,7 +49,7 @@ export function buildPageMetadata({
       card: "summary_large_image",
       title,
       description,
-      images: ["/og-image.png"],
+      images: ["/og-image.jpg"],
       creator: "@social0_app",
     },
   };
@@ -184,7 +184,7 @@ export function buildHomeMetadata(path: "/" | "/home" = "/"): PageMetadata {
       type: "website",
       images: [
         {
-          url: absoluteUrl("/og-image.png"),
+          url: absoluteUrl("/og-image.jpg"),
           width: 1200,
           height: 630,
           alt: "Social0 - Social Media Scheduling Dashboard",
@@ -196,7 +196,7 @@ export function buildHomeMetadata(path: "/" | "/home" = "/"): PageMetadata {
       title: homePageTitle,
       description:
         "Write once. Publish everywhere. Schedule posts to 9 platforms from one dashboard.",
-      images: [absoluteUrl("/og-image.png")],
+      images: [absoluteUrl("/og-image.jpg")],
       creator: "@social0_app",
     },
   };
@@ -220,7 +220,7 @@ export function buildOrganizationJsonLd() {
     "@type": "Organization",
     name: "Social0",
     url: siteUrl,
-    logo: absoluteUrl("/og-image.png"),
+    logo: absoluteUrl("/og-image.jpg"),
     sameAs: ["https://x.com/social0_app"],
     contactPoint: {
       "@type": "ContactPoint",

@@ -85,7 +85,7 @@ export function SupportedPlatforms() {
       <div className="mx-auto max-w-[1100px] px-6 lg:px-8">
         {/* Header row */}
         <div className="mb-14">
-          <div className="mb-3 text-[11px] uppercase tracking-widest text-background/30 dark:text-white/30">
+          <div className="mb-3 text-[11px] font-medium uppercase tracking-widest text-background/55 dark:text-white/55">
             Supported platforms
           </div>
           <h2 className="font-serif text-[clamp(28px,4vw,44px)] leading-tight tracking-tight text-background dark:text-white">
@@ -93,7 +93,7 @@ export function SupportedPlatforms() {
             <br />
             More coming.
           </h2>
-          <p className="mt-2 max-w-[360px] text-[14px] leading-relaxed text-background/40 dark:text-white/40">
+          <p className="mt-2 max-w-[360px] text-[14px] leading-relaxed text-background/70 dark:text-white/70">
             Publish everywhere your audience already is.
           </p>
         </div>
@@ -122,7 +122,7 @@ export function SupportedPlatforms() {
               <div className="text-[14px] font-medium text-background/85 dark:text-white/85">
                 {p.name}
               </div>
-              <div className="mt-0.5 text-[12px] text-background/30 transition-colors duration-200 group-hover:text-background/70 dark:text-white/30 dark:group-hover:text-white/70">
+              <div className="mt-0.5 text-[12px] text-background/55 transition-colors duration-200 group-hover:text-background/80 dark:text-white/55 dark:group-hover:text-white/80">
                 {p.type}
               </div>
             </div>

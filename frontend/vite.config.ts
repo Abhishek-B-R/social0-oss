@@ -61,6 +61,27 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes("node_modules")) return;
+            if (id.includes("posthog")) return "posthog";
+            if (id.includes("framer-motion")) return "motion";
+            if (
+              id.includes("/react/") ||
+              id.includes("/react-dom/") ||
+              id.includes("/scheduler/") ||
+              id.includes("react-router")
+            ) {
+              return "react-vendor";
+            }
+            if (id.includes("@tanstack/react-query")) return "query";
+            if (id.includes("better-auth")) return "auth";
+          },
+        },
+      },
+    },
     server: {
       host: true,
       port: 3000,

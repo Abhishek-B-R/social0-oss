@@ -1,7 +1,12 @@
+import { lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { CheckCircle } from "lucide-react";
-import { FlowAnimation } from "./FlowAnimation";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+
+const FlowAnimation = lazy(() =>
+  import("./FlowAnimation").then((m) => ({ default: m.FlowAnimation })),
+);
 
 function developersHref(pathname: string) {
   return pathname === "/home" ? "/home#developers" : "/#developers";
@@ -9,6 +14,9 @@ function developersHref(pathname: string) {
 
 export function Hero({ signedIn = false }: { signedIn?: boolean }) {
   const { pathname } = useLocation();
+  // FlowAnimation is CSS-hidden on small screens; skip mount so mobile never
+  // downloads framer-motion or hub logo images.
+  const showFlow = useMediaQuery("(min-width: 1024px)");
   return (
     <section className="px-4 pb-8 pt-12 sm:px-6 sm:pt-16 lg:px-8 lg:pt-28">
       <div className="mx-auto max-w-[1180px]">
@@ -56,10 +64,10 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
                 <span className="h-1.5 w-1.5 ml-2 shrink-0 rounded-full bg-emerald-500/80" />
                 Be among the first to try Social0
               </p>
-              <p className="text-[13px] text-muted-foreground/90">
+              <p className="text-[13px] text-muted-foreground">
                 <Link
                   href={developersHref(pathname)}
-                  className="text-muted-foreground transition-colors hover:text-foreground"
+                  className="underline decoration-muted-foreground/50 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground"
                 >
                   REST API, MCP & CLI
                 </Link>
@@ -71,7 +79,23 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
           {/* Right column - Animated beam: you → Social0 → every platform */}
           {/* Inverted vs page theme: dark card on light theme, light card on dark */}
           <div className="hidden self-center lg:block">
-            <FlowAnimation className="shadow-[0_40px_80px_rgba(0,0,0,0.18)] dark:shadow-[0_40px_80px_rgba(0,0,0,0.12)]" />
+            {showFlow ? (
+              <Suspense
+                fallback={
+                  <div
+                    className="aspect-[4/5] w-full max-w-[420px] rounded-2xl border border-border bg-muted/40"
+                    aria-hidden
+                  />
+                }
+              >
+                <FlowAnimation className="shadow-[0_40px_80px_rgba(0,0,0,0.18)] dark:shadow-[0_40px_80px_rgba(0,0,0,0.12)]" />
+              </Suspense>
+            ) : (
+              <div
+                className="aspect-[4/5] w-full max-w-[420px] rounded-2xl border border-border bg-muted/40"
+                aria-hidden
+              />
+            )}
           </div>
         </div>
       </div>

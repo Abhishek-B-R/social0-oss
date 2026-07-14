@@ -76,7 +76,7 @@ export function seoConfigToHelmetProps(config: PageSeoConfig) {
   const canonical = config.canonical ?? (config.path ? absoluteUrl(config.path) : undefined);
   const ogTitle = config.openGraph?.title ?? config.title;
   const ogDescription = config.openGraph?.description ?? config.description;
-  const ogImage = config.openGraph?.image ?? absoluteUrl("/og-image.png");
+  const ogImage = config.openGraph?.image ?? absoluteUrl("/og-image.jpg");
   const twitterTitle = config.twitter?.title ?? ogTitle;
   const twitterDescription = config.twitter?.description ?? ogDescription;
   const twitterImage = config.twitter?.image ?? ogImage;

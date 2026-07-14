@@ -68,17 +68,19 @@ export function LandingHeader() {
         <div className="flex gap-2">
           <span className="relative h-9 w-9 block">
             <Image
-              src="/logo-circular.png"
+              src="/logo-circular.webp"
               alt="Social0"
               width={36}
               height={36}
+              priority
               className="rounded-lg dark:hidden"
             />
             <Image
-              src="/logo-dark.png"
+              src="/logo-dark.webp"
               alt="Social0"
               width={36}
               height={36}
+              priority
               className="rounded-full hidden dark:block absolute inset-0 border border-white"
             />
           </span>

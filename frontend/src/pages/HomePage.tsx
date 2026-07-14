@@ -4,7 +4,7 @@ import { useSession } from "@/lib/auth-client";
 import { LandingPageView } from "@/components/landing/LandingPageView";
 import { PseoJsonLd } from "@/components/seo/PseoJsonLd";
 import { buildFaqJsonLd, buildHomeJsonLd } from "@/lib/seo";
-import { landingFaqs } from "@/components/landing/FAQ";
+import { landingFaqs } from "@/components/landing/landing-faqs";
 
 export function HomePage() {
   const { data: session, isPending } = useSession();

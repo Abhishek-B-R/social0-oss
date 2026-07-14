@@ -1,18 +1,57 @@
+import { lazy } from "react";
 import { useLandingHashScroll } from "@/lib/scroll-to-hash";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Hero } from "@/components/landing/Hero";
 import { PlatformStrip } from "@/components/landing/PlatformStrip";
-import { DemoVideoSection } from "@/components/landing/DemoVideoSection";
-import { WhoIsItFor } from "@/components/landing/WhoIsItFor";
-import { HowItWorks } from "@/components/landing/HowItWorks";
-import { FeaturesSection } from "@/components/landing/FeaturesSection";
-import { SupportedPlatforms } from "@/components/landing/SupportedPlatforms";
-import { DevelopersSection } from "@/components/landing/DevelopersSection";
-import { FounderSection } from "@/components/landing/FounderSection";
-import { PricingSection } from "@/components/landing/PricingSection";
-import { FAQ } from "@/components/landing/FAQ";
-import { FinalCTA } from "@/components/landing/FinalCTA";
 import { LandingFooter } from "@/components/landing/LandingFooter";
+import { DeferredSection } from "@/components/landing/DeferredSection";
+
+const DemoVideoSection = lazy(() =>
+  import("@/components/landing/DemoVideoSection").then((m) => ({
+    default: m.DemoVideoSection,
+  })),
+);
+const WhoIsItFor = lazy(() =>
+  import("@/components/landing/WhoIsItFor").then((m) => ({
+    default: m.WhoIsItFor,
+  })),
+);
+const HowItWorks = lazy(() =>
+  import("@/components/landing/HowItWorks").then((m) => ({
+    default: m.HowItWorks,
+  })),
+);
+const FeaturesSection = lazy(() =>
+  import("@/components/landing/FeaturesSection").then((m) => ({
+    default: m.FeaturesSection,
+  })),
+);
+const SupportedPlatforms = lazy(() =>
+  import("@/components/landing/SupportedPlatforms").then((m) => ({
+    default: m.SupportedPlatforms,
+  })),
+);
+const DevelopersSection = lazy(() =>
+  import("@/components/landing/DevelopersSection").then((m) => ({
+    default: m.DevelopersSection,
+  })),
+);
+const FounderSection = lazy(() =>
+  import("@/components/landing/FounderSection").then((m) => ({
+    default: m.FounderSection,
+  })),
+);
+const PricingSection = lazy(() =>
+  import("@/components/landing/PricingSection").then((m) => ({
+    default: m.PricingSection,
+  })),
+);
+const FAQ = lazy(() =>
+  import("@/components/landing/FAQ").then((m) => ({ default: m.FAQ })),
+);
+const FinalCTA = lazy(() =>
+  import("@/components/landing/FinalCTA").then((m) => ({ default: m.FinalCTA })),
+);
 
 export function LandingPageView({ signedIn }: { signedIn: boolean }) {
   useLandingHashScroll();
@@ -23,16 +62,36 @@ export function LandingPageView({ signedIn }: { signedIn: boolean }) {
       <main>
         <Hero signedIn={signedIn} />
         <PlatformStrip />
-        <DemoVideoSection />
-        <WhoIsItFor />
-        <HowItWorks />
-        <FeaturesSection />
-        <SupportedPlatforms />
-        <DevelopersSection />
-        <FounderSection />
-        <PricingSection signedIn={signedIn} />
-        <FAQ />
-        <FinalCTA signedIn={signedIn} />
+        <DeferredSection minHeight="20rem">
+          <DemoVideoSection />
+        </DeferredSection>
+        <DeferredSection>
+          <WhoIsItFor />
+        </DeferredSection>
+        <DeferredSection>
+          <HowItWorks />
+        </DeferredSection>
+        <DeferredSection>
+          <FeaturesSection />
+        </DeferredSection>
+        <DeferredSection>
+          <SupportedPlatforms />
+        </DeferredSection>
+        <DeferredSection>
+          <DevelopersSection />
+        </DeferredSection>
+        <DeferredSection>
+          <FounderSection />
+        </DeferredSection>
+        <DeferredSection minHeight="28rem">
+          <PricingSection signedIn={signedIn} />
+        </DeferredSection>
+        <DeferredSection>
+          <FAQ />
+        </DeferredSection>
+        <DeferredSection>
+          <FinalCTA signedIn={signedIn} />
+        </DeferredSection>
       </main>
       <LandingFooter />
     </div>

@@ -36,8 +36,9 @@ export function useLandingHashScroll(): void {
     const run = () => {
       if (cancelled) return;
       if (scrollToHash(hash)) return;
-      if (attempts++ < 12) {
-        window.setTimeout(run, 50);
+      // Deferred/lazy sections need a bit longer to mount after a hash visit.
+      if (attempts++ < 40) {
+        window.setTimeout(run, 100);
       }
     };
 

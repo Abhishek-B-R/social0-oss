@@ -18,6 +18,8 @@ export default function AppImage({
   fill,
   className,
   style,
+  priority,
+  loading,
   ...rest
 }: AppImageProps) {
   const imgStyle = fill
@@ -39,7 +41,8 @@ export default function AppImage({
       height={height}
       className={className}
       style={imgStyle}
-      loading="lazy"
+      loading={priority ? "eager" : loading ?? "lazy"}
+      decoding={priority ? "sync" : "async"}
       {...rest}
     />
   );

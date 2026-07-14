@@ -45,14 +45,14 @@ export function OnboardingLayout() {
           <Link href="/onboarding" className="flex items-center gap-2">
             <span className="relative block h-9 w-9">
               <Image
-                src="/logo-circular.png"
+                src="/logo-circular.webp"
                 alt="Social0"
                 width={36}
                 height={36}
                 className="rounded-lg dark:hidden"
               />
               <Image
-                src="/logo-dark.png"
+                src="/logo-dark.webp"
                 alt="Social0"
                 width={36}
                 height={36}

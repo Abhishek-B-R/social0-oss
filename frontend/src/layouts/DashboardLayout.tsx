@@ -37,6 +37,8 @@ export function DashboardLayout() {
       email,
       name: session?.user.name ?? undefined,
     });
+    // Session recording stays off on marketing pages; turn it on in-app only.
+    posthog?.startSessionRecording?.();
   }, [session, posthog]);
 
   const { data: layoutData } = useQuery({

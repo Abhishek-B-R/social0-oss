@@ -132,7 +132,7 @@ export function DashboardSidebar({
   }, [userMenuOpen]);
 
   const isDark = mounted && resolvedTheme === "dark";
-  const logoSrc = isDark ? "/logo-dark.png" : "/logo-circular.png";
+  const logoSrc = isDark ? "/logo-dark.webp" : "/logo-circular.webp";
 
   const isActive = (href: string) => {
     if (href === "/dashboard/connections")

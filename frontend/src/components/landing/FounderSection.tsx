@@ -12,8 +12,12 @@ export function FounderSection() {
               onClick={() => window.open("https://x.com/abhitwt", "_blank")}
             >
               <img
-                src="/pfp.jpg"
+                src="/pfp.webp"
                 alt="Abhishek, founder of Social0"
+                width={128}
+                height={128}
+                loading="lazy"
+                decoding="async"
                 className="h-full w-full object-cover"
               />
             </div>

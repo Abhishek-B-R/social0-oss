@@ -145,13 +145,19 @@ export function FlowAnimation({ className }: { className?: string }) {
               >
                 {/* Max contrast vs the card: white node on dark card, black node on light card */}
                 <img
-                  src="/logo-circular.png"
+                  src="/logo-circular.webp"
                   alt="Social0"
+                  width={80}
+                  height={80}
+                  decoding="async"
                   className="h-full w-full rounded-full dark:hidden"
                 />
                 <img
-                  src="/logo-dark.png"
+                  src="/logo-dark.webp"
                   alt="Social0"
+                  width={80}
+                  height={80}
+                  decoding="async"
                   className="hidden h-full w-full rounded-full dark:block"
                 />
               </Circle>
