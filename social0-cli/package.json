@@ -1,5 +1,5 @@
 {
-  "name": "@social0/cli",
+  "name": "social0",
   "version": "0.1.2",
   "description": "Official CLI for Social0 — manage social media from your terminal",
   "type": "module",
@@ -48,5 +48,13 @@
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Abhishek-B-R/social0-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Abhishek-B-R/social0-cli/issues"
+  },
+  "homepage": "https://github.com/Abhishek-B-R/social0-cli#readme"
 }

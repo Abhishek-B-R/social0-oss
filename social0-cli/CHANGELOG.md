@@ -1,8 +1,12 @@
 # Changelog
 
-All notable changes to `@social0/cli` will be documented in this file.
+All notable changes to `social0` will be documented in this file.
 
 ## [0.1.2] - 2026-07-14
+
+### Changed
+
+- Renamed npm package to `social0` (was scoped `@social0/cli`); binary is still `social0`
 
 ### Fixed
 

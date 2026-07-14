@@ -1,10 +1,10 @@
-# @social0/cli
+# social0
 
 The official CLI for [Social0](https://social0.app) — manage social media from your terminal.
 
 <p align="center">
-  <img src="https://img.shields.io/npm/v/@social0/cli?style=flat-square" alt="npm version" />
-  <img src="https://img.shields.io/node/v/@social0/cli?style=flat-square" alt="node version" />
+  <img src="https://img.shields.io/npm/v/social0?style=flat-square" alt="npm version" />
+  <img src="https://img.shields.io/node/v/social0?style=flat-square" alt="node version" />
   <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License" />
 </p>
 
@@ -12,10 +12,10 @@ The official CLI for [Social0](https://social0.app) — manage social media from
 
 ```bash
 # Install globally
-npm install -g @social0/cli
+npm install -g social0
 
 # Or run without installing
-npx @social0/cli
+npx social0
 
 # Authenticate
 social0 login
@@ -35,7 +35,7 @@ social0 publish --content "Launching today!" --platform twitter linkedin
 ### npm (recommended)
 
 ```bash
-npm install -g @social0/cli
+npm install -g social0
 ```
 
 ### Homebrew

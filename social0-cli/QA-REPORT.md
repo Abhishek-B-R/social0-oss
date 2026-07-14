@@ -1,7 +1,7 @@
 # Social0 CLI QA Report
 
 **Date:** 2026-07-14  
-**CLI version:** `@social0/cli` v0.1.2 (`social0` on PATH)  
+**CLI version:** `social0` v0.1.2 (`social0` on PATH)  
 **Account:** Abhishek BR (`abhishekbr989@gmail.com`) · plan `growth`  
 **Facebook target:** account ID **1** · `facebook` · **Social0** (active) — IDs reorder over time  
 **API:** `https://api.social0.app/v1`
@@ -24,7 +24,7 @@ The CLI is usable for the happy path, but several UX bugs make follow-up command
 |------|--------------------|--------|
 | Auth status | `social0 whoami` | Shows name, email, plan, masked key, API URL |
 | Diagnostics | `social0 doctor` | All checks passed (14 accounts) |
-| Version | `social0 version` | `@social0/cli v0.1.0` |
+| Version | `social0 version` | `social0 v0.1.0` |
 | Examples | `social0 examples` | Prints command examples + sample template |
 | Accounts list | `social0 accounts` | Table with numeric IDs 1–14 |
 | Output formats | `--json` / `--yaml` / `--table` | Work on accounts (and elsewhere) |
@@ -161,7 +161,7 @@ social0 publish --content "smoke test" --platform facebook
 
 ## Retest of prior failures (v0.1.2)
 
-Re-ran only items that failed/broke in the first pass against built `@social0/cli` v0.1.2.
+Re-ran only items that failed/broke in the first pass against built `social0` v0.1.2.
 
 | Prior issue | Retest result |
 |-------------|-------------|

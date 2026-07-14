@@ -23,7 +23,7 @@ export async function doctorCommand(opts: GlobalOptions): Promise<void> {
   diagnostics.push({
     check: "Version",
     status: "pass",
-    message: `@social0/cli v${VERSION}`,
+    message: `social0 v${VERSION}`,
   });
 
   const config = loadConfig();
@@ -97,18 +97,18 @@ export async function doctorCommand(opts: GlobalOptions): Promise<void> {
 }
 
 export function versionCommand(): void {
-  console.log(`@social0/cli v${VERSION}`);
+  console.log(`social0 v${VERSION}`);
 }
 
 export async function updateCommand(): Promise<void> {
   console.log(`Current version: v${VERSION}`);
   try {
-    const res = await fetch("https://registry.npmjs.org/@social0/cli/latest", {
+    const res = await fetch("https://registry.npmjs.org/social0/latest", {
       headers: { Accept: "application/vnd.npm.install-v1+json" },
       signal: AbortSignal.timeout(8000),
     });
     if (res.status === 404) {
-      console.log("@social0/cli is not published on npm yet.");
+      console.log("social0 is not published on npm yet.");
       console.log("Install from the repo: cd social0-cli && npm link");
       return;
     }
@@ -122,7 +122,7 @@ export async function updateCommand(): Promise<void> {
     } else {
       console.log(`Update available: v${data.version}`);
       console.log("");
-      console.log("  npm install -g @social0/cli@latest");
+      console.log("  npm install -g social0@latest");
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
