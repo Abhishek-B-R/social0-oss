@@ -2,6 +2,14 @@
 
 All notable changes to the Social0 MCP server are documented here.
 
+## [0.3.0] - 2026-07-15
+
+### Changed
+
+- **Breaking:** npm package renamed from `social0-mcp` to `@social0/mcp` (bin `social0-mcp` unchanged)
+- Prefer `npx -y @social0/mcp` in configs
+- Unscoped `social0-mcp` remains as a thin deprecated alias that forwards to `@social0/mcp`
+
 ## [0.2.2] - 2026-07-13
 
 ### Fixed

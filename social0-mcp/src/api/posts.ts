@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { ListPostsResponse, PostDetail, PostSummary, ScheduleResult } from "../types/index.js";
-import { getApiClient } from "./client.js";
+import { apiClient } from "./client.js";
 
 export interface CreatePostPayload {
   content: string;
@@ -47,23 +47,23 @@ function buildQuery(params: ListPostsParams): string {
 }
 
 export async function createPost(payload: CreatePostPayload): Promise<{ id: string }> {
-  return getApiClient().post<{ id: string }>("/posts", payload);
+  return apiClient.post<{ id: string }>("/posts", payload);
 }
 
 export async function updatePost(postId: string, payload: UpdatePostPayload): Promise<PostDetail> {
-  return getApiClient().patch<PostDetail>(`/posts/${postId}`, payload);
+  return apiClient.patch<PostDetail>(`/posts/${postId}`, payload);
 }
 
 export async function deletePost(postId: string): Promise<void> {
-  await getApiClient().delete(`/posts/${postId}`);
+  await apiClient.delete(`/posts/${postId}`);
 }
 
 export async function listPosts(params: ListPostsParams = {}): Promise<ListPostsResponse> {
-  return getApiClient().get<ListPostsResponse>(`/posts${buildQuery(params)}`);
+  return apiClient.get<ListPostsResponse>(`/posts${buildQuery(params)}`);
 }
 
 export async function getPost(postId: string): Promise<PostDetail> {
-  return getApiClient().get<PostDetail>(`/posts/${postId}`);
+  return apiClient.get<PostDetail>(`/posts/${postId}`);
 }
 
 export async function publishPost(postId: string): Promise<{
@@ -71,7 +71,7 @@ export async function publishPost(postId: string): Promise<{
   status: string;
   stream_url: string;
 }> {
-  return getApiClient().post(`/posts/${postId}/publish`, undefined, {
+  return apiClient.post(`/posts/${postId}/publish`, undefined, {
     idempotencyKey: randomUUID(),
   });
 }
@@ -80,7 +80,7 @@ export async function schedulePost(
   postId: string,
   payload: SchedulePostPayload,
 ): Promise<{ post_id: string; scheduled_at: string; status: "scheduled" }> {
-  return getApiClient().post(`/posts/${postId}/schedule`, payload);
+  return apiClient.post(`/posts/${postId}/schedule`, payload);
 }
 
 export async function publishNow(payload: CreatePostPayload): Promise<{
@@ -89,13 +89,13 @@ export async function publishNow(payload: CreatePostPayload): Promise<{
   status: string;
   stream_url: string;
 }> {
-  return getApiClient().post("/posts/publish", payload, { idempotencyKey: randomUUID() });
+  return apiClient.post("/posts/publish", payload, { idempotencyKey: randomUUID() });
 }
 
 export async function scheduleContent(
   payload: CreatePostPayload & SchedulePostPayload,
 ): Promise<ScheduleResult> {
-  return getApiClient().post("/posts/schedule", payload);
+  return apiClient.post("/posts/schedule", payload);
 }
 
 export type { PostSummary };

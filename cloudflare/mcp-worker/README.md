@@ -2,7 +2,7 @@
 
 Remote **Streamable HTTP** MCP endpoint for Claude Connectors / one-click install, with **OAuth 2.0 + PKCE**.
 
-Local stdio install via `npx social0-mcp` is unchanged.
+Local stdio install via `npx @social0/mcp` is unchanged.
 
 ## Endpoint
 
@@ -32,7 +32,7 @@ api.social0.app/oauth/mcp/*
 api.social0.app/v1/*
 ```
 
-The Worker reuses the same tool handlers as `social0-mcp` (stdio package). OAuth approval creates a dedicated **Claude MCP Connector** API key the user can revoke in Dashboard → API Keys.
+The Worker reuses the same tool handlers as `@social0/mcp` (stdio package). OAuth approval creates a dedicated **Claude MCP Connector** API key the user can revoke in Dashboard → API Keys.
 
 ## Prerequisites
 

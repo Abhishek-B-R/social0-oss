@@ -1,6 +1,6 @@
 {
-  "name": "social0-mcp",
-  "version": "0.2.2",
+  "name": "@social0/mcp",
+  "version": "0.3.0",
   "description": "Post to Instagram, TikTok, YouTube, X, LinkedIn, and more from Claude, Cursor, or ChatGPT",
   "type": "module",
   "main": "dist/index.js",
@@ -38,6 +38,9 @@
     "claude"
   ],
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Abhishek-B-R/social0-mcp.git"

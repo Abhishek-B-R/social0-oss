@@ -37,7 +37,7 @@ Prefer the **MCP server** (hosted OAuth or local `npx`). Use the REST API only i
 **Source**: [github.com/Abhishek-B-R/social0-mcp](https://github.com/Abhishek-B-R/social0-mcp)  
 **Docs**: [docs.social0.app/docs/integrations/mcp](https://docs.social0.app/docs/integrations/mcp)  
 **Marketing / setup**: [social0.app/mcp](https://social0.app/mcp)  
-**npm**: [`social0-mcp`](https://www.npmjs.com/package/social0-mcp) (not `@social0/mcp-server`)
+**npm**: [`@social0/mcp`](https://www.npmjs.com/package/@social0/mcp) (`social0-mcp` is a deprecated alias)
 
 | Installation | How to update |
 |--------------|---------------|
@@ -82,7 +82,7 @@ Needs [Node.js 20+](https://nodejs.org/) and a key from [Dashboard → API keys]
   "mcpServers": {
     "social0": {
       "command": "npx",
-      "args": ["-y", "social0-mcp"],
+      "args": ["-y", "@social0/mcp"],
       "env": {
         "SOCIAL0_API_KEY": "sk_live_your_key_here"
       }
@@ -213,4 +213,4 @@ Full schemas: [api.social0.app/docs](https://api.social0.app/docs)
 - Use drafts when testing to avoid accidental live posts
 - Keep hashtags modest (about 4–5) unless the user asks otherwise
 - Convert local times to UTC before `scheduled_at`
-- Package name is **`social0-mcp`** — always include `-y` with `npx`
+- Package name is **`@social0/mcp`** — always include `-y` with `npx` (`social0-mcp` still works as a deprecated alias)

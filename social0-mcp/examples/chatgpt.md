@@ -26,7 +26,7 @@ If your ChatGPT build only supports a local command:
 {
   "name": "social0",
   "command": "npx",
-  "args": ["-y", "social0-mcp"],
+  "args": ["-y", "@social0/mcp"],
   "env": {
     "SOCIAL0_API_KEY": "sk_live_your_key_here"
   }

@@ -48,7 +48,7 @@ Needs [Node.js 20+](https://nodejs.org/) and a `sk_live_` key from [API keys](ht
   "mcpServers": {
     "social0": {
       "command": "npx",
-      "args": ["-y", "social0-mcp"],
+      "args": ["-y", "@social0/mcp"],
       "env": {
         "SOCIAL0_API_KEY": "sk_live_your_key_here"
       }
@@ -56,6 +56,8 @@ Needs [Node.js 20+](https://nodejs.org/) and a `sk_live_` key from [API keys](ht
   }
 }
 ```
+
+> Unscoped `npx -y social0-mcp` still works as a deprecated alias.
 
 | Host | Where |
 |------|--------|
@@ -78,7 +80,7 @@ Needs [Node.js 20+](https://nodejs.org/) and a `sk_live_` key from [API keys](ht
 
 | | Hosted | Local (`npx`) |
 |--|--------|----------------|
-| URL / command | `https://mcp.social0.app/mcp` | `npx -y social0-mcp` |
+| URL / command | `https://mcp.social0.app/mcp` | `npx -y @social0/mcp` |
 | Auth | OAuth | `SOCIAL0_API_KEY` |
 | Media | `url` or `data` | `url`, `data`, or `file_path` |
 

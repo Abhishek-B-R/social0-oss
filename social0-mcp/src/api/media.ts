@@ -1,5 +1,5 @@
 import type { MediaUploadResult } from "../types/index.js";
-import { getApiClient } from "./client.js";
+import { apiClient } from "./client.js";
 
 interface PresignResponse {
   upload_url: string;
@@ -12,7 +12,7 @@ export async function presignUpload(input: {
   contentType: string;
   fileSize: number;
 }): Promise<PresignResponse> {
-  return getApiClient().post<PresignResponse>("/media/presign", {
+  return apiClient.post<PresignResponse>("/media/presign", {
     filename: input.filename,
     content_type: input.contentType,
     size_bytes: input.fileSize,
@@ -26,7 +26,7 @@ export async function confirmUpload(input: {
   contentType: string;
   fileSize: number;
 }): Promise<MediaUploadResult> {
-  return getApiClient().post<MediaUploadResult>("/media/confirm", {
+  return apiClient.post<MediaUploadResult>("/media/confirm", {
     key: input.key,
     storage_filename: input.storageFilename,
     original_filename: input.originalFilename,
@@ -46,7 +46,7 @@ export async function uploadMediaBuffer(input: {
     fileSize: input.buffer.byteLength,
   });
 
-  await getApiClient().putRaw(presign.upload_url, input.buffer, input.mimeType);
+  await apiClient.putRaw(presign.upload_url, input.buffer, input.mimeType);
 
   return confirmUpload({
     key: presign.key,
@@ -64,5 +64,5 @@ export async function getMedia(mediaId: string): Promise<{
   size_bytes: number;
   url: string | null;
 }> {
-  return getApiClient().get(`/media/${mediaId}`);
+  return apiClient.get(`/media/${mediaId}`);
 }

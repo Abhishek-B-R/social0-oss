@@ -4,26 +4,16 @@ Guidance for AI agents (and humans) using this MCP server.
 
 ## What this is
 
-- **Package:** `social0-mcp` (local stdio via `npx`) **or** hosted HTTPS MCP at `https://mcp.social0.app/mcp` (Claude Connectors / OAuth)
-- **Auth (stdio):** `SOCIAL0_API_KEY` → `Authorization: Bearer …` on `https://api.social0.app/v1`
-- **Auth (hosted):** OAuth 2.0 + PKCE (Claude Connectors) or Bearer API key
-- **Account connect:** Users link Instagram/X/etc. in the Social0 dashboard (not via MCP)
+- **Package:** `@social0/mcp` (local stdio process; unscoped `social0-mcp` is a deprecated alias)
+- **Auth:** `SOCIAL0_API_KEY` → `Authorization: Bearer …` on `https://api.social0.app/v1`
+- **Not included:** OAuth / connecting social accounts (user does that in the dashboard)
 
 ## Setup checklist
 
-### Local stdio
-
 1. User has Social0 account + connected platforms  
 2. API key created at https://social0.app/dashboard/api-keys (`sk_live_…`)  
-3. Host config runs `npx -y social0-mcp` with `SOCIAL0_API_KEY` in `env` (see README)  
+3. Host config runs `npx -y @social0/mcp` with `SOCIAL0_API_KEY` in `env` (see README)  
 4. Verify with `list_accounts`
-
-### Hosted (Claude Connectors)
-
-1. Point connector at `https://mcp.social0.app/mcp`  
-2. Complete OAuth consent on social0.app  
-3. Prefer `upload_media` with `url` or `data` (base64) — `file_path` is unavailable on hosted MCP  
-4. Re-connecting OAuth replaces the previous connector API key; Claude must reconnect after that
 
 ## Tool reference
 
@@ -259,7 +249,7 @@ Key revoked or wrong — create a new key.
 
 ### `npx` / command not found
 
-Install [Node.js 20+](https://nodejs.org/), then use `"command": "npx"` with `"args": ["-y", "social0-mcp"]`. Always include `-y` so the first run does not prompt.
+Install [Node.js 20+](https://nodejs.org/), then use `"command": "npx"` with `"args": ["-y", "@social0/mcp"]`. Always include `-y` so the first run does not prompt.
 
 ### No connected account / multiple accounts
 

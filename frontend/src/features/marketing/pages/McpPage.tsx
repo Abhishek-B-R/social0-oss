@@ -166,7 +166,7 @@ function buildMcpConfig(host: HostId, apiKey: string) {
           social0: {
             type: "stdio",
             command: "npx",
-            args: ["-y", "social0-mcp"],
+            args: ["-y", "@social0/mcp"],
             env,
           },
         },
@@ -181,7 +181,7 @@ function buildMcpConfig(host: HostId, apiKey: string) {
       mcpServers: {
         social0: {
           command: "npx",
-          args: ["-y", "social0-mcp"],
+          args: ["-y", "@social0/mcp"],
           env,
         },
       },
@@ -365,15 +365,15 @@ function McpConfigPanel() {
         ) : (
           <>
             Paste into your host, save, and restart if needed. Uses{" "}
-            <code className="rounded bg-muted px-1">npx -y social0-mcp</code>{" "}
+            <code className="rounded bg-muted px-1">npx -y @social0/mcp</code>{" "}
             (Node.js 20+). Package:{" "}
             <a
-              href="https://www.npmjs.com/package/social0-mcp"
+              href="https://www.npmjs.com/package/@social0/mcp"
               target="_blank"
               rel="noopener noreferrer"
               className="text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
             >
-              social0-mcp
+              @social0/mcp
             </a>
             .
           </>
@@ -436,7 +436,7 @@ export default function McpPage() {
             in any AI that supports remote MCP, then authorize with Social0. Or
             use{" "}
             <code className="rounded bg-muted px-1.5 py-0.5 text-[14px]">
-              npx social0-mcp
+              npx @social0/mcp
             </code>{" "}
             locally in Cursor and Desktop. Draft, publish, and schedule across
             every connected platform from chat.
@@ -666,7 +666,7 @@ bluesky       acme.bsky       active`}
               <strong className="font-medium text-foreground">Local MCP:</strong>{" "}
               Cursor and Desktop can run{" "}
               <code className="rounded bg-muted px-1 text-[13px]">
-                npx social0-mcp
+                npx @social0/mcp
               </code>{" "}
               with a{" "}
               <code className="rounded bg-muted px-1 text-[13px]">sk_live_</code>{" "}

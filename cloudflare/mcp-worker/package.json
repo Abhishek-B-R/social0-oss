@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "prebuild:mcp": "npm run build --prefix ../../social0-mcp",
+    "prebuild:mcp": "npm run build --prefix ../../../mcp",
     "dev": "npm run prebuild:mcp && wrangler dev",
     "deploy": "npm run prebuild:mcp && wrangler deploy",
     "cf-typegen": "wrangler types",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "social0-mcp": "file:../../social0-mcp",
+    "@social0/mcp": "file:../../../mcp",
     "zod": "^3.24.4"
   },
   "devDependencies": {

@@ -1,0 +1,35 @@
+{
+  "name": "social0-mcp",
+  "version": "0.3.0",
+  "description": "Deprecated alias for @social0/mcp — prefer `npx -y @social0/mcp`",
+  "type": "module",
+  "bin": {
+    "social0-mcp": "bin.mjs"
+  },
+  "files": [
+    "bin.mjs",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "mcp",
+    "social0",
+    "deprecated"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Abhishek-B-R/social0-mcp.git",
+    "directory": "alias/social0-mcp"
+  },
+  "homepage": "https://github.com/Abhishek-B-R/social0-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/Abhishek-B-R/social0-mcp/issues"
+  },
+  "dependencies": {
+    "@social0/mcp": "0.3.0"
+  },
+  "deprecated": "Package renamed to @social0/mcp. Use: npx -y @social0/mcp"
+}

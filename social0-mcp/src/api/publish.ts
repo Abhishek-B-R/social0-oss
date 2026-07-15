@@ -1,6 +1,6 @@
 import type { JobStatusResponse } from "../types/index.js";
-import { getApiClient } from "./client.js";
+import { apiClient } from "./client.js";
 
 export async function getPublishStatus(trackingId: string): Promise<JobStatusResponse> {
-  return getApiClient().get<JobStatusResponse>(`/jobs/${trackingId}`);
+  return apiClient.get<JobStatusResponse>(`/jobs/${trackingId}`);
 }
