@@ -125,6 +125,16 @@ export const FRONTEND_API_ROUTES: ApiRouteDef[] = [
   { method: "POST", path: "/api/account/change-email/send-otp", note: "sync" },
   { method: "POST", path: "/api/account/change-email", note: "sync" },
 
+  // Teams / Workspace
+  { method: "GET", path: "/api/team", note: "sync" },
+  { method: "GET", path: "/api/team/context", note: "sync" },
+  { method: "GET", path: "/api/team/invitations", note: "sync" },
+  { method: "POST", path: "/api/team/invite", note: "sync" },
+  { method: "POST", path: "/api/team/accept", note: "sync" },
+  { method: "PATCH", path: "/api/team/member/:id/role", note: "sync" },
+  { method: "DELETE", path: "/api/team/member/:id", note: "sync" },
+  { method: "DELETE", path: "/api/team/invitation/:id", note: "sync" },
+
   // Canny
   { method: "GET", path: "/api/canny/sso", note: "sync" },
   { method: "GET", path: "/api/canny/config", note: "sync — public board token" },

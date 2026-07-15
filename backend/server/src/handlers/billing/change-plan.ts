@@ -28,7 +28,9 @@ export async function changePlan(request: Request) {
   const body = await request.json().catch(() => ({}));
   const scheduleAtPeriodEnd = Boolean(body.scheduleAtPeriodEnd);
   const plan =
-    body.plan === "starter" || body.plan === "growth" ? body.plan : null;
+    body.plan === "starter" || body.plan === "growth" || body.plan === "pro"
+      ? body.plan
+      : null;
   const reason =
     typeof body.reason === "string" ? body.reason.trim().slice(0, 5000) : "";
   if (!plan) {
@@ -40,7 +42,7 @@ export async function changePlan(request: Request) {
       ? PLAN_IDS.starter
       : plan === "growth"
         ? PLAN_IDS.growth
-        : "";
+        : PLAN_IDS.pro;
   if (!productId) {
     return RouteResponse.json({ error: "Plan not configured" }, { status: 503 });
   }

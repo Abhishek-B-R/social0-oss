@@ -6,14 +6,23 @@ import { connectedAccounts, postPublications } from "../../db/schema.js";
 import { decryptToken } from "@social0/shared";
 import { revokeTokenOnPlatform } from "../../lib/revoke-token.js";
 import type { Platform } from "../../lib/platforms.js";
+import { requireWorkspacePermissionForUser } from "../../lib/workspace/session.js";
 
 export async function registerAccountsRoutes(app: FastifyInstance) {
   app.get("/accounts", async (request, reply) => {
     const userId = await requireUserId(request);
     if (!userId) return reply.status(401).send(unauthorized());
 
+    const ws = await requireWorkspacePermissionForUser(
+      userId,
+      "view_connections",
+    );
+    if (!ws.ok) {
+      return reply.status(ws.statusCode).send({ error: ws.error });
+    }
+
     const accounts = await db.query.connectedAccounts.findMany({
-      where: eq(connectedAccounts.userId, userId),
+      where: eq(connectedAccounts.userId, ws.ctx.resourceUserId),
       columns: {
         id: true,
         platform: true,
@@ -35,6 +44,14 @@ export async function registerAccountsRoutes(app: FastifyInstance) {
     if (!userId) return reply.status(401).send(unauthorized());
     const { id: accountId } = request.params as { id: string };
 
+    const ws = await requireWorkspacePermissionForUser(
+      userId,
+      "view_connections",
+    );
+    if (!ws.ok) {
+      return reply.status(ws.statusCode).send({ error: ws.error });
+    }
+
     const [account] = await db
       .select({
         id: connectedAccounts.id,
@@ -45,7 +62,7 @@ export async function registerAccountsRoutes(app: FastifyInstance) {
       .where(
         and(
           eq(connectedAccounts.id, accountId),
-          eq(connectedAccounts.userId, userId),
+          eq(connectedAccounts.userId, ws.ctx.resourceUserId),
         ),
       )
       .limit(1);
@@ -70,13 +87,21 @@ export async function registerAccountsRoutes(app: FastifyInstance) {
     if (!userId) return reply.status(401).send(unauthorized());
     const { id: accountId } = request.params as { id: string };
 
+    const ws = await requireWorkspacePermissionForUser(
+      userId,
+      "manage_connections",
+    );
+    if (!ws.ok) {
+      return reply.status(ws.statusCode).send({ error: ws.error });
+    }
+
     const [account] = await db
       .select()
       .from(connectedAccounts)
       .where(
         and(
           eq(connectedAccounts.id, accountId),
-          eq(connectedAccounts.userId, userId),
+          eq(connectedAccounts.userId, ws.ctx.resourceUserId),
         ),
       )
       .limit(1);

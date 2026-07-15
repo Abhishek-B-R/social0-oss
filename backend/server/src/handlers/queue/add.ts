@@ -11,12 +11,22 @@ import { eq, and, asc } from "drizzle-orm";
 import { headers } from "../../lib/http/request-cookies.js";
 import { getNextAvailableSlot } from "../../lib/queue-utils.js";
 import { toZonedTime } from "date-fns-tz";
+import { requireWorkspacePermissionForUser } from "../../lib/workspace/session.js";
 
 export async function addToQueue(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "create_posts",
+  );
+  if (!ws.ok) {
+    return RouteResponse.json({ error: ws.error }, { status: ws.statusCode });
+  }
+  const userId = ws.ctx.resourceUserId;
 
   let body: { postId?: string };
   try {
@@ -33,7 +43,7 @@ export async function addToQueue(request: Request) {
   const [post] = await db
     .select({ id: posts.id })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)))
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
     .limit(1);
 
   if (!post) {
@@ -43,7 +53,7 @@ export async function addToQueue(request: Request) {
   const [settings] = await db
     .select({ timezone: userSettings.timezone })
     .from(userSettings)
-    .where(eq(userSettings.userId, session.user.id))
+    .where(eq(userSettings.userId, userId))
     .limit(1);
 
   const timezone = settings?.timezone?.trim() && settings.timezone !== "UTC"
@@ -52,7 +62,7 @@ export async function addToQueue(request: Request) {
 
   const slots = await db.query.queueSlots.findMany({
     where: and(
-      eq(queueSlots.userId, session.user.id),
+      eq(queueSlots.userId, userId),
       eq(queueSlots.isActive, true),
     ),
     orderBy: [asc(queueSlots.hour), asc(queueSlots.minute)],
@@ -70,7 +80,7 @@ export async function addToQueue(request: Request) {
     .from(queuedPosts)
     .where(
       and(
-        eq(queuedPosts.userId, session.user.id),
+        eq(queuedPosts.userId, userId),
         eq(queuedPosts.status, "pending"),
       ),
     );
@@ -102,7 +112,7 @@ export async function addToQueue(request: Request) {
   const [queued] = await db
     .insert(queuedPosts)
     .values({
-      userId: session.user.id,
+      userId,
       postId,
       slotId: next.slotId,
       scheduledFor: next.utc,
@@ -113,7 +123,7 @@ export async function addToQueue(request: Request) {
   await db
     .update(posts)
     .set({ status: "scheduled", scheduledAt: next.utc, updatedAt: new Date() })
-    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
 
   const displayInTz = toZonedTime(next.utc, timezone);
   const scheduledForUser = {

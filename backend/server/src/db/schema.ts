@@ -43,6 +43,8 @@ export const publicationStatusEnum = pgEnum("publication_status", [
   "failed",
 ]);
 
+export const workspaceRoleEnum = pgEnum("workspace_role", ["admin", "member"]);
+
 // ===== BETTER AUTH TABLES =====
 // Better Auth creates and owns these tables.
 // We reference them here for foreign key relationships and to pass to Better Auth adapter.
@@ -185,6 +187,10 @@ export const posts = pgTable(
     userId: text("user_id")
       .references(() => user.id)
       .notNull(),
+    /** Actor who created the post (may differ from resource owner in Teams). */
+    createdByUserId: text("created_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
     originalContent: text("original_content").notNull(), // User's raw input
     finalContent: text("final_content").notNull(), // What gets posted (can be AI-edited)
     isAiEnhanced: boolean("is_ai_enhanced").default(false),
@@ -429,6 +435,57 @@ export const userSettings = pgTable("user_settings", {
   ).default(false),
   /** Lifetime posts used on the free tier (no reset). */
   freePostsUsed: integer("free_posts_used").default(0).notNull(),
+  /** Active Teams workspace for collaboration context (nullable). */
+  activeWorkspaceId: uuid("active_workspace_id"),
+});
+
+// ===== WORKSPACES / TEAMS =====
+export const workspaces = pgTable("workspaces", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  /** Billing owner / Pro subscriber. Mutable to allow future ownership transfer. */
+  ownerUserId: text("owner_user_id")
+    .references(() => user.id, { onDelete: "cascade" })
+    .notNull()
+    .unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const workspaceMembers = pgTable(
+  "workspace_members",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .references(() => workspaces.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: text("user_id")
+      .references(() => user.id, { onDelete: "cascade" })
+      .notNull(),
+    role: workspaceRoleEnum("role").default("member").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    workspaceUserUnique: unique().on(table.workspaceId, table.userId),
+  }),
+);
+
+export const workspaceInvitations = pgTable("workspace_invitations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  workspaceId: uuid("workspace_id")
+    .references(() => workspaces.id, { onDelete: "cascade" })
+    .notNull(),
+  email: text("email").notNull(),
+  role: workspaceRoleEnum("role").default("member").notNull(),
+  token: text("token").notNull().unique(),
+  invitedByUserId: text("invited_by_user_id").references(() => user.id, {
+    onDelete: "set null",
+  }),
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // ===== TRIAL CLAIMS (one trial per normalized billing email, forever) =====
@@ -610,7 +667,48 @@ export const userSettingsRelations = relations(userSettings, ({ one }) => ({
     fields: [userSettings.userId],
     references: [user.id],
   }),
+  activeWorkspace: one(workspaces, {
+    fields: [userSettings.activeWorkspaceId],
+    references: [workspaces.id],
+  }),
 }));
+
+export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
+  owner: one(user, {
+    fields: [workspaces.ownerUserId],
+    references: [user.id],
+  }),
+  members: many(workspaceMembers),
+  invitations: many(workspaceInvitations),
+}));
+
+export const workspaceMembersRelations = relations(
+  workspaceMembers,
+  ({ one }) => ({
+    workspace: one(workspaces, {
+      fields: [workspaceMembers.workspaceId],
+      references: [workspaces.id],
+    }),
+    user: one(user, {
+      fields: [workspaceMembers.userId],
+      references: [user.id],
+    }),
+  }),
+);
+
+export const workspaceInvitationsRelations = relations(
+  workspaceInvitations,
+  ({ one }) => ({
+    workspace: one(workspaces, {
+      fields: [workspaceInvitations.workspaceId],
+      references: [workspaces.id],
+    }),
+    invitedBy: one(user, {
+      fields: [workspaceInvitations.invitedByUserId],
+      references: [user.id],
+    }),
+  }),
+);
 
 export const platformRateLimitsRelations = relations(
   platformRateLimits,

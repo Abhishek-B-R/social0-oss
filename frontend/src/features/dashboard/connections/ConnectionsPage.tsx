@@ -102,6 +102,7 @@ export function ConnectionsPage() {
       <ConnectionsList
         accounts={data.accounts}
         accountLimit={data.accountLimit}
+        canManageConnections={data.canManageConnections !== false}
         onAccountDisconnected={handleAccountDisconnected}
         onAccountsChanged={refetch}
       />

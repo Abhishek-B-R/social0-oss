@@ -37,6 +37,23 @@ export async function platformStart(
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { requireWorkspacePermissionForUser } = await import(
+    "../lib/workspace/session.js"
+  );
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "manage_connections",
+  );
+  if (!ws.ok) {
+    return RouteResponse.redirect(
+      appUrlForPath(
+        `/dashboard/connections?error=${encodeURIComponent(ws.error)}`,
+        req,
+      ),
+    );
+  }
+  const resourceUserId = ws.ctx.resourceUserId;
+
   // TikTok and all other platforms: rate limit + connect-binding cookie on redirect.
   const rate = await enforceRateLimit(oauthLimiter, session.user.id);
   if (!rate.allowed) {
@@ -60,7 +77,7 @@ export async function platformStart(
       .where(
         and(
           eq(connectedAccounts.id, accountIdParam),
-          eq(connectedAccounts.userId, session.user.id),
+          eq(connectedAccounts.userId, resourceUserId),
         ),
       )
       .limit(1);
@@ -88,8 +105,9 @@ export async function platformStart(
 
     // Store request token secret in encrypted cookie (needed in callback)
     const cookieStore = await cookies();
+    // State userId is the workspace resource owner (Teams Admin may differ from actor).
     const state = encrypt({
-      userId: session.user.id,
+      userId: resourceUserId,
       platform: "twitter_x",
       oauth_token_secret: oauth_token_secret,
       ...(returnToForConnect && { returnTo: returnToForConnect }),
@@ -102,7 +120,7 @@ export async function platformStart(
       maxAge: 600, // 10 minutes
     });
     // State for CSRF: userId + platform (callback will verify)
-    const csrfState = encrypt({ userId: session.user.id, platform: "twitter_x" });
+    const csrfState = encrypt({ userId: resourceUserId, platform: "twitter_x" });
     const finalUrl = `${authUrl}&state=${encodeURIComponent(csrfState)}`;
     return redirectWithOAuthConnectBinding(
       finalUrl,
@@ -159,14 +177,14 @@ export async function platformStart(
     // Store verifier in verification table
     await db.insert(verification).values({
       id: stateId,
-      identifier: `pkce_${session.user.id}_${platform}`,
+      identifier: `pkce_${resourceUserId}_${platform}`,
       value: encryptToken(codeVerifier, stateId),
       expiresAt,
     });
 
-    // State only contains userId + platform + stateId (short, safe)
+    // State only contains resource owner userId + platform + stateId (short, safe)
     state = encrypt({
-      userId: session.user.id,
+      userId: resourceUserId,
       platform: platform,
       stateId: stateId, // Reference to verifier in DB
       ...(returnToForConnect && { returnTo: returnToForConnect }),
@@ -179,9 +197,9 @@ export async function platformStart(
     url.searchParams.set("code_challenge_method", "S256");
 
   } else {
-    // Standard OAuth flow - encrypt userId + platform in state
+    // Standard OAuth flow - encrypt workspace resource owner userId + platform
     state = encrypt({
-      userId: session.user.id,
+      userId: resourceUserId,
       platform: platform,
       ...(returnToForConnect && { returnTo: returnToForConnect }),
       ...(isReauth && { reauth: true, reauthAccountId }),

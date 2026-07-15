@@ -29,10 +29,22 @@ const SIZE_TOLERANCE_BYTES = 1024;
 
 export async function registerMediaApiRoutes(app: FastifyInstance) {
   app.post("/media/presign", async (request, reply) => {
-    const userId = await requireUserId(request);
-    if (!userId) return reply.status(401).send(unauthorized());
+    const actorUserId = await requireUserId(request);
+    if (!actorUserId) return reply.status(401).send(unauthorized());
 
-    const rate = await enforceRateLimit(uploadLimiter, userId);
+    const { requireWorkspacePermissionForUser } = await import(
+      "../../lib/workspace/session.js"
+    );
+    const ws = await requireWorkspacePermissionForUser(
+      actorUserId,
+      "create_posts",
+    );
+    if (!ws.ok) {
+      return reply.status(ws.statusCode).send({ error: ws.error });
+    }
+    const userId = ws.ctx.resourceUserId;
+
+    const rate = await enforceRateLimit(uploadLimiter, actorUserId);
     if (!rate.allowed) {
       return reply.status(rate.status).send({ error: rate.error });
     }
@@ -93,8 +105,20 @@ export async function registerMediaApiRoutes(app: FastifyInstance) {
   });
 
   app.post("/media/confirm", async (request, reply) => {
-    const userId = await requireUserId(request);
-    if (!userId) return reply.status(401).send(unauthorized());
+    const actorUserId = await requireUserId(request);
+    if (!actorUserId) return reply.status(401).send(unauthorized());
+
+    const { requireWorkspacePermissionForUser } = await import(
+      "../../lib/workspace/session.js"
+    );
+    const ws = await requireWorkspacePermissionForUser(
+      actorUserId,
+      "create_posts",
+    );
+    if (!ws.ok) {
+      return reply.status(ws.statusCode).send({ error: ws.error });
+    }
+    const userId = ws.ctx.resourceUserId;
 
     if (!isR2Configured()) {
       return reply.status(503).send({
@@ -102,7 +126,7 @@ export async function registerMediaApiRoutes(app: FastifyInstance) {
       });
     }
 
-    const rate = await enforceRateLimit(uploadLimiter, userId);
+    const rate = await enforceRateLimit(uploadLimiter, actorUserId);
     if (!rate.allowed) {
       return reply.status(rate.status).send({ error: rate.error });
     }

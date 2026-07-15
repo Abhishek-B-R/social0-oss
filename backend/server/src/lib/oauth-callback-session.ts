@@ -5,6 +5,7 @@ import {
   clearOAuthConnectBinding,
   verifyOAuthConnectBinding,
 } from "./oauth-connect-binding.js";
+import { resolveWorkspaceContext } from "./workspace/context.js";
 
 async function readCallbackSession(request: Request) {
   const fromRequest = await auth.api.getSession({ headers: request.headers });
@@ -17,6 +18,10 @@ async function readCallbackSession(request: Request) {
 /**
  * OAuth callbacks must match the user who started the connect flow.
  * Prevents CSRF account linking (victim authorizes → attacker's Social0 user).
+ *
+ * Teams: OAuth state stores the workspace resource owner, while the connect
+ * binding cookie is keyed to the acting Admin. Either match is accepted when
+ * the actor is allowed to manage connections for that owner.
  */
 export async function assertOAuthCallbackSession(
   request: Request,
@@ -27,6 +32,20 @@ export async function assertOAuthCallbackSession(
   if (session?.user?.id === expectedUserId) {
     await clearOAuthConnectBinding(request);
     return;
+  }
+
+  if (session?.user?.id) {
+    const ctx = await resolveWorkspaceContext(session.user.id);
+    const canManageOwner =
+      ctx.permissions.has("manage_connections") &&
+      ctx.resourceUserId === expectedUserId;
+    if (
+      canManageOwner &&
+      (await verifyOAuthConnectBinding(request, session.user.id, platform))
+    ) {
+      await clearOAuthConnectBinding(request);
+      return;
+    }
   }
 
   if (await verifyOAuthConnectBinding(request, expectedUserId, platform)) {

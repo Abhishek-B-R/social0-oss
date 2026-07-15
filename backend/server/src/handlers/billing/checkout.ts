@@ -33,25 +33,21 @@ export async function createCheckout(request: Request) {
   const plan = body.plan as string | undefined;
   const successUrl =
     typeof body.successUrl === "string" ? body.successUrl.trim() : null;
-  // Pro tier commented out for now - add back later
-  if (
-    !plan ||
-    (plan !== "starter" && plan !== "growth") /* && plan !== "pro" */
-  ) {
+  if (!plan || (plan !== "starter" && plan !== "growth" && plan !== "pro")) {
     return RouteResponse.json(
-      { error: "Invalid plan. Use 'starter' or 'growth'." },
+      { error: "Invalid plan. Use 'starter', 'growth', or 'pro'." },
       { status: 400 },
     );
   }
 
-  const planTier = plan as "starter" | "growth";
+  const planTier = plan as "starter" | "growth" | "pro";
 
   const productId =
     plan === "starter"
       ? PLAN_IDS.starter
       : plan === "growth"
         ? PLAN_IDS.growth
-        : PLAN_IDS.pro; // unreachable while pro is commented out above
+        : PLAN_IDS.pro;
   if (!productId) {
     return RouteResponse.json(
       { error: "Billing is not configured for this plan." },
