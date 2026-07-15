@@ -5,6 +5,7 @@ import { CalendarPage as CalendarPageView } from "@/features/dashboard/calendar/
 import { ConnectionsPage as ConnectionsPageView } from "@/features/dashboard/connections/ConnectionsPage";
 import { SettingsPage as SettingsPageView } from "@/pages/SettingsPage";
 import { FeedbackPage as FeedbackPageView } from "@/features/dashboard/feedback/FeedbackPage";
+import { TeamsPage as TeamsPageView } from "@/features/dashboard/teams/TeamsPage";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 
 export function PostsPage() {
@@ -43,6 +44,14 @@ export function FeedbackPageRoute() {
   return (
     <Suspense fallback={<DashboardPageSkeleton message="Loading feedback..." />}>
       <FeedbackPageView />
+    </Suspense>
+  );
+}
+
+export function TeamsPage() {
+  return (
+    <Suspense fallback={<DashboardPageSkeleton message="Loading teams..." />}>
+      <TeamsPageView />
     </Suspense>
   );
 }

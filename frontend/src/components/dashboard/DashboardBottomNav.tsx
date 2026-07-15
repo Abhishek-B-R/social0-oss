@@ -56,8 +56,8 @@ export function DashboardBottomNav() {
         pathname === "/dashboard/more" ||
         pathname.startsWith("/dashboard/settings") ||
         pathname.startsWith("/dashboard/billing") ||
-        pathname.startsWith("/dashboard/bulk-tools")
-        // || pathname.startsWith("/dashboard/teams") // hidden until Teams ships
+        pathname.startsWith("/dashboard/bulk-tools") ||
+        pathname.startsWith("/dashboard/teams")
       );
     return pathname.startsWith(href);
   };

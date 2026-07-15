@@ -96,6 +96,14 @@ const PostedPostsPage = lazy(() =>
 const ApiKeysPage = lazy(() =>
   import("@/pages/ApiKeysPage").then((m) => ({ default: m.ApiKeysPage })),
 );
+const TeamsPage = lazy(() =>
+  import("@/pages/DashboardPages").then((m) => ({ default: m.TeamsPage })),
+);
+const AcceptInvitePage = lazy(() =>
+  import("@/pages/AcceptInvitePage").then((m) => ({
+    default: m.AcceptInvitePage,
+  })),
+);
 
 const TermsPage = lazy(() => import("@/features/marketing/pages/TermsPage"));
 const PrivacyPage = lazy(() => import("@/features/marketing/pages/PrivacyPage"));
@@ -292,6 +300,14 @@ export function AppRouter() {
               </Lazy>
             }
           />
+          <Route
+            path="invite/:token"
+            element={
+              <Lazy>
+                <AcceptInvitePage />
+              </Lazy>
+            }
+          />
 
           <Route
             path="onboarding"
@@ -354,10 +370,7 @@ export function AppRouter() {
             <Route path="api-keys" element={<ApiKeysPage />} />
             <Route path="feedback" element={<FeedbackPageRoute />} />
             <Route path="more" element={<MorePage />} />
-            <Route
-              path="teams"
-              element={<Navigate to="/dashboard/more" replace />}
-            />
+            <Route path="teams" element={<TeamsPage />} />
           </Route>
 
           <Route

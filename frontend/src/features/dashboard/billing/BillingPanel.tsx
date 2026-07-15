@@ -126,6 +126,24 @@ const GROWTH_BILLING_FEATURES = [
   "Bulk scheduling tools",
   "Human support",
 ];
+
+const PRO_BILLING_FEATURES = [
+  "Unlimited connected accounts",
+  "Team collaboration / invite teammates",
+  "Multiple accounts per platform",
+  "Unlimited posts",
+  "Schedule posts across platforms",
+  "Carousel posts",
+  "Threads & Collections support",
+  "Auto-plug high performing tweets",
+  "Auto-repost on autopilot",
+  "Bulk scheduling tools",
+  "Priority support",
+  "Early access to new features",
+];
+
+type PaidPlan = "starter" | "growth" | "pro";
+
 const POLL_MAX_ATTEMPTS = 45; // ~1.5 min
 
 type BillingPanelProps = {
@@ -161,15 +179,15 @@ export function BillingPanel({
   const [downgradeStep, setDowngradeStep] = useState<0 | 1 | 2>(0);
   const [downgradeReason, setDowngradeReason] = useState("");
   const [targetDowngradePlan, setTargetDowngradePlan] = useState<
-    "starter" | null
-  >(null);
-  const [loadingChangePlan, setLoadingChangePlan] = useState<
     "starter" | "growth" | null
   >(null);
+  const [loadingChangePlan, setLoadingChangePlan] = useState<PaidPlan | null>(
+    null,
+  );
   const [upgradeConfirmOpen, setUpgradeConfirmOpen] = useState(false);
-  const [upgradeConfirmPlan, setUpgradeConfirmPlan] = useState<
-    "starter" | "growth" | null
-  >(null);
+  const [upgradeConfirmPlan, setUpgradeConfirmPlan] = useState<PaidPlan | null>(
+    null,
+  );
   const [upgradePreview, setUpgradePreview] = useState<{
     immediateCharge: { summary: PreviewChargeSummary };
   } | null>(null);
@@ -514,15 +532,19 @@ export function BillingPanel({
     }
   };
 
-  const handleUpgradePlan = async (plan: "starter" | "growth") => {
+  const handleUpgradePlan = async (plan: PaidPlan) => {
     posthog?.capture("plan_upgrade_started", {
       plan,
       current_plan: subscription.tier,
     });
     setLoadingChangePlan(plan);
     try {
-      // For Starter → Growth, show preview first so user sees exact charge before confirming.
-      if (plan === "growth" && subscription.tier === "starter") {
+      // Paid → higher paid: show preview so user sees exact charge before confirming.
+      const needsPreview =
+        (plan === "growth" && subscription.tier === "starter") ||
+        (plan === "pro" &&
+          (subscription.tier === "starter" || subscription.tier === "growth"));
+      if (needsPreview) {
         const previewRes = await fetchApi("/api/billing/preview-plan-change", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -534,7 +556,7 @@ export function BillingPanel({
           setUpgradePreview({
             immediateCharge: previewData.immediateCharge,
           });
-          setUpgradeConfirmPlan("growth");
+          setUpgradeConfirmPlan(plan);
           setUpgradeConfirmOpen(true);
           setLoadingChangePlan(null);
           return;
@@ -578,8 +600,9 @@ export function BillingPanel({
           return;
         }
         setUpgradePending(true);
+        setUpgradePending(true);
         toast.info(
-          "Your upgrade payment is still being processed. You'll be moved to Growth automatically - no action needed. If you didn't receive a payment request, try again after a few minutes.",
+          "Your upgrade payment is still being processed. You'll be moved to the new plan automatically - no action needed. If you didn't receive a payment request, try again after a few minutes.",
         );
         return;
       }
@@ -631,7 +654,7 @@ export function BillingPanel({
         setUpgradePreview(null);
         setUpgradePending(true);
         toast.info(
-          "Your upgrade payment is still being processed. You'll be moved to Growth automatically - no action needed. If you didn't receive a payment request, try again after a few minutes.",
+          "Your upgrade payment is still being processed. You'll be moved to the new plan automatically - no action needed. If you didn't receive a payment request, try again after a few minutes.",
         );
         return;
       }
@@ -650,7 +673,7 @@ export function BillingPanel({
     }
   };
 
-  const redirectToCheckoutForPlan = async (plan: "starter" | "growth") => {
+  const redirectToCheckoutForPlan = async (plan: PaidPlan) => {
     const res = await fetchApi("/api/billing/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -697,7 +720,7 @@ export function BillingPanel({
     return false;
   };
 
-  const handleUpgradeFromFree = async (plan: "starter" | "growth") => {
+  const handleUpgradeFromFree = async (plan: PaidPlan) => {
     setLoadingChangePlan(plan);
     try {
       const ok = await redirectToCheckoutForPlan(plan);
@@ -824,13 +847,13 @@ export function BillingPanel({
 
       <section className="mt-8">
         <h2 className="text-lg font-semibold text-foreground mb-4">Plans</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {/* Starter card */}
           <div
-            className={`rounded-2xl border-2 bg-card p-6 flex flex-col ${
+            className={`rounded-2xl border-2 p-6 flex flex-col ${
               subscription.tier === "starter"
-                ? "ring-1 ring-accent border-accent/30"
-                : "border-border"
+                ? "ring-1 ring-accent border-accent/30 bg-accent/5"
+                : "border-border bg-card"
             }`}
           >
             <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
@@ -855,7 +878,8 @@ export function BillingPanel({
                 <Button disabled className="w-full" variant="outline">
                   Current plan
                 </Button>
-              ) : subscription.tier === "growth" ? (
+              ) : subscription.tier === "growth" ||
+                subscription.tier === "pro" ? (
                 <Button
                   variant="outline"
                   className="w-full"
@@ -936,6 +960,19 @@ export function BillingPanel({
                 <Button disabled className="w-full">
                   Current plan
                 </Button>
+              ) : subscription.tier === "pro" ? (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  disabled={loadingChangePlan !== null}
+                  onClick={() => {
+                    setTargetDowngradePlan("growth");
+                    setDowngradeReason("");
+                    setDowngradeStep(1);
+                  }}
+                >
+                  Downgrade to Growth
+                </Button>
               ) : subscription.tier === "starter" ? (
                 <Button
                   className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
@@ -985,6 +1022,90 @@ export function BillingPanel({
               )}
             </div>
           </div>
+
+          {/* Pro card */}
+          <div
+            className={`rounded-2xl border-2 p-6 flex flex-col ${
+              subscription.tier === "pro"
+                ? "ring-1 ring-accent border-accent/30 bg-accent/5"
+                : "border-border bg-card"
+            }`}
+          >
+            <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              Pro
+            </div>
+            <div className="mb-2 flex items-baseline gap-2">
+              <span className="font-serif text-2xl font-bold text-foreground">
+                $35
+              </span>
+              <span className="text-sm text-muted-foreground line-through">
+                $49
+              </span>
+              <span className="text-xs text-muted-foreground">/month</span>
+            </div>
+            <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
+              {PRO_BILLING_FEATURES.map((f) => (
+                <li key={f} className="flex items-center gap-2">
+                  <span className="text-accent shrink-0">✓</span>
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6">
+              {subscription.tier === "pro" ? (
+                <Button disabled className="w-full">
+                  Current plan
+                </Button>
+              ) : subscription.tier === "starter" ||
+                subscription.tier === "growth" ? (
+                <Button
+                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                  disabled={loadingChangePlan !== null || upgradePending}
+                  onClick={() => handleUpgradePlan("pro")}
+                >
+                  {loadingChangePlan === "pro" && !upgradeConfirmOpen ? (
+                    <>
+                      <IconLoader2
+                        className="h-4 w-4 animate-spin"
+                        strokeWidth={1.5}
+                      />
+                      Getting price…
+                    </>
+                  ) : (
+                    "Upgrade to Pro"
+                  )}
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                    disabled={loadingChangePlan !== null}
+                    onClick={() => handleUpgradeFromFree("pro")}
+                  >
+                    {loadingChangePlan === "pro" ? (
+                      <>
+                        <IconLoader2
+                          className="h-4 w-4 animate-spin"
+                          strokeWidth={1.5}
+                        />
+                        Opening…
+                      </>
+                    ) : showTrialInfo ? (
+                      "Start 3-day free trial"
+                    ) : (
+                      "Upgrade to Pro"
+                    )}
+                  </Button>
+                  {showTrialInfo && (
+                    <p className="mt-2 text-center text-xs text-muted-foreground">
+                      3-day free trial included - you won&apos;t be charged
+                      today.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1000,7 +1121,14 @@ export function BillingPanel({
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Upgrade to Growth</DialogTitle>
+            <DialogTitle>
+              Upgrade to{" "}
+              {upgradeConfirmPlan === "pro"
+                ? "Pro"
+                : upgradeConfirmPlan === "starter"
+                  ? "Starter"
+                  : "Growth"}
+            </DialogTitle>
             <DialogDescription>
               You&apos;ll be charged{" "}
               {upgradePreview?.immediateCharge?.summary
@@ -1015,7 +1143,11 @@ export function BillingPanel({
                 <div>
                   <p className="text-sm text-muted-foreground">Upgrading to</p>
                   <p className="font-medium">
-                    {upgradeConfirmPlan === "growth" ? "Growth" : "Starter"}{" "}
+                    {upgradeConfirmPlan === "pro"
+                      ? "Pro"
+                      : upgradeConfirmPlan === "growth"
+                        ? "Growth"
+                        : "Starter"}{" "}
                     plan
                   </p>
                 </div>
@@ -1180,12 +1312,17 @@ export function BillingPanel({
                 </div>
 
                 <h3 className="text-lg font-semibold text-foreground text-center">
-                  Downgrade to Starter?
+                  Downgrade to{" "}
+                  {targetDowngradePlan === "growth" ? "Growth" : "Starter"}?
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground text-center">
-                  You&apos;ll stay on Growth until{" "}
+                  You&apos;ll stay on {tierLabel} until{" "}
                   {renewalDate ?? "your renewal date"}. After that, your plan
-                  switches to Starter ($9/month). You won&apos;t be charged now.
+                  switches to{" "}
+                  {targetDowngradePlan === "growth"
+                    ? "Growth ($19/month)"
+                    : "Starter ($9/month)"}
+                  . You won&apos;t be charged now.
                 </p>
                 {subscription.cancelAtPeriodEnd && (
                   <p className="mt-2 text-sm text-amber-700 dark:text-amber-300 text-center">
@@ -1199,12 +1336,22 @@ export function BillingPanel({
                     You&apos;ll lose access to:
                   </p>
                   <ul className="space-y-2">
-                    {[
-                      "Up to 15 accounts (drops to 5)",
-                      "Auto-plug high performing tweets",
-                      "Auto-repost on autopilot",
-                      "Bulk scheduling tools",
-                    ].map((item) => (
+                    {(targetDowngradePlan === "growth"
+                      ? [
+                          "Unlimited accounts (drops to 15)",
+                          "Team collaboration / invite teammates",
+                          "Priority support",
+                        ]
+                      : [
+                          "Up to 15 accounts (drops to 5)",
+                          "Auto-plug high performing tweets",
+                          "Auto-repost on autopilot",
+                          "Bulk scheduling tools",
+                          ...(subscription.tier === "pro"
+                            ? ["Team collaboration / invite teammates"]
+                            : []),
+                        ]
+                    ).map((item) => (
                       <li
                         key={item}
                         className="flex items-center gap-2 text-sm text-muted-foreground"

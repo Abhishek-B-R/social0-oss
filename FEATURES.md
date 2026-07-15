@@ -152,7 +152,7 @@ Plan gates reflect `react-frontend/src/lib/plans.ts` and the pricing page.
 | API keys UI (`/dashboard/api-keys`) | Coming soon (backend supports keys) |
 | User outbound webhooks | ✓ Backend |
 | REST `/v1/*` CRUD API | Stubs / not implemented |
-| Teams (`/dashboard/teams`) | Page exists; features coming soon |
+| Teams (`/dashboard/teams`) | ✓ Invite teammates, roles, Pro-gated workspace |
 
 ---
 

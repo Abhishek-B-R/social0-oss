@@ -18,6 +18,8 @@ export interface PlanLimits {
   allowBulkTools: boolean;
   allowAutoPlug: boolean;
   allowResurface: boolean;
+  /** Invite teammates into a shared workspace (Pro only). */
+  allowTeams: boolean;
 }
 
 const FREE_LIMITS: PlanLimits = {
@@ -26,6 +28,7 @@ const FREE_LIMITS: PlanLimits = {
   allowBulkTools: false,
   allowAutoPlug: false,
   allowResurface: false,
+  allowTeams: false,
 };
 
 const STARTER_LIMITS: PlanLimits = {
@@ -34,6 +37,7 @@ const STARTER_LIMITS: PlanLimits = {
   allowBulkTools: false,
   allowAutoPlug: false,
   allowResurface: false,
+  allowTeams: false,
 };
 
 const GROWTH_LIMITS: PlanLimits = {
@@ -42,6 +46,7 @@ const GROWTH_LIMITS: PlanLimits = {
   allowBulkTools: true,
   allowAutoPlug: true,
   allowResurface: true,
+  allowTeams: false,
 };
 
 const PRO_LIMITS: PlanLimits = {
@@ -50,6 +55,7 @@ const PRO_LIMITS: PlanLimits = {
   allowBulkTools: true,
   allowAutoPlug: true,
   allowResurface: true,
+  allowTeams: true,
 };
 
 const LIMITS_BY_TIER: Record<SubscriptionTier, PlanLimits> = {
