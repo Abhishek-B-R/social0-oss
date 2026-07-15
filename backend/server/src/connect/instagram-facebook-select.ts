@@ -16,6 +16,18 @@ export async function igFbSelectGet(req: AppRequest) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { requireWorkspacePermissionForUser } = await import(
+    "../lib/workspace/session.js"
+  );
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "manage_connections",
+  );
+  if (!ws.ok) {
+    return Response.json({ error: ws.error }, { status: ws.statusCode });
+  }
+  const resourceUserId = ws.ctx.resourceUserId;
+
   const { searchParams } = new URL(req.url);
   const token = searchParams.get("token");
 
@@ -40,7 +52,7 @@ export async function igFbSelectGet(req: AppRequest) {
 
   try {
     const payload = JSON.parse(decryptToken(record.value, token));
-    if (payload.userId !== session.user.id) {
+    if (payload.userId !== resourceUserId) {
       return Response.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -72,6 +84,18 @@ export async function igFbSelectPost(req: AppRequest) {
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { requireWorkspacePermissionForUser } = await import(
+    "../lib/workspace/session.js"
+  );
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "manage_connections",
+  );
+  if (!ws.ok) {
+    return Response.json({ error: ws.error }, { status: ws.statusCode });
+  }
+  const resourceUserId = ws.ctx.resourceUserId;
 
   let body: { token?: string; pageId?: string; returnTo?: string };
   try {
@@ -122,7 +146,7 @@ export async function igFbSelectPost(req: AppRequest) {
     return Response.json({ error: "Invalid token data" }, { status: 400 });
   }
 
-  if (payload.userId !== session.user.id) {
+  if (payload.userId !== resourceUserId) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
 
@@ -133,7 +157,7 @@ export async function igFbSelectPost(req: AppRequest) {
 
   const existing = await db.query.connectedAccounts.findFirst({
     where: and(
-      eq(connectedAccounts.userId, session.user.id),
+      eq(connectedAccounts.userId, resourceUserId),
       eq(connectedAccounts.platform, "instagram"),
       eq(connectedAccounts.platformUserId, pageData.instagramAccountId),
     ),
@@ -142,7 +166,7 @@ export async function igFbSelectPost(req: AppRequest) {
   if (existing) {
     const profileImageUrl = resolveProfileImageUrl(
       await mirrorProfileImageToR2(pageData.instagramProfilePictureUrl, {
-        userId: session.user.id,
+        userId: resourceUserId,
         accountId: existing.id,
         platform: "instagram",
       }),
@@ -169,7 +193,7 @@ export async function igFbSelectPost(req: AppRequest) {
       })
       .where(eq(connectedAccounts.id, existing.id));
   } else {
-    const remaining = await getRemainingSlots(session.user.id);
+    const remaining = await getRemainingSlots(resourceUserId);
     if (remaining <= 0) {
       return Response.json(
         {
@@ -184,14 +208,14 @@ export async function igFbSelectPost(req: AppRequest) {
     const profileImageUrl = await mirrorProfileImageToR2(
       pageData.instagramProfilePictureUrl,
       {
-        userId: session.user.id,
+        userId: resourceUserId,
         accountId,
         platform: "instagram",
       },
     );
     await db.insert(connectedAccounts).values({
       id: accountId,
-      userId: session.user.id,
+      userId: resourceUserId,
       platform: "instagram",
       platformUserId: pageData.instagramAccountId,
       platformUsername: pageData.instagramUsername,
