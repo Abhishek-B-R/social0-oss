@@ -77,10 +77,13 @@ export class TeamServiceError extends Error {
 }
 
 async function requireAdminTeamsContext(actorUserId: string) {
+  const sub = await getSubscriptionForUser(actorUserId);
+  if (getPlanLimits(sub.tier).allowTeams) {
+    await ensureOwnerWorkspace(actorUserId);
+  }
+
   const ctx = await resolveWorkspaceContext(actorUserId);
   if (!ctx.permissions.has("invite_users")) {
-    // Re-check for upgrade messaging vs forbidden
-    const sub = await getSubscriptionForUser(actorUserId);
     if (!getPlanLimits(sub.tier).allowTeams && !ctx.inWorkspace) {
       throw new TeamServiceError(
         403,
