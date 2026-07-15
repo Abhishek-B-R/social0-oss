@@ -70,6 +70,7 @@ export type LoadConnectionsPageDataResult =
             }
           | undefined;
         hasUsedTrial: boolean;
+        canManageConnections?: boolean;
       };
     }
   | { ok: false; error: string };

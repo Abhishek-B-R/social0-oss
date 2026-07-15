@@ -3,9 +3,8 @@
  * Core platform execution lives in `../publish/execute-publish.ts`.
  */
 
-import { auth } from "@/lib/auth";
 import { publishLimiter, enforceRateLimit } from "@/lib/ratelimit";
-import { headers } from "../lib/http/request-cookies.js";
+import { requireWorkspaceSession } from "@/lib/workspace/session";
 import { isValidPostId } from "@/lib/publish-validation";
 import { emitPublishWebhooksForPost } from "../publish/finalize-post.js";
 import {
@@ -32,9 +31,9 @@ export async function getPostPublicationList(postId: string): Promise<
     lastError: string | null;
   }[]
 > {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user?.id) return [];
-  return getPostPublicationListCore(postId, session.user.id);
+  const ws = await requireWorkspaceSession("view_posts");
+  if (!ws.ok) return [];
+  return getPostPublicationListCore(postId, ws.ctx.resourceUserId);
 }
 
 /**
@@ -71,16 +70,18 @@ export async function publishPost(
   options?: PublishOptions,
   publicationIdFilter?: string,
 ): Promise<PublishResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
+  const ws = await requireWorkspaceSession("publish_posts");
+  if (!ws.ok) {
     return {
       success: false,
-      error: "Unauthorized",
+      error: ws.error,
       results: [],
     };
   }
+  const userId = ws.ctx.resourceUserId;
+  const actorUserId = ws.ctx.actorUserId;
 
-  const rate = await enforceRateLimit(publishLimiter, session.user.id);
+  const rate = await enforceRateLimit(publishLimiter, actorUserId);
   if (!rate.allowed) {
     return {
       success: false,
@@ -100,5 +101,5 @@ export async function publishPost(
     };
   }
 
-  return executePublish(postId, session.user.id, publicationIdFilter, options);
+  return executePublish(postId, userId, publicationIdFilter, options);
 }
