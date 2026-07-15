@@ -21,6 +21,7 @@ Users install with:
 
 ```bash
 brew tap Abhishek-B-R/tap
+brew trust Abhishek-B-R/tap   # Homebrew 6+ requires trusting third-party taps
 brew install social0
 social0 version
 ```

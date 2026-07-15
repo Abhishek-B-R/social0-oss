@@ -50,6 +50,7 @@ curl -fsSL https://social0.app/install.sh | sh
 
 ```bash
 brew tap Abhishek-B-R/tap
+brew trust Abhishek-B-R/tap
 brew install social0
 ```
 
