@@ -2,7 +2,9 @@
 
 Guidance for AI agents (and humans) using this MCP server.
 
-> **Prefer the CLI when you have a shell.** Install [`social0`](https://www.npmjs.com/package/social0) (`npx social0` / `social0 login`) and run commands like `social0 accounts`, `social0 publish`, `social0 status`. Use this MCP server when the host has no reliable shell (Claude.ai / ChatGPT remote connectors, or stdio-only MCP hosts). Skill for ClawHub / OpenClaw: [`skills/social0/SKILL.md`](./skills/social0/SKILL.md).
+> **Prefer the CLI when you have a shell.** Install [`social0`](https://www.npmjs.com/package/social0) (`npx social0` / `social0 login`) and run commands like `social0 accounts`, `social0 publish`, `social0 status`. Use this MCP server when the host has no reliable shell (Claude.ai / ChatGPT remote connectors, or stdio-only MCP hosts).
+>
+> Skill for ClawHub / OpenClaw (same content in both public repos): [`skills/social0/SKILL.md`](./skills/social0/SKILL.md) · also in [social0-cli](https://github.com/Abhishek-B-R/social0-cli/tree/main/skills/social0).
 
 ## What this is
 

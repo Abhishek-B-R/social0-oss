@@ -44,8 +44,8 @@ Autonomously manage social posting via [Social0](https://social0.app) — draft,
 | Installation | How to update |
 |--------------|---------------|
 | MoltHub / ClawHub | Re-publish or pull latest skill version |
-| Cursor / Claude | Re-copy `skills/social0/` or sync from the MCP GitHub repo |
-| Manual | Pull latest from the repo |
+| Cursor / Claude | Re-copy `skills/social0/` from [social0-cli](https://github.com/Abhishek-B-R/social0-cli) or [social0-mcp](https://github.com/Abhishek-B-R/social0-mcp) (same skill) |
+| Manual | Pull latest from either repo |
 
 ## Setup
 

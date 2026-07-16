@@ -7,6 +7,7 @@ All notable changes to the Social0 MCP server are documented here.
 ### Changed
 
 - Skill / agent docs: prefer the `social0` CLI over MCP when a shell is available (ClawHub / OpenClaw skill, AGENTS.md, README)
+- Skill is mirrored in [social0-cli](https://github.com/Abhishek-B-R/social0-cli) so either public repo works for skill installs
 
 ## [0.3.0] - 2026-07-15
 
