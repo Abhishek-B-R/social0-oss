@@ -2,18 +2,21 @@
 
 Guidance for AI agents (and humans) using this MCP server.
 
+> **Prefer the CLI when you have a shell.** Install [`social0`](https://www.npmjs.com/package/social0) (`npx social0` / `social0 login`) and run commands like `social0 accounts`, `social0 publish`, `social0 status`. Use this MCP server when the host has no reliable shell (Claude.ai / ChatGPT remote connectors, or stdio-only MCP hosts). Skill for ClawHub / OpenClaw: [`skills/social0/SKILL.md`](./skills/social0/SKILL.md).
+
 ## What this is
 
 - **Package:** `@social0/mcp` (local stdio process; unscoped `social0-mcp` is a deprecated alias)
 - **Auth:** `SOCIAL0_API_KEY` → `Authorization: Bearer …` on `https://api.social0.app/v1`
 - **Not included:** OAuth / connecting social accounts (user does that in the dashboard)
+- **Sibling tool:** CLI package [`social0`](https://www.npmjs.com/package/social0) — preferred for terminals, Cursor agents, and CI
 
 ## Setup checklist
 
 1. User has Social0 account + connected platforms  
 2. API key created at https://social0.app/dashboard/api-keys (`sk_live_…`)  
-3. Host config runs `npx -y @social0/mcp` with `SOCIAL0_API_KEY` in `env` (see README)  
-4. Verify with `list_accounts`
+3. Prefer CLI: `npm i -g social0 && social0 login` — or host config runs `npx -y @social0/mcp` with `SOCIAL0_API_KEY` in `env` (see README)  
+4. Verify with `social0 accounts` or MCP `list_accounts`
 
 ## Tool reference
 

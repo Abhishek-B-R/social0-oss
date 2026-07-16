@@ -2,7 +2,9 @@
 
 Post to **Instagram, TikTok, YouTube, X, LinkedIn, Facebook, Pinterest, Threads, and Bluesky** from Claude, Cursor, ChatGPT, and other AI apps — in plain English.
 
-[social0.app](https://social0.app) · [Docs](https://docs.social0.app/docs/integrations/mcp) · [Get an API key](https://social0.app/dashboard/api-keys)
+Prefer the **[`social0` CLI](https://www.npmjs.com/package/social0)** when you have a terminal or agent shell (`npx social0`). Use this MCP package when the AI host only supports MCP connectors.
+
+[social0.app](https://social0.app) · [CLI docs](https://docs.social0.app/docs/integrations/cli) · [MCP docs](https://docs.social0.app/docs/integrations/mcp) · [Get an API key](https://social0.app/dashboard/api-keys)
 
 ---
 
