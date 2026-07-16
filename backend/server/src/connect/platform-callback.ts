@@ -4,7 +4,7 @@ import { connectedAccounts, verification } from "../db/schema.js";
 import { checkAccountLimits } from "../lib/plan-limits.js";
 import { logConnectBlocked } from "@social0/shared";
 import { syncSubscriptionForUserId } from "../lib/billing-sync.js";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { env } from "../lib/env.js";
 import { decrypt, encryptToken, decryptToken } from "@social0/shared";
 import { assertOAuthCallbackSession } from "../lib/oauth-callback-session.js";
@@ -27,6 +27,16 @@ import {
   youtubeTokenExpiresAt,
 } from "../lib/youtube-token.js";
 import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-profile-image.js";
+
+function normalizeWorkspaceId(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function connectedAccountWorkspaceCondition(workspaceId: string | null) {
+  return workspaceId
+    ? eq(connectedAccounts.workspaceId, workspaceId)
+    : isNull(connectedAccounts.workspaceId);
+}
 
 /** Validate URL is http/https before treating it as a fetchable profile image. */
 function isValidProfileImageUrl(url: unknown): url is string {
@@ -103,6 +113,7 @@ export async function platformCallback(
       const secretDecrypted = decrypt(secretCookie.value);
       const requestTokenSecret = secretDecrypted.oauth_token_secret;
       const userId = secretDecrypted.userId;
+      const workspaceId = normalizeWorkspaceId(secretDecrypted.workspaceId);
       cookieStore.delete("twitter_oauth1_request_secret");
 
       await assertOAuthCallbackSession(req, userId, platform);
@@ -222,6 +233,7 @@ export async function platformCallback(
               eq(connectedAccounts.userId, userId),
               eq(connectedAccounts.platform, "twitter_x"),
               eq(connectedAccounts.platformUserId, userInfo.id),
+              connectedAccountWorkspaceCondition(workspaceId),
             ),
           });
 
@@ -274,6 +286,7 @@ export async function platformCallback(
         await db.insert(connectedAccounts).values({
           id: accountId,
           userId,
+          workspaceId,
           platform: "twitter_x",
           platformUserId: userInfo.id,
           platformUsername: userInfo.username,
@@ -327,6 +340,7 @@ export async function platformCallback(
 
   // Decrypt state to get userId (and stateId for TikTok PKCE verifier lookup)
   let userId: string;
+  let workspaceId: string | null;
   let codeVerifier: string | undefined;
   let successRedirect = "/dashboard/connections";
   let isReauth = false;
@@ -334,6 +348,7 @@ export async function platformCallback(
   try {
     const decrypted = decrypt(state);
     userId = decrypted.userId;
+    workspaceId = normalizeWorkspaceId(decrypted.workspaceId);
     isReauth = decrypted.reauth === true;
     if (typeof decrypted.reauthAccountId === "string") {
       reauthAccountId = decrypted.reauthAccountId;
@@ -683,6 +698,7 @@ export async function platformCallback(
           eq(connectedAccounts.userId, userId),
           eq(connectedAccounts.platform, "pinterest"),
           eq(connectedAccounts.platformUserId, userInfo.id),
+          connectedAccountWorkspaceCondition(workspaceId),
         ),
       });
       const accountId = existing?.id ?? crypto.randomUUID();
@@ -741,6 +757,7 @@ export async function platformCallback(
         await db.insert(connectedAccounts).values({
           id: accountId,
           userId,
+          workspaceId,
           platform: "pinterest",
           platformUserId: userInfo.id,
           platformUsername: userInfo.username,
@@ -1007,6 +1024,7 @@ export async function platformCallback(
                 eq(connectedAccounts.userId, userId),
                 eq(connectedAccounts.platform, platform),
                 eq(connectedAccounts.platformUserId, userInfo.id),
+                connectedAccountWorkspaceCondition(workspaceId),
               ),
       });
     }
@@ -1141,6 +1159,7 @@ export async function platformCallback(
     await db.insert(connectedAccounts).values({
       id: accountId,
       userId,
+      workspaceId,
       platform: platform,
       platformUserId: userInfo.id,
       platformUsername: userInfo.username,

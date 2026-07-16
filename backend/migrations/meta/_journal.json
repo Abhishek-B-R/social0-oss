@@ -267,6 +267,13 @@
       "when": 1782600000000,
       "tag": "0039_add_workspaces",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1784202000000,
+      "tag": "0040_multi_workspaces",
+      "breakpoints": true
     }
   ]
 }

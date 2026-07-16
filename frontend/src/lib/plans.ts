@@ -22,6 +22,8 @@ export interface PlanLimits {
   allowResurface: boolean;
   /** Invite teammates into a shared workspace (Pro only). */
   allowTeams: boolean;
+  /** Create multiple owned workspaces (any paid plan). */
+  allowMultiWorkspace: boolean;
 }
 
 const FREE_LIMITS: PlanLimits = {
@@ -31,6 +33,7 @@ const FREE_LIMITS: PlanLimits = {
   allowAutoPlug: false,
   allowResurface: false,
   allowTeams: false,
+  allowMultiWorkspace: false,
 };
 
 const STARTER_LIMITS: PlanLimits = {
@@ -40,6 +43,7 @@ const STARTER_LIMITS: PlanLimits = {
   allowAutoPlug: false,
   allowResurface: false,
   allowTeams: false,
+  allowMultiWorkspace: true,
 };
 
 const GROWTH_LIMITS: PlanLimits = {
@@ -49,6 +53,7 @@ const GROWTH_LIMITS: PlanLimits = {
   allowAutoPlug: true,
   allowResurface: true,
   allowTeams: false,
+  allowMultiWorkspace: true,
 };
 
 const PRO_LIMITS: PlanLimits = {
@@ -58,6 +63,7 @@ const PRO_LIMITS: PlanLimits = {
   allowAutoPlug: true,
   allowResurface: true,
   allowTeams: true,
+  allowMultiWorkspace: true,
 };
 
 const LIMITS_BY_TIER: Record<SubscriptionTier, PlanLimits> = {

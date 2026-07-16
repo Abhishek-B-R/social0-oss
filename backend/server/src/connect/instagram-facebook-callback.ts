@@ -1,6 +1,6 @@
 import { db } from "../db/index.js";
 import { connectedAccounts, verification } from "../db/schema.js";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { env } from "../lib/env.js";
 import { decrypt, encryptToken } from "@social0/shared";
 import { assertOAuthCallbackSession } from "../lib/oauth-callback-session.js";
@@ -38,10 +38,13 @@ export async function igFbCallback(
 
   // Decrypt state to get userId
   let userId: string;
+  let workspaceId: string | null;
   let successRedirect = "/dashboard/connections";
   try {
     const decrypted = decrypt(state);
     userId = decrypted.userId;
+    workspaceId =
+      typeof decrypted.workspaceId === "string" ? decrypted.workspaceId : null;
     await assertOAuthCallbackSession(req, userId, "instagram-facebook");
     const returnTo = sanitizeReturnToPath(decrypted.returnTo);
     if (returnTo) {
@@ -245,6 +248,9 @@ export async function igFbCallback(
           eq(connectedAccounts.userId, userId),
           eq(connectedAccounts.platform, "instagram"),
           eq(connectedAccounts.platformUserId, pageData.instagramAccountId),
+          workspaceId
+            ? eq(connectedAccounts.workspaceId, workspaceId)
+            : isNull(connectedAccounts.workspaceId),
         ),
       });
 
@@ -299,6 +305,7 @@ export async function igFbCallback(
       await db.insert(connectedAccounts).values({
         id: accountId,
         userId,
+        workspaceId,
         platform: "instagram",
         platformUserId: pageData.instagramAccountId,
         platformUsername: pageData.instagramUsername,

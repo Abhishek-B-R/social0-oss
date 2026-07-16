@@ -146,3 +146,63 @@ export async function revokeTeamInvitation(invitationId: string): Promise<void> 
     throw new Error(await parseError(res, "Failed to revoke invitation"));
   }
 }
+
+export type WorkspaceListItem = {
+  id: string | null;
+  name: string;
+  kind: "personal" | "owned" | "joined";
+  role: WorkspaceRole | null;
+  isOwner: boolean;
+  isActive: boolean;
+  connectionCount: number;
+};
+
+export type WorkspacesListResponse = {
+  workspaces: WorkspaceListItem[];
+  canCreate: boolean;
+};
+
+export async function listWorkspaces(): Promise<WorkspacesListResponse> {
+  const res = await fetchApi("/api/team/workspaces");
+  if (!res.ok) {
+    throw new Error(await parseError(res, "Failed to load workspaces"));
+  }
+  return res.json() as Promise<WorkspacesListResponse>;
+}
+
+export async function createWorkspace(name: string): Promise<{ workspaceId: string }> {
+  const res = await fetchApi("/api/team/workspaces", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    throw new Error(await parseError(res, "Failed to create workspace"));
+  }
+  return res.json() as Promise<{ workspaceId: string }>;
+}
+
+export async function switchWorkspace(
+  workspaceId: string | null,
+): Promise<{ workspaceId: string | null }> {
+  const res = await fetchApi("/api/team/switch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ workspaceId }),
+  });
+  if (!res.ok) {
+    throw new Error(await parseError(res, "Failed to switch workspace"));
+  }
+  return res.json() as Promise<{ workspaceId: string | null }>;
+}
+
+export async function leaveWorkspace(workspaceId: string): Promise<void> {
+  const res = await fetchApi("/api/team/leave", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ workspaceId }),
+  });
+  if (!res.ok) {
+    throw new Error(await parseError(res, "Failed to leave workspace"));
+  }
+}

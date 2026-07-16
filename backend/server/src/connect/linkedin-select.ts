@@ -1,7 +1,7 @@
 import { auth } from "../lib/auth.js";
 import { db } from "../db/index.js";
 import { verification, connectedAccounts } from "../db/schema.js";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { headers } from "../lib/http/request-cookies.js";
 import { decryptToken, encryptToken } from "@social0/shared";
 import { checkAccountLimits } from "../lib/plan-limits.js";
@@ -100,6 +100,7 @@ export async function liSelectPost(req: AppRequest) {
     return Response.json({ error: ws.error }, { status: ws.statusCode });
   }
   const resourceUserId = ws.ctx.resourceUserId;
+  const workspaceId = ws.ctx.workspaceId;
 
   let body: { token?: string; selectedIds?: string[]; returnTo?: string };
   try {
@@ -185,6 +186,9 @@ export async function liSelectPost(req: AppRequest) {
         eq(connectedAccounts.userId, resourceUserId),
         eq(connectedAccounts.platform, "linkedin"),
         eq(connectedAccounts.platformUserId, acc.platformUserId),
+        workspaceId
+          ? eq(connectedAccounts.workspaceId, workspaceId)
+          : isNull(connectedAccounts.workspaceId),
       ),
     });
 
@@ -239,6 +243,7 @@ export async function liSelectPost(req: AppRequest) {
       await db.insert(connectedAccounts).values({
         id: accountId,
         userId: resourceUserId,
+        workspaceId,
         platform: "linkedin",
         platformUserId: acc.platformUserId,
         platformUsername: acc.platformUsername,

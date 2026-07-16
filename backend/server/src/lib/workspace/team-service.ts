@@ -7,12 +7,15 @@ import {
   workspaceInvitations,
   workspaceMembers,
   workspaces,
+  connectedAccounts,
 } from "../../db/schema.js";
 import { getSubscriptionForUser } from "../subscription.js";
 import { getPlanLimits } from "@social0/shared";
 import {
+  countConnectionsInWorkspace,
   ensureOwnerWorkspace,
   resolveWorkspaceContext,
+  setActiveWorkspace,
 } from "./context.js";
 import {
   isWorkspaceRole,
@@ -110,20 +113,21 @@ export async function getTeamForUser(
   const sub = await getSubscriptionForUser(actorUserId);
   const actorAllowTeams = getPlanLimits(sub.tier).allowTeams;
 
-  if (actorAllowTeams) {
-    await ensureOwnerWorkspace(actorUserId);
+  let ctx = await resolveWorkspaceContext(actorUserId);
+
+  // Pro owners on Main: ensure a workspace exists and switch into it for Teams UI.
+  if (actorAllowTeams && !ctx.workspaceId) {
+    const { workspaceId } = await ensureOwnerWorkspace(actorUserId);
+    ctx = await setActiveWorkspace(actorUserId, workspaceId);
   }
 
-  const ctx = await resolveWorkspaceContext(actorUserId);
-
   if (!ctx.workspaceId || !ctx.ownerUserId) {
-    // Personal account without an active Teams workspace.
     return {
       workspace: null,
       members: [],
       permissions: ctx.permissionsDto,
-      teamsEnabled: false,
-      upgradeRequired: true,
+      teamsEnabled: actorAllowTeams,
+      upgradeRequired: !actorAllowTeams,
       role: null,
       isOwner: true,
     };
@@ -169,7 +173,7 @@ export async function getTeamForUser(
     members,
     permissions: ctx.permissionsDto,
     teamsEnabled: ctx.teamsEnabled,
-    upgradeRequired: !ctx.teamsEnabled && ctx.isOwner,
+    upgradeRequired: false,
     role: ctx.role,
     isOwner: ctx.isOwner,
   };
@@ -329,10 +333,7 @@ export async function acceptInvite(
   if (!invite || invite.revokedAt) {
     throw new TeamServiceError(410, "This invitation is no longer valid.");
   }
-  if (invite.acceptedAt) {
-    throw new TeamServiceError(409, "This invitation has already been accepted.");
-  }
-  if (invite.expiresAt.getTime() < Date.now()) {
+  if (invite.expiresAt.getTime() < Date.now() && !invite.acceptedAt) {
     throw new TeamServiceError(410, "This invitation has expired.");
   }
 
@@ -341,16 +342,6 @@ export async function acceptInvite(
   });
   if (!workspace) {
     throw new TeamServiceError(410, "This invitation is no longer valid.");
-  }
-
-  const teamsEnabled = getPlanLimits(
-    (await getSubscriptionForUser(workspace.ownerUserId)).tier,
-  ).allowTeams;
-  if (!teamsEnabled) {
-    throw new TeamServiceError(
-      403,
-      "This workspace’s Pro subscription is inactive. Teams invites can’t be accepted right now.",
-    );
   }
 
   const actor = await db.query.user.findFirst({
@@ -376,13 +367,45 @@ export async function acceptInvite(
     columns: { id: true },
   });
 
-  if (!existing) {
-    await db.insert(workspaceMembers).values({
+  // Idempotent: Strict Mode / double-submit may hit accept twice.
+  if (invite.acceptedAt || existing) {
+    if (!existing) {
+      throw new TeamServiceError(
+        409,
+        "This invitation has already been accepted.",
+      );
+    }
+    await db
+      .insert(userSettings)
+      .values({
+        userId: actorUserId,
+        activeWorkspaceId: invite.workspaceId,
+      })
+      .onConflictDoUpdate({
+        target: userSettings.userId,
+        set: { activeWorkspaceId: invite.workspaceId },
+      });
+    return { workspaceId: invite.workspaceId };
+  }
+
+  const teamsEnabled = getPlanLimits(
+    (await getSubscriptionForUser(workspace.ownerUserId)).tier,
+  ).allowTeams;
+  if (!teamsEnabled) {
+    throw new TeamServiceError(
+      403,
+      "This workspace’s Pro subscription is inactive. Teams invites can’t be accepted right now.",
+    );
+  }
+
+  await db
+    .insert(workspaceMembers)
+    .values({
       workspaceId: invite.workspaceId,
       userId: actorUserId,
       role: invite.role,
-    });
-  }
+    })
+    .onConflictDoNothing();
 
   await db
     .update(workspaceInvitations)
@@ -587,17 +610,201 @@ export async function revokeInvitation(
 }
 
 export async function getTeamContextForUser(actorUserId: string) {
-  const sub = await getSubscriptionForUser(actorUserId);
-  if (getPlanLimits(sub.tier).allowTeams) {
-    await ensureOwnerWorkspace(actorUserId);
-  }
   const ctx = await resolveWorkspaceContext(actorUserId);
   return {
     role: ctx.role,
-    permissions: ctx.inWorkspace ? ctx.permissionsDto : ctx.permissionsDto,
+    permissions: ctx.permissionsDto,
     resourceOwnerId: ctx.resourceUserId,
     teamsEnabled: ctx.teamsEnabled,
     workspaceId: ctx.workspaceId,
     isOwner: ctx.isOwner,
   };
+}
+
+export type WorkspaceListItem = {
+  id: string | null;
+  name: string;
+  kind: "personal" | "owned" | "joined";
+  role: WorkspaceRole | null;
+  isOwner: boolean;
+  isActive: boolean;
+  connectionCount: number;
+};
+
+export async function listWorkspacesForUser(
+  actorUserId: string,
+): Promise<{ workspaces: WorkspaceListItem[]; canCreate: boolean }> {
+  const sub = await getSubscriptionForUser(actorUserId);
+  const canCreate = getPlanLimits(sub.tier).allowMultiWorkspace;
+  const ctx = await resolveWorkspaceContext(actorUserId);
+
+  const [personalCountRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(connectedAccounts)
+    .where(
+      and(
+        eq(connectedAccounts.userId, actorUserId),
+        isNull(connectedAccounts.workspaceId),
+      ),
+    );
+
+  const memberships = await db
+    .select({
+      workspaceId: workspaceMembers.workspaceId,
+      role: workspaceMembers.role,
+      ownerUserId: workspaces.ownerUserId,
+      name: workspaces.name,
+    })
+    .from(workspaceMembers)
+    .innerJoin(workspaces, eq(workspaceMembers.workspaceId, workspaces.id))
+    .where(eq(workspaceMembers.userId, actorUserId));
+
+  const items: WorkspaceListItem[] = [
+    {
+      id: null,
+      name: "Main",
+      kind: "personal",
+      role: null,
+      isOwner: true,
+      isActive: !ctx.workspaceId,
+      connectionCount: personalCountRow?.count ?? 0,
+    },
+  ];
+
+  for (const m of memberships) {
+    const connectionCount = await countConnectionsInWorkspace(m.workspaceId);
+    const isOwner = m.ownerUserId === actorUserId;
+    items.push({
+      id: m.workspaceId,
+      name: m.name,
+      kind: isOwner ? "owned" : "joined",
+      role: m.role as WorkspaceRole,
+      isOwner,
+      isActive: ctx.workspaceId === m.workspaceId,
+      connectionCount,
+    });
+  }
+
+  items.sort((a, b) => {
+    if (a.kind === "personal") return -1;
+    if (b.kind === "personal") return 1;
+    if (a.kind !== b.kind) return a.kind === "owned" ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  return { workspaces: items, canCreate };
+}
+
+export async function createWorkspaceForUser(
+  actorUserId: string,
+  nameRaw: unknown,
+): Promise<{ workspaceId: string }> {
+  const sub = await getSubscriptionForUser(actorUserId);
+  if (!getPlanLimits(sub.tier).allowMultiWorkspace) {
+    throw new TeamServiceError(
+      403,
+      "Creating workspaces requires a paid plan.",
+    );
+  }
+
+  const name =
+    typeof nameRaw === "string" && nameRaw.trim()
+      ? nameRaw.trim().slice(0, 80)
+      : "New Workspace";
+
+  const owned = await db
+    .select({ id: workspaces.id, name: workspaces.name })
+    .from(workspaces)
+    .where(eq(workspaces.ownerUserId, actorUserId));
+
+  for (const ws of owned) {
+    const n = await countConnectionsInWorkspace(ws.id);
+    if (n < 1) {
+      throw new TeamServiceError(
+        400,
+        `Connect at least one account to "${ws.name}" before creating another workspace.`,
+      );
+    }
+  }
+
+  const [created] = await db
+    .insert(workspaces)
+    .values({ name, ownerUserId: actorUserId })
+    .returning({ id: workspaces.id });
+
+  await db.insert(workspaceMembers).values({
+    workspaceId: created.id,
+    userId: actorUserId,
+    role: "admin",
+  });
+
+  await setActiveWorkspace(actorUserId, created.id);
+  return { workspaceId: created.id };
+}
+
+export async function switchWorkspaceForUser(
+  actorUserId: string,
+  workspaceIdRaw: unknown,
+): Promise<{ workspaceId: string | null }> {
+  const workspaceId =
+    workspaceIdRaw === null || workspaceIdRaw === undefined
+      ? null
+      : typeof workspaceIdRaw === "string"
+        ? workspaceIdRaw
+        : null;
+
+  if (workspaceIdRaw !== null && workspaceIdRaw !== undefined && !workspaceId) {
+    throw new TeamServiceError(400, "Invalid workspace id.");
+  }
+
+  const ctx = await setActiveWorkspace(actorUserId, workspaceId);
+  return { workspaceId: ctx.workspaceId };
+}
+
+export async function leaveWorkspaceForUser(
+  actorUserId: string,
+  workspaceId: string,
+): Promise<void> {
+  if (!workspaceId?.trim()) {
+    throw new TeamServiceError(400, "Workspace id is required.");
+  }
+
+  const workspace = await db.query.workspaces.findFirst({
+    where: eq(workspaces.id, workspaceId),
+    columns: { id: true, ownerUserId: true },
+  });
+  if (!workspace) {
+    throw new TeamServiceError(404, "Workspace not found.");
+  }
+  if (workspace.ownerUserId === actorUserId) {
+    throw new TeamServiceError(
+      400,
+      "Owners can’t leave their workspace. Remove members or delete it instead.",
+    );
+  }
+
+  const membership = await db.query.workspaceMembers.findFirst({
+    where: and(
+      eq(workspaceMembers.workspaceId, workspaceId),
+      eq(workspaceMembers.userId, actorUserId),
+    ),
+    columns: { id: true },
+  });
+  if (!membership) {
+    throw new TeamServiceError(404, "You are not a member of this workspace.");
+  }
+
+  await db
+    .delete(workspaceMembers)
+    .where(eq(workspaceMembers.id, membership.id));
+
+  await db
+    .update(userSettings)
+    .set({ activeWorkspaceId: null })
+    .where(
+      and(
+        eq(userSettings.userId, actorUserId),
+        eq(userSettings.activeWorkspaceId, workspaceId),
+      ),
+    );
 }

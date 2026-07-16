@@ -1,7 +1,7 @@
 import { auth } from "../lib/auth.js";
 import { db } from "../db/index.js";
 import { verification, connectedAccounts } from "../db/schema.js";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { headers } from "../lib/http/request-cookies.js";
 import { decryptToken, encryptToken } from "@social0/shared";
 import { getRemainingSlots } from "../lib/connections.js";
@@ -96,6 +96,7 @@ export async function igFbSelectPost(req: AppRequest) {
     return Response.json({ error: ws.error }, { status: ws.statusCode });
   }
   const resourceUserId = ws.ctx.resourceUserId;
+  const workspaceId = ws.ctx.workspaceId;
 
   let body: { token?: string; pageId?: string; returnTo?: string };
   try {
@@ -160,6 +161,9 @@ export async function igFbSelectPost(req: AppRequest) {
       eq(connectedAccounts.userId, resourceUserId),
       eq(connectedAccounts.platform, "instagram"),
       eq(connectedAccounts.platformUserId, pageData.instagramAccountId),
+      workspaceId
+        ? eq(connectedAccounts.workspaceId, workspaceId)
+        : isNull(connectedAccounts.workspaceId),
     ),
   });
 
@@ -216,6 +220,7 @@ export async function igFbSelectPost(req: AppRequest) {
     await db.insert(connectedAccounts).values({
       id: accountId,
       userId: resourceUserId,
+      workspaceId,
       platform: "instagram",
       platformUserId: pageData.instagramAccountId,
       platformUsername: pageData.instagramUsername,

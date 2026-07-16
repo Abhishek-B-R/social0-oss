@@ -56,17 +56,18 @@ function RoleBadge({
 }
 
 export function MemberRow({ member, permissions, onChanged }: MemberRowProps) {
-  const [busy, setBusy] = useState(false);
+  const [roleBusy, setRoleBusy] = useState(false);
+  const [removeBusy, setRemoveBusy] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
 
   const canChangeRole =
-    permissions.canChangeRoles && !member.isOwner && !busy;
+    permissions.canChangeRoles && !member.isOwner && !roleBusy && !removeBusy;
   const canRemove =
-    permissions.canRemoveMembers && !member.isOwner && !busy;
+    permissions.canRemoveMembers && !member.isOwner && !roleBusy && !removeBusy;
 
   const handleRoleChange = async (role: WorkspaceRole) => {
     if (role === member.role) return;
-    setBusy(true);
+    setRoleBusy(true);
     try {
       await updateTeamMemberRole(member.id, role);
       toast.success("Role updated");
@@ -74,12 +75,12 @@ export function MemberRow({ member, permissions, onChanged }: MemberRowProps) {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update role");
     } finally {
-      setBusy(false);
+      setRoleBusy(false);
     }
   };
 
   const handleRemove = async () => {
-    setBusy(true);
+    setRemoveBusy(true);
     try {
       await removeTeamMember(member.id);
       toast.success("Member removed");
@@ -88,7 +89,7 @@ export function MemberRow({ member, permissions, onChanged }: MemberRowProps) {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to remove member");
     } finally {
-      setBusy(false);
+      setRemoveBusy(false);
     }
   };
 
@@ -126,18 +127,27 @@ export function MemberRow({ member, permissions, onChanged }: MemberRowProps) {
           </div>
 
           {permissions.canChangeRoles && !member.isOwner ? (
-            <select
-              value={member.role}
-              disabled={!canChangeRole}
-              onChange={(e) =>
-                void handleRoleChange(e.target.value as WorkspaceRole)
-              }
-              aria-label={`Change role for ${displayName}`}
-              className="rounded-lg border border-input bg-bg px-2.5 py-1.5 text-xs font-medium text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 disabled:opacity-60"
-            >
-              <option value="admin">Admin</option>
-              <option value="member">Member</option>
-            </select>
+            <div className="relative flex items-center gap-1.5">
+              <select
+                value={member.role}
+                disabled={!canChangeRole}
+                onChange={(e) =>
+                  void handleRoleChange(e.target.value as WorkspaceRole)
+                }
+                aria-label={`Change role for ${displayName}`}
+                className="rounded-lg border border-input bg-bg px-2.5 py-1.5 text-xs font-medium text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 disabled:opacity-60"
+              >
+                <option value="admin">Admin</option>
+                <option value="member">Member</option>
+              </select>
+              {roleBusy ? (
+                <IconLoader2
+                  className="h-3.5 w-3.5 animate-spin text-text-muted"
+                  strokeWidth={1.5}
+                  aria-hidden
+                />
+              ) : null}
+            </div>
           ) : null}
 
           {permissions.canRemoveMembers && !member.isOwner ? (
@@ -148,11 +158,7 @@ export function MemberRow({ member, permissions, onChanged }: MemberRowProps) {
               onClick={() => setConfirmRemove(true)}
               className="text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
-              {busy ? (
-                <IconLoader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
-              ) : (
-                <IconTrash className="h-4 w-4" strokeWidth={1.5} />
-              )}
+              <IconTrash className="h-4 w-4" strokeWidth={1.5} />
               <span className="sr-only sm:not-sr-only">Remove</span>
             </Button>
           ) : null}
@@ -172,16 +178,16 @@ export function MemberRow({ member, permissions, onChanged }: MemberRowProps) {
             <Button
               variant="outline"
               onClick={() => setConfirmRemove(false)}
-              disabled={busy}
+              disabled={removeBusy}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={() => void handleRemove()}
-              disabled={busy}
+              disabled={removeBusy}
             >
-              {busy ? (
+              {removeBusy ? (
                 <>
                   <IconLoader2
                     className="h-4 w-4 animate-spin"

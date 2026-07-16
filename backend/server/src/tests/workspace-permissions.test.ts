@@ -84,3 +84,13 @@ describe("plan allowTeams", () => {
     expect(getPlanLimits("pro").allowTeams).toBe(true);
   });
 });
+
+describe("plan allowMultiWorkspace", () => {
+  it("is enabled for paid plans only", async () => {
+    const { getPlanLimits } = await import("@social0/shared");
+    expect(getPlanLimits("free").allowMultiWorkspace).toBe(false);
+    expect(getPlanLimits("starter").allowMultiWorkspace).toBe(true);
+    expect(getPlanLimits("growth").allowMultiWorkspace).toBe(true);
+    expect(getPlanLimits("pro").allowMultiWorkspace).toBe(true);
+  });
+});

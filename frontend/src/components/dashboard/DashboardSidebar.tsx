@@ -27,6 +27,7 @@ import {
 } from "@tabler/icons-react";
 import { SignOutButton } from "@/components/SignOutButton";
 import { signInUrl } from "@/lib/sign-in-url";
+import { WorkspaceSwitcher } from "@/components/dashboard/WorkspaceSwitcher";
 
 type NavItem = {
   href: string;
@@ -168,11 +169,9 @@ export function DashboardSidebar({
           </span>
         </Link>
 
-        {/* <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-          <Home className="h-4 w-4 shrink-0 text-gray-500" />
-          <span className="flex-1 text-sm font-medium text-gray-700">main</span>
-          <ChevronDown className="h-4 w-4 text-gray-400" />
-        </div> */}
+        {!isGuest && !sessionPending ? (
+          <WorkspaceSwitcher enabled={!!user} />
+        ) : null}
 
         <Link
           href="/dashboard/composer"

@@ -3,12 +3,16 @@ import { requireSessionUserId, unauthorized } from "../../middleware/auth.js";
 import {
   TeamServiceError,
   acceptInvite,
+  createWorkspaceForUser,
   getTeamContextForUser,
   getTeamForUser,
   inviteMember,
+  leaveWorkspaceForUser,
   listInvitationsForUser,
+  listWorkspacesForUser,
   removeMember,
   revokeInvitation,
+  switchWorkspaceForUser,
   updateMemberRole,
 } from "../../lib/workspace/team-service.js";
 import {
@@ -23,8 +27,16 @@ function serviceError(err: unknown): { status: number; body: { error: string } }
   }
   if (err && typeof err === "object" && "statusCode" in err) {
     const status = Number((err as { statusCode: unknown }).statusCode);
-    if (status === 403) {
-      return { status: 403, body: { error: "Forbidden" } };
+    if (Number.isFinite(status) && status >= 400 && status < 600) {
+      return {
+        status,
+        body: {
+          error:
+            err instanceof Error && err.message
+              ? err.message
+              : "Request failed",
+        },
+      };
     }
   }
   console.error("[team] unexpected error", err);
@@ -188,6 +200,92 @@ export async function registerTeamRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     try {
       await revokeInvitation(userId, id);
+      return { success: true };
+    } catch (err) {
+      const { status, body: errBody } = serviceError(err);
+      return reply.status(status).send(errBody);
+    }
+  });
+
+  app.get("/team/workspaces", async (request, reply) => {
+    const userId = await requireSessionUserId(request);
+    if (!userId) return reply.status(401).send(unauthorized());
+
+    const rate = await enforceRateLimit(rpcLimiter, `team:workspaces:${userId}`);
+    if (!rate.allowed) {
+      return reply.status(rate.status).send({ error: rate.error });
+    }
+
+    try {
+      return await listWorkspacesForUser(userId);
+    } catch (err) {
+      const { status, body } = serviceError(err);
+      return reply.status(status).send(body);
+    }
+  });
+
+  app.post("/team/workspaces", async (request, reply) => {
+    const userId = await requireSessionUserId(request);
+    if (!userId) return reply.status(401).send(unauthorized());
+
+    const rate = await enforceRateLimit(
+      rpcMutationLimiter,
+      `team:workspaces:create:${userId}`,
+    );
+    if (!rate.allowed) {
+      return reply.status(rate.status).send({ error: rate.error });
+    }
+
+    const body = (request.body ?? {}) as { name?: string };
+    try {
+      const result = await createWorkspaceForUser(userId, body.name);
+      return reply.status(201).send({ success: true, ...result });
+    } catch (err) {
+      const { status, body: errBody } = serviceError(err);
+      return reply.status(status).send(errBody);
+    }
+  });
+
+  app.post("/team/switch", async (request, reply) => {
+    const userId = await requireSessionUserId(request);
+    if (!userId) return reply.status(401).send(unauthorized());
+
+    const rate = await enforceRateLimit(
+      rpcMutationLimiter,
+      `team:switch:${userId}`,
+    );
+    if (!rate.allowed) {
+      return reply.status(rate.status).send({ error: rate.error });
+    }
+
+    const body = (request.body ?? {}) as { workspaceId?: string | null };
+    try {
+      const result = await switchWorkspaceForUser(
+        userId,
+        body.workspaceId === undefined ? null : body.workspaceId,
+      );
+      return { success: true, ...result };
+    } catch (err) {
+      const { status, body: errBody } = serviceError(err);
+      return reply.status(status).send(errBody);
+    }
+  });
+
+  app.post("/team/leave", async (request, reply) => {
+    const userId = await requireSessionUserId(request);
+    if (!userId) return reply.status(401).send(unauthorized());
+
+    const rate = await enforceRateLimit(
+      rpcMutationLimiter,
+      `team:leave:${userId}`,
+    );
+    if (!rate.allowed) {
+      return reply.status(rate.status).send({ error: rate.error });
+    }
+
+    const body = (request.body ?? {}) as { workspaceId?: string };
+    try {
+      await leaveWorkspaceForUser(userId, body.workspaceId ?? "");
       return { success: true };
     } catch (err) {
       const { status, body: errBody } = serviceError(err);

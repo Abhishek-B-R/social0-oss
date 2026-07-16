@@ -200,10 +200,7 @@ export function TeamsPanel() {
     isOwner,
   } = teamQuery.data;
 
-  const showUpgradeCta =
-    upgradeRequired || (!teamsEnabled && (isOwner || !workspace));
-
-  if (showUpgradeCta) {
+  if (upgradeRequired) {
     return (
       <>
         <TeamsHeader workspaceName={null} />
@@ -212,10 +209,10 @@ export function TeamsPanel() {
     );
   }
 
-  if (!teamsEnabled && workspace) {
+  if (!teamsEnabled) {
     return (
       <>
-        <TeamsHeader workspaceName={workspace.name} />
+        <TeamsHeader workspaceName={workspace?.name ?? null} />
         <PausedEmptyState isOwner={isOwner} />
       </>
     );

@@ -206,7 +206,9 @@ export function ConnectionsList({
             ? "Link your social accounts to publish from one place. You can connect multiple accounts per platform."
             : "View the workspace’s connected accounts. Only workspace Admins can connect or disconnect accounts."}
         </p>
-        {accountLimit && accountLimit.limitTotal > 0 && (
+        {canManageConnections &&
+          accountLimit &&
+          accountLimit.limitTotal > 0 && (
           <p className="text-sm text-text-muted">
             <span className="font-medium text-foreground">
               {accountLimit.currentTotal}/{accountLimit.limitTotal} accounts
@@ -226,7 +228,7 @@ export function ConnectionsList({
             )}
           </p>
         )}
-        {atLimit && (
+        {canManageConnections && atLimit && (
           <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
             You&apos;ve reached your {accountLimit!.limitTotal} account limit.{" "}
             <Link
@@ -282,10 +284,13 @@ export function ConnectionsList({
                         returnTo="/dashboard/connections"
                       />
                     </div>
-                  ) : (
-                    <div className="w-9 shrink-0 sm:w-20" aria-hidden />
-                  )}
-                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1.5">
+                  ) : null}
+                  <div
+                    className={cn(
+                      "flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1.5",
+                      canManageConnections && "flex-1",
+                    )}
+                  >
                     {platformAccounts.map((account) => {
                       const isInactive = account.isActive === false;
                       const isExpired = account.tokenStatus === "expired";
@@ -465,8 +470,9 @@ export function ConnectionsList({
           </div>
         </div>
 
-        {/* Twitter Premium status refresh */}
-        {accounts.some((a) => a.platform === "twitter_x") && (
+        {/* Twitter Premium status refresh — admins only */}
+        {canManageConnections &&
+          accounts.some((a) => a.platform === "twitter_x") && (
           <div className="rounded-2xl border border-border bg-bg-elevated p-3">
             <p className="mb-2 text-xs font-medium text-text-muted">
               Token management

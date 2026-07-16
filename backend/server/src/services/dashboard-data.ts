@@ -1,7 +1,7 @@
 
 import { auth } from "@/lib/auth";
 import { headers } from "../lib/http/request-cookies.js";
-import { resolveWorkspaceContext } from "@/lib/workspace/context";
+import { resolveWorkspaceContext, connectionScopeCondition } from "@/lib/workspace/context";
 import {
   getPostsListData,
   hasPaymentFailedPosts,
@@ -329,7 +329,7 @@ export async function loadConnectionsPageData(): Promise<LoadConnectionsPageData
 
   const [accounts, accountLimit] = await Promise.all([
     db.query.connectedAccounts.findMany({
-      where: eq(connectedAccounts.userId, userId),
+      where: connectionScopeCondition(ctx),
       columns: {
         id: true,
         platform: true,

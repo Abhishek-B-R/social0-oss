@@ -7,6 +7,7 @@ import { decryptToken } from "@social0/shared";
 import { revokeTokenOnPlatform } from "../../lib/revoke-token.js";
 import type { Platform } from "../../lib/platforms.js";
 import { requireWorkspacePermissionForUser } from "../../lib/workspace/session.js";
+import { connectionScopeCondition } from "../../lib/workspace/context.js";
 
 export async function registerAccountsRoutes(app: FastifyInstance) {
   app.get("/accounts", async (request, reply) => {
@@ -22,7 +23,7 @@ export async function registerAccountsRoutes(app: FastifyInstance) {
     }
 
     const accounts = await db.query.connectedAccounts.findMany({
-      where: eq(connectedAccounts.userId, ws.ctx.resourceUserId),
+      where: connectionScopeCondition(ws.ctx),
       columns: {
         id: true,
         platform: true,
@@ -62,7 +63,7 @@ export async function registerAccountsRoutes(app: FastifyInstance) {
       .where(
         and(
           eq(connectedAccounts.id, accountId),
-          eq(connectedAccounts.userId, ws.ctx.resourceUserId),
+          connectionScopeCondition(ws.ctx)!,
         ),
       )
       .limit(1);
@@ -101,7 +102,7 @@ export async function registerAccountsRoutes(app: FastifyInstance) {
       .where(
         and(
           eq(connectedAccounts.id, accountId),
-          eq(connectedAccounts.userId, ws.ctx.resourceUserId),
+          connectionScopeCondition(ws.ctx)!,
         ),
       )
       .limit(1);

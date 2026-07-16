@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { IconLoader2 } from "@tabler/icons-react";
 import { acceptTeamInvite } from "@/api/team";
@@ -7,6 +7,10 @@ import { useSession } from "@/lib/auth-client";
 import { signInUrl } from "@/lib/sign-in-url";
 
 type Status = "loading" | "success" | "error";
+
+function isAlreadyAcceptedError(message: string): boolean {
+  return /already been accepted/i.test(message);
+}
 
 export function AcceptInvitePage() {
   const { token: rawToken } = useParams<{ token: string }>();
@@ -17,7 +21,6 @@ export function AcceptInvitePage() {
     status: Status;
     error: string | null;
   }>({ status: "loading", error: null });
-  const startedRef = useRef(false);
 
   useEffect(() => {
     if (isPending) return;
@@ -26,33 +29,39 @@ export function AcceptInvitePage() {
       navigate(signInUrl(`/invite/${token}`), { replace: true });
       return;
     }
-    if (startedRef.current) return;
-    startedRef.current = true;
 
     let cancelled = false;
+    let redirectTimer: number | undefined;
 
     void (async () => {
       try {
         await acceptTeamInvite(token);
         if (cancelled) return;
         setAcceptState({ status: "success", error: null });
-        window.setTimeout(() => {
+        redirectTimer = window.setTimeout(() => {
           navigate("/dashboard/teams", { replace: true });
         }, 1500);
       } catch (err) {
         if (cancelled) return;
-        setAcceptState({
-          status: "error",
-          error:
-            err instanceof Error
-              ? err.message
-              : "Failed to accept invitation",
-        });
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Failed to accept invitation";
+        // Strict Mode / retries can race; treat idempotent accept as success.
+        if (isAlreadyAcceptedError(message)) {
+          setAcceptState({ status: "success", error: null });
+          navigate("/dashboard/teams", { replace: true });
+          return;
+        }
+        setAcceptState({ status: "error", error: message });
       }
     })();
 
     return () => {
       cancelled = true;
+      if (redirectTimer !== undefined) {
+        window.clearTimeout(redirectTimer);
+      }
     };
   }, [isPending, session, token, navigate]);
 

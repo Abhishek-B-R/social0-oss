@@ -53,6 +53,7 @@ export async function platformStart(
     );
   }
   const resourceUserId = ws.ctx.resourceUserId;
+  const workspaceId = ws.ctx.workspaceId;
 
   // TikTok and all other platforms: rate limit + connect-binding cookie on redirect.
   const rate = await enforceRateLimit(oauthLimiter, session.user.id);
@@ -108,6 +109,7 @@ export async function platformStart(
     // State userId is the workspace resource owner (Teams Admin may differ from actor).
     const state = encrypt({
       userId: resourceUserId,
+      workspaceId,
       platform: "twitter_x",
       oauth_token_secret: oauth_token_secret,
       ...(returnToForConnect && { returnTo: returnToForConnect }),
@@ -120,7 +122,11 @@ export async function platformStart(
       maxAge: 600, // 10 minutes
     });
     // State for CSRF: userId + platform (callback will verify)
-    const csrfState = encrypt({ userId: resourceUserId, platform: "twitter_x" });
+    const csrfState = encrypt({
+      userId: resourceUserId,
+      workspaceId,
+      platform: "twitter_x",
+    });
     const finalUrl = `${authUrl}&state=${encodeURIComponent(csrfState)}`;
     return redirectWithOAuthConnectBinding(
       finalUrl,
@@ -185,6 +191,7 @@ export async function platformStart(
     // State only contains resource owner userId + platform + stateId (short, safe)
     state = encrypt({
       userId: resourceUserId,
+      workspaceId,
       platform: platform,
       stateId: stateId, // Reference to verifier in DB
       ...(returnToForConnect && { returnTo: returnToForConnect }),
@@ -197,9 +204,10 @@ export async function platformStart(
     url.searchParams.set("code_challenge_method", "S256");
 
   } else {
-    // Standard OAuth flow - encrypt workspace resource owner userId + platform
+    // Standard OAuth flow - encrypt workspace resource owner + active workspace
     state = encrypt({
       userId: resourceUserId,
+      workspaceId,
       platform: platform,
       ...(returnToForConnect && { returnTo: returnToForConnect }),
       ...(isReauth && { reauth: true, reauthAccountId }),

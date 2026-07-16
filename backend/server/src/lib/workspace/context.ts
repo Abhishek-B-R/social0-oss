@@ -1,6 +1,7 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import {
+  connectedAccounts,
   userSettings,
   workspaceMembers,
   workspaces,
@@ -24,9 +25,9 @@ export type WorkspaceContext = {
   ownerUserId: string | null;
   role: WorkspaceRole | null;
   isOwner: boolean;
-  /** Owner currently has Pro (allowTeams). */
+  /** Owner currently has Pro (allowTeams) — collaboration features active. */
   teamsEnabled: boolean;
-  /** True when the actor is collaborating inside a workspace. */
+  /** True when the actor is inside a workspace (owned or joined). */
   inWorkspace: boolean;
   permissions: Set<WorkspacePermission>;
   permissionsDto: TeamPermissionsDto;
@@ -37,11 +38,31 @@ async function ownerHasTeams(ownerUserId: string): Promise<boolean> {
   return getPlanLimits(sub.tier).allowTeams;
 }
 
+function personalContext(actorUserId: string): WorkspaceContext {
+  const permissions = permissionsForRole(null, {
+    isOwner: true,
+    teamsEnabled: false,
+    inWorkspace: false,
+  });
+  return {
+    actorUserId,
+    resourceUserId: actorUserId,
+    workspaceId: null,
+    workspaceName: null,
+    ownerUserId: null,
+    role: null,
+    isOwner: true,
+    teamsEnabled: false,
+    inWorkspace: false,
+    permissions,
+    permissionsDto: toPermissionsDto(permissions),
+  };
+}
+
 /**
- * Resolve the active Teams workspace for a user.
- * - Owned Pro workspace is preferred when activeWorkspaceId is unset.
- * - Non-owner memberships collaborate on the owner's resources.
- * - Solo users keep personal resource ownership.
+ * Resolve the active workspace for a user.
+ * - `activeWorkspaceId = null` → explicit Personal/Main (own connections).
+ * - Set id must be a membership; otherwise reset to Main.
  */
 export async function resolveWorkspaceContext(
   actorUserId: string,
@@ -50,6 +71,13 @@ export async function resolveWorkspaceContext(
     where: eq(userSettings.userId, actorUserId),
     columns: { activeWorkspaceId: true },
   });
+
+  const activeId = settings?.activeWorkspaceId ?? null;
+
+  // Explicit personal Main — do not fall back to owned/joined workspaces.
+  if (!activeId) {
+    return personalContext(actorUserId);
+  }
 
   const memberships = await db
     .select({
@@ -63,36 +91,15 @@ export async function resolveWorkspaceContext(
     .innerJoin(workspaces, eq(workspaceMembers.workspaceId, workspaces.id))
     .where(eq(workspaceMembers.userId, actorUserId));
 
-  let selected =
-    memberships.find((m) => m.workspaceId === settings?.activeWorkspaceId) ??
-    null;
+  const selected =
+    memberships.find((m) => m.workspaceId === activeId) ?? null;
 
   if (!selected) {
-    selected =
-      memberships.find((m) => m.ownerUserId === actorUserId) ??
-      memberships[0] ??
-      null;
-  }
-
-  if (!selected) {
-    const permissions = permissionsForRole(null, {
-      isOwner: true,
-      teamsEnabled: false,
-      inWorkspace: false,
-    });
-    return {
-      actorUserId,
-      resourceUserId: actorUserId,
-      workspaceId: null,
-      workspaceName: null,
-      ownerUserId: null,
-      role: null,
-      isOwner: true,
-      teamsEnabled: false,
-      inWorkspace: false,
-      permissions,
-      permissionsDto: toPermissionsDto(permissions),
-    };
+    await db
+      .update(userSettings)
+      .set({ activeWorkspaceId: null })
+      .where(eq(userSettings.userId, actorUserId));
+    return personalContext(actorUserId);
   }
 
   const isOwner = selected.ownerUserId === actorUserId;
@@ -119,7 +126,24 @@ export async function resolveWorkspaceContext(
   };
 }
 
-/** Ensure a Pro owner has a workspace row + admin membership. */
+/** SQL filter for connections visible in the current context. */
+export function connectionScopeCondition(ctx: {
+  resourceUserId: string;
+  workspaceId: string | null;
+}) {
+  if (ctx.workspaceId) {
+    return and(
+      eq(connectedAccounts.userId, ctx.resourceUserId),
+      eq(connectedAccounts.workspaceId, ctx.workspaceId),
+    );
+  }
+  return and(
+    eq(connectedAccounts.userId, ctx.resourceUserId),
+    isNull(connectedAccounts.workspaceId),
+  );
+}
+
+/** Ensure a paid/Pro owner has at least one workspace row + admin membership. */
 export async function ensureOwnerWorkspace(
   ownerUserId: string,
   opts?: { name?: string },
@@ -143,15 +167,6 @@ export async function ensureOwnerWorkspace(
         role: "admin",
       });
     }
-    await db
-      .update(userSettings)
-      .set({ activeWorkspaceId: existing.id })
-      .where(
-        and(
-          eq(userSettings.userId, ownerUserId),
-          isNull(userSettings.activeWorkspaceId),
-        ),
-      );
     return { workspaceId: existing.id, created: false };
   }
 
@@ -170,18 +185,50 @@ export async function ensureOwnerWorkspace(
     role: "admin",
   });
 
+  return { workspaceId: created.id, created: true };
+}
+
+export async function setActiveWorkspace(
+  actorUserId: string,
+  workspaceId: string | null,
+): Promise<WorkspaceContext> {
+  if (workspaceId) {
+    const membership = await db.query.workspaceMembers.findFirst({
+      where: and(
+        eq(workspaceMembers.workspaceId, workspaceId),
+        eq(workspaceMembers.userId, actorUserId),
+      ),
+      columns: { id: true },
+    });
+    if (!membership) {
+      const err = new Error("Not a member of this workspace");
+      (err as Error & { statusCode: number }).statusCode = 403;
+      throw err;
+    }
+  }
+
   await db
     .insert(userSettings)
     .values({
-      userId: ownerUserId,
-      activeWorkspaceId: created.id,
+      userId: actorUserId,
+      activeWorkspaceId: workspaceId,
     })
     .onConflictDoUpdate({
       target: userSettings.userId,
-      set: { activeWorkspaceId: created.id },
+      set: { activeWorkspaceId: workspaceId },
     });
 
-  return { workspaceId: created.id, created: true };
+  return resolveWorkspaceContext(actorUserId);
+}
+
+export async function countConnectionsInWorkspace(
+  workspaceId: string,
+): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(connectedAccounts)
+    .where(eq(connectedAccounts.workspaceId, workspaceId));
+  return row?.count ?? 0;
 }
 
 export async function requireWorkspacePermission(

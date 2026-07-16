@@ -128,6 +128,10 @@ export const FRONTEND_API_ROUTES: ApiRouteDef[] = [
   // Teams / Workspace
   { method: "GET", path: "/api/team", note: "sync" },
   { method: "GET", path: "/api/team/context", note: "sync" },
+  { method: "GET", path: "/api/team/workspaces", note: "sync" },
+  { method: "POST", path: "/api/team/workspaces", note: "sync" },
+  { method: "POST", path: "/api/team/switch", note: "sync" },
+  { method: "POST", path: "/api/team/leave", note: "sync" },
   { method: "GET", path: "/api/team/invitations", note: "sync" },
   { method: "POST", path: "/api/team/invite", note: "sync" },
   { method: "POST", path: "/api/team/accept", note: "sync" },
