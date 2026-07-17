@@ -380,7 +380,7 @@ export function AppRouter() {
             <Route path="bulk-tools/image" element={<BulkToolsImagePage />} />
             <Route path="bulk-tools/video" element={<BulkToolsVideoPage />} />
             <Route path="api-keys" element={<ApiKeysPage />} />
-            <Route path="feedback" element={<FeedbackPageRoute />} />
+            <Route path="feedback/*" element={<FeedbackPageRoute />} />
             <Route path="more" element={<MorePage />} />
             <Route path="workspaces" element={<WorkspacesPage />} />
             <Route path="teams" element={<TeamsPage />} />

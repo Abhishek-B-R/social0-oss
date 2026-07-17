@@ -28,12 +28,16 @@ import {
 import { SignOutButton } from "@/components/SignOutButton";
 import { signInUrl } from "@/lib/sign-in-url";
 import { WorkspaceSwitcher } from "@/components/dashboard/WorkspaceSwitcher";
+import { switchWorkspace } from "@/api/team";
 import {
   getDashboardRelativePath,
   getTeamIdFromPathname,
   isTeamAppPath,
+  isTeamSettingsPath,
   useDashboardPath,
+  writePersonalWorkspaceId,
 } from "@/lib/dashboard-base-path";
+import { toast } from "sonner";
 
 type NavItem = {
   href: string;
@@ -117,7 +121,8 @@ export function DashboardSidebar({
   const relative = getDashboardRelativePath(pathname);
   const inTeamApp = isTeamAppPath(pathname);
   const teamId = getTeamIdFromPathname(pathname);
-  const onTeamSettings = !!teamId && pathname.includes(`/teams/${teamId}/settings`);
+  const onTeamSettings =
+    !!teamId && pathname.includes(`/teams/${teamId}/settings`);
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -160,11 +165,33 @@ export function DashboardSidebar({
     >
       <div className="flex shrink-0 flex-col gap-4 p-4">
         <Link
-          href={dash("composer")}
+          href="/dashboard/composer"
           prefetch
-          onClick={() => {
-            if (!relativeMatches(relative, "composer", { exact: true }))
-              setLogoPending(true);
+          onClick={(e) => {
+            const onTeam =
+              isTeamAppPath(pathname) || isTeamSettingsPath(pathname);
+            if (!onTeam) {
+              if (pathname !== "/dashboard/composer") setLogoPending(true);
+              return;
+            }
+            // Always leave the team URL tree for the brand home.
+            e.preventDefault();
+            if (logoPending) return;
+            setLogoPending(true);
+            void (async () => {
+              try {
+                await switchWorkspace(null);
+                writePersonalWorkspaceId(null);
+                window.location.assign("/dashboard/composer");
+              } catch (err) {
+                setLogoPending(false);
+                toast.error(
+                  err instanceof Error
+                    ? err.message
+                    : "Failed to open personal dashboard",
+                );
+              }
+            })();
           }}
           className={`flex items-center gap-3 rounded-lg px-3 py-2 font-semibold text-lg text-sidebar-text hover:bg-sidebar-active transition-colors ${logoPending ? "opacity-60" : ""}`}
         >
@@ -181,7 +208,12 @@ export function DashboardSidebar({
         </Link>
 
         {!isGuest && !sessionPending ? (
-          <WorkspaceSwitcher enabled={!!user} />
+          <div className="flex flex-col gap-1.5">
+            <p className="px-3 text-xs font-medium uppercase tracking-wider text-sidebar-muted">
+              Workspaces
+            </p>
+            <WorkspaceSwitcher enabled={!!user} />
+          </div>
         ) : null}
 
         <Link
