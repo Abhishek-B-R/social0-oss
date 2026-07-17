@@ -10,6 +10,7 @@ import {
   IconMessageCircle,
   IconTool,
   IconUsers,
+  IconLayoutGrid,
 } from "@tabler/icons-react";
 import { DOCS_MORE_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
@@ -35,6 +36,7 @@ const MORE_LINKS = [
   { href: "/dashboard/posts/scheduled", label: "Scheduled", icon: IconClock },
   { href: "/dashboard/posts/posted", label: "Posted", icon: IconCircleCheck },
   { href: "/dashboard/posts/drafts", label: "Drafts", icon: IconFileText },
+  { href: "/dashboard/workspaces", label: "Workspaces", icon: IconLayoutGrid },
   { href: "/dashboard/teams", label: "Teams", icon: IconUsers },
   { href: "/dashboard/settings", label: "Settings", icon: IconSettings },
   { href: "/dashboard/api-keys", label: "Developer", icon: IconSettings },

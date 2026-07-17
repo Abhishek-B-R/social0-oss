@@ -63,7 +63,7 @@ const growthFeatures = [
 
 const proFeatures = [
   { text: "Everything in Growth", highlight: true },
-  { text: "Up to 30 connected accounts", highlight: true },
+  { text: "Up to 50 connected accounts", highlight: true },
   { text: "Team collaboration / invite teammates", highlight: true },
   { text: "Multiple accounts per platform", highlight: false },
   { text: "Unlimited posts", highlight: false },

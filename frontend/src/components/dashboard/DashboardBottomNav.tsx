@@ -57,7 +57,8 @@ export function DashboardBottomNav() {
         pathname.startsWith("/dashboard/settings") ||
         pathname.startsWith("/dashboard/billing") ||
         pathname.startsWith("/dashboard/bulk-tools") ||
-        pathname.startsWith("/dashboard/teams")
+        pathname.startsWith("/dashboard/teams") ||
+        pathname.startsWith("/dashboard/workspaces")
       );
     return pathname.startsWith(href);
   };

@@ -3,19 +3,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockResolveWorkspaceContext,
   mockEnsureOwnerWorkspace,
+  mockEnsureOwnerTeam,
   mockGetSubscriptionForUser,
   mockDb,
   mockSendInviteEmail,
 } = vi.hoisted(() => ({
   mockResolveWorkspaceContext: vi.fn(),
   mockEnsureOwnerWorkspace: vi.fn(),
+  mockEnsureOwnerTeam: vi.fn(),
   mockGetSubscriptionForUser: vi.fn(),
   mockSendInviteEmail: vi.fn(),
   mockDb: {
     query: {
       user: { findFirst: vi.fn() },
-      workspaceMembers: { findFirst: vi.fn() },
-      workspaceInvitations: { findFirst: vi.fn() },
+      teamMembers: { findFirst: vi.fn() },
+      teamInvitations: { findFirst: vi.fn() },
+      teams: { findFirst: vi.fn() },
       workspaces: { findFirst: vi.fn() },
       userSettings: { findFirst: vi.fn() },
     },
@@ -33,6 +36,7 @@ vi.mock("../lib/subscription.js", () => ({
 vi.mock("../lib/workspace/context.js", () => ({
   resolveWorkspaceContext: mockResolveWorkspaceContext,
   ensureOwnerWorkspace: mockEnsureOwnerWorkspace,
+  ensureOwnerTeam: mockEnsureOwnerTeam,
 }));
 vi.mock("../lib/workspace/emails.js", () => ({
   sendWorkspaceInviteEmail: mockSendInviteEmail,
@@ -48,7 +52,10 @@ import {
   removeMember,
   updateMemberRole,
 } from "../lib/workspace/team-service.js";
-import { permissionsForRole, toPermissionsDto } from "../lib/workspace/permissions.js";
+import {
+  permissionsForRole,
+  toPermissionsDto,
+} from "../lib/workspace/permissions.js";
 
 function adminCtx(overrides: Record<string, unknown> = {}) {
   const permissions = permissionsForRole("admin", {
@@ -60,7 +67,9 @@ function adminCtx(overrides: Record<string, unknown> = {}) {
     actorUserId: "owner-1",
     resourceUserId: "owner-1",
     workspaceId: "ws-1",
-    workspaceName: "Acme",
+    workspaceName: "Main",
+    teamId: "team-1",
+    teamName: "Acme",
     ownerUserId: "owner-1",
     role: "admin" as const,
     isOwner: true,
@@ -82,7 +91,9 @@ function memberCtx() {
     actorUserId: "member-1",
     resourceUserId: "owner-1",
     workspaceId: "ws-1",
-    workspaceName: "Acme",
+    workspaceName: "Main",
+    teamId: "team-1",
+    teamName: "Acme",
     ownerUserId: "owner-1",
     role: "member" as const,
     isOwner: false,
@@ -91,6 +102,16 @@ function memberCtx() {
     permissions,
     permissionsDto: toPermissionsDto(permissions),
   };
+}
+
+function mockSelectCounts(memberCount: number, inviteCount: number) {
+  let call = 0;
+  mockDb.select.mockImplementation(() => {
+    const count = call++ === 0 ? memberCount : inviteCount;
+    const selectWhere = vi.fn().mockResolvedValue([{ count }]);
+    const selectFrom = vi.fn().mockReturnValue({ where: selectWhere });
+    return { from: selectFrom };
+  });
 }
 
 describe("team-service authorization", () => {
@@ -114,9 +135,10 @@ describe("team-service authorization", () => {
   it("prevents duplicate active invites", async () => {
     mockResolveWorkspaceContext.mockResolvedValue(adminCtx());
     mockDb.query.user.findFirst.mockResolvedValue(null);
-    mockDb.query.workspaceInvitations.findFirst.mockResolvedValue({
+    mockDb.query.teamInvitations.findFirst.mockResolvedValue({
       id: "invite-1",
     });
+    mockSelectCounts(0, 0);
 
     await expect(
       inviteMember("owner-1", "new@example.com", "member"),
@@ -132,7 +154,7 @@ describe("team-service authorization", () => {
       id: "member-1",
       email: "member@example.com",
     });
-    mockDb.query.workspaceMembers.findFirst.mockResolvedValue({ id: "m1" });
+    mockDb.query.teamMembers.findFirst.mockResolvedValue({ id: "m1" });
 
     await expect(
       inviteMember("owner-1", "member@example.com", "member"),
@@ -140,9 +162,9 @@ describe("team-service authorization", () => {
   });
 
   it("rejects expired invitations on accept", async () => {
-    mockDb.query.workspaceInvitations.findFirst.mockResolvedValue({
+    mockDb.query.teamInvitations.findFirst.mockResolvedValue({
       id: "invite-1",
-      workspaceId: "ws-1",
+      teamId: "team-1",
       email: "member@example.com",
       role: "member",
       token: "tok",
@@ -157,9 +179,9 @@ describe("team-service authorization", () => {
   });
 
   it("rejects revoked invitations on accept", async () => {
-    mockDb.query.workspaceInvitations.findFirst.mockResolvedValue({
+    mockDb.query.teamInvitations.findFirst.mockResolvedValue({
       id: "invite-1",
-      workspaceId: "ws-1",
+      teamId: "team-1",
       email: "member@example.com",
       role: "member",
       token: "tok",
@@ -173,13 +195,13 @@ describe("team-service authorization", () => {
     });
   });
 
-  it("does not allow removing the workspace owner", async () => {
+  it("does not allow removing the team owner", async () => {
     mockResolveWorkspaceContext.mockResolvedValue(adminCtx());
-    mockDb.query.workspaceMembers.findFirst.mockResolvedValue({
+    mockDb.query.teamMembers.findFirst.mockResolvedValue({
       id: "mem-owner",
       userId: "owner-1",
       role: "admin",
-      workspaceId: "ws-1",
+      teamId: "team-1",
     });
 
     await expect(removeMember("owner-1", "mem-owner")).rejects.toMatchObject({
@@ -187,35 +209,17 @@ describe("team-service authorization", () => {
     });
   });
 
-  it("does not allow demoting the workspace owner", async () => {
+  it("does not allow demoting the team owner", async () => {
     mockResolveWorkspaceContext.mockResolvedValue(adminCtx());
-    mockDb.query.workspaceMembers.findFirst.mockResolvedValue({
+    mockDb.query.teamMembers.findFirst.mockResolvedValue({
       id: "mem-owner",
       userId: "owner-1",
       role: "admin",
-      workspaceId: "ws-1",
+      teamId: "team-1",
     });
 
     await expect(
       updateMemberRole("owner-1", "mem-owner", "member"),
-    ).rejects.toMatchObject({ statusCode: 400 });
-  });
-
-  it("does not allow demoting the last admin", async () => {
-    mockResolveWorkspaceContext.mockResolvedValue(adminCtx());
-    mockDb.query.workspaceMembers.findFirst.mockResolvedValue({
-      id: "mem-admin",
-      userId: "admin-2",
-      role: "admin",
-      workspaceId: "ws-1",
-    });
-
-    const selectWhere = vi.fn().mockResolvedValue([{ value: 1 }]);
-    const selectFrom = vi.fn().mockReturnValue({ where: selectWhere });
-    mockDb.select.mockReturnValue({ from: selectFrom });
-
-    await expect(
-      updateMemberRole("owner-1", "mem-admin", "member"),
     ).rejects.toMatchObject({ statusCode: 400 });
   });
 

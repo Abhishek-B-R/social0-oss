@@ -434,11 +434,11 @@ export const userSettings = pgTable("user_settings", {
   activeWorkspaceId: uuid("active_workspace_id"),
 });
 
-// ===== WORKSPACES / TEAMS =====
-export const workspaces = pgTable("workspaces", {
+// ===== TEAMS / WORKSPACES =====
+/** Collaboration org. Owner is the Pro billing subscriber. Max 5 per owner. */
+export const teams = pgTable("teams", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
-  /** Billing owner / plan subscriber for this workspace. */
   ownerUserId: text("owner_user_id")
     .references(() => user.id, { onDelete: "cascade" })
     .notNull(),
@@ -446,12 +446,12 @@ export const workspaces = pgTable("workspaces", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const workspaceMembers = pgTable(
-  "workspace_members",
+export const teamMembers = pgTable(
+  "team_members",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    workspaceId: uuid("workspace_id")
-      .references(() => workspaces.id, { onDelete: "cascade" })
+    teamId: uuid("team_id")
+      .references(() => teams.id, { onDelete: "cascade" })
       .notNull(),
     userId: text("user_id")
       .references(() => user.id, { onDelete: "cascade" })
@@ -461,14 +461,14 @@ export const workspaceMembers = pgTable(
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
-    workspaceUserUnique: unique().on(table.workspaceId, table.userId),
+    teamUserUnique: unique().on(table.teamId, table.userId),
   }),
 );
 
-export const workspaceInvitations = pgTable("workspace_invitations", {
+export const teamInvitations = pgTable("team_invitations", {
   id: uuid("id").defaultRandom().primaryKey(),
-  workspaceId: uuid("workspace_id")
-    .references(() => workspaces.id, { onDelete: "cascade" })
+  teamId: uuid("team_id")
+    .references(() => teams.id, { onDelete: "cascade" })
     .notNull(),
   email: text("email").notNull(),
   role: workspaceRoleEnum("role").default("member").notNull(),
@@ -481,6 +481,20 @@ export const workspaceInvitations = pgTable("workspace_invitations", {
   revokedAt: timestamp("revoked_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+/** Workspace under a team. Connections/posts scope here; access via team membership. */
+export const workspaces = pgTable("workspaces", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  teamId: uuid("team_id")
+    .references(() => teams.id, { onDelete: "cascade" })
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Legacy aliases kept only until migration 0041 is applied everywhere —
+// removed: workspaceMembers, workspaceInvitations (use team_* instead).
 
 // ===== TRIAL CLAIMS (one trial per normalized billing email, forever) =====
 export const trialClaims = pgTable("trial_claims", {
@@ -667,38 +681,43 @@ export const userSettingsRelations = relations(userSettings, ({ one }) => ({
   }),
 }));
 
-export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
-  owner: one(user, {
-    fields: [workspaces.ownerUserId],
-    references: [user.id],
+export const workspacesRelations = relations(workspaces, ({ one }) => ({
+  team: one(teams, {
+    fields: [workspaces.teamId],
+    references: [teams.id],
   }),
-  members: many(workspaceMembers),
-  invitations: many(workspaceInvitations),
 }));
 
-export const workspaceMembersRelations = relations(
-  workspaceMembers,
-  ({ one }) => ({
-    workspace: one(workspaces, {
-      fields: [workspaceMembers.workspaceId],
-      references: [workspaces.id],
-    }),
-    user: one(user, {
-      fields: [workspaceMembers.userId],
-      references: [user.id],
-    }),
+export const teamsRelations = relations(teams, ({ one, many }) => ({
+  owner: one(user, {
+    fields: [teams.ownerUserId],
+    references: [user.id],
   }),
-);
+  members: many(teamMembers),
+  invitations: many(teamInvitations),
+  workspaces: many(workspaces),
+}));
 
-export const workspaceInvitationsRelations = relations(
-  workspaceInvitations,
+export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
+  team: one(teams, {
+    fields: [teamMembers.teamId],
+    references: [teams.id],
+  }),
+  user: one(user, {
+    fields: [teamMembers.userId],
+    references: [user.id],
+  }),
+}));
+
+export const teamInvitationsRelations = relations(
+  teamInvitations,
   ({ one }) => ({
-    workspace: one(workspaces, {
-      fields: [workspaceInvitations.workspaceId],
-      references: [workspaces.id],
+    team: one(teams, {
+      fields: [teamInvitations.teamId],
+      references: [teams.id],
     }),
     invitedBy: one(user, {
-      fields: [workspaceInvitations.invitedByUserId],
+      fields: [teamInvitations.invitedByUserId],
       references: [user.id],
     }),
   }),

@@ -2,8 +2,9 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import {
   connectedAccounts,
+  teamMembers,
+  teams,
   userSettings,
-  workspaceMembers,
   workspaces,
 } from "../../db/schema.js";
 import { getSubscriptionForUser } from "../subscription.js";
@@ -22,12 +23,14 @@ export type WorkspaceContext = {
   resourceUserId: string;
   workspaceId: string | null;
   workspaceName: string | null;
+  teamId: string | null;
+  teamName: string | null;
   ownerUserId: string | null;
   role: WorkspaceRole | null;
   isOwner: boolean;
   /** Owner currently has Pro (allowTeams) — collaboration features active. */
   teamsEnabled: boolean;
-  /** True when the actor is inside a workspace (owned or joined). */
+  /** True when the actor is inside a team workspace (owned or joined). */
   inWorkspace: boolean;
   permissions: Set<WorkspacePermission>;
   permissionsDto: TeamPermissionsDto;
@@ -49,6 +52,8 @@ function personalContext(actorUserId: string): WorkspaceContext {
     resourceUserId: actorUserId,
     workspaceId: null,
     workspaceName: null,
+    teamId: null,
+    teamName: null,
     ownerUserId: null,
     role: null,
     isOwner: true,
@@ -61,8 +66,8 @@ function personalContext(actorUserId: string): WorkspaceContext {
 
 /**
  * Resolve the active workspace for a user.
- * - `activeWorkspaceId = null` → explicit Personal/Main (own connections).
- * - Set id must be a membership; otherwise reset to Main.
+ * - `activeWorkspaceId = null` → Personal/Main.
+ * - Set id must belong to a team the actor is a member of.
  */
 export async function resolveWorkspaceContext(
   actorUserId: string,
@@ -73,28 +78,32 @@ export async function resolveWorkspaceContext(
   });
 
   const activeId = settings?.activeWorkspaceId ?? null;
-
-  // Explicit personal Main — do not fall back to owned/joined workspaces.
   if (!activeId) {
     return personalContext(actorUserId);
   }
 
-  const memberships = await db
+  const [row] = await db
     .select({
-      membershipId: workspaceMembers.id,
-      workspaceId: workspaceMembers.workspaceId,
-      role: workspaceMembers.role,
-      ownerUserId: workspaces.ownerUserId,
+      workspaceId: workspaces.id,
       workspaceName: workspaces.name,
+      teamId: teams.id,
+      teamName: teams.name,
+      ownerUserId: teams.ownerUserId,
+      role: teamMembers.role,
     })
-    .from(workspaceMembers)
-    .innerJoin(workspaces, eq(workspaceMembers.workspaceId, workspaces.id))
-    .where(eq(workspaceMembers.userId, actorUserId));
+    .from(workspaces)
+    .innerJoin(teams, eq(workspaces.teamId, teams.id))
+    .innerJoin(
+      teamMembers,
+      and(
+        eq(teamMembers.teamId, teams.id),
+        eq(teamMembers.userId, actorUserId),
+      ),
+    )
+    .where(eq(workspaces.id, activeId))
+    .limit(1);
 
-  const selected =
-    memberships.find((m) => m.workspaceId === activeId) ?? null;
-
-  if (!selected) {
+  if (!row) {
     await db
       .update(userSettings)
       .set({ activeWorkspaceId: null })
@@ -102,9 +111,9 @@ export async function resolveWorkspaceContext(
     return personalContext(actorUserId);
   }
 
-  const isOwner = selected.ownerUserId === actorUserId;
-  const teamsEnabled = await ownerHasTeams(selected.ownerUserId);
-  const role = selected.role as WorkspaceRole;
+  const isOwner = row.ownerUserId === actorUserId;
+  const teamsEnabled = await ownerHasTeams(row.ownerUserId);
+  const role = row.role as WorkspaceRole;
   const permissions = permissionsForRole(role, {
     isOwner,
     teamsEnabled,
@@ -113,10 +122,12 @@ export async function resolveWorkspaceContext(
 
   return {
     actorUserId,
-    resourceUserId: selected.ownerUserId,
-    workspaceId: selected.workspaceId,
-    workspaceName: selected.workspaceName,
-    ownerUserId: selected.ownerUserId,
+    resourceUserId: row.ownerUserId,
+    workspaceId: row.workspaceId,
+    workspaceName: row.workspaceName,
+    teamId: row.teamId,
+    teamName: row.teamName,
+    ownerUserId: row.ownerUserId,
     role,
     isOwner,
     teamsEnabled,
@@ -143,49 +154,83 @@ export function connectionScopeCondition(ctx: {
   );
 }
 
-/** Ensure a paid/Pro owner has at least one workspace row + admin membership. */
-export async function ensureOwnerWorkspace(
+/** Ensure Pro owner has at least one team + workspace. */
+export async function ensureOwnerTeam(
   ownerUserId: string,
   opts?: { name?: string },
-): Promise<{ workspaceId: string; created: boolean }> {
-  const existing = await db.query.workspaces.findFirst({
-    where: eq(workspaces.ownerUserId, ownerUserId),
-    columns: { id: true },
+): Promise<{ teamId: string; workspaceId: string; created: boolean }> {
+  const existingTeam = await db.query.teams.findFirst({
+    where: eq(teams.ownerUserId, ownerUserId),
+    columns: { id: true, name: true },
   });
-  if (existing) {
-    const membership = await db.query.workspaceMembers.findFirst({
+
+  if (existingTeam) {
+    let ws = await db.query.workspaces.findFirst({
+      where: eq(workspaces.teamId, existingTeam.id),
+      columns: { id: true },
+    });
+    if (!ws) {
+      const [createdWs] = await db
+        .insert(workspaces)
+        .values({
+          name: existingTeam.name,
+          teamId: existingTeam.id,
+        })
+        .returning({ id: workspaces.id });
+      ws = createdWs;
+    }
+    const membership = await db.query.teamMembers.findFirst({
       where: and(
-        eq(workspaceMembers.workspaceId, existing.id),
-        eq(workspaceMembers.userId, ownerUserId),
+        eq(teamMembers.teamId, existingTeam.id),
+        eq(teamMembers.userId, ownerUserId),
       ),
       columns: { id: true },
     });
     if (!membership) {
-      await db.insert(workspaceMembers).values({
-        workspaceId: existing.id,
+      await db.insert(teamMembers).values({
+        teamId: existingTeam.id,
         userId: ownerUserId,
         role: "admin",
       });
     }
-    return { workspaceId: existing.id, created: false };
+    return {
+      teamId: existingTeam.id,
+      workspaceId: ws.id,
+      created: false,
+    };
   }
 
-  const name = opts?.name?.trim() || "My Workspace";
-  const [created] = await db
-    .insert(workspaces)
-    .values({
-      name,
-      ownerUserId,
-    })
-    .returning({ id: workspaces.id });
+  const name = opts?.name?.trim() || "My Team";
+  const [createdTeam] = await db
+    .insert(teams)
+    .values({ name, ownerUserId })
+    .returning({ id: teams.id });
 
-  await db.insert(workspaceMembers).values({
-    workspaceId: created.id,
+  await db.insert(teamMembers).values({
+    teamId: createdTeam.id,
     userId: ownerUserId,
     role: "admin",
   });
 
-  return { workspaceId: created.id, created: true };
+  const [createdWs] = await db
+    .insert(workspaces)
+    .values({ name, teamId: createdTeam.id })
+    .returning({ id: workspaces.id });
+
+  return {
+    teamId: createdTeam.id,
+    workspaceId: createdWs.id,
+    created: true,
+  };
+}
+
+/** @deprecated use ensureOwnerTeam */
+export async function ensureOwnerWorkspace(
+  ownerUserId: string,
+  opts?: { name?: string },
+): Promise<{ workspaceId: string; created: boolean }> {
+  const result = await ensureOwnerTeam(ownerUserId, opts);
+  return { workspaceId: result.workspaceId, created: result.created };
 }
 
 export async function setActiveWorkspace(
@@ -193,14 +238,21 @@ export async function setActiveWorkspace(
   workspaceId: string | null,
 ): Promise<WorkspaceContext> {
   if (workspaceId) {
-    const membership = await db.query.workspaceMembers.findFirst({
-      where: and(
-        eq(workspaceMembers.workspaceId, workspaceId),
-        eq(workspaceMembers.userId, actorUserId),
-      ),
-      columns: { id: true },
-    });
-    if (!membership) {
+    const [row] = await db
+      .select({ id: workspaces.id })
+      .from(workspaces)
+      .innerJoin(teams, eq(workspaces.teamId, teams.id))
+      .innerJoin(
+        teamMembers,
+        and(
+          eq(teamMembers.teamId, teams.id),
+          eq(teamMembers.userId, actorUserId),
+        ),
+      )
+      .where(eq(workspaces.id, workspaceId))
+      .limit(1);
+
+    if (!row) {
       const err = new Error("Not a member of this workspace");
       (err as Error & { statusCode: number }).statusCode = 403;
       throw err;

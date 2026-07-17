@@ -1,4 +1,4 @@
-
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useLocation } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import Image from "@/components/AppImage";
@@ -13,6 +13,7 @@ import {
   IconCalendar,
   IconLink,
   IconUsers,
+  IconLayoutGrid,
   IconSettings,
   IconWallet,
   IconMessageCircle,
@@ -108,7 +109,6 @@ export function DashboardSidebar({
   const [landingPending, setLandingPending] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -253,6 +253,12 @@ export function DashboardSidebar({
               label="Connections"
               icon={IconLink}
               isActive={pathname === "/dashboard/connections"}
+            />
+            <NavLink
+              href="/dashboard/workspaces"
+              label="Workspaces"
+              icon={IconLayoutGrid}
+              isActive={isActive("/dashboard/workspaces")}
             />
             <NavLink
               href="/dashboard/teams"

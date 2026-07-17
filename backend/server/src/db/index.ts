@@ -22,12 +22,14 @@ import {
   autoPlugs,
   publishJobs,
   publishJobEvents,
+  teams,
+  teamMembers,
+  teamInvitations,
   workspaces,
-  workspaceMembers,
-  workspaceInvitations,
+  teamsRelations,
+  teamMembersRelations,
+  teamInvitationsRelations,
   workspacesRelations,
-  workspaceMembersRelations,
-  workspaceInvitationsRelations,
 } from "./schema.js";
 
 const env = loadServerEnv();
@@ -57,12 +59,14 @@ export const db = drizzle(pool, {
     autoPlugs,
     publishJobs,
     publishJobEvents,
+    teams,
+    teamMembers,
+    teamInvitations,
     workspaces,
-    workspaceMembers,
-    workspaceInvitations,
+    teamsRelations,
+    teamMembersRelations,
+    teamInvitationsRelations,
     workspacesRelations,
-    workspaceMembersRelations,
-    workspaceInvitationsRelations,
   },
 });
 

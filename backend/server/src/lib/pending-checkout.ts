@@ -8,7 +8,7 @@ const PENDING_CHECKOUT_TTL_SEC = 3600;
 const CHECKOUT_LOCK_TTL_SEC = 30;
 
 export type PendingCheckout = {
-  plan: "starter" | "growth";
+  plan: "starter" | "growth" | "pro";
   sessionId: string;
   url: string;
   trialPeriodDays: number;
@@ -33,7 +33,9 @@ function parsePending(raw: unknown): PendingCheckout | null {
     const data =
       typeof raw === "string" ? (JSON.parse(raw) as PendingCheckout) : (raw as PendingCheckout);
     if (
-      (data.plan === "starter" || data.plan === "growth") &&
+      (data.plan === "starter" ||
+        data.plan === "growth" ||
+        data.plan === "pro") &&
       typeof data.url === "string" &&
       typeof data.sessionId === "string"
     ) {
@@ -125,7 +127,7 @@ export type ResolveCheckoutResult =
  */
 export async function resolveCheckoutSession(params: {
   userId: string;
-  plan: "starter" | "growth";
+  plan: "starter" | "growth" | "pro";
   trialPeriodDays: number;
   createSession: () => Promise<{ sessionId: string; url: string }>;
 }): Promise<ResolveCheckoutResult> {

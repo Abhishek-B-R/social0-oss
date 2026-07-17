@@ -99,6 +99,15 @@ const ApiKeysPage = lazy(() =>
 const TeamsPage = lazy(() =>
   import("@/pages/DashboardPages").then((m) => ({ default: m.TeamsPage })),
 );
+const WorkspacesPage = lazy(() =>
+  import("@/pages/DashboardPages").then((m) => ({ default: m.WorkspacesPage })),
+);
+const CreateTeamPage = lazy(() =>
+  import("@/pages/DashboardPages").then((m) => ({ default: m.CreateTeamPage })),
+);
+const TeamDetailPage = lazy(() =>
+  import("@/pages/DashboardPages").then((m) => ({ default: m.TeamDetailPage })),
+);
 const AcceptInvitePage = lazy(() =>
   import("@/pages/AcceptInvitePage").then((m) => ({
     default: m.AcceptInvitePage,
@@ -370,7 +379,10 @@ export function AppRouter() {
             <Route path="api-keys" element={<ApiKeysPage />} />
             <Route path="feedback" element={<FeedbackPageRoute />} />
             <Route path="more" element={<MorePage />} />
+            <Route path="workspaces" element={<WorkspacesPage />} />
             <Route path="teams" element={<TeamsPage />} />
+            <Route path="teams/create" element={<CreateTeamPage />} />
+            <Route path="teams/:workspaceId" element={<TeamDetailPage />} />
           </Route>
 
           <Route

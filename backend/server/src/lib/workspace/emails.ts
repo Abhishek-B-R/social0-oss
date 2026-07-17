@@ -14,9 +14,10 @@ export async function sendWorkspaceInviteEmail(opts: {
   workspaceName: string;
   inviterName: string;
   role: string;
-  token: string;
 }): Promise<void> {
-  const inviteUrl = appUrlForPath(`/invite/${opts.token}`);
+  const signInUrl = appUrlForPath(
+    `/auth?callbackUrl=${encodeURIComponent("/dashboard")}`,
+  );
   const workspace = escapeHtml(opts.workspaceName);
   const inviter = escapeHtml(opts.inviterName);
   const role = escapeHtml(opts.role);
@@ -25,16 +26,25 @@ export async function sendWorkspaceInviteEmail(opts: {
     to: opts.to,
     subject: `${opts.inviterName} invited you to ${opts.workspaceName} on Social0`,
     html: `
-      <div style="font-family:Inter,system-ui,sans-serif;line-height:1.5;color:#111">
-        <h2 style="margin:0 0 12px">You’re invited to collaborate</h2>
-        <p><strong>${inviter}</strong> invited you to join <strong>${workspace}</strong> as a <strong>${role}</strong>.</p>
-        <p>You’ll be able to create and schedule posts using the workspace’s connected accounts — no separate Pro subscription required.</p>
-        <p style="margin:24px 0">
-          <a href="${inviteUrl}" style="background:#059669;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:600">
-            Accept invitation
+      <div style="font-family:Inter,system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
+        <p style="margin:0 0 16px">Hey there!</p>
+        <p style="margin:0 0 16px">
+          <strong>${inviter}</strong> has invited you to join
+          <strong>${workspace}</strong> on Social0 as a
+          <strong>${role}</strong>.
+        </p>
+        <p style="margin:0 0 20px">Sign in to your account to accept the invitation.</p>
+        <p style="margin:0 0 20px">
+          <a href="${signInUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:600">
+            Sign In to Social0
           </a>
         </p>
-        <p style="color:#666;font-size:13px">This invite expires in 7 days. If you didn’t expect this, you can ignore this email.</p>
+        <p style="margin:0 0 12px;color:#444">
+          Once you&apos;re in, you&apos;ll see the invitation at the top of your dashboard.
+        </p>
+        <p style="margin:0;color:#666;font-size:13px">
+          If you have any questions, just reply to this email.
+        </p>
       </div>
     `,
   });

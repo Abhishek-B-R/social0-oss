@@ -88,7 +88,7 @@ export function BillingPage() {
       {showUpgradeBanner && (
         <div className="mt-6 rounded-xl border border-accent/50 bg-accent/10 px-4 py-3 text-sm text-text">
           Upgrade to Growth for bulk tools, auto-plug, and auto-repost — or Pro
-          for up to 30 accounts and team collaboration.
+          for up to 50 accounts and team collaboration.
         </div>
       )}
       <div className="mt-5">
