@@ -24,17 +24,30 @@ export function getTeamIdFromPathname(pathname: string): string | null {
   return id;
 }
 
-export function isTeamAppPath(pathname: string): boolean {
+/** `/dashboard/teams/:teamId/settings` — team management, not the app shell. */
+export function isTeamSettingsPath(pathname: string): boolean {
   const teamId = getTeamIdFromPathname(pathname);
   if (!teamId) return false;
   const rest = pathname
     .slice(`/dashboard/teams/${teamId}`.length)
     .replace(/^\//, "");
+  return rest === "settings" || rest.startsWith("settings/");
+}
+
+export function isTeamAppPath(pathname: string): boolean {
+  const teamId = getTeamIdFromPathname(pathname);
+  if (!teamId) return false;
   // Settings is team management, not the team app shell
-  if (!rest || rest === "settings" || rest.startsWith("settings/")) {
-    return false;
-  }
+  if (isTeamSettingsPath(pathname)) return false;
   return true;
+}
+
+/** Account-level pages that should not live under a team URL tree. */
+export function isPersonalOnlyDashboardPath(pathname: string): boolean {
+  if (getTeamIdFromPathname(pathname)) return false;
+  const relative = pathname.replace(/^\/dashboard\/?/, "");
+  const first = relative.split("/")[0] ?? "";
+  return PERSONAL_ONLY_SUFFIXES.has(first);
 }
 
 /**
@@ -60,7 +73,8 @@ export function useDashboardBasePath(): string {
     params.teamId && params.teamId !== "create" ? params.teamId : null;
   const fromPath = getTeamIdFromPathname(pathname);
   const teamId = fromParams ?? fromPath;
-  if (teamId && isTeamAppPath(pathname)) {
+  // Stay in the team URL tree for both the app shell and team settings.
+  if (teamId && (isTeamAppPath(pathname) || isTeamSettingsPath(pathname))) {
     return `/dashboard/teams/${teamId}`;
   }
   return "/dashboard";
@@ -81,16 +95,16 @@ export function useDashboardPath() {
 
 /** Remap current relative page onto a new base (personal ↔ team). */
 export function mapPathToBase(pathname: string, base: string): string {
+  // Keep team settings on the team management URL
+  if (isTeamSettingsPath(pathname)) {
+    if (base.startsWith("/dashboard/teams/")) return pathname;
+    return "/dashboard/composer";
+  }
+
   const relative = getDashboardRelativePath(pathname);
   const first = relative.split("/")[0] ?? "";
   if (PERSONAL_ONLY_SUFFIXES.has(first)) {
     return `/dashboard/${relative}`;
-  }
-  // Team settings only exists under team management URL
-  if (relative === "settings" || relative.startsWith("settings/")) {
-    if (base === "/dashboard") return "/dashboard/composer";
-    // Don't map into /teams/:id/settings from relative "settings" when leaving team app —
-    // personal queue settings stay at /dashboard/settings (PERSONAL_ONLY).
   }
   return `${base}/${relative}`;
 }

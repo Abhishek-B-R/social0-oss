@@ -19,7 +19,6 @@ import {
   type WorkspaceListItem,
 } from "@/api/team";
 import {
-  getDashboardRelativePath,
   isTeamAppPath,
   mapPathToBase,
   writePersonalWorkspaceId,
@@ -150,23 +149,64 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
     ]);
   };
 
-  const handleSelectPersonal = async (workspaceId: string | null) => {
-    const key = workspaceId ?? "main";
-    const alreadyPersonalPath = !isTeamAppPath(pathname);
-    if (workspaceId === active.id && alreadyPersonalPath) {
+  const navigateToTeamWorkspace = async (opts: {
+    teamId: string;
+    workspaceId: string;
+    /** When true (joined team entry), prefer the team's default workspace. */
+    preferDefault: boolean;
+    team: TeamListItem;
+  }) => {
+    const { teamId, workspaceId, preferDefault, team } = opts;
+    const alreadyOnTeam =
+      isTeamAppPath(pathname) && pathname.includes(`/teams/${teamId}/`);
+    if (workspaceId === active.id && alreadyOnTeam) {
       setOpen(false);
       return;
     }
-    setBusyId(key);
+    setBusyId(workspaceId);
     try {
-      await switchWorkspace(workspaceId);
-      writePersonalWorkspaceId(workspaceId);
+      const enteringNewTeam = !alreadyOnTeam;
+      const targetId =
+        enteringNewTeam && preferDefault
+          ? (team.defaultWorkspaceId ??
+            team.workspaces[0]?.id ??
+            workspaceId)
+          : workspaceId;
+
+      await switchWorkspace(targetId);
+      writeTeamWorkspaceId(teamId, targetId);
+      await invalidateAll();
+      setOpen(false);
+      const dest = mapPathToBase(pathname, `/dashboard/teams/${teamId}`);
+      toast.success("Switched to team workspace");
+      window.location.assign(
+        dest.startsWith("/dashboard/teams/")
+          ? dest
+          : `/dashboard/teams/${teamId}/composer`,
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to switch workspace",
+      );
+      setBusyId(null);
+    }
+  };
+
+  /** Main (personal) only — stays on /dashboard/*. */
+  const handleSelectMain = async () => {
+    const alreadyPersonalPath = !isTeamAppPath(pathname);
+    if (active.id === null && alreadyPersonalPath) {
+      setOpen(false);
+      return;
+    }
+    setBusyId("main");
+    try {
+      await switchWorkspace(null);
+      writePersonalWorkspaceId(null);
       await invalidateAll();
       setOpen(false);
       const dest = mapPathToBase(pathname, "/dashboard");
-      toast.success(
-        workspaceId === null ? "Switched to Main" : "Workspace switched",
-      );
+      toast.success("Switched to Main");
       if (dest !== pathname || isTeamAppPath(pathname)) {
         window.location.assign(dest);
       } else {
@@ -180,45 +220,34 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
     }
   };
 
+  const handleSelectOwned = async (opts: {
+    teamId: string;
+    workspaceId: string;
+  }) => {
+    const team = ownedTeams.find((t) => t.id === opts.teamId);
+    if (!team) {
+      toast.error("Team not found");
+      return;
+    }
+    // Owned: activate the workspace they clicked, then open team URL tree.
+    await navigateToTeamWorkspace({
+      teamId: opts.teamId,
+      workspaceId: opts.workspaceId,
+      preferDefault: false,
+      team,
+    });
+  };
+
   const handleSelectJoined = async (opts: {
     teamId: string;
     workspaceId: string;
     team: TeamListItem;
   }) => {
-    const { teamId, workspaceId, team } = opts;
-    const alreadyOnTeam =
-      isTeamAppPath(pathname) && pathname.includes(`/teams/${teamId}/`);
-    if (workspaceId === active.id && alreadyOnTeam) {
-      setOpen(false);
-      return;
-    }
-    setBusyId(workspaceId);
-    try {
-      // Entering a team: prefer default workspace for that team when switching teams
-      const enteringNewTeam = !alreadyOnTeam;
-      const targetId = enteringNewTeam
-        ? (team.defaultWorkspaceId ??
-          team.workspaces[0]?.id ??
-          workspaceId)
-        : workspaceId;
-
-      await switchWorkspace(targetId);
-      writeTeamWorkspaceId(teamId, targetId);
-      await invalidateAll();
-      setOpen(false);
-      const relative = getDashboardRelativePath(pathname);
-      const dest = mapPathToBase(
-        isTeamAppPath(pathname) ? pathname : `/dashboard/${relative}`,
-        `/dashboard/teams/${teamId}`,
-      );
-      toast.success("Switched to team workspace");
-      window.location.assign(dest.startsWith("/dashboard/teams/") ? dest : `/dashboard/teams/${teamId}/composer`);
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to switch workspace",
-      );
-      setBusyId(null);
-    }
+    // Joined: entering a team uses that team's default workspace.
+    await navigateToTeamWorkspace({
+      ...opts,
+      preferDefault: true,
+    });
   };
 
   if (!enabled) return null;
@@ -284,22 +313,37 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
                 <p className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-text-muted">
                   Personal
                 </p>
-                {personalWorkspaces.map((ws) => (
-                  <WorkspaceOption
-                    key={ws.id ?? "main"}
-                    label={ws.name}
-                    subtitle={ws.subtitle}
-                    active={
-                      !isTeamAppPath(pathname) &&
-                      (ws.id === null
-                        ? active.id === null
-                        : active.id === ws.id)
-                    }
-                    busy={busyId === (ws.id ?? "main")}
-                    icon={ws.id === null ? "home" : "briefcase"}
-                    onSelect={() => void handleSelectPersonal(ws.id)}
-                  />
-                ))}
+                {personalWorkspaces.map((ws) => {
+                  const onThisTeam =
+                    !!ws.teamId &&
+                    isTeamAppPath(pathname) &&
+                    pathname.includes(`/teams/${ws.teamId}/`);
+                  const isActive =
+                    ws.id === null
+                      ? !isTeamAppPath(pathname) && active.id === null
+                      : active.id === ws.id &&
+                        (onThisTeam || !isTeamAppPath(pathname));
+                  return (
+                    <WorkspaceOption
+                      key={ws.id ?? "main"}
+                      label={ws.name}
+                      subtitle={ws.subtitle}
+                      active={isActive}
+                      busy={busyId === (ws.id ?? "main")}
+                      icon={ws.id === null ? "home" : "briefcase"}
+                      onSelect={() => {
+                        if (ws.id === null) {
+                          void handleSelectMain();
+                        } else if (ws.teamId) {
+                          void handleSelectOwned({
+                            teamId: ws.teamId,
+                            workspaceId: ws.id,
+                          });
+                        }
+                      }}
+                    />
+                  );
+                })}
 
                 {joinedWorkspaces.length > 0 ? (
                   <>

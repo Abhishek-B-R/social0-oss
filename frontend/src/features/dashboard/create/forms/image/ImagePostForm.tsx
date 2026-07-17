@@ -74,6 +74,7 @@ import {
   consumeComposerPayload,
   clearComposerPayload,
 } from "@/lib/composer-bridge";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
 import { getLimitForAccount } from "@/lib/platform-limits";
@@ -121,6 +122,7 @@ export function ImagePostForm({
   isGuest?: boolean;
 }) {
   const navigate = useNavigate();
+  const dash = useDashboardPath();
   const invalidateQueries = useInvalidateQueries();
   const posthog = usePostHog();
   const [searchParams] = useSearchParams();
@@ -686,7 +688,7 @@ export function ImagePostForm({
       const { deleteDraft } = await import("@/api/posts");
       const result = await deleteDraft(initialDraftId);
       if (result.success) {
-        navigate("/dashboard/posts/drafts", { replace: true });
+        navigate(dash("posts/drafts"), { replace: true });
         invalidateQueries();
       } else {
         toast.error(result.error);
@@ -1373,7 +1375,7 @@ export function ImagePostForm({
         }
         if (result.allPlatformsFailed && result.postId) {
           setOverlayPhase("idle");
-          navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+          navigate(dash(`posts/${result.postId}`), { replace: true });
           invalidateQueries();
           return;
         }
@@ -1473,7 +1475,7 @@ export function ImagePostForm({
             .length ?? 0;
         if (succeededCount === 0) {
           setOverlayPhase("idle");
-          navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+          navigate(dash(`posts/${result.postId}`), { replace: true });
           invalidateQueries();
           return;
         }
@@ -1484,7 +1486,7 @@ export function ImagePostForm({
           "image",
           accountIds.length,
         );
-        navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+        navigate(dash(`posts/${result.postId}`), { replace: true });
         invalidateQueries();
         return;
       }
@@ -1556,7 +1558,7 @@ export function ImagePostForm({
         "image",
         accountIds.length,
       );
-      navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+      navigate(dash(`posts/${result.postId}`), { replace: true });
       invalidateQueries();
       return;
     }
@@ -1703,7 +1705,7 @@ export function ImagePostForm({
               platformStatuses.length > 0 &&
               platformStatuses.every((p) => p.status === "failed");
             if (allFailed && publishedPostId) {
-              navigate(`/dashboard/posts/${publishedPostId}`, {
+              navigate(dash(`posts/${publishedPostId}`), {
                 replace: true,
               });
               invalidateQueries();

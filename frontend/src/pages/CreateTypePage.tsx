@@ -16,6 +16,7 @@ import DocsInfoIcon from "@/components/info-icon";
 import { CreatePostWithAccounts } from "@/features/dashboard/create/CreatePostWithAccounts";
 import { useSession } from "@/lib/auth-client";
 import { useIsGuest } from "@/lib/use-is-guest";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { rpc } from "@/lib/rpc";
 import { getUserSettingsSnapshot } from "@/api/settings";
 
@@ -23,6 +24,7 @@ export function CreateTypePage() {
   const { type: typeSlug = "" } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const dash = useDashboardPath();
   const { data: session } = useSession();
   const isGuest = useIsGuest();
 
@@ -46,8 +48,8 @@ export function CreateTypePage() {
   });
 
   useEffect(() => {
-    if (!contentType) navigate("/dashboard/create", { replace: true });
-  }, [contentType, navigate]);
+    if (!contentType) navigate(dash("create"), { replace: true });
+  }, [contentType, navigate, dash]);
 
   if (!contentType) return null;
 

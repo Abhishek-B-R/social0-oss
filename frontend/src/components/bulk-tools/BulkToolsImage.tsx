@@ -28,6 +28,7 @@ import { createPost } from "@/api/posts";
 import { uploadFile } from "@/lib/upload-file";
 import { usePostHog } from "@posthog/react";
 import { captureBulkPostsScheduled } from "@/lib/posthog-events";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { toast } from "sonner";
 import {
   getPinterestBoardRequiredMessage,
@@ -90,6 +91,7 @@ export function BulkToolsImage({
   supportedPlatforms?: string[];
 }) {
   const posthog = usePostHog();
+  const dash = useDashboardPath();
   const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
   const validIds = useMemo(
     () => new Set(selectableAccounts.map((a) => a.id)),
@@ -549,7 +551,7 @@ export function BulkToolsImage({
             All images scheduled successfully.
           </p>
           <Link
-            href="/dashboard/calendar"
+            href={dash("calendar")}
             className="mt-3 inline-block text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
           >
             View Calendar →

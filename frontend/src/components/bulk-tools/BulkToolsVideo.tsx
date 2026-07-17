@@ -28,6 +28,7 @@ import { createPost } from "@/api/posts";
 import { usePostHog } from "@posthog/react";
 import { captureBulkPostsScheduled } from "@/lib/posthog-events";
 import { measureVideoAspectRatio } from "@/lib/video-aspect-ratio";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 import {
   getVideoDuration,
   MAX_VIDEO_DURATION_SECONDS,
@@ -101,6 +102,7 @@ export function BulkToolsVideo({
   supportedPlatforms?: string[];
 }) {
   const posthog = usePostHog();
+  const dash = useDashboardPath();
   const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
   const validIds = useMemo(
     () => new Set(selectableAccounts.map((a) => a.id)),
@@ -680,7 +682,7 @@ export function BulkToolsVideo({
             All videos scheduled successfully.
           </p>
           <Link
-            href="/dashboard/calendar"
+            href={dash("calendar")}
             className="mt-3 inline-block text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
           >
             View Calendar →

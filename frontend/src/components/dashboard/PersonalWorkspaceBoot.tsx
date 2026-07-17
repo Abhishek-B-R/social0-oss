@@ -2,8 +2,10 @@ import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listWorkspaces, switchWorkspace } from "@/api/team";
 import {
+  isPersonalOnlyDashboardPath,
   isTeamAppPath,
-  readPersonalWorkspaceId,
+  isTeamSettingsPath,
+  mapPathToBase,
   writePersonalWorkspaceId,
 } from "@/lib/dashboard-base-path";
 import { useLocation } from "react-router-dom";
@@ -11,55 +13,61 @@ import { useLocation } from "react-router-dom";
 const WORKSPACES_QUERY_KEY = ["workspaces"] as const;
 
 /**
- * On personal /dashboard routes, restore the last personal workspace from
- * localStorage and never leave the user on a joined-team workspace.
+ * On personal /dashboard routes (not team app / team settings):
+ * - Leave account-level pages alone (settings, billing, developer, …)
+ * - Owned workspace on a mirrored page → `/dashboard/teams/:teamId/*`
+ * - Joined workspace on mirrored personal URLs → switch back to Main
  */
 export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
   const { pathname } = useLocation();
   const queryClient = useQueryClient();
   const ran = useRef(false);
 
+  const skipBoot =
+    isTeamAppPath(pathname) ||
+    isTeamSettingsPath(pathname) ||
+    isPersonalOnlyDashboardPath(pathname);
+
   const { data } = useQuery({
     queryKey: WORKSPACES_QUERY_KEY,
     queryFn: listWorkspaces,
-    enabled: enabled && !isTeamAppPath(pathname),
+    enabled: enabled && !skipBoot,
   });
 
   useEffect(() => {
-    if (!enabled || isTeamAppPath(pathname) || !data || ran.current) return;
+    if (!enabled || skipBoot || !data || ran.current) return;
 
     const active = data.workspaces.find((w) => w.isActive);
-    const desired = readPersonalWorkspaceId();
 
-    const isOwnedOrMain = (id: string | null | undefined) => {
-      if (id == null) return true;
-      const item = data.workspaces.find((w) => w.id === id);
-      return item?.kind === "owned" || item?.kind === "personal";
-    };
+    // Owned team workspace on a mirrored personal URL → team app tree
+    if (active?.kind === "owned" && active.teamId) {
+      ran.current = true;
+      const dest = mapPathToBase(
+        pathname,
+        `/dashboard/teams/${active.teamId}`,
+      );
+      window.location.assign(
+        dest.startsWith(`/dashboard/teams/${active.teamId}`)
+          ? dest
+          : `/dashboard/teams/${active.teamId}/composer`,
+      );
+      return;
+    }
 
-    // Desired from LS must be Main or an owned workspace
-    const targetId = isOwnedOrMain(desired) ? desired : null;
-
-    const activeIsJoined = active?.kind === "joined";
-    const activeMismatch =
-      (active?.id ?? null) !== targetId &&
-      !(active?.id == null && targetId == null);
-
-    if (!activeIsJoined && !activeMismatch) {
-      // Persist current personal selection
-      if (active?.kind === "personal" || active?.kind === "owned" || !active) {
-        writePersonalWorkspaceId(active?.id ?? null);
-      }
+    // Already on Main
+    if (!active || active.kind === "personal" || active.id == null) {
+      writePersonalWorkspaceId(null);
       ran.current = true;
       return;
     }
 
+    // Joined on personal URL → force Main
     ran.current = true;
     let cancelled = false;
     (async () => {
       try {
-        await switchWorkspace(targetId);
-        writePersonalWorkspaceId(targetId);
+        await switchWorkspace(null);
+        writePersonalWorkspaceId(null);
         if (!cancelled) {
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY }),
@@ -67,7 +75,6 @@ export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
             queryClient.invalidateQueries({ queryKey: ["dashboard-layout"] }),
             queryClient.invalidateQueries({ queryKey: ["connections"] }),
           ]);
-          // Soft reload so connection-scoped pages pick up the new workspace
           window.location.reload();
         }
       } catch {
@@ -78,7 +85,7 @@ export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, [enabled, pathname, data, queryClient]);
+  }, [enabled, skipBoot, pathname, data, queryClient]);
 
   return null;
 }

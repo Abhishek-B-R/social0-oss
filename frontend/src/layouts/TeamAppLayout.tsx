@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -14,16 +14,22 @@ import { IconLoader2 } from "@tabler/icons-react";
 
 const WORKSPACES_QUERY_KEY = ["workspaces"] as const;
 
+/** Survives layout remounts so in-team navigations don't flash the gate. */
+const bootstrappedTeams = new Set<string>();
+
 /**
  * Gate for /dashboard/teams/:teamId/* — ensures membership and activates
- * the team's default (or last-used) workspace.
+ * the team's default (or last-used) workspace. Runs once per teamId;
+ * subsequent navigations within the team tree only render the Outlet.
  */
 export function TeamAppLayout() {
   const { teamId } = useParams<{ teamId: string }>();
   const queryClient = useQueryClient();
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(
+    () => !!teamId && bootstrappedTeams.has(teamId),
+  );
   const [error, setError] = useState<string | null>(null);
-  const bootstrappedFor = useRef<string | null>(null);
+  const inFlightFor = useRef<string | null>(null);
 
   const { data, isLoading, isError, error: queryError } = useQuery({
     queryKey: WORKSPACES_QUERY_KEY,
@@ -32,13 +38,22 @@ export function TeamAppLayout() {
   });
 
   useEffect(() => {
-    if (!teamId || !data) return;
-    if (bootstrappedFor.current === teamId && ready) return;
+    if (!teamId) return;
+
+    // Already gated this team in this session — stay ready, sync quietly.
+    if (bootstrappedTeams.has(teamId)) {
+      setReady(true);
+      setError(null);
+      return;
+    }
+
+    if (!data) return;
+    if (inFlightFor.current === teamId) return;
 
     let cancelled = false;
+    inFlightFor.current = teamId;
 
     (async () => {
-      setReady(false);
       setError(null);
 
       const team: TeamListItem | undefined = data.teams.find(
@@ -46,16 +61,9 @@ export function TeamAppLayout() {
       );
       if (!team) {
         if (!cancelled) {
+          inFlightFor.current = null;
           setError("Team not found or you no longer have access.");
           setReady(false);
-        }
-        return;
-      }
-
-      // Joined-team URL mode only — owners use personal /dashboard paths.
-      if (team.kind === "owned") {
-        if (!cancelled) {
-          setError("owned-redirect");
         }
         return;
       }
@@ -71,7 +79,9 @@ export function TeamAppLayout() {
 
       if (!targetId) {
         if (!cancelled) {
+          inFlightFor.current = null;
           setError("This team has no workspaces yet.");
+          setReady(false);
         }
         return;
       }
@@ -94,34 +104,37 @@ export function TeamAppLayout() {
           writeTeamWorkspaceId(teamId, targetId);
         }
         if (!cancelled) {
-          bootstrappedFor.current = teamId;
+          bootstrappedTeams.add(teamId);
+          inFlightFor.current = null;
           setReady(true);
         }
       } catch (err) {
         if (!cancelled) {
+          inFlightFor.current = null;
           setError(
             err instanceof Error
               ? err.message
               : "Failed to open team workspace",
           );
+          setReady(false);
         }
       }
     })();
 
     return () => {
       cancelled = true;
+      if (inFlightFor.current === teamId) {
+        inFlightFor.current = null;
+      }
     };
-  }, [teamId, data, queryClient, ready]);
+  }, [teamId, data, queryClient]);
 
   if (!teamId) {
     return <Navigate to="/dashboard/teams" replace />;
   }
 
-  if (error === "owned-redirect") {
-    return <Navigate to="/dashboard/composer" replace />;
-  }
-
-  if (isLoading || (!ready && !error && !isError)) {
+  // Only block the first entry into a team — never on in-team page changes.
+  if (!ready && (isLoading || (!error && !isError))) {
     return (
       <div className="flex flex-1 items-center justify-center gap-2 py-20 text-sm text-text-muted">
         <IconLoader2 className="h-5 w-5 animate-spin" strokeWidth={1.5} />
@@ -149,5 +162,16 @@ export function TeamAppLayout() {
     );
   }
 
-  return <Outlet />;
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center gap-2 py-20 text-sm text-text-muted">
+          <IconLoader2 className="h-5 w-5 animate-spin" strokeWidth={1.5} />
+          Loading…
+        </div>
+      }
+    >
+      <Outlet />
+    </Suspense>
+  );
 }

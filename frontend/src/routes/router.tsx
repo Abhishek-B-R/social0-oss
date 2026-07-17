@@ -389,7 +389,14 @@ export function AppRouter() {
               path="teams/:teamId/settings"
               element={<TeamDetailPage />}
             />
-            <Route path="teams/:teamId" element={<TeamAppLayout />}>
+            <Route
+              path="teams/:teamId"
+              element={
+                <Lazy>
+                  <TeamAppLayout />
+                </Lazy>
+              }
+            >
               <Route
                 index
                 element={<Navigate to="composer" replace />}
