@@ -128,7 +128,7 @@ const GROWTH_BILLING_FEATURES = [
 ];
 
 const PRO_BILLING_FEATURES = [
-  "Unlimited connected accounts",
+  "Connect up to 30 accounts",
   "Team collaboration / invite teammates",
   "Multiple accounts per platform",
   "Unlimited posts",
@@ -1338,7 +1338,7 @@ export function BillingPanel({
                   <ul className="space-y-2">
                     {(targetDowngradePlan === "growth"
                       ? [
-                          "Unlimited accounts (drops to 15)",
+                          "Up to 30 accounts (drops to 15)",
                           "Team collaboration / invite teammates",
                           "Priority support",
                         ]

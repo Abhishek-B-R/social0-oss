@@ -63,7 +63,7 @@ const growthFeatures = [
 
 const proFeatures = [
   { text: "Everything in Growth", highlight: true },
-  { text: "Unlimited connected accounts", highlight: true },
+  { text: "Up to 30 connected accounts", highlight: true },
   { text: "Team collaboration / invite teammates", highlight: true },
   { text: "Multiple accounts per platform", highlight: false },
   { text: "Unlimited posts", highlight: false },
@@ -299,7 +299,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
             </p>
 
             <p className={`relative z-10 mb-8 ${basePlanDesc}`}>
-              For power users and agencies who need unlimited reach and team
+              For power users and agencies who need more accounts and team
               collaboration.
             </p>
 

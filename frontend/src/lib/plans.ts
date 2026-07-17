@@ -57,7 +57,7 @@ const GROWTH_LIMITS: PlanLimits = {
 };
 
 const PRO_LIMITS: PlanLimits = {
-  maxConnectedAccounts: 999, // effectively unlimited
+  maxConnectedAccounts: 30,
   maxFreePosts: 0,
   allowBulkTools: true,
   allowAutoPlug: true,
