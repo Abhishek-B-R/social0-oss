@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  IconBriefcase,
   IconChevronDown,
   IconHome,
   IconLoader2,
@@ -13,16 +15,27 @@ import Link from "@/components/AppLink";
 import {
   listWorkspaces,
   switchWorkspace,
+  type TeamListItem,
   type WorkspaceListItem,
 } from "@/api/team";
+import {
+  getDashboardRelativePath,
+  isTeamAppPath,
+  mapPathToBase,
+  writePersonalWorkspaceId,
+  writeTeamWorkspaceId,
+} from "@/lib/dashboard-base-path";
 
 const WORKSPACES_QUERY_KEY = ["workspaces"] as const;
 
 export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   const queryClient = useQueryClient();
+  const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | "main" | null>(null);
+  const [menuMaxHeight, setMenuMaxHeight] = useState(480);
   const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: WORKSPACES_QUERY_KEY,
@@ -41,6 +54,18 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [open]);
 
+  useEffect(() => {
+    if (!open || !buttonRef.current) return;
+    const update = () => {
+      const rect = buttonRef.current!.getBoundingClientRect();
+      const available = window.innerHeight - rect.bottom - 12;
+      setMenuMaxHeight(Math.max(240, available));
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [open]);
+
   const active =
     data?.workspaces.find((w) => w.isActive) ??
     ({
@@ -56,7 +81,64 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
       memberCount: 1,
     } satisfies WorkspaceListItem);
 
-  const teams = data?.teams ?? [];
+  const ownedTeams = useMemo(
+    () => (data?.teams ?? []).filter((t) => t.kind === "owned"),
+    [data?.teams],
+  );
+  const joinedTeams = useMemo(
+    () => (data?.teams ?? []).filter((t) => t.kind === "joined"),
+    [data?.teams],
+  );
+
+  const personalWorkspaces = useMemo(() => {
+    const items: {
+      id: string | null;
+      name: string;
+      subtitle: string;
+      teamId: string | null;
+    }[] = [
+      {
+        id: null,
+        name: "Main",
+        subtitle: "Personal",
+        teamId: null,
+      },
+    ];
+    for (const team of ownedTeams) {
+      for (const ws of team.workspaces) {
+        items.push({
+          id: ws.id,
+          name: ws.name,
+          subtitle: team.name,
+          teamId: team.id,
+        });
+      }
+    }
+    return items;
+  }, [ownedTeams]);
+
+  const joinedWorkspaces = useMemo(() => {
+    const items: {
+      id: string;
+      name: string;
+      subtitle: string;
+      teamId: string;
+      team: TeamListItem;
+    }[] = [];
+    for (const team of joinedTeams) {
+      for (const ws of team.workspaces) {
+        items.push({
+          id: ws.id,
+          name: ws.name,
+          subtitle: team.name,
+          teamId: team.id,
+          team,
+        });
+      }
+    }
+    return items;
+  }, [joinedTeams]);
+
   const canCreateTeam = !!data?.canCreateTeam;
 
   const invalidateAll = async () => {
@@ -68,29 +150,73 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
     ]);
   };
 
-  const handleSwitch = async (workspaceId: string | null) => {
+  const handleSelectPersonal = async (workspaceId: string | null) => {
     const key = workspaceId ?? "main";
-    if (
-      (workspaceId === null && active.id === null) ||
-      workspaceId === active.id
-    ) {
+    const alreadyPersonalPath = !isTeamAppPath(pathname);
+    if (workspaceId === active.id && alreadyPersonalPath) {
       setOpen(false);
       return;
     }
     setBusyId(key);
     try {
       await switchWorkspace(workspaceId);
+      writePersonalWorkspaceId(workspaceId);
       await invalidateAll();
       setOpen(false);
+      const dest = mapPathToBase(pathname, "/dashboard");
       toast.success(
         workspaceId === null ? "Switched to Main" : "Workspace switched",
       );
-      window.location.reload();
+      if (dest !== pathname || isTeamAppPath(pathname)) {
+        window.location.assign(dest);
+      } else {
+        window.location.reload();
+      }
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to switch workspace",
       );
-    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleSelectJoined = async (opts: {
+    teamId: string;
+    workspaceId: string;
+    team: TeamListItem;
+  }) => {
+    const { teamId, workspaceId, team } = opts;
+    const alreadyOnTeam =
+      isTeamAppPath(pathname) && pathname.includes(`/teams/${teamId}/`);
+    if (workspaceId === active.id && alreadyOnTeam) {
+      setOpen(false);
+      return;
+    }
+    setBusyId(workspaceId);
+    try {
+      // Entering a team: prefer default workspace for that team when switching teams
+      const enteringNewTeam = !alreadyOnTeam;
+      const targetId = enteringNewTeam
+        ? (team.defaultWorkspaceId ??
+          team.workspaces[0]?.id ??
+          workspaceId)
+        : workspaceId;
+
+      await switchWorkspace(targetId);
+      writeTeamWorkspaceId(teamId, targetId);
+      await invalidateAll();
+      setOpen(false);
+      const relative = getDashboardRelativePath(pathname);
+      const dest = mapPathToBase(
+        isTeamAppPath(pathname) ? pathname : `/dashboard/${relative}`,
+        `/dashboard/teams/${teamId}`,
+      );
+      toast.success("Switched to team workspace");
+      window.location.assign(dest.startsWith("/dashboard/teams/") ? dest : `/dashboard/teams/${teamId}/composer`);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to switch workspace",
+      );
       setBusyId(null);
     }
   };
@@ -100,31 +226,39 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   const activeLabel =
     active.kind === "personal"
       ? active.name
-      : active.teamName
-        ? `${active.teamName} / ${active.name}`
-        : active.name;
+      : active.kind === "owned"
+        ? active.name
+        : active.teamName
+          ? `${active.name}`
+          : active.name;
 
   return (
     <div ref={rootRef} className="relative">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-bg px-3 py-2 text-left text-sm font-medium text-sidebar-text transition-colors hover:bg-sidebar-active"
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        {active.kind === "personal" ? (
+        {active.kind === "joined" ? (
+          <IconUsers
+            className="h-4 w-4 shrink-0 text-sidebar-muted"
+            strokeWidth={1.5}
+          />
+        ) : active.id === null ? (
           <IconHome
             className="h-4 w-4 shrink-0 text-sidebar-muted"
             strokeWidth={1.5}
           />
         ) : (
-          <IconUsers
+          <IconBriefcase
             className="h-4 w-4 shrink-0 text-sidebar-muted"
             strokeWidth={1.5}
           />
         )}
-        <span className="min-w-0 flex-1 truncate">{activeLabel}</span>
+        <span className="min-w-0 flex-1 truncate capitalize">{activeLabel}</span>
         <IconChevronDown
           className={`h-4 w-4 shrink-0 text-sidebar-muted transition-transform ${open ? "rotate-180" : ""}`}
           strokeWidth={1.5}
@@ -132,87 +266,99 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
       </button>
 
       {open ? (
-        <div className="absolute left-0 right-0 z-50 mt-1 max-h-80 overflow-y-auto rounded-xl border border-border bg-bg-elevated py-1 shadow-lg">
-          <p className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-text-muted">
-            Workspace
-          </p>
+        <div
+          className="absolute left-0 right-0 z-50 mt-1 flex flex-col overflow-hidden rounded-xl border border-border bg-bg-elevated shadow-lg"
+          style={{ maxHeight: menuMaxHeight }}
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto py-1">
+            {isLoading ? (
+              <div className="flex items-center gap-2 px-3 py-3 text-sm text-text-muted">
+                <IconLoader2
+                  className="h-4 w-4 animate-spin"
+                  strokeWidth={1.5}
+                />
+                Loading…
+              </div>
+            ) : (
+              <>
+                <p className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-text-muted">
+                  Personal
+                </p>
+                {personalWorkspaces.map((ws) => (
+                  <WorkspaceOption
+                    key={ws.id ?? "main"}
+                    label={ws.name}
+                    subtitle={ws.subtitle}
+                    active={
+                      !isTeamAppPath(pathname) &&
+                      (ws.id === null
+                        ? active.id === null
+                        : active.id === ws.id)
+                    }
+                    busy={busyId === (ws.id ?? "main")}
+                    icon={ws.id === null ? "home" : "briefcase"}
+                    onSelect={() => void handleSelectPersonal(ws.id)}
+                  />
+                ))}
 
-          {isLoading ? (
-            <div className="flex items-center gap-2 px-3 py-3 text-sm text-text-muted">
-              <IconLoader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
-              Loading…
-            </div>
-          ) : (
-            <>
-              <WorkspaceOption
-                label="Main"
-                subtitle="Personal"
-                active={active.id === null}
-                busy={busyId === "main"}
-                personal
-                onSelect={() => void handleSwitch(null)}
+                {joinedWorkspaces.length > 0 ? (
+                  <>
+                    <div className="my-1 border-t border-border" />
+                    <p className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-text-muted">
+                      <IconUsers className="h-3.5 w-3.5" strokeWidth={1.5} />
+                      Teams
+                    </p>
+                    {joinedWorkspaces.map((ws) => (
+                      <WorkspaceOption
+                        key={ws.id}
+                        label={ws.name}
+                        subtitle={ws.subtitle}
+                        active={
+                          isTeamAppPath(pathname) && active.id === ws.id
+                        }
+                        busy={busyId === ws.id}
+                        icon="users"
+                        onSelect={() =>
+                          void handleSelectJoined({
+                            teamId: ws.teamId,
+                            workspaceId: ws.id,
+                            team: ws.team,
+                          })
+                        }
+                      />
+                    ))}
+                  </>
+                ) : null}
+              </>
+            )}
+          </div>
+
+          <div className="shrink-0 border-t border-border py-1">
+            <Link
+              href="/dashboard/workspaces"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-text hover:bg-sidebar-active"
+            >
+              <IconSettings
+                className="h-4 w-4 text-text-muted"
+                strokeWidth={1.5}
               />
-
-              {teams.map((team) => (
-                <div key={team.id}>
-                  <div className="my-1 border-t border-border" />
-                  <p className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-text-muted">
-                    {team.name}
-                    <span className="ml-1 font-normal normal-case tracking-normal">
-                      ({team.kind === "owned" ? "yours" : "joined"})
-                    </span>
-                  </p>
-                  {team.workspaces.map((ws) => (
-                    <WorkspaceOption
-                      key={ws.id}
-                      label={ws.name}
-                      subtitle={`${ws.connectionCount} connected`}
-                      active={ws.isActive}
-                      busy={busyId === ws.id}
-                      onSelect={() => void handleSwitch(ws.id)}
-                    />
-                  ))}
-                </div>
-              ))}
-
-              <div className="my-1 border-t border-border" />
+              Manage Workspaces
+            </Link>
+            {canCreateTeam || ownedTeams.length > 0 ? (
               <Link
                 href="/dashboard/workspaces"
                 onClick={() => setOpen(false)}
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm text-text hover:bg-sidebar-active"
               >
-                <IconSettings
+                <IconPlus
                   className="h-4 w-4 text-text-muted"
                   strokeWidth={1.5}
                 />
-                Manage workspaces
+                New Workspace
               </Link>
-              <Link
-                href="/dashboard/teams"
-                onClick={() => setOpen(false)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-text hover:bg-sidebar-active"
-              >
-                <IconUsers
-                  className="h-4 w-4 text-text-muted"
-                  strokeWidth={1.5}
-                />
-                Manage teams
-              </Link>
-              {canCreateTeam ? (
-                <Link
-                  href="/dashboard/teams/create"
-                  onClick={() => setOpen(false)}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-text hover:bg-sidebar-active"
-                >
-                  <IconPlus
-                    className="h-4 w-4 text-text-muted"
-                    strokeWidth={1.5}
-                  />
-                  New team
-                </Link>
-              ) : null}
-            </>
-          )}
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>
@@ -224,14 +370,14 @@ function WorkspaceOption({
   subtitle,
   active,
   busy,
-  personal,
+  icon,
   onSelect,
 }: {
   label: string;
   subtitle: string;
   active: boolean;
   busy: boolean;
-  personal?: boolean;
+  icon: "home" | "briefcase" | "users";
   onSelect: () => void;
 }) {
   return (
@@ -245,8 +391,13 @@ function WorkspaceOption({
           : "text-text"
       }`}
     >
-      {personal ? (
+      {icon === "home" ? (
         <IconHome
+          className="h-4 w-4 shrink-0 text-text-muted"
+          strokeWidth={1.5}
+        />
+      ) : icon === "briefcase" ? (
+        <IconBriefcase
           className="h-4 w-4 shrink-0 text-text-muted"
           strokeWidth={1.5}
         />
@@ -256,9 +407,9 @@ function WorkspaceOption({
           strokeWidth={1.5}
         />
       )}
-      <span className="min-w-0 flex-1 truncate">
+      <span className="min-w-0 flex-1 truncate capitalize">
         {label}
-        <span className="mt-0.5 block truncate text-xs font-normal text-text-muted">
+        <span className="mt-0.5 block truncate text-xs font-normal normal-case text-text-muted">
           {subtitle}
         </span>
       </span>

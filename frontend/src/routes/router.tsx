@@ -108,6 +108,9 @@ const CreateTeamPage = lazy(() =>
 const TeamDetailPage = lazy(() =>
   import("@/pages/DashboardPages").then((m) => ({ default: m.TeamDetailPage })),
 );
+const TeamAppLayout = lazy(() =>
+  import("@/layouts/TeamAppLayout").then((m) => ({ default: m.TeamAppLayout })),
+);
 const AcceptInvitePage = lazy(() =>
   import("@/pages/AcceptInvitePage").then((m) => ({
     default: m.AcceptInvitePage,
@@ -382,7 +385,46 @@ export function AppRouter() {
             <Route path="workspaces" element={<WorkspacesPage />} />
             <Route path="teams" element={<TeamsPage />} />
             <Route path="teams/create" element={<CreateTeamPage />} />
-            <Route path="teams/:workspaceId" element={<TeamDetailPage />} />
+            <Route
+              path="teams/:teamId/settings"
+              element={<TeamDetailPage />}
+            />
+            <Route path="teams/:teamId" element={<TeamAppLayout />}>
+              <Route
+                index
+                element={<Navigate to="composer" replace />}
+              />
+              <Route path="composer" element={<ComposerPage />} />
+              <Route path="create" element={<CreateHubPage />} />
+              <Route path="create/:type" element={<CreateTypePage />} />
+              <Route path="posts" element={<PostsPage />} />
+              <Route path="posts/drafts" element={<DraftsPostsPage />} />
+              <Route path="posts/scheduled" element={<ScheduledPostsPage />} />
+              <Route path="posts/posted" element={<PostedPostsPage />} />
+              <Route path="posts/:id" element={<PostDetailPage />} />
+              <Route path="posts/:id/edit" element={<EditPostPage />} />
+              <Route path="calendar" element={<CalendarPage />} />
+              <Route path="connections" element={<ConnectionsPage />} />
+              <Route
+                path="connections/facebook/select"
+                element={<FacebookSelectPage />}
+              />
+              <Route
+                path="connections/instagram/select"
+                element={<InstagramSelectPage />}
+              />
+              <Route
+                path="connections/linkedin/select"
+                element={<LinkedinSelectPage />}
+              />
+              <Route
+                path="connect/instagram-facebook/select"
+                element={<ConnectInstagramFacebookSelectPage />}
+              />
+              <Route path="bulk-tools" element={<BulkToolsPage />} />
+              <Route path="bulk-tools/image" element={<BulkToolsImagePage />} />
+              <Route path="bulk-tools/video" element={<BulkToolsVideoPage />} />
+            </Route>
           </Route>
 
           <Route

@@ -234,6 +234,7 @@ export type TeamListItem = {
   role: WorkspaceRole;
   isOwner: boolean;
   ownerUserId?: string;
+  defaultWorkspaceId?: string | null;
   memberCount: number;
   workspaces: {
     id: string;

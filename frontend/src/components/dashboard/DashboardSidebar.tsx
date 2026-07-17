@@ -28,6 +28,12 @@ import {
 import { SignOutButton } from "@/components/SignOutButton";
 import { signInUrl } from "@/lib/sign-in-url";
 import { WorkspaceSwitcher } from "@/components/dashboard/WorkspaceSwitcher";
+import {
+  getDashboardRelativePath,
+  getTeamIdFromPathname,
+  isTeamAppPath,
+  useDashboardPath,
+} from "@/lib/dashboard-base-path";
 
 type NavItem = {
   href: string;
@@ -88,9 +94,17 @@ type DashboardSidebarProps = {
   } | null;
   planLabel: string;
   isGuest?: boolean;
-  /** Session still loading — show signed-in shell, not guest sign-in. */
   sessionPending?: boolean;
 };
+
+function relativeMatches(
+  relative: string,
+  target: string,
+  opts?: { exact?: boolean },
+) {
+  if (opts?.exact) return relative === target;
+  return relative === target || relative.startsWith(`${target}/`);
+}
 
 export function DashboardSidebar({
   user,
@@ -99,6 +113,11 @@ export function DashboardSidebar({
   sessionPending = false,
 }: DashboardSidebarProps) {
   const pathname = useLocation().pathname;
+  const dash = useDashboardPath();
+  const relative = getDashboardRelativePath(pathname);
+  const inTeamApp = isTeamAppPath(pathname);
+  const teamId = getTeamIdFromPathname(pathname);
+  const onTeamSettings = !!teamId && pathname.includes(`/teams/${teamId}/settings`);
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -131,27 +150,20 @@ export function DashboardSidebar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [userMenuOpen]);
 
-  const isDark = mounted && resolvedTheme === "dark";
-  const logoSrc = isDark ? "/logo-dark.webp" : "/logo-circular.webp";
-
-  const isActive = (href: string) => {
-    if (href === "/dashboard/connections")
-      return pathname === "/dashboard/connections";
-    return pathname.startsWith(href);
-  };
+  const logoSrc =
+    mounted && resolvedTheme === "dark" ? "/logo-dark.png" : "/logo.png";
 
   return (
     <aside
       className="dashboard-sidebar hidden h-full w-60 shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar-bg lg:flex"
       data-sidebar="dashboard"
     >
-      {/* Sticky top: logo + Create post */}
       <div className="flex shrink-0 flex-col gap-4 p-4">
         <Link
-          href="/dashboard/composer"
+          href={dash("composer")}
           prefetch
           onClick={() => {
-            if (!pathname.startsWith("/dashboard/composer"))
+            if (!relativeMatches(relative, "composer", { exact: true }))
               setLogoPending(true);
           }}
           className={`flex items-center gap-3 rounded-lg px-3 py-2 font-semibold text-lg text-sidebar-text hover:bg-sidebar-active transition-colors ${logoPending ? "opacity-60" : ""}`}
@@ -173,10 +185,10 @@ export function DashboardSidebar({
         ) : null}
 
         <Link
-          href="/dashboard/composer"
+          href={dash("composer")}
           prefetch
           onClick={() => {
-            if (!pathname.startsWith("/dashboard/composer"))
+            if (!relativeMatches(relative, "composer", { exact: true }))
               setComposerCtaPending(true);
           }}
           className={`sidebar-create-post-cta flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm hover:bg-accent-hover transition-colors ${composerCtaPending ? "opacity-80" : ""}`}
@@ -186,79 +198,87 @@ export function DashboardSidebar({
         </Link>
       </div>
 
-      {/* Scrollable middle: nav */}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <nav className="flex flex-col gap-6 p-4 pt-0">
           <Section title="Create">
             <NavLink
-              href="/dashboard/composer"
+              href={dash("composer")}
               label="Composer"
               icon={IconPencil}
-              isActive={pathname.startsWith("/dashboard/composer")}
+              isActive={relativeMatches(relative, "composer", { exact: true })}
             />
             <NavLink
-              href="/dashboard/create"
+              href={dash("create")}
               label="Manual setup"
               icon={IconTool}
-              isActive={
-                pathname === "/dashboard/create" ||
-                pathname.startsWith("/dashboard/create/")
-              }
+              isActive={relativeMatches(relative, "create")}
             />
             <NavLink
-              href="/dashboard/bulk-tools"
+              href={dash("bulk-tools")}
               label="Bulk tools"
               icon={IconStack2}
-              isActive={isActive("/dashboard/bulk-tools")}
+              isActive={relativeMatches(relative, "bulk-tools")}
             />
           </Section>
 
           <Section title="Posts">
             <NavLink
-              href="/dashboard/posts"
+              href={dash("posts")}
               label="All"
               icon={IconList}
-              isActive={pathname === "/dashboard/posts"}
+              isActive={relative === "posts"}
             />
             <NavLink
-              href="/dashboard/posts/posted"
+              href={dash("posts/posted")}
               label="Posted"
               icon={IconCircleCheck}
-              isActive={isActive("/dashboard/posts/posted")}
+              isActive={relativeMatches(relative, "posts/posted")}
             />
             <NavLink
-              href="/dashboard/posts/scheduled"
+              href={dash("posts/scheduled")}
               label="Scheduled"
               icon={IconClock}
-              isActive={isActive("/dashboard/posts/scheduled")}
+              isActive={relativeMatches(relative, "posts/scheduled")}
             />
             <NavLink
-              href="/dashboard/posts/drafts"
+              href={dash("posts/drafts")}
               label="Drafts"
               icon={IconFileText}
-              isActive={isActive("/dashboard/posts/drafts")}
+              isActive={relativeMatches(relative, "posts/drafts")}
             />
             <NavLink
-              href="/dashboard/calendar"
+              href={dash("calendar")}
               label="Calendar"
               icon={IconCalendar}
-              isActive={isActive("/dashboard/calendar")}
+              isActive={relativeMatches(relative, "calendar")}
             />
           </Section>
 
           <Section title="Workspace">
             <NavLink
-              href="/dashboard/connections"
+              href={dash("connections")}
               label="Connections"
               icon={IconLink}
-              isActive={pathname === "/dashboard/connections"}
+              isActive={relative === "connections"}
             />
-            <NavLink
-              href="/dashboard/teams"
-              label="Teams"
-              icon={IconUsers}
-              isActive={isActive("/dashboard/teams")}
-            />
+            {inTeamApp || onTeamSettings ? (
+              <NavLink
+                href={`/dashboard/teams/${teamId}/settings`}
+                label="Team settings"
+                icon={IconUsers}
+                isActive={onTeamSettings}
+              />
+            ) : (
+              <NavLink
+                href="/dashboard/teams"
+                label="Teams"
+                icon={IconUsers}
+                isActive={
+                  pathname === "/dashboard/teams" ||
+                  pathname.startsWith("/dashboard/teams/create")
+                }
+              />
+            )}
           </Section>
 
           <Section title="Configuration">
@@ -266,19 +286,19 @@ export function DashboardSidebar({
               href="/dashboard/settings"
               label="Settings"
               icon={IconSettings}
-              isActive={isActive("/dashboard/settings")}
+              isActive={pathname.startsWith("/dashboard/settings")}
             />
             <NavLink
               href="/dashboard/billing"
               label="Billing"
               icon={IconWallet}
-              isActive={isActive("/dashboard/billing")}
+              isActive={pathname.startsWith("/dashboard/billing")}
             />
             <NavLink
               href="/dashboard/api-keys"
               label="Developer"
               icon={IconKey}
-              isActive={isActive("/dashboard/api-keys")}
+              isActive={pathname.startsWith("/dashboard/api-keys")}
             />
           </Section>
 
@@ -287,7 +307,7 @@ export function DashboardSidebar({
               href="/dashboard/feedback"
               label="Feedback"
               icon={IconMessageCircle}
-              isActive={isActive("/dashboard/feedback")}
+              isActive={pathname.startsWith("/dashboard/feedback")}
             />
           </Section>
 
@@ -325,7 +345,6 @@ export function DashboardSidebar({
         </nav>
       </div>
 
-      {/* Sticky bottom: user menu or sign-in for guests */}
       <div
         ref={userMenuRef}
         className="shrink-0 border-t border-sidebar-border bg-sidebar-bg p-4"

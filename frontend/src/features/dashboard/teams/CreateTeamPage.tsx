@@ -47,7 +47,7 @@ export function CreateTeamPage() {
         queryClient.invalidateQueries({ queryKey: ["connections"] }),
       ]);
       toast.success("Team created");
-      navigate(`/dashboard/teams/${teamId}`, { replace: true });
+      navigate(`/dashboard/teams/${teamId}/settings`, { replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create team");
     } finally {

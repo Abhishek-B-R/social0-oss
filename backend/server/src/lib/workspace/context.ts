@@ -178,6 +178,21 @@ export async function ensureOwnerTeam(
         })
         .returning({ id: workspaces.id });
       ws = createdWs;
+      await db
+        .update(teams)
+        .set({ defaultWorkspaceId: createdWs.id, updatedAt: new Date() })
+        .where(eq(teams.id, existingTeam.id));
+    } else {
+      const teamRow = await db.query.teams.findFirst({
+        where: eq(teams.id, existingTeam.id),
+        columns: { defaultWorkspaceId: true },
+      });
+      if (!teamRow?.defaultWorkspaceId) {
+        await db
+          .update(teams)
+          .set({ defaultWorkspaceId: ws.id, updatedAt: new Date() })
+          .where(eq(teams.id, existingTeam.id));
+      }
     }
     const membership = await db.query.teamMembers.findFirst({
       where: and(
@@ -216,6 +231,11 @@ export async function ensureOwnerTeam(
     .insert(workspaces)
     .values({ name, teamId: createdTeam.id })
     .returning({ id: workspaces.id });
+
+  await db
+    .update(teams)
+    .set({ defaultWorkspaceId: createdWs.id, updatedAt: new Date() })
+    .where(eq(teams.id, createdTeam.id));
 
   return {
     teamId: createdTeam.id,

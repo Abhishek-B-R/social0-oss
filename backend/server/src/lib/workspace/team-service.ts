@@ -935,6 +935,7 @@ export type TeamListItem = {
   role: WorkspaceRole;
   isOwner: boolean;
   ownerUserId: string;
+  defaultWorkspaceId: string | null;
   memberCount: number;
   workspaces: {
     id: string;
@@ -984,6 +985,7 @@ export async function listWorkspacesForUser(
       role: teamMembers.role,
       ownerUserId: teams.ownerUserId,
       teamName: teams.name,
+      defaultWorkspaceId: teams.defaultWorkspaceId,
     })
     .from(teamMembers)
     .innerJoin(teams, eq(teamMembers.teamId, teams.id))
@@ -1049,6 +1051,8 @@ export async function listWorkspacesForUser(
       role: m.role as WorkspaceRole,
       isOwner,
       ownerUserId: m.ownerUserId,
+      defaultWorkspaceId:
+        m.defaultWorkspaceId ?? teamWorkspaces[0]?.id ?? null,
       memberCount: memberCountRow?.count ?? 0,
       workspaces: teamWorkspaces,
     });
@@ -1132,6 +1136,11 @@ export async function createTeamForUser(
     .values({ name: workspaceName, teamId: createdTeam.id })
     .returning({ id: workspaces.id });
 
+  await db
+    .update(teams)
+    .set({ defaultWorkspaceId: createdWs.id, updatedAt: new Date() })
+    .where(eq(teams.id, createdTeam.id));
+
   await setActiveWorkspace(actorUserId, createdWs.id);
   return { teamId: createdTeam.id, workspaceId: createdWs.id };
 }
@@ -1161,7 +1170,7 @@ export async function createWorkspaceInTeam(
 
   const team = await db.query.teams.findFirst({
     where: eq(teams.id, teamId),
-    columns: { id: true, ownerUserId: true },
+    columns: { id: true, ownerUserId: true, defaultWorkspaceId: true },
   });
   if (!team) {
     throw new TeamServiceError(404, "Team not found.");
@@ -1184,6 +1193,13 @@ export async function createWorkspaceInTeam(
     .insert(workspaces)
     .values({ name, teamId: team.id })
     .returning({ id: workspaces.id });
+
+  if (!team.defaultWorkspaceId) {
+    await db
+      .update(teams)
+      .set({ defaultWorkspaceId: created.id, updatedAt: new Date() })
+      .where(eq(teams.id, team.id));
+  }
 
   await setActiveWorkspace(actorUserId, created.id);
   return { workspaceId: created.id };
@@ -1267,6 +1283,7 @@ export async function deleteWorkspaceInTeam(
       workspaceId: workspaces.id,
       teamId: workspaces.teamId,
       ownerUserId: teams.ownerUserId,
+      defaultWorkspaceId: teams.defaultWorkspaceId,
     })
     .from(workspaces)
     .innerJoin(teams, eq(workspaces.teamId, teams.id))
@@ -1292,6 +1309,24 @@ export async function deleteWorkspaceInTeam(
       400,
       "A team needs at least one workspace. Delete the team instead.",
     );
+  }
+
+  if (row.defaultWorkspaceId === workspaceId) {
+    const replacement = await db.query.workspaces.findFirst({
+      where: and(
+        eq(workspaces.teamId, row.teamId),
+        ne(workspaces.id, workspaceId),
+      ),
+      columns: { id: true },
+      orderBy: (t, { asc }) => [asc(t.createdAt)],
+    });
+    await db
+      .update(teams)
+      .set({
+        defaultWorkspaceId: replacement?.id ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(teams.id, row.teamId));
   }
 
   await db

@@ -45,7 +45,7 @@ import { Label } from "@/components/ui/label";
 const WORKSPACES_QUERY_KEY = ["workspaces"] as const;
 
 export function TeamDetailPage() {
-  const { workspaceId: teamIdParam } = useParams<{ workspaceId: string }>();
+  const { teamId: teamIdParam } = useParams<{ teamId: string }>();
   const teamId = teamIdParam;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -559,7 +559,7 @@ export function TeamDetailPage() {
         </section>
 
         <Link
-          href="/dashboard/settings"
+          href="/dashboard/settings#queue"
           className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated px-5 py-4 shadow-sm transition-colors hover:bg-sidebar-active/40"
         >
           <IconCalendar

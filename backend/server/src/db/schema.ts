@@ -442,6 +442,8 @@ export const teams = pgTable("teams", {
   ownerUserId: text("owner_user_id")
     .references(() => user.id, { onDelete: "cascade" })
     .notNull(),
+  /** Workspace opened when entering this team (joined-team URL mode). */
+  defaultWorkspaceId: uuid("default_workspace_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
