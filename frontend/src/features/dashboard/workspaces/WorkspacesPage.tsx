@@ -18,6 +18,7 @@ import {
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import {
+  createTeam,
   createWorkspaceInTeam,
   deleteWorkspace,
   listWorkspaceBoard,
@@ -57,9 +58,10 @@ function connectionHandle(platform: string, username: string | null): string {
 export function WorkspacesPage() {
   const queryClient = useQueryClient();
   const [movingId, setMovingId] = useState<string | null>(null);
-  const [addTeamId, setAddTeamId] = useState<string | null>(null);
-  const [addName, setAddName] = useState("");
-  const [adding, setAdding] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createPrefillTeamId, setCreatePrefillTeamId] = useState<string | null>(
+    null,
+  );
   const [renameTarget, setRenameTarget] = useState<{
     id: string;
     name: string;
@@ -80,6 +82,8 @@ export function WorkspacesPage() {
 
   const cards = boardQuery.data?.cards ?? [];
   const canCreateTeam = !!boardQuery.data?.canCreateTeam;
+  const ownedTeamCount = boardQuery.data?.ownedTeamCount ?? 0;
+  const maxOwnedTeams = boardQuery.data?.maxOwnedTeams ?? 5;
 
   const ownedTeamOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -90,6 +94,11 @@ export function WorkspacesPage() {
     }
     return [...map.entries()].map(([id, name]) => ({ id, name }));
   }, [cards]);
+
+  const openCreate = (prefillTeamId?: string | null) => {
+    setCreatePrefillTeamId(prefillTeamId ?? null);
+    setCreateOpen(true);
+  };
 
   const moveTargets = useMemo(
     () =>
@@ -150,24 +159,6 @@ export function WorkspacesPage() {
         err instanceof Error ? err.message : "Failed to switch workspace",
       );
       setSwitchingId(null);
-    }
-  };
-
-  const handleAddWorkspace = async () => {
-    if (!addTeamId || !addName.trim()) return;
-    setAdding(true);
-    try {
-      await createWorkspaceInTeam(addTeamId, addName.trim());
-      toast.success("Workspace created");
-      setAddTeamId(null);
-      setAddName("");
-      await invalidateAll();
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to create workspace",
-      );
-    } finally {
-      setAdding(false);
     }
   };
 
@@ -257,27 +248,19 @@ export function WorkspacesPage() {
             />
             Refresh
           </Button>
-          {ownedTeamOptions.length > 0 ? (
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => {
-                setAddTeamId(ownedTeamOptions[0]!.id);
-                setAddName("");
-              }}
-            >
+          {canCreateTeam || ownedTeamOptions.length > 0 ? (
+            <Button type="button" size="sm" onClick={() => openCreate()}>
               <IconPlus className="h-4 w-4" strokeWidth={1.5} />
               Add workspace
             </Button>
-          ) : canCreateTeam ? (
+          ) : (
             <Link
-              href="/dashboard/teams/create"
+              href="/dashboard/billing"
               className={cn(buttonVariants({ size: "sm" }))}
             >
-              <IconPlus className="h-4 w-4" strokeWidth={1.5} />
-              Create team
+              Upgrade to Pro
             </Link>
-          ) : null}
+          )}
           <Link
             href="/dashboard/teams"
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
@@ -318,10 +301,7 @@ export function WorkspacesPage() {
             }
             onAddToTeam={
               card.kind === "owned" && card.teamId
-                ? () => {
-                    setAddTeamId(card.teamId);
-                    setAddName("");
-                  }
+                ? () => openCreate(card.teamId)
                 : undefined
             }
           />
@@ -340,14 +320,11 @@ export function WorkspacesPage() {
             Create a team to add more workspaces and move connections between
             them.
           </p>
-          {canCreateTeam ? (
-            <Link
-              href="/dashboard/teams/create"
-              className={cn(buttonVariants(), "mt-6")}
-            >
+          {canCreateTeam || ownedTeamOptions.length > 0 ? (
+            <Button type="button" className="mt-6" onClick={() => openCreate()}>
               <IconPlus className="h-4 w-4" strokeWidth={1.5} />
-              Create a team
-            </Link>
+              Create a workspace
+            </Button>
           ) : (
             <Link
               href="/dashboard/billing"
@@ -359,83 +336,23 @@ export function WorkspacesPage() {
         </div>
       ) : null}
 
-      <Dialog
-        open={!!addTeamId}
+      <CreateWorkspaceDialog
+        open={createOpen}
         onOpenChange={(open) => {
-          if (!open) {
-            setAddTeamId(null);
-            setAddName("");
-          }
+          setCreateOpen(open);
+          if (!open) setCreatePrefillTeamId(null);
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add workspace</DialogTitle>
-            <DialogDescription>
-              New workspaces start empty. Move connections here anytime.
-            </DialogDescription>
-          </DialogHeader>
-          {ownedTeamOptions.length > 1 ? (
-            <div className="space-y-2">
-              <Label htmlFor="add-ws-team">Team</Label>
-              <select
-                id="add-ws-team"
-                value={addTeamId ?? ""}
-                onChange={(e) => setAddTeamId(e.target.value)}
-                disabled={adding}
-                className="w-full rounded-md border border-input bg-bg px-3 py-2 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
-              >
-                {ownedTeamOptions.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
-          <div className="space-y-2">
-            <Label htmlFor="new-workspace-name">Name</Label>
-            <Input
-              id="new-workspace-name"
-              value={addName}
-              onChange={(e) => setAddName(e.target.value)}
-              placeholder="e.g. Brand accounts"
-              maxLength={80}
-              disabled={adding}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void handleAddWorkspace();
-                }
-              }}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              disabled={adding}
-              onClick={() => setAddTeamId(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              disabled={adding || !addName.trim()}
-              onClick={() => void handleAddWorkspace()}
-            >
-              {adding ? (
-                <IconLoader2
-                  className="h-4 w-4 animate-spin"
-                  strokeWidth={1.5}
-                />
-              ) : (
-                <IconPlus className="h-4 w-4" strokeWidth={1.5} />
-              )}
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        ownedTeams={ownedTeamOptions}
+        canCreateTeam={canCreateTeam}
+        ownedTeamCount={ownedTeamCount}
+        maxOwnedTeams={maxOwnedTeams}
+        prefillTeamId={createPrefillTeamId}
+        onCreated={async () => {
+          setCreateOpen(false);
+          setCreatePrefillTeamId(null);
+          await invalidateAll();
+        }}
+      />
 
       <Dialog
         open={!!renameTarget}
@@ -533,6 +450,282 @@ export function WorkspacesPage() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+const WORKSPACE_ICONS = [
+  { id: "briefcase", Icon: IconBriefcase },
+  { id: "home", Icon: IconHome },
+  { id: "users", Icon: IconUsers },
+] as const;
+
+function CreateWorkspaceDialog({
+  open,
+  onOpenChange,
+  ownedTeams,
+  canCreateTeam,
+  ownedTeamCount,
+  maxOwnedTeams,
+  prefillTeamId,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  ownedTeams: { id: string; name: string }[];
+  canCreateTeam: boolean;
+  ownedTeamCount: number;
+  maxOwnedTeams: number;
+  prefillTeamId: string | null;
+  onCreated: () => Promise<void>;
+}) {
+  const [teamMode, setTeamMode] = useState(false);
+  const [teamChoice, setTeamChoice] = useState<"existing" | "new">("new");
+  const [existingTeamId, setExistingTeamId] = useState("");
+  const [teamName, setTeamName] = useState("");
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [iconId, setIconId] = useState<(typeof WORKSPACE_ICONS)[number]["id"]>(
+    "briefcase",
+  );
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const hasTeams = ownedTeams.length > 0;
+    const preferExisting = !!prefillTeamId || (!canCreateTeam && hasTeams);
+    setTeamMode(preferExisting || !!prefillTeamId);
+    setTeamChoice(preferExisting ? "existing" : "new");
+    setExistingTeamId(
+      prefillTeamId && ownedTeams.some((t) => t.id === prefillTeamId)
+        ? prefillTeamId
+        : (ownedTeams[0]?.id ?? ""),
+    );
+    setTeamName("");
+    setWorkspaceName("");
+    setIconId("briefcase");
+    setSubmitting(false);
+  }, [open, prefillTeamId, ownedTeams, canCreateTeam]);
+
+  const canSubmit = (() => {
+    if (!workspaceName.trim()) return false;
+    if (!teamMode) return canCreateTeam;
+    if (teamChoice === "existing") return !!existingTeamId;
+    return canCreateTeam && !!teamName.trim();
+  })();
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    try {
+      if (!teamMode) {
+        // Solo workspace: create a team + first workspace with the same name.
+        await createTeam(workspaceName.trim(), workspaceName.trim());
+      } else if (teamChoice === "existing") {
+        await createWorkspaceInTeam(existingTeamId, workspaceName.trim());
+      } else {
+        await createTeam(teamName.trim(), workspaceName.trim());
+      }
+      toast.success("Workspace created");
+      await onCreated();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to create workspace",
+      );
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Create New Workspace</DialogTitle>
+          <DialogDescription className="sr-only">
+            Create a workspace, optionally as part of a shared team.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-5">
+          <div className="flex items-start gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={teamMode}
+              disabled={submitting}
+              onClick={() => {
+                const next = !teamMode;
+                setTeamMode(next);
+                if (next) {
+                  if (ownedTeams.length > 0 && !canCreateTeam) {
+                    setTeamChoice("existing");
+                  } else if (ownedTeams.length === 0) {
+                    setTeamChoice("new");
+                  }
+                  if (!workspaceName.trim()) setWorkspaceName("Main Team");
+                }
+              }}
+              className={cn(
+                "relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors",
+                teamMode ? "bg-emerald-500" : "bg-border",
+              )}
+            >
+              <span
+                className={cn(
+                  "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
+                  teamMode && "translate-x-5",
+                )}
+              />
+            </button>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-text">Team workspace</p>
+              <p className="mt-0.5 text-sm text-text-muted">
+                Create a team with shared workspace.
+              </p>
+              {teamMode ? (
+                <p className="mt-1.5 text-xs font-medium text-text-muted">
+                  {ownedTeamCount} / {maxOwnedTeams} teams created
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          {teamMode ? (
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-text">Team</p>
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="radio"
+                  name="team-choice"
+                  className="mt-1"
+                  checked={teamChoice === "existing"}
+                  disabled={submitting || ownedTeams.length === 0}
+                  onChange={() => setTeamChoice("existing")}
+                />
+                <span className="text-sm text-text">Select existing team</span>
+              </label>
+              {teamChoice === "existing" ? (
+                ownedTeams.length > 0 ? (
+                  <select
+                    value={existingTeamId}
+                    onChange={(e) => setExistingTeamId(e.target.value)}
+                    disabled={submitting}
+                    className="ml-6 w-[calc(100%-1.5rem)] rounded-md border border-input bg-bg px-3 py-2 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
+                  >
+                    {ownedTeams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="ml-6 text-sm text-text-muted">
+                    You don&apos;t own any teams yet.
+                  </p>
+                )
+              ) : null}
+
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="radio"
+                  name="team-choice"
+                  className="mt-1"
+                  checked={teamChoice === "new"}
+                  disabled={submitting || !canCreateTeam}
+                  onChange={() => setTeamChoice("new")}
+                />
+                <span className="text-sm text-text">Create new team</span>
+              </label>
+              {teamChoice === "new" ? (
+                <Input
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  placeholder="e.g., Marketing Team"
+                  maxLength={80}
+                  disabled={submitting || !canCreateTeam}
+                  className="ml-6 w-[calc(100%-1.5rem)]"
+                />
+              ) : null}
+              {!canCreateTeam && teamChoice === "new" ? (
+                <p className="ml-6 text-xs text-text-muted">
+                  {ownedTeamCount >= maxOwnedTeams
+                    ? `You already have ${maxOwnedTeams} teams. Select an existing team instead.`
+                    : "Creating teams requires Pro."}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="space-y-2">
+            <Label htmlFor="create-workspace-name">
+              {teamMode ? "Main Workspace Name" : "Workspace Name"}
+            </Label>
+            <Input
+              id="create-workspace-name"
+              value={workspaceName}
+              onChange={(e) => setWorkspaceName(e.target.value)}
+              placeholder={
+                teamMode ? "e.g., Main Team" : "e.g., Personal, Work, Clients"
+              }
+              maxLength={80}
+              disabled={submitting}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void handleSubmit();
+                }
+              }}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Icon</Label>
+            <div className="flex gap-2">
+              {WORKSPACE_ICONS.map(({ id, Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => setIconId(id)}
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-lg border transition-colors",
+                    iconId === id
+                      ? "border-accent bg-accent/10 text-accent"
+                      : "border-border bg-bg text-text-muted hover:bg-bg-muted",
+                  )}
+                  aria-label={`Icon ${id}`}
+                  aria-pressed={iconId === id}
+                >
+                  <Icon className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            disabled={submitting}
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            disabled={submitting || !canSubmit}
+            onClick={() => void handleSubmit()}
+          >
+            {submitting ? (
+              <IconLoader2
+                className="h-4 w-4 animate-spin"
+                strokeWidth={1.5}
+              />
+            ) : (
+              <IconPlus className="h-4 w-4" strokeWidth={1.5} />
+            )}
+            Create
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

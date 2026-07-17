@@ -13,7 +13,6 @@ import {
   IconCalendar,
   IconLink,
   IconUsers,
-  IconLayoutGrid,
   IconSettings,
   IconWallet,
   IconMessageCircle,
@@ -253,12 +252,6 @@ export function DashboardSidebar({
               label="Connections"
               icon={IconLink}
               isActive={pathname === "/dashboard/connections"}
-            />
-            <NavLink
-              href="/dashboard/workspaces"
-              label="Workspaces"
-              icon={IconLayoutGrid}
-              isActive={isActive("/dashboard/workspaces")}
             />
             <NavLink
               href="/dashboard/teams"
