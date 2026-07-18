@@ -31,6 +31,7 @@ import {
 import { AccountAvatar } from "@/components/AccountAvatar";
 import DocsInfoIcon from "@/components/info-icon";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 import {
   Dialog,
   DialogContent,
@@ -201,7 +202,7 @@ export function WorkspacesPage() {
   };
 
   if (boardQuery.isLoading) {
-    return <BoardSkeleton />;
+    return <DashboardPageSkeleton message="Loading workspaces..." />;
   }
 
   if (boardQuery.isError) {
@@ -1010,25 +1011,6 @@ function MoveMenu({
           ))}
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function BoardSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <div className="h-8 w-48 rounded-md bg-bg-muted" />
-        <div className="h-4 w-80 max-w-full rounded bg-bg-muted/70" />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="h-56 rounded-xl border border-border bg-bg-elevated"
-          />
-        ))}
-      </div>
     </div>
   );
 }

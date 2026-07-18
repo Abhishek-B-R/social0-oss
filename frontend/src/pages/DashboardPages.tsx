@@ -53,16 +53,7 @@ export function FeedbackPageRoute() {
 
 export function TeamsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="space-y-6">
-          <div className="h-8 w-56 rounded-md bg-bg-muted" />
-          <div className="h-4 w-72 max-w-full rounded bg-bg-muted/70" />
-          <div className="h-24 rounded-xl border border-border bg-bg-elevated" />
-          <div className="h-40 rounded-xl border border-border bg-bg-elevated" />
-        </div>
-      }
-    >
+    <Suspense fallback={<DashboardPageSkeleton message="Loading teams..." />}>
       <TeamsPageView />
     </Suspense>
   );
@@ -71,14 +62,7 @@ export function TeamsPage() {
 export function WorkspacesPage() {
   return (
     <Suspense
-      fallback={
-        <div className="space-y-6">
-          <div className="h-8 w-48 rounded-md bg-bg-muted" />
-          <div className="h-4 w-80 max-w-full rounded bg-bg-muted/70" />
-          <div className="h-28 rounded-xl border border-border bg-bg-elevated" />
-          <div className="h-40 rounded-xl border border-border bg-bg-elevated" />
-        </div>
-      }
+      fallback={<DashboardPageSkeleton message="Loading workspaces..." />}
     >
       <WorkspacesPageView />
     </Suspense>
@@ -87,14 +71,7 @@ export function WorkspacesPage() {
 
 export function CreateTeamPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="mx-auto max-w-lg space-y-4">
-          <div className="h-8 w-48 rounded-md bg-bg-muted" />
-          <div className="h-48 rounded-xl border border-border bg-bg-elevated" />
-        </div>
-      }
-    >
+    <Suspense fallback={<DashboardPageSkeleton message="Loading..." />}>
       <CreateTeamPageView />
     </Suspense>
   );
@@ -103,13 +80,7 @@ export function CreateTeamPage() {
 export function TeamDetailPage() {
   return (
     <Suspense
-      fallback={
-        <div className="space-y-5">
-          <div className="h-8 w-40 rounded-md bg-bg-muted" />
-          <div className="h-36 rounded-xl border border-border bg-bg-elevated" />
-          <div className="h-52 rounded-xl border border-border bg-bg-elevated" />
-        </div>
-      }
+      fallback={<DashboardPageSkeleton message="Loading team settings..." />}
     >
       <TeamDetailPageView />
     </Suspense>

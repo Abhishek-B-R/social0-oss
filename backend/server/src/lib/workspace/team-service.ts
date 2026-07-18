@@ -13,7 +13,6 @@ import {
 import { getSubscriptionForUser } from "../subscription.js";
 import { getPlanLimits } from "@social0/shared";
 import {
-  countConnectionsInWorkspace,
   ensureOwnerTeam,
   resolveWorkspaceContext,
   setActiveWorkspace,
@@ -169,15 +168,27 @@ async function loadTeamWorkspaces(
     .from(workspaces)
     .where(eq(workspaces.teamId, teamId));
 
-  const items: TeamWorkspaceDto[] = [];
-  for (const row of rows) {
-    items.push({
-      id: row.id,
-      name: row.name,
-      connectionCount: await countConnectionsInWorkspace(row.id),
-      isActive: activeWorkspaceId === row.id,
-    });
-  }
+  if (rows.length === 0) return [];
+
+  const ids = rows.map((r) => r.id);
+  const countRows = await db
+    .select({
+      workspaceId: connectedAccounts.workspaceId,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(connectedAccounts)
+    .where(inArray(connectedAccounts.workspaceId, ids))
+    .groupBy(connectedAccounts.workspaceId);
+  const countById = new Map(
+    countRows.map((r) => [r.workspaceId as string, r.count ?? 0]),
+  );
+
+  const items: TeamWorkspaceDto[] = rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    connectionCount: countById.get(row.id) ?? 0,
+    isActive: activeWorkspaceId === row.id,
+  }));
   items.sort((a, b) => a.name.localeCompare(b.name));
   return items;
 }
@@ -233,9 +244,6 @@ export async function getTeamByIdForUser(
   actorUserId: string,
   teamId: string,
 ): Promise<TeamGetResponse> {
-  const sub = await getSubscriptionForUser(actorUserId);
-  const actorAllowTeams = getPlanLimits(sub.tier).allowTeams;
-
   const [access] = await db
     .select({
       teamId: teams.id,
@@ -259,23 +267,36 @@ export async function getTeamByIdForUser(
   }
 
   const isOwner = access.ownerUserId === actorUserId;
-  const teamsEnabled = getPlanLimits(
-    (await getSubscriptionForUser(access.ownerUserId)).tier,
-  ).allowTeams;
-
   const role = access.role as WorkspaceRole;
+
+  const [actorSub, ownerSub, ctx, members, teamWorkspaces] = await Promise.all([
+    getSubscriptionForUser(actorUserId),
+    isOwner
+      ? Promise.resolve(null)
+      : getSubscriptionForUser(access.ownerUserId),
+    resolveWorkspaceContext(actorUserId),
+    loadTeamMembers(access.teamId, access.ownerUserId),
+    loadTeamWorkspaces(access.teamId, null),
+  ]);
+
+  const actorAllowTeams = getPlanLimits(actorSub.tier).allowTeams;
+  const teamsEnabled = isOwner
+    ? actorAllowTeams
+    : getPlanLimits(ownerSub!.tier).allowTeams;
+
   const permissions = permissionsForRole(role, {
     isOwner,
     teamsEnabled,
     inWorkspace: true,
   });
 
-  const ctx = await resolveWorkspaceContext(actorUserId);
-  const members = await loadTeamMembers(access.teamId, access.ownerUserId);
-  const teamWorkspaces = await loadTeamWorkspaces(
-    access.teamId,
-    ctx.teamId === access.teamId ? ctx.workspaceId : null,
-  );
+  const activeId =
+    ctx.teamId === access.teamId ? ctx.workspaceId : null;
+  if (activeId) {
+    for (const ws of teamWorkspaces) {
+      ws.isActive = ws.id === activeId;
+    }
+  }
 
   return {
     team: {
@@ -348,8 +369,37 @@ export async function listInvitationsForTeam(
   actorUserId: string,
   teamId: string,
 ): Promise<TeamInvitationDto[]> {
-  const detail = await getTeamByIdForUser(actorUserId, teamId);
-  if (!detail.permissions.canInvite) return [];
+  const [access] = await db
+    .select({
+      ownerUserId: teams.ownerUserId,
+      role: teamMembers.role,
+    })
+    .from(teams)
+    .innerJoin(
+      teamMembers,
+      and(
+        eq(teamMembers.teamId, teams.id),
+        eq(teamMembers.userId, actorUserId),
+      ),
+    )
+    .where(eq(teams.id, teamId))
+    .limit(1);
+
+  if (!access) {
+    throw new TeamServiceError(404, "Team not found.");
+  }
+
+  const isOwner = access.ownerUserId === actorUserId;
+  const ownerSub = isOwner
+    ? await getSubscriptionForUser(actorUserId)
+    : await getSubscriptionForUser(access.ownerUserId);
+  const teamsEnabled = getPlanLimits(ownerSub.tier).allowTeams;
+  const permissions = permissionsForRole(access.role as WorkspaceRole, {
+    isOwner,
+    teamsEnabled,
+    inWorkspace: true,
+  });
+  if (!permissions.has("invite_users")) return [];
 
   const rows = await db
     .select({
@@ -955,41 +1005,44 @@ export async function listWorkspacesForUser(
   ownedTeamCount: number;
   maxOwnedTeams: number;
 }> {
-  const sub = await getSubscriptionForUser(actorUserId);
-  const limits = getPlanLimits(sub.tier);
-  const ctx = await resolveWorkspaceContext(actorUserId);
+  const [sub, ctx, ownedCountRow, personalCountRow, memberships] =
+    await Promise.all([
+      getSubscriptionForUser(actorUserId),
+      resolveWorkspaceContext(actorUserId),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(teams)
+        .where(eq(teams.ownerUserId, actorUserId))
+        .then((rows) => rows[0]),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(connectedAccounts)
+        .where(
+          and(
+            eq(connectedAccounts.userId, actorUserId),
+            isNull(connectedAccounts.workspaceId),
+          ),
+        )
+        .then((rows) => rows[0]),
+      db
+        .select({
+          teamId: teamMembers.teamId,
+          role: teamMembers.role,
+          ownerUserId: teams.ownerUserId,
+          teamName: teams.name,
+          defaultWorkspaceId: teams.defaultWorkspaceId,
+        })
+        .from(teamMembers)
+        .innerJoin(teams, eq(teamMembers.teamId, teams.id))
+        .where(eq(teamMembers.userId, actorUserId)),
+    ]);
 
-  const [ownedCountRow] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(teams)
-    .where(eq(teams.ownerUserId, actorUserId));
+  const limits = getPlanLimits(sub.tier);
   const ownedCount = ownedCountRow?.count ?? 0;
   const underTeamCap = ownedCount < MAX_OWNED_TEAMS;
 
   const canCreate = limits.allowMultiWorkspace && underTeamCap;
   const canCreateTeam = limits.allowTeams && underTeamCap;
-
-  const [personalCountRow] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(connectedAccounts)
-    .where(
-      and(
-        eq(connectedAccounts.userId, actorUserId),
-        isNull(connectedAccounts.workspaceId),
-      ),
-    );
-
-  const memberships = await db
-    .select({
-      teamId: teamMembers.teamId,
-      role: teamMembers.role,
-      ownerUserId: teams.ownerUserId,
-      teamName: teams.name,
-      defaultWorkspaceId: teams.defaultWorkspaceId,
-    })
-    .from(teamMembers)
-    .innerJoin(teams, eq(teamMembers.teamId, teams.id))
-    .where(eq(teamMembers.userId, actorUserId));
 
   const workspaceItems: WorkspaceListItem[] = [
     {
@@ -1007,55 +1060,101 @@ export async function listWorkspacesForUser(
   ];
 
   const teamItems: TeamListItem[] = [];
+  const teamIds = memberships.map((m) => m.teamId);
 
-  for (const m of memberships) {
-    const isOwner = m.ownerUserId === actorUserId;
-    const [memberCountRow] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(teamMembers)
-      .where(eq(teamMembers.teamId, m.teamId));
+  if (teamIds.length > 0) {
+    const [memberCountRows, wsRows] = await Promise.all([
+      db
+        .select({
+          teamId: teamMembers.teamId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(teamMembers)
+        .where(inArray(teamMembers.teamId, teamIds))
+        .groupBy(teamMembers.teamId),
+      db
+        .select({
+          id: workspaces.id,
+          name: workspaces.name,
+          teamId: workspaces.teamId,
+        })
+        .from(workspaces)
+        .where(inArray(workspaces.teamId, teamIds)),
+    ]);
 
-    const wsRows = await db
-      .select({ id: workspaces.id, name: workspaces.name })
-      .from(workspaces)
-      .where(eq(workspaces.teamId, m.teamId));
+    const memberCountByTeam = new Map(
+      memberCountRows.map((r) => [r.teamId, r.count ?? 0]),
+    );
 
-    const teamWorkspaces = [];
-    for (const ws of wsRows) {
-      const connectionCount = await countConnectionsInWorkspace(ws.id);
-      teamWorkspaces.push({
-        id: ws.id,
-        name: ws.name,
-        connectionCount,
-        isActive: ctx.workspaceId === ws.id,
-      });
-      workspaceItems.push({
-        id: ws.id,
-        name: ws.name,
-        kind: isOwner ? "owned" : "joined",
-        teamId: m.teamId,
-        teamName: m.teamName,
-        role: m.role as WorkspaceRole,
-        isOwner,
-        isActive: ctx.workspaceId === ws.id,
-        connectionCount,
-        memberCount: memberCountRow?.count ?? 0,
-      });
+    const wsIds = wsRows.map((w) => w.id);
+    const connectionCountByWs = new Map<string, number>();
+    if (wsIds.length > 0) {
+      const connRows = await db
+        .select({
+          workspaceId: connectedAccounts.workspaceId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(connectedAccounts)
+        .where(inArray(connectedAccounts.workspaceId, wsIds))
+        .groupBy(connectedAccounts.workspaceId);
+      for (const row of connRows) {
+        if (row.workspaceId) {
+          connectionCountByWs.set(row.workspaceId, row.count ?? 0);
+        }
+      }
     }
 
-    teamWorkspaces.sort((a, b) => a.name.localeCompare(b.name));
-    teamItems.push({
-      id: m.teamId,
-      name: m.teamName,
-      kind: isOwner ? "owned" : "joined",
-      role: m.role as WorkspaceRole,
-      isOwner,
-      ownerUserId: m.ownerUserId,
-      defaultWorkspaceId:
-        m.defaultWorkspaceId ?? teamWorkspaces[0]?.id ?? null,
-      memberCount: memberCountRow?.count ?? 0,
-      workspaces: teamWorkspaces,
-    });
+    const workspacesByTeam = new Map<
+      string,
+      { id: string; name: string; connectionCount: number; isActive: boolean }[]
+    >();
+    for (const ws of wsRows) {
+      if (!ws.teamId) continue;
+      const list = workspacesByTeam.get(ws.teamId) ?? [];
+      list.push({
+        id: ws.id,
+        name: ws.name,
+        connectionCount: connectionCountByWs.get(ws.id) ?? 0,
+        isActive: ctx.workspaceId === ws.id,
+      });
+      workspacesByTeam.set(ws.teamId, list);
+    }
+
+    for (const m of memberships) {
+      const isOwner = m.ownerUserId === actorUserId;
+      const memberCount = memberCountByTeam.get(m.teamId) ?? 0;
+      const teamWorkspaces = (workspacesByTeam.get(m.teamId) ?? []).sort(
+        (a, b) => a.name.localeCompare(b.name),
+      );
+
+      for (const ws of teamWorkspaces) {
+        workspaceItems.push({
+          id: ws.id,
+          name: ws.name,
+          kind: isOwner ? "owned" : "joined",
+          teamId: m.teamId,
+          teamName: m.teamName,
+          role: m.role as WorkspaceRole,
+          isOwner,
+          isActive: ws.isActive,
+          connectionCount: ws.connectionCount,
+          memberCount,
+        });
+      }
+
+      teamItems.push({
+        id: m.teamId,
+        name: m.teamName,
+        kind: isOwner ? "owned" : "joined",
+        role: m.role as WorkspaceRole,
+        isOwner,
+        ownerUserId: m.ownerUserId,
+        defaultWorkspaceId:
+          m.defaultWorkspaceId ?? teamWorkspaces[0]?.id ?? null,
+        memberCount,
+        workspaces: teamWorkspaces,
+      });
+    }
   }
 
   workspaceItems.sort((a, b) => {

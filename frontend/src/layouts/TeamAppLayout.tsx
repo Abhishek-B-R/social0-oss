@@ -10,7 +10,7 @@ import {
   readTeamWorkspaceId,
   writeTeamWorkspaceId,
 } from "@/lib/dashboard-base-path";
-import { IconLoader2 } from "@tabler/icons-react";
+import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 
 const WORKSPACES_QUERY_KEY = ["workspaces"] as const;
 
@@ -136,10 +136,7 @@ export function TeamAppLayout() {
   // Only block the first entry into a team — never on in-team page changes.
   if (!ready && (isLoading || (!error && !isError))) {
     return (
-      <div className="flex flex-1 items-center justify-center gap-2 py-20 text-sm text-text-muted">
-        <IconLoader2 className="h-5 w-5 animate-spin" strokeWidth={1.5} />
-        Opening team workspace…
-      </div>
+      <DashboardPageSkeleton message="Opening team workspace..." />
     );
   }
 
@@ -163,14 +160,7 @@ export function TeamAppLayout() {
   }
 
   return (
-    <Suspense
-      fallback={
-        <div className="flex flex-1 items-center justify-center gap-2 py-20 text-sm text-text-muted">
-          <IconLoader2 className="h-5 w-5 animate-spin" strokeWidth={1.5} />
-          Loading…
-        </div>
-      }
-    >
+    <Suspense fallback={<DashboardPageSkeleton message="Loading..." />}>
       <Outlet />
     </Suspense>
   );

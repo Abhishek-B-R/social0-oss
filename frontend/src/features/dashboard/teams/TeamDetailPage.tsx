@@ -24,13 +24,13 @@ import {
   removeTeamMember,
   renameTeam,
   revokeTeamInvitation,
-  switchWorkspace,
   updateTeamMemberRole,
   type TeamInvitation,
   type TeamMember,
   type WorkspaceRole,
 } from "@/api/team";
 import { Button } from "@/components/ui/button";
+import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 import {
   Dialog,
   DialogContent,
@@ -49,8 +49,6 @@ export function TeamDetailPage() {
   const teamId = teamIdParam;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [ready, setReady] = useState(false);
-  const [switchError, setSwitchError] = useState<string | null>(null);
 
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
@@ -71,57 +69,19 @@ export function TeamDetailPage() {
   useEffect(() => {
     if (!teamId) {
       navigate("/dashboard/teams", { replace: true });
-      return;
     }
-    let cancelled = false;
-    setReady(false);
-    setSwitchError(null);
-
-    (async () => {
-      try {
-        const detail = await getTeamById(teamId);
-        if (!detail.team) {
-          if (!cancelled) setSwitchError("Team not found.");
-          return;
-        }
-        const activeInTeam = detail.workspaces.find((w) => w.isActive);
-        const targetWs = activeInTeam ?? detail.workspaces[0];
-        if (targetWs && !targetWs.isActive) {
-          await switchWorkspace(targetWs.id);
-        }
-        if (!cancelled) {
-          await Promise.all([
-            queryClient.invalidateQueries({ queryKey: ["team"] }),
-            queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY }),
-            queryClient.invalidateQueries({ queryKey: ["dashboard-layout"] }),
-            queryClient.invalidateQueries({ queryKey: ["connections"] }),
-          ]);
-          setReady(true);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setSwitchError(
-            err instanceof Error ? err.message : "Failed to open team",
-          );
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [teamId, navigate, queryClient]);
+  }, [teamId, navigate]);
 
   const teamQuery = useQuery({
     queryKey: ["team", teamId],
     queryFn: () => getTeamById(teamId!),
-    enabled: ready && !!teamId,
+    enabled: !!teamId,
   });
 
   const invitationsQuery = useQuery({
     queryKey: ["team", teamId, "invitations"],
     queryFn: () => getTeamInvitations(teamId),
-    enabled: ready && !!teamId && !!teamQuery.data?.permissions.canInvite,
+    enabled: !!teamId && !!teamQuery.data?.permissions.canInvite,
   });
 
   const refresh = () => {
@@ -246,26 +206,8 @@ export function TeamDetailPage() {
     }
   };
 
-  if (switchError) {
-    return (
-      <div className="mt-6 space-y-4">
-        <BackLink />
-        <div className="rounded-xl border border-border bg-card p-6 text-sm">
-          {switchError}
-        </div>
-      </div>
-    );
-  }
-
-  if (!ready || teamQuery.isLoading) {
-    return (
-      <div className="space-y-5">
-        <div className="h-4 w-28 rounded bg-bg-muted" />
-        <div className="h-8 w-40 rounded-md bg-bg-muted" />
-        <div className="h-36 rounded-xl border border-border bg-bg-elevated" />
-        <div className="h-52 rounded-xl border border-border bg-bg-elevated" />
-      </div>
-    );
+  if (teamQuery.isLoading) {
+    return <DashboardPageSkeleton message="Loading team settings..." />;
   }
 
   if (teamQuery.isError || !teamQuery.data?.team) {
