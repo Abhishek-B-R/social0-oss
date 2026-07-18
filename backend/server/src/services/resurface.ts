@@ -1,4 +1,3 @@
-import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { checkAutoPlugAllowed, checkResurfaceAllowed } from "@/lib/plan-limits";
 import {
@@ -10,7 +9,7 @@ import {
   autoPlugs,
 } from "@/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { headers } from "../lib/http/request-cookies.js";
+import { requireWorkspaceSession } from "@/lib/workspace/session";
 import { isPostOlderThanAutoFeaturesEditWindow } from "@social0/shared";
 
 const PLATFORM_X = "x";
@@ -77,12 +76,13 @@ export async function createAutoPlug(
   connectedAccountId: string | null,
   config: AutoPlugConfig,
 ): Promise<CreateAutoPlugResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("edit_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
 
-  const autoPlugAllowed = await checkAutoPlugAllowed(session.user.id);
+  const autoPlugAllowed = await checkAutoPlugAllowed(userId);
   if (!autoPlugAllowed) {
     return {
       success: false,
@@ -94,7 +94,7 @@ export async function createAutoPlug(
   const [post] = await db
     .select({ id: posts.id, userId: posts.userId, status: posts.status })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
 
   if (!post) {
     return { success: false, error: "Post not found" };
@@ -104,10 +104,7 @@ export async function createAutoPlug(
     return { success: false, error: "Post must be published first" };
   }
 
-  const editablePlug = await assertPostAutoFeaturesEditable(
-    postId,
-    session.user.id,
-  );
+  const editablePlug = await assertPostAutoFeaturesEditable(postId, userId);
   if (!editablePlug.ok) {
     return { success: false, error: editablePlug.error };
   }
@@ -151,7 +148,7 @@ export async function createAutoPlug(
         )
       : null) ?? xPublications[0];
 
-  if (!pub || pub.connectedAccountUserId !== session.user.id) {
+  if (!pub || pub.connectedAccountUserId !== userId) {
     return { success: false, error: "No published X post found for this post" };
   }
 
@@ -234,12 +231,13 @@ export async function createResurfaceSchedule(
   maxResurfaces: number,
   plugComment: string | null,
 ): Promise<CreateResurfaceResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("edit_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
 
-  const resurfaceAllowed = await checkResurfaceAllowed(session.user.id);
+  const resurfaceAllowed = await checkResurfaceAllowed(userId);
   if (!resurfaceAllowed) {
     return {
       success: false,
@@ -262,7 +260,7 @@ export async function createResurfaceSchedule(
   const [post] = await db
     .select({ id: posts.id, userId: posts.userId, status: posts.status })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
 
   if (!post) {
     return { success: false, error: "Post not found" };
@@ -274,7 +272,7 @@ export async function createResurfaceSchedule(
 
   const editableResurface = await assertPostAutoFeaturesEditable(
     postId,
-    session.user.id,
+    userId,
   );
   if (!editableResurface.ok) {
     return { success: false, error: editableResurface.error };
@@ -369,10 +367,11 @@ export type DisableResurfaceResult =
 export async function disableResurfaceSchedule(
   scheduleId: string,
 ): Promise<DisableResurfaceResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("edit_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
 
   const [schedule] = await db
     .select({
@@ -384,7 +383,7 @@ export async function disableResurfaceSchedule(
     .innerJoin(posts, eq(resurfaceSchedules.postId, posts.id))
     .where(eq(resurfaceSchedules.id, scheduleId));
 
-  if (!schedule || schedule.userId !== session.user.id) {
+  if (!schedule || schedule.userId !== userId) {
     return { success: false, error: "Schedule not found" };
   }
 
@@ -412,12 +411,13 @@ export async function updateAutoPlug(
   postId: string,
   config: AutoPlugConfig,
 ): Promise<UpdateAutoPlugResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("edit_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
 
-  const autoPlugAllowed = await checkAutoPlugAllowed(session.user.id);
+  const autoPlugAllowed = await checkAutoPlugAllowed(userId);
   if (!autoPlugAllowed) {
     return {
       success: false,
@@ -435,7 +435,7 @@ export async function updateAutoPlug(
 
   const editableUpdatePlug = await assertPostAutoFeaturesEditable(
     postId,
-    session.user.id,
+    userId,
   );
   if (!editableUpdatePlug.ok) {
     return { success: false, error: editableUpdatePlug.error };
@@ -445,7 +445,7 @@ export async function updateAutoPlug(
     .select({ id: autoPlugs.id, status: autoPlugs.status })
     .from(autoPlugs)
     .innerJoin(posts, eq(autoPlugs.postId, posts.id))
-    .where(and(eq(autoPlugs.postId, postId), eq(posts.userId, session.user.id)))
+    .where(and(eq(autoPlugs.postId, postId), eq(posts.userId, userId)))
     .orderBy(desc(autoPlugs.createdAt))
     .limit(1);
 
@@ -484,10 +484,11 @@ export async function updateAutoPlug(
 export async function cancelAutoPlug(
   postId: string,
 ): Promise<UpdateAutoPlugResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("edit_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
 
   // Allow turning off even if the user downgraded - no Growth plan check.
 
@@ -498,7 +499,7 @@ export async function cancelAutoPlug(
     .where(
       and(
         eq(autoPlugs.postId, postId),
-        eq(posts.userId, session.user.id),
+        eq(posts.userId, userId),
         eq(autoPlugs.status, "watching"),
       ),
     )
@@ -534,12 +535,13 @@ export async function updateResurfaceSchedule(
     isActive?: boolean;
   },
 ): Promise<UpdateResurfaceScheduleResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("edit_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
 
-  const resurfaceAllowed = await checkResurfaceAllowed(session.user.id);
+  const resurfaceAllowed = await checkResurfaceAllowed(userId);
   if (!resurfaceAllowed) {
     return {
       success: false,
@@ -562,7 +564,7 @@ export async function updateResurfaceSchedule(
     .innerJoin(posts, eq(resurfaceSchedules.postId, posts.id))
     .where(eq(resurfaceSchedules.id, scheduleId));
 
-  if (!schedule || schedule.userId !== session.user.id) {
+  if (!schedule || schedule.userId !== userId) {
     return { success: false, error: "Schedule not found" };
   }
 
@@ -574,7 +576,7 @@ export async function updateResurfaceSchedule(
   if (requiresFreshPostWindow) {
     const editableUpdateSchedule = await assertPostAutoFeaturesEditable(
       schedule.postId,
-      session.user.id,
+      userId,
     );
     if (!editableUpdateSchedule.ok) {
       return { success: false, error: editableUpdateSchedule.error };
