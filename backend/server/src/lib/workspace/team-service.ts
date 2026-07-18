@@ -16,6 +16,7 @@ import {
   ensureOwnerTeam,
   resolveWorkspaceContext,
   setActiveWorkspace,
+  defaultWorkspaceNameForTeam,
 } from "./context.js";
 import {
   isWorkspaceRole,
@@ -69,7 +70,12 @@ export type TeamWorkspaceDto = {
 };
 
 export type TeamGetResponse = {
-  team: { id: string; name: string; ownerUserId: string } | null;
+  team: {
+    id: string;
+    name: string;
+    ownerUserId: string;
+    defaultWorkspaceId?: string | null;
+  } | null;
   workspace: { id: string; name: string; teamId: string } | null;
   workspaces: TeamWorkspaceDto[];
   members: TeamMemberDto[];
@@ -249,6 +255,7 @@ export async function getTeamByIdForUser(
       teamId: teams.id,
       teamName: teams.name,
       ownerUserId: teams.ownerUserId,
+      defaultWorkspaceId: teams.defaultWorkspaceId,
       role: teamMembers.role,
     })
     .from(teams)
@@ -303,6 +310,7 @@ export async function getTeamByIdForUser(
       id: access.teamId,
       name: access.teamName,
       ownerUserId: access.ownerUserId,
+      defaultWorkspaceId: access.defaultWorkspaceId,
     },
     workspace:
       ctx.teamId === access.teamId && ctx.workspaceId
@@ -468,6 +476,17 @@ export async function inviteMember(
     teamId = ctx.teamId!;
     ownerUserId = ctx.ownerUserId!;
     teamName = ctx.teamName ?? "Team";
+  }
+
+  const teamRow = await db.query.teams.findFirst({
+    where: eq(teams.id, teamId),
+    columns: { isCollaborative: true },
+  });
+  if (teamRow && !teamRow.isCollaborative) {
+    throw new TeamServiceError(
+      400,
+      "This workspace is not a team. Create a team to invite members.",
+    );
   }
 
   const existingUser = await db.query.user.findFirst({
@@ -986,6 +1005,8 @@ export type TeamListItem = {
   isOwner: boolean;
   ownerUserId: string;
   defaultWorkspaceId: string | null;
+  /** False = solo workspace container; omit from /teams and team cap. */
+  isCollaborative: boolean;
   memberCount: number;
   workspaces: {
     id: string;
@@ -1012,7 +1033,12 @@ export async function listWorkspacesForUser(
       db
         .select({ count: sql<number>`count(*)::int` })
         .from(teams)
-        .where(eq(teams.ownerUserId, actorUserId))
+        .where(
+          and(
+            eq(teams.ownerUserId, actorUserId),
+            eq(teams.isCollaborative, true),
+          ),
+        )
         .then((rows) => rows[0]),
       db
         .select({ count: sql<number>`count(*)::int` })
@@ -1031,6 +1057,7 @@ export async function listWorkspacesForUser(
           ownerUserId: teams.ownerUserId,
           teamName: teams.name,
           defaultWorkspaceId: teams.defaultWorkspaceId,
+          isCollaborative: teams.isCollaborative,
         })
         .from(teamMembers)
         .innerJoin(teams, eq(teamMembers.teamId, teams.id))
@@ -1041,7 +1068,7 @@ export async function listWorkspacesForUser(
   const ownedCount = ownedCountRow?.count ?? 0;
   const underTeamCap = ownedCount < MAX_OWNED_TEAMS;
 
-  const canCreate = limits.allowMultiWorkspace && underTeamCap;
+  const canCreate = limits.allowMultiWorkspace;
   const canCreateTeam = limits.allowTeams && underTeamCap;
 
   const workspaceItems: WorkspaceListItem[] = [
@@ -1133,7 +1160,7 @@ export async function listWorkspacesForUser(
           name: ws.name,
           kind: isOwner ? "owned" : "joined",
           teamId: m.teamId,
-          teamName: m.teamName,
+          teamName: m.isCollaborative ? m.teamName : null,
           role: m.role as WorkspaceRole,
           isOwner,
           isActive: ws.isActive,
@@ -1151,6 +1178,7 @@ export async function listWorkspacesForUser(
         ownerUserId: m.ownerUserId,
         defaultWorkspaceId:
           m.defaultWorkspaceId ?? teamWorkspaces[0]?.id ?? null,
+        isCollaborative: m.isCollaborative,
         memberCount,
         workspaces: teamWorkspaces,
       });
@@ -1181,17 +1209,28 @@ export async function listWorkspacesForUser(
   };
 }
 
-/** Create a team (+ first workspace). Pro only, max 5. */
+/** Create a team (+ first workspace). Collaborative teams require Pro (max 5). */
 export async function createTeamForUser(
   actorUserId: string,
   nameRaw: unknown,
   workspaceNameRaw?: unknown,
+  opts?: { isCollaborative?: boolean },
 ): Promise<{ teamId: string; workspaceId: string }> {
+  const isCollaborative = opts?.isCollaborative !== false;
   const sub = await getSubscriptionForUser(actorUserId);
-  if (!getPlanLimits(sub.tier).allowTeams) {
+  const limits = getPlanLimits(sub.tier);
+
+  if (isCollaborative) {
+    if (!limits.allowTeams) {
+      throw new TeamServiceError(
+        403,
+        "Creating teams requires the Pro plan.",
+      );
+    }
+  } else if (!limits.allowMultiWorkspace) {
     throw new TeamServiceError(
       403,
-      "Creating teams requires the Pro plan.",
+      "Creating workspaces requires a paid plan.",
     );
   }
 
@@ -1200,28 +1239,44 @@ export async function createTeamForUser(
       ? nameRaw.trim().slice(0, 80)
       : "";
   if (!teamName) {
-    throw new TeamServiceError(400, "A team name is required.");
+    throw new TeamServiceError(
+      400,
+      isCollaborative ? "A team name is required." : "A workspace name is required.",
+    );
   }
 
   const workspaceName =
     typeof workspaceNameRaw === "string" && workspaceNameRaw.trim()
       ? workspaceNameRaw.trim().slice(0, 80)
-      : teamName;
+      : isCollaborative
+        ? defaultWorkspaceNameForTeam(teamName)
+        : teamName;
 
-  const [ownedCountRow] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(teams)
-    .where(eq(teams.ownerUserId, actorUserId));
-  if ((ownedCountRow?.count ?? 0) >= MAX_OWNED_TEAMS) {
-    throw new TeamServiceError(
-      403,
-      `You can create up to ${MAX_OWNED_TEAMS} teams.`,
-    );
+  if (isCollaborative) {
+    const [ownedCountRow] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(teams)
+      .where(
+        and(
+          eq(teams.ownerUserId, actorUserId),
+          eq(teams.isCollaborative, true),
+        ),
+      );
+    if ((ownedCountRow?.count ?? 0) >= MAX_OWNED_TEAMS) {
+      throw new TeamServiceError(
+        403,
+        `You can create up to ${MAX_OWNED_TEAMS} teams.`,
+      );
+    }
   }
 
   const [createdTeam] = await db
     .insert(teams)
-    .values({ name: teamName, ownerUserId: actorUserId })
+    .values({
+      name: teamName,
+      ownerUserId: actorUserId,
+      isCollaborative,
+    })
     .returning({ id: teams.id });
 
   await db.insert(teamMembers).values({
@@ -1250,7 +1305,9 @@ export async function createWorkspaceForUser(
   nameRaw: unknown,
   workspaceNameRaw?: unknown,
 ): Promise<{ workspaceId: string }> {
-  const result = await createTeamForUser(actorUserId, nameRaw, workspaceNameRaw);
+  const result = await createTeamForUser(actorUserId, nameRaw, workspaceNameRaw, {
+    isCollaborative: false,
+  });
   return { workspaceId: result.workspaceId };
 }
 
@@ -1376,13 +1433,14 @@ export async function renameWorkspaceForUser(
 export async function deleteWorkspaceInTeam(
   actorUserId: string,
   workspaceId: string,
-): Promise<void> {
+): Promise<{ moved: number; skipped: number }> {
   const [row] = await db
     .select({
       workspaceId: workspaces.id,
       teamId: workspaces.teamId,
       ownerUserId: teams.ownerUserId,
       defaultWorkspaceId: teams.defaultWorkspaceId,
+      isCollaborative: teams.isCollaborative,
     })
     .from(workspaces)
     .innerJoin(teams, eq(workspaces.teamId, teams.id))
@@ -1403,29 +1461,27 @@ export async function deleteWorkspaceInTeam(
     .select({ count: sql<number>`count(*)::int` })
     .from(workspaces)
     .where(eq(workspaces.teamId, row.teamId));
-  if ((countRow?.count ?? 0) <= 1) {
+  const workspaceCount = countRow?.count ?? 0;
+
+  // Solo workspace container → remove the container team; connections → Main.
+  if (!row.isCollaborative) {
+    return deleteTeamForUser(actorUserId, row.teamId, {
+      keepConnections: true,
+    });
+  }
+
+  if (workspaceCount <= 1) {
     throw new TeamServiceError(
       400,
-      "A team needs at least one workspace. Delete the team instead.",
+      "You can't delete a team's only workspace. Delete the team from Teams instead.",
     );
   }
 
-  if (row.defaultWorkspaceId === workspaceId) {
-    const replacement = await db.query.workspaces.findFirst({
-      where: and(
-        eq(workspaces.teamId, row.teamId),
-        ne(workspaces.id, workspaceId),
-      ),
-      columns: { id: true },
-      orderBy: (t, { asc }) => [asc(t.createdAt)],
-    });
-    await db
-      .update(teams)
-      .set({
-        defaultWorkspaceId: replacement?.id ?? null,
-        updatedAt: new Date(),
-      })
-      .where(eq(teams.id, row.teamId));
+  if (!row.defaultWorkspaceId || row.defaultWorkspaceId === workspaceId) {
+    throw new TeamServiceError(
+      400,
+      "You can't delete the team's default workspace. Delete other workspaces first, or delete the whole team from Teams.",
+    );
   }
 
   await db
@@ -1433,13 +1489,139 @@ export async function deleteWorkspaceInTeam(
     .set({ activeWorkspaceId: null })
     .where(eq(userSettings.activeWorkspaceId, workspaceId));
 
+  const result = await moveConnectionsBetweenWorkspaces(
+    workspaceId,
+    row.defaultWorkspaceId,
+  );
+
   await db.delete(workspaces).where(eq(workspaces.id, workspaceId));
+  return result;
+}
+
+/**
+ * Move connections from one workspace to another.
+ * Duplicates already on the target (same platform + platform_user_id) are dropped.
+ */
+async function moveConnectionsBetweenWorkspaces(
+  fromWorkspaceId: string,
+  toWorkspaceId: string,
+): Promise<{ moved: number; skipped: number }> {
+  const source = await db
+    .select({
+      id: connectedAccounts.id,
+      platform: connectedAccounts.platform,
+      platformUserId: connectedAccounts.platformUserId,
+    })
+    .from(connectedAccounts)
+    .where(eq(connectedAccounts.workspaceId, fromWorkspaceId));
+
+  if (source.length === 0) return { moved: 0, skipped: 0 };
+
+  const target = await db
+    .select({
+      platform: connectedAccounts.platform,
+      platformUserId: connectedAccounts.platformUserId,
+    })
+    .from(connectedAccounts)
+    .where(eq(connectedAccounts.workspaceId, toWorkspaceId));
+
+  const targetKeys = new Set(
+    target.map((t) => `${t.platform}:${t.platformUserId}`),
+  );
+
+  const toSkip: string[] = [];
+  const toMove: string[] = [];
+  for (const acc of source) {
+    const key = `${acc.platform}:${acc.platformUserId}`;
+    if (targetKeys.has(key)) toSkip.push(acc.id);
+    else toMove.push(acc.id);
+  }
+
+  if (toSkip.length > 0) {
+    await db
+      .delete(connectedAccounts)
+      .where(inArray(connectedAccounts.id, toSkip));
+  }
+  if (toMove.length > 0) {
+    await db
+      .update(connectedAccounts)
+      .set({ workspaceId: toWorkspaceId, updatedAt: new Date() })
+      .where(inArray(connectedAccounts.id, toMove));
+  }
+
+  return { moved: toMove.length, skipped: toSkip.length };
+}
+
+/**
+ * Move connections from workspaces onto personal Main (workspace_id null).
+ * Duplicates already on Main for that user are dropped.
+ */
+async function moveConnectionsToPersonal(
+  workspaceIds: string[],
+): Promise<{ moved: number; skipped: number }> {
+  if (workspaceIds.length === 0) return { moved: 0, skipped: 0 };
+
+  const source = await db
+    .select({
+      id: connectedAccounts.id,
+      userId: connectedAccounts.userId,
+      platform: connectedAccounts.platform,
+      platformUserId: connectedAccounts.platformUserId,
+    })
+    .from(connectedAccounts)
+    .where(inArray(connectedAccounts.workspaceId, workspaceIds));
+
+  if (source.length === 0) return { moved: 0, skipped: 0 };
+
+  const userIds = [...new Set(source.map((s) => s.userId))];
+  const personal = await db
+    .select({
+      userId: connectedAccounts.userId,
+      platform: connectedAccounts.platform,
+      platformUserId: connectedAccounts.platformUserId,
+    })
+    .from(connectedAccounts)
+    .where(
+      and(
+        inArray(connectedAccounts.userId, userIds),
+        isNull(connectedAccounts.workspaceId),
+      ),
+    );
+
+  const personalKeys = new Set(
+    personal.map((p) => `${p.userId}:${p.platform}:${p.platformUserId}`),
+  );
+
+  const toSkip: string[] = [];
+  const toMove: string[] = [];
+  for (const acc of source) {
+    const key = `${acc.userId}:${acc.platform}:${acc.platformUserId}`;
+    if (personalKeys.has(key)) toSkip.push(acc.id);
+    else toMove.push(acc.id);
+  }
+
+  if (toSkip.length > 0) {
+    await db
+      .delete(connectedAccounts)
+      .where(inArray(connectedAccounts.id, toSkip));
+  }
+  if (toMove.length > 0) {
+    await db
+      .update(connectedAccounts)
+      .set({ workspaceId: null, updatedAt: new Date() })
+      .where(inArray(connectedAccounts.id, toMove));
+  }
+
+  return { moved: toMove.length, skipped: toSkip.length };
 }
 
 export async function deleteTeamForUser(
   actorUserId: string,
   teamId: string,
-): Promise<void> {
+  opts?: { keepConnections?: boolean },
+): Promise<{ moved: number; skipped: number }> {
+  const keepConnections = opts?.keepConnections === true;
+
   const team = await db.query.teams.findFirst({
     where: eq(teams.id, teamId),
     columns: { id: true, ownerUserId: true },
@@ -1455,14 +1637,26 @@ export async function deleteTeamForUser(
     .select({ id: workspaces.id })
     .from(workspaces)
     .where(eq(workspaces.teamId, teamId));
-  for (const ws of wsRows) {
+  const wsIds = wsRows.map((w) => w.id);
+
+  let result = { moved: 0, skipped: 0 };
+  if (wsIds.length > 0) {
     await db
       .update(userSettings)
       .set({ activeWorkspaceId: null })
-      .where(eq(userSettings.activeWorkspaceId, ws.id));
+      .where(inArray(userSettings.activeWorkspaceId, wsIds));
+
+    if (keepConnections) {
+      result = await moveConnectionsToPersonal(wsIds);
+    } else {
+      await db
+        .delete(connectedAccounts)
+        .where(inArray(connectedAccounts.workspaceId, wsIds));
+    }
   }
 
   await db.delete(teams).where(eq(teams.id, teamId));
+  return result;
 }
 
 /** @deprecated use deleteTeamForUser or deleteWorkspaceInTeam */
@@ -1585,6 +1779,7 @@ export type WorkspaceBoardCard = {
 
 export type WorkspaceBoardResponse = {
   cards: WorkspaceBoardCard[];
+  canCreate: boolean;
   canCreateTeam: boolean;
   ownedTeamCount: number;
   maxOwnedTeams: number;
@@ -1661,20 +1856,27 @@ export async function listWorkspaceBoardForUser(
         inWorkspace: true,
       }).has("manage_connections");
     const canRename = team.isOwner;
-    const canDelete = team.isOwner && team.workspaces.length > 1;
 
     for (const ws of team.workspaces) {
       const accounts = await loadAccountsForScope({
         ownerUserId: team.ownerUserId,
         workspaceId: ws.id,
       });
+      // Main is never listed here. Solo workspace containers can be deleted.
+      // Collaborative teams: only non-default workspaces (need ≥2). Deleting
+      // the default / last workspace would wipe the team — do that from Teams.
+      const canDelete =
+        team.isOwner &&
+        (!team.isCollaborative ||
+          (team.workspaces.length > 1 &&
+            ws.id !== team.defaultWorkspaceId));
 
       cards.push({
         id: ws.id,
         name: ws.name,
         kind: team.kind,
         teamId: team.id,
-        teamName: team.name,
+        teamName: team.isCollaborative ? team.name : null,
         isOwner: team.isOwner,
         canManage,
         canRename,
@@ -1688,6 +1890,7 @@ export async function listWorkspaceBoardForUser(
 
   return {
     cards,
+    canCreate: list.canCreate,
     canCreateTeam: list.canCreateTeam,
     ownedTeamCount: list.ownedTeamCount,
     maxOwnedTeams: list.maxOwnedTeams,

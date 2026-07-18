@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "@/components/AppLink";
 import {
@@ -12,14 +13,11 @@ import {
   IconLoader2,
   IconPencil,
   IconPlus,
-  IconRefresh,
   IconTrash,
   IconUsers,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import {
-  createTeam,
-  createWorkspaceInTeam,
   deleteWorkspace,
   listWorkspaceBoard,
   moveAccountToWorkspace,
@@ -45,6 +43,7 @@ import { Label } from "@/components/ui/label";
 import { getPlatformIcon } from "@/lib/platform-icons";
 import { cn } from "@/lib/utils";
 import { DOCS_TEAMS_URL } from "@/lib/docs-url";
+import { CreateWorkspaceDialog } from "./CreateWorkspaceDialog";
 
 const BOARD_QUERY_KEY = ["workspace-board"] as const;
 const WORKSPACES_QUERY_KEY = ["workspaces"] as const;
@@ -72,6 +71,9 @@ export function WorkspacesPage() {
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     name: string;
+    teamName: string | null;
+    /** Sole workspace / solo container → connections go to Main. */
+    movesToMain: boolean;
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [switchingId, setSwitchingId] = useState<string | "main" | null>(null);
@@ -82,6 +84,7 @@ export function WorkspacesPage() {
   });
 
   const cards = boardQuery.data?.cards ?? [];
+  const canCreate = !!boardQuery.data?.canCreate;
   const canCreateTeam = !!boardQuery.data?.canCreateTeam;
   const ownedTeamCount = boardQuery.data?.ownedTeamCount ?? 0;
   const maxOwnedTeams = boardQuery.data?.maxOwnedTeams ?? 5;
@@ -95,6 +98,8 @@ export function WorkspacesPage() {
     }
     return [...map.entries()].map(([id, name]) => ({ id, name }));
   }, [cards]);
+
+  const canOpenCreate = canCreate || canCreateTeam || ownedTeamOptions.length > 0;
 
   const openCreate = (prefillTeamId?: string | null) => {
     setCreatePrefillTeamId(prefillTeamId ?? null);
@@ -188,7 +193,9 @@ export function WorkspacesPage() {
         (c) => c.id === deleteTarget.id && c.isActive,
       );
       await deleteWorkspace(deleteTarget.id);
-      toast.success("Workspace deleted");
+      toast.success(
+        "Workspace deleted. Connections were moved to the team's default workspace (duplicates skipped).",
+      );
       setDeleteTarget(null);
       await invalidateAll();
       if (wasActive) window.location.reload();
@@ -236,20 +243,7 @@ export function WorkspacesPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={boardQuery.isFetching}
-            onClick={() => void boardQuery.refetch()}
-          >
-            <IconRefresh
-              className={`h-4 w-4 ${boardQuery.isFetching ? "animate-spin" : ""}`}
-              strokeWidth={1.5}
-            />
-            Refresh
-          </Button>
-          {canCreateTeam || ownedTeamOptions.length > 0 ? (
+          {canOpenCreate ? (
             <Button type="button" size="sm" onClick={() => openCreate()}>
               <IconPlus className="h-4 w-4" strokeWidth={1.5} />
               Add workspace
@@ -264,7 +258,10 @@ export function WorkspacesPage() {
           )}
           <Link
             href="/dashboard/teams"
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "sm" }),
+              "border border-transparent text-text-muted hover:border-border hover:bg-bg-muted hover:text-text dark:hover:bg-bg-muted",
+            )}
           >
             <IconUsers className="h-4 w-4" strokeWidth={1.5} />
             Teams
@@ -296,12 +293,21 @@ export function WorkspacesPage() {
             }
             onDelete={
               card.canDelete && card.id
-                ? () =>
-                    setDeleteTarget({ id: card.id!, name: card.name })
+                ? () => {
+                    const teamWsCount = card.teamId
+                      ? cards.filter((c) => c.teamId === card.teamId).length
+                      : 0;
+                    setDeleteTarget({
+                      id: card.id!,
+                      name: card.name,
+                      teamName: card.teamName,
+                      movesToMain: !card.teamName || teamWsCount <= 1,
+                    });
+                  }
                 : undefined
             }
             onAddToTeam={
-              card.kind === "owned" && card.teamId
+              card.kind === "owned" && card.teamId && card.teamName
                 ? () => openCreate(card.teamId)
                 : undefined
             }
@@ -321,7 +327,7 @@ export function WorkspacesPage() {
             Create a team to add more workspaces and move connections between
             them.
           </p>
-          {canCreateTeam || ownedTeamOptions.length > 0 ? (
+          {canOpenCreate ? (
             <Button type="button" className="mt-6" onClick={() => openCreate()}>
               <IconPlus className="h-4 w-4" strokeWidth={1.5} />
               Create a workspace
@@ -344,6 +350,7 @@ export function WorkspacesPage() {
           if (!open) setCreatePrefillTeamId(null);
         }}
         ownedTeams={ownedTeamOptions}
+        canCreate={canCreate}
         canCreateTeam={canCreateTeam}
         ownedTeamCount={ownedTeamCount}
         maxOwnedTeams={maxOwnedTeams}
@@ -419,11 +426,18 @@ export function WorkspacesPage() {
           <DialogHeader>
             <DialogTitle>Delete workspace?</DialogTitle>
             <DialogDescription>
-              This permanently deletes &ldquo;{deleteTarget?.name}&rdquo;.
-              Connections in it will return to Main. A team needs at least one
-              workspace.
+              This deletes &ldquo;{deleteTarget?.name}&rdquo;.
             </DialogDescription>
           </DialogHeader>
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-950 dark:text-amber-100">
+            {deleteTarget?.movesToMain
+              ? "Connections will be moved to Main. Accounts already connected there will be skipped."
+              : `Connections will be moved to ${
+                  deleteTarget?.teamName
+                    ? `${deleteTarget.teamName}'s default workspace`
+                    : "the team's default workspace"
+                }. Accounts already connected there will be skipped.`}
+          </div>
           <DialogFooter>
             <Button
               variant="outline"
@@ -454,282 +468,6 @@ export function WorkspacesPage() {
   );
 }
 
-const WORKSPACE_ICONS = [
-  { id: "briefcase", Icon: IconBriefcase },
-  { id: "home", Icon: IconHome },
-  { id: "users", Icon: IconUsers },
-] as const;
-
-function CreateWorkspaceDialog({
-  open,
-  onOpenChange,
-  ownedTeams,
-  canCreateTeam,
-  ownedTeamCount,
-  maxOwnedTeams,
-  prefillTeamId,
-  onCreated,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  ownedTeams: { id: string; name: string }[];
-  canCreateTeam: boolean;
-  ownedTeamCount: number;
-  maxOwnedTeams: number;
-  prefillTeamId: string | null;
-  onCreated: () => Promise<void>;
-}) {
-  const [teamMode, setTeamMode] = useState(false);
-  const [teamChoice, setTeamChoice] = useState<"existing" | "new">("new");
-  const [existingTeamId, setExistingTeamId] = useState("");
-  const [teamName, setTeamName] = useState("");
-  const [workspaceName, setWorkspaceName] = useState("");
-  const [iconId, setIconId] = useState<(typeof WORKSPACE_ICONS)[number]["id"]>(
-    "briefcase",
-  );
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    const hasTeams = ownedTeams.length > 0;
-    const preferExisting = !!prefillTeamId || (!canCreateTeam && hasTeams);
-    setTeamMode(preferExisting || !!prefillTeamId);
-    setTeamChoice(preferExisting ? "existing" : "new");
-    setExistingTeamId(
-      prefillTeamId && ownedTeams.some((t) => t.id === prefillTeamId)
-        ? prefillTeamId
-        : (ownedTeams[0]?.id ?? ""),
-    );
-    setTeamName("");
-    setWorkspaceName("");
-    setIconId("briefcase");
-    setSubmitting(false);
-  }, [open, prefillTeamId, ownedTeams, canCreateTeam]);
-
-  const canSubmit = (() => {
-    if (!workspaceName.trim()) return false;
-    if (!teamMode) return canCreateTeam;
-    if (teamChoice === "existing") return !!existingTeamId;
-    return canCreateTeam && !!teamName.trim();
-  })();
-
-  const handleSubmit = async () => {
-    if (!canSubmit) return;
-    setSubmitting(true);
-    try {
-      if (!teamMode) {
-        // Solo workspace: create a team + first workspace with the same name.
-        await createTeam(workspaceName.trim(), workspaceName.trim());
-      } else if (teamChoice === "existing") {
-        await createWorkspaceInTeam(existingTeamId, workspaceName.trim());
-      } else {
-        await createTeam(teamName.trim(), workspaceName.trim());
-      }
-      toast.success("Workspace created");
-      await onCreated();
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to create workspace",
-      );
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Create New Workspace</DialogTitle>
-          <DialogDescription className="sr-only">
-            Create a workspace, optionally as part of a shared team.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-5">
-          <div className="flex items-start gap-3">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={teamMode}
-              disabled={submitting}
-              onClick={() => {
-                const next = !teamMode;
-                setTeamMode(next);
-                if (next) {
-                  if (ownedTeams.length > 0 && !canCreateTeam) {
-                    setTeamChoice("existing");
-                  } else if (ownedTeams.length === 0) {
-                    setTeamChoice("new");
-                  }
-                  if (!workspaceName.trim()) setWorkspaceName("Main Team");
-                }
-              }}
-              className={cn(
-                "relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors",
-                teamMode ? "bg-emerald-500" : "bg-border",
-              )}
-            >
-              <span
-                className={cn(
-                  "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
-                  teamMode && "translate-x-5",
-                )}
-              />
-            </button>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-text">Team workspace</p>
-              <p className="mt-0.5 text-sm text-text-muted">
-                Create a team with shared workspace.
-              </p>
-              {teamMode ? (
-                <p className="mt-1.5 text-xs font-medium text-text-muted">
-                  {ownedTeamCount} / {maxOwnedTeams} teams created
-                </p>
-              ) : null}
-            </div>
-          </div>
-
-          {teamMode ? (
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-text">Team</p>
-              <label className="flex cursor-pointer items-start gap-2.5">
-                <input
-                  type="radio"
-                  name="team-choice"
-                  className="mt-1"
-                  checked={teamChoice === "existing"}
-                  disabled={submitting || ownedTeams.length === 0}
-                  onChange={() => setTeamChoice("existing")}
-                />
-                <span className="text-sm text-text">Select existing team</span>
-              </label>
-              {teamChoice === "existing" ? (
-                ownedTeams.length > 0 ? (
-                  <select
-                    value={existingTeamId}
-                    onChange={(e) => setExistingTeamId(e.target.value)}
-                    disabled={submitting}
-                    className="ml-6 w-[calc(100%-1.5rem)] rounded-md border border-input bg-bg px-3 py-2 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
-                  >
-                    {ownedTeams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <p className="ml-6 text-sm text-text-muted">
-                    You don&apos;t own any teams yet.
-                  </p>
-                )
-              ) : null}
-
-              <label className="flex cursor-pointer items-start gap-2.5">
-                <input
-                  type="radio"
-                  name="team-choice"
-                  className="mt-1"
-                  checked={teamChoice === "new"}
-                  disabled={submitting || !canCreateTeam}
-                  onChange={() => setTeamChoice("new")}
-                />
-                <span className="text-sm text-text">Create new team</span>
-              </label>
-              {teamChoice === "new" ? (
-                <Input
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
-                  placeholder="e.g., Marketing Team"
-                  maxLength={80}
-                  disabled={submitting || !canCreateTeam}
-                  className="ml-6 w-[calc(100%-1.5rem)]"
-                />
-              ) : null}
-              {!canCreateTeam && teamChoice === "new" ? (
-                <p className="ml-6 text-xs text-text-muted">
-                  {ownedTeamCount >= maxOwnedTeams
-                    ? `You already have ${maxOwnedTeams} teams. Select an existing team instead.`
-                    : "Creating teams requires Pro."}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-
-          <div className="space-y-2">
-            <Label htmlFor="create-workspace-name">
-              {teamMode ? "Main Workspace Name" : "Workspace Name"}
-            </Label>
-            <Input
-              id="create-workspace-name"
-              value={workspaceName}
-              onChange={(e) => setWorkspaceName(e.target.value)}
-              placeholder={
-                teamMode ? "e.g., Main Team" : "e.g., Personal, Work, Clients"
-              }
-              maxLength={80}
-              disabled={submitting}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void handleSubmit();
-                }
-              }}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Icon</Label>
-            <div className="flex gap-2">
-              {WORKSPACE_ICONS.map(({ id, Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  disabled={submitting}
-                  onClick={() => setIconId(id)}
-                  className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-lg border transition-colors",
-                    iconId === id
-                      ? "border-accent bg-accent/10 text-accent"
-                      : "border-border bg-bg text-text-muted hover:bg-bg-muted",
-                  )}
-                  aria-label={`Icon ${id}`}
-                  aria-pressed={iconId === id}
-                >
-                  <Icon className="h-4 w-4" strokeWidth={1.5} />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            disabled={submitting}
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            disabled={submitting || !canSubmit}
-            onClick={() => void handleSubmit()}
-          >
-            {submitting ? (
-              <IconLoader2
-                className="h-4 w-4 animate-spin"
-                strokeWidth={1.5}
-              />
-            ) : (
-              <IconPlus className="h-4 w-4" strokeWidth={1.5} />
-            )}
-            Create
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function WorkspaceBoardCardView({
   card,
   moveTargets,
@@ -757,23 +495,26 @@ function WorkspaceBoardCardView({
   onAddToTeam?: () => void;
 }) {
   const isPersonal = card.kind === "personal";
-  const isTeam = !isPersonal;
+  const isTeam = !!card.teamName;
+  const isSoloOwned = !isPersonal && !isTeam;
 
   return (
     <div
       className={cn(
-        "flex flex-col overflow-hidden rounded-xl border bg-bg-elevated shadow-sm",
-        isPersonal
+        "relative flex flex-col rounded-xl border bg-bg-elevated shadow-sm",
+        isPersonal || isSoloOwned
           ? "border-emerald-500/70"
           : "border-sky-500/60",
         card.isActive && "ring-2 ring-accent/40",
       )}
     >
-      <div className="flex items-start gap-3 border-b border-border px-4 py-3">
+      <div className="flex items-start gap-3 rounded-t-xl border-b border-border px-4 py-3">
         <div
           className={cn(
             "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-            isPersonal ? "bg-emerald-500/15 text-emerald-600" : "bg-sky-500/15 text-sky-600",
+            isPersonal || isSoloOwned
+              ? "bg-emerald-500/15 text-emerald-600"
+              : "bg-sky-500/15 text-sky-600",
           )}
         >
           {isPersonal ? (
@@ -793,30 +534,15 @@ function WorkspaceBoardCardView({
             >
               {card.name}
             </button>
-            {onRename ? (
-              <button
-                type="button"
-                onClick={onRename}
-                className="rounded p-0.5 text-text-muted hover:bg-bg-muted hover:text-text"
-                aria-label={`Rename ${card.name}`}
-              >
-                <IconPencil className="h-3.5 w-3.5" strokeWidth={1.5} />
-              </button>
-            ) : null}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             {isPersonal ? (
               <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
                 Default
               </span>
-            ) : (
+            ) : isTeam ? (
               <span className="rounded-md bg-sky-500/15 px-1.5 py-0.5 text-[11px] font-medium text-sky-700 dark:text-sky-400">
-                Team
-              </span>
-            )}
-            {card.teamName ? (
-              <span className="truncate text-xs text-text-muted">
-                {card.teamName}
+                Team {card.teamName}
               </span>
             ) : null}
             {card.isActive ? (
@@ -824,9 +550,36 @@ function WorkspaceBoardCardView({
             ) : null}
           </div>
         </div>
-        <span className="shrink-0 rounded-full bg-bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-text-muted">
-          {card.connectionCount}
-        </span>
+        <div className="flex shrink-0 items-center gap-0.5">
+          {onRename ? (
+            <button
+              type="button"
+              onClick={onRename}
+              className="rounded-md p-1.5 text-text-muted hover:bg-bg-muted hover:text-text"
+              aria-label={`Rename ${card.name}`}
+              title="Rename"
+            >
+              <IconPencil className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          ) : null}
+          {onDelete ? (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="rounded-md p-1.5 text-text-muted hover:bg-destructive/10 hover:text-destructive"
+              aria-label={`Delete ${card.name}`}
+              title="Delete"
+            >
+              <IconTrash className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          ) : null}
+          <span
+            className="ml-1 rounded-full bg-bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-text-muted"
+            title={`${card.connectionCount} connection${card.connectionCount === 1 ? "" : "s"}`}
+          >
+            {card.connectionCount}
+          </span>
+        </div>
       </div>
 
       <div className="flex min-h-[120px] flex-1 flex-col">
@@ -853,15 +606,6 @@ function WorkspaceBoardCardView({
 
       {isTeam ? (
         <div className="mt-auto space-y-2 border-t border-border px-4 py-3">
-          {onDelete ? (
-            <button
-              type="button"
-              onClick={onDelete}
-              className="text-sm font-medium text-destructive hover:underline"
-            >
-              Delete Team Workspace
-            </button>
-          ) : null}
           {!card.isOwner ? (
             <p className="rounded-lg bg-sky-500/10 px-3 py-2 text-xs text-sky-800 dark:text-sky-300">
               Team workspace — only the team owner can rename or delete.
@@ -953,12 +697,18 @@ function MoveMenu({
   onSelect: (workspaceId: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
+    null,
+  );
   const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        const menu = document.getElementById("workspace-move-menu");
+        if (menu?.contains(e.target as Node)) return;
         setOpen(false);
       }
     };
@@ -966,9 +716,31 @@ function MoveMenu({
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [open]);
 
+  useEffect(() => {
+    if (!open || !buttonRef.current) {
+      setMenuPos(null);
+      return;
+    }
+    const update = () => {
+      const rect = buttonRef.current!.getBoundingClientRect();
+      setMenuPos({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [open]);
+
   return (
     <div ref={rootRef} className="relative shrink-0">
       <button
+        ref={buttonRef}
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
@@ -980,37 +752,49 @@ function MoveMenu({
           "Move"
         )}
       </button>
-      {open ? (
-        <div className="absolute right-0 z-30 mt-1 min-w-[180px] overflow-hidden rounded-lg border border-border bg-bg-elevated py-1 shadow-lg">
-          <p className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-text-muted">
-            Move to
-          </p>
-          {destinations.map((dest) => (
-            <button
-              key={dest.id ?? "main"}
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                onSelect(dest.id);
-              }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text hover:bg-bg-muted"
+      {open && menuPos
+        ? createPortal(
+            <div
+              id="workspace-move-menu"
+              style={{ top: menuPos.top, right: menuPos.right }}
+              className="fixed z-50 max-h-64 min-w-[200px] overflow-y-auto rounded-lg border border-border bg-bg-elevated py-1 shadow-lg"
             >
-              {dest.kind === "personal" ? (
-                <IconHome
-                  className="h-4 w-4 shrink-0 text-text-muted"
-                  strokeWidth={1.5}
-                />
-              ) : (
-                <IconBriefcase
-                  className="h-4 w-4 shrink-0 text-text-muted"
-                  strokeWidth={1.5}
-                />
-              )}
-              <span className="min-w-0 truncate capitalize">{dest.name}</span>
-            </button>
-          ))}
-        </div>
-      ) : null}
+              <p className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-text-muted">
+                Move to
+              </p>
+              {destinations.map((dest) => (
+                <button
+                  key={dest.id ?? "main"}
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onSelect(dest.id);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text hover:bg-bg-muted"
+                >
+                  {dest.kind === "personal" ? (
+                    <IconHome
+                      className="h-4 w-4 shrink-0 text-text-muted"
+                      strokeWidth={1.5}
+                    />
+                  ) : (
+                    <IconBriefcase
+                      className="h-4 w-4 shrink-0 text-text-muted"
+                      strokeWidth={1.5}
+                    />
+                  )}
+                  <span className="min-w-0 flex-1 truncate capitalize">
+                    {dest.name}
+                    {dest.teamName ? (
+                      <span className="text-text-muted"> · {dest.teamName}</span>
+                    ) : null}
+                  </span>
+                </button>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

@@ -288,6 +288,13 @@
       "when": 1784400000000,
       "tag": "0042_team_default_workspace",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1784500000000,
+      "tag": "0043_team_is_collaborative",
+      "breakpoints": true
     }
   ]
 }

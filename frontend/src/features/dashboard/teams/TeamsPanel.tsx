@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "@/components/AppLink";
-import { IconPlus, IconRefresh, IconUsers } from "@tabler/icons-react";
+import { IconPlus, IconUsers } from "@tabler/icons-react";
 import { listWorkspaces, type TeamListItem } from "@/api/team";
 import DocsInfoIcon from "@/components/info-icon";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -16,7 +16,9 @@ export function TeamsPanel() {
     queryFn: listWorkspaces,
   });
 
-  const teams = workspacesQuery.data?.teams ?? [];
+  const teams = (workspacesQuery.data?.teams ?? []).filter(
+    (t) => t.kind === "joined" || t.isCollaborative !== false,
+  );
   const canCreateTeam = !!workspacesQuery.data?.canCreateTeam;
   const ownedTeamCount = workspacesQuery.data?.ownedTeamCount ?? 0;
   const maxOwnedTeams = workspacesQuery.data?.maxOwnedTeams ?? 5;
@@ -73,19 +75,6 @@ export function TeamsPanel() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <TeamsHeader />
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={workspacesQuery.isFetching}
-            onClick={() => void workspacesQuery.refetch()}
-          >
-            <IconRefresh
-              className={`h-4 w-4 ${workspacesQuery.isFetching ? "animate-spin" : ""}`}
-              strokeWidth={1.5}
-            />
-            Refresh
-          </Button>
           {canCreateTeam ? (
             <Link
               href="/dashboard/teams/create"

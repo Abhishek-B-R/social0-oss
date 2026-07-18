@@ -18,6 +18,7 @@ import {
   type TeamListItem,
   type WorkspaceListItem,
 } from "@/api/team";
+import { CreateWorkspaceDialog } from "@/features/dashboard/workspaces/CreateWorkspaceDialog";
 import {
   isTeamAppPath,
   mapPathToBase,
@@ -31,6 +32,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   const queryClient = useQueryClient();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | "main" | null>(null);
   const [menuMaxHeight, setMenuMaxHeight] = useState(480);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -108,7 +110,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
         items.push({
           id: ws.id,
           name: ws.name,
-          subtitle: team.name,
+          subtitle: team.isCollaborative !== false ? team.name : "Personal",
           teamId: team.id,
         });
       }
@@ -138,11 +140,23 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
     return items;
   }, [joinedTeams]);
 
+  const canCreate = !!data?.canCreate;
   const canCreateTeam = !!data?.canCreateTeam;
+  const ownedTeamCount = data?.ownedTeamCount ?? 0;
+  const maxOwnedTeams = data?.maxOwnedTeams ?? 5;
+  const collaborativeOwnedTeams = useMemo(
+    () => ownedTeams.filter((t) => t.isCollaborative !== false),
+    [ownedTeams],
+  );
+  const ownedTeamOptions = useMemo(
+    () => collaborativeOwnedTeams.map((t) => ({ id: t.id, name: t.name })),
+    [collaborativeOwnedTeams],
+  );
 
   const invalidateAll = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY }),
+      queryClient.invalidateQueries({ queryKey: ["workspace-board"] }),
       queryClient.invalidateQueries({ queryKey: ["team"] }),
       queryClient.invalidateQueries({ queryKey: ["dashboard-layout"] }),
       queryClient.invalidateQueries({ queryKey: ["connections"] }),
@@ -389,10 +403,13 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
               />
               Manage Workspaces
             </Link>
-            {canCreateTeam || ownedTeams.length > 0 ? (
-              <Link
-                href="/dashboard/workspaces"
-                onClick={() => setOpen(false)}
+            {canCreate || canCreateTeam || collaborativeOwnedTeams.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setCreateOpen(true);
+                }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm text-text hover:bg-sidebar-active"
               >
                 <IconPlus
@@ -400,11 +417,25 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
                   strokeWidth={1.5}
                 />
                 New Workspace
-              </Link>
+              </button>
             ) : null}
           </div>
         </div>
       ) : null}
+
+      <CreateWorkspaceDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        ownedTeams={ownedTeamOptions}
+        canCreate={canCreate}
+        canCreateTeam={canCreateTeam}
+        ownedTeamCount={ownedTeamCount}
+        maxOwnedTeams={maxOwnedTeams}
+        onCreated={async () => {
+          setCreateOpen(false);
+          await invalidateAll();
+        }}
+      />
     </div>
   );
 }

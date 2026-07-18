@@ -44,7 +44,12 @@ export type TeamWorkspace = {
 };
 
 export type TeamGetResponse = {
-  team: { id: string; name: string; ownerUserId: string } | null;
+  team: {
+    id: string;
+    name: string;
+    ownerUserId: string;
+    defaultWorkspaceId?: string | null;
+  } | null;
   workspace: { id: string; name: string; teamId: string } | null;
   workspaces: TeamWorkspace[];
   members: TeamMember[];
@@ -235,6 +240,8 @@ export type TeamListItem = {
   isOwner: boolean;
   ownerUserId?: string;
   defaultWorkspaceId?: string | null;
+  /** False = solo workspace container; not listed on /teams. */
+  isCollaborative: boolean;
   memberCount: number;
   workspaces: {
     id: string;
@@ -286,6 +293,7 @@ export type WorkspaceBoardCard = {
 
 export type WorkspaceBoardResponse = {
   cards: WorkspaceBoardCard[];
+  canCreate: boolean;
   canCreateTeam: boolean;
   ownedTeamCount: number;
   maxOwnedTeams: number;
@@ -317,6 +325,7 @@ export async function moveAccountToWorkspace(
 export async function createTeam(
   name: string,
   workspaceName?: string,
+  opts?: { isCollaborative?: boolean },
 ): Promise<{ teamId: string; workspaceId: string }> {
   const res = await fetchApi("/api/team", {
     method: "POST",
@@ -324,6 +333,7 @@ export async function createTeam(
     body: JSON.stringify({
       name,
       ...(workspaceName?.trim() ? { workspaceName: workspaceName.trim() } : {}),
+      ...(opts?.isCollaborative === false ? { isCollaborative: false } : {}),
     }),
   });
   if (!res.ok) {
@@ -385,22 +395,33 @@ export async function renameWorkspace(
   return res.json() as Promise<{ name: string }>;
 }
 
-export async function deleteWorkspace(workspaceId: string): Promise<void> {
+export async function deleteWorkspace(
+  workspaceId: string,
+): Promise<{ moved: number; skipped: number }> {
   const res = await fetchApi(`/api/team/workspaces/${workspaceId}`, {
     method: "DELETE",
   });
   if (!res.ok) {
     throw new Error(await parseError(res, "Failed to delete workspace"));
   }
+  return res.json() as Promise<{ moved: number; skipped: number }>;
 }
 
-export async function deleteTeam(teamId: string): Promise<void> {
+export async function deleteTeam(
+  teamId: string,
+  opts?: { keepConnections?: boolean },
+): Promise<{ moved: number; skipped: number }> {
   const res = await fetchApi(`/api/team/${teamId}`, {
     method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      keepConnections: opts?.keepConnections === true,
+    }),
   });
   if (!res.ok) {
     throw new Error(await parseError(res, "Failed to delete team"));
   }
+  return res.json() as Promise<{ moved: number; skipped: number }>;
 }
 
 export async function switchWorkspace(

@@ -442,6 +442,11 @@ export const teams = pgTable("teams", {
   ownerUserId: text("owner_user_id")
     .references(() => user.id, { onDelete: "cascade" })
     .notNull(),
+  /**
+   * True = real team (listed on /teams, inviteable, counts toward team cap).
+   * False = solo workspace container (workspaces board / switcher only).
+   */
+  isCollaborative: boolean("is_collaborative").default(true).notNull(),
   /** Workspace opened when entering this team (joined-team URL mode). */
   defaultWorkspaceId: uuid("default_workspace_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

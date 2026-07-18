@@ -6,6 +6,7 @@ import { IconArrowLeft, IconLoader2 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { createTeam, listWorkspaces } from "@/api/team";
 import { Button } from "@/components/ui/button";
+import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -15,7 +16,6 @@ export function CreateTeamPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [teamName, setTeamName] = useState("");
-  const [workspaceName, setWorkspaceName] = useState("");
   const [creating, setCreating] = useState(false);
 
   const workspacesQuery = useQuery({
@@ -28,18 +28,20 @@ export function CreateTeamPage() {
     (workspacesQuery.data?.ownedTeamCount ?? 0) >=
     (workspacesQuery.data?.maxOwnedTeams ?? 5);
 
+  const trimmedTeam = teamName.trim();
+  const defaultWorkspacePreview = trimmedTeam
+    ? `${trimmedTeam}'s default workspace`
+    : "Your team's default workspace";
+
   const handleCreate = async () => {
-    const name = teamName.trim();
+    const name = trimmedTeam;
     if (!name) {
       toast.error("Enter a team name");
       return;
     }
     setCreating(true);
     try {
-      const { teamId } = await createTeam(
-        name,
-        workspaceName.trim() || undefined,
-      );
+      const { teamId } = await createTeam(name);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY }),
         queryClient.invalidateQueries({ queryKey: ["team"] }),
@@ -50,19 +52,12 @@ export function CreateTeamPage() {
       navigate(`/dashboard/teams/${teamId}/settings`, { replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create team");
-    } finally {
       setCreating(false);
     }
   };
 
   if (workspacesQuery.isLoading) {
-    return (
-      <div className="mx-auto max-w-lg space-y-4">
-        <div className="h-4 w-28 rounded bg-bg-muted" />
-        <div className="h-8 w-48 rounded-md bg-bg-muted" />
-        <div className="h-48 rounded-xl border border-border bg-bg-elevated" />
-      </div>
-    );
+    return <DashboardPageSkeleton message="Loading..." />;
   }
 
   if (!canCreate) {
@@ -121,16 +116,11 @@ export function CreateTeamPage() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="workspace-name">First workspace name</Label>
-          <Input
-            id="workspace-name"
-            value={workspaceName}
-            onChange={(e) => setWorkspaceName(e.target.value)}
-            placeholder="Leave blank to use team name"
-            maxLength={80}
-            disabled={creating}
-          />
+        <div className="rounded-lg border border-border bg-bg px-3 py-2.5">
+          <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+            Default workspace
+          </p>
+          <p className="mt-1 text-sm text-text">{defaultWorkspacePreview}</p>
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
@@ -144,7 +134,7 @@ export function CreateTeamPage() {
           </Button>
           <Button
             type="button"
-            disabled={creating || !teamName.trim()}
+            disabled={creating || !trimmedTeam}
             onClick={() => void handleCreate()}
           >
             {creating ? (

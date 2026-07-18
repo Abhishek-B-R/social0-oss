@@ -64,7 +64,13 @@ export function TeamDetailPage() {
 
   const [leaving, setLeaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [deletingMode, setDeletingMode] = useState<"keep" | "discard" | null>(
+    null,
+  );
+  const [deleteWsTarget, setDeleteWsTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!teamId) {
@@ -155,11 +161,24 @@ export function TeamDetailPage() {
     }
   };
 
-  const handleDeleteWorkspace = async (workspaceId: string) => {
-    setWsBusyId(workspaceId);
+  const handleDeleteWorkspace = async () => {
+    if (!deleteWsTarget) return;
+    setWsBusyId(deleteWsTarget.id);
     try {
-      await deleteWorkspace(workspaceId);
-      toast.success("Workspace deleted");
+      const result = await deleteWorkspace(deleteWsTarget.id);
+      const parts = ["Workspace deleted"];
+      if (result.moved > 0) {
+        parts.push(
+          `${result.moved} connection${result.moved === 1 ? "" : "s"} moved to the default workspace`,
+        );
+      }
+      if (result.skipped > 0) {
+        parts.push(
+          `${result.skipped} duplicate${result.skipped === 1 ? "" : "s"} skipped`,
+        );
+      }
+      toast.success(parts.join(". "));
+      setDeleteWsTarget(null);
       refresh();
     } catch (err) {
       toast.error(
@@ -185,12 +204,27 @@ export function TeamDetailPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!teamId) return;
-    setDeleting(true);
+  const handleDelete = async (keepConnections: boolean) => {
+    if (!teamId || deletingMode) return;
+    setDeletingMode(keepConnections ? "keep" : "discard");
     try {
-      await deleteTeam(teamId);
-      toast.success("Team deleted");
+      const result = await deleteTeam(teamId, { keepConnections });
+      if (keepConnections) {
+        const parts = ["Team deleted"];
+        if (result.moved > 0) {
+          parts.push(
+            `${result.moved} connection${result.moved === 1 ? "" : "s"} moved to Main`,
+          );
+        }
+        if (result.skipped > 0) {
+          parts.push(
+            `${result.skipped} duplicate${result.skipped === 1 ? "" : "s"} skipped`,
+          );
+        }
+        toast.success(parts.join(". "));
+      } else {
+        toast.success("Team deleted");
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY }),
         queryClient.invalidateQueries({ queryKey: ["team"] }),
@@ -200,8 +234,7 @@ export function TeamDetailPage() {
       navigate("/dashboard/teams", { replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete team");
-    } finally {
-      setDeleting(false);
+      setDeletingMode(null);
       setDeleteOpen(false);
     }
   };
@@ -226,6 +259,7 @@ export function TeamDetailPage() {
   const { team, permissions, teamsEnabled, isOwner, members, workspaces } =
     teamQuery.data;
   const teamName = team.name;
+  const defaultWorkspaceId = team.defaultWorkspaceId ?? workspaces[0]?.id;
   const invitations = invitationsQuery.data?.invitations ?? [];
 
   if (!teamsEnabled) {
@@ -330,6 +364,13 @@ export function TeamDetailPage() {
             Team members can access all workspaces below.
             {isOwner ? " Only you can add or remove workspaces." : ""}
           </p>
+          {isOwner ? (
+            <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-950 dark:text-amber-100">
+              Deleting a non-default workspace moves its connections to this
+              team&apos;s default workspace. Duplicates already there are
+              skipped.
+            </div>
+          ) : null}
           <ul className="mt-4 divide-y divide-border rounded-lg border border-border">
             {workspaces.map((ws) => (
               <li
@@ -339,6 +380,11 @@ export function TeamDetailPage() {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-text">
                     {ws.name}
+                    {ws.id === defaultWorkspaceId ? (
+                      <span className="ml-2 text-xs font-normal text-text-muted">
+                        Default
+                      </span>
+                    ) : null}
                     {ws.isActive ? (
                       <span className="ml-2 text-xs font-normal text-accent">
                         Active
@@ -349,11 +395,15 @@ export function TeamDetailPage() {
                     {ws.connectionCount} connected
                   </p>
                 </div>
-                {isOwner && workspaces.length > 1 ? (
+                {isOwner &&
+                workspaces.length > 1 &&
+                ws.id !== defaultWorkspaceId ? (
                   <button
                     type="button"
                     disabled={wsBusyId === ws.id}
-                    onClick={() => void handleDeleteWorkspace(ws.id)}
+                    onClick={() =>
+                      setDeleteWsTarget({ id: ws.id, name: ws.name })
+                    }
                     className="rounded-md p-1.5 text-destructive hover:bg-destructive/10 disabled:opacity-50"
                     aria-label={`Delete ${ws.name}`}
                   >
@@ -529,7 +579,8 @@ export function TeamDetailPage() {
             </h2>
             <p className="mt-2 text-sm text-text-muted">
               Deleting this team permanently removes all workspaces,
-              memberships, and invitations.
+              memberships, and invitations. You&apos;ll choose whether to keep
+              its connections on Main.
             </p>
             <Button
               variant="destructive"
@@ -564,7 +615,58 @@ export function TeamDetailPage() {
         )}
       </div>
 
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <Dialog
+        open={!!deleteWsTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteWsTarget(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete workspace?</DialogTitle>
+            <DialogDescription>
+              This deletes &ldquo;{deleteWsTarget?.name}&rdquo;.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-950 dark:text-amber-100">
+            Connections in this workspace will be moved to the team&apos;s
+            default workspace. Accounts already connected there will be
+            skipped.
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={!!wsBusyId}
+              onClick={() => setDeleteWsTarget(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!!wsBusyId}
+              onClick={() => void handleDeleteWorkspace()}
+            >
+              {wsBusyId ? (
+                <IconLoader2
+                  className="h-4 w-4 animate-spin"
+                  strokeWidth={1.5}
+                />
+              ) : (
+                <IconTrash className="h-4 w-4" strokeWidth={1.5} />
+              )}
+              Delete workspace
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (deletingMode) return;
+          setDeleteOpen(open);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete team?</DialogTitle>
@@ -573,26 +675,49 @@ export function TeamDetailPage() {
               workspaces. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-950 dark:text-amber-100">
+            Keep connections to move them to your personal Main. Duplicates you
+            already have on Main will be skipped. Discard removes them with the
+            team.
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
             <Button
               variant="outline"
-              disabled={deleting}
+              disabled={!!deletingMode}
+              className="w-full"
               onClick={() => setDeleteOpen(false)}
             >
               Cancel
             </Button>
             <Button
-              variant="destructive"
-              disabled={deleting}
-              onClick={() => void handleDelete()}
+              variant="secondary"
+              disabled={!!deletingMode}
+              className="w-full"
+              onClick={() => void handleDelete(true)}
             >
-              {deleting ? (
+              {deletingMode === "keep" ? (
                 <IconLoader2
                   className="h-4 w-4 animate-spin"
                   strokeWidth={1.5}
                 />
               ) : null}
-              Delete team
+              Delete &amp; keep connections
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!!deletingMode}
+              className="w-full"
+              onClick={() => void handleDelete(false)}
+            >
+              {deletingMode === "discard" ? (
+                <IconLoader2
+                  className="h-4 w-4 animate-spin"
+                  strokeWidth={1.5}
+                />
+              ) : (
+                <IconTrash className="h-4 w-4" strokeWidth={1.5} />
+              )}
+              Delete &amp; discard connections
             </Button>
           </DialogFooter>
         </DialogContent>

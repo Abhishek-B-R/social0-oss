@@ -374,6 +374,7 @@ export async function registerTeamRoutes(app: FastifyInstance) {
       name?: string;
       workspaceName?: string;
       teamId?: string;
+      isCollaborative?: boolean;
     };
 
     try {
@@ -389,6 +390,9 @@ export async function registerTeamRoutes(app: FastifyInstance) {
         userId,
         body.name,
         body.workspaceName,
+        {
+          isCollaborative: body.isCollaborative !== false,
+        },
       );
       return reply.status(201).send({ success: true, ...result });
     } catch (err) {
@@ -412,12 +416,18 @@ export async function registerTeamRoutes(app: FastifyInstance) {
     const body = (request.body ?? {}) as {
       name?: string;
       workspaceName?: string;
+      isCollaborative?: boolean;
     };
     try {
       const result = await createTeamForUser(
         userId,
         body.name,
         body.workspaceName,
+        {
+          // POST /team is the explicit "create team" path — always collaborative
+          // unless a solo workspace container is requested.
+          isCollaborative: body.isCollaborative !== false,
+        },
       );
       return reply.status(201).send({ success: true, ...result });
     } catch (err) {
@@ -463,8 +473,8 @@ export async function registerTeamRoutes(app: FastifyInstance) {
 
     const { id } = request.params as { id: string };
     try {
-      await deleteWorkspaceInTeam(userId, id);
-      return { success: true };
+      const result = await deleteWorkspaceInTeam(userId, id);
+      return { success: true, ...result };
     } catch (err) {
       const { status, body: errBody } = serviceError(err);
       return reply.status(status).send(errBody);
@@ -607,9 +617,12 @@ export async function registerTeamRoutes(app: FastifyInstance) {
     }
 
     const { teamId } = request.params as { teamId: string };
+    const body = (request.body ?? {}) as { keepConnections?: boolean };
     try {
-      await deleteTeamForUser(userId, teamId);
-      return { success: true };
+      const result = await deleteTeamForUser(userId, teamId, {
+        keepConnections: body.keepConnections === true,
+      });
+      return { success: true, ...result };
     } catch (err) {
       const { status, body: errBody } = serviceError(err);
       return reply.status(status).send(errBody);

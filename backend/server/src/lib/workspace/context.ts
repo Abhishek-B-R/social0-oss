@@ -64,6 +64,12 @@ function personalContext(actorUserId: string): WorkspaceContext {
   };
 }
 
+/** Default first workspace name for a newly created team. */
+export function defaultWorkspaceNameForTeam(teamName: string): string {
+  const base = teamName.trim() || "Team";
+  return `${base}'s default workspace`.slice(0, 80);
+}
+
 /**
  * Resolve the active workspace for a user.
  * - `activeWorkspaceId = null` → Personal/Main.
@@ -173,7 +179,7 @@ export async function ensureOwnerTeam(
       const [createdWs] = await db
         .insert(workspaces)
         .values({
-          name: existingTeam.name,
+          name: defaultWorkspaceNameForTeam(existingTeam.name),
           teamId: existingTeam.id,
         })
         .returning({ id: workspaces.id });
@@ -229,7 +235,10 @@ export async function ensureOwnerTeam(
 
   const [createdWs] = await db
     .insert(workspaces)
-    .values({ name, teamId: createdTeam.id })
+    .values({
+      name: defaultWorkspaceNameForTeam(name),
+      teamId: createdTeam.id,
+    })
     .returning({ id: workspaces.id });
 
   await db
