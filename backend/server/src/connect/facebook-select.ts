@@ -90,7 +90,6 @@ export async function fbSelectPost(req: AppRequest) {
     return Response.json({ error: ws.error }, { status: ws.statusCode });
   }
   const resourceUserId = ws.ctx.resourceUserId;
-  const workspaceId = ws.ctx.workspaceId;
 
   let body: { token?: string; pageId?: string; returnTo?: string };
   try {
@@ -123,6 +122,7 @@ export async function fbSelectPost(req: AppRequest) {
 
   let payload: {
     userId: string;
+    workspaceId?: string | null;
     pages: Array<{
       id: string;
       name: string;
@@ -139,6 +139,14 @@ export async function fbSelectPost(req: AppRequest) {
   if (payload.userId !== resourceUserId) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
+
+  // Prefer OAuth-start workspace so a mid-flow Main switch can't mis-scope the insert.
+  const workspaceId =
+    typeof payload.workspaceId === "string"
+      ? payload.workspaceId
+      : payload.workspaceId === null
+        ? null
+        : ws.ctx.workspaceId;
 
   const page = payload.pages.find((p) => p.id === pageId);
   if (!page) {

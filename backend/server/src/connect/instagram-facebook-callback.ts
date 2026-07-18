@@ -6,7 +6,10 @@ import { decrypt, encryptToken } from "@social0/shared";
 import { assertOAuthCallbackSession } from "../lib/oauth-callback-session.js";
 import { sanitizeReturnToPath } from "@social0/shared";
 import crypto from "crypto";
-import { getConnectCallbackBaseUrl } from "../lib/app-url.js";
+import {
+  connectionsSelectPath,
+  getConnectCallbackBaseUrl,
+} from "../lib/app-url.js";
 import { safeRedirect, rethrowRouteRedirect } from "../lib/redirect.js";
 import { checkAccountLimits } from "../lib/plan-limits.js";
 import { AppRequest } from "../lib/http/http.js";
@@ -328,6 +331,7 @@ export async function igFbCallback(
     const stateId = crypto.randomBytes(16).toString("hex");
     const payload = JSON.stringify({
       userId,
+      workspaceId,
       pages: pagesWithInstagram.map((p) => ({
         pageId: p.pageId,
         pageName: p.pageName,
@@ -346,7 +350,14 @@ export async function igFbCallback(
     });
 
     return safeRedirect(
-      `/dashboard/connections/instagram/select?token=${stateId}&returnTo=${encodeURIComponent(successRedirect)}`,
+      connectionsSelectPath(
+        "connections/instagram/select",
+        successRedirect,
+        {
+          token: stateId,
+          returnTo: successRedirect,
+        },
+      ),
       successRedirect,
     );
   } catch (err) {

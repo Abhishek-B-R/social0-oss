@@ -31,6 +31,7 @@ export async function igFbStart(req: AppRequest) {
     return Response.json({ error: ws.error }, { status: ws.statusCode });
   }
   const resourceUserId = ws.ctx.resourceUserId;
+  const workspaceId = ws.ctx.workspaceId;
 
   const rate = await enforceRateLimit(oauthLimiter, session.user.id);
   if (!rate.allowed) {
@@ -53,6 +54,7 @@ export async function igFbStart(req: AppRequest) {
 
   const state = encrypt({
     userId: resourceUserId,
+    workspaceId,
     platform: "instagram-facebook",
     ...(returnTo && { returnTo }),
   });

@@ -100,7 +100,6 @@ export async function liSelectPost(req: AppRequest) {
     return Response.json({ error: ws.error }, { status: ws.statusCode });
   }
   const resourceUserId = ws.ctx.resourceUserId;
-  const workspaceId = ws.ctx.workspaceId;
 
   let body: { token?: string; selectedIds?: string[]; returnTo?: string };
   try {
@@ -131,10 +130,12 @@ export async function liSelectPost(req: AppRequest) {
     return Response.json({ error: "Token expired" }, { status: 400 });
   }
 
-  let payload: LinkedInPayload;
+  let payload: LinkedInPayload & { workspaceId?: string | null };
   try {
     const raw = decryptToken(record.value, token);
-    payload = JSON.parse(raw) as LinkedInPayload;
+    payload = JSON.parse(raw) as LinkedInPayload & {
+      workspaceId?: string | null;
+    };
   } catch {
     return Response.json({ error: "Invalid token data" }, { status: 400 });
   }
@@ -142,6 +143,13 @@ export async function liSelectPost(req: AppRequest) {
   if (payload.userId !== resourceUserId) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
+
+  const workspaceId =
+    typeof payload.workspaceId === "string"
+      ? payload.workspaceId
+      : payload.workspaceId === null
+        ? null
+        : ws.ctx.workspaceId;
 
   const accessToken = payload.accessToken;
   const personalId = payload.personalProfile.id;

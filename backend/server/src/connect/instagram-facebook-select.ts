@@ -96,7 +96,6 @@ export async function igFbSelectPost(req: AppRequest) {
     return Response.json({ error: ws.error }, { status: ws.statusCode });
   }
   const resourceUserId = ws.ctx.resourceUserId;
-  const workspaceId = ws.ctx.workspaceId;
 
   let body: { token?: string; pageId?: string; returnTo?: string };
   try {
@@ -132,6 +131,7 @@ export async function igFbSelectPost(req: AppRequest) {
 
   let payload: {
     userId: string;
+    workspaceId?: string | null;
     pages: Array<{
       pageId: string;
       pageName: string;
@@ -150,6 +150,13 @@ export async function igFbSelectPost(req: AppRequest) {
   if (payload.userId !== resourceUserId) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
+
+  const workspaceId =
+    typeof payload.workspaceId === "string"
+      ? payload.workspaceId
+      : payload.workspaceId === null
+        ? null
+        : ws.ctx.workspaceId;
 
   const pageData = payload.pages.find((p) => p.pageId === pageId);
   if (!pageData) {

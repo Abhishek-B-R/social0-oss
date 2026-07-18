@@ -14,13 +14,12 @@ const WORKSPACES_QUERY_KEY = ["workspaces"] as const;
 
 /**
  * On personal /dashboard routes (not team app / team settings):
- * - Owned workspace on a mirrored page → `/dashboard/teams/:teamId/*`
- * - Joined workspace on mirrored personal URLs → switch back to Main
+ * - Team workspace (owned or joined) on a mirrored page → team app tree
  * - Personal-only account pages (billing/settings/…) with a non-Main
  *   workspace active → switch to Main so actor-scoped pages work
  */
 export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const queryClient = useQueryClient();
   const ran = useRef(false);
 
@@ -71,53 +70,30 @@ export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
       };
     }
 
-    // Owned team workspace on a mirrored personal URL → team app tree
-    if (active?.kind === "owned" && active.teamId) {
+    // Team workspace on a mirrored personal URL → team app tree.
+    // Covers owned + joined so OAuth select callbacks (always personal paths)
+    // keep the team workspace instead of wiping to Main.
+    if (
+      active?.teamId &&
+      (active.kind === "owned" || active.kind === "joined")
+    ) {
       ran.current = true;
       const dest = mapPathToBase(
         pathname,
         `/dashboard/teams/${active.teamId}`,
       );
-      window.location.assign(
-        dest.startsWith(`/dashboard/teams/${active.teamId}`)
+      const withSearch =
+        (dest.startsWith(`/dashboard/teams/${active.teamId}`)
           ? dest
-          : `/dashboard/teams/${active.teamId}/composer`,
-      );
+          : `/dashboard/teams/${active.teamId}/composer`) + search;
+      window.location.assign(withSearch);
       return;
     }
 
     // Already on Main
-    if (!active || active.kind === "personal" || active.id == null) {
-      writePersonalWorkspaceId(null);
-      ran.current = true;
-      return;
-    }
-
-    // Joined on personal URL → force Main
+    writePersonalWorkspaceId(null);
     ran.current = true;
-    let cancelled = false;
-    (async () => {
-      try {
-        await switchWorkspace(null);
-        writePersonalWorkspaceId(null);
-        if (!cancelled) {
-          await Promise.all([
-            queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY }),
-            queryClient.invalidateQueries({ queryKey: ["team"] }),
-            queryClient.invalidateQueries({ queryKey: ["dashboard-layout"] }),
-            queryClient.invalidateQueries({ queryKey: ["connections"] }),
-          ]);
-          window.location.reload();
-        }
-      } catch {
-        // leave user as-is if switch fails
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled, skipBoot, personalOnly, pathname, data, queryClient]);
+  }, [enabled, skipBoot, personalOnly, pathname, search, data, queryClient]);
 
   return null;
 }

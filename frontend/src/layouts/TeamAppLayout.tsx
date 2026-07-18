@@ -38,67 +38,53 @@ export function TeamAppLayout() {
   });
 
   useEffect(() => {
-    if (!teamId) return;
+    if (!teamId || !data) return;
+    if (inFlightFor.current === teamId) return;
 
-    // Already gated this team — stay ready, but re-check membership when data refreshes.
-    if (bootstrappedTeams.has(teamId)) {
-      if (data) {
-        const stillMember = data.teams.some((t) => t.id === teamId);
-        if (!stillMember) {
-          bootstrappedTeams.delete(teamId);
-          setError("Team not found or you no longer have access.");
-          setReady(false);
-          return;
-        }
-      }
+    const team: TeamListItem | undefined = data.teams.find(
+      (t) => t.id === teamId,
+    );
+    if (!team) {
+      bootstrappedTeams.delete(teamId);
+      setError("Team not found or you no longer have access.");
+      setReady(false);
+      return;
+    }
+
+    const stored = readTeamWorkspaceId(teamId);
+    const storedValid =
+      stored && team.workspaces.some((w) => w.id === stored) ? stored : null;
+    const targetId =
+      storedValid ??
+      team.defaultWorkspaceId ??
+      team.workspaces[0]?.id ??
+      null;
+
+    if (!targetId) {
+      bootstrappedTeams.delete(teamId);
+      setError("This team has no workspaces yet.");
+      setReady(false);
+      return;
+    }
+
+    const alreadyActive = data.workspaces.some(
+      (w) => w.id === targetId && w.isActive,
+    );
+
+    // Fast path: previously gated and the target workspace is still active.
+    // Re-activate when PersonalWorkspaceBoot (or billing/settings) switched to Main.
+    if (bootstrappedTeams.has(teamId) && alreadyActive) {
+      writeTeamWorkspaceId(teamId, targetId);
       setReady(true);
       setError(null);
       return;
     }
-
-    if (!data) return;
-    if (inFlightFor.current === teamId) return;
 
     let cancelled = false;
     inFlightFor.current = teamId;
 
     (async () => {
       setError(null);
-
-      const team: TeamListItem | undefined = data.teams.find(
-        (t) => t.id === teamId,
-      );
-      if (!team) {
-        if (!cancelled) {
-          inFlightFor.current = null;
-          setError("Team not found or you no longer have access.");
-          setReady(false);
-        }
-        return;
-      }
-
-      const stored = readTeamWorkspaceId(teamId);
-      const storedValid =
-        stored && team.workspaces.some((w) => w.id === stored) ? stored : null;
-      const targetId =
-        storedValid ??
-        team.defaultWorkspaceId ??
-        team.workspaces[0]?.id ??
-        null;
-
-      if (!targetId) {
-        if (!cancelled) {
-          inFlightFor.current = null;
-          setError("This team has no workspaces yet.");
-          setReady(false);
-        }
-        return;
-      }
-
-      const alreadyActive = data.workspaces.some(
-        (w) => w.id === targetId && w.isActive,
-      );
-
       try {
         if (!alreadyActive) {
           await switchWorkspace(targetId);
@@ -119,6 +105,7 @@ export function TeamAppLayout() {
         }
       } catch (err) {
         if (!cancelled) {
+          bootstrappedTeams.delete(teamId);
           inFlightFor.current = null;
           setError(
             err instanceof Error

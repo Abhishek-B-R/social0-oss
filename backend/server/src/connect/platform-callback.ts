@@ -10,7 +10,10 @@ import { decrypt, encryptToken, decryptToken } from "@social0/shared";
 import { assertOAuthCallbackSession } from "../lib/oauth-callback-session.js";
 import { sanitizeReturnToPath } from "@social0/shared";
 import crypto from "crypto";
-import { getConnectCallbackBaseUrl } from "../lib/app-url.js";
+import {
+  connectionsSelectPath,
+  getConnectCallbackBaseUrl,
+} from "../lib/app-url.js";
 import { safeRedirect, rethrowRouteRedirect } from "../lib/redirect.js";
 import { AppRequest } from "../lib/http/http.js";
 import { cookies } from "../lib/http/request-cookies.js";
@@ -845,6 +848,7 @@ export async function platformCallback(
       const stateId = crypto.randomBytes(16).toString("hex");
       const payload = JSON.stringify({
         userId,
+        workspaceId,
         pages: pagesWithPictures,
       });
       await db.insert(verification).values({
@@ -853,7 +857,14 @@ export async function platformCallback(
         value: encryptToken(payload, stateId),
         expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
       });
-      const selectUrl = `/dashboard/connections/facebook/select?token=${stateId}&returnTo=${encodeURIComponent(successRedirect)}`;
+      const selectUrl = connectionsSelectPath(
+        "connections/facebook/select",
+        successRedirect,
+        {
+          token: stateId,
+          returnTo: successRedirect,
+        },
+      );
       return safeRedirect(selectUrl, successRedirect);
     }
 
@@ -976,6 +987,7 @@ export async function platformCallback(
             const stateId = crypto.randomBytes(16).toString("hex");
             const payload = JSON.stringify({
               userId,
+              workspaceId,
               accessToken: tokens.access_token,
               personalProfile: {
                 id: userInfo.id,
@@ -990,7 +1002,14 @@ export async function platformCallback(
               value: encryptToken(payload, stateId),
               expiresAt: new Date(Date.now() + 5 * 60 * 1000),
             });
-            const selectUrl = `/dashboard/connections/linkedin/select?token=${stateId}&returnTo=${encodeURIComponent(successRedirect)}`;
+            const selectUrl = connectionsSelectPath(
+              "connections/linkedin/select",
+              successRedirect,
+              {
+                token: stateId,
+                returnTo: successRedirect,
+              },
+            );
             return safeRedirect(selectUrl, successRedirect);
           }
         }
