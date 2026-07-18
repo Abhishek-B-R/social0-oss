@@ -2052,22 +2052,14 @@ async function assertCanManageAccount(
   }
 }
 
-async function assertCanMoveToTarget(
+async function assertActorCanManageWorkspace(
   actorUserId: string,
-  accountUserId: string,
-  targetWorkspaceId: string | null,
-): Promise<void> {
-  // Main (null) = that account owner's personal pool. Allowed once the actor
-  // already passed assertCanManageAccount (owner or team admin).
-  if (targetWorkspaceId === null) {
-    return;
-  }
-
+  workspaceId: string,
+): Promise<{ ownerUserId: string; role: WorkspaceRole; isOwner: boolean }> {
   const [row] = await db
     .select({
       ownerUserId: teams.ownerUserId,
       role: teamMembers.role,
-      teamId: teams.id,
     })
     .from(workspaces)
     .innerJoin(teams, eq(workspaces.teamId, teams.id))
@@ -2078,21 +2070,21 @@ async function assertCanMoveToTarget(
         eq(teamMembers.userId, actorUserId),
       ),
     )
-    .where(eq(workspaces.id, targetWorkspaceId))
+    .where(eq(workspaces.id, workspaceId))
     .limit(1);
 
   if (!row) {
     throw new TeamServiceError(404, "Target workspace not found.");
   }
-  if (row.ownerUserId !== accountUserId) {
-    throw new TeamServiceError(
-      403,
-      "Connections can only move into workspaces owned by the same account owner.",
-    );
-  }
 
   const isOwner = row.ownerUserId === actorUserId;
-  if (isOwner) return;
+  if (isOwner) {
+    return {
+      ownerUserId: row.ownerUserId,
+      role: row.role as WorkspaceRole,
+      isOwner: true,
+    };
+  }
 
   const teamsEnabled = getPlanLimits(
     (await getSubscriptionForUser(row.ownerUserId)).tier,
@@ -2111,6 +2103,56 @@ async function assertCanMoveToTarget(
   if (!perms.has("manage_connections")) {
     throw new TeamServiceError(403, "Forbidden");
   }
+  return {
+    ownerUserId: row.ownerUserId,
+    role: row.role as WorkspaceRole,
+    isOwner: false,
+  };
+}
+
+/**
+ * Resolve whether the actor may move `account` into `targetWorkspaceId`, and
+ * which userId the connection should have after the move.
+ *
+ * - Main (null) on the board is always the actor's personal pool.
+ * - Moving into a team workspace you admin → connection belongs to the team owner.
+ * - Moving out of a team into your personal/owned workspace → connection belongs to you.
+ * - Moving within the same owner's workspaces → ownership unchanged.
+ */
+async function resolveMoveTarget(
+  actorUserId: string,
+  account: { userId: string; workspaceId: string | null },
+  targetWorkspaceId: string | null,
+): Promise<{ nextUserId: string }> {
+  if (targetWorkspaceId === null) {
+    // Board "Main" = actor personal pool.
+    return { nextUserId: actorUserId };
+  }
+
+  const target = await assertActorCanManageWorkspace(
+    actorUserId,
+    targetWorkspaceId,
+  );
+
+  // Into actor's own workspace (solo or owned team).
+  if (target.isOwner) {
+    return { nextUserId: actorUserId };
+  }
+
+  // Into a team the actor admins → team owner's pool.
+  // Allowed when the connection is already the owner's, or the actor is
+  // contributing their own personal connection.
+  if (
+    account.userId === target.ownerUserId ||
+    account.userId === actorUserId
+  ) {
+    return { nextUserId: target.ownerUserId };
+  }
+
+  throw new TeamServiceError(
+    403,
+    "Connections can only move into workspaces you can manage for that account owner.",
+  );
 }
 
 /** Move a connected account between Main and team workspaces. */
@@ -2136,7 +2178,13 @@ export async function moveConnectedAccountToWorkspace(
 
   const account = await db.query.connectedAccounts.findFirst({
     where: eq(connectedAccounts.id, accountId.trim()),
-    columns: { id: true, userId: true, workspaceId: true },
+    columns: {
+      id: true,
+      userId: true,
+      workspaceId: true,
+      platform: true,
+      platformUserId: true,
+    },
   });
   if (!account) {
     throw new TeamServiceError(404, "Account not found.");
@@ -2148,12 +2196,43 @@ export async function moveConnectedAccountToWorkspace(
   }
 
   await assertCanManageAccount(actorUserId, account);
-  await assertCanMoveToTarget(actorUserId, account.userId, targetWorkspaceId);
+  const { nextUserId } = await resolveMoveTarget(
+    actorUserId,
+    account,
+    targetWorkspaceId,
+  );
+
+  if (nextUserId !== account.userId) {
+    const duplicate = await db.query.connectedAccounts.findFirst({
+      where: and(
+        eq(connectedAccounts.userId, nextUserId),
+        eq(connectedAccounts.platform, account.platform),
+        eq(connectedAccounts.platformUserId, account.platformUserId),
+      ),
+      columns: { id: true },
+    });
+    if (duplicate) {
+      throw new TeamServiceError(
+        409,
+        "That account is already connected for the destination owner.",
+      );
+    }
+  }
 
   await db
     .update(connectedAccounts)
-    .set({ workspaceId: targetWorkspaceId, updatedAt: new Date() })
+    .set({
+      workspaceId: targetWorkspaceId,
+      userId: nextUserId,
+      updatedAt: new Date(),
+    })
     .where(eq(connectedAccounts.id, account.id));
+
+  if (nextUserId !== account.userId) {
+    const { syncConnectedAccountsToLimit } = await import("../plan-limits.js");
+    await syncConnectedAccountsToLimit(nextUserId);
+    await syncConnectedAccountsToLimit(account.userId);
+  }
 
   return { workspaceId: targetWorkspaceId };
 }

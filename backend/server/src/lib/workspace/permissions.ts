@@ -75,8 +75,12 @@ export function permissionsForRole(
     return new Set(PERSONAL_PERMISSIONS);
   }
 
-  // Collaboration requires an active Pro subscription on the workspace owner.
+  // Owner always keeps control of their own workspaces (solo or team).
+  // Teammates only collaborate while the owner's Pro (allowTeams) is active.
   if (!opts.teamsEnabled) {
+    if (opts.isOwner) {
+      return new Set(OWNER_PERMISSIONS);
+    }
     return new Set<WorkspacePermission>();
   }
 

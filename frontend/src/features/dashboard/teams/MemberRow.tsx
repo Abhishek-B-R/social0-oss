@@ -135,7 +135,7 @@ export function MemberRow({ member, permissions, onChanged }: MemberRowProps) {
                   void handleRoleChange(e.target.value as WorkspaceRole)
                 }
                 aria-label={`Change role for ${displayName}`}
-                className="rounded-lg border border-input bg-bg px-2.5 py-1.5 text-xs font-medium text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 disabled:opacity-60"
+                className="rounded-xl border border-input bg-bg px-2.5 py-1.5 text-xs font-medium text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
               >
                 <option value="admin">Admin</option>
                 <option value="member">Member</option>
@@ -170,8 +170,8 @@ export function MemberRow({ member, permissions, onChanged }: MemberRowProps) {
           <DialogHeader>
             <DialogTitle>Remove member?</DialogTitle>
             <DialogDescription>
-              {displayName} will lose access to this workspace. You can invite
-              them again later.
+              {displayName} will lose access to every workspace in this team.
+              You can invite them again later.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">

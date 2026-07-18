@@ -136,7 +136,7 @@ export function CreateWorkspaceDialog({
               }}
               className={cn(
                 "relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors",
-                teamMode ? "bg-emerald-500" : "bg-border",
+                teamMode ? "bg-accent" : "bg-border",
               )}
             >
               <span
@@ -179,7 +179,7 @@ export function CreateWorkspaceDialog({
                     value={existingTeamId}
                     onChange={(e) => setExistingTeamId(e.target.value)}
                     disabled={submitting}
-                    className="ml-6 w-[calc(100%-1.5rem)] rounded-md border border-input bg-bg px-3 py-2 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
+                    className="ml-6 w-[calc(100%-1.5rem)] rounded-xl border border-input bg-bg px-4 py-2.5 text-sm font-medium text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
                   >
                     {ownedTeams.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -257,10 +257,10 @@ export function CreateWorkspaceDialog({
                   disabled={submitting}
                   onClick={() => setIconId(id)}
                   className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-lg border transition-colors",
+                    "flex h-10 w-10 items-center justify-center rounded-xl border transition-colors",
                     iconId === id
                       ? "border-accent bg-accent/10 text-accent"
-                      : "border-border bg-bg text-text-muted hover:bg-bg-muted",
+                      : "border-border bg-bg text-text-muted hover:bg-muted",
                   )}
                   aria-label={`Icon ${id}`}
                   aria-pressed={iconId === id}

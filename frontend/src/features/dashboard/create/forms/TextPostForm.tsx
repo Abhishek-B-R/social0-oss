@@ -995,6 +995,7 @@ export function TextPostForm({
                 ? getFreePostsRemaining(subscriptionTier, freePostsUsed)
                 : null
             }
+            subscriptionTier={subscriptionTier}
           />
 
           <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">

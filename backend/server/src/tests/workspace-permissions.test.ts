@@ -17,13 +17,22 @@ describe("workspace permissions", () => {
     expect(hasPermission(perms, "create_posts")).toBe(true);
   });
 
-  it("disables collaboration when Pro lapses on a workspace", () => {
-    const perms = permissionsForRole("admin", {
+  it("keeps owner workspace access when Pro lapses (teammates are paused)", () => {
+    const ownerPerms = permissionsForRole("admin", {
+      isOwner: true,
+      teamsEnabled: false,
+      inWorkspace: true,
+    });
+    expect(hasPermission(ownerPerms, "create_posts")).toBe(true);
+    expect(hasPermission(ownerPerms, "manage_connections")).toBe(true);
+    expect(hasPermission(ownerPerms, "access_billing")).toBe(true);
+
+    const memberPerms = permissionsForRole("member", {
       isOwner: false,
       teamsEnabled: false,
       inWorkspace: true,
     });
-    expect(perms.size).toBe(0);
+    expect(memberPerms.size).toBe(0);
   });
 
   it("gives owners billing + admin capabilities when Teams is enabled", () => {

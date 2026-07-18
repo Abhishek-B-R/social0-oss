@@ -1819,6 +1819,7 @@ export function VideoPostForm({
                 ? getFreePostsRemaining(subscriptionTier, freePostsUsed)
                 : null
             }
+            subscriptionTier={subscriptionTier}
           />
 
           {hasVideo &&

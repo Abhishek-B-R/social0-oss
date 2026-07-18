@@ -1979,6 +1979,7 @@ export function ThreadsPostForm({
                 ? getFreePostsRemaining(subscriptionTier, freePostsUsed)
                 : null
             }
+            subscriptionTier={subscriptionTier}
             warningAccountIds={videoLimitState.softAccountIds}
             warningReasons={videoLimitWarningReasons}
             warningLabel="May limit reach"

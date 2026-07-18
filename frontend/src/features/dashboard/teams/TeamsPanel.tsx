@@ -29,7 +29,7 @@ export function TeamsPanel() {
 
   if (workspacesQuery.isError) {
     return (
-      <div className="mt-6 rounded-xl border border-border bg-card p-6 text-sm text-foreground">
+      <div className="mt-6 rounded-xl border border-border bg-bg-elevated p-6 text-sm text-text">
         {workspacesQuery.error instanceof Error
           ? workspacesQuery.error.message
           : "Could not load teams."}
@@ -61,7 +61,7 @@ export function TeamsPanel() {
           </p>
           <Link
             href="/dashboard/billing"
-            className="mt-6 inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90"
+            className={cn(buttonVariants(), "mt-6")}
           >
             Upgrade to Pro
           </Link>

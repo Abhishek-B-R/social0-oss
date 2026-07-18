@@ -247,7 +247,7 @@ export function TeamDetailPage() {
     return (
       <div className="mt-6 space-y-4">
         <BackLink />
-        <div className="rounded-xl border border-border bg-card p-6 text-sm">
+        <div className="rounded-xl border border-border bg-bg-elevated p-6 text-sm text-text">
           {teamQuery.error instanceof Error
             ? teamQuery.error.message
             : "Could not load team."}
@@ -279,7 +279,7 @@ export function TeamDetailPage() {
           {isOwner ? (
             <Link
               href="/dashboard/billing"
-              className="mt-6 inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+              className="mt-6 inline-flex h-9 items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover"
             >
               Renew Pro
             </Link>
@@ -483,7 +483,7 @@ export function TeamDetailPage() {
                     setInviteRole(e.target.value as WorkspaceRole)
                   }
                   disabled={inviting}
-                  className="rounded-md border border-input bg-bg px-3 py-2 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="rounded-xl border border-input bg-bg px-4 py-2.5 text-sm font-medium text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
                 >
                   <option value="member">Member</option>
                   <option value="admin">Admin</option>
@@ -751,7 +751,9 @@ function MemberTableRow({
 }) {
   const [roleBusy, setRoleBusy] = useState(false);
   const [removeBusy, setRemoveBusy] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
+  const displayName = member.name?.trim() || member.email;
   const joined = new Date(member.createdAt).toLocaleDateString(undefined, {
     year: "numeric",
     month: "numeric",
@@ -777,6 +779,7 @@ function MemberTableRow({
     try {
       await removeTeamMember(member.id);
       toast.success("Member removed");
+      setConfirmRemove(false);
       onChanged();
     } catch (err) {
       toast.error(
@@ -788,64 +791,106 @@ function MemberTableRow({
   };
 
   return (
-    <tr className="border-b border-border last:border-b-0">
-      <td className="px-2 py-3">
-        <p className="font-medium text-text">{member.email}</p>
-        {member.name?.trim() ? (
-          <p className="text-xs text-text-muted">{member.name}</p>
-        ) : null}
-      </td>
-      <td className="px-2 py-3">
-        {canChangeRole ? (
-          <div className="flex items-center gap-1.5">
-            <select
-              value={member.role}
-              disabled={roleBusy || removeBusy}
-              onChange={(e) => void handleRole(e.target.value as WorkspaceRole)}
-              className="rounded-md border border-input bg-bg px-2 py-1 text-xs font-medium capitalize"
-            >
-              <option value="admin">admin</option>
-              <option value="member">member</option>
-            </select>
-            {roleBusy ? (
-              <IconLoader2
-                className="h-3.5 w-3.5 animate-spin text-text-muted"
-                strokeWidth={1.5}
-              />
-            ) : null}
-          </div>
-        ) : (
-          <span className="inline-flex rounded-full bg-bg-muted px-2 py-0.5 text-xs font-medium capitalize text-text">
-            {member.isOwner ? "owner" : member.role}
+    <>
+      <tr className="border-b border-border last:border-b-0">
+        <td className="px-2 py-3">
+          <p className="font-medium text-text">{member.email}</p>
+          {member.name?.trim() ? (
+            <p className="text-xs text-text-muted">{member.name}</p>
+          ) : null}
+        </td>
+        <td className="px-2 py-3">
+          {canChangeRole ? (
+            <div className="flex items-center gap-1.5">
+              <select
+                value={member.role}
+                disabled={roleBusy || removeBusy}
+                onChange={(e) =>
+                  void handleRole(e.target.value as WorkspaceRole)
+                }
+                className="rounded-xl border border-input bg-bg px-2.5 py-1.5 text-xs font-medium capitalize text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
+              >
+                <option value="admin">admin</option>
+                <option value="member">member</option>
+              </select>
+              {roleBusy ? (
+                <IconLoader2
+                  className="h-3.5 w-3.5 animate-spin text-text-muted"
+                  strokeWidth={1.5}
+                />
+              ) : null}
+            </div>
+          ) : (
+            <span className="inline-flex rounded-full bg-bg-muted px-2 py-0.5 text-xs font-medium capitalize text-text">
+              {member.isOwner ? "owner" : member.role}
+            </span>
+          )}
+        </td>
+        <td className="px-2 py-3">
+          <span className="inline-flex rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200">
+            active
           </span>
-        )}
-      </td>
-      <td className="px-2 py-3">
-        <span className="inline-flex rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200">
-          active
-        </span>
-      </td>
-      <td className="px-2 py-3 text-text-muted">{joined}</td>
-      <td className="px-2 py-3">
-        {canRemove ? (
-          <button
-            type="button"
-            disabled={removeBusy || roleBusy}
-            onClick={() => void handleRemove()}
-            className="rounded-md p-1.5 text-destructive hover:bg-destructive/10 disabled:opacity-50"
-            aria-label={`Remove ${member.email}`}
-          >
-            {removeBusy ? (
-              <IconLoader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
-            ) : (
+        </td>
+        <td className="px-2 py-3 text-text-muted">{joined}</td>
+        <td className="px-2 py-3">
+          {canRemove ? (
+            <button
+              type="button"
+              disabled={removeBusy || roleBusy}
+              onClick={() => setConfirmRemove(true)}
+              className="rounded-xl p-1.5 text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+              aria-label={`Remove ${member.email}`}
+            >
               <IconTrash className="h-4 w-4" strokeWidth={1.5} />
-            )}
-          </button>
-        ) : (
-          <span className="text-xs text-text-muted">—</span>
-        )}
-      </td>
-    </tr>
+            </button>
+          ) : (
+            <span className="text-xs text-text-muted">—</span>
+          )}
+        </td>
+      </tr>
+
+      <Dialog
+        open={confirmRemove}
+        onOpenChange={(open) => {
+          if (removeBusy) return;
+          setConfirmRemove(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove member?</DialogTitle>
+            <DialogDescription>
+              {displayName} will lose access to every workspace in this team.
+              You can invite them again later.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={removeBusy}
+              onClick={() => setConfirmRemove(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={removeBusy}
+              onClick={() => void handleRemove()}
+            >
+              {removeBusy ? (
+                <IconLoader2
+                  className="h-4 w-4 animate-spin"
+                  strokeWidth={1.5}
+                />
+              ) : (
+                <IconTrash className="h-4 w-4" strokeWidth={1.5} />
+              )}
+              Remove member
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

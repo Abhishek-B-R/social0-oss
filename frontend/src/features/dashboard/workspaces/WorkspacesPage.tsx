@@ -119,6 +119,11 @@ export function WorkspacesPage() {
     [cards],
   );
 
+  const actorUserId = useMemo(
+    () => cards.find((c) => c.kind === "personal")?.ownerUserId ?? null,
+    [cards],
+  );
+
   const invalidateAll = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: BOARD_QUERY_KEY }),
@@ -216,7 +221,7 @@ export function WorkspacesPage() {
 
   if (boardQuery.isError) {
     return (
-      <div className="mt-6 rounded-xl border border-border bg-card p-6 text-sm text-foreground">
+      <div className="mt-6 rounded-xl border border-border bg-bg-elevated p-6 text-sm text-text">
         {boardQuery.error instanceof Error
           ? boardQuery.error.message
           : "Could not load workspaces."}
@@ -260,10 +265,7 @@ export function WorkspacesPage() {
           )}
           <Link
             href="/dashboard/teams"
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "sm" }),
-              "border border-transparent text-text-muted hover:border-border hover:bg-bg-muted hover:text-text dark:hover:bg-bg-muted",
-            )}
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
             <IconUsers className="h-4 w-4" strokeWidth={1.5} />
             Teams
@@ -276,6 +278,7 @@ export function WorkspacesPage() {
           <WorkspaceBoardCardView
             key={card.id ?? "main"}
             card={card}
+            actorUserId={actorUserId}
             moveTargets={moveTargets}
             movingId={movingId}
             switching={
@@ -472,6 +475,7 @@ export function WorkspacesPage() {
 
 function WorkspaceBoardCardView({
   card,
+  actorUserId,
   moveTargets,
   movingId,
   switching,
@@ -482,6 +486,7 @@ function WorkspaceBoardCardView({
   onAddToTeam,
 }: {
   card: WorkspaceBoardCard;
+  actorUserId: string | null;
   moveTargets: {
     id: string | null;
     name: string;
@@ -599,6 +604,7 @@ function WorkspaceBoardCardView({
                 account={account}
                 currentWorkspaceId={card.id}
                 accountOwnerUserId={card.ownerUserId}
+                actorUserId={actorUserId}
                 moveTargets={moveTargets}
                 canMove={card.canManage}
                 moving={movingId === account.id}
@@ -636,6 +642,7 @@ function AccountRow({
   account,
   currentWorkspaceId,
   accountOwnerUserId,
+  actorUserId,
   moveTargets,
   canMove,
   moving,
@@ -644,6 +651,7 @@ function AccountRow({
   account: WorkspaceBoardAccount;
   currentWorkspaceId: string | null;
   accountOwnerUserId: string;
+  actorUserId: string | null;
   moveTargets: {
     id: string | null;
     name: string;
@@ -657,13 +665,21 @@ function AccountRow({
   onMove: (accountId: string, targetWorkspaceId: string | null) => void;
 }) {
   const PlatformIcon = getPlatformIcon(account.platform);
-  // Same account owner only, and only into workspaces the actor can manage.
-  const destinations = moveTargets.filter(
-    (t) =>
-      t.id !== currentWorkspaceId &&
-      t.ownerUserId === accountOwnerUserId &&
-      t.canManage,
-  );
+  const destinations = moveTargets.filter((t) => {
+    if (t.id === currentWorkspaceId || !t.canManage) return false;
+    // Same owner pool (Main ↔ owned workspaces, or within one team's workspaces).
+    if (t.ownerUserId === accountOwnerUserId) return true;
+    if (!actorUserId) return false;
+    // Into a team you admin (from your personal/owned connections).
+    if (accountOwnerUserId === actorUserId && t.ownerUserId !== actorUserId) {
+      return true;
+    }
+    // Out of a team you admin, back to your Main / owned workspaces.
+    if (accountOwnerUserId !== actorUserId && t.ownerUserId === actorUserId) {
+      return true;
+    }
+    return false;
+  });
 
   return (
     <li className="flex items-center gap-3 px-4 py-2.5">
@@ -759,7 +775,7 @@ function MoveMenu({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className="rounded-md border border-border bg-bg px-2.5 py-1 text-xs font-medium text-text hover:bg-bg-muted disabled:opacity-60"
+        className="rounded-xl border border-border bg-bg-elevated px-2.5 py-1 text-xs font-medium text-text shadow-sm transition-colors hover:bg-muted disabled:opacity-60"
       >
         {busy ? (
           <IconLoader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
@@ -772,7 +788,7 @@ function MoveMenu({
             <div
               id="workspace-move-menu"
               style={{ top: menuPos.top, right: menuPos.right }}
-              className="fixed z-50 max-h-64 min-w-[200px] overflow-y-auto rounded-lg border border-border bg-bg-elevated py-1 shadow-lg"
+              className="fixed z-50 max-h-64 min-w-[200px] overflow-y-auto rounded-xl border border-border bg-bg-elevated py-1 shadow-lg"
             >
               <p className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-text-muted">
                 Move to

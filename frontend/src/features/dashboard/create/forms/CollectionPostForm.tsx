@@ -1746,6 +1746,7 @@ export function CollectionPostForm({
                 ? getFreePostsRemaining(subscriptionTier, freePostsUsed)
                 : null
             }
+            subscriptionTier={subscriptionTier}
             disabledAccountDefaultReason="Media exceeds this platform's limit"
             warningAccountIds={videoLimitState.softAccountIds}
             warningReasons={videoLimitWarningReasons}

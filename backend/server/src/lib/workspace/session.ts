@@ -7,9 +7,15 @@ export type WorkspaceSession =
   | { ok: true; ctx: WorkspaceContext }
   | { ok: false; error: string; statusCode: number };
 
+const TEAMMATE_PRO_LAPSED_ERROR =
+  "This team's Pro subscription is inactive. Ask the team owner to renew Pro so you can keep posting.";
+
 /**
  * Resolve session + workspace context for dashboard/RPC handlers.
  * Collaboration uses the workspace owner's resource id; personal accounts use self.
+ *
+ * Teammates are blocked only when the owner's Pro has lapsed. Owners always
+ * keep access to their own workspaces (including solo / multi-workspace plans).
  */
 export async function requireWorkspaceSession(
   permission?: WorkspacePermission,
@@ -21,11 +27,10 @@ export async function requireWorkspaceSession(
 
   const ctx = await resolveWorkspaceContext(session.user.id);
 
-  if (ctx.inWorkspace && !ctx.teamsEnabled) {
+  if (ctx.inWorkspace && !ctx.teamsEnabled && !ctx.isOwner) {
     return {
       ok: false,
-      error:
-        "Teams collaboration is paused because the workspace Pro subscription is inactive.",
+      error: TEAMMATE_PRO_LAPSED_ERROR,
       statusCode: 403,
     };
   }
@@ -44,11 +49,10 @@ export async function requireWorkspacePermissionForUser(
 ): Promise<WorkspaceSession> {
   const ctx = await resolveWorkspaceContext(userId);
 
-  if (ctx.inWorkspace && !ctx.teamsEnabled) {
+  if (ctx.inWorkspace && !ctx.teamsEnabled && !ctx.isOwner) {
     return {
       ok: false,
-      error:
-        "Teams collaboration is paused because the workspace Pro subscription is inactive.",
+      error: TEAMMATE_PRO_LAPSED_ERROR,
       statusCode: 403,
     };
   }
