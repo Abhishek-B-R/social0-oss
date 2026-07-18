@@ -282,6 +282,8 @@ export type WorkspaceBoardCard = {
   kind: "personal" | "owned" | "joined";
   teamId: string | null;
   teamName: string | null;
+  /** Account owner for connections in this card. */
+  ownerUserId: string;
   isOwner: boolean;
   canManage: boolean;
   canRename: boolean;

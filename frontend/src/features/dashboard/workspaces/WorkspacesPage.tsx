@@ -113,6 +113,8 @@ export function WorkspacesPage() {
         name: c.name,
         kind: c.kind,
         teamName: c.teamName,
+        ownerUserId: c.ownerUserId,
+        canManage: c.canManage,
       })),
     [cards],
   );
@@ -485,6 +487,8 @@ function WorkspaceBoardCardView({
     name: string;
     kind: WorkspaceBoardCard["kind"];
     teamName: string | null;
+    ownerUserId: string;
+    canManage: boolean;
   }[];
   movingId: string | null;
   switching: boolean;
@@ -594,6 +598,7 @@ function WorkspaceBoardCardView({
                 key={account.id}
                 account={account}
                 currentWorkspaceId={card.id}
+                accountOwnerUserId={card.ownerUserId}
                 moveTargets={moveTargets}
                 canMove={card.canManage}
                 moving={movingId === account.id}
@@ -608,7 +613,9 @@ function WorkspaceBoardCardView({
         <div className="mt-auto space-y-2 border-t border-border px-4 py-3">
           {!card.isOwner ? (
             <p className="rounded-lg bg-sky-500/10 px-3 py-2 text-xs text-sky-800 dark:text-sky-300">
-              Team workspace — only the team owner can rename or delete.
+              {card.canManage
+                ? "Team workspace — Admins can connect, disconnect, and move accounts. Only the owner can rename or delete."
+                : "Team workspace — only the team owner can rename or delete."}
             </p>
           ) : onAddToTeam ? (
             <button
@@ -628,6 +635,7 @@ function WorkspaceBoardCardView({
 function AccountRow({
   account,
   currentWorkspaceId,
+  accountOwnerUserId,
   moveTargets,
   canMove,
   moving,
@@ -635,19 +643,26 @@ function AccountRow({
 }: {
   account: WorkspaceBoardAccount;
   currentWorkspaceId: string | null;
+  accountOwnerUserId: string;
   moveTargets: {
     id: string | null;
     name: string;
     kind: WorkspaceBoardCard["kind"];
     teamName: string | null;
+    ownerUserId: string;
+    canManage: boolean;
   }[];
   canMove: boolean;
   moving: boolean;
   onMove: (accountId: string, targetWorkspaceId: string | null) => void;
 }) {
   const PlatformIcon = getPlatformIcon(account.platform);
+  // Same account owner only, and only into workspaces the actor can manage.
   const destinations = moveTargets.filter(
-    (t) => t.id !== currentWorkspaceId,
+    (t) =>
+      t.id !== currentWorkspaceId &&
+      t.ownerUserId === accountOwnerUserId &&
+      t.canManage,
   );
 
   return (

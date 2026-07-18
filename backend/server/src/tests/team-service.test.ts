@@ -114,6 +114,23 @@ function mockSelectCounts(memberCount: number, inviteCount: number) {
   });
 }
 
+function mockTeamAdminAccess(
+  row: {
+    teamId: string;
+    teamName: string;
+    ownerUserId: string;
+    role: "admin" | "member";
+  } | null,
+) {
+  mockDb.select.mockImplementation(() => {
+    const limit = vi.fn().mockResolvedValue(row ? [row] : []);
+    const where = vi.fn().mockReturnValue({ limit });
+    const innerJoin = vi.fn().mockReturnValue({ where });
+    const from = vi.fn().mockReturnValue({ innerJoin });
+    return { from };
+  });
+}
+
 describe("team-service authorization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -196,12 +213,17 @@ describe("team-service authorization", () => {
   });
 
   it("does not allow removing the team owner", async () => {
-    mockResolveWorkspaceContext.mockResolvedValue(adminCtx());
     mockDb.query.teamMembers.findFirst.mockResolvedValue({
       id: "mem-owner",
       userId: "owner-1",
       role: "admin",
       teamId: "team-1",
+    });
+    mockTeamAdminAccess({
+      teamId: "team-1",
+      teamName: "Acme",
+      ownerUserId: "owner-1",
+      role: "admin",
     });
 
     await expect(removeMember("owner-1", "mem-owner")).rejects.toMatchObject({
@@ -210,12 +232,17 @@ describe("team-service authorization", () => {
   });
 
   it("does not allow demoting the team owner", async () => {
-    mockResolveWorkspaceContext.mockResolvedValue(adminCtx());
     mockDb.query.teamMembers.findFirst.mockResolvedValue({
       id: "mem-owner",
       userId: "owner-1",
       role: "admin",
       teamId: "team-1",
+    });
+    mockTeamAdminAccess({
+      teamId: "team-1",
+      teamName: "Acme",
+      ownerUserId: "owner-1",
+      role: "admin",
     });
 
     await expect(
@@ -224,9 +251,45 @@ describe("team-service authorization", () => {
   });
 
   it("forbids members from changing roles", async () => {
-    mockResolveWorkspaceContext.mockResolvedValue(memberCtx());
+    mockDb.query.teamMembers.findFirst.mockResolvedValue({
+      id: "mem-2",
+      userId: "member-2",
+      role: "member",
+      teamId: "team-1",
+    });
+    mockTeamAdminAccess({
+      teamId: "team-1",
+      teamName: "Acme",
+      ownerUserId: "owner-1",
+      role: "member",
+    });
     await expect(
       updateMemberRole("member-1", "mem-2", "admin"),
     ).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  it("allows role changes when active workspace is a different team", async () => {
+    mockDb.query.teamMembers.findFirst.mockResolvedValue({
+      id: "mem-2",
+      userId: "member-2",
+      role: "member",
+      teamId: "team-2",
+    });
+    mockTeamAdminAccess({
+      teamId: "team-2",
+      teamName: "Other",
+      ownerUserId: "owner-1",
+      role: "admin",
+    });
+    mockDb.query.user.findFirst.mockResolvedValue({
+      email: "member2@example.com",
+    });
+    const set = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) });
+    mockDb.update.mockReturnValue({ set });
+
+    await expect(
+      updateMemberRole("owner-1", "mem-2", "admin"),
+    ).resolves.toBeUndefined();
+    expect(mockDb.update).toHaveBeenCalled();
   });
 });

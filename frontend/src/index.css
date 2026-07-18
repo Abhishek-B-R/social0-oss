@@ -266,6 +266,32 @@ html {
   }
 }
 
+/* Slim dashboard scrollbars (default OS thumbs look huge next to the sidebar) */
+.dashboard-shell {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--border) 80%, transparent) transparent;
+}
+.dashboard-shell::-webkit-scrollbar,
+.dashboard-shell *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.dashboard-shell::-webkit-scrollbar-track,
+.dashboard-shell *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dashboard-shell::-webkit-scrollbar-thumb,
+.dashboard-shell *::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklab, var(--border) 90%, transparent);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.dashboard-shell::-webkit-scrollbar-thumb:hover,
+.dashboard-shell *::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-muted);
+}
+
 /* Force sidebar nav text and icons to bright white (overrides any inherited/link styles) */
 .dashboard-sidebar[data-sidebar="dashboard"] a {
   color: var(--sidebar-text) !important;

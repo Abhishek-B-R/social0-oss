@@ -130,6 +130,71 @@ async function requireAdminTeamsContext(actorUserId: string) {
   return ctx;
 }
 
+/**
+ * Authorize an admin action against a specific team (not the active workspace).
+ * Team settings pages often operate while the actor's active workspace is Main
+ * or another team — member/invite IDs must resolve by their own teamId.
+ */
+async function requireTeamAdminPermission(
+  actorUserId: string,
+  teamId: string,
+  permission: "invite_users" | "remove_users" | "change_roles",
+): Promise<{
+  teamId: string;
+  teamName: string;
+  ownerUserId: string;
+}> {
+  const [access] = await db
+    .select({
+      teamId: teams.id,
+      teamName: teams.name,
+      ownerUserId: teams.ownerUserId,
+      role: teamMembers.role,
+    })
+    .from(teams)
+    .innerJoin(
+      teamMembers,
+      and(
+        eq(teamMembers.teamId, teams.id),
+        eq(teamMembers.userId, actorUserId),
+      ),
+    )
+    .where(eq(teams.id, teamId))
+    .limit(1);
+
+  if (!access) {
+    throw new TeamServiceError(404, "Team not found.");
+  }
+
+  const isOwner = access.ownerUserId === actorUserId;
+  const ownerSub = isOwner
+    ? await getSubscriptionForUser(actorUserId)
+    : await getSubscriptionForUser(access.ownerUserId);
+  const teamsEnabled = getPlanLimits(ownerSub.tier).allowTeams;
+
+  if (!teamsEnabled) {
+    throw new TeamServiceError(
+      403,
+      "Teams is paused because the workspace Pro subscription is inactive.",
+    );
+  }
+
+  const permissions = permissionsForRole(access.role as WorkspaceRole, {
+    isOwner,
+    teamsEnabled,
+    inWorkspace: true,
+  });
+  if (!permissions.has(permission)) {
+    throw new TeamServiceError(403, "Forbidden");
+  }
+
+  return {
+    teamId: access.teamId,
+    teamName: access.teamName,
+    ownerUserId: access.ownerUserId,
+  };
+}
+
 async function loadTeamMembers(teamId: string, ownerUserId: string) {
   const memberRows = await db
     .select({
@@ -848,21 +913,19 @@ export async function updateMemberRole(
     throw new TeamServiceError(400, "Invalid role. Use 'admin' or 'member'.");
   }
 
-  const ctx = await requireAdminTeamsContext(actorUserId);
-  if (!ctx.permissions.has("change_roles")) {
-    throw new TeamServiceError(403, "Forbidden");
-  }
-
   const member = await db.query.teamMembers.findFirst({
-    where: and(
-      eq(teamMembers.id, memberId),
-      eq(teamMembers.teamId, ctx.teamId!),
-    ),
+    where: eq(teamMembers.id, memberId),
   });
   if (!member) {
     throw new TeamServiceError(404, "Member not found");
   }
-  if (member.userId === ctx.ownerUserId) {
+
+  const team = await requireTeamAdminPermission(
+    actorUserId,
+    member.teamId,
+    "change_roles",
+  );
+  if (member.userId === team.ownerUserId) {
     throw new TeamServiceError(400, "Cannot change the owner's role.");
   }
 
@@ -879,7 +942,7 @@ export async function updateMemberRole(
     try {
       await sendWorkspaceRoleChangedEmail({
         to: memberUser.email,
-        workspaceName: ctx.teamName ?? "Team",
+        workspaceName: team.teamName,
         role: roleRaw,
       });
     } catch {
@@ -892,21 +955,19 @@ export async function removeMember(
   actorUserId: string,
   memberId: string,
 ): Promise<void> {
-  const ctx = await requireAdminTeamsContext(actorUserId);
-  if (!ctx.permissions.has("remove_users")) {
-    throw new TeamServiceError(403, "Forbidden");
-  }
-
   const member = await db.query.teamMembers.findFirst({
-    where: and(
-      eq(teamMembers.id, memberId),
-      eq(teamMembers.teamId, ctx.teamId!),
-    ),
+    where: eq(teamMembers.id, memberId),
   });
   if (!member) {
     throw new TeamServiceError(404, "Member not found");
   }
-  if (member.userId === ctx.ownerUserId) {
+
+  const team = await requireTeamAdminPermission(
+    actorUserId,
+    member.teamId,
+    "remove_users",
+  );
+  if (member.userId === team.ownerUserId) {
     throw new TeamServiceError(400, "Cannot remove the team owner.");
   }
 
@@ -920,7 +981,7 @@ export async function removeMember(
   const teamWorkspaceIds = await db
     .select({ id: workspaces.id })
     .from(workspaces)
-    .where(eq(workspaces.teamId, ctx.teamId!));
+    .where(eq(workspaces.teamId, team.teamId));
   const ids = teamWorkspaceIds.map((w) => w.id);
   if (ids.length > 0) {
     await db
@@ -938,7 +999,7 @@ export async function removeMember(
     try {
       await sendWorkspaceMemberRemovedEmail({
         to: memberUser.email,
-        workspaceName: ctx.teamName ?? "Team",
+        workspaceName: team.teamName,
       });
     } catch {
       // non-blocking
@@ -950,17 +1011,19 @@ export async function revokeInvitation(
   actorUserId: string,
   invitationId: string,
 ): Promise<void> {
-  const ctx = await requireAdminTeamsContext(actorUserId);
-
   const invite = await db.query.teamInvitations.findFirst({
-    where: and(
-      eq(teamInvitations.id, invitationId),
-      eq(teamInvitations.teamId, ctx.teamId!),
-    ),
+    where: eq(teamInvitations.id, invitationId),
   });
   if (!invite) {
     throw new TeamServiceError(404, "Invitation not found");
   }
+
+  await requireTeamAdminPermission(
+    actorUserId,
+    invite.teamId,
+    "invite_users",
+  );
+
   if (invite.acceptedAt) {
     throw new TeamServiceError(409, "Invitation already accepted");
   }
@@ -1768,6 +1831,8 @@ export type WorkspaceBoardCard = {
   kind: "personal" | "owned" | "joined";
   teamId: string | null;
   teamName: string | null;
+  /** Account owner for connections in this card (personal = viewer, team = team owner). */
+  ownerUserId: string;
   isOwner: boolean;
   canManage: boolean;
   canRename: boolean;
@@ -1838,6 +1903,7 @@ export async function listWorkspaceBoardForUser(
     kind: "personal",
     teamId: null,
     teamName: null,
+    ownerUserId: actorUserId,
     isOwner: true,
     canManage: true,
     canRename: false,
@@ -1847,12 +1913,28 @@ export async function listWorkspaceBoardForUser(
     accounts: personalAccounts,
   });
 
+  const uniqueOwnerIds = [
+    ...new Set(list.teams.map((t) => t.ownerUserId)),
+  ];
+  const ownerTeamsEnabledById = new Map<string, boolean>();
+  await Promise.all(
+    uniqueOwnerIds.map(async (ownerId) => {
+      const sub = await getSubscriptionForUser(ownerId);
+      ownerTeamsEnabledById.set(
+        ownerId,
+        getPlanLimits(sub.tier).allowTeams,
+      );
+    }),
+  );
+
   for (const team of list.teams) {
+    const ownerTeamsEnabled =
+      ownerTeamsEnabledById.get(team.ownerUserId) ?? false;
     const canManage =
       team.isOwner ||
       permissionsForRole(team.role, {
         isOwner: team.isOwner,
-        teamsEnabled: true,
+        teamsEnabled: ownerTeamsEnabled,
         inWorkspace: true,
       }).has("manage_connections");
     const canRename = team.isOwner;
@@ -1877,6 +1959,7 @@ export async function listWorkspaceBoardForUser(
         kind: team.kind,
         teamId: team.id,
         teamName: team.isCollaborative ? team.name : null,
+        ownerUserId: team.ownerUserId,
         isOwner: team.isOwner,
         canManage,
         canRename,
@@ -1974,13 +2057,9 @@ async function assertCanMoveToTarget(
   accountUserId: string,
   targetWorkspaceId: string | null,
 ): Promise<void> {
+  // Main (null) = that account owner's personal pool. Allowed once the actor
+  // already passed assertCanManageAccount (owner or team admin).
   if (targetWorkspaceId === null) {
-    if (accountUserId !== actorUserId) {
-      throw new TeamServiceError(
-        403,
-        "Only the account owner can move connections to Main.",
-      );
-    }
     return;
   }
 
@@ -2013,6 +2092,8 @@ async function assertCanMoveToTarget(
   }
 
   const isOwner = row.ownerUserId === actorUserId;
+  if (isOwner) return;
+
   const teamsEnabled = getPlanLimits(
     (await getSubscriptionForUser(row.ownerUserId)).tier,
   ).allowTeams;
@@ -2023,7 +2104,7 @@ async function assertCanMoveToTarget(
     );
   }
   const perms = permissionsForRole(row.role as WorkspaceRole, {
-    isOwner,
+    isOwner: false,
     teamsEnabled,
     inWorkspace: true,
   });
