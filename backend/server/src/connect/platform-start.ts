@@ -72,13 +72,19 @@ export async function platformStart(
   let isReauth = false;
   let reauthAccountId: string | undefined;
   if (reauthParam === "1" && accountIdParam) {
+    const { connectionScopeCondition } = await import(
+      "../lib/workspace/context.js"
+    );
     const [account] = await db
       .select({ id: connectedAccounts.id })
       .from(connectedAccounts)
       .where(
         and(
           eq(connectedAccounts.id, accountIdParam),
-          eq(connectedAccounts.userId, resourceUserId),
+          connectionScopeCondition({
+            resourceUserId,
+            workspaceId,
+          }),
         ),
       )
       .limit(1);

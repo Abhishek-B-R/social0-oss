@@ -166,10 +166,19 @@ export async function ensureOwnerTeam(
   ownerUserId: string,
   opts?: { name?: string },
 ): Promise<{ teamId: string; workspaceId: string; created: boolean }> {
-  const existingTeam = await db.query.teams.findFirst({
-    where: eq(teams.ownerUserId, ownerUserId),
-    columns: { id: true, name: true },
-  });
+  // Prefer a collaborative (invitable) team over a solo container.
+  const existingTeam =
+    (await db.query.teams.findFirst({
+      where: and(
+        eq(teams.ownerUserId, ownerUserId),
+        eq(teams.isCollaborative, true),
+      ),
+      columns: { id: true, name: true },
+    })) ??
+    (await db.query.teams.findFirst({
+      where: eq(teams.ownerUserId, ownerUserId),
+      columns: { id: true, name: true },
+    }));
 
   if (existingTeam) {
     let ws = await db.query.workspaces.findFirst({

@@ -132,7 +132,9 @@ export async function inviteTeamMember(body: {
   }
 }
 
-export async function acceptTeamInvite(token: string): Promise<void> {
+export async function acceptTeamInvite(
+  token: string,
+): Promise<{ workspaceId: string; teamId: string }> {
   const res = await fetchApi("/api/team/accept", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -141,6 +143,7 @@ export async function acceptTeamInvite(token: string): Promise<void> {
   if (!res.ok) {
     throw new Error(await parseError(res, "Failed to accept invitation"));
   }
+  return res.json() as Promise<{ workspaceId: string; teamId: string }>;
 }
 
 export type MyPendingInvitation = {

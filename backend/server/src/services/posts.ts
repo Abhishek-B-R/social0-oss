@@ -9,6 +9,7 @@ import {
 } from "@/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
 import { requireWorkspaceSession } from "@/lib/workspace/session";
+import { connectionScopeCondition } from "@/lib/workspace/context";
 import { enqueuePublishPostStandalone } from "./enqueue.js";
 import { userOwnsQueueSlot } from "@/lib/queue-slot-validation";
 import {
@@ -151,13 +152,13 @@ export async function createPost(
     }
   }
 
-  // Ensure all selected accounts belong to the current user
+  // Ensure selected accounts belong to the active workspace scope
   const ownedAccounts = await db
     .select({ id: connectedAccounts.id })
     .from(connectedAccounts)
     .where(
       and(
-        eq(connectedAccounts.userId, userId),
+        connectionScopeCondition(ws.ctx),
         inArray(connectedAccounts.id, selectedAccountIds),
       ),
     );
@@ -527,7 +528,7 @@ export async function updatePost(
     .from(connectedAccounts)
     .where(
       and(
-        eq(connectedAccounts.userId, userId),
+        connectionScopeCondition(ws.ctx),
         inArray(connectedAccounts.id, selectedAccountIds),
       ),
     );

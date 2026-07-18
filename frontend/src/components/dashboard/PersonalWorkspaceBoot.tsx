@@ -14,19 +14,20 @@ const WORKSPACES_QUERY_KEY = ["workspaces"] as const;
 
 /**
  * On personal /dashboard routes (not team app / team settings):
- * - Leave account-level pages alone (settings, billing, developer, …)
  * - Owned workspace on a mirrored page → `/dashboard/teams/:teamId/*`
  * - Joined workspace on mirrored personal URLs → switch back to Main
+ * - Personal-only account pages (billing/settings/…) with a non-Main
+ *   workspace active → switch to Main so actor-scoped pages work
  */
 export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
   const { pathname } = useLocation();
   const queryClient = useQueryClient();
   const ran = useRef(false);
 
-  const skipBoot =
-    isTeamAppPath(pathname) ||
-    isTeamSettingsPath(pathname) ||
-    isPersonalOnlyDashboardPath(pathname);
+  const onTeamTree =
+    isTeamAppPath(pathname) || isTeamSettingsPath(pathname);
+  const personalOnly = isPersonalOnlyDashboardPath(pathname);
+  const skipBoot = onTeamTree;
 
   const { data } = useQuery({
     queryKey: WORKSPACES_QUERY_KEY,
@@ -38,6 +39,37 @@ export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
     if (!enabled || skipBoot || !data || ran.current) return;
 
     const active = data.workspaces.find((w) => w.isActive);
+
+    // Personal-only account routes must run as Main (actor context).
+    if (personalOnly) {
+      if (!active || active.kind === "personal" || active.id == null) {
+        writePersonalWorkspaceId(null);
+        ran.current = true;
+        return;
+      }
+      ran.current = true;
+      let cancelled = false;
+      (async () => {
+        try {
+          await switchWorkspace(null);
+          writePersonalWorkspaceId(null);
+          if (!cancelled) {
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY }),
+              queryClient.invalidateQueries({ queryKey: ["team"] }),
+              queryClient.invalidateQueries({ queryKey: ["dashboard-layout"] }),
+              queryClient.invalidateQueries({ queryKey: ["connections"] }),
+            ]);
+            window.location.reload();
+          }
+        } catch {
+          // leave user as-is if switch fails
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
 
     // Owned team workspace on a mirrored personal URL → team app tree
     if (active?.kind === "owned" && active.teamId) {
@@ -85,7 +117,7 @@ export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, [enabled, skipBoot, pathname, data, queryClient]);
+  }, [enabled, skipBoot, personalOnly, pathname, data, queryClient]);
 
   return null;
 }

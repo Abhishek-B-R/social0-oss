@@ -81,10 +81,16 @@ export function DashboardLayout() {
     }
   }, [session, onboarding, location.pathname, navigate]);
 
+  const relativePath = location.pathname
+    .replace(/^\/dashboard\/teams\/[^/]+\/?/, "")
+    .replace(/^\/dashboard\/?/, "");
+  const onConnectionsPage =
+    relativePath === "connections" ||
+    relativePath.startsWith("connections/");
   const showConnectBanner =
     onboarding != null &&
     onboarding.connectedAccountsCount === 0 &&
-    !location.pathname.startsWith("/dashboard/connections");
+    !onConnectionsPage;
 
   const sidebarUser =
     session && layoutData

@@ -313,6 +313,8 @@ export type LoadConnectionsPageDataResult =
         hasUsedTrial: boolean;
         /** Additive: false for members without manage_connections. */
         canManageConnections?: boolean;
+        /** Owner (or personal account) can open billing upgrade CTAs. */
+        canAccessBilling?: boolean;
       };
     }
   | { ok: false; error: string };
@@ -376,6 +378,7 @@ export async function loadConnectionsPageData(): Promise<LoadConnectionsPageData
       },
       hasUsedTrial: accountLimit.hasUsedTrial,
       canManageConnections: ctx.permissions.has("manage_connections"),
+      canAccessBilling: ctx.permissions.has("access_billing"),
     },
   };
 }
@@ -404,11 +407,9 @@ export async function loadBillingPageData(): Promise<LoadBillingPageDataResult> 
   if (!session?.user?.id) {
     return { ok: false, error: "Unauthorized" };
   }
-  const ctx = await resolveWorkspaceContext(session.user.id);
-  if (!ctx.permissions.has("access_billing")) {
-    return { ok: false, error: "Forbidden" };
-  }
-  const userId = ctx.resourceUserId;
+  // Billing is always personal (actor’s own subscription). Team Members must
+  // still manage their own plan — never the workspace owner’s.
+  const userId = session.user.id;
 
   const [{ dateFormat, timezone }, subscription, accountLimit] =
     await Promise.all([

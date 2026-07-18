@@ -9,6 +9,7 @@ import {
   type MyPendingInvitation,
 } from "@/api/team";
 import { Button } from "@/components/ui/button";
+import { writeTeamWorkspaceId } from "@/lib/dashboard-base-path";
 
 const MY_INVITES_QUERY_KEY = ["team", "my-invitations"] as const;
 
@@ -46,14 +47,17 @@ export function TeamInviteBanners() {
     setBusyId(inv.id);
     setBusyAction("accept");
     try {
-      await acceptMyInvitation(inv.id);
+      const result = await acceptMyInvitation(inv.id);
       toast.success(`Joined ${inv.teamName}`);
+      writeTeamWorkspaceId(result.teamId, result.workspaceId);
       try {
         await invalidate();
       } catch {
         // Join already succeeded — don't surface invalidate failures as accept errors.
       }
-      window.location.assign("/dashboard");
+      // Land in the team app URL tree so PersonalWorkspaceBoot does not wipe
+      // the just-activated joined workspace.
+      window.location.assign(`/dashboard/teams/${result.teamId}/composer`);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to accept invitation",

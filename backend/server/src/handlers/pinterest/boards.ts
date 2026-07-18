@@ -17,13 +17,27 @@ export async function listPinterestBoards(req: AppRequest) {
     return Response.json({ error: "accountId is required" }, { status: 400 });
   }
 
+  const { requireWorkspacePermissionForUser } = await import(
+    "../../lib/workspace/session.js"
+  );
+  const { connectionScopeCondition } = await import(
+    "../../lib/workspace/context.js"
+  );
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "view_connections",
+  );
+  if (!ws.ok) {
+    return Response.json({ error: ws.error }, { status: ws.statusCode });
+  }
+
   const [account] = await db
     .select({ id: connectedAccounts.id, platform: connectedAccounts.platform })
     .from(connectedAccounts)
     .where(
       and(
         eq(connectedAccounts.id, accountId),
-        eq(connectedAccounts.userId, session.user.id),
+        connectionScopeCondition(ws.ctx),
       ),
     )
     .limit(1);
@@ -82,13 +96,27 @@ export async function savePinterestBoard(req: AppRequest) {
     );
   }
 
+  const { requireWorkspacePermissionForUser } = await import(
+    "../../lib/workspace/session.js"
+  );
+  const { connectionScopeCondition } = await import(
+    "../../lib/workspace/context.js"
+  );
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "manage_connections",
+  );
+  if (!ws.ok) {
+    return Response.json({ error: ws.error }, { status: ws.statusCode });
+  }
+
   const [account] = await db
     .select({ id: connectedAccounts.id, platform: connectedAccounts.platform })
     .from(connectedAccounts)
     .where(
       and(
         eq(connectedAccounts.id, accountId),
-        eq(connectedAccounts.userId, session.user.id),
+        connectionScopeCondition(ws.ctx),
       ),
     )
     .limit(1);

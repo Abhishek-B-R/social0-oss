@@ -71,6 +71,7 @@ export type LoadConnectionsPageDataResult =
           | undefined;
         hasUsedTrial: boolean;
         canManageConnections?: boolean;
+        canAccessBilling?: boolean;
       };
     }
   | { ok: false; error: string };

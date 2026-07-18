@@ -29,6 +29,20 @@ export async function setDefaultPinterestBoard(req: AppRequest) {
     );
   }
 
+  const { requireWorkspacePermissionForUser } = await import(
+    "../../lib/workspace/session.js"
+  );
+  const { connectionScopeCondition } = await import(
+    "../../lib/workspace/context.js"
+  );
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "manage_connections",
+  );
+  if (!ws.ok) {
+    return Response.json({ error: ws.error }, { status: ws.statusCode });
+  }
+
   const [account] = await db
     .select({
       id: connectedAccounts.id,
@@ -39,7 +53,7 @@ export async function setDefaultPinterestBoard(req: AppRequest) {
     .where(
       and(
         eq(connectedAccounts.id, accountId),
-        eq(connectedAccounts.userId, session.user.id),
+        connectionScopeCondition(ws.ctx),
       ),
     )
     .limit(1);

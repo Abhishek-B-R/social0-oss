@@ -64,12 +64,9 @@ export function BillingPage() {
   }
 
   if (error || !raw || !subscription) {
-    const isForbidden = error === "Forbidden";
     return (
       <div className="rounded-xl border border-border bg-card p-6 text-sm text-foreground">
-        {isForbidden
-          ? "Billing is managed by the workspace owner. Team members don’t need their own Pro subscription."
-          : (error ?? "Could not load billing.")}
+        {error ?? "Could not load billing."}
       </div>
     );
   }

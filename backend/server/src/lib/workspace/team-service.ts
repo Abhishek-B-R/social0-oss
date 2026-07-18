@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { and, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import {
   connectedAccounts,
@@ -703,15 +703,19 @@ export async function listMyPendingInvitations(
 
   const result: MyPendingInvitationDto[] = [];
   for (const row of rows) {
-    const firstWs = await db.query.workspaces.findFirst({
-      where: eq(workspaces.teamId, row.teamId),
-      columns: { id: true, name: true },
+    const teamRow = await db.query.teams.findFirst({
+      where: eq(teams.id, row.teamId),
+      columns: { defaultWorkspaceId: true },
     });
+    const landingWs = await resolveTeamLandingWorkspace(
+      row.teamId,
+      teamRow?.defaultWorkspaceId,
+    );
     result.push({
       id: row.id,
       teamId: row.teamId,
       teamName: row.teamName,
-      workspaceId: firstWs?.id ?? null,
+      workspaceId: landingWs?.id ?? null,
       workspaceName: row.teamName,
       role: row.role as WorkspaceRole,
       inviterName: row.inviterName,
@@ -762,11 +766,11 @@ async function acceptInviteRecord(
     columns: { id: true },
   });
 
-  const firstWs = await db.query.workspaces.findFirst({
-    where: eq(workspaces.teamId, invite.teamId),
-    columns: { id: true },
-  });
-  if (!firstWs) {
+  const landingWs = await resolveTeamLandingWorkspace(
+    invite.teamId,
+    team.defaultWorkspaceId,
+  );
+  if (!landingWs) {
     throw new TeamServiceError(410, "This invitation is no longer valid.");
   }
 
@@ -777,8 +781,8 @@ async function acceptInviteRecord(
         "This invitation has already been accepted.",
       );
     }
-    await setActiveWorkspace(actorUserId, firstWs.id);
-    return { workspaceId: firstWs.id, teamId: invite.teamId };
+    await setActiveWorkspace(actorUserId, landingWs.id);
+    return { workspaceId: landingWs.id, teamId: invite.teamId };
   }
 
   const teamsEnabled = getPlanLimits(
@@ -805,7 +809,7 @@ async function acceptInviteRecord(
     .set({ acceptedAt: new Date() })
     .where(eq(teamInvitations.id, invite.id));
 
-  await setActiveWorkspace(actorUserId, firstWs.id);
+  await setActiveWorkspace(actorUserId, landingWs.id);
 
   const owner = await db.query.user.findFirst({
     where: eq(user.id, team.ownerUserId),
@@ -824,13 +828,35 @@ async function acceptInviteRecord(
     }
   }
 
-  return { workspaceId: firstWs.id, teamId: invite.teamId };
+  return { workspaceId: landingWs.id, teamId: invite.teamId };
+}
+
+/** Prefer the team's default workspace; fall back to oldest workspace. */
+async function resolveTeamLandingWorkspace(
+  teamId: string,
+  defaultWorkspaceId: string | null | undefined,
+): Promise<{ id: string } | null> {
+  if (defaultWorkspaceId) {
+    const preferred = await db.query.workspaces.findFirst({
+      where: and(
+        eq(workspaces.id, defaultWorkspaceId),
+        eq(workspaces.teamId, teamId),
+      ),
+      columns: { id: true },
+    });
+    if (preferred) return preferred;
+  }
+  return db.query.workspaces.findFirst({
+    where: eq(workspaces.teamId, teamId),
+    columns: { id: true },
+    orderBy: [asc(workspaces.createdAt)],
+  });
 }
 
 export async function acceptInvite(
   actorUserId: string,
   token: string,
-): Promise<{ workspaceId: string }> {
+): Promise<{ workspaceId: string; teamId: string }> {
   if (!token?.trim()) {
     throw new TeamServiceError(400, "Invitation token is required.");
   }
@@ -846,8 +872,7 @@ export async function acceptInvite(
     throw new TeamServiceError(410, "This invitation has expired.");
   }
 
-  const result = await acceptInviteRecord(actorUserId, invite);
-  return { workspaceId: result.workspaceId };
+  return acceptInviteRecord(actorUserId, invite);
 }
 
 export async function acceptMyInvitation(

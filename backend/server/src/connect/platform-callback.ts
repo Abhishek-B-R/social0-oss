@@ -1019,6 +1019,7 @@ export async function platformCallback(
             ? and(
                 eq(connectedAccounts.userId, userId),
                 eq(connectedAccounts.platform, platform),
+                connectedAccountWorkspaceCondition(workspaceId),
               )
             : and(
                 eq(connectedAccounts.userId, userId),

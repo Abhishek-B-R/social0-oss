@@ -44,6 +44,12 @@ import { getPlatformIcon } from "@/lib/platform-icons";
 import { cn } from "@/lib/utils";
 import { DOCS_TEAMS_URL } from "@/lib/docs-url";
 import { CreateWorkspaceDialog } from "./CreateWorkspaceDialog";
+import {
+  mapPathToBase,
+  writePersonalWorkspaceId,
+  writeTeamWorkspaceId,
+} from "@/lib/dashboard-base-path";
+import { useLocation } from "react-router-dom";
 
 const BOARD_QUERY_KEY = ["workspace-board"] as const;
 const WORKSPACES_QUERY_KEY = ["workspaces"] as const;
@@ -57,6 +63,7 @@ function connectionHandle(platform: string, username: string | null): string {
 
 export function WorkspacesPage() {
   const queryClient = useQueryClient();
+  const { pathname } = useLocation();
   const [movingId, setMovingId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createPrefillTeamId, setCreatePrefillTeamId] = useState<string | null>(
@@ -162,9 +169,30 @@ export function WorkspacesPage() {
     ) {
       return;
     }
+    const target = cards.find((c) =>
+      workspaceId === null ? c.id === null : c.id === workspaceId,
+    );
     setSwitchingId(key);
     try {
       await switchWorkspace(workspaceId);
+      if (workspaceId === null || !target || target.kind === "personal") {
+        writePersonalWorkspaceId(null);
+        await invalidateAll();
+        toast.success(`Switched to ${label}`);
+        const dest = mapPathToBase(pathname, "/dashboard");
+        window.location.assign(dest);
+        return;
+      }
+      if (target.teamId) {
+        writeTeamWorkspaceId(target.teamId, workspaceId);
+        await invalidateAll();
+        toast.success(`Switched to ${label}`);
+        // Workspaces is a personal-only page — always enter the team app tree.
+        window.location.assign(
+          `/dashboard/teams/${target.teamId}/composer`,
+        );
+        return;
+      }
       await invalidateAll();
       toast.success(`Switched to ${label}`);
       window.location.reload();

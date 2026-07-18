@@ -16,6 +16,7 @@ import { IconCrown, IconLoader2 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import DocsInfoIcon from "../info-icon";
 import { DOCS_CONNECTIONS_URL } from "@/lib/docs-url";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 
 const PLATFORM_UI: Record<string, { name: string; color: string }> = {
   linkedin: { name: "LinkedIn", color: "bg-[#0A66C2]" },
@@ -69,6 +70,7 @@ export function ConnectionsList({
   accountLimit,
   requireAuth = false,
   canManageConnections = true,
+  canAccessBilling = true,
   onAccountDisconnected,
   onAccountsChanged,
 }: {
@@ -77,6 +79,8 @@ export function ConnectionsList({
   requireAuth?: boolean;
   /** Teams Members can view but not connect/disconnect/refresh. */
   canManageConnections?: boolean;
+  /** Non-owners should not be sent to billing for plan upgrades. */
+  canAccessBilling?: boolean;
   /** Optimistic UI update after disconnect — avoids full-page refresh. */
   onAccountDisconnected?: (accountId: string) => void;
   /** Background refetch after token/premium changes. */
@@ -94,6 +98,7 @@ export function ConnectionsList({
     null,
   );
   const navigate = useNavigate();
+  const dash = useDashboardPath();
   const invalidateQueries = useInvalidateQueries();
   const [searchParams] = useSearchParams();
 
@@ -214,7 +219,7 @@ export function ConnectionsList({
               {accountLimit.currentTotal}/{accountLimit.limitTotal} accounts
               connected
             </span>
-            {atLimit && (
+            {atLimit && canAccessBilling && (
               <>
                 {" "}
                 -{" "}
@@ -231,12 +236,16 @@ export function ConnectionsList({
         {canManageConnections && atLimit && (
           <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
             You&apos;ve reached your {accountLimit!.limitTotal} account limit.{" "}
-            <Link
-              href="/dashboard/billing"
-              className="font-medium underline underline-offset-2 hover:no-underline"
-            >
-              Upgrade →
-            </Link>
+            {canAccessBilling ? (
+              <Link
+                href="/dashboard/billing"
+                className="font-medium underline underline-offset-2 hover:no-underline"
+              >
+                Upgrade →
+              </Link>
+            ) : (
+              <span>Ask the team owner to upgrade.</span>
+            )}
           </div>
         )}
         <div className="min-w-0 overflow-x-auto rounded-2xl border border-border bg-bg-elevated p-3 shadow-sm">
@@ -281,7 +290,7 @@ export function ConnectionsList({
                         disabled={atLimit}
                         onDisabledClick={atLimit ? handleLimitClick : undefined}
                         requireAuth={requireAuth}
-                        returnTo="/dashboard/connections"
+                        returnTo={dash("connections")}
                       />
                     </div>
                   ) : null}

@@ -43,6 +43,7 @@ export async function platformReauth(
     );
   }
   const resourceUserId = ws.ctx.resourceUserId;
+  const workspaceId = ws.ctx.workspaceId;
 
   const rate = await enforceRateLimit(oauthLimiter, session.user.id);
   if (!rate.allowed) {
@@ -64,13 +65,16 @@ export async function platformReauth(
     );
   }
 
+  const { connectionScopeCondition } = await import(
+    "../lib/workspace/context.js"
+  );
   const [account] = await db
     .select({ id: connectedAccounts.id })
     .from(connectedAccounts)
     .where(
       and(
         eq(connectedAccounts.id, accountId),
-        eq(connectedAccounts.userId, resourceUserId),
+        connectionScopeCondition({ resourceUserId, workspaceId }),
       ),
     )
     .limit(1);
