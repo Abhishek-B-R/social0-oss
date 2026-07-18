@@ -5,12 +5,12 @@ import Link from "@/components/AppLink";
 import {
   IconArrowLeft,
   IconCalendar,
+  IconChevronDown,
   IconChevronRight,
   IconLoader2,
   IconPencil,
   IconPlus,
   IconTrash,
-  IconUserPlus,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import {
@@ -266,11 +266,9 @@ export function TeamDetailPage() {
     return (
       <div className="mt-6 space-y-4">
         <BackLink />
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-6 py-10 text-center">
-          <h2 className="font-serif text-xl font-semibold text-text">
-            Teams is paused
-          </h2>
-          <p className="mx-auto mt-2 max-w-md text-sm text-amber-900 dark:text-amber-100">
+        <div className="rounded-xl border border-border bg-bg-elevated p-6 text-center">
+          <h2 className="text-base font-semibold text-text">Teams is paused</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm text-text-muted">
             This team&apos;s Pro subscription has lapsed.
             {isOwner
               ? " Renew Pro to restore invites and shared access."
@@ -279,7 +277,7 @@ export function TeamDetailPage() {
           {isOwner ? (
             <Link
               href="/dashboard/billing"
-              className="mt-6 inline-flex h-9 items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover"
+              className="mt-4 inline-flex h-9 items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-[transform,colors] duration-150 ease-out hover:bg-accent-hover active:scale-[0.97]"
             >
               Renew Pro
             </Link>
@@ -300,7 +298,7 @@ export function TeamDetailPage() {
       </p>
 
       <div className="mt-6 space-y-5">
-        <section className="rounded-xl border border-border bg-bg-elevated p-5 shadow-sm sm:p-6">
+        <section className="rounded-xl border border-border bg-bg-elevated p-5 sm:p-6">
           <h2 className="text-sm font-semibold text-text">Team information</h2>
           <div className="mt-4 space-y-2">
             <div className="flex items-center justify-between gap-2">
@@ -358,20 +356,15 @@ export function TeamDetailPage() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-border bg-bg-elevated p-5 shadow-sm sm:p-6">
+        <section className="rounded-xl border border-border bg-bg-elevated p-5 sm:p-6">
           <h2 className="text-sm font-semibold text-text">Workspaces</h2>
-          <p className="mt-1 text-xs text-text-muted">
-            Team members can access all workspaces below.
-            {isOwner ? " Only you can add or remove workspaces." : ""}
+          <p className="mt-1 text-sm text-text-muted">
+            Members can access all workspaces below.
+            {isOwner
+              ? " Deleting a non-default workspace moves its connections to the default (duplicates skipped)."
+              : ""}
           </p>
-          {isOwner ? (
-            <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-950 dark:text-amber-100">
-              Deleting a non-default workspace moves its connections to this
-              team&apos;s default workspace. Duplicates already there are
-              skipped.
-            </div>
-          ) : null}
-          <ul className="mt-4 divide-y divide-border rounded-lg border border-border">
+          <ul className="mt-4 divide-y divide-border rounded-xl border border-border">
             {workspaces.map((ws) => (
               <li
                 key={ws.id}
@@ -421,13 +414,14 @@ export function TeamDetailPage() {
             ))}
           </ul>
           {isOwner ? (
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
               <Input
                 placeholder="New workspace name"
                 value={newWsName}
                 onChange={(e) => setNewWsName(e.target.value)}
                 maxLength={80}
                 disabled={addingWs}
+                className="h-9 py-0 sm:min-w-0 sm:flex-1"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -436,6 +430,7 @@ export function TeamDetailPage() {
                 }}
               />
               <Button
+                className="h-9 shrink-0"
                 disabled={addingWs || !newWsName.trim()}
                 onClick={() => void handleAddWorkspace()}
               >
@@ -453,23 +448,22 @@ export function TeamDetailPage() {
           ) : null}
         </section>
 
-        <section className="rounded-xl border border-border bg-bg-elevated p-5 shadow-sm sm:p-6">
+        <section className="rounded-xl border border-border bg-bg-elevated p-5 sm:p-6">
           <h2 className="text-sm font-semibold text-text">Team members</h2>
 
           {permissions.canInvite ? (
-            <div className="mt-4 rounded-lg border border-border bg-bg p-4">
-              <p className="mb-3 flex items-center gap-1.5 text-sm font-medium text-text">
-                <IconUserPlus className="h-4 w-4" strokeWidth={1.5} />
-                Invite new member
+            <div className="mt-4 rounded-xl border border-border bg-bg p-4">
+              <p className="mb-3 text-sm font-medium text-text">
+                Invite member
               </p>
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <Input
                   type="email"
                   placeholder="Email address"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   disabled={inviting}
-                  className="sm:flex-1"
+                  className="h-9 py-0 sm:min-w-0 sm:flex-1"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -477,18 +471,25 @@ export function TeamDetailPage() {
                     }
                   }}
                 />
-                <select
-                  value={inviteRole}
-                  onChange={(e) =>
-                    setInviteRole(e.target.value as WorkspaceRole)
-                  }
-                  disabled={inviting}
-                  className="rounded-xl border border-input bg-bg px-4 py-2.5 text-sm font-medium text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
-                >
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
-                </select>
+                <div className="relative shrink-0 sm:w-[7.5rem]">
+                  <select
+                    value={inviteRole}
+                    onChange={(e) =>
+                      setInviteRole(e.target.value as WorkspaceRole)
+                    }
+                    disabled={inviting}
+                    className="h-9 w-full appearance-none rounded-xl border border-input bg-bg px-3 pr-8 text-sm leading-none text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
+                  >
+                    <option value="member">Member</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                  <IconChevronDown
+                    className="pointer-events-none absolute top-1/2 right-2.5 h-3.5 w-3.5 -translate-y-1/2 text-text-muted"
+                    strokeWidth={1.5}
+                  />
+                </div>
                 <Button
+                  className="h-9 shrink-0"
                   disabled={inviting || !inviteEmail.trim()}
                   onClick={() => void handleInvite()}
                 >
@@ -505,14 +506,16 @@ export function TeamDetailPage() {
           ) : null}
 
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[520px] text-left text-sm">
+            <table className="w-full min-w-[560px] table-fixed text-left text-sm">
               <thead>
-                <tr className="border-b border-border text-[11px] font-medium uppercase tracking-wider text-text-muted">
-                  <th className="px-2 py-2 font-medium">Email</th>
-                  <th className="px-2 py-2 font-medium">Role</th>
-                  <th className="px-2 py-2 font-medium">Status</th>
-                  <th className="px-2 py-2 font-medium">Joined</th>
-                  <th className="px-2 py-2 font-medium">Actions</th>
+                <tr className="border-b border-border bg-bg-subtle text-text-muted">
+                  <th className="px-3 py-2.5 font-medium">Email</th>
+                  <th className="w-[7.5rem] px-3 py-2.5 font-medium">Role</th>
+                  <th className="w-[5.5rem] px-3 py-2.5 font-medium">Status</th>
+                  <th className="w-[6.5rem] px-3 py-2.5 font-medium">Joined</th>
+                  <th className="w-14 px-3 py-2.5 text-center font-medium">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -552,18 +555,18 @@ export function TeamDetailPage() {
 
         <Link
           href="/dashboard/settings#queue"
-          className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated px-5 py-4 shadow-sm transition-colors hover:bg-sidebar-active/40"
+          className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated px-5 py-4 transition-colors duration-150 ease-out hover:bg-muted"
         >
           <IconCalendar
             className="h-5 w-5 shrink-0 text-text-muted"
             strokeWidth={1.5}
           />
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold text-text">
+            <span className="block text-sm font-medium text-text">
               Queue schedule
             </span>
             <span className="mt-0.5 block text-sm text-text-muted">
-              Set recurring posting times so the team can add posts to a queue.
+              Set recurring posting times for the team queue.
             </span>
           </span>
           <IconChevronRight
@@ -573,7 +576,7 @@ export function TeamDetailPage() {
         </Link>
 
         {isOwner ? (
-          <section className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 shadow-sm sm:p-6">
+          <section className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 sm:p-6">
             <h2 className="text-sm font-semibold text-destructive">
               Danger zone
             </h2>
@@ -592,7 +595,7 @@ export function TeamDetailPage() {
             </Button>
           </section>
         ) : (
-          <section className="rounded-xl border border-border bg-bg-elevated p-5 shadow-sm sm:p-6">
+          <section className="rounded-xl border border-border bg-bg-elevated p-5 sm:p-6">
             <h2 className="text-sm font-semibold text-text">Leave team</h2>
             <p className="mt-2 text-sm text-text-muted">
               You&apos;ll lose access to every workspace in this team.
@@ -625,14 +628,10 @@ export function TeamDetailPage() {
           <DialogHeader>
             <DialogTitle>Delete workspace?</DialogTitle>
             <DialogDescription>
-              This deletes &ldquo;{deleteWsTarget?.name}&rdquo;.
+              Deletes “{deleteWsTarget?.name}”. Connections move to the team
+              default workspace; duplicates already there are skipped.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-950 dark:text-amber-100">
-            Connections in this workspace will be moved to the team&apos;s
-            default workspace. Accounts already connected there will be
-            skipped.
-          </div>
           <DialogFooter>
             <Button
               variant="outline"
@@ -671,15 +670,11 @@ export function TeamDetailPage() {
           <DialogHeader>
             <DialogTitle>Delete team?</DialogTitle>
             <DialogDescription>
-              This permanently deletes &ldquo;{teamName}&rdquo; and all of its
-              workspaces. This cannot be undone.
+              Permanently deletes “{teamName}” and all of its workspaces. Keep
+              connections to move them to Main (duplicates skipped), or discard
+              them with the team.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-950 dark:text-amber-100">
-            Keep connections to move them to your personal Main. Duplicates you
-            already have on Main will be skipped. Discard removes them with the
-            team.
-          </div>
           <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
             <Button
               variant="outline"
@@ -793,58 +788,65 @@ function MemberTableRow({
   return (
     <>
       <tr className="border-b border-border last:border-b-0">
-        <td className="px-2 py-3">
-          <p className="font-medium text-text">{member.email}</p>
+        <td className="px-3 py-2.5 align-middle">
+          <p className="truncate font-medium text-text">{member.email}</p>
           {member.name?.trim() ? (
-            <p className="text-xs text-text-muted">{member.name}</p>
+            <p className="truncate text-xs text-text-muted">{member.name}</p>
           ) : null}
         </td>
-        <td className="px-2 py-3">
+        <td className="px-3 py-2.5 align-middle">
           {canChangeRole ? (
-            <div className="flex items-center gap-1.5">
+            <div className="relative flex h-7 max-w-[6.5rem] items-center">
               <select
                 value={member.role}
                 disabled={roleBusy || removeBusy}
                 onChange={(e) =>
                   void handleRole(e.target.value as WorkspaceRole)
                 }
-                className="rounded-xl border border-input bg-bg px-2.5 py-1.5 text-xs font-medium capitalize text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
+                aria-label={`Change role for ${displayName}`}
+                className="h-7 w-full appearance-none rounded-md border border-border bg-transparent px-2 pr-6 text-sm leading-none capitalize text-text focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 disabled:opacity-60"
               >
-                <option value="admin">admin</option>
-                <option value="member">member</option>
+                <option value="admin">Admin</option>
+                <option value="member">Member</option>
               </select>
+              <IconChevronDown
+                className="pointer-events-none absolute top-1/2 right-1.5 h-3 w-3 -translate-y-1/2 text-text-muted"
+                strokeWidth={1.5}
+              />
               {roleBusy ? (
                 <IconLoader2
-                  className="h-3.5 w-3.5 animate-spin text-text-muted"
+                  className="absolute -right-5 h-3.5 w-3.5 animate-spin text-text-muted"
                   strokeWidth={1.5}
                 />
               ) : null}
             </div>
           ) : (
-            <span className="inline-flex rounded-full bg-bg-muted px-2 py-0.5 text-xs font-medium capitalize text-text">
-              {member.isOwner ? "owner" : member.role}
+            <span className="block h-7 text-sm leading-7 capitalize text-text-muted">
+              {member.isOwner ? "Owner" : member.role}
             </span>
           )}
         </td>
-        <td className="px-2 py-3">
-          <span className="inline-flex rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200">
-            active
-          </span>
+        <td className="px-3 py-2.5 align-middle text-sm text-text-muted">
+          Active
         </td>
-        <td className="px-2 py-3 text-text-muted">{joined}</td>
-        <td className="px-2 py-3">
+        <td className="px-3 py-2.5 align-middle text-sm text-text-muted">
+          {joined}
+        </td>
+        <td className="px-3 py-2.5 align-middle text-center">
           {canRemove ? (
             <button
               type="button"
               disabled={removeBusy || roleBusy}
               onClick={() => setConfirmRemove(true)}
-              className="rounded-xl p-1.5 text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-destructive transition-colors duration-150 ease-out hover:bg-destructive/10 active:scale-[0.97] disabled:opacity-50"
               aria-label={`Remove ${member.email}`}
             >
               <IconTrash className="h-4 w-4" strokeWidth={1.5} />
             </button>
           ) : (
-            <span className="text-xs text-text-muted">—</span>
+            <span className="inline-flex h-7 w-7 items-center justify-center text-sm text-text-muted">
+              —
+            </span>
           )}
         </td>
       </tr>
@@ -927,25 +929,27 @@ function InvitationTableRow({
 
   return (
     <tr className="border-b border-border last:border-b-0">
-      <td className="px-2 py-3 font-medium text-text">{invitation.email}</td>
-      <td className="px-2 py-3">
-        <span className="inline-flex rounded-full bg-bg-muted px-2 py-0.5 text-xs font-medium capitalize text-text">
+      <td className="px-3 py-2.5 align-middle font-medium text-text">
+        {invitation.email}
+      </td>
+      <td className="px-3 py-2.5 align-middle">
+        <span className="block h-7 text-sm leading-7 capitalize text-text-muted">
           {invitation.role}
         </span>
       </td>
-      <td className="px-2 py-3">
-        <span className="inline-flex rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-200">
-          pending
-        </span>
+      <td className="px-3 py-2.5 align-middle text-sm text-text-muted">
+        Pending
       </td>
-      <td className="px-2 py-3 text-text-muted">{joined}</td>
-      <td className="px-2 py-3">
+      <td className="px-3 py-2.5 align-middle text-sm text-text-muted">
+        {joined}
+      </td>
+      <td className="px-3 py-2.5 align-middle text-center">
         {canRevoke ? (
           <button
             type="button"
             disabled={busy}
             onClick={() => void handleRevoke()}
-            className="rounded-md p-1.5 text-destructive hover:bg-destructive/10 disabled:opacity-50"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-destructive transition-colors duration-150 ease-out hover:bg-destructive/10 active:scale-[0.97] disabled:opacity-50"
             aria-label={`Revoke invite for ${invitation.email}`}
           >
             {busy ? (
@@ -955,7 +959,9 @@ function InvitationTableRow({
             )}
           </button>
         ) : (
-          <span className="text-xs text-text-muted">—</span>
+          <span className="inline-flex h-7 w-7 items-center justify-center text-sm text-text-muted">
+            —
+          </span>
         )}
       </td>
     </tr>

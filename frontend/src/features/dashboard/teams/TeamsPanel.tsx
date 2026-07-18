@@ -49,19 +49,13 @@ export function TeamsPanel() {
     return (
       <>
         <TeamsHeader />
-        <div className="mt-6 rounded-2xl border border-border bg-bg-elevated px-6 py-12 text-center shadow-sm">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent/15 text-accent">
-            <IconUsers className="h-6 w-6" strokeWidth={1.5} />
-          </div>
-          <h2 className="mt-4 font-serif text-xl font-semibold text-text">
-            Collaborate with your team
-          </h2>
-          <p className="mx-auto mt-2 max-w-md text-sm text-text-muted">
-            Invite teammates to a shared team. Teams is included with Pro.
+        <div className="mt-6 rounded-xl border border-border bg-bg-elevated p-8 text-center">
+          <p className="text-sm text-text-muted">
+            Invite teammates to a shared team. Included with Pro.
           </p>
           <Link
             href="/dashboard/billing"
-            className={cn(buttonVariants(), "mt-6")}
+            className={cn(buttonVariants({ size: "sm" }), "mt-4")}
           >
             Upgrade to Pro
           </Link>
@@ -87,34 +81,32 @@ export function TeamsPanel() {
         </div>
       </div>
 
-      <p className="mt-4 text-xs font-medium text-text-muted">
+      <p className="mt-4 text-xs text-text-muted">
         {ownedTeamCount} / {maxOwnedTeams} teams created
       </p>
 
       <div className="mt-4">
         {teams.length === 0 ? (
-          <div className="rounded-xl border border-border bg-bg-elevated px-6 py-12 text-center shadow-sm">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-bg-muted text-text-muted">
-              <IconUsers className="h-6 w-6" strokeWidth={1.5} />
-            </div>
-            <h3 className="mt-4 text-base font-semibold text-text">
-              No teams yet
-            </h3>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-text-muted">
-              Create a team to invite people and share workspaces.
+          <div className="rounded-xl border border-border bg-bg-elevated p-8 text-center">
+            <IconUsers
+              className="mx-auto h-8 w-8 text-text-muted opacity-50"
+              strokeWidth={1.5}
+            />
+            <p className="mt-3 text-sm text-text-muted">
+              No teams yet. Create one to invite people and share workspaces.
             </p>
             {canCreateTeam ? (
               <Link
                 href="/dashboard/teams/create"
-                className={cn(buttonVariants(), "mt-6")}
+                className={cn(buttonVariants({ size: "sm" }), "mt-4")}
               >
                 <IconPlus className="h-4 w-4" strokeWidth={1.5} />
-                Create your first team
+                Create team
               </Link>
             ) : null}
           </div>
         ) : (
-          <ul className="overflow-hidden rounded-xl border border-border bg-bg-elevated shadow-sm">
+          <ul className="overflow-hidden rounded-xl border border-border bg-bg-elevated">
             {teams.map((team) => (
               <TeamRow key={team.id} team={team} />
             ))}
@@ -130,10 +122,10 @@ function TeamRow({ team }: { team: TeamListItem }) {
     <li className="border-b border-border last:border-b-0">
       <Link
         href={`/dashboard/teams/${team.id}/settings`}
-        className="flex w-full items-center gap-3 px-4 py-3 transition-colors hover:bg-sidebar-active/40"
+        className="flex w-full items-center gap-3 px-4 py-3 transition-colors duration-150 ease-out hover:bg-muted"
       >
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-text">{team.name}</p>
+          <p className="truncate text-sm font-medium text-text">{team.name}</p>
           <p className="mt-0.5 text-xs text-text-muted">
             {team.memberCount} {team.memberCount === 1 ? "member" : "members"}
             {" · "}
@@ -162,7 +154,7 @@ function TeamsHeader() {
         <DocsInfoIcon url={DOCS_TEAMS_URL} />
       </div>
       <p className="mt-1 text-sm text-text-muted">
-        All teams you own or have joined.
+        Teams you own or have joined.
       </p>
     </div>
   );

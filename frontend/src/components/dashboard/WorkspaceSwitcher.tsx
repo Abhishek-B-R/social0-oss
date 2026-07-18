@@ -35,8 +35,10 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | "main" | null>(null);
   const [menuMaxHeight, setMenuMaxHeight] = useState(480);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: WORKSPACES_QUERY_KEY,
@@ -47,9 +49,14 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
+      const target = e.target as Node;
+      if (
+        rootRef.current?.contains(target) ||
+        menuRef.current?.contains(target)
+      ) {
+        return;
       }
+      setOpen(false);
     };
     document.addEventListener("mousedown", onPointerDown);
     return () => document.removeEventListener("mousedown", onPointerDown);
@@ -59,12 +66,17 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
     if (!open || !buttonRef.current) return;
     const update = () => {
       const rect = buttonRef.current!.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, left: rect.left });
       const available = window.innerHeight - rect.bottom - 12;
       setMenuMaxHeight(Math.max(240, available));
     };
     update();
     window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
   }, [open]);
 
   const active =
@@ -310,8 +322,13 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
 
       {open ? (
         <div
-          className="absolute left-0 right-0 z-50 mt-1 flex flex-col overflow-hidden rounded-xl border border-border bg-bg-elevated shadow-lg"
-          style={{ maxHeight: menuMaxHeight }}
+          ref={menuRef}
+          className="fixed z-50 flex w-80 flex-col overflow-hidden rounded-xl border border-border bg-bg-elevated shadow-lg"
+          style={{
+            top: menuPos.top,
+            left: menuPos.left,
+            maxHeight: menuMaxHeight,
+          }}
         >
           <div className="min-h-0 flex-1 overflow-y-auto py-1">
             {isLoading ? (

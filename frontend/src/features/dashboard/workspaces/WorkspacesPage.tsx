@@ -311,41 +311,37 @@ export function WorkspacesPage() {
                   }
                 : undefined
             }
-            onAddToTeam={
-              card.kind === "owned" && card.teamId && card.teamName
-                ? () => openCreate(card.teamId)
-                : undefined
-            }
           />
         ))}
       </div>
 
       {cards.length <= 1 && ownedTeamOptions.length === 0 ? (
-        <div className="mt-6 rounded-xl border border-border bg-bg-elevated px-6 py-10 text-center shadow-sm">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-bg-muted text-text-muted">
-            <IconBriefcase className="h-6 w-6" strokeWidth={1.5} />
-          </div>
-          <h3 className="mt-4 text-base font-semibold text-text">
-            Only Main for now
-          </h3>
-          <p className="mx-auto mt-1 max-w-md text-sm text-text-muted">
-            Create a team to add more workspaces and move connections between
-            them.
-          </p>
+        <p className="mt-4 text-sm text-text-muted">
+          Create a team to add more workspaces and move connections between
+          them.
           {canOpenCreate ? (
-            <Button type="button" className="mt-6" onClick={() => openCreate()}>
-              <IconPlus className="h-4 w-4" strokeWidth={1.5} />
-              Create a workspace
-            </Button>
+            <>
+              {" "}
+              <button
+                type="button"
+                onClick={() => openCreate()}
+                className="font-medium text-accent transition-opacity duration-150 ease-out hover:opacity-80"
+              >
+                Create a workspace
+              </button>
+            </>
           ) : (
-            <Link
-              href="/dashboard/billing"
-              className={cn(buttonVariants(), "mt-6")}
-            >
-              Upgrade to Pro
-            </Link>
+            <>
+              {" "}
+              <Link
+                href="/dashboard/billing"
+                className="font-medium text-accent transition-opacity duration-150 ease-out hover:opacity-80"
+              >
+                Upgrade to Pro
+              </Link>
+            </>
           )}
-        </div>
+        </p>
       ) : null}
 
       <CreateWorkspaceDialog
@@ -377,7 +373,7 @@ export function WorkspacesPage() {
           <DialogHeader>
             <DialogTitle>Rename workspace</DialogTitle>
             <DialogDescription>
-              Connections stay in place — only the label changes.
+              Only the label changes — connections stay put.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -431,18 +427,15 @@ export function WorkspacesPage() {
           <DialogHeader>
             <DialogTitle>Delete workspace?</DialogTitle>
             <DialogDescription>
-              This deletes &ldquo;{deleteTarget?.name}&rdquo;.
+              {deleteTarget?.movesToMain
+                ? `Deletes “${deleteTarget?.name}”. Connections move to Main; duplicates already there are skipped.`
+                : `Deletes “${deleteTarget?.name}”. Connections move to ${
+                    deleteTarget?.teamName
+                      ? `${deleteTarget.teamName}'s default workspace`
+                      : "the team's default workspace"
+                  }; duplicates already there are skipped.`}
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-950 dark:text-amber-100">
-            {deleteTarget?.movesToMain
-              ? "Connections will be moved to Main. Accounts already connected there will be skipped."
-              : `Connections will be moved to ${
-                  deleteTarget?.teamName
-                    ? `${deleteTarget.teamName}'s default workspace`
-                    : "the team's default workspace"
-                }. Accounts already connected there will be skipped.`}
-          </div>
           <DialogFooter>
             <Button
               variant="outline"
@@ -483,7 +476,6 @@ function WorkspaceBoardCardView({
   onSwitch,
   onRename,
   onDelete,
-  onAddToTeam,
 }: {
   card: WorkspaceBoardCard;
   actorUserId: string | null;
@@ -501,70 +493,65 @@ function WorkspaceBoardCardView({
   onSwitch: () => void;
   onRename?: () => void;
   onDelete?: () => void;
-  onAddToTeam?: () => void;
 }) {
   const isPersonal = card.kind === "personal";
   const isTeam = !!card.teamName;
-  const isSoloOwned = !isPersonal && !isTeam;
 
   return (
     <div
       className={cn(
-        "relative flex flex-col rounded-xl border bg-bg-elevated shadow-sm",
-        isPersonal || isSoloOwned
-          ? "border-emerald-500/70"
-          : "border-sky-500/60",
-        card.isActive && "ring-2 ring-accent/40",
+        "relative flex flex-col rounded-xl border border-border bg-bg-elevated",
+        card.isActive && "ring-2 ring-accent/30",
       )}
     >
-      <div className="flex items-start gap-3 rounded-t-xl border-b border-border px-4 py-3">
-        <div
-          className={cn(
-            "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-            isPersonal || isSoloOwned
-              ? "bg-emerald-500/15 text-emerald-600"
-              : "bg-sky-500/15 text-sky-600",
-          )}
-        >
-          {isPersonal ? (
-            <IconHome className="h-4 w-4" strokeWidth={1.5} />
-          ) : (
-            <IconBriefcase className="h-4 w-4" strokeWidth={1.5} />
-          )}
-        </div>
+      <div className="flex items-start gap-3 border-b border-border px-4 py-3">
+        {isPersonal ? (
+          <IconHome
+            className="mt-0.5 h-4 w-4 shrink-0 text-text-muted"
+            strokeWidth={1.5}
+          />
+        ) : (
+          <IconBriefcase
+            className="mt-0.5 h-4 w-4 shrink-0 text-text-muted"
+            strokeWidth={1.5}
+          />
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <button
               type="button"
               disabled={switching || card.isActive}
               onClick={onSwitch}
-              className="truncate text-left text-sm font-semibold capitalize text-text hover:underline disabled:no-underline"
-              title={card.isActive ? "Active workspace" : "Switch to this workspace"}
+              className="truncate text-left text-sm font-medium capitalize text-text transition-opacity duration-150 ease-out hover:opacity-70 disabled:opacity-100"
+              title={
+                card.isActive
+                  ? "Active workspace"
+                  : "Switch to this workspace"
+              }
             >
               {card.name}
             </button>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            {isPersonal ? (
-              <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
-                Default
-              </span>
-            ) : isTeam ? (
-              <span className="rounded-md bg-sky-500/15 px-1.5 py-0.5 text-[11px] font-medium text-sky-700 dark:text-sky-400">
-                Team {card.teamName}
-              </span>
-            ) : null}
+          <p className="mt-0.5 text-xs text-text-muted">
+            {isPersonal
+              ? "Default"
+              : isTeam
+                ? `Team · ${card.teamName}`
+                : null}
             {card.isActive ? (
-              <span className="text-[11px] font-medium text-accent">Active</span>
+              <>
+                {(isPersonal || isTeam) && " · "}
+                <span className="text-accent">Active</span>
+              </>
             ) : null}
-          </div>
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
           {onRename ? (
             <button
               type="button"
               onClick={onRename}
-              className="rounded-md p-1.5 text-text-muted hover:bg-bg-muted hover:text-text"
+              className="rounded-lg p-1.5 text-text-muted transition-colors duration-150 ease-out hover:bg-muted hover:text-text active:scale-[0.97]"
               aria-label={`Rename ${card.name}`}
               title="Rename"
             >
@@ -575,7 +562,7 @@ function WorkspaceBoardCardView({
             <button
               type="button"
               onClick={onDelete}
-              className="rounded-md p-1.5 text-text-muted hover:bg-destructive/10 hover:text-destructive"
+              className="rounded-lg p-1.5 text-text-muted transition-colors duration-150 ease-out hover:bg-destructive/10 hover:text-destructive active:scale-[0.97]"
               aria-label={`Delete ${card.name}`}
               title="Delete"
             >
@@ -583,7 +570,7 @@ function WorkspaceBoardCardView({
             </button>
           ) : null}
           <span
-            className="ml-1 rounded-full bg-bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-text-muted"
+            className="ml-1 tabular-nums text-xs text-text-muted"
             title={`${card.connectionCount} connection${card.connectionCount === 1 ? "" : "s"}`}
           >
             {card.connectionCount}
@@ -591,7 +578,7 @@ function WorkspaceBoardCardView({
         </div>
       </div>
 
-      <div className="flex min-h-[120px] flex-1 flex-col">
+      <div className="flex min-h-[100px] flex-1 flex-col">
         {card.accounts.length === 0 ? (
           <p className="flex flex-1 items-center justify-center px-4 py-8 text-sm text-text-muted">
             No accounts yet
@@ -615,23 +602,13 @@ function WorkspaceBoardCardView({
         )}
       </div>
 
-      {isTeam ? (
-        <div className="mt-auto space-y-2 border-t border-border px-4 py-3">
-          {!card.isOwner ? (
-            <p className="rounded-lg bg-sky-500/10 px-3 py-2 text-xs text-sky-800 dark:text-sky-300">
-              {card.canManage
-                ? "Team workspace — Admins can connect, disconnect, and move accounts. Only the owner can rename or delete."
-                : "Team workspace — only the team owner can rename or delete."}
-            </p>
-          ) : onAddToTeam ? (
-            <button
-              type="button"
-              onClick={onAddToTeam}
-              className="text-xs font-medium text-sky-700 hover:underline dark:text-sky-400"
-            >
-              + Add another workspace to this team
-            </button>
-          ) : null}
+      {isTeam && !card.isOwner ? (
+        <div className="mt-auto border-t border-border px-4 py-3">
+          <p className="text-xs text-text-muted">
+            {card.canManage
+              ? "Admins can connect and move accounts. Only the owner can rename or delete."
+              : "Only the team owner can rename or delete."}
+          </p>
         </div>
       ) : null}
     </div>
@@ -775,7 +752,7 @@ function MoveMenu({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className="rounded-xl border border-border bg-bg-elevated px-2.5 py-1 text-xs font-medium text-text shadow-sm transition-colors hover:bg-muted disabled:opacity-60"
+        className="rounded-xl border border-border bg-bg-elevated px-2.5 py-1 text-xs font-medium text-text transition-colors duration-150 ease-out hover:bg-muted active:scale-[0.97] disabled:opacity-60"
       >
         {busy ? (
           <IconLoader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
@@ -790,9 +767,7 @@ function MoveMenu({
               style={{ top: menuPos.top, right: menuPos.right }}
               className="fixed z-50 max-h-64 min-w-[200px] overflow-y-auto rounded-xl border border-border bg-bg-elevated py-1 shadow-lg"
             >
-              <p className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-text-muted">
-                Move to
-              </p>
+              <p className="px-3 py-1.5 text-xs text-text-muted">Move to</p>
               {destinations.map((dest) => (
                 <button
                   key={dest.id ?? "main"}
@@ -801,7 +776,7 @@ function MoveMenu({
                     setOpen(false);
                     onSelect(dest.id);
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text hover:bg-bg-muted"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text transition-colors duration-150 ease-out hover:bg-muted"
                 >
                   {dest.kind === "personal" ? (
                     <IconHome

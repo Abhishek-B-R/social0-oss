@@ -102,7 +102,7 @@ export function CreateTeamPage() {
         later.
       </p>
 
-      <div className="mt-6 space-y-5 rounded-xl border border-border bg-bg-elevated p-5 shadow-sm sm:p-6">
+      <div className="mt-6 space-y-5 rounded-xl border border-border bg-bg-elevated p-5 sm:p-6">
         <div className="space-y-2">
           <Label htmlFor="team-name">Team name</Label>
           <Input
@@ -116,10 +116,8 @@ export function CreateTeamPage() {
           />
         </div>
 
-        <div className="rounded-lg border border-border bg-bg px-3 py-2.5">
-          <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
-            Default workspace
-          </p>
+        <div className="rounded-xl border border-border bg-bg px-3 py-2.5">
+          <p className="text-xs text-text-muted">Default workspace</p>
           <p className="mt-1 text-sm text-text">{defaultWorkspacePreview}</p>
         </div>
 

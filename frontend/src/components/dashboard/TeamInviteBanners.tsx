@@ -1,12 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  IconCircleCheck,
-  IconCircleX,
-  IconLoader2,
-  IconUsers,
-  IconX,
-} from "@tabler/icons-react";
+import { IconLoader2, IconX } from "@tabler/icons-react";
 import { toast } from "sonner";
 import {
   acceptMyInvitation,
@@ -84,26 +78,16 @@ export function TeamInviteBanners() {
         return (
           <div
             key={inv.id}
-            className="flex flex-col gap-3 rounded-xl border border-border bg-bg-elevated px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-3 rounded-xl border border-border bg-bg-elevated px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
           >
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
-                <IconUsers className="h-4 w-4" strokeWidth={1.5} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-text">
-                  Team invitation
-                </p>
-                <p className="mt-0.5 text-sm text-text-muted">
-                  {inviter} invited you to join{" "}
-                  <span className="font-medium text-accent">
-                    {inv.teamName}
-                  </span>{" "}
-                  as a {roleLabel}
-                </p>
-              </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-text">
+                {inviter} invited you to{" "}
+                <span className="text-accent">{inv.teamName}</span> as a{" "}
+                {roleLabel}
+              </p>
             </div>
-            <div className="flex shrink-0 items-center gap-2 pl-12 sm:pl-0">
+            <div className="flex shrink-0 items-center gap-2">
               <Button
                 size="sm"
                 disabled={busy}
@@ -114,18 +98,15 @@ export function TeamInviteBanners() {
                     className="h-4 w-4 animate-spin"
                     strokeWidth={1.5}
                   />
-                ) : (
-                  <IconCircleCheck className="h-4 w-4" strokeWidth={1.5} />
-                )}
+                ) : null}
                 Accept
               </Button>
               <Button
                 size="sm"
-                variant="ghost"
+                variant="outline"
                 disabled={busy}
                 onClick={() => void handleDecline(inv)}
               >
-                <IconCircleX className="h-4 w-4" strokeWidth={1.5} />
                 Decline
               </Button>
               <button
@@ -135,7 +116,7 @@ export function TeamInviteBanners() {
                 onClick={() =>
                   setDismissed((prev) => new Set(prev).add(inv.id))
                 }
-                className="rounded-md p-1.5 text-text-muted hover:bg-bg-muted hover:text-text disabled:opacity-50"
+                className="rounded-lg p-1.5 text-text-muted transition-colors duration-150 ease-out hover:bg-muted hover:text-text disabled:opacity-50"
               >
                 <IconX className="h-4 w-4" strokeWidth={1.5} />
               </button>
