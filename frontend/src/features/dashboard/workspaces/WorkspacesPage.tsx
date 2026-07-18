@@ -153,6 +153,7 @@ export function WorkspacesPage() {
   };
 
   const handleSwitch = async (workspaceId: string | null, label: string) => {
+    if (switchingId) return;
     const key = workspaceId ?? "main";
     const active = cards.find((c) => c.isActive);
     if (
@@ -281,9 +282,8 @@ export function WorkspacesPage() {
             actorUserId={actorUserId}
             moveTargets={moveTargets}
             movingId={movingId}
-            switching={
-              switchingId === (card.id ?? "main")
-            }
+            switching={switchingId === (card.id ?? "main")}
+            switchLocked={!!switchingId}
             onMove={(accountId, targetId) =>
               void handleMove(accountId, targetId)
             }
@@ -366,6 +366,7 @@ export function WorkspacesPage() {
       <Dialog
         open={!!renameTarget}
         onOpenChange={(open) => {
+          if (renaming) return;
           if (!open) setRenameTarget(null);
         }}
       >
@@ -420,6 +421,7 @@ export function WorkspacesPage() {
       <Dialog
         open={!!deleteTarget}
         onOpenChange={(open) => {
+          if (deleting) return;
           if (!open) setDeleteTarget(null);
         }}
       >
@@ -472,6 +474,7 @@ function WorkspaceBoardCardView({
   moveTargets,
   movingId,
   switching,
+  switchLocked,
   onMove,
   onSwitch,
   onRename,
@@ -489,6 +492,7 @@ function WorkspaceBoardCardView({
   }[];
   movingId: string | null;
   switching: boolean;
+  switchLocked: boolean;
   onMove: (accountId: string, targetWorkspaceId: string | null) => void;
   onSwitch: () => void;
   onRename?: () => void;
@@ -520,7 +524,7 @@ function WorkspaceBoardCardView({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              disabled={switching || card.isActive}
+              disabled={switchLocked || card.isActive}
               onClick={onSwitch}
               className="truncate text-left text-sm font-medium capitalize text-text transition-opacity duration-150 ease-out hover:opacity-70 disabled:opacity-100"
               title={

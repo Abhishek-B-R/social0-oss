@@ -26,7 +26,7 @@ export function AcceptInvitePage() {
   if (!token) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg px-4">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-bg-elevated p-8 text-center shadow-sm">
+        <div className="w-full max-w-md rounded-xl border border-border bg-bg-elevated p-8 text-center">
           <h1 className="font-serif text-xl font-semibold text-text">
             Invalid invitation link
           </h1>
@@ -36,7 +36,7 @@ export function AcceptInvitePage() {
           </p>
           <Link
             href={signInUrl("/dashboard")}
-            className="mt-6 inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="mt-6 inline-flex h-9 items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover"
           >
             Sign in
           </Link>
@@ -47,7 +47,7 @@ export function AcceptInvitePage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-bg-elevated p-8 text-center shadow-sm">
+      <div className="w-full max-w-md rounded-xl border border-border bg-bg-elevated p-8 text-center">
         <p className="text-sm text-text-muted">Taking you to your dashboard…</p>
       </div>
     </div>

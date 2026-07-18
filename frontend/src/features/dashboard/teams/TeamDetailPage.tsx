@@ -150,8 +150,7 @@ export function TeamDetailPage() {
       await createWorkspaceInTeam(teamId, name);
       toast.success("Workspace created");
       setNewWsName("");
-      refresh();
-      window.location.reload();
+      await refresh();
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to create workspace",
@@ -621,6 +620,7 @@ export function TeamDetailPage() {
       <Dialog
         open={!!deleteWsTarget}
         onOpenChange={(open) => {
+          if (wsBusyId) return;
           if (!open) setDeleteWsTarget(null);
         }}
       >
@@ -929,7 +929,7 @@ function InvitationTableRow({
 
   return (
     <tr className="border-b border-border last:border-b-0">
-      <td className="px-3 py-2.5 align-middle font-medium text-text">
+      <td className="max-w-0 truncate px-3 py-2.5 align-middle font-medium text-text">
         {invitation.email}
       </td>
       <td className="px-3 py-2.5 align-middle">

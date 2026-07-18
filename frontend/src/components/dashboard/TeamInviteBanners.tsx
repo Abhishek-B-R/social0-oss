@@ -16,6 +16,9 @@ export function TeamInviteBanners() {
   const queryClient = useQueryClient();
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<"accept" | "decline" | null>(
+    null,
+  );
 
   const { data } = useQuery({
     queryKey: MY_INVITES_QUERY_KEY,
@@ -41,21 +44,28 @@ export function TeamInviteBanners() {
 
   const handleAccept = async (inv: MyPendingInvitation) => {
     setBusyId(inv.id);
+    setBusyAction("accept");
     try {
       await acceptMyInvitation(inv.id);
       toast.success(`Joined ${inv.teamName}`);
-      await invalidate();
-      window.location.reload();
+      try {
+        await invalidate();
+      } catch {
+        // Join already succeeded — don't surface invalidate failures as accept errors.
+      }
+      window.location.assign("/dashboard");
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to accept invitation",
       );
       setBusyId(null);
+      setBusyAction(null);
     }
   };
 
   const handleDecline = async (inv: MyPendingInvitation) => {
     setBusyId(inv.id);
+    setBusyAction("decline");
     try {
       await declineMyInvitation(inv.id);
       toast.success("Invitation declined");
@@ -66,6 +76,7 @@ export function TeamInviteBanners() {
       );
     } finally {
       setBusyId(null);
+      setBusyAction(null);
     }
   };
 
@@ -73,6 +84,8 @@ export function TeamInviteBanners() {
     <div className="mb-4 space-y-3">
       {invitations.map((inv) => {
         const busy = busyId === inv.id;
+        const accepting = busy && busyAction === "accept";
+        const declining = busy && busyAction === "decline";
         const roleLabel = inv.role === "admin" ? "Admin" : "Member";
         const inviter = inv.inviterName?.trim() || "Someone";
         return (
@@ -93,7 +106,7 @@ export function TeamInviteBanners() {
                 disabled={busy}
                 onClick={() => void handleAccept(inv)}
               >
-                {busy ? (
+                {accepting ? (
                   <IconLoader2
                     className="h-4 w-4 animate-spin"
                     strokeWidth={1.5}
@@ -107,6 +120,12 @@ export function TeamInviteBanners() {
                 disabled={busy}
                 onClick={() => void handleDecline(inv)}
               >
+                {declining ? (
+                  <IconLoader2
+                    className="h-4 w-4 animate-spin"
+                    strokeWidth={1.5}
+                  />
+                ) : null}
                 Decline
               </Button>
               <button

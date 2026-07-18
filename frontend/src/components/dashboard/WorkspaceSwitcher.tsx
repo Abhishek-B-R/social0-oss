@@ -58,17 +58,37 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
       }
       setOpen(false);
     };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        buttonRef.current?.focus();
+      }
+    };
     document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [open]);
+
+  // Close the menu if the route changes underneath it (client-side nav).
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!open || !buttonRef.current) return;
     const update = () => {
       const rect = buttonRef.current!.getBoundingClientRect();
-      setMenuPos({ top: rect.bottom + 4, left: rect.left });
+      const menuWidth = 320;
+      const left = Math.max(
+        8,
+        Math.min(rect.left, window.innerWidth - menuWidth - 8),
+      );
+      setMenuPos({ top: rect.bottom + 4, left });
       const available = window.innerHeight - rect.bottom - 12;
-      setMenuMaxHeight(Math.max(240, available));
+      setMenuMaxHeight(Math.max(120, available));
     };
     update();
     window.addEventListener("resize", update);
@@ -178,37 +198,29 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   const navigateToTeamWorkspace = async (opts: {
     teamId: string;
     workspaceId: string;
-    /** When true (joined team entry), prefer the team's default workspace. */
-    preferDefault: boolean;
     team: TeamListItem;
   }) => {
-    const { teamId, workspaceId, preferDefault, team } = opts;
+    const { teamId, workspaceId } = opts;
     const alreadyOnTeam =
       isTeamAppPath(pathname) && pathname.includes(`/teams/${teamId}/`);
     if (workspaceId === active.id && alreadyOnTeam) {
       setOpen(false);
       return;
     }
+    if (busyId) return;
     setBusyId(workspaceId);
     try {
-      const enteringNewTeam = !alreadyOnTeam;
-      const targetId =
-        enteringNewTeam && preferDefault
-          ? (team.defaultWorkspaceId ??
-            team.workspaces[0]?.id ??
-            workspaceId)
-          : workspaceId;
-
-      await switchWorkspace(targetId);
-      writeTeamWorkspaceId(teamId, targetId);
+      await switchWorkspace(workspaceId);
+      writeTeamWorkspaceId(teamId, workspaceId);
       await invalidateAll();
       setOpen(false);
       const dest = mapPathToBase(pathname, `/dashboard/teams/${teamId}`);
+      const teamPrefix = `/dashboard/teams/${teamId}`;
       toast.success("Switched to team workspace");
       window.location.assign(
-        dest.startsWith("/dashboard/teams/")
+        dest === teamPrefix || dest.startsWith(`${teamPrefix}/`)
           ? dest
-          : `/dashboard/teams/${teamId}/composer`,
+          : `${teamPrefix}/composer`,
       );
     } catch (err) {
       toast.error(
@@ -225,6 +237,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
       setOpen(false);
       return;
     }
+    if (busyId) return;
     setBusyId("main");
     try {
       await switchWorkspace(null);
@@ -255,11 +268,9 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
       toast.error("Team not found");
       return;
     }
-    // Owned: activate the workspace they clicked, then open team URL tree.
     await navigateToTeamWorkspace({
       teamId: opts.teamId,
       workspaceId: opts.workspaceId,
-      preferDefault: false,
       team,
     });
   };
@@ -269,23 +280,12 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
     workspaceId: string;
     team: TeamListItem;
   }) => {
-    // Joined: entering a team uses that team's default workspace.
-    await navigateToTeamWorkspace({
-      ...opts,
-      preferDefault: true,
-    });
+    await navigateToTeamWorkspace(opts);
   };
 
   if (!enabled) return null;
 
-  const activeLabel =
-    active.kind === "personal"
-      ? active.name
-      : active.kind === "owned"
-        ? active.name
-        : active.teamName
-          ? `${active.name}`
-          : active.name;
+  const activeLabel = active.name;
 
   return (
     <div ref={rootRef} className="relative">
@@ -313,7 +313,9 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
             strokeWidth={1.5}
           />
         )}
-        <span className="min-w-0 flex-1 truncate capitalize">{activeLabel}</span>
+        <span className="min-w-0 flex-1 truncate capitalize">
+          {activeLabel}
+        </span>
         <IconChevronDown
           className={`h-4 w-4 shrink-0 text-sidebar-muted transition-transform ${open ? "rotate-180" : ""}`}
           strokeWidth={1.5}
@@ -323,7 +325,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
       {open ? (
         <div
           ref={menuRef}
-          className="fixed z-50 flex w-80 flex-col overflow-hidden rounded-xl border border-border bg-bg-elevated shadow-lg"
+          className="fixed z-50 flex w-70 flex-col overflow-hidden rounded-xl border border-border bg-bg-elevated shadow-lg"
           style={{
             top: menuPos.top,
             left: menuPos.left,
@@ -361,6 +363,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
                       subtitle={ws.subtitle}
                       active={isActive}
                       busy={busyId === (ws.id ?? "main")}
+                      disabled={!!busyId}
                       icon={ws.id === null ? "home" : "briefcase"}
                       onSelect={() => {
                         if (ws.id === null) {
@@ -388,10 +391,9 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
                         key={ws.id}
                         label={ws.name}
                         subtitle={ws.subtitle}
-                        active={
-                          isTeamAppPath(pathname) && active.id === ws.id
-                        }
+                        active={isTeamAppPath(pathname) && active.id === ws.id}
                         busy={busyId === ws.id}
+                        disabled={!!busyId}
                         icon="users"
                         onSelect={() =>
                           void handleSelectJoined({
@@ -420,7 +422,9 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
               />
               Manage Workspaces
             </Link>
-            {canCreate || canCreateTeam || collaborativeOwnedTeams.length > 0 ? (
+            {canCreate ||
+            canCreateTeam ||
+            collaborativeOwnedTeams.length > 0 ? (
               <button
                 type="button"
                 onClick={() => {
@@ -462,6 +466,7 @@ function WorkspaceOption({
   subtitle,
   active,
   busy,
+  disabled,
   icon,
   onSelect,
 }: {
@@ -469,18 +474,17 @@ function WorkspaceOption({
   subtitle: string;
   active: boolean;
   busy: boolean;
+  disabled?: boolean;
   icon: "home" | "briefcase" | "users";
   onSelect: () => void;
 }) {
   return (
     <button
       type="button"
-      disabled={busy}
+      disabled={disabled || busy}
       onClick={onSelect}
       className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-sidebar-active disabled:opacity-60 ${
-        active
-          ? "bg-sidebar-active font-medium text-sidebar-text"
-          : "text-text"
+        active ? "bg-sidebar-active font-medium text-sidebar-text" : "text-text"
       }`}
     >
       {icon === "home" ? (

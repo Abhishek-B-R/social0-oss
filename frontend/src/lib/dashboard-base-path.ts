@@ -95,9 +95,12 @@ export function useDashboardPath() {
 
 /** Remap current relative page onto a new base (personal ↔ team). */
 export function mapPathToBase(pathname: string, base: string): string {
-  // Keep team settings on the team management URL
+  // Team settings stays on settings, but must remap :teamId when switching teams.
   if (isTeamSettingsPath(pathname)) {
-    if (base.startsWith("/dashboard/teams/")) return pathname;
+    if (base.startsWith("/dashboard/teams/")) {
+      const newTeamId = base.replace(/^\/dashboard\/teams\//, "").split("/")[0];
+      if (newTeamId) return `/dashboard/teams/${newTeamId}/settings`;
+    }
     return "/dashboard/composer";
   }
 

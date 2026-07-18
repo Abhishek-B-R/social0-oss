@@ -40,8 +40,17 @@ export function TeamAppLayout() {
   useEffect(() => {
     if (!teamId) return;
 
-    // Already gated this team in this session — stay ready, sync quietly.
+    // Already gated this team — stay ready, but re-check membership when data refreshes.
     if (bootstrappedTeams.has(teamId)) {
+      if (data) {
+        const stillMember = data.teams.some((t) => t.id === teamId);
+        if (!stillMember) {
+          bootstrappedTeams.delete(teamId);
+          setError("Team not found or you no longer have access.");
+          setReady(false);
+          return;
+        }
+      }
       setReady(true);
       setError(null);
       return;
@@ -151,7 +160,7 @@ export function TeamAppLayout() {
         </p>
         <a
           href="/dashboard/teams"
-          className="mt-4 inline-block text-sm font-medium text-accent hover:underline"
+          className="mt-4 inline-flex h-9 items-center justify-center rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover"
         >
           Back to teams
         </a>

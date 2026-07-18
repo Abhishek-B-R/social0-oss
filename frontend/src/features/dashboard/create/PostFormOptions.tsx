@@ -6,6 +6,7 @@ import { AccountBubbleSelector } from "@/components/AccountBubbleSelector";
 import { PLATFORMS } from "@/lib/platforms";
 import { signInUrl } from "@/lib/sign-in-url";
 import { getPlanLimits, type SubscriptionTier } from "@/lib/plans";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 import type { PublishMode } from "@/api/posts";
 
 type Account = {
@@ -95,6 +96,7 @@ export function PostFormOptions({
   subscriptionTier = "free",
 }: PostFormOptionsProps) {
   const pathname = useLocation().pathname;
+  const dash = useDashboardPath();
   const platformName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
 
@@ -147,13 +149,12 @@ export function PostFormOptions({
                 </>
               ) : (
                 <>
-                  Connect a social account to this workspace, then pick it
-                  below to publish.
+                  Connect a social account to this workspace to start publishing.
                 </>
               )}
             </p>
             <Link
-              href="/dashboard/connections"
+              href={dash("connections")}
               className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover"
             >
               Connect accounts

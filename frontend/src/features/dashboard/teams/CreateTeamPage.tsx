@@ -60,9 +60,36 @@ export function CreateTeamPage() {
     return <DashboardPageSkeleton message="Loading..." />;
   }
 
+  if (workspacesQuery.isError) {
+    return (
+      <div className="space-y-4">
+        <Link
+          href="/dashboard/teams"
+          className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text"
+        >
+          <IconArrowLeft className="h-4 w-4" strokeWidth={1.5} />
+          Back to teams
+        </Link>
+        <div className="rounded-xl border border-border bg-bg-elevated p-6 text-sm text-text">
+          {workspacesQuery.error instanceof Error
+            ? workspacesQuery.error.message
+            : "Couldn’t load team limits. Try again."}
+          <div className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => void workspacesQuery.refetch()}
+            >
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!canCreate) {
     return (
-      <div className="mx-auto max-w-lg space-y-4">
+      <div className="space-y-4">
         <Link
           href="/dashboard/teams"
           className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text"
@@ -85,7 +112,7 @@ export function CreateTeamPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg">
+    <div>
       <Link
         href="/dashboard/teams"
         className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text"

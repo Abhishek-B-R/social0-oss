@@ -600,7 +600,6 @@ export function BillingPanel({
           return;
         }
         setUpgradePending(true);
-        setUpgradePending(true);
         toast.info(
           "Your upgrade payment is still being processed. You'll be moved to the new plan automatically - no action needed. If you didn't receive a payment request, try again after a few minutes.",
         );
