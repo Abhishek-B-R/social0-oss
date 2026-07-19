@@ -75,28 +75,24 @@ export function TeamAppLayout() {
       return;
     }
 
+    const active = data.workspaces.find((w) => w.isActive);
     const alreadyActive = data.workspaces.some(
       (w) => w.id === targetId && w.isActive,
     );
 
-    // Fast path: previously gated and the target workspace is still active.
-    if (bootstrappedTeams.has(teamId) && alreadyActive) {
-      writeTeamWorkspaceId(teamId, targetId);
-      setReady(true);
-      setError(null);
-      return;
-    }
-
-    // Mid-leave: active workspace is no longer this team's (Main or another
-    // team). Don't yank it back — the switcher is navigating away. Returning
-    // later clears bootstrap so we re-gate cleanly.
-    if (bootstrappedTeams.has(teamId) && !alreadyActive) {
-      const active = data.workspaces.find((w) => w.isActive);
-      if (!active || active.teamId !== teamId) {
+    // Already gated for this team — never switchWorkspace again from a
+    // query refetch (that caused infinite switch → invalidate → switch loops).
+    if (bootstrappedTeams.has(teamId)) {
+      // Mid-leave: active workspace is no longer this team's (Main or another
+      // team). Don't yank it back — the switcher is navigating away.
+      if (active && active.teamId !== teamId) {
         setReady(true);
         setError(null);
         return;
       }
+      setReady(true);
+      setError(null);
+      return;
     }
 
     let cancelled = false;
@@ -108,6 +104,9 @@ export function TeamAppLayout() {
         if (!alreadyActive) {
           await switchWorkspace(targetId);
           writeTeamWorkspaceId(teamId, targetId);
+          // Mark bootstrapped before invalidate so a refetch can't re-enter
+          // the switch path.
+          bootstrappedTeams.add(teamId);
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY }),
             queryClient.invalidateQueries({ queryKey: ["team"] }),
@@ -116,9 +115,9 @@ export function TeamAppLayout() {
           ]);
         } else {
           writeTeamWorkspaceId(teamId, targetId);
+          bootstrappedTeams.add(teamId);
         }
         if (!cancelled) {
-          bootstrappedTeams.add(teamId);
           inFlightFor.current = null;
           setReady(true);
         }

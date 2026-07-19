@@ -19,6 +19,8 @@ export function ConnectionsPage() {
     | null
   >(null);
   const fetchSeq = useRef(0);
+  const dataRef = useRef(data);
+  dataRef.current = data;
 
   const handleAccountDisconnected = useCallback((accountId: string) => {
     setData((prev) => {
@@ -43,7 +45,9 @@ export function ConnectionsPage() {
     if (seq !== fetchSeq.current) return; // a newer fetch superseded this one
     if (!result.ok) {
       if (result.error === "Unauthorized") {
-        setIsGuest(true);
+        // Only flip to guest when we have nothing to show — a transient 401
+        // during focus refetch shouldn't wipe a loaded connections list.
+        if (!dataRef.current) setIsGuest(true);
         setLoading(false);
         return;
       }
@@ -64,15 +68,22 @@ export function ConnectionsPage() {
   }, [refetch, searchParams]);
 
   // Refetch when the tab regains focus - covers OAuth completed in another
-  // tab/window and token refreshes done elsewhere.
+  // tab/window and token refreshes done elsewhere. Debounced so rapid
+  // focus/visibility churn doesn't thrash the page into guest mode.
   useEffect(() => {
-    const onFocus = () => void refetch();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => void refetch(), 400);
+    };
+    const onFocus = () => schedule();
     const onVisibility = () => {
-      if (document.visibilityState === "visible") void refetch();
+      if (document.visibilityState === "visible") schedule();
     };
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
+      if (timer) clearTimeout(timer);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
     };

@@ -17,6 +17,8 @@ if (syncAppBuild()) {
       queries: {
         staleTime: 30_000,
         retry: 1,
+        // Avoid workspace/auth UI thrash when alt-tabbing back to the dashboard.
+        refetchOnWindowFocus: false,
       },
     },
   });

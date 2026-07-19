@@ -8,7 +8,7 @@ import {
   mapPathToBase,
   writePersonalWorkspaceId,
 } from "@/lib/dashboard-base-path";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 import { clearTeamBootstrap } from "@/layouts/TeamAppLayout";
 
@@ -19,6 +19,7 @@ import { clearTeamBootstrap } from "@/layouts/TeamAppLayout";
  */
 export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
   const { pathname, search } = useLocation();
+  const navigate = useNavigate();
   const ranForPath = useRef<string | null>(null);
 
   const onTeamTree =
@@ -32,6 +33,13 @@ export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
     enabled: enabled && !skipBoot,
   });
 
+  const activeWorkspaceId =
+    data?.workspaces.find((w) => w.isActive)?.id ?? null;
+  const activeTeamId =
+    data?.workspaces.find((w) => w.isActive)?.teamId ?? null;
+  const activeKind =
+    data?.workspaces.find((w) => w.isActive)?.kind ?? null;
+
   useEffect(() => {
     if (!enabled || skipBoot || !data) return;
     if (ranForPath.current === pathname) return;
@@ -43,25 +51,24 @@ export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
       return;
     }
 
-    const active = data.workspaces.find((w) => w.isActive);
-
     // Team workspace on a mirrored personal URL → team app tree.
     // Covers owned + joined so OAuth select callbacks (always personal paths)
     // keep the team workspace instead of wiping to Main.
     if (
-      active?.teamId &&
-      (active.kind === "owned" || active.kind === "joined")
+      activeTeamId &&
+      (activeKind === "owned" || activeKind === "joined")
     ) {
       ranForPath.current = pathname;
       const dest = mapPathToBase(
         pathname,
-        `/dashboard/teams/${active.teamId}`,
+        `/dashboard/teams/${activeTeamId}`,
       );
       const withSearch =
-        (dest.startsWith(`/dashboard/teams/${active.teamId}`)
+        (dest.startsWith(`/dashboard/teams/${activeTeamId}`)
           ? dest
-          : `/dashboard/teams/${active.teamId}/composer`) + search;
-      window.location.assign(withSearch);
+          : `/dashboard/teams/${activeTeamId}/composer`) + search;
+      // Soft navigate — avoid full document reloads fighting TeamAppLayout.
+      navigate(withSearch, { replace: true });
       return;
     }
 
@@ -69,7 +76,18 @@ export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
     writePersonalWorkspaceId(null);
     clearTeamBootstrap();
     ranForPath.current = pathname;
-  }, [enabled, skipBoot, personalOnly, pathname, search, data]);
+  }, [
+    enabled,
+    skipBoot,
+    personalOnly,
+    pathname,
+    search,
+    data,
+    activeWorkspaceId,
+    activeTeamId,
+    activeKind,
+    navigate,
+  ]);
 
   return null;
 }
