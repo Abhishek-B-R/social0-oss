@@ -5,7 +5,6 @@ import {
   IconBriefcase,
   IconChevronDown,
   IconHome,
-  IconLoader2,
   IconPlus,
   IconSettings,
   IconUsers,
@@ -29,6 +28,7 @@ import {
   invalidateTeamRoomQueries,
   WORKSPACES_QUERY_KEY,
 } from "@/lib/team-query-keys";
+import { clearTeamBootstrap } from "@/layouts/TeamAppLayout";
 
 export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   const queryClient = useQueryClient();
@@ -208,11 +208,18 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
     try {
       await switchWorkspace(workspaceId);
       writeTeamWorkspaceId(teamId, workspaceId);
-      await invalidateAll();
+      // Leaving a different team URL — drop its bootstrap so we don't fight.
+      const currentTeamMatch = pathname.match(/\/dashboard\/teams\/([^/]+)/);
+      const currentTeamId = currentTeamMatch?.[1];
+      if (currentTeamId && currentTeamId !== teamId) {
+        clearTeamBootstrap(currentTeamId);
+      }
       setOpen(false);
       const dest = mapPathToBase(pathname, `/dashboard/teams/${teamId}`);
       const teamPrefix = `/dashboard/teams/${teamId}`;
       toast.success("Switched to team workspace");
+      // Full navigation — do not invalidate while still on the previous team
+      // URL or TeamAppLayout will fight the switch and snap back.
       window.location.assign(
         dest === teamPrefix || dest.startsWith(`${teamPrefix}/`)
           ? dest
@@ -238,10 +245,13 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
     try {
       await switchWorkspace(null);
       writePersonalWorkspaceId(null);
-      await invalidateAll();
+      clearTeamBootstrap();
       setOpen(false);
       const dest = mapPathToBase(pathname, "/dashboard");
       toast.success("Switched to Main");
+      // Navigate immediately after the switch. Invalidating queries first while
+      // still on a team URL lets TeamAppLayout re-activate that team workspace
+      // and bounce the user back (Main ↔ team loop).
       if (dest !== pathname || isTeamAppPath(pathname)) {
         window.location.assign(dest);
       } else {
@@ -330,13 +340,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
         >
           <div className="min-h-0 flex-1 overflow-y-auto py-1">
             {isLoading ? (
-              <div className="flex items-center gap-2 px-3 py-3 text-sm text-text-muted">
-                <IconLoader2
-                  className="h-4 w-4 animate-spin"
-                  strokeWidth={1.5}
-                />
-                Loading…
-              </div>
+              <p className="px-3 py-3 text-sm text-text-muted">Loading…</p>
             ) : (
               <>
                 <p className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-text-muted">
@@ -479,8 +483,13 @@ function WorkspaceOption({
       type="button"
       disabled={disabled || busy}
       onClick={onSelect}
-      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-sidebar-active disabled:opacity-60 ${
-        active ? "bg-sidebar-active font-medium text-sidebar-text" : "text-text"
+      aria-busy={busy || undefined}
+      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-[opacity,colors] duration-150 ease-out hover:bg-sidebar-active disabled:opacity-50 ${
+        busy
+          ? "bg-sidebar-active font-medium text-sidebar-text opacity-100"
+          : active
+            ? "bg-sidebar-active font-medium text-sidebar-text"
+            : "text-text"
       }`}
     >
       {icon === "home" ? (
@@ -502,15 +511,9 @@ function WorkspaceOption({
       <span className="min-w-0 flex-1 truncate capitalize">
         {label}
         <span className="mt-0.5 block truncate text-xs font-normal normal-case text-text-muted">
-          {subtitle}
+          {busy ? "Opening…" : subtitle}
         </span>
       </span>
-      {busy ? (
-        <IconLoader2
-          className="h-4 w-4 animate-spin text-text-muted"
-          strokeWidth={1.5}
-        />
-      ) : null}
     </button>
   );
 }

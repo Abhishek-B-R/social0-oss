@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { listWorkspaces, switchWorkspace } from "@/api/team";
+import { useQuery } from "@tanstack/react-query";
+import { listWorkspaces } from "@/api/team";
 import {
   isPersonalOnlyDashboardPath,
   isTeamAppPath,
@@ -10,17 +10,16 @@ import {
 } from "@/lib/dashboard-base-path";
 import { useLocation } from "react-router-dom";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
+import { clearTeamBootstrap } from "@/layouts/TeamAppLayout";
 
 /**
  * On personal /dashboard routes (not team app / team settings):
- * - Team workspace (owned or joined) on a mirrored page → team app tree
- * - Personal-only account pages (billing/settings/…) with a non-Main
- *   workspace active → switch to Main so actor-scoped pages work
+ * - Account pages (billing, settings, api-keys, …) leave the active workspace alone
+ * - Team workspace on a mirrored page (composer, posts, …) → redirect into the team URL tree
  */
 export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
   const { pathname, search } = useLocation();
-  const queryClient = useQueryClient();
-  const ran = useRef(false);
+  const ranForPath = useRef<string | null>(null);
 
   const onTeamTree =
     isTeamAppPath(pathname) || isTeamSettingsPath(pathname);
@@ -34,40 +33,17 @@ export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
   });
 
   useEffect(() => {
-    if (!enabled || skipBoot || !data || ran.current) return;
+    if (!enabled || skipBoot || !data) return;
+    if (ranForPath.current === pathname) return;
+
+    // Billing / settings / developer / teams list — keep whatever workspace is active.
+    // Switching to Main here was wiping team context and felt like a bug.
+    if (personalOnly) {
+      ranForPath.current = pathname;
+      return;
+    }
 
     const active = data.workspaces.find((w) => w.isActive);
-
-    // Personal-only account routes must run as Main (actor context).
-    if (personalOnly) {
-      if (!active || active.kind === "personal" || active.id == null) {
-        writePersonalWorkspaceId(null);
-        ran.current = true;
-        return;
-      }
-      ran.current = true;
-      let cancelled = false;
-      (async () => {
-        try {
-          await switchWorkspace(null);
-          writePersonalWorkspaceId(null);
-          if (!cancelled) {
-            await Promise.all([
-              queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY }),
-              queryClient.invalidateQueries({ queryKey: ["team"] }),
-              queryClient.invalidateQueries({ queryKey: ["dashboard-layout"] }),
-              queryClient.invalidateQueries({ queryKey: ["connections"] }),
-            ]);
-            window.location.reload();
-          }
-        } catch {
-          // leave user as-is if switch fails
-        }
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }
 
     // Team workspace on a mirrored personal URL → team app tree.
     // Covers owned + joined so OAuth select callbacks (always personal paths)
@@ -76,7 +52,7 @@ export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
       active?.teamId &&
       (active.kind === "owned" || active.kind === "joined")
     ) {
-      ran.current = true;
+      ranForPath.current = pathname;
       const dest = mapPathToBase(
         pathname,
         `/dashboard/teams/${active.teamId}`,
@@ -91,8 +67,9 @@ export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
 
     // Already on Main
     writePersonalWorkspaceId(null);
-    ran.current = true;
-  }, [enabled, skipBoot, personalOnly, pathname, search, data, queryClient]);
+    clearTeamBootstrap();
+    ranForPath.current = pathname;
+  }, [enabled, skipBoot, personalOnly, pathname, search, data]);
 
   return null;
 }

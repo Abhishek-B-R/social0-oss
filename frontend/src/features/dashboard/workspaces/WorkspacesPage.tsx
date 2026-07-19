@@ -84,6 +84,7 @@ export function WorkspacesPage() {
     /** Sole workspace / solo container → connections go to Main. */
     movesToMain: boolean;
   } | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [switchingId, setSwitchingId] = useState<string | "main" | null>(null);
 
@@ -137,21 +138,68 @@ export function WorkspacesPage() {
     await invalidateTeamRoomQueries(queryClient);
   };
 
+  const applyMoveOptimistically = (
+    accountId: string,
+    targetWorkspaceId: string | null,
+  ) => {
+    queryClient.setQueryData<WorkspaceBoardResponse>(
+      WORKSPACE_BOARD_QUERY_KEY,
+      (prev) => {
+        if (!prev) return prev;
+        let moved: WorkspaceBoardAccount | null = null;
+        const withoutSource = prev.cards.map((card) => {
+          const nextAccounts = card.accounts.filter((a) => {
+            if (a.id !== accountId) return true;
+            moved = a;
+            return false;
+          });
+          if (nextAccounts.length === card.accounts.length) return card;
+          return {
+            ...card,
+            accounts: nextAccounts,
+            connectionCount: Math.max(0, card.connectionCount - 1),
+          };
+        });
+        if (!moved) return prev;
+        return {
+          ...prev,
+          cards: withoutSource.map((card) => {
+            const isTarget =
+              targetWorkspaceId === null
+                ? card.id === null
+                : card.id === targetWorkspaceId;
+            if (!isTarget) return card;
+            if (card.accounts.some((a) => a.id === accountId)) return card;
+            return {
+              ...card,
+              accounts: [...card.accounts, moved!],
+              connectionCount: card.connectionCount + 1,
+            };
+          }),
+        };
+      },
+    );
+  };
+
   const handleMove = async (
     accountId: string,
     targetWorkspaceId: string | null,
   ) => {
+    if (movingId) return;
     setMovingId(accountId);
     try {
       await moveAccountToWorkspace(accountId, targetWorkspaceId);
+      applyMoveOptimistically(accountId, targetWorkspaceId);
+      setMovingId(null);
       toast.success("Connection moved");
-      await invalidateAll();
+      void invalidateAll();
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to move connection",
       );
-    } finally {
       setMovingId(null);
+      // Reconcile in case the move partially applied or cache drifted.
+      void invalidateAll();
     }
   };
 
@@ -244,6 +292,7 @@ export function WorkspacesPage() {
         "Workspace deleted. Connections were moved to the team's default workspace (duplicates skipped).",
       );
       setDeleteTarget(null);
+      setDeleteConfirmText("");
       await invalidateAll();
       if (wasActive) window.location.reload();
     } catch (err) {
@@ -347,6 +396,7 @@ export function WorkspacesPage() {
                       teamName: card.teamName,
                       movesToMain: !card.teamName || teamWsCount <= 1,
                     });
+                    setDeleteConfirmText("");
                   }
                 : undefined
             }
@@ -461,44 +511,73 @@ export function WorkspacesPage() {
         open={!!deleteTarget}
         onOpenChange={(open) => {
           if (deleting) return;
-          if (!open) setDeleteTarget(null);
+          if (!open) {
+            setDeleteTarget(null);
+            setDeleteConfirmText("");
+          }
         }}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete workspace?</DialogTitle>
             <DialogDescription>
               {deleteTarget?.movesToMain
-                ? `Deletes “${deleteTarget?.name}”. Connections move to Main; duplicates already there are skipped.`
-                : `Deletes “${deleteTarget?.name}”. Connections move to ${
+                ? `Connections in “${deleteTarget?.name}” move to Main. Duplicates already there are skipped.`
+                : `Connections in “${deleteTarget?.name}” move to ${
                     deleteTarget?.teamName
                       ? `${deleteTarget.teamName}'s default workspace`
                       : "the team's default workspace"
-                  }; duplicates already there are skipped.`}
+                  }. Duplicates already there are skipped.`}
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="confirm-delete-board-workspace">
+              Type{" "}
+              <span className="font-medium text-text">
+                {deleteTarget?.name}
+              </span>{" "}
+              to confirm
+            </Label>
+            <Input
+              id="confirm-delete-board-workspace"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              autoFocus
+              disabled={deleting}
+              autoComplete="off"
+              onKeyDown={(e) => {
+                if (
+                  e.key === "Enter" &&
+                  deleteTarget &&
+                  deleteConfirmText === deleteTarget.name
+                ) {
+                  e.preventDefault();
+                  void handleDelete();
+                }
+              }}
+            />
+          </div>
           <DialogFooter>
             <Button
               variant="outline"
               disabled={deleting}
-              onClick={() => setDeleteTarget(null)}
+              onClick={() => {
+                setDeleteTarget(null);
+                setDeleteConfirmText("");
+              }}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
-              disabled={deleting}
+              disabled={
+                deleting ||
+                !deleteTarget ||
+                deleteConfirmText !== deleteTarget.name
+              }
               onClick={() => void handleDelete()}
             >
-              {deleting ? (
-                <IconLoader2
-                  className="h-4 w-4 animate-spin"
-                  strokeWidth={1.5}
-                />
-              ) : (
-                <IconTrash className="h-4 w-4" strokeWidth={1.5} />
-              )}
-              Delete
+              {deleting ? "Deleting…" : "Delete workspace"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -795,13 +874,10 @@ function MoveMenu({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className="rounded-xl border border-border bg-bg-elevated px-2.5 py-1 text-xs font-medium text-text transition-colors duration-150 ease-out hover:bg-muted active:scale-[0.97] disabled:opacity-60"
+        aria-busy={busy || undefined}
+        className="min-w-[3.25rem] rounded-xl border border-border bg-bg-elevated px-2.5 py-1 text-xs font-medium text-text transition-[opacity,colors,transform] duration-150 ease-out hover:bg-muted active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100"
       >
-        {busy ? (
-          <IconLoader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
-        ) : (
-          "Move"
-        )}
+        {busy ? "Moving…" : "Move"}
       </button>
       {open && menuPos
         ? createPortal(

@@ -68,6 +68,11 @@ export function TeamDetailPage() {
 
   const [leaving, setLeaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteStep, setDeleteStep] = useState<"choose" | "confirm">("choose");
+  const [pendingDeleteMode, setPendingDeleteMode] = useState<
+    "keep" | "discard" | null
+  >(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingMode, setDeletingMode] = useState<"keep" | "discard" | null>(
     null,
   );
@@ -75,6 +80,7 @@ export function TeamDetailPage() {
     id: string;
     name: string;
   } | null>(null);
+  const [deleteWsConfirm, setDeleteWsConfirm] = useState("");
 
   useEffect(() => {
     if (!teamId) {
@@ -184,6 +190,7 @@ export function TeamDetailPage() {
       }
       toast.success(parts.join(". "));
       setDeleteWsTarget(null);
+      setDeleteWsConfirm("");
       refresh();
     } catch (err) {
       toast.error(
@@ -209,9 +216,18 @@ export function TeamDetailPage() {
     }
   };
 
-  const handleDelete = async (keepConnections: boolean) => {
-    if (!teamId || deletingMode) return;
-    setDeletingMode(keepConnections ? "keep" : "discard");
+  const resetDeleteTeam = () => {
+    setDeleteOpen(false);
+    setDeleteStep("choose");
+    setPendingDeleteMode(null);
+    setDeleteConfirmText("");
+    setDeletingMode(null);
+  };
+
+  const handleDelete = async () => {
+    if (!teamId || deletingMode || !pendingDeleteMode) return;
+    const keepConnections = pendingDeleteMode === "keep";
+    setDeletingMode(pendingDeleteMode);
     try {
       const result = await deleteTeam(teamId, { keepConnections });
       if (keepConnections) {
@@ -230,14 +246,11 @@ export function TeamDetailPage() {
       } else {
         toast.success("Team deleted");
       }
-      await Promise.all([
-        invalidateTeamRoomQueries(queryClient, teamId),
-      ]);
+      await Promise.all([invalidateTeamRoomQueries(queryClient, teamId)]);
       navigate("/dashboard/teams", { replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete team");
       setDeletingMode(null);
-      setDeleteOpen(false);
     }
   };
 
@@ -396,9 +409,10 @@ export function TeamDetailPage() {
                   <button
                     type="button"
                     disabled={wsBusyId === ws.id}
-                    onClick={() =>
-                      setDeleteWsTarget({ id: ws.id, name: ws.name })
-                    }
+                    onClick={() => {
+                      setDeleteWsTarget({ id: ws.id, name: ws.name });
+                      setDeleteWsConfirm("");
+                    }}
                     className="rounded-md p-1.5 text-destructive hover:bg-destructive/10 disabled:opacity-50"
                     aria-label={`Delete ${ws.name}`}
                   >
@@ -590,7 +604,12 @@ export function TeamDetailPage() {
             <Button
               variant="destructive"
               className="mt-4"
-              onClick={() => setDeleteOpen(true)}
+              onClick={() => {
+                setDeleteStep("choose");
+                setPendingDeleteMode(null);
+                setDeleteConfirmText("");
+                setDeleteOpen(true);
+              }}
             >
               <IconTrash className="h-4 w-4" strokeWidth={1.5} />
               Delete team
@@ -624,39 +643,68 @@ export function TeamDetailPage() {
         open={!!deleteWsTarget}
         onOpenChange={(open) => {
           if (wsBusyId) return;
-          if (!open) setDeleteWsTarget(null);
+          if (!open) {
+            setDeleteWsTarget(null);
+            setDeleteWsConfirm("");
+          }
         }}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete workspace?</DialogTitle>
             <DialogDescription>
-              Deletes “{deleteWsTarget?.name}”. Connections move to the team
-              default workspace; duplicates already there are skipped.
+              Connections in “{deleteWsTarget?.name}” move to the team default
+              workspace. Duplicates already there are skipped.
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="confirm-delete-workspace">
+              Type{" "}
+              <span className="font-medium text-text">
+                {deleteWsTarget?.name}
+              </span>{" "}
+              to confirm
+            </Label>
+            <Input
+              id="confirm-delete-workspace"
+              value={deleteWsConfirm}
+              onChange={(e) => setDeleteWsConfirm(e.target.value)}
+              autoFocus
+              disabled={!!wsBusyId}
+              autoComplete="off"
+              onKeyDown={(e) => {
+                if (
+                  e.key === "Enter" &&
+                  deleteWsTarget &&
+                  deleteWsConfirm === deleteWsTarget.name
+                ) {
+                  e.preventDefault();
+                  void handleDeleteWorkspace();
+                }
+              }}
+            />
+          </div>
           <DialogFooter>
             <Button
               variant="outline"
               disabled={!!wsBusyId}
-              onClick={() => setDeleteWsTarget(null)}
+              onClick={() => {
+                setDeleteWsTarget(null);
+                setDeleteWsConfirm("");
+              }}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
-              disabled={!!wsBusyId}
+              disabled={
+                !!wsBusyId ||
+                !deleteWsTarget ||
+                deleteWsConfirm !== deleteWsTarget.name
+              }
               onClick={() => void handleDeleteWorkspace()}
             >
-              {wsBusyId ? (
-                <IconLoader2
-                  className="h-4 w-4 animate-spin"
-                  strokeWidth={1.5}
-                />
-              ) : (
-                <IconTrash className="h-4 w-4" strokeWidth={1.5} />
-              )}
-              Delete workspace
+              {wsBusyId ? "Deleting…" : "Delete workspace"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -666,58 +714,110 @@ export function TeamDetailPage() {
         open={deleteOpen}
         onOpenChange={(open) => {
           if (deletingMode) return;
-          setDeleteOpen(open);
+          if (!open) resetDeleteTeam();
+          else setDeleteOpen(true);
         }}
       >
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete team?</DialogTitle>
-            <DialogDescription>
-              Permanently deletes “{teamName}” and all of its workspaces. Keep
-              connections to move them to Main (duplicates skipped), or discard
-              them with the team.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
-            <Button
-              variant="outline"
-              disabled={!!deletingMode}
-              className="w-full"
-              onClick={() => setDeleteOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={!!deletingMode}
-              className="w-full"
-              onClick={() => void handleDelete(true)}
-            >
-              {deletingMode === "keep" ? (
-                <IconLoader2
-                  className="h-4 w-4 animate-spin"
-                  strokeWidth={1.5}
+          {deleteStep === "choose" ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Delete team?</DialogTitle>
+                <DialogDescription>
+                  This removes “{teamName}” and every workspace in it. Choose
+                  what happens to the connections.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={resetDeleteTeam}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => {
+                    setPendingDeleteMode("keep");
+                    setDeleteConfirmText("");
+                    setDeleteStep("confirm");
+                  }}
+                >
+                  Keep connections on Main
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={() => {
+                    setPendingDeleteMode("discard");
+                    setDeleteConfirmText("");
+                    setDeleteStep("confirm");
+                  }}
+                >
+                  Discard connections too
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Confirm deletion</DialogTitle>
+                <DialogDescription>
+                  {pendingDeleteMode === "keep"
+                    ? "Connections move to Main. Duplicates already there are skipped."
+                    : "Connections in this team will be deleted with it."}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-delete-team">
+                  Type{" "}
+                  <span className="font-medium text-text">{teamName}</span> to
+                  confirm
+                </Label>
+                <Input
+                  id="confirm-delete-team"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  autoFocus
+                  disabled={!!deletingMode}
+                  autoComplete="off"
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" &&
+                      deleteConfirmText === teamName &&
+                      !deletingMode
+                    ) {
+                      e.preventDefault();
+                      void handleDelete();
+                    }
+                  }}
                 />
-              ) : null}
-              Delete &amp; keep connections
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={!!deletingMode}
-              className="w-full"
-              onClick={() => void handleDelete(false)}
-            >
-              {deletingMode === "discard" ? (
-                <IconLoader2
-                  className="h-4 w-4 animate-spin"
-                  strokeWidth={1.5}
-                />
-              ) : (
-                <IconTrash className="h-4 w-4" strokeWidth={1.5} />
-              )}
-              Delete &amp; discard connections
-            </Button>
-          </DialogFooter>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  disabled={!!deletingMode}
+                  onClick={() => {
+                    setDeleteStep("choose");
+                    setDeleteConfirmText("");
+                  }}
+                >
+                  Back
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={
+                    !!deletingMode || deleteConfirmText !== teamName
+                  }
+                  onClick={() => void handleDelete()}
+                >
+                  {deletingMode ? "Deleting…" : "Delete team"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>

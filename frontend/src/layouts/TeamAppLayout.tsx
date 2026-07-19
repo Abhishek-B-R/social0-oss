@@ -16,6 +16,15 @@ import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 /** Survives layout remounts so in-team navigations don't flash the gate. */
 const bootstrappedTeams = new Set<string>();
 
+/** Call when deliberately leaving a team URL tree (e.g. switcher → Main). */
+export function clearTeamBootstrap(teamId?: string | null) {
+  if (teamId) {
+    bootstrappedTeams.delete(teamId);
+    return;
+  }
+  bootstrappedTeams.clear();
+}
+
 /**
  * Gate for /dashboard/teams/:teamId/* — ensures membership and activates
  * the team's default (or last-used) workspace. Runs once per teamId;
@@ -71,12 +80,23 @@ export function TeamAppLayout() {
     );
 
     // Fast path: previously gated and the target workspace is still active.
-    // Re-activate when PersonalWorkspaceBoot (or billing/settings) switched to Main.
     if (bootstrappedTeams.has(teamId) && alreadyActive) {
       writeTeamWorkspaceId(teamId, targetId);
       setReady(true);
       setError(null);
       return;
+    }
+
+    // Mid-leave: active workspace is no longer this team's (Main or another
+    // team). Don't yank it back — the switcher is navigating away. Returning
+    // later clears bootstrap so we re-gate cleanly.
+    if (bootstrappedTeams.has(teamId) && !alreadyActive) {
+      const active = data.workspaces.find((w) => w.isActive);
+      if (!active || active.teamId !== teamId) {
+        setReady(true);
+        setError(null);
+        return;
+      }
     }
 
     let cancelled = false;
