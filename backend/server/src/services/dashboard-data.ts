@@ -45,17 +45,21 @@ export async function loadDashboardLayoutData(): Promise<{
     throw new Error("Unauthorized");
   }
   const actorUserId = session.user.id;
+  // Sidebar plan is always the signed-in user's personal subscription.
+  // Workspace owner's tier (resourceUserId) gates team features, but must not
+  // label the actor as Pro when they're only a member of a Pro team.
   const ctx = await resolveWorkspaceContext(actorUserId);
-  const userId = ctx.resourceUserId;
-
-  const subscription = await getSubscriptionForUser(userId);
+  const subscription = await getSubscriptionForUser(actorUserId);
   const tier = subscription.tier;
   const [profileRow, freeLimit] = await Promise.all([
     db.query.user.findFirst({
       where: eq(user.id, actorUserId),
       columns: { name: true, image: true },
     }),
-    !isActiveTier(tier) ? checkFreePostLimit(userId) : Promise.resolve(null),
+    // Free-post quota is personal; only surface it outside team workspaces.
+    !ctx.inWorkspace && !isActiveTier(tier)
+      ? checkFreePostLimit(actorUserId)
+      : Promise.resolve(null),
   ]);
 
   const planLabel =
