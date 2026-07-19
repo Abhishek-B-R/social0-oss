@@ -937,11 +937,13 @@ async function resolveTeamLandingWorkspace(
     });
     if (preferred) return preferred;
   }
-  return db.query.workspaces.findFirst({
-    where: eq(workspaces.teamId, teamId),
-    columns: { id: true },
-    orderBy: [asc(workspaces.createdAt)],
-  });
+  return (
+    (await db.query.workspaces.findFirst({
+      where: eq(workspaces.teamId, teamId),
+      columns: { id: true },
+      orderBy: [asc(workspaces.createdAt)],
+    })) ?? null
+  );
 }
 
 export async function acceptInvite(
