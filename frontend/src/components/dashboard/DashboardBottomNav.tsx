@@ -1,4 +1,3 @@
-
 import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { useEffect, useState } from "react";
@@ -9,57 +8,77 @@ import {
   IconCalendar,
 } from "@tabler/icons-react";
 import { TiktokCreateButton } from "./TiktokCreateButton";
-
-const CREATE_HREF = "/dashboard/composer";
+import {
+  getDashboardRelativePath,
+  useDashboardPath,
+} from "@/lib/dashboard-base-path";
 
 type NavItemIcon = React.ComponentType<{ className?: string }>;
 
-const NAV_ITEMS: Array<{
-  href: string;
-  label: string;
-  icon?: NavItemIcon;
-}> = [
-  { href: "/dashboard/posts", label: "Posts", icon: IconList },
-  { href: "/dashboard/calendar", label: "Calendar", icon: IconCalendar },
-  { href: CREATE_HREF, label: "Create" },
-  { href: "/dashboard/connections", label: "Connections", icon: IconLink },
-  { href: "/dashboard/more", label: "More", icon: IconDots },
-];
-
 export function DashboardBottomNav() {
   const pathname = useLocation().pathname;
+  const dash = useDashboardPath();
+  const relative = getDashboardRelativePath(pathname);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  const createHref = dash("composer");
+
+  const navItems: Array<{
+    href: string;
+    label: string;
+    icon?: NavItemIcon;
+    key: string;
+  }> = [
+    { key: "posts", href: dash("posts"), label: "Posts", icon: IconList },
+    {
+      key: "calendar",
+      href: dash("calendar"),
+      label: "Calendar",
+      icon: IconCalendar,
+    },
+    { key: "create", href: createHref, label: "Create" },
+    {
+      key: "connections",
+      href: dash("connections"),
+      label: "Connections",
+      icon: IconLink,
+    },
+    {
+      key: "more",
+      href: "/dashboard/more",
+      label: "More",
+      icon: IconDots,
+    },
+  ];
 
   useEffect(() => {
     setPendingHref(null);
   }, [pathname]);
 
-  const isActive = (href: string) => {
-    if (href === "/dashboard/connections")
-      return pathname === "/dashboard/connections";
-    if (href === "/dashboard/composer")
+  const isActive = (key: string) => {
+    if (key === "connections") return relative === "connections";
+    if (key === "create")
+      return relative === "composer" || relative.startsWith("create");
+    if (key === "calendar") return relative.startsWith("calendar");
+    if (key === "posts")
       return (
-        pathname === "/dashboard/composer" ||
-        pathname.startsWith("/dashboard/create/")
+        relative === "posts" ||
+        relative.startsWith("posts/scheduled") ||
+        relative.startsWith("posts/posted") ||
+        relative.startsWith("posts/drafts")
       );
-    if (href === "/dashboard/calendar")
-      return pathname.startsWith("/dashboard/calendar");
-    if (href === "/dashboard/posts")
-      return (
-        pathname === "/dashboard/posts" ||
-        pathname.startsWith("/dashboard/posts/scheduled") ||
-        pathname.startsWith("/dashboard/posts/posted") ||
-        pathname.startsWith("/dashboard/posts/drafts")
-      );
-    if (href === "/dashboard/more")
+    if (key === "more")
       return (
         pathname === "/dashboard/more" ||
-        pathname.startsWith("/dashboard/settings") ||
         pathname.startsWith("/dashboard/billing") ||
-        pathname.startsWith("/dashboard/bulk-tools")
-        // || pathname.startsWith("/dashboard/teams") // hidden until Teams ships
+        pathname.startsWith("/dashboard/api-keys") ||
+        pathname.startsWith("/dashboard/feedback") ||
+        (pathname.startsWith("/dashboard/teams") &&
+          !pathname.match(/\/teams\/[^/]+\/(composer|create|posts|calendar|connections)/)) ||
+        pathname.startsWith("/dashboard/workspaces") ||
+        (relative === "settings" && pathname.includes("/dashboard/settings"))
       );
-    return pathname.startsWith(href);
+    return false;
   };
 
   return (
@@ -67,13 +86,13 @@ export function DashboardBottomNav() {
       className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-border bg-bg-elevated py-0.5 pb-[calc(env(safe-area-inset-bottom)+2px)] lg:hidden"
       aria-label="Main navigation"
     >
-      {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-        const active = isActive(href);
-        const isCreate = href === CREATE_HREF;
+      {navItems.map(({ href, label, icon: Icon, key }) => {
+        const active = isActive(key);
+        const isCreate = key === "create";
 
         if (isCreate) {
           return (
-            <div key={href} className="relative flex min-h-[60px] flex-1 shrink-0">
+            <div key={key} className="relative flex min-h-[60px] flex-1 shrink-0">
               <TiktokCreateButton
                 href={href}
                 isActive={active}
@@ -85,7 +104,7 @@ export function DashboardBottomNav() {
 
         return (
           <Link
-            key={href}
+            key={key}
             href={href}
             prefetch
             onClick={() => {

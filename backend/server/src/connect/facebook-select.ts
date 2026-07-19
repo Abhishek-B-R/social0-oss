@@ -1,7 +1,7 @@
 import { auth } from "../lib/auth.js";
 import { db } from "../db/index.js";
 import { verification, connectedAccounts } from "../db/schema.js";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { headers } from "../lib/http/request-cookies.js";
 import { decryptToken, encryptToken } from "@social0/shared";
 import { getRemainingSlots } from "../lib/connections.js";
@@ -15,6 +15,18 @@ export async function fbSelectGet(req: AppRequest) {
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { requireWorkspacePermissionForUser } = await import(
+    "../lib/workspace/session.js"
+  );
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "manage_connections",
+  );
+  if (!ws.ok) {
+    return Response.json({ error: ws.error }, { status: ws.statusCode });
+  }
+  const resourceUserId = ws.ctx.resourceUserId;
 
   const { searchParams } = new URL(req.url);
   const token = searchParams.get("token");
@@ -37,7 +49,7 @@ export async function fbSelectGet(req: AppRequest) {
 
   try {
     const payload = JSON.parse(decryptToken(record.value, token));
-    if (payload.userId !== session.user.id) {
+    if (payload.userId !== resourceUserId) {
       return Response.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -66,6 +78,18 @@ export async function fbSelectPost(req: AppRequest) {
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { requireWorkspacePermissionForUser } = await import(
+    "../lib/workspace/session.js"
+  );
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "manage_connections",
+  );
+  if (!ws.ok) {
+    return Response.json({ error: ws.error }, { status: ws.statusCode });
+  }
+  const resourceUserId = ws.ctx.resourceUserId;
 
   let body: { token?: string; pageId?: string; returnTo?: string };
   try {
@@ -98,6 +122,7 @@ export async function fbSelectPost(req: AppRequest) {
 
   let payload: {
     userId: string;
+    workspaceId?: string | null;
     pages: Array<{
       id: string;
       name: string;
@@ -111,9 +136,17 @@ export async function fbSelectPost(req: AppRequest) {
     return Response.json({ error: "Invalid token data" }, { status: 400 });
   }
 
-  if (payload.userId !== session.user.id) {
+  if (payload.userId !== resourceUserId) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
+
+  // Prefer OAuth-start workspace so a mid-flow Main switch can't mis-scope the insert.
+  const workspaceId =
+    typeof payload.workspaceId === "string"
+      ? payload.workspaceId
+      : payload.workspaceId === null
+        ? null
+        : ws.ctx.workspaceId;
 
   const page = payload.pages.find((p) => p.id === pageId);
   if (!page) {
@@ -122,14 +155,17 @@ export async function fbSelectPost(req: AppRequest) {
 
   const existing = await db.query.connectedAccounts.findFirst({
     where: and(
-      eq(connectedAccounts.userId, session.user.id),
+      eq(connectedAccounts.userId, resourceUserId),
       eq(connectedAccounts.platform, "facebook"),
       eq(connectedAccounts.platformUserId, page.id),
+      workspaceId
+        ? eq(connectedAccounts.workspaceId, workspaceId)
+        : isNull(connectedAccounts.workspaceId),
     ),
   });
 
   if (!existing) {
-    const remaining = await getRemainingSlots(session.user.id);
+    const remaining = await getRemainingSlots(resourceUserId);
     if (remaining <= 0) {
       return Response.json(
         {
@@ -146,7 +182,7 @@ export async function fbSelectPost(req: AppRequest) {
   const encryptedAccess = encryptToken(page.access_token, accountId);
   const profileImageUrl = resolveProfileImageUrl(
     await mirrorProfileImageToR2(page.pictureUrl, {
-      userId: session.user.id,
+      userId: resourceUserId,
       accountId,
       platform: "facebook",
     }),
@@ -169,7 +205,8 @@ export async function fbSelectPost(req: AppRequest) {
   } else {
     await db.insert(connectedAccounts).values({
       id: accountId,
-      userId: session.user.id,
+      userId: resourceUserId,
+      workspaceId,
       platform: "facebook",
       platformUserId: page.id,
       platformUsername: page.name,

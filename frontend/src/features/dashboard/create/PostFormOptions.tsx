@@ -5,7 +5,8 @@ import { ScheduleDateTimePicker } from "@/components/ui/ScheduleDateTimePicker";
 import { AccountBubbleSelector } from "@/components/AccountBubbleSelector";
 import { PLATFORMS } from "@/lib/platforms";
 import { signInUrl } from "@/lib/sign-in-url";
-import { getPlanLimits } from "@/lib/plans";
+import { getPlanLimits, type SubscriptionTier } from "@/lib/plans";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 import type { PublishMode } from "@/api/posts";
 
 type Account = {
@@ -59,6 +60,8 @@ type PostFormOptionsProps = {
   isGuest?: boolean;
   /** Free-tier posts remaining; shows a small usage banner when set. */
   freePostsRemaining?: number | null;
+  /** Active plan for empty-state copy (workspace owner's plan when in a team). */
+  subscriptionTier?: SubscriptionTier;
 };
 
 export function PostFormOptions({
@@ -90,8 +93,10 @@ export function PostFormOptions({
   warningLabel,
   isGuest = false,
   freePostsRemaining = null,
+  subscriptionTier = "free",
 }: PostFormOptionsProps) {
   const pathname = useLocation().pathname;
+  const dash = useDashboardPath();
   const platformName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
 
@@ -135,12 +140,21 @@ export function PostFormOptions({
           <div className="rounded-xl border border-dashed border-border bg-bg-muted/30 p-5 space-y-3 text-center">
             <p className="font-medium text-text">Connect accounts to post</p>
             <p className="text-sm text-muted-foreground">
-              Free plan includes up to{" "}
-              {getPlanLimits("free").maxConnectedAccounts} connected accounts
-              and {getPlanLimits("free").maxFreePosts} lifetime posts.
+              {subscriptionTier === "free" ? (
+                <>
+                  Free plan includes up to{" "}
+                  {getPlanLimits("free").maxConnectedAccounts} connected
+                  accounts and {getPlanLimits("free").maxFreePosts} lifetime
+                  posts.
+                </>
+              ) : (
+                <>
+                  Connect a social account to this workspace to start publishing.
+                </>
+              )}
             </p>
             <Link
-              href="/dashboard/connections"
+              href={dash("connections")}
               className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover"
             >
               Connect accounts

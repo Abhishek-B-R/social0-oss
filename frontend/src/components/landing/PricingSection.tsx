@@ -61,20 +61,21 @@ const growthFeatures = [
   { text: "Bulk scheduling tools", highlight: false },
 ];
 
-// const proFeatures = [
-//   { text: "Unlimited connected accounts", highlight: true },
-//   { text: "Multiple accounts per platform", highlight: false },
-//   { text: "Unlimited posts", highlight: false },
-//   { text: "Schedule posts across platforms", highlight: false },
-//   { text: "Carousel posts", highlight: false },
-//   { text: "Threads & Collections support", highlight: false },
-//   { text: "Human support", highlight: false },
-//   { text: "Auto-plug high performing tweets", highlight: false },
-//   { text: "Auto-repost on autopilot", highlight: false },
-//   { text: "Bulk scheduling tools", highlight: false },
-//   { text: "Priority support", highlight: false },
-//   { text: "Early access to new features", highlight: false },
-// ];
+const proFeatures = [
+  { text: "Everything in Growth", highlight: true },
+  { text: "Up to 50 connected accounts", highlight: true },
+  { text: "Team collaboration / invite teammates", highlight: true },
+  { text: "Multiple accounts per platform", highlight: false },
+  { text: "Unlimited posts", highlight: false },
+  { text: "Schedule posts across platforms", highlight: false },
+  { text: "Carousel posts", highlight: false },
+  { text: "Threads & Collections support", highlight: false },
+  { text: "Auto-plug high performing tweets", highlight: false },
+  { text: "Auto-repost on autopilot", highlight: false },
+  { text: "Bulk scheduling tools", highlight: false },
+  { text: "Priority support", highlight: false },
+  { text: "Early access to new features", highlight: false },
+];
 
 export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
   return (
@@ -104,7 +105,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
           REST API, MCP &amp; CLI. Paid plans include a 3-day trial.
         </p>
 
-        <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-3">
+        <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-4">
           {/* FREE */}
           <div className={basePlanCard}>
             <div className="mb-6 min-h-[30px]" aria-hidden />
@@ -269,34 +270,42 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
             </div>
           </div>
 
-          {/* PRO - commented out for now, add back later
-          <div className="flex flex-col bg-background p-8 md:p-10">
-            <div className="mb-6 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-              Pro
-            </div>
+          {/* PRO */}
+          <div className={`${basePlanCard} relative overflow-hidden`}>
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(26,107,74,0.06),transparent_55%)]" />
 
-            <div className="mb-2 flex items-baseline gap-3">
-              <div className="font-serif text-[64px] leading-none tracking-tight text-foreground">
-                $35
-              </div>
-              <div>
-                <div className="text-[18px] font-medium text-muted-foreground line-through decoration-red-500 decoration-2">
-                  $49
-                </div>
-                <div className="text-[13px] text-muted-foreground">/month</div>
-              </div>
-              <span className="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-                Save 30%
+            <div className="relative z-10 mb-6 min-h-[30px]">
+              <span className="inline-flex items-center gap-2 rounded-full border border-foreground/15 px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+                For teams & agencies
               </span>
             </div>
 
-            <p className="mb-8 text-[14px] leading-relaxed text-muted-foreground">
-              For power users and agencies who need unlimited reach.
+            <div className={`relative z-10 ${basePlanLabel}`}>Pro</div>
+
+            <div className="relative z-10 mt-6 mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <div className={basePlanPrice}>$35</div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-[18px] font-medium text-muted-foreground line-through decoration-red-500 decoration-2">
+                  $49
+                </span>
+                <span className="text-[13px] text-muted-foreground">/month</span>
+              </div>
+              <span className="rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                Save 30%
+              </span>
+            </div>
+            <p className="relative z-10 mb-6 text-[13px] font-medium text-red-500">
+              Lock this pricing forever - subscribe now
             </p>
 
-            <hr className="mb-8 border-border" />
+            <p className={`relative z-10 mb-8 ${basePlanDesc}`}>
+              For power users and agencies who need more accounts and team
+              collaboration.
+            </p>
 
-            <ul className="mb-10 flex-1 space-y-4">
+            <hr className="relative z-10 mb-8 border-border" />
+
+            <ul className="relative z-10 flex-1 space-y-3.5">
               {proFeatures.map((item) => (
                 <li key={item.text} className="flex items-start gap-3">
                   <span
@@ -313,18 +322,18 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
               ))}
             </ul>
 
-            <Link
-              href="/dashboard"
-              className="block w-full rounded-[10px] border-2 border-foreground/10 bg-background py-3.5 text-center text-[14px] font-medium text-foreground transition-all hover:border-foreground/25 hover:bg-muted dark:border-white/10 dark:hover:border-white/20 dark:hover:bg-muted/50"
-            >
-              Get started - 3-day free trial
-            </Link>
-
-            <p className="mt-3 text-center text-[12px] text-muted-foreground">
-              3-day free trial · Cancel anytime
-            </p>
+            <div className="relative z-10 mt-auto pt-8">
+              <Link
+                href={signedIn ? "/dashboard" : "/auth"}
+                className={ctaNeutral}
+              >
+                {signedIn ? "Go to dashboard →" : "Start your 3-day free trial"}
+              </Link>
+              <p className={basePlanFooter}>
+                3-day free trial · Cancel anytime
+              </p>
+            </div>
           </div>
-          */}
         </div>
       </div>
     </section>

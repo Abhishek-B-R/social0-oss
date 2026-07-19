@@ -5,6 +5,7 @@ import { CONTENT_TYPES } from "@/lib/content-types";
 import { MdQuestionMark } from "react-icons/md";
 import { DOCS_BULK_TOOLS_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 
 const VIDEO_PLATFORMS =
   CONTENT_TYPES.find((c) => c.id === "video")?.platforms ?? [];
@@ -48,6 +49,7 @@ function PlatformIcons({ platformIds }: { platformIds: readonly string[] }) {
 }
 
 export default function BulkToolsPage() {
+  const dash = useDashboardPath();
   return (
     <div>
       <div className="flex items-center gap-2">
@@ -62,7 +64,7 @@ export default function BulkToolsPage() {
 
       <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
         <Link
-          href="/dashboard/bulk-tools/video"
+          href={dash("bulk-tools/video")}
           className="group flex flex-col rounded-2xl border-2 border-border bg-bg-elevated p-6 shadow-sm transition-colors hover:bg-accent/10 hover:border-accent"
         >
           <div className="flex items-center justify-center gap-2 text-text-muted group-hover:text-accent mb-3">
@@ -84,7 +86,7 @@ export default function BulkToolsPage() {
         </Link>
 
         <Link
-          href="/dashboard/bulk-tools/image"
+          href={dash("bulk-tools/image")}
           className="group flex flex-col rounded-2xl border-2 border-border bg-bg-elevated p-6 shadow-sm transition-colors hover:bg-accent/10 hover:border-accent"
         >
           <div className="flex items-center justify-center gap-2 text-text-muted group-hover:text-accent mb-3">

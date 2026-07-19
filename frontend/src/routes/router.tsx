@@ -96,6 +96,26 @@ const PostedPostsPage = lazy(() =>
 const ApiKeysPage = lazy(() =>
   import("@/pages/ApiKeysPage").then((m) => ({ default: m.ApiKeysPage })),
 );
+const TeamsPage = lazy(() =>
+  import("@/pages/DashboardPages").then((m) => ({ default: m.TeamsPage })),
+);
+const WorkspacesPage = lazy(() =>
+  import("@/pages/DashboardPages").then((m) => ({ default: m.WorkspacesPage })),
+);
+const CreateTeamPage = lazy(() =>
+  import("@/pages/DashboardPages").then((m) => ({ default: m.CreateTeamPage })),
+);
+const TeamDetailPage = lazy(() =>
+  import("@/pages/DashboardPages").then((m) => ({ default: m.TeamDetailPage })),
+);
+const TeamAppLayout = lazy(() =>
+  import("@/layouts/TeamAppLayout").then((m) => ({ default: m.TeamAppLayout })),
+);
+const AcceptInvitePage = lazy(() =>
+  import("@/pages/AcceptInvitePage").then((m) => ({
+    default: m.AcceptInvitePage,
+  })),
+);
 
 const TermsPage = lazy(() => import("@/features/marketing/pages/TermsPage"));
 const PrivacyPage = lazy(() => import("@/features/marketing/pages/PrivacyPage"));
@@ -292,6 +312,14 @@ export function AppRouter() {
               </Lazy>
             }
           />
+          <Route
+            path="invite/:token"
+            element={
+              <Lazy>
+                <AcceptInvitePage />
+              </Lazy>
+            }
+          />
 
           <Route
             path="onboarding"
@@ -352,12 +380,58 @@ export function AppRouter() {
             <Route path="bulk-tools/image" element={<BulkToolsImagePage />} />
             <Route path="bulk-tools/video" element={<BulkToolsVideoPage />} />
             <Route path="api-keys" element={<ApiKeysPage />} />
-            <Route path="feedback" element={<FeedbackPageRoute />} />
+            <Route path="feedback/*" element={<FeedbackPageRoute />} />
             <Route path="more" element={<MorePage />} />
+            <Route path="workspaces" element={<WorkspacesPage />} />
+            <Route path="teams" element={<TeamsPage />} />
+            <Route path="teams/create" element={<CreateTeamPage />} />
             <Route
-              path="teams"
-              element={<Navigate to="/dashboard/more" replace />}
+              path="teams/:teamId/settings"
+              element={<TeamDetailPage />}
             />
+            <Route
+              path="teams/:teamId"
+              element={
+                <Lazy>
+                  <TeamAppLayout />
+                </Lazy>
+              }
+            >
+              <Route
+                index
+                element={<Navigate to="composer" replace />}
+              />
+              <Route path="composer" element={<ComposerPage />} />
+              <Route path="create" element={<CreateHubPage />} />
+              <Route path="create/:type" element={<CreateTypePage />} />
+              <Route path="posts" element={<PostsPage />} />
+              <Route path="posts/drafts" element={<DraftsPostsPage />} />
+              <Route path="posts/scheduled" element={<ScheduledPostsPage />} />
+              <Route path="posts/posted" element={<PostedPostsPage />} />
+              <Route path="posts/:id" element={<PostDetailPage />} />
+              <Route path="posts/:id/edit" element={<EditPostPage />} />
+              <Route path="calendar" element={<CalendarPage />} />
+              <Route path="connections" element={<ConnectionsPage />} />
+              <Route
+                path="connections/facebook/select"
+                element={<FacebookSelectPage />}
+              />
+              <Route
+                path="connections/instagram/select"
+                element={<InstagramSelectPage />}
+              />
+              <Route
+                path="connections/linkedin/select"
+                element={<LinkedinSelectPage />}
+              />
+              <Route
+                path="connect/instagram-facebook/select"
+                element={<ConnectInstagramFacebookSelectPage />}
+              />
+              <Route path="bulk-tools" element={<BulkToolsPage />} />
+              <Route path="bulk-tools/image" element={<BulkToolsImagePage />} />
+              <Route path="bulk-tools/video" element={<BulkToolsVideoPage />} />
+            </Route>
           </Route>
 
           <Route

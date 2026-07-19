@@ -27,6 +27,18 @@ export async function refreshTokens(req: AppRequest) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { requireWorkspacePermissionForUser } = await import(
+    "../lib/workspace/session.js"
+  );
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "manage_connections",
+  );
+  if (!ws.ok) {
+    return RouteResponse.json({ error: ws.error }, { status: ws.statusCode });
+  }
+  const resourceUserId = ws.ctx.resourceUserId;
+
   const rate = await enforceRateLimit(tokenRefreshLimiter, session.user.id);
   if (!rate.allowed) {
     return RouteResponse.json({ error: rate.error }, { status: rate.status });
@@ -66,7 +78,7 @@ export async function refreshTokens(req: AppRequest) {
     .from(connectedAccounts)
     .where(
       and(
-        eq(connectedAccounts.userId, session.user.id),
+        eq(connectedAccounts.userId, resourceUserId),
         eq(connectedAccounts.platform, platform as Platform),
       ),
     );

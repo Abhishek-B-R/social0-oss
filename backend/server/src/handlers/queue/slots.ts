@@ -4,6 +4,7 @@ import { db } from "../../db/index.js";
 import { queueSlots } from "../../db/schema.js";
 import { eq, and, asc } from "drizzle-orm";
 import { headers } from "../../lib/http/request-cookies.js";
+import { requireWorkspacePermissionForUser } from "../../lib/workspace/session.js";
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
@@ -18,8 +19,16 @@ export async function listQueueSlots() {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "view_posts",
+  );
+  if (!ws.ok) {
+    return RouteResponse.json({ error: ws.error }, { status: ws.statusCode });
+  }
+
   const slots = await db.query.queueSlots.findMany({
-    where: eq(queueSlots.userId, session.user.id),
+    where: eq(queueSlots.userId, ws.ctx.resourceUserId),
     orderBy: [asc(queueSlots.hour), asc(queueSlots.minute)],
   });
 
@@ -30,6 +39,14 @@ export async function createQueueSlot(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "manage_workspace_settings",
+  );
+  if (!ws.ok) {
+    return RouteResponse.json({ error: ws.error }, { status: ws.statusCode });
   }
 
   let body: { daysOfWeek?: number[]; hour?: number; minute?: number };
@@ -67,7 +84,7 @@ export async function createQueueSlot(request: Request) {
     .from(queueSlots)
     .where(
       and(
-        eq(queueSlots.userId, session.user.id),
+        eq(queueSlots.userId, ws.ctx.resourceUserId),
         eq(queueSlots.hour, hour),
         eq(queueSlots.minute, minute),
       ),
@@ -94,7 +111,7 @@ export async function createQueueSlot(request: Request) {
   const [slot] = await db
     .insert(queueSlots)
     .values({
-      userId: session.user.id,
+      userId: ws.ctx.resourceUserId,
       daysOfWeek,
       hour,
       minute,

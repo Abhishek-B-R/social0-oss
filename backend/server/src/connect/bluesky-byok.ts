@@ -1,7 +1,7 @@
 import { auth } from "../lib/auth.js";
 import { db } from "../db/index.js";
 import { connectedAccounts } from "../db/schema.js";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { headers } from "../lib/http/request-cookies.js";
 import { encryptToken } from "@social0/shared";
 import { checkAccountLimits } from "../lib/plan-limits.js";
@@ -29,6 +29,19 @@ export async function blueskyByok(req: AppRequest) {
     if (!session) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { requireWorkspacePermissionForUser } = await import(
+      "../lib/workspace/session.js"
+    );
+    const ws = await requireWorkspacePermissionForUser(
+      session.user.id,
+      "manage_connections",
+    );
+    if (!ws.ok) {
+      return Response.json({ error: ws.error }, { status: ws.statusCode });
+    }
+    const resourceUserId = ws.ctx.resourceUserId;
+    const workspaceId = ws.ctx.workspaceId;
 
     const rate = await enforceRateLimit(blueskyByokLimiter, session.user.id);
     if (!rate.allowed) {
@@ -140,9 +153,12 @@ export async function blueskyByok(req: AppRequest) {
     // Check if this exact account (userId + platform + platformUserId) already connected
     const existing = await db.query.connectedAccounts.findFirst({
       where: and(
-        eq(connectedAccounts.userId, session.user.id),
+        eq(connectedAccounts.userId, resourceUserId),
         eq(connectedAccounts.platform, "bluesky"),
         eq(connectedAccounts.platformUserId, userInfo.id),
+        workspaceId
+          ? eq(connectedAccounts.workspaceId, workspaceId)
+          : isNull(connectedAccounts.workspaceId),
       ),
     });
 
@@ -158,7 +174,7 @@ export async function blueskyByok(req: AppRequest) {
     );
     const profileImageUrl = resolveProfileImageUrl(
       await mirrorProfileImageToR2(userInfo.profileImageUrl, {
-        userId: session.user.id,
+        userId: resourceUserId,
         accountId,
         platform: "bluesky",
       }),
@@ -186,7 +202,7 @@ export async function blueskyByok(req: AppRequest) {
         message: "Bluesky account updated successfully",
       });
     } else {
-      const limitCheck = await checkAccountLimits(session.user.id, "bluesky");
+      const limitCheck = await checkAccountLimits(resourceUserId, "bluesky");
       if (!limitCheck.allowed) {
         return Response.json(
           {
@@ -200,7 +216,8 @@ export async function blueskyByok(req: AppRequest) {
       // Insert new account
       await db.insert(connectedAccounts).values({
         id: accountId,
-        userId: session.user.id,
+        userId: resourceUserId,
+        workspaceId,
         platform: "bluesky",
         platformUserId: userInfo.id,
         platformUsername: userInfo.username,

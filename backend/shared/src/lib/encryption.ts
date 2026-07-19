@@ -23,6 +23,7 @@ export function encrypt(data: {
   returnTo?: string;
   reauth?: boolean;
   reauthAccountId?: string;
+  workspaceId?: string | null;
 }): string {
   const key = encryptionKey();
   const iv = crypto.randomBytes(16);
@@ -43,6 +44,7 @@ export function decrypt(encrypted: string): {
   returnTo?: string;
   reauth?: boolean;
   reauthAccountId?: string;
+  workspaceId?: string | null;
 } {
   const key = encryptionKey();
   const parts = encrypted.split(":");

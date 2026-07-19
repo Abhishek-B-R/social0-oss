@@ -25,13 +25,19 @@ export async function previewPlanChange(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const plan =
-    body.plan === "starter" || body.plan === "growth" ? body.plan : null;
+    body.plan === "starter" || body.plan === "growth" || body.plan === "pro"
+      ? body.plan
+      : null;
   if (!plan) {
     return RouteResponse.json({ error: "Invalid plan" }, { status: 400 });
   }
 
   const productId =
-    plan === "starter" ? PLAN_IDS.starter : plan === "growth" ? PLAN_IDS.growth : "";
+    plan === "starter"
+      ? PLAN_IDS.starter
+      : plan === "growth"
+        ? PLAN_IDS.growth
+        : PLAN_IDS.pro;
   if (!productId) {
     return RouteResponse.json({ error: "Plan not configured" }, { status: 503 });
   }

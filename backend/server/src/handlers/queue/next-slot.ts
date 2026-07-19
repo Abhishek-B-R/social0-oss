@@ -12,6 +12,7 @@ import { headers } from "../../lib/http/request-cookies.js";
 import { getNextAvailableSlot } from "../../lib/queue-utils.js";
 import { toZonedTime } from "date-fns-tz";
 import { format } from "date-fns";
+import { requireWorkspacePermissionForUser } from "../../lib/workspace/session.js";
 
 export async function getNextQueueSlot() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -19,10 +20,19 @@ export async function getNextQueueSlot() {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "create_posts",
+  );
+  if (!ws.ok) {
+    return RouteResponse.json({ error: ws.error }, { status: ws.statusCode });
+  }
+  const userId = ws.ctx.resourceUserId;
+
   const [settings] = await db
     .select({ timezone: userSettings.timezone })
     .from(userSettings)
-    .where(eq(userSettings.userId, session.user.id))
+    .where(eq(userSettings.userId, userId))
     .limit(1);
 
   const timezone =
@@ -32,7 +42,7 @@ export async function getNextQueueSlot() {
 
   const slots = await db.query.queueSlots.findMany({
     where: and(
-      eq(queueSlots.userId, session.user.id),
+      eq(queueSlots.userId, userId),
       eq(queueSlots.isActive, true),
     ),
     orderBy: [asc(queueSlots.hour), asc(queueSlots.minute)],
@@ -47,7 +57,7 @@ export async function getNextQueueSlot() {
     .from(queuedPosts)
     .where(
       and(
-        eq(queuedPosts.userId, session.user.id),
+        eq(queuedPosts.userId, userId),
         eq(queuedPosts.status, "pending"),
       ),
     );
@@ -57,7 +67,7 @@ export async function getNextQueueSlot() {
     .from(posts)
     .where(
       and(
-        eq(posts.userId, session.user.id),
+        eq(posts.userId, userId),
         eq(posts.status, "scheduled"),
       ),
     );

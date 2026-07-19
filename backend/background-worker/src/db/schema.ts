@@ -119,39 +119,32 @@ export const legalAcceptances = pgTable("legal_acceptances", {
 });
 
 // ===== CONNECTED ACCOUNTS =====
-export const connectedAccounts = pgTable(
-  "connected_accounts",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    userId: text("user_id")
-      .references(() => user.id)
-      .notNull(),
-    platform: platformEnum("platform").notNull(),
-    platformUserId: text("platform_user_id").notNull(),
-    platformUsername: text("platform_username"),
-    profileImageUrl: text("profile_image_url"),
-    scopes: text("scopes"), // OAuth scopes granted
-    isActive: boolean("is_active").default(true),
-    lastSyncedAt: timestamp("last_synced_at"),
-    tokenStatus: text("token_status").default("active"), // active | expired | unknown
-    encryptedAccessToken: text("encrypted_access_token").notNull(),
-    encryptedRefreshToken: text("encrypted_refresh_token"),
-    tokenExpiresAt: timestamp("token_expires_at"),
-    platformMetadata:
-      jsonb("platform_metadata").$type<Record<string, unknown>>(),
-    isTwitterPremium: boolean("is_twitter_premium").default(false),
-    platformAccountType: text("platform_account_type").default("personal"), // 'personal' | 'company' (e.g. LinkedIn company pages)
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
-  },
-  (table) => ({
-    uniqueAccount: unique().on(
-      table.userId,
-      table.platform,
-      table.platformUserId,
-    ),
-  }),
-);
+export const connectedAccounts = pgTable("connected_accounts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id")
+    .references(() => user.id)
+    .notNull(),
+  /** Null = personal/Main pool; set when connection belongs to a workspace. */
+  workspaceId: uuid("workspace_id"),
+  platform: platformEnum("platform").notNull(),
+  platformUserId: text("platform_user_id").notNull(),
+  platformUsername: text("platform_username"),
+  profileImageUrl: text("profile_image_url"),
+  scopes: text("scopes"), // OAuth scopes granted
+  isActive: boolean("is_active").default(true),
+  lastSyncedAt: timestamp("last_synced_at"),
+  tokenStatus: text("token_status").default("active"), // active | expired | unknown
+  encryptedAccessToken: text("encrypted_access_token").notNull(),
+  encryptedRefreshToken: text("encrypted_refresh_token"),
+  tokenExpiresAt: timestamp("token_expires_at"),
+  platformMetadata:
+    jsonb("platform_metadata").$type<Record<string, unknown>>(),
+  isTwitterPremium: boolean("is_twitter_premium").default(false),
+  platformAccountType: text("platform_account_type").default("personal"), // 'personal' | 'company' (e.g. LinkedIn company pages)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+/** Uniqueness enforced via partial indexes in migration 0040. */
 
 // ===== MEDIA UPLOADS =====
 export const mediaUploads = pgTable("media_uploads", {

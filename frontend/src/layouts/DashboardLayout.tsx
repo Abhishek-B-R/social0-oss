@@ -12,6 +12,8 @@ import { GuestBanner } from "@/components/dashboard/GuestBanner";
 import { GuestTestModeDialog } from "@/components/dashboard/GuestTestModeDialog";
 import { FreePostsBanner } from "@/components/dashboard/FreePostsBanner";
 import { ConnectAccountsBanner } from "@/components/dashboard/ConnectAccountsBanner";
+import { TeamInviteBanners } from "@/components/dashboard/TeamInviteBanners";
+import { PersonalWorkspaceBoot } from "@/components/dashboard/PersonalWorkspaceBoot";
 import { LegalConsentGate } from "@/components/auth/LegalConsentGate";
 import { useSessionResolved } from "@/lib/use-is-guest";
 import { rpc } from "@/lib/rpc";
@@ -79,10 +81,16 @@ export function DashboardLayout() {
     }
   }, [session, onboarding, location.pathname, navigate]);
 
+  const relativePath = location.pathname
+    .replace(/^\/dashboard\/teams\/[^/]+\/?/, "")
+    .replace(/^\/dashboard\/?/, "");
+  const onConnectionsPage =
+    relativePath === "connections" ||
+    relativePath.startsWith("connections/");
   const showConnectBanner =
     onboarding != null &&
     onboarding.connectedAccountsCount === 0 &&
-    !location.pathname.startsWith("/dashboard/connections");
+    !onConnectionsPage;
 
   const sidebarUser =
     session && layoutData
@@ -115,9 +123,11 @@ export function DashboardLayout() {
         isGuest={isGuest}
         sessionPending={isPending}
       />
+      {session && !isGuest ? <PersonalWorkspaceBoot enabled /> : null}
       <main className="flex flex-1 flex-col min-h-0 overflow-y-auto pb-80 mb-20 lg:mb-0 lg:pb-0">
         <div className="mx-auto flex h-full min-h-0 w-full max-w-[1200px] 2xl:max-w-7xl flex-1 flex-col px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-12 sm:pl-4 sm:pr-6 sm:pt-6 sm:pb-6 lg:px-8 lg:py-8 lg:pb-8">
           {isGuest && <GuestBanner />}
+          {session && !isGuest ? <TeamInviteBanners /> : null}
           {showConnectBanner && <ConnectAccountsBanner />}
           {layoutData?.freePostsBanner && (
             <FreePostsBanner

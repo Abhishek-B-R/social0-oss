@@ -4,6 +4,7 @@ import { db } from "../../db/index.js";
 import { queueSlots } from "../../db/schema.js";
 import { eq, and, ne } from "drizzle-orm";
 import { headers } from "../../lib/http/request-cookies.js";
+import { requireWorkspacePermissionForUser } from "../../lib/workspace/session.js";
 
 function isValidDays(days: unknown): days is number[] {
   if (!Array.isArray(days)) return false;
@@ -17,6 +18,14 @@ export async function updateQueueSlot(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "manage_workspace_settings",
+  );
+  if (!ws.ok) {
+    return RouteResponse.json({ error: ws.error }, { status: ws.statusCode });
   }
 
   const { id } = await params;
@@ -56,7 +65,7 @@ export async function updateQueueSlot(
     const [current] = await db
       .select({ hour: queueSlots.hour, minute: queueSlots.minute })
       .from(queueSlots)
-      .where(and(eq(queueSlots.id, id), eq(queueSlots.userId, session.user.id)))
+      .where(and(eq(queueSlots.id, id), eq(queueSlots.userId, ws.ctx.resourceUserId)))
       .limit(1);
     if (!current) {
       return RouteResponse.json({ error: "Slot not found" }, { status: 404 });
@@ -68,7 +77,7 @@ export async function updateQueueSlot(
       .from(queueSlots)
       .where(
         and(
-          eq(queueSlots.userId, session.user.id),
+          eq(queueSlots.userId, ws.ctx.resourceUserId),
           eq(queueSlots.hour, effHour),
           eq(queueSlots.minute, effMinute),
           ne(queueSlots.id, id),
@@ -86,7 +95,7 @@ export async function updateQueueSlot(
   const [updated] = await db
     .update(queueSlots)
     .set(updates)
-    .where(and(eq(queueSlots.id, id), eq(queueSlots.userId, session.user.id)))
+    .where(and(eq(queueSlots.id, id), eq(queueSlots.userId, ws.ctx.resourceUserId)))
     .returning();
 
   if (!updated) {
@@ -105,6 +114,14 @@ export async function deleteQueueSlot(
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "manage_workspace_settings",
+  );
+  if (!ws.ok) {
+    return RouteResponse.json({ error: ws.error }, { status: ws.statusCode });
+  }
+
   const { id } = await params;
   if (!id) {
     return RouteResponse.json({ error: "Slot id required" }, { status: 400 });
@@ -113,7 +130,7 @@ export async function deleteQueueSlot(
   const [updated] = await db
     .update(queueSlots)
     .set({ isActive: false })
-    .where(and(eq(queueSlots.id, id), eq(queueSlots.userId, session.user.id)))
+    .where(and(eq(queueSlots.id, id), eq(queueSlots.userId, ws.ctx.resourceUserId)))
     .returning();
 
   if (!updated) {

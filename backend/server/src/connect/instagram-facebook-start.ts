@@ -20,6 +20,19 @@ export async function igFbStart(req: AppRequest) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { requireWorkspacePermissionForUser } = await import(
+    "../lib/workspace/session.js"
+  );
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "manage_connections",
+  );
+  if (!ws.ok) {
+    return Response.json({ error: ws.error }, { status: ws.statusCode });
+  }
+  const resourceUserId = ws.ctx.resourceUserId;
+  const workspaceId = ws.ctx.workspaceId;
+
   const rate = await enforceRateLimit(oauthLimiter, session.user.id);
   if (!rate.allowed) {
     return Response.json({ error: rate.error }, { status: rate.status });
@@ -40,7 +53,8 @@ export async function igFbStart(req: AppRequest) {
   const returnTo = sanitizeReturnToPath(req.parsedUrl.searchParams.get("returnTo"));
 
   const state = encrypt({
-    userId: session.user.id,
+    userId: resourceUserId,
+    workspaceId,
     platform: "instagram-facebook",
     ...(returnTo && { returnTo }),
   });

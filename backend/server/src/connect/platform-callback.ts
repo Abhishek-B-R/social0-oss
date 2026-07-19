@@ -4,13 +4,16 @@ import { connectedAccounts, verification } from "../db/schema.js";
 import { checkAccountLimits } from "../lib/plan-limits.js";
 import { logConnectBlocked } from "@social0/shared";
 import { syncSubscriptionForUserId } from "../lib/billing-sync.js";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { env } from "../lib/env.js";
 import { decrypt, encryptToken, decryptToken } from "@social0/shared";
 import { assertOAuthCallbackSession } from "../lib/oauth-callback-session.js";
 import { sanitizeReturnToPath } from "@social0/shared";
 import crypto from "crypto";
-import { getConnectCallbackBaseUrl } from "../lib/app-url.js";
+import {
+  connectionsSelectPath,
+  getConnectCallbackBaseUrl,
+} from "../lib/app-url.js";
 import { safeRedirect, rethrowRouteRedirect } from "../lib/redirect.js";
 import { AppRequest } from "../lib/http/http.js";
 import { cookies } from "../lib/http/request-cookies.js";
@@ -27,6 +30,16 @@ import {
   youtubeTokenExpiresAt,
 } from "../lib/youtube-token.js";
 import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-profile-image.js";
+
+function normalizeWorkspaceId(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function connectedAccountWorkspaceCondition(workspaceId: string | null) {
+  return workspaceId
+    ? eq(connectedAccounts.workspaceId, workspaceId)
+    : isNull(connectedAccounts.workspaceId);
+}
 
 /** Validate URL is http/https before treating it as a fetchable profile image. */
 function isValidProfileImageUrl(url: unknown): url is string {
@@ -103,6 +116,7 @@ export async function platformCallback(
       const secretDecrypted = decrypt(secretCookie.value);
       const requestTokenSecret = secretDecrypted.oauth_token_secret;
       const userId = secretDecrypted.userId;
+      const workspaceId = normalizeWorkspaceId(secretDecrypted.workspaceId);
       cookieStore.delete("twitter_oauth1_request_secret");
 
       await assertOAuthCallbackSession(req, userId, platform);
@@ -222,6 +236,7 @@ export async function platformCallback(
               eq(connectedAccounts.userId, userId),
               eq(connectedAccounts.platform, "twitter_x"),
               eq(connectedAccounts.platformUserId, userInfo.id),
+              connectedAccountWorkspaceCondition(workspaceId),
             ),
           });
 
@@ -274,6 +289,7 @@ export async function platformCallback(
         await db.insert(connectedAccounts).values({
           id: accountId,
           userId,
+          workspaceId,
           platform: "twitter_x",
           platformUserId: userInfo.id,
           platformUsername: userInfo.username,
@@ -327,6 +343,7 @@ export async function platformCallback(
 
   // Decrypt state to get userId (and stateId for TikTok PKCE verifier lookup)
   let userId: string;
+  let workspaceId: string | null;
   let codeVerifier: string | undefined;
   let successRedirect = "/dashboard/connections";
   let isReauth = false;
@@ -334,6 +351,7 @@ export async function platformCallback(
   try {
     const decrypted = decrypt(state);
     userId = decrypted.userId;
+    workspaceId = normalizeWorkspaceId(decrypted.workspaceId);
     isReauth = decrypted.reauth === true;
     if (typeof decrypted.reauthAccountId === "string") {
       reauthAccountId = decrypted.reauthAccountId;
@@ -683,6 +701,7 @@ export async function platformCallback(
           eq(connectedAccounts.userId, userId),
           eq(connectedAccounts.platform, "pinterest"),
           eq(connectedAccounts.platformUserId, userInfo.id),
+          connectedAccountWorkspaceCondition(workspaceId),
         ),
       });
       const accountId = existing?.id ?? crypto.randomUUID();
@@ -741,6 +760,7 @@ export async function platformCallback(
         await db.insert(connectedAccounts).values({
           id: accountId,
           userId,
+          workspaceId,
           platform: "pinterest",
           platformUserId: userInfo.id,
           platformUsername: userInfo.username,
@@ -828,6 +848,7 @@ export async function platformCallback(
       const stateId = crypto.randomBytes(16).toString("hex");
       const payload = JSON.stringify({
         userId,
+        workspaceId,
         pages: pagesWithPictures,
       });
       await db.insert(verification).values({
@@ -836,7 +857,14 @@ export async function platformCallback(
         value: encryptToken(payload, stateId),
         expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
       });
-      const selectUrl = `/dashboard/connections/facebook/select?token=${stateId}&returnTo=${encodeURIComponent(successRedirect)}`;
+      const selectUrl = connectionsSelectPath(
+        "connections/facebook/select",
+        successRedirect,
+        {
+          token: stateId,
+          returnTo: successRedirect,
+        },
+      );
       return safeRedirect(selectUrl, successRedirect);
     }
 
@@ -959,6 +987,7 @@ export async function platformCallback(
             const stateId = crypto.randomBytes(16).toString("hex");
             const payload = JSON.stringify({
               userId,
+              workspaceId,
               accessToken: tokens.access_token,
               personalProfile: {
                 id: userInfo.id,
@@ -973,7 +1002,14 @@ export async function platformCallback(
               value: encryptToken(payload, stateId),
               expiresAt: new Date(Date.now() + 5 * 60 * 1000),
             });
-            const selectUrl = `/dashboard/connections/linkedin/select?token=${stateId}&returnTo=${encodeURIComponent(successRedirect)}`;
+            const selectUrl = connectionsSelectPath(
+              "connections/linkedin/select",
+              successRedirect,
+              {
+                token: stateId,
+                returnTo: successRedirect,
+              },
+            );
             return safeRedirect(selectUrl, successRedirect);
           }
         }
@@ -1002,11 +1038,13 @@ export async function platformCallback(
             ? and(
                 eq(connectedAccounts.userId, userId),
                 eq(connectedAccounts.platform, platform),
+                connectedAccountWorkspaceCondition(workspaceId),
               )
             : and(
                 eq(connectedAccounts.userId, userId),
                 eq(connectedAccounts.platform, platform),
                 eq(connectedAccounts.platformUserId, userInfo.id),
+                connectedAccountWorkspaceCondition(workspaceId),
               ),
       });
     }
@@ -1141,6 +1179,7 @@ export async function platformCallback(
     await db.insert(connectedAccounts).values({
       id: accountId,
       userId,
+      workspaceId,
       platform: platform,
       platformUserId: userInfo.id,
       platformUsername: userInfo.username,

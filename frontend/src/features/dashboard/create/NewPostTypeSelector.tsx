@@ -1,4 +1,3 @@
-
 import Link from "@/components/AppLink";
 import { FaLinkedin } from "react-icons/fa";
 import {
@@ -19,6 +18,7 @@ import {
 } from "react-icons/md";
 import { TbListDetails } from "react-icons/tb";
 import { CONTENT_TYPES } from "@/lib/content-types";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 
 const PLATFORM_DISPLAY: Record<
   string,
@@ -52,19 +52,19 @@ const CONTENT_TYPE_ICONS: Record<
 
 function ContentTypeCard({
   id,
-  slug,
   name,
   platforms,
+  href,
 }: {
   id: (typeof CONTENT_TYPES)[number]["id"];
-  slug: string;
   name: string;
   platforms: readonly string[];
+  href: string;
 }) {
   const Icon = CONTENT_TYPE_ICONS[id];
   return (
     <Link
-      href={`/dashboard/create/${slug}`}
+      href={href}
       className="group flex flex-col rounded-2xl border-2 border-border bg-bg-elevated p-6 shadow-sm transition-all hover:border-accent hover:bg-accent/5 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/20"
     >
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-bg-muted text-text-muted group-hover:bg-accent/20 group-hover:text-accent">
@@ -94,6 +94,7 @@ function ContentTypeCard({
 }
 
 export function NewPostTypeSelector() {
+  const dash = useDashboardPath();
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -101,9 +102,9 @@ export function NewPostTypeSelector() {
           <ContentTypeCard
             key={type.id}
             id={type.id}
-            slug={type.slug}
             name={type.name}
             platforms={type.platforms}
+            href={dash(`create/${type.slug}`)}
           />
         ))}
       </div>
@@ -113,7 +114,7 @@ export function NewPostTypeSelector() {
         </span>
         You can connect your accounts from{" "}
         <Link
-          href="/dashboard/connections"
+          href={dash("connections")}
           className="font-medium text-accent hover:text-accent-hover hover:underline"
         >
           here

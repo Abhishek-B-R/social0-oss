@@ -1,5 +1,4 @@
 
-import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import {
   posts,
@@ -9,7 +8,8 @@ import {
   queuedPosts,
 } from "@/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
-import { headers } from "../lib/http/request-cookies.js";
+import { requireWorkspaceSession } from "@/lib/workspace/session";
+import { connectionScopeCondition } from "@/lib/workspace/context";
 import { enqueuePublishPostStandalone } from "./enqueue.js";
 import { userOwnsQueueSlot } from "@/lib/queue-slot-validation";
 import {
@@ -114,10 +114,12 @@ export async function createPost(
   metadata?: Record<string, unknown>,
   queueSlotId?: string | null,
 ): Promise<CreatePostResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("create_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
+  const actorUserId = ws.ctx.actorUserId;
 
   const normalizedScheduledAt = coerceDate(scheduledAt);
 
@@ -150,13 +152,13 @@ export async function createPost(
     }
   }
 
-  // Ensure all selected accounts belong to the current user
+  // Ensure selected accounts belong to the active workspace scope
   const ownedAccounts = await db
     .select({ id: connectedAccounts.id })
     .from(connectedAccounts)
     .where(
       and(
-        eq(connectedAccounts.userId, session.user.id),
+        connectionScopeCondition(ws.ctx),
         inArray(connectedAccounts.id, selectedAccountIds),
       ),
     );
@@ -180,7 +182,7 @@ export async function createPost(
       .from(mediaUploads)
       .where(
         and(
-          eq(mediaUploads.userId, session.user.id),
+          eq(mediaUploads.userId, userId),
           inArray(mediaUploads.id, mediaIds),
         ),
       );
@@ -195,7 +197,7 @@ export async function createPost(
 
   // Charge one free post per "Publish now" / "Schedule" submission (drafts are free).
   if (mode !== "draft") {
-    const quotaError = await gateFreePostQuota(session.user.id);
+    const quotaError = await gateFreePostQuota(userId);
     if (quotaError) {
       return { success: false, error: quotaError };
     }
@@ -213,7 +215,8 @@ export async function createPost(
     const [postRow] = await db
       .insert(posts)
       .values({
-        userId: session.user.id,
+        userId: userId,
+        createdByUserId: actorUserId,
         originalContent: trimmed,
         finalContent: trimmed,
         status,
@@ -236,7 +239,7 @@ export async function createPost(
     );
 
     if (mode !== "draft") {
-      await incrementFreePostsUsed(session.user.id);
+      await incrementFreePostsUsed(userId);
     }
 
     if (mode === "now") {
@@ -248,7 +251,7 @@ export async function createPost(
       if (!skipPublish) {
         const queued = await enqueuePublishPostStandalone({
           postId: postRow.id,
-          userId: session.user.id,
+          userId: userId,
         });
 
 
@@ -270,11 +273,11 @@ export async function createPost(
 
     if (mode === "scheduled" && normalizedScheduledAt && queueSlotId?.trim()) {
       const slotId = queueSlotId.trim();
-      if (!(await userOwnsQueueSlot(session.user.id, slotId))) {
+      if (!(await userOwnsQueueSlot(userId, slotId))) {
         return { success: false, error: "Invalid queue slot" };
       }
       await db.insert(queuedPosts).values({
-        userId: session.user.id,
+        userId: userId,
         postId: postRow.id,
         slotId,
         scheduledFor: normalizedScheduledAt,
@@ -308,10 +311,11 @@ export type DeletePostResult =
   | { success: false; error: string };
 
 export async function deletePost(postId: string): Promise<DeletePostResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("delete_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
 
   if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
@@ -321,7 +325,7 @@ export async function deletePost(postId: string): Promise<DeletePostResult> {
     const [post] = await db
       .select({ id: posts.id })
       .from(posts)
-      .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
+      .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
     if (!post) {
       return { success: false, error: "Post not found" };
     }
@@ -346,10 +350,12 @@ export async function deletePost(postId: string): Promise<DeletePostResult> {
  * Returns the new post id on success.
  */
 export async function postAgain(postId: string): Promise<PostAgainResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("create_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
+  const actorUserId = ws.ctx.actorUserId;
   if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
   }
@@ -365,7 +371,7 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
       status: posts.status,
     })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)))
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
     .limit(1);
 
   if (!post) {
@@ -400,7 +406,7 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
     .from(connectedAccounts)
     .where(
       and(
-        eq(connectedAccounts.userId, session.user.id),
+        eq(connectedAccounts.userId, userId),
         inArray(connectedAccounts.id, accountIds),
       ),
     );
@@ -413,7 +419,7 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
   const mediaIds = post.mediaIds ?? [];
 
   // "Post again" publishes a brand-new post - costs one free post.
-  const quotaError = await gateFreePostQuota(session.user.id, postId);
+  const quotaError = await gateFreePostQuota(userId, postId);
   if (quotaError) {
     return { success: false, error: quotaError };
   }
@@ -422,7 +428,8 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
     const [newPost] = await db
       .insert(posts)
       .values({
-        userId: session.user.id,
+        userId: userId,
+        createdByUserId: actorUserId,
         originalContent: post.originalContent,
         finalContent: post.finalContent,
         status: "scheduled",
@@ -444,11 +451,11 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
       })),
     );
 
-    await incrementFreePostsUsed(session.user.id);
+    await incrementFreePostsUsed(userId);
 
     const queued = await enqueuePublishPostStandalone({
       postId: newPost.id,
-      userId: session.user.id,
+      userId: userId,
     });
 
 
@@ -481,10 +488,11 @@ export async function updatePost(
   metadata?: Record<string, unknown>,
   queueSlotId?: string | null,
 ): Promise<UpdatePostResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("edit_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
 
   const normalizedScheduledAt = coerceDate(scheduledAt);
 
@@ -520,7 +528,7 @@ export async function updatePost(
     .from(connectedAccounts)
     .where(
       and(
-        eq(connectedAccounts.userId, session.user.id),
+        connectionScopeCondition(ws.ctx),
         inArray(connectedAccounts.id, selectedAccountIds),
       ),
     );
@@ -546,7 +554,7 @@ export async function updatePost(
     const [existing] = await db
       .select({ id: posts.id, status: posts.status, mediaIds: posts.mediaIds })
       .from(posts)
-      .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
+      .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
     if (!existing) {
       return { success: false, error: "Post not found" };
     }
@@ -561,7 +569,7 @@ export async function updatePost(
     // Rescheduling an already-scheduled post (already charged) is free.
     const chargesQuota = !!normalizedScheduledAt && existing.status === "draft";
     if (chargesQuota) {
-      const quotaError = await gateFreePostQuota(session.user.id, postId);
+      const quotaError = await gateFreePostQuota(userId, postId);
       if (quotaError) {
         return { success: false, error: quotaError };
       }
@@ -573,7 +581,7 @@ export async function updatePost(
         .from(mediaUploads)
         .where(
           and(
-            eq(mediaUploads.userId, session.user.id),
+            eq(mediaUploads.userId, userId),
             inArray(mediaUploads.id, finalMediaIds),
           ),
         );
@@ -606,7 +614,7 @@ export async function updatePost(
         .delete(mediaUploads)
         .where(
           and(
-            eq(mediaUploads.userId, session.user.id),
+            eq(mediaUploads.userId, userId),
             inArray(mediaUploads.id, removedMediaIds),
           ),
         );
@@ -625,7 +633,7 @@ export async function updatePost(
 
     if (normalizedScheduledAt && queueSlotId?.trim()) {
       const slotId = queueSlotId.trim();
-      if (!(await userOwnsQueueSlot(session.user.id, slotId))) {
+      if (!(await userOwnsQueueSlot(userId, slotId))) {
         return { success: false, error: "Invalid queue slot" };
       }
       await db
@@ -633,11 +641,11 @@ export async function updatePost(
         .where(
           and(
             eq(queuedPosts.postId, postId),
-            eq(queuedPosts.userId, session.user.id),
+            eq(queuedPosts.userId, userId),
           ),
         );
       await db.insert(queuedPosts).values({
-        userId: session.user.id,
+        userId: userId,
         postId,
         slotId,
         scheduledFor: normalizedScheduledAt,
@@ -649,13 +657,13 @@ export async function updatePost(
         .where(
           and(
             eq(queuedPosts.postId, postId),
-            eq(queuedPosts.userId, session.user.id),
+            eq(queuedPosts.userId, userId),
           ),
         );
     }
 
     if (chargesQuota) {
-      await incrementFreePostsUsed(session.user.id);
+      await incrementFreePostsUsed(userId);
     }
 
     return { success: true };
@@ -680,10 +688,11 @@ export async function updateScheduledPostAutoFeatures(
     resurfaceConfig: AutoResurfaceConfig | null;
   },
 ): Promise<UpdatePostResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("edit_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
   if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
   }
@@ -692,7 +701,7 @@ export async function updateScheduledPostAutoFeatures(
     const [row] = await db
       .select({ id: posts.id, metadata: posts.metadata, status: posts.status })
       .from(posts)
-      .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
+      .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
 
     if (!row) {
       return { success: false, error: "Post not found" };
@@ -757,14 +766,15 @@ export type GetDraftResult =
   | { success: false; error: string };
 
 export async function getDraft(postId: string): Promise<GetDraftResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("view_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
   if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
   }
-  const post = await getPostForEdit(postId, session.user.id);
+  const post = await getPostForEdit(postId, userId);
   if (!post) {
     return { success: false, error: "Draft not found" };
   }
@@ -773,11 +783,11 @@ export async function getDraft(postId: string): Promise<GetDraftResult> {
   }
   const mediaIds = post.mediaIds ?? [];
   const media =
-    mediaIds.length > 0 ? await getPostMedia(session.user.id, mediaIds) : [];
+    mediaIds.length > 0 ? await getPostMedia(userId, mediaIds) : [];
   const [row] = await db
     .select({ metadata: posts.metadata })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
   return {
     success: true,
     draft: {
@@ -811,14 +821,15 @@ export type GetScheduledPostResult =
 export async function getScheduledPost(
   postId: string,
 ): Promise<GetScheduledPostResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("view_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
   if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
   }
-  const post = await getPostForEdit(postId, session.user.id);
+  const post = await getPostForEdit(postId, userId);
   if (!post) {
     return { success: false, error: "Post not found" };
   }
@@ -830,14 +841,14 @@ export async function getScheduledPost(
   }
   const mediaIds = post.mediaIds ?? [];
   const media =
-    mediaIds.length > 0 ? await getPostMedia(session.user.id, mediaIds) : [];
+    mediaIds.length > 0 ? await getPostMedia(userId, mediaIds) : [];
   const [row] = await db
     .select({ metadata: posts.metadata })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
   let queueSlotId: string | null = null;
   if (post.status === "scheduled") {
-    const slot = await getQueuedSlotForPost(postId, session.user.id);
+    const slot = await getQueuedSlotForPost(postId, userId);
     if (slot) queueSlotId = slot.slotId;
   }
   return {
@@ -874,14 +885,15 @@ export type GetPostToEditResult =
 export async function getPostToEdit(
   postId: string,
 ): Promise<GetPostToEditResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("view_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
   if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
   }
-  const post = await getPostForEdit(postId, session.user.id);
+  const post = await getPostForEdit(postId, userId);
   if (!post) {
     return { success: false, error: "Post not found" };
   }
@@ -897,11 +909,11 @@ export async function getPostToEdit(
   }
   const mediaIds = post.mediaIds ?? [];
   const media =
-    mediaIds.length > 0 ? await getPostMedia(session.user.id, mediaIds) : [];
+    mediaIds.length > 0 ? await getPostMedia(userId, mediaIds) : [];
   const [row] = await db
     .select({ metadata: posts.metadata })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
   return {
     success: true,
     post: {
@@ -921,10 +933,11 @@ export type DeleteDraftResult =
   | { success: false; error: string };
 
 export async function deleteDraft(postId: string): Promise<DeleteDraftResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("delete_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
   if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
   }
@@ -932,7 +945,7 @@ export async function deleteDraft(postId: string): Promise<DeleteDraftResult> {
     const [post] = await db
       .select({ id: posts.id, status: posts.status })
       .from(posts)
-      .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)));
+      .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
     if (!post) {
       return { success: false, error: "Post not found" };
     }
@@ -990,10 +1003,11 @@ export async function updateAndPublish(
   mediaIds: string[] = [],
   metadata?: Record<string, unknown>,
 ): Promise<UpdateAndPublishResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    return { success: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("create_posts");
+  if (!ws.ok) {
+    return { success: false, error: ws.error };
   }
+  const userId = ws.ctx.resourceUserId;
   // Pass null for scheduledAt: we are publishing now, not scheduling. Using `new Date()`
   // caused flaky failures - the client timestamp can be slightly in the past relative to
   // the server when validateScheduledAtWindow runs after network latency.
@@ -1011,16 +1025,16 @@ export async function updateAndPublish(
 
   // Publishing a draft now is a "Publish now" submission - costs one free post.
   // (The updatePost call above ran with scheduledAt=null, so it charged nothing.)
-  const quotaError = await gateFreePostQuota(session.user.id, draftId);
+  const quotaError = await gateFreePostQuota(userId, draftId);
   if (quotaError) {
     return { success: false, error: quotaError };
   }
-  await incrementFreePostsUsed(session.user.id);
+  await incrementFreePostsUsed(userId);
 
   try {
     const queued = await enqueuePublishPostStandalone({
       postId: draftId,
-      userId: session.user.id,
+      userId: userId,
     });
     return {
       success: true,
@@ -1047,11 +1061,12 @@ export async function loadEditPostPageData(postId: string): Promise<
     }
   | { ok: false; error: string }
 > {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user?.id) return { ok: false, error: "Unauthorized" };
+  const ws = await requireWorkspaceSession("view_posts");
+  if (!ws.ok) return { ok: false, error: ws.error };
+  const userId = ws.ctx.resourceUserId;
   if (!isValidUUID(postId)) return { ok: false, error: "Invalid post ID" };
 
-  const post = await getPostForEdit(postId, session.user.id);
+  const post = await getPostForEdit(postId, userId);
   if (!post) return { ok: false, error: "Post not found" };
   if (post.status !== "draft" && post.status !== "scheduled") {
     return { ok: false, error: "Post cannot be edited" };
@@ -1059,7 +1074,7 @@ export async function loadEditPostPageData(postId: string): Promise<
 
   const existingMedia =
     post.mediaIds && post.mediaIds.length > 0
-      ? await getPostMedia(session.user.id, post.mediaIds)
+      ? await getPostMedia(userId, post.mediaIds)
       : [];
 
   const { use24HourTimeFormat, dateFormat } = await getUserSettingsSnapshot();

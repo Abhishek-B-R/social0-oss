@@ -94,6 +94,7 @@ import {
   consumeComposerPayload,
   clearComposerPayload,
 } from "@/lib/composer-bridge";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
 import { toast } from "sonner";
@@ -153,6 +154,7 @@ export function VideoPostForm({
   isGuest?: boolean;
 }) {
   const navigate = useNavigate();
+  const dash = useDashboardPath();
   const invalidateQueries = useInvalidateQueries();
   const posthog = usePostHog();
   const [searchParams] = useSearchParams();
@@ -823,7 +825,7 @@ export function VideoPostForm({
     const { deleteDraft } = await import("@/api/posts");
     const result = await deleteDraft(initialDraftId);
     if (result.success) {
-      navigate("/dashboard/posts/drafts", { replace: true });
+      navigate(dash("posts/drafts"), { replace: true });
       invalidateQueries();
     } else {
       toast.error(result.error);
@@ -1392,7 +1394,7 @@ export function VideoPostForm({
         }
         if (result.allPlatformsFailed && result.postId) {
           setOverlayPhase("idle");
-          navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+          navigate(dash(`posts/${result.postId}`), { replace: true });
           invalidateQueries();
           return;
         }
@@ -1509,7 +1511,7 @@ export function VideoPostForm({
             .length ?? 0;
         if (succeededCount === 0) {
           setOverlayPhase("idle");
-          navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+          navigate(dash(`posts/${result.postId}`), { replace: true });
           invalidateQueries();
           return;
         }
@@ -1520,7 +1522,7 @@ export function VideoPostForm({
           "video",
           accountIds.length,
         );
-        navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+        navigate(dash(`posts/${result.postId}`), { replace: true });
         invalidateQueries();
         return;
       }
@@ -1623,7 +1625,7 @@ export function VideoPostForm({
         "video",
         accountIds.length,
       );
-      navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+      navigate(dash(`posts/${result.postId}`), { replace: true });
       invalidateQueries();
       return;
     }
@@ -1759,7 +1761,7 @@ export function VideoPostForm({
               platformStatuses.length > 0 &&
               platformStatuses.every((p) => p.status === "failed");
             if (allFailed && publishedPostId) {
-              navigate(`/dashboard/posts/${publishedPostId}`, {
+              navigate(dash(`posts/${publishedPostId}`), {
                 replace: true,
               });
               invalidateQueries();
@@ -1817,6 +1819,7 @@ export function VideoPostForm({
                 ? getFreePostsRemaining(subscriptionTier, freePostsUsed)
                 : null
             }
+            subscriptionTier={subscriptionTier}
           />
 
           {hasVideo &&

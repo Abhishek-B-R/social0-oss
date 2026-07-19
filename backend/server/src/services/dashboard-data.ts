@@ -1,6 +1,7 @@
 
 import { auth } from "@/lib/auth";
 import { headers } from "../lib/http/request-cookies.js";
+import { resolveWorkspaceContext, connectionScopeCondition } from "@/lib/workspace/context";
 import {
   getPostsListData,
   hasPaymentFailedPosts,
@@ -43,13 +44,15 @@ export async function loadDashboardLayoutData(): Promise<{
   if (!session?.user?.id) {
     throw new Error("Unauthorized");
   }
-  const userId = session.user.id;
+  const actorUserId = session.user.id;
+  const ctx = await resolveWorkspaceContext(actorUserId);
+  const userId = ctx.resourceUserId;
 
   const subscription = await getSubscriptionForUser(userId);
   const tier = subscription.tier;
   const [profileRow, freeLimit] = await Promise.all([
     db.query.user.findFirst({
-      where: eq(user.id, userId),
+      where: eq(user.id, actorUserId),
       columns: { name: true, image: true },
     }),
     !isActiveTier(tier) ? checkFreePostLimit(userId) : Promise.resolve(null),
@@ -79,7 +82,8 @@ export async function loadDashboardLayoutData(): Promise<{
 export async function checkBulkToolsGate(): Promise<{ allowed: boolean }> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) return { allowed: false };
-  const allowed = await checkBulkToolsAllowed(session.user.id);
+  const ctx = await resolveWorkspaceContext(session.user.id);
+  const allowed = await checkBulkToolsAllowed(ctx.resourceUserId);
   return { allowed };
 }
 
@@ -90,8 +94,9 @@ export async function loadComposerSettings(): Promise<{
 }> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) throw new Error("Unauthorized");
+  const ctx = await resolveWorkspaceContext(session.user.id);
   const row = await db.query.userSettings.findFirst({
-    where: eq(userSettings.userId, session.user.id),
+    where: eq(userSettings.userId, ctx.resourceUserId),
     columns: {
       subscriptionTier: true,
       subscriptionExpiresAt: true,
@@ -217,7 +222,8 @@ export async function loadPostsPageData(input: {
   if (!session?.user?.id) {
     return { ok: false, error: "Unauthorized" };
   }
-  const userId = session.user.id;
+  const ctx = await resolveWorkspaceContext(session.user.id);
+  const userId = ctx.resourceUserId;
   const page = Math.max(1, input.page ?? 1);
   const statusFilter: StatusFilter =
     input.statusFilter === "posted"
@@ -305,6 +311,10 @@ export type LoadConnectionsPageDataResult =
             }
           | undefined;
         hasUsedTrial: boolean;
+        /** Additive: false for members without manage_connections. */
+        canManageConnections?: boolean;
+        /** Owner (or personal account) can open billing upgrade CTAs. */
+        canAccessBilling?: boolean;
       };
     }
   | { ok: false; error: string };
@@ -314,13 +324,14 @@ export async function loadConnectionsPageData(): Promise<LoadConnectionsPageData
   if (!session?.user?.id) {
     return { ok: false, error: "Unauthorized" };
   }
-  const userId = session.user.id;
+  const ctx = await resolveWorkspaceContext(session.user.id);
+  const userId = ctx.resourceUserId;
 
   await syncConnectedAccountsToLimit(userId).catch(() => {});
 
   const [accounts, accountLimit] = await Promise.all([
     db.query.connectedAccounts.findMany({
-      where: eq(connectedAccounts.userId, userId),
+      where: connectionScopeCondition(ctx),
       columns: {
         id: true,
         platform: true,
@@ -366,6 +377,8 @@ export async function loadConnectionsPageData(): Promise<LoadConnectionsPageData
         hasUsedTrial: accountLimit.hasUsedTrial,
       },
       hasUsedTrial: accountLimit.hasUsedTrial,
+      canManageConnections: ctx.permissions.has("manage_connections"),
+      canAccessBilling: ctx.permissions.has("access_billing"),
     },
   };
 }
@@ -394,6 +407,8 @@ export async function loadBillingPageData(): Promise<LoadBillingPageDataResult> 
   if (!session?.user?.id) {
     return { ok: false, error: "Unauthorized" };
   }
+  // Billing is always personal (actor’s own subscription). Team Members must
+  // still manage their own plan — never the workspace owner’s.
   const userId = session.user.id;
 
   const [{ dateFormat, timezone }, subscription, accountLimit] =
@@ -439,7 +454,8 @@ export async function loadCalendarPageData(): Promise<LoadCalendarPageDataResult
   if (!session?.user?.id) {
     return { ok: false, error: "Unauthorized" };
   }
-  const userId = session.user.id;
+  const ctx = await resolveWorkspaceContext(session.user.id);
+  const userId = ctx.resourceUserId;
 
   const now = new Date();
 
@@ -616,7 +632,8 @@ export async function loadPostDetailCoreData(
 ): Promise<LoadPostDetailCoreDataResult> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) return { ok: false, error: "Unauthorized" };
-  const userId = session.user.id;
+  const ctx = await resolveWorkspaceContext(session.user.id);
+  const userId = ctx.resourceUserId;
 
   const [detail, settings, showPaymentFailedBanner, subscription] =
     await Promise.all([
@@ -683,7 +700,8 @@ export async function loadPostDetailMediaData(
 ): Promise<LoadPostDetailMediaDataResult> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) return { ok: false, error: "Unauthorized" };
-  const userId = session.user.id;
+  const ctx = await resolveWorkspaceContext(session.user.id);
+  const userId = ctx.resourceUserId;
 
   const detail = await getPostDetail(postId, userId);
   if (!detail) return { ok: false, error: "NotFound" };

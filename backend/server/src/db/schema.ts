@@ -43,6 +43,8 @@ export const publicationStatusEnum = pgEnum("publication_status", [
   "failed",
 ]);
 
+export const workspaceRoleEnum = pgEnum("workspace_role", ["admin", "member"]);
+
 // ===== BETTER AUTH TABLES =====
 // Better Auth creates and owns these tables.
 // We reference them here for foreign key relationships and to pass to Better Auth adapter.
@@ -119,39 +121,34 @@ export const legalAcceptances = pgTable("legal_acceptances", {
 });
 
 // ===== CONNECTED ACCOUNTS =====
-export const connectedAccounts = pgTable(
-  "connected_accounts",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    userId: text("user_id")
-      .references(() => user.id)
-      .notNull(),
-    platform: platformEnum("platform").notNull(),
-    platformUserId: text("platform_user_id").notNull(),
-    platformUsername: text("platform_username"),
-    profileImageUrl: text("profile_image_url"),
-    scopes: text("scopes"), // OAuth scopes granted
-    isActive: boolean("is_active").default(true),
-    lastSyncedAt: timestamp("last_synced_at"),
-    tokenStatus: text("token_status").default("active"), // active | expired | unknown
-    encryptedAccessToken: text("encrypted_access_token").notNull(),
-    encryptedRefreshToken: text("encrypted_refresh_token"),
-    tokenExpiresAt: timestamp("token_expires_at"),
-    platformMetadata:
-      jsonb("platform_metadata").$type<Record<string, unknown>>(),
-    isTwitterPremium: boolean("is_twitter_premium").default(false),
-    platformAccountType: text("platform_account_type").default("personal"), // 'personal' | 'company' (e.g. LinkedIn company pages)
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
-  },
-  (table) => ({
-    uniqueAccount: unique().on(
-      table.userId,
-      table.platform,
-      table.platformUserId,
-    ),
+export const connectedAccounts = pgTable("connected_accounts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id")
+    .references(() => user.id)
+    .notNull(),
+  /** Null = personal/Main pool; set when connection belongs to a workspace. */
+  workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+    onDelete: "set null",
   }),
-);
+  platform: platformEnum("platform").notNull(),
+  platformUserId: text("platform_user_id").notNull(),
+  platformUsername: text("platform_username"),
+  profileImageUrl: text("profile_image_url"),
+  scopes: text("scopes"), // OAuth scopes granted
+  isActive: boolean("is_active").default(true),
+  lastSyncedAt: timestamp("last_synced_at"),
+  tokenStatus: text("token_status").default("active"), // active | expired | unknown
+  encryptedAccessToken: text("encrypted_access_token").notNull(),
+  encryptedRefreshToken: text("encrypted_refresh_token"),
+  tokenExpiresAt: timestamp("token_expires_at"),
+  platformMetadata:
+    jsonb("platform_metadata").$type<Record<string, unknown>>(),
+  isTwitterPremium: boolean("is_twitter_premium").default(false),
+  platformAccountType: text("platform_account_type").default("personal"), // 'personal' | 'company' (e.g. LinkedIn company pages)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+/** Uniqueness enforced via partial indexes in migration 0040. */
 
 // ===== MEDIA UPLOADS =====
 export const mediaUploads = pgTable("media_uploads", {
@@ -185,6 +182,10 @@ export const posts = pgTable(
     userId: text("user_id")
       .references(() => user.id)
       .notNull(),
+    /** Actor who created the post (may differ from resource owner in Teams). */
+    createdByUserId: text("created_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
     originalContent: text("original_content").notNull(), // User's raw input
     finalContent: text("final_content").notNull(), // What gets posted (can be AI-edited)
     isAiEnhanced: boolean("is_ai_enhanced").default(false),
@@ -429,7 +430,78 @@ export const userSettings = pgTable("user_settings", {
   ).default(false),
   /** Lifetime posts used on the free tier (no reset). */
   freePostsUsed: integer("free_posts_used").default(0).notNull(),
+  /** Active Teams workspace for collaboration context (nullable). */
+  activeWorkspaceId: uuid("active_workspace_id"),
 });
+
+// ===== TEAMS / WORKSPACES =====
+/** Collaboration org. Owner is the Pro billing subscriber. Max 5 per owner. */
+export const teams = pgTable("teams", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  ownerUserId: text("owner_user_id")
+    .references(() => user.id, { onDelete: "cascade" })
+    .notNull(),
+  /**
+   * True = real team (listed on /teams, inviteable, counts toward team cap).
+   * False = solo workspace container (workspaces board / switcher only).
+   */
+  isCollaborative: boolean("is_collaborative").default(true).notNull(),
+  /** Workspace opened when entering this team (joined-team URL mode). */
+  defaultWorkspaceId: uuid("default_workspace_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const teamMembers = pgTable(
+  "team_members",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    teamId: uuid("team_id")
+      .references(() => teams.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: text("user_id")
+      .references(() => user.id, { onDelete: "cascade" })
+      .notNull(),
+    role: workspaceRoleEnum("role").default("member").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    teamUserUnique: unique().on(table.teamId, table.userId),
+  }),
+);
+
+export const teamInvitations = pgTable("team_invitations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  teamId: uuid("team_id")
+    .references(() => teams.id, { onDelete: "cascade" })
+    .notNull(),
+  email: text("email").notNull(),
+  role: workspaceRoleEnum("role").default("member").notNull(),
+  token: text("token").notNull().unique(),
+  invitedByUserId: text("invited_by_user_id").references(() => user.id, {
+    onDelete: "set null",
+  }),
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/** Workspace under a team. Connections/posts scope here; access via team membership. */
+export const workspaces = pgTable("workspaces", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  teamId: uuid("team_id")
+    .references(() => teams.id, { onDelete: "cascade" })
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Legacy aliases kept only until migration 0041 is applied everywhere —
+// removed: workspaceMembers, workspaceInvitations (use team_* instead).
 
 // ===== TRIAL CLAIMS (one trial per normalized billing email, forever) =====
 export const trialClaims = pgTable("trial_claims", {
@@ -610,7 +682,53 @@ export const userSettingsRelations = relations(userSettings, ({ one }) => ({
     fields: [userSettings.userId],
     references: [user.id],
   }),
+  activeWorkspace: one(workspaces, {
+    fields: [userSettings.activeWorkspaceId],
+    references: [workspaces.id],
+  }),
 }));
+
+export const workspacesRelations = relations(workspaces, ({ one }) => ({
+  team: one(teams, {
+    fields: [workspaces.teamId],
+    references: [teams.id],
+  }),
+}));
+
+export const teamsRelations = relations(teams, ({ one, many }) => ({
+  owner: one(user, {
+    fields: [teams.ownerUserId],
+    references: [user.id],
+  }),
+  members: many(teamMembers),
+  invitations: many(teamInvitations),
+  workspaces: many(workspaces),
+}));
+
+export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
+  team: one(teams, {
+    fields: [teamMembers.teamId],
+    references: [teams.id],
+  }),
+  user: one(user, {
+    fields: [teamMembers.userId],
+    references: [user.id],
+  }),
+}));
+
+export const teamInvitationsRelations = relations(
+  teamInvitations,
+  ({ one }) => ({
+    team: one(teams, {
+      fields: [teamInvitations.teamId],
+      references: [teams.id],
+    }),
+    invitedBy: one(user, {
+      fields: [teamInvitations.invitedByUserId],
+      references: [user.id],
+    }),
+  }),
+);
 
 export const platformRateLimitsRelations = relations(
   platformRateLimits,

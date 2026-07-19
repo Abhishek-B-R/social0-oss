@@ -141,4 +141,10 @@ export async function setSubscription(
         subscriptionCancelAtPeriodEnd: false,
       },
     });
+
+  // Pro unlocks Teams — ensure the owner workspace exists for invitations.
+  if (data.tier === "pro") {
+    const { ensureOwnerWorkspace } = await import("./workspace/context.js");
+    await ensureOwnerWorkspace(userId);
+  }
 }

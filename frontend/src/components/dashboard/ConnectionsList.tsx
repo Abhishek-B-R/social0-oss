@@ -16,6 +16,7 @@ import { IconCrown, IconLoader2 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import DocsInfoIcon from "../info-icon";
 import { DOCS_CONNECTIONS_URL } from "@/lib/docs-url";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 
 const PLATFORM_UI: Record<string, { name: string; color: string }> = {
   linkedin: { name: "LinkedIn", color: "bg-[#0A66C2]" },
@@ -68,12 +69,18 @@ export function ConnectionsList({
   accounts,
   accountLimit,
   requireAuth = false,
+  canManageConnections = true,
+  canAccessBilling = true,
   onAccountDisconnected,
   onAccountsChanged,
 }: {
   accounts: Account[];
   accountLimit?: AccountLimit;
   requireAuth?: boolean;
+  /** Teams Members can view but not connect/disconnect/refresh. */
+  canManageConnections?: boolean;
+  /** Non-owners should not be sent to billing for plan upgrades. */
+  canAccessBilling?: boolean;
   /** Optimistic UI update after disconnect — avoids full-page refresh. */
   onAccountDisconnected?: (accountId: string) => void;
   /** Background refetch after token/premium changes. */
@@ -91,6 +98,7 @@ export function ConnectionsList({
     null,
   );
   const navigate = useNavigate();
+  const dash = useDashboardPath();
   const invalidateQueries = useInvalidateQueries();
   const [searchParams] = useSearchParams();
 
@@ -199,16 +207,19 @@ export function ConnectionsList({
           <DocsInfoIcon url={DOCS_CONNECTIONS_URL} />
         </div>
         <p className="text-sm leading-snug text-text-muted">
-          Link your social accounts to publish from one place. You can connect
-          multiple accounts per platform.
+          {canManageConnections
+            ? "Link your social accounts to publish from one place. You can connect multiple accounts per platform."
+            : "View the workspace’s connected accounts. Only workspace Admins can connect or disconnect accounts."}
         </p>
-        {accountLimit && accountLimit.limitTotal > 0 && (
+        {canManageConnections &&
+          accountLimit &&
+          accountLimit.limitTotal > 0 && (
           <p className="text-sm text-text-muted">
             <span className="font-medium text-foreground">
               {accountLimit.currentTotal}/{accountLimit.limitTotal} accounts
               connected
             </span>
-            {atLimit && (
+            {atLimit && canAccessBilling && (
               <>
                 {" "}
                 -{" "}
@@ -222,15 +233,19 @@ export function ConnectionsList({
             )}
           </p>
         )}
-        {atLimit && (
+        {canManageConnections && atLimit && (
           <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
             You&apos;ve reached your {accountLimit!.limitTotal} account limit.{" "}
-            <Link
-              href="/dashboard/billing"
-              className="font-medium underline underline-offset-2 hover:no-underline"
-            >
-              Upgrade →
-            </Link>
+            {canAccessBilling ? (
+              <Link
+                href="/dashboard/billing"
+                className="font-medium underline underline-offset-2 hover:no-underline"
+              >
+                Upgrade →
+              </Link>
+            ) : (
+              <span>Ask the team owner to upgrade.</span>
+            )}
           </div>
         )}
         <div className="min-w-0 overflow-x-auto rounded-2xl border border-border bg-bg-elevated p-3 shadow-sm">
@@ -266,18 +281,25 @@ export function ConnectionsList({
                       {ui.name}
                     </span>
                   </div>
-                  <div className="w-9 shrink-0 sm:w-20">
-                    <ConnectPlatformButton
-                      platform={platform}
-                      size="sm"
-                      className="w-full"
-                      disabled={atLimit}
-                      onDisabledClick={atLimit ? handleLimitClick : undefined}
-                      requireAuth={requireAuth}
-                      returnTo="/dashboard/connections"
-                    />
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1.5">
+                  {canManageConnections ? (
+                    <div className="w-9 shrink-0 sm:w-20">
+                      <ConnectPlatformButton
+                        platform={platform}
+                        size="sm"
+                        className="w-full"
+                        disabled={atLimit}
+                        onDisabledClick={atLimit ? handleLimitClick : undefined}
+                        requireAuth={requireAuth}
+                        returnTo={dash("connections")}
+                      />
+                    </div>
+                  ) : null}
+                  <div
+                    className={cn(
+                      "flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1.5",
+                      canManageConnections && "flex-1",
+                    )}
+                  >
                     {platformAccounts.map((account) => {
                       const isInactive = account.isActive === false;
                       const isExpired = account.tokenStatus === "expired";
@@ -306,22 +328,26 @@ export function ConnectionsList({
                                 )}
                               </span>
                             </div>
-                            <Link
-                              href="/dashboard/billing"
-                              className="shrink-0 inline-flex items-center gap-0.5 rounded border border-amber-500/50 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200 transition-colors hover:bg-amber-500/20"
-                              title="Upgrade to use this account"
-                            >
-                              Upgrade to use this account
-                            </Link>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenDisconnect(account)}
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-destructive transition-colors hover:bg-destructive/10 touch-manipulation active:bg-destructive/20"
-                              title="Remove account"
-                              aria-label={`Disconnect ${account.platformUsername || account.platform}`}
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
+                            {canManageConnections && (
+                              <>
+                                <Link
+                                  href="/dashboard/billing"
+                                  className="shrink-0 inline-flex items-center gap-0.5 rounded border border-amber-500/50 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200 transition-colors hover:bg-amber-500/20"
+                                  title="Upgrade to use this account"
+                                >
+                                  Upgrade to use this account
+                                </Link>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenDisconnect(account)}
+                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-destructive transition-colors hover:bg-destructive/10 touch-manipulation active:bg-destructive/20"
+                                  title="Remove account"
+                                  aria-label={`Disconnect ${account.platformUsername || account.platform}`}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         );
                       }
@@ -396,7 +422,9 @@ export function ConnectionsList({
                               </span>
                             )}
                           </div>
-                          {!isExpired && account.platform !== "bluesky" && (
+                          {canManageConnections &&
+                            !isExpired &&
+                            account.platform !== "bluesky" && (
                             <Link
                               href={apiUrl(
                                 `/api/connect/${account.platform}/reauth?accountId=${encodeURIComponent(account.id)}`,
@@ -407,7 +435,7 @@ export function ConnectionsList({
                               <RefreshCw className="h-3 w-3" strokeWidth={2} />
                             </Link>
                           )}
-                          {isExpired && (
+                          {canManageConnections && isExpired && (
                             <Link
                               href={apiUrl(`/api/connect/${account.platform}`)}
                               className="shrink-0 inline-flex items-center gap-1 rounded border border-destructive/50 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive transition-colors hover:bg-destructive/20"
@@ -430,15 +458,17 @@ export function ConnectionsList({
                               {account.expiresInDays !== 1 ? "s" : ""}
                             </span>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => handleOpenDisconnect(account)}
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-destructive transition-colors hover:bg-destructive/10 touch-manipulation active:bg-destructive/20"
-                            title="Remove account"
-                            aria-label={`Disconnect ${account.platformDisplayName && account.platformUsername ? `${account.platformDisplayName} (@${account.platformUsername})` : account.platformUsername || account.platform}`}
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
+                          {canManageConnections && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDisconnect(account)}
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-destructive transition-colors hover:bg-destructive/10 touch-manipulation active:bg-destructive/20"
+                              title="Remove account"
+                              aria-label={`Disconnect ${account.platformDisplayName && account.platformUsername ? `${account.platformDisplayName} (@${account.platformUsername})` : account.platformUsername || account.platform}`}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
                       );
                     })}
@@ -449,8 +479,9 @@ export function ConnectionsList({
           </div>
         </div>
 
-        {/* Twitter Premium status refresh */}
-        {accounts.some((a) => a.platform === "twitter_x") && (
+        {/* Twitter Premium status refresh — admins only */}
+        {canManageConnections &&
+          accounts.some((a) => a.platform === "twitter_x") && (
           <div className="rounded-2xl border border-border bg-bg-elevated p-3">
             <p className="mb-2 text-xs font-medium text-text-muted">
               Token management

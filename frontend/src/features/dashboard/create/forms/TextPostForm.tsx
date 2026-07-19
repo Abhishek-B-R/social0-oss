@@ -55,6 +55,7 @@ import {
   consumeComposerPayload,
   clearComposerPayload,
 } from "@/lib/composer-bridge";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
 import {
@@ -113,6 +114,7 @@ export function TextPostForm({
   isGuest?: boolean;
 }) {
   const navigate = useNavigate();
+  const dash = useDashboardPath();
   const invalidateQueries = useInvalidateQueries();
   const posthog = usePostHog();
   const formRef = useRef<HTMLFormElement>(null);
@@ -583,7 +585,7 @@ export function TextPostForm({
         }
         if (result.allPlatformsFailed && result.postId) {
           setOverlayPhase("idle");
-          navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+          navigate(dash(`posts/${result.postId}`), { replace: true });
           invalidateQueries();
           return;
         }
@@ -609,7 +611,7 @@ export function TextPostForm({
               .length ?? 0;
           if (succeededCount === 0) {
             setOverlayPhase("idle");
-            navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+            navigate(dash(`posts/${result.postId}`), { replace: true });
             invalidateQueries();
             return;
           }
@@ -690,7 +692,7 @@ export function TextPostForm({
         await setupAutoPlug(result.postId);
         capturePostLifecycle(posthog, "post_published", "text", accountIds.length);
         setOverlayPhase("done");
-        navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+        navigate(dash(`posts/${result.postId}`), { replace: true });
         invalidateQueries();
         return;
       }
@@ -753,7 +755,7 @@ export function TextPostForm({
               .length ?? 0;
           if (succeededCount === 0) {
             setOverlayPhase("idle");
-            navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+            navigate(dash(`posts/${result.postId}`), { replace: true });
             invalidateQueries();
             return;
           }
@@ -834,7 +836,7 @@ export function TextPostForm({
         await setupAutoPlug(result.postId);
         capturePostLifecycle(posthog, "post_published", "text", accountIds.length);
         setOverlayPhase("done");
-        navigate(`/dashboard/posts/${result.postId}`, { replace: true });
+        navigate(dash(`posts/${result.postId}`), { replace: true });
         invalidateQueries();
         return;
       }
@@ -859,7 +861,7 @@ export function TextPostForm({
     if (!initialDraftId) return;
     const result = await deleteDraft(initialDraftId);
     if (result.success) {
-      navigate("/dashboard/posts/drafts", { replace: true });
+      navigate(dash("posts/drafts"), { replace: true });
       invalidateQueries();
     } else {
       toast.error(result.error);
@@ -937,7 +939,7 @@ export function TextPostForm({
               platformStatuses.length > 0 &&
               platformStatuses.every((p) => p.status === "failed");
             if (allFailed && publishedPostId) {
-              navigate(`/dashboard/posts/${publishedPostId}`, {
+              navigate(dash(`posts/${publishedPostId}`), {
                 replace: true,
               });
               invalidateQueries();
@@ -993,6 +995,7 @@ export function TextPostForm({
                 ? getFreePostsRemaining(subscriptionTier, freePostsUsed)
                 : null
             }
+            subscriptionTier={subscriptionTier}
           />
 
           <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">

@@ -1,7 +1,7 @@
 import { auth } from "../lib/auth.js";
 import { db } from "../db/index.js";
 import { verification, connectedAccounts } from "../db/schema.js";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { headers } from "../lib/http/request-cookies.js";
 import { decryptToken, encryptToken } from "@social0/shared";
 import { checkAccountLimits } from "../lib/plan-limits.js";
@@ -28,6 +28,18 @@ export async function liSelectGet(req: AppRequest) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { requireWorkspacePermissionForUser } = await import(
+    "../lib/workspace/session.js"
+  );
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "manage_connections",
+  );
+  if (!ws.ok) {
+    return Response.json({ error: ws.error }, { status: ws.statusCode });
+  }
+  const resourceUserId = ws.ctx.resourceUserId;
+
   const { searchParams } = new URL(req.url);
   const token = searchParams.get("token");
 
@@ -50,7 +62,7 @@ export async function liSelectGet(req: AppRequest) {
   try {
     const raw = decryptToken(record.value, token);
     const payload = JSON.parse(raw) as LinkedInPayload;
-    if (payload.userId !== session.user.id) {
+    if (payload.userId !== resourceUserId) {
       return Response.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -76,6 +88,18 @@ export async function liSelectPost(req: AppRequest) {
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { requireWorkspacePermissionForUser } = await import(
+    "../lib/workspace/session.js"
+  );
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "manage_connections",
+  );
+  if (!ws.ok) {
+    return Response.json({ error: ws.error }, { status: ws.statusCode });
+  }
+  const resourceUserId = ws.ctx.resourceUserId;
 
   let body: { token?: string; selectedIds?: string[]; returnTo?: string };
   try {
@@ -106,17 +130,26 @@ export async function liSelectPost(req: AppRequest) {
     return Response.json({ error: "Token expired" }, { status: 400 });
   }
 
-  let payload: LinkedInPayload;
+  let payload: LinkedInPayload & { workspaceId?: string | null };
   try {
     const raw = decryptToken(record.value, token);
-    payload = JSON.parse(raw) as LinkedInPayload;
+    payload = JSON.parse(raw) as LinkedInPayload & {
+      workspaceId?: string | null;
+    };
   } catch {
     return Response.json({ error: "Invalid token data" }, { status: 400 });
   }
 
-  if (payload.userId !== session.user.id) {
+  if (payload.userId !== resourceUserId) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
+
+  const workspaceId =
+    typeof payload.workspaceId === "string"
+      ? payload.workspaceId
+      : payload.workspaceId === null
+        ? null
+        : ws.ctx.workspaceId;
 
   const accessToken = payload.accessToken;
   const personalId = payload.personalProfile.id;
@@ -158,17 +191,20 @@ export async function liSelectPost(req: AppRequest) {
   for (const acc of toSave) {
     const existing = await db.query.connectedAccounts.findFirst({
       where: and(
-        eq(connectedAccounts.userId, session.user.id),
+        eq(connectedAccounts.userId, resourceUserId),
         eq(connectedAccounts.platform, "linkedin"),
         eq(connectedAccounts.platformUserId, acc.platformUserId),
+        workspaceId
+          ? eq(connectedAccounts.workspaceId, workspaceId)
+          : isNull(connectedAccounts.workspaceId),
       ),
     });
 
     if (!existing) {
-      const limitCheck = await checkAccountLimits(session.user.id, "linkedin");
+      const limitCheck = await checkAccountLimits(resourceUserId, "linkedin");
       if (!limitCheck.allowed) {
         logConnectBlocked(
-          session.user.id,
+          resourceUserId,
           "linkedin",
           limitCheck.reason ?? "You need an active plan to connect accounts and post content.",
           limitCheck.currentTotal,
@@ -189,7 +225,7 @@ export async function liSelectPost(req: AppRequest) {
     const encryptedAccess = encryptToken(accessToken, accountId);
     const profileImageUrl = resolveProfileImageUrl(
       await mirrorProfileImageToR2(acc.profileImageUrl, {
-        userId: session.user.id,
+        userId: resourceUserId,
         accountId,
         platform: "linkedin",
       }),
@@ -214,7 +250,8 @@ export async function liSelectPost(req: AppRequest) {
     } else {
       await db.insert(connectedAccounts).values({
         id: accountId,
-        userId: session.user.id,
+        userId: resourceUserId,
+        workspaceId,
         platform: "linkedin",
         platformUserId: acc.platformUserId,
         platformUsername: acc.platformUsername,

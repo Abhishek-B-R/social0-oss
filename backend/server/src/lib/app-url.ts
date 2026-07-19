@@ -149,3 +149,25 @@ export function connectSelectSuccessUrl(
   const sep = safe.includes("?") ? "&" : "?";
   return appUrlForPath(`${safe}${sep}success=${success}`, request);
 }
+
+/**
+ * Account-picker path for OAuth multi-select. When returnTo is under a team
+ * app tree, land on the mirrored team URL so PersonalWorkspaceBoot doesn't
+ * wipe the active team workspace (and so TeamAppLayout can re-activate it).
+ */
+export function connectionsSelectPath(
+  relativeSelectPath: string,
+  returnTo: string,
+  query: Record<string, string>,
+): string {
+  const clean = relativeSelectPath.replace(/^\//, "");
+  const safeReturn =
+    sanitizeReturnToPath(returnTo) ?? "/dashboard/connections";
+  const teamMatch = safeReturn.match(/^\/dashboard\/teams\/([^/]+)/);
+  const base = teamMatch
+    ? `/dashboard/teams/${teamMatch[1]}/${clean}`
+    : `/dashboard/${clean}`;
+  const params = new URLSearchParams(query);
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
+}

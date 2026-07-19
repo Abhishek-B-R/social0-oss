@@ -68,13 +68,14 @@ async function resolveBoardToken(): Promise<string> {
 export function FeedbackBoard() {
   const { resolvedTheme } = useTheme();
   const cannyTheme = resolvedTheme === "dark" ? "dark" : "light";
+  const themeReady = resolvedTheme === "dark" || resolvedTheme === "light";
 
   const mountRef = useRef<HTMLDivElement>(null);
   const [ssoToken, setSsoToken] = useState<string | null>(null);
   const [boardToken, setBoardToken] = useState<string | null>(null);
   const [sdkLoaded, setSdkLoaded] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
-  const cannyReady = sdkLoaded && !!ssoToken && !!boardToken;
+  const cannyReady = sdkLoaded && !!ssoToken && !!boardToken && themeReady;
   const isLoading = !loadFailed && !cannyReady;
 
   useEffect(() => {
@@ -150,6 +151,9 @@ export function FeedbackBoard() {
       return;
     }
 
+    // Wait for theme hydration so we don't tear down/rebuild the board once.
+    if (!themeReady) return;
+
     const node = mountRef.current;
     node.innerHTML = "";
 
@@ -163,7 +167,7 @@ export function FeedbackBoard() {
     return () => {
       if (node) node.innerHTML = "";
     };
-  }, [sdkLoaded, ssoToken, boardToken, cannyTheme]);
+  }, [sdkLoaded, ssoToken, boardToken, cannyTheme, themeReady]);
 
   if (loadFailed) {
     return (

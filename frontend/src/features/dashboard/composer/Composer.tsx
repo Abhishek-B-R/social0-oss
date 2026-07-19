@@ -14,6 +14,7 @@ import {
   setComposerPayload,
   type ComposerMediaItem,
 } from "@/lib/composer-bridge";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 import {
   measureVideoAspectRatio,
   getAspectRatioGuidance,
@@ -77,6 +78,7 @@ type ThreadSlot = {
  */
 export function Composer() {
   const navigate = useNavigate();
+  const dash = useDashboardPath();
   const [text, setText] = useState("");
   const [media, setMedia] = useState<(ComposerMediaItem & { id: string })[]>(
     [],
@@ -625,7 +627,10 @@ export function Composer() {
       const search = new URLSearchParams();
       search.set("fromComposer", "1");
 
-      navigate(`/dashboard/create/${targetSlug}?${search.toString()}`);
+      // Stay under the current dashboard base (personal or /teams/:id) so the
+      // in-memory composer payload survives — a jump to /dashboard/* from a
+      // team URL triggers workspace boot/reload and drops caption + media.
+      navigate(`${dash(`create/${targetSlug}`)}?${search.toString()}`);
       // Leave loading true so spinner stays until navigation completes
     } catch {
       setLoading(false);
@@ -1055,7 +1060,7 @@ export function Composer() {
         </span>
         You can connect your accounts from
         <Link
-          href="/dashboard/connections"
+          href={dash("connections")}
           className="font-medium text-accent hover:text-accent-hover hover:underline"
         >
           here

@@ -27,6 +27,24 @@ export async function platformReauth(
     return RouteResponse.redirect(appUrlForPath("/dashboard/connections", req));
   }
 
+  const { requireWorkspacePermissionForUser } = await import(
+    "../lib/workspace/session.js"
+  );
+  const ws = await requireWorkspacePermissionForUser(
+    session.user.id,
+    "manage_connections",
+  );
+  if (!ws.ok) {
+    return RouteResponse.redirect(
+      appUrlForPath(
+        `/dashboard/connections?error=${encodeURIComponent(ws.error)}`,
+        req,
+      ),
+    );
+  }
+  const resourceUserId = ws.ctx.resourceUserId;
+  const workspaceId = ws.ctx.workspaceId;
+
   const rate = await enforceRateLimit(oauthLimiter, session.user.id);
   if (!rate.allowed) {
     return RouteResponse.redirect(
@@ -47,13 +65,16 @@ export async function platformReauth(
     );
   }
 
+  const { connectionScopeCondition } = await import(
+    "../lib/workspace/context.js"
+  );
   const [account] = await db
     .select({ id: connectedAccounts.id })
     .from(connectedAccounts)
     .where(
       and(
         eq(connectedAccounts.id, accountId),
-        eq(connectedAccounts.userId, session.user.id),
+        connectionScopeCondition({ resourceUserId, workspaceId }),
       ),
     )
     .limit(1);
