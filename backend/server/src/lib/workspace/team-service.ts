@@ -2388,14 +2388,60 @@ export async function moveConnectedAccountToWorkspace(
     }
   }
 
-  await db
-    .update(connectedAccounts)
-    .set({
-      workspaceId: targetWorkspaceId,
-      userId: nextUserId,
-      updatedAt: new Date(),
-    })
-    .where(eq(connectedAccounts.id, account.id));
+  // Same platform account already lives in the destination workspace
+  // (Main or a team workspace) — unique on (workspace_id, platform, platform_user_id).
+  const alreadyInDestination =
+    targetWorkspaceId === null
+      ? await db.query.connectedAccounts.findFirst({
+          where: and(
+            eq(connectedAccounts.userId, nextUserId),
+            eq(connectedAccounts.platform, account.platform),
+            eq(connectedAccounts.platformUserId, account.platformUserId),
+            isNull(connectedAccounts.workspaceId),
+            ne(connectedAccounts.id, account.id),
+          ),
+          columns: { id: true },
+        })
+      : await db.query.connectedAccounts.findFirst({
+          where: and(
+            eq(connectedAccounts.workspaceId, targetWorkspaceId),
+            eq(connectedAccounts.platform, account.platform),
+            eq(connectedAccounts.platformUserId, account.platformUserId),
+            ne(connectedAccounts.id, account.id),
+          ),
+          columns: { id: true },
+        });
+  if (alreadyInDestination) {
+    throw new TeamServiceError(
+      409,
+      "That account is already in the destination workspace.",
+    );
+  }
+
+  try {
+    await db
+      .update(connectedAccounts)
+      .set({
+        workspaceId: targetWorkspaceId,
+        userId: nextUserId,
+        updatedAt: new Date(),
+      })
+      .where(eq(connectedAccounts.id, account.id));
+  } catch (err) {
+    const pgCode =
+      err && typeof err === "object" && "cause" in err
+        ? (err as { cause?: { code?: string } }).cause?.code
+        : err && typeof err === "object" && "code" in err
+          ? (err as { code?: string }).code
+          : undefined;
+    if (pgCode === "23505") {
+      throw new TeamServiceError(
+        409,
+        "That account is already in the destination workspace.",
+      );
+    }
+    throw err;
+  }
 
   if (nextUserId !== account.userId) {
     const { syncConnectedAccountsToLimit } = await import("../plan-limits.js");

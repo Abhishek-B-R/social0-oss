@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { IconLoader2, IconX } from "@tabler/icons-react";
+import { IconX } from "@tabler/icons-react";
 import { toast } from "sonner";
 import {
   acceptMyInvitation,
@@ -110,13 +110,7 @@ export function TeamInviteBanners() {
                 disabled={busy}
                 onClick={() => void handleAccept(inv)}
               >
-                {accepting ? (
-                  <IconLoader2
-                    className="h-4 w-4 animate-spin"
-                    strokeWidth={1.5}
-                  />
-                ) : null}
-                Accept
+                {accepting ? "Accepting…" : "Accept"}
               </Button>
               <Button
                 size="sm"
@@ -124,13 +118,7 @@ export function TeamInviteBanners() {
                 disabled={busy}
                 onClick={() => void handleDecline(inv)}
               >
-                {declining ? (
-                  <IconLoader2
-                    className="h-4 w-4 animate-spin"
-                    strokeWidth={1.5}
-                  />
-                ) : null}
-                Decline
+                {declining ? "Declining…" : "Decline"}
               </Button>
               <button
                 type="button"

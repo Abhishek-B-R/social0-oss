@@ -10,7 +10,6 @@ import Link from "@/components/AppLink";
 import {
   IconBriefcase,
   IconHome,
-  IconLoader2,
   IconPencil,
   IconPlus,
   IconTrash,
@@ -495,13 +494,7 @@ export function WorkspacesPage() {
               disabled={renaming || !renameDraft.trim()}
               onClick={() => void handleRename()}
             >
-              {renaming ? (
-                <IconLoader2
-                  className="h-4 w-4 animate-spin"
-                  strokeWidth={1.5}
-                />
-              ) : null}
-              Save
+              {renaming ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -655,12 +648,14 @@ function WorkspaceBoardCardView({
             </button>
           </div>
           <p className="mt-0.5 text-xs text-text-muted">
-            {isPersonal
-              ? "Default"
-              : isTeam
-                ? `Team · ${card.teamName}`
-                : null}
-            {card.isActive ? (
+            {switching
+              ? "Opening…"
+              : isPersonal
+                ? "Default"
+                : isTeam
+                  ? `Team · ${card.teamName}`
+                  : null}
+            {!switching && card.isActive ? (
               <>
                 {(isPersonal || isTeam) && " · "}
                 <span className="text-accent">Active</span>
@@ -827,23 +822,37 @@ function MoveMenu({
   onSelect: (workspaceId: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
-    null,
-  );
+  const [menuPos, setMenuPos] = useState<{
+    top?: number;
+    bottom?: number;
+    right: number;
+    maxHeight: number;
+  } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        const menu = document.getElementById("workspace-move-menu");
-        if (menu?.contains(e.target as Node)) return;
-        setOpen(false);
+      const target = e.target as Node;
+      if (
+        rootRef.current?.contains(target) ||
+        menuRef.current?.contains(target)
+      ) {
+        return;
       }
+      setOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
     };
     document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [open]);
 
   useEffect(() => {
@@ -853,10 +862,31 @@ function MoveMenu({
     }
     const update = () => {
       const rect = buttonRef.current!.getBoundingClientRect();
-      setMenuPos({
-        top: rect.bottom + 4,
-        right: window.innerWidth - rect.right,
-      });
+      const gap = 4;
+      const edgePad = 8;
+      const preferredMax = 256;
+      const spaceBelow = window.innerHeight - rect.bottom - gap - edgePad;
+      const spaceAbove = rect.top - gap - edgePad;
+      const openDown =
+        spaceBelow >= 140 || spaceBelow >= spaceAbove;
+      const right = Math.max(
+        edgePad,
+        window.innerWidth - rect.right,
+      );
+
+      if (openDown) {
+        setMenuPos({
+          top: rect.bottom + gap,
+          right,
+          maxHeight: Math.min(preferredMax, Math.max(96, spaceBelow)),
+        });
+      } else {
+        setMenuPos({
+          bottom: window.innerHeight - rect.top + gap,
+          right,
+          maxHeight: Math.min(preferredMax, Math.max(96, spaceAbove)),
+        });
+      }
     };
     update();
     window.addEventListener("resize", update);
@@ -865,7 +895,7 @@ function MoveMenu({
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, [open]);
+  }, [open, destinations.length]);
 
   return (
     <div ref={rootRef} className="relative shrink-0">
@@ -875,6 +905,8 @@ function MoveMenu({
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
         aria-busy={busy || undefined}
+        aria-expanded={open}
+        aria-haspopup="menu"
         className="min-w-[3.25rem] rounded-xl border border-border bg-bg-elevated px-2.5 py-1 text-xs font-medium text-text transition-[opacity,colors,transform] duration-150 ease-out hover:bg-muted active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100"
       >
         {busy ? "Moving…" : "Move"}
@@ -882,15 +914,22 @@ function MoveMenu({
       {open && menuPos
         ? createPortal(
             <div
-              id="workspace-move-menu"
-              style={{ top: menuPos.top, right: menuPos.right }}
-              className="fixed z-50 max-h-64 min-w-[200px] overflow-y-auto rounded-xl border border-border bg-bg-elevated py-1 shadow-lg"
+              ref={menuRef}
+              role="menu"
+              style={{
+                top: menuPos.top,
+                bottom: menuPos.bottom,
+                right: menuPos.right,
+                maxHeight: menuPos.maxHeight,
+              }}
+              className="fixed z-50 min-w-[200px] overflow-y-auto rounded-xl border border-border bg-bg-elevated py-1 shadow-lg"
             >
               <p className="px-3 py-1.5 text-xs text-text-muted">Move to</p>
               {destinations.map((dest) => (
                 <button
                   key={dest.id ?? "main"}
                   type="button"
+                  role="menuitem"
                   onClick={() => {
                     setOpen(false);
                     onSelect(dest.id);

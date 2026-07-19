@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { IconChevronDown, IconLoader2, IconPlus } from "@tabler/icons-react";
+import { IconChevronDown, IconPlus } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { createTeam, createWorkspaceInTeam } from "@/api/team";
 import { Button } from "@/components/ui/button";
@@ -61,7 +61,7 @@ export function CreateWorkspaceDialog({
     setExistingTeamId(
       prefillTeamId && ownedTeams.some((t) => t.id === prefillTeamId)
         ? prefillTeamId
-        : (ownedTeams[0]?.id ?? ""),
+        : ownedTeams[0]?.id ?? "",
     );
     setTeamName("");
     setWorkspaceName("");
@@ -69,24 +69,16 @@ export function CreateWorkspaceDialog({
     setSubmitting(false);
   }, [open, prefillTeamId, ownedTeams, canCreateTeam]);
 
-  // Keep default workspace name in sync with the team name until the user edits it.
+  // Keep default workspace name in sync with a new team name until the user edits it.
+  // Existing teams already have a default workspace — leave the name blank for those.
   useEffect(() => {
     if (!open || !teamMode || workspaceTouched) return;
     if (teamChoice === "new") {
       setWorkspaceName(defaultWorkspaceName(teamName));
       return;
     }
-    const existing = ownedTeams.find((t) => t.id === existingTeamId);
-    setWorkspaceName(defaultWorkspaceName(existing?.name ?? ""));
-  }, [
-    open,
-    teamMode,
-    teamChoice,
-    teamName,
-    existingTeamId,
-    ownedTeams,
-    workspaceTouched,
-  ]);
+    setWorkspaceName("");
+  }, [open, teamMode, teamChoice, teamName, workspaceTouched]);
 
   const canSubmit = (() => {
     if (!workspaceName.trim()) return false;
@@ -137,7 +129,9 @@ export function CreateWorkspaceDialog({
         <div className="space-y-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-text">Shared with a team</p>
+              <p className="text-sm font-medium text-text">
+                Shared with a team
+              </p>
               <p className="mt-0.5 text-sm text-text-muted">
                 Invite people later from team settings.
               </p>
@@ -183,84 +177,94 @@ export function CreateWorkspaceDialog({
           </div>
 
           {teamMode ? (
-            <div className="space-y-3 rounded-xl border border-accent/35 bg-accent/[0.06] p-3.5">
+            <div className="space-y-3">
               <p className="text-sm font-medium text-text">Team</p>
 
-              <label className="flex cursor-pointer items-start gap-2.5">
-                <input
-                  type="radio"
-                  name="team-choice"
-                  className="mt-1 accent-accent"
-                  checked={teamChoice === "new"}
+              <div
+                role="tablist"
+                aria-label="Team type"
+                className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-bg-muted/60 p-1"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={teamChoice === "new"}
                   disabled={submitting || !canCreateTeam}
-                  onChange={() => {
+                  onClick={() => {
                     setWorkspaceTouched(false);
                     setTeamChoice("new");
                   }}
-                />
-                <span className="min-w-0 flex-1 space-y-2">
-                  <span className="block text-sm text-text">New team</span>
-                  {teamChoice === "new" ? (
-                    <Input
-                      value={teamName}
-                      onChange={(e) => setTeamName(e.target.value)}
-                      placeholder="e.g. Marketing"
-                      maxLength={80}
-                      disabled={submitting || !canCreateTeam}
-                    />
-                  ) : null}
-                  {!canCreateTeam && teamChoice === "new" ? (
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition-[colors,opacity] duration-150 ease-out disabled:cursor-not-allowed disabled:opacity-50 ${
+                    teamChoice === "new"
+                      ? "border border-accent/50 bg-accent/15 text-accent"
+                      : "border border-transparent text-text-muted hover:text-text"
+                  }`}
+                >
+                  New team
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={teamChoice === "existing"}
+                  disabled={submitting || ownedTeams.length === 0}
+                  onClick={() => {
+                    setWorkspaceTouched(false);
+                    setWorkspaceName("");
+                    setTeamChoice("existing");
+                  }}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition-[colors,opacity] duration-150 ease-out disabled:cursor-not-allowed disabled:opacity-50 ${
+                    teamChoice === "existing"
+                      ? "border border-accent/50 bg-accent/15 text-accent"
+                      : "border border-transparent text-text-muted hover:text-text"
+                  }`}
+                >
+                  Existing team
+                </button>
+              </div>
+
+              {teamChoice === "new" ? (
+                <div className="space-y-2">
+                  <Input
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                    placeholder="e.g. Marketing"
+                    maxLength={80}
+                    disabled={submitting || !canCreateTeam}
+                    aria-label="New team name"
+                  />
+                  {!canCreateTeam ? (
                     <p className="text-xs text-text-muted">
                       {ownedTeamCount >= maxOwnedTeams
                         ? `You already have ${maxOwnedTeams} teams. Pick an existing one.`
-                        : "Creating teams requires Pro."}
+                        : "Creating teams requires Pro plan."}
                     </p>
                   ) : null}
+                </div>
+              ) : ownedTeams.length > 0 ? (
+                <span className="relative block">
+                  <select
+                    value={existingTeamId}
+                    onChange={(e) => setExistingTeamId(e.target.value)}
+                    disabled={submitting}
+                    aria-label="Existing team"
+                    className="h-9 w-full appearance-none rounded-xl border border-input bg-bg px-3 pr-8 text-sm leading-none text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
+                  >
+                    {ownedTeams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                  <IconChevronDown
+                    className="pointer-events-none absolute top-1/2 right-2.5 h-3.5 w-3.5 -translate-y-1/2 text-text-muted"
+                    strokeWidth={1.5}
+                  />
                 </span>
-              </label>
-
-              <label className="flex cursor-pointer items-start gap-2.5">
-                <input
-                  type="radio"
-                  name="team-choice"
-                  className="mt-1 accent-accent"
-                  checked={teamChoice === "existing"}
-                  disabled={submitting || ownedTeams.length === 0}
-                  onChange={() => {
-                    setWorkspaceTouched(false);
-                    setTeamChoice("existing");
-                  }}
-                />
-                <span className="min-w-0 flex-1 space-y-2">
-                  <span className="block text-sm text-text">Existing team</span>
-                  {teamChoice === "existing" ? (
-                    ownedTeams.length > 0 ? (
-                      <span className="relative block">
-                        <select
-                          value={existingTeamId}
-                          onChange={(e) => setExistingTeamId(e.target.value)}
-                          disabled={submitting}
-                          className="h-9 w-full appearance-none rounded-xl border border-input bg-bg px-3 pr-8 text-sm leading-none text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
-                        >
-                          {ownedTeams.map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.name}
-                            </option>
-                          ))}
-                        </select>
-                        <IconChevronDown
-                          className="pointer-events-none absolute top-1/2 right-2.5 h-3.5 w-3.5 -translate-y-1/2 text-text-muted"
-                          strokeWidth={1.5}
-                        />
-                      </span>
-                    ) : (
-                      <p className="text-sm text-text-muted">
-                        You don&apos;t own any teams yet.
-                      </p>
-                    )
-                  ) : null}
-                </span>
-              </label>
+              ) : (
+                <p className="text-sm text-text-muted">
+                  You don&apos;t own any teams yet.
+                </p>
+              )}
             </div>
           ) : null}
 
@@ -277,7 +281,9 @@ export function CreateWorkspaceDialog({
               }}
               placeholder={
                 teamMode
-                  ? "e.g. Marketing's default workspace"
+                  ? teamChoice === "existing"
+                    ? "e.g. Clients, Staging"
+                    : "e.g. Marketing's default workspace"
                   : "e.g. Personal, Work, Clients"
               }
               maxLength={80}
@@ -305,14 +311,13 @@ export function CreateWorkspaceDialog({
             onClick={() => void handleSubmit()}
           >
             {submitting ? (
-              <IconLoader2
-                className="h-4 w-4 animate-spin"
-                strokeWidth={1.5}
-              />
+              "Creating…"
             ) : (
-              <IconPlus className="h-4 w-4" strokeWidth={1.5} />
+              <>
+                <IconPlus className="h-4 w-4" strokeWidth={1.5} />
+                Create
+              </>
             )}
-            Create
           </Button>
         </DialogFooter>
       </DialogContent>

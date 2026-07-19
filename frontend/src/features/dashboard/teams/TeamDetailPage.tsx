@@ -7,7 +7,6 @@ import {
   IconCalendar,
   IconChevronDown,
   IconChevronRight,
-  IconLoader2,
   IconPencil,
   IconPlus,
   IconTrash,
@@ -347,13 +346,7 @@ export function TeamDetailPage() {
                     disabled={savingName || !nameDraft.trim()}
                     onClick={() => void handleSaveName()}
                   >
-                    {savingName ? (
-                      <IconLoader2
-                        className="h-4 w-4 animate-spin"
-                        strokeWidth={1.5}
-                      />
-                    ) : null}
-                    Save
+                    {savingName ? "Saving…" : "Save"}
                   </Button>
                   <Button
                     size="sm"
@@ -414,16 +407,17 @@ export function TeamDetailPage() {
                       setDeleteWsConfirm("");
                     }}
                     className="rounded-md p-1.5 text-destructive hover:bg-destructive/10 disabled:opacity-50"
-                    aria-label={`Delete ${ws.name}`}
+                    aria-label={
+                      wsBusyId === ws.id
+                        ? `Deleting ${ws.name}`
+                        : `Delete ${ws.name}`
+                    }
+                    aria-busy={wsBusyId === ws.id || undefined}
                   >
-                    {wsBusyId === ws.id ? (
-                      <IconLoader2
-                        className="h-4 w-4 animate-spin"
-                        strokeWidth={1.5}
-                      />
-                    ) : (
-                      <IconTrash className="h-4 w-4" strokeWidth={1.5} />
-                    )}
+                    <IconTrash
+                      className={`h-4 w-4 ${wsBusyId === ws.id ? "opacity-40" : ""}`}
+                      strokeWidth={1.5}
+                    />
                   </button>
                 ) : null}
               </li>
@@ -451,14 +445,13 @@ export function TeamDetailPage() {
                 onClick={() => void handleAddWorkspace()}
               >
                 {addingWs ? (
-                  <IconLoader2
-                    className="h-4 w-4 animate-spin"
-                    strokeWidth={1.5}
-                  />
+                  "Adding…"
                 ) : (
-                  <IconPlus className="h-4 w-4" strokeWidth={1.5} />
+                  <>
+                    <IconPlus className="h-4 w-4" strokeWidth={1.5} />
+                    Add workspace
+                  </>
                 )}
-                Add workspace
               </Button>
             </div>
           ) : null}
@@ -509,13 +502,7 @@ export function TeamDetailPage() {
                   disabled={inviting || !inviteEmail.trim()}
                   onClick={() => void handleInvite()}
                 >
-                  {inviting ? (
-                    <IconLoader2
-                      className="h-4 w-4 animate-spin"
-                      strokeWidth={1.5}
-                    />
-                  ) : null}
-                  Send invite
+                  {inviting ? "Sending…" : "Send invite"}
                 </Button>
               </div>
             </div>
@@ -627,13 +614,7 @@ export function TeamDetailPage() {
               disabled={leaving}
               onClick={() => void handleLeave()}
             >
-              {leaving ? (
-                <IconLoader2
-                  className="h-4 w-4 animate-spin"
-                  strokeWidth={1.5}
-                />
-              ) : null}
-              Leave team
+              {leaving ? "Leaving…" : "Leave team"}
             </Button>
           </section>
         )}
@@ -916,12 +897,6 @@ function MemberTableRow({
                 className="pointer-events-none absolute top-1/2 right-1.5 h-3 w-3 -translate-y-1/2 text-text-muted"
                 strokeWidth={1.5}
               />
-              {roleBusy ? (
-                <IconLoader2
-                  className="absolute -right-5 h-3.5 w-3.5 animate-spin text-text-muted"
-                  strokeWidth={1.5}
-                />
-              ) : null}
             </div>
           ) : (
             <span className="block h-7 text-sm leading-7 capitalize text-text-muted">
@@ -982,15 +957,7 @@ function MemberTableRow({
               disabled={removeBusy}
               onClick={() => void handleRemove()}
             >
-              {removeBusy ? (
-                <IconLoader2
-                  className="h-4 w-4 animate-spin"
-                  strokeWidth={1.5}
-                />
-              ) : (
-                <IconTrash className="h-4 w-4" strokeWidth={1.5} />
-              )}
-              Remove member
+              {removeBusy ? "Removing…" : "Remove member"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1053,13 +1020,17 @@ function InvitationTableRow({
             disabled={busy}
             onClick={() => void handleRevoke()}
             className="inline-flex h-7 w-7 items-center justify-center rounded-md text-destructive transition-colors duration-150 ease-out hover:bg-destructive/10 active:scale-[0.97] disabled:opacity-50"
-            aria-label={`Revoke invite for ${invitation.email}`}
+            aria-label={
+              busy
+                ? `Revoking invite for ${invitation.email}`
+                : `Revoke invite for ${invitation.email}`
+            }
+            aria-busy={busy || undefined}
           >
-            {busy ? (
-              <IconLoader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
-            ) : (
-              <IconTrash className="h-4 w-4" strokeWidth={1.5} />
-            )}
+            <IconTrash
+              className={`h-4 w-4 ${busy ? "opacity-40" : ""}`}
+              strokeWidth={1.5}
+            />
           </button>
         ) : (
           <span className="inline-flex h-7 w-7 items-center justify-center text-sm text-text-muted">

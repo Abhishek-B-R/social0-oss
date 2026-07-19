@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "@/components/AppLink";
-import { IconArrowLeft, IconLoader2 } from "@tabler/icons-react";
+import { IconArrowLeft } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { createTeam, listWorkspaces } from "@/api/team";
 import { Button } from "@/components/ui/button";
@@ -99,10 +99,12 @@ export function CreateTeamPage() {
         <div className="rounded-xl border border-border bg-bg-elevated p-6 text-sm text-text">
           {atCap
             ? `You've reached the limit of ${workspacesQuery.data?.maxOwnedTeams ?? 5} teams.`
-            : "Creating teams requires Pro."}
+            : "Creating teams requires Pro plan."}
           <div className="mt-4">
             <Link href={atCap ? "/dashboard/teams" : "/dashboard/billing"}>
-              <Button variant="outline">{atCap ? "Back" : "Upgrade to Pro"}</Button>
+              <Button variant="outline">
+                {atCap ? "Back" : "Upgrade to Pro"}
+              </Button>
             </Link>
           </div>
         </div>
@@ -161,10 +163,7 @@ export function CreateTeamPage() {
             disabled={creating || !trimmedTeam}
             onClick={() => void handleCreate()}
           >
-            {creating ? (
-              <IconLoader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
-            ) : null}
-            Create team
+            {creating ? "Creating…" : "Create team"}
           </Button>
         </div>
       </div>
