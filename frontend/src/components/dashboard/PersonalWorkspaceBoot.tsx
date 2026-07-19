@@ -9,8 +9,7 @@ import {
   writePersonalWorkspaceId,
 } from "@/lib/dashboard-base-path";
 import { useLocation } from "react-router-dom";
-
-const WORKSPACES_QUERY_KEY = ["workspaces"] as const;
+import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 
 /**
  * On personal /dashboard routes (not team app / team settings):

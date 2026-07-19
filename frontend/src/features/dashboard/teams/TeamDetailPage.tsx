@@ -25,6 +25,7 @@ import {
   renameTeam,
   revokeTeamInvitation,
   updateTeamMemberRole,
+  type TeamGetResponse,
   type TeamInvitation,
   type TeamMember,
   type WorkspaceRole,
@@ -41,8 +42,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-const WORKSPACES_QUERY_KEY = ["workspaces"] as const;
+import {
+  invalidateTeamRoomQueries,
+  teamInvitationsQueryKey,
+  teamQueryKey,
+} from "@/lib/team-query-keys";
 
 export function TeamDetailPage() {
   const { teamId: teamIdParam } = useParams<{ teamId: string }>();
@@ -79,23 +83,20 @@ export function TeamDetailPage() {
   }, [teamId, navigate]);
 
   const teamQuery = useQuery({
-    queryKey: ["team", teamId],
+    queryKey: teamQueryKey(teamId!),
     queryFn: () => getTeamById(teamId!),
     enabled: !!teamId,
   });
 
   const invitationsQuery = useQuery({
-    queryKey: ["team", teamId, "invitations"],
+    queryKey: teamInvitationsQueryKey(teamId!),
     queryFn: () => getTeamInvitations(teamId),
     enabled: !!teamId && !!teamQuery.data?.permissions.canInvite,
   });
 
   const refresh = () => {
-    void queryClient.invalidateQueries({ queryKey: ["team", teamId] });
-    void queryClient.invalidateQueries({
-      queryKey: ["team", teamId, "invitations"],
-    });
-    void queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY });
+    if (!teamId) return;
+    void invalidateTeamRoomQueries(queryClient, teamId);
   };
 
   const handleSaveName = async () => {
@@ -107,7 +108,12 @@ export function TeamDetailPage() {
     }
     setSavingName(true);
     try {
-      await renameTeam(teamId, name);
+      const result = await renameTeam(teamId, name);
+      queryClient.setQueryData<TeamGetResponse>(teamQueryKey(teamId), (prev) =>
+        prev?.team
+          ? { ...prev, team: { ...prev.team, name: result.name } }
+          : prev,
+      );
       toast.success("Team name updated");
       setEditingName(false);
       refresh();
@@ -194,7 +200,7 @@ export function TeamDetailPage() {
     try {
       await leaveTeam(teamId);
       toast.success("Left team");
-      await queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY });
+      await invalidateTeamRoomQueries(queryClient, teamId);
       navigate("/dashboard/teams", { replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to leave team");
@@ -225,10 +231,7 @@ export function TeamDetailPage() {
         toast.success("Team deleted");
       }
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY }),
-        queryClient.invalidateQueries({ queryKey: ["team"] }),
-        queryClient.invalidateQueries({ queryKey: ["dashboard-layout"] }),
-        queryClient.invalidateQueries({ queryKey: ["connections"] }),
+        invalidateTeamRoomQueries(queryClient, teamId),
       ]);
       navigate("/dashboard/teams", { replace: true });
     } catch (err) {

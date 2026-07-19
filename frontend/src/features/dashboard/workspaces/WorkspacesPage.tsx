@@ -25,6 +25,7 @@ import {
   switchWorkspace,
   type WorkspaceBoardAccount,
   type WorkspaceBoardCard,
+  type WorkspaceBoardResponse,
 } from "@/api/team";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import DocsInfoIcon from "@/components/info-icon";
@@ -50,9 +51,10 @@ import {
   writeTeamWorkspaceId,
 } from "@/lib/dashboard-base-path";
 import { useLocation } from "react-router-dom";
-
-const BOARD_QUERY_KEY = ["workspace-board"] as const;
-const WORKSPACES_QUERY_KEY = ["workspaces"] as const;
+import {
+  invalidateTeamRoomQueries,
+  WORKSPACE_BOARD_QUERY_KEY,
+} from "@/lib/team-query-keys";
 
 function connectionHandle(platform: string, username: string | null): string {
   const name = username?.trim();
@@ -86,7 +88,7 @@ export function WorkspacesPage() {
   const [switchingId, setSwitchingId] = useState<string | "main" | null>(null);
 
   const boardQuery = useQuery({
-    queryKey: BOARD_QUERY_KEY,
+    queryKey: WORKSPACE_BOARD_QUERY_KEY,
     queryFn: listWorkspaceBoard,
   });
 
@@ -132,13 +134,7 @@ export function WorkspacesPage() {
   );
 
   const invalidateAll = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: BOARD_QUERY_KEY }),
-      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY }),
-      queryClient.invalidateQueries({ queryKey: ["team"] }),
-      queryClient.invalidateQueries({ queryKey: ["dashboard-layout"] }),
-      queryClient.invalidateQueries({ queryKey: ["connections"] }),
-    ]);
+    await invalidateTeamRoomQueries(queryClient);
   };
 
   const handleMove = async (
@@ -208,7 +204,22 @@ export function WorkspacesPage() {
     if (!renameTarget || !renameDraft.trim()) return;
     setRenaming(true);
     try {
-      await renameWorkspace(renameTarget.id, renameDraft.trim());
+      const result = await renameWorkspace(
+        renameTarget.id,
+        renameDraft.trim(),
+      );
+      queryClient.setQueryData<WorkspaceBoardResponse>(
+        WORKSPACE_BOARD_QUERY_KEY,
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            cards: prev.cards.map((c) =>
+              c.id === renameTarget.id ? { ...c, name: result.name } : c,
+            ),
+          };
+        },
+      );
       toast.success("Workspace renamed");
       setRenameTarget(null);
       await invalidateAll();

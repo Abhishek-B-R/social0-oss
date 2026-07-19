@@ -7,8 +7,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 import { cn } from "@/lib/utils";
 import { DOCS_TEAMS_URL } from "@/lib/docs-url";
-
-const WORKSPACES_QUERY_KEY = ["workspaces"] as const;
+import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 
 export function TeamsPanel() {
   const workspacesQuery = useQuery({

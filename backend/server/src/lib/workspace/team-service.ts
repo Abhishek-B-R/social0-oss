@@ -31,6 +31,20 @@ import {
   sendWorkspaceMemberRemovedEmail,
   sendWorkspaceRoleChangedEmail,
 } from "./emails.js";
+import {
+  getCachedTeamMembers,
+  getCachedTeamMeta,
+  getCachedTeamWorkspaces,
+  getCachedWorkspaceMeta,
+  invalidateTeamMembersCache,
+  invalidateTeamRoomCache,
+  invalidateTeamWorkspacesCache,
+  setCachedTeamMembers,
+  setCachedTeamMeta,
+  setCachedTeamWorkspaces,
+  setCachedWorkspaceMeta,
+  type CachedTeamMeta,
+} from "./room-cache.js";
 
 export const INVITE_EXPIRY_DAYS = Number(
   process.env.WORKSPACE_INVITE_EXPIRY_DAYS ?? "7",
@@ -196,6 +210,9 @@ async function requireTeamAdminPermission(
 }
 
 async function loadTeamMembers(teamId: string, ownerUserId: string) {
+  const cached = await getCachedTeamMembers(teamId);
+  if (cached) return cached;
+
   const memberRows = await db
     .select({
       id: teamMembers.id,
@@ -227,6 +244,7 @@ async function loadTeamMembers(teamId: string, ownerUserId: string) {
     return a.email.localeCompare(b.email);
   });
 
+  await setCachedTeamMembers(teamId, members);
   return members;
 }
 
@@ -234,6 +252,16 @@ async function loadTeamWorkspaces(
   teamId: string,
   activeWorkspaceId: string | null,
 ): Promise<TeamWorkspaceDto[]> {
+  const cached = await getCachedTeamWorkspaces(teamId);
+  if (cached) {
+    return cached
+      .map((row) => ({
+        ...row,
+        isActive: activeWorkspaceId === row.id,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   const rows = await db
     .select({ id: workspaces.id, name: workspaces.name })
     .from(workspaces)
@@ -261,7 +289,69 @@ async function loadTeamWorkspaces(
     isActive: activeWorkspaceId === row.id,
   }));
   items.sort((a, b) => a.name.localeCompare(b.name));
+
+  await setCachedTeamWorkspaces(
+    teamId,
+    items.map(({ id, name, connectionCount }) => ({
+      id,
+      name,
+      connectionCount,
+    })),
+  );
+  await Promise.all(
+    items.map((ws) =>
+      setCachedWorkspaceMeta({ id: ws.id, name: ws.name, teamId }),
+    ),
+  );
+
   return items;
+}
+
+async function loadTeamMeta(teamId: string): Promise<CachedTeamMeta | null> {
+  const cached = await getCachedTeamMeta(teamId);
+  if (cached) return cached;
+
+  const row = await db.query.teams.findFirst({
+    where: eq(teams.id, teamId),
+    columns: {
+      id: true,
+      name: true,
+      ownerUserId: true,
+      defaultWorkspaceId: true,
+      isCollaborative: true,
+    },
+  });
+  if (!row) return null;
+
+  const meta: CachedTeamMeta = {
+    id: row.id,
+    name: row.name,
+    ownerUserId: row.ownerUserId,
+    defaultWorkspaceId: row.defaultWorkspaceId ?? null,
+    isCollaborative: row.isCollaborative,
+  };
+  await setCachedTeamMeta(meta);
+  return meta;
+}
+
+async function loadWorkspaceMeta(workspaceId: string) {
+  const cached = await getCachedWorkspaceMeta(workspaceId);
+  if (cached) return cached;
+
+  const [row] = await db
+    .select({
+      id: workspaces.id,
+      name: workspaces.name,
+      teamId: workspaces.teamId,
+    })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
+  if (!row) return null;
+
+  const meta = { id: row.id, name: row.name, teamId: row.teamId };
+  await setCachedWorkspaceMeta(meta);
+  return meta;
 }
 
 export async function getTeamForUser(
@@ -828,6 +918,7 @@ async function acceptInviteRecord(
     }
   }
 
+  await invalidateTeamMembersCache(invite.teamId);
   return { workspaceId: landingWs.id, teamId: invite.teamId };
 }
 
@@ -959,6 +1050,8 @@ export async function updateMemberRole(
     .set({ role: roleRaw, updatedAt: new Date() })
     .where(eq(teamMembers.id, memberId));
 
+  await invalidateTeamMembersCache(member.teamId);
+
   const memberUser = await db.query.user.findFirst({
     where: eq(user.id, member.userId),
     columns: { email: true },
@@ -1002,6 +1095,8 @@ export async function removeMember(
   });
 
   await db.delete(teamMembers).where(eq(teamMembers.id, memberId));
+
+  await invalidateTeamMembersCache(member.teamId);
 
   const teamWorkspaceIds = await db
     .select({ id: workspaces.id })
@@ -1384,6 +1479,21 @@ export async function createTeamForUser(
     .where(eq(teams.id, createdTeam.id));
 
   await setActiveWorkspace(actorUserId, createdWs.id);
+  await setCachedTeamMeta({
+    id: createdTeam.id,
+    name: teamName,
+    ownerUserId: actorUserId,
+    defaultWorkspaceId: createdWs.id,
+    isCollaborative,
+  });
+  await setCachedWorkspaceMeta({
+    id: createdWs.id,
+    name: workspaceName,
+    teamId: createdTeam.id,
+  });
+  await setCachedTeamWorkspaces(createdTeam.id, [
+    { id: createdWs.id, name: workspaceName, connectionCount: 0 },
+  ]);
   return { teamId: createdTeam.id, workspaceId: createdWs.id };
 }
 
@@ -1443,8 +1553,21 @@ export async function createWorkspaceInTeam(
       .update(teams)
       .set({ defaultWorkspaceId: created.id, updatedAt: new Date() })
       .where(eq(teams.id, team.id));
+    const meta = await getCachedTeamMeta(team.id);
+    if (meta) {
+      await setCachedTeamMeta({
+        ...meta,
+        defaultWorkspaceId: created.id,
+      });
+    }
   }
 
+  await setCachedWorkspaceMeta({
+    id: created.id,
+    name,
+    teamId: team.id,
+  });
+  await invalidateTeamWorkspacesCache(team.id);
   await setActiveWorkspace(actorUserId, created.id);
   return { workspaceId: created.id };
 }
@@ -1474,6 +1597,14 @@ export async function renameTeamForUser(
   }
 
   await db.update(teams).set({ name, updatedAt: new Date() }).where(eq(teams.id, teamId));
+
+  const existing = await getCachedTeamMeta(teamId);
+  if (existing) {
+    await setCachedTeamMeta({ ...existing, name });
+  } else {
+    await loadTeamMeta(teamId);
+  }
+
   return { name };
 }
 
@@ -1493,6 +1624,8 @@ export async function renameWorkspaceForUser(
   const [row] = await db
     .select({
       workspaceId: workspaces.id,
+      workspaceName: workspaces.name,
+      teamId: workspaces.teamId,
       ownerUserId: teams.ownerUserId,
     })
     .from(workspaces)
@@ -1514,6 +1647,13 @@ export async function renameWorkspaceForUser(
     .update(workspaces)
     .set({ name, updatedAt: new Date() })
     .where(eq(workspaces.id, workspaceId));
+
+  await setCachedWorkspaceMeta({
+    id: workspaceId,
+    name,
+    teamId: row.teamId,
+  });
+  await invalidateTeamWorkspacesCache(row.teamId);
 
   return { name };
 }
@@ -1583,6 +1723,7 @@ export async function deleteWorkspaceInTeam(
   );
 
   await db.delete(workspaces).where(eq(workspaces.id, workspaceId));
+  await invalidateTeamRoomCache(row.teamId, [workspaceId]);
   return result;
 }
 
@@ -1744,6 +1885,7 @@ export async function deleteTeamForUser(
   }
 
   await db.delete(teams).where(eq(teams.id, teamId));
+  await invalidateTeamRoomCache(teamId, wsIds);
   return result;
 }
 
@@ -1825,6 +1967,8 @@ export async function leaveTeamForUser(
         ),
       );
   }
+
+  await invalidateTeamMembersCache(teamId);
 }
 
 /** @deprecated use leaveTeamForUser */
@@ -2258,6 +2402,20 @@ export async function moveConnectedAccountToWorkspace(
     await syncConnectedAccountsToLimit(nextUserId);
     await syncConnectedAccountsToLimit(account.userId);
   }
+
+  // Connection counts in workspace lists are cached — refresh both sides.
+  const teamIds = new Set<string>();
+  if (currentId) {
+    const from = await loadWorkspaceMeta(currentId);
+    if (from) teamIds.add(from.teamId);
+  }
+  if (targetWorkspaceId) {
+    const to = await loadWorkspaceMeta(targetWorkspaceId);
+    if (to) teamIds.add(to.teamId);
+  }
+  await Promise.all(
+    [...teamIds].map((id) => invalidateTeamWorkspacesCache(id)),
+  );
 
   return { workspaceId: targetWorkspaceId };
 }

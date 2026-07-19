@@ -11,8 +11,7 @@ import {
   writeTeamWorkspaceId,
 } from "@/lib/dashboard-base-path";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
-
-const WORKSPACES_QUERY_KEY = ["workspaces"] as const;
+import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 
 /** Survives layout remounts so in-team navigations don't flash the gate. */
 const bootstrappedTeams = new Set<string>();

@@ -25,8 +25,10 @@ import {
   writePersonalWorkspaceId,
   writeTeamWorkspaceId,
 } from "@/lib/dashboard-base-path";
-
-const WORKSPACES_QUERY_KEY = ["workspaces"] as const;
+import {
+  invalidateTeamRoomQueries,
+  WORKSPACES_QUERY_KEY,
+} from "@/lib/team-query-keys";
 
 export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   const queryClient = useQueryClient();
@@ -186,13 +188,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   );
 
   const invalidateAll = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY }),
-      queryClient.invalidateQueries({ queryKey: ["workspace-board"] }),
-      queryClient.invalidateQueries({ queryKey: ["team"] }),
-      queryClient.invalidateQueries({ queryKey: ["dashboard-layout"] }),
-      queryClient.invalidateQueries({ queryKey: ["connections"] }),
-    ]);
+    await invalidateTeamRoomQueries(queryClient);
   };
 
   const navigateToTeamWorkspace = async (opts: {

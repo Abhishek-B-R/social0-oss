@@ -44,6 +44,20 @@ vi.mock("../lib/workspace/emails.js", () => ({
   sendWorkspaceMemberRemovedEmail: vi.fn(),
   sendWorkspaceRoleChangedEmail: vi.fn(),
 }));
+vi.mock("../lib/workspace/room-cache.js", () => ({
+  getCachedTeamMembers: vi.fn().mockResolvedValue(null),
+  getCachedTeamMeta: vi.fn().mockResolvedValue(null),
+  getCachedTeamWorkspaces: vi.fn().mockResolvedValue(null),
+  getCachedWorkspaceMeta: vi.fn().mockResolvedValue(null),
+  setCachedTeamMembers: vi.fn().mockResolvedValue(undefined),
+  setCachedTeamMeta: vi.fn().mockResolvedValue(undefined),
+  setCachedTeamWorkspaces: vi.fn().mockResolvedValue(undefined),
+  setCachedWorkspaceMeta: vi.fn().mockResolvedValue(undefined),
+  invalidateTeamMembersCache: vi.fn().mockResolvedValue(undefined),
+  invalidateTeamRoomCache: vi.fn().mockResolvedValue(undefined),
+  invalidateTeamWorkspacesCache: vi.fn().mockResolvedValue(undefined),
+  invalidateWorkspaceRoomCache: vi.fn().mockResolvedValue(undefined),
+}));
 
 import {
   TeamServiceError,
