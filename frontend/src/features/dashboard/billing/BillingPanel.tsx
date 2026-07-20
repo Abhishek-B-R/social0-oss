@@ -769,17 +769,7 @@ export function BillingPanel({
             disabled={loading !== null}
             className="min-w-44 justify-center"
           >
-            {loading === "portal" ? (
-              <span className="inline-flex items-center gap-2">
-                <IconLoader2
-                  className="h-4 w-4 shrink-0 animate-spin"
-                  strokeWidth={1.5}
-                />
-                Opening…
-              </span>
-            ) : (
-              "Manage Subscription"
-            )}
+            Manage Subscription
           </Button>
 
           {subscription.tier !== "free" && !subscription.cancelAtPeriodEnd && (
@@ -803,17 +793,7 @@ export function BillingPanel({
               onClick={handleUndoCancel}
               disabled={loading !== null}
             >
-              {loading === "undoCancel" ? (
-                <>
-                  <IconLoader2
-                    className="h-4 w-4 animate-spin"
-                    strokeWidth={1.5}
-                  />
-                  Undoing…
-                </>
-              ) : (
-                "Undo Cancel"
-              )}
+              Undo Cancel
             </Button>
           )}
         </div>
@@ -898,19 +878,9 @@ export function BillingPanel({
                     disabled={loadingChangePlan !== null}
                     onClick={() => handleUpgradeFromFree("starter")}
                   >
-                    {loadingChangePlan === "starter" ? (
-                      <>
-                        <IconLoader2
-                          className="h-4 w-4 animate-spin"
-                          strokeWidth={1.5}
-                        />
-                        Opening…
-                      </>
-                    ) : showTrialInfo ? (
-                      "Start 3-day free trial"
-                    ) : (
-                      "Upgrade to Starter"
-                    )}
+                    {showTrialInfo
+                      ? "Start 3-day free trial"
+                      : "Upgrade to Starter"}
                   </Button>
                   {showTrialInfo && (
                     <p className="mt-2 text-center text-xs text-muted-foreground">
@@ -978,17 +948,7 @@ export function BillingPanel({
                   disabled={loadingChangePlan !== null || upgradePending}
                   onClick={() => handleUpgradePlan("growth")}
                 >
-                  {loadingChangePlan === "growth" && !upgradeConfirmOpen ? (
-                    <>
-                      <IconLoader2
-                        className="h-4 w-4 animate-spin"
-                        strokeWidth={1.5}
-                      />
-                      Getting price…
-                    </>
-                  ) : (
-                    "Upgrade (starts new billing cycle)"
-                  )}
+                  Upgrade (starts new billing cycle)
                 </Button>
               ) : (
                 <>
@@ -997,19 +957,9 @@ export function BillingPanel({
                     disabled={loadingChangePlan !== null}
                     onClick={() => handleUpgradeFromFree("growth")}
                   >
-                    {loadingChangePlan === "growth" ? (
-                      <>
-                        <IconLoader2
-                          className="h-4 w-4 animate-spin"
-                          strokeWidth={1.5}
-                        />
-                        Opening…
-                      </>
-                    ) : showTrialInfo ? (
-                      "Start 3-day free trial"
-                    ) : (
-                      "Upgrade to Growth"
-                    )}
+                    {showTrialInfo
+                      ? "Start 3-day free trial"
+                      : "Upgrade to Growth"}
                   </Button>
                   {showTrialInfo && (
                     <p className="mt-2 text-center text-xs text-muted-foreground">
@@ -1062,17 +1012,7 @@ export function BillingPanel({
                   disabled={loadingChangePlan !== null || upgradePending}
                   onClick={() => handleUpgradePlan("pro")}
                 >
-                  {loadingChangePlan === "pro" && !upgradeConfirmOpen ? (
-                    <>
-                      <IconLoader2
-                        className="h-4 w-4 animate-spin"
-                        strokeWidth={1.5}
-                      />
-                      Getting price…
-                    </>
-                  ) : (
-                    "Upgrade to Pro"
-                  )}
+                  Upgrade (starts new billing cycle)
                 </Button>
               ) : (
                 <>
@@ -1081,19 +1021,9 @@ export function BillingPanel({
                     disabled={loadingChangePlan !== null}
                     onClick={() => handleUpgradeFromFree("pro")}
                   >
-                    {loadingChangePlan === "pro" ? (
-                      <>
-                        <IconLoader2
-                          className="h-4 w-4 animate-spin"
-                          strokeWidth={1.5}
-                        />
-                        Opening…
-                      </>
-                    ) : showTrialInfo ? (
-                      "Start 3-day free trial"
-                    ) : (
-                      "Upgrade to Pro"
-                    )}
+                    {showTrialInfo
+                      ? "Start 3-day free trial"
+                      : "Upgrade to Pro"}
                   </Button>
                   {showTrialInfo && (
                     <p className="mt-2 text-center text-xs text-muted-foreground">
@@ -1191,17 +1121,7 @@ export function BillingPanel({
                 !upgradeConfirmPlan
               }
             >
-              {loadingChangePlan === upgradeConfirmPlan ? (
-                <>
-                  <IconLoader2
-                    className="h-4 w-4 animate-spin"
-                    strokeWidth={1.5}
-                  />
-                  Upgrading…
-                </>
-              ) : (
-                "Continue Upgrade"
-              )}
+              Continue Upgrade
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1374,20 +1294,10 @@ export function BillingPanel({
                   <button
                     onClick={handleScheduleDowngrade}
                     disabled={loadingChangePlan !== null}
-                    className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl px-6 py-3 text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                    className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl px-6 py-3 text-sm font-medium transition-colors disabled:opacity-50"
                     type="button"
                   >
-                    {loadingChangePlan ? (
-                      <>
-                        <IconLoader2
-                          className="w-4 h-4 animate-spin"
-                          strokeWidth={1.5}
-                        />
-                        Scheduling...
-                      </>
-                    ) : (
-                      "Schedule Downgrade"
-                    )}
+                    Schedule Downgrade
                   </button>
                 </div>
               </div>
@@ -1414,17 +1324,7 @@ export function BillingPanel({
                 onClick={() => handlePause(m as 1 | 2 | 3)}
                 disabled={loading !== null}
               >
-                {loading === "pause" ? (
-                  <>
-                    <IconLoader2
-                      className="h-4 w-4 animate-spin"
-                      strokeWidth={1.5}
-                    />
-                    Updating…
-                  </>
-                ) : (
-                  `Pause for ${m} month${m > 1 ? "s" : ""}`
-                )}
+                {`Pause for ${m} month${m > 1 ? "s" : ""}`}
               </Button>
             ))}
           </div>
@@ -1545,20 +1445,10 @@ export function BillingPanel({
                   <button
                     onClick={handleCancel}
                     disabled={loading === "cancel"}
-                    className="bg-red-500 hover:bg-red-600 text-white rounded-xl px-6 py-3 text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                    className="bg-red-500 hover:bg-red-600 text-white rounded-xl px-6 py-3 text-sm font-medium transition-colors disabled:opacity-50"
                     type="button"
                   >
-                    {loading === "cancel" ? (
-                      <>
-                        <IconLoader2
-                          className="w-4 h-4 animate-spin"
-                          strokeWidth={1.5}
-                        />
-                        Cancelling...
-                      </>
-                    ) : (
-                      "Confirm Cancel"
-                    )}
+                    Confirm Cancel
                   </button>
                 </div>
               </div>
