@@ -11,8 +11,8 @@ export type SubscriptionState = {
   customerId: string | null;
   /** True once user has ever had a paid plan (trial or paid). Used for trial vs upgrade messaging when limit is 0. */
   hasUsedTrial: boolean;
-  /** Scheduled downgrade target (starter | growth). Shown as banner until period end or cancel. */
-  pendingPlanTier: "starter" | "growth" | null;
+  /** Scheduled plan change target. Shown as banner until period end or cancel. */
+  pendingPlanTier: "starter" | "growth" | "pro" | null;
   /** True when user cancelled at period end; access until expiresAt. */
   cancelAtPeriodEnd: boolean;
 };
@@ -37,7 +37,9 @@ export async function getSubscriptionForUser(
   const expiresAt = row?.subscriptionExpiresAt ?? null;
   const hasUsedTrial = row?.hasUsedTrial ?? false;
   const rawPending =
-    row?.pendingPlanTier === "starter" || row?.pendingPlanTier === "growth"
+    row?.pendingPlanTier === "starter" ||
+    row?.pendingPlanTier === "growth" ||
+    row?.pendingPlanTier === "pro"
       ? row.pendingPlanTier
       : null;
   const pendingPlanTier = rawPending && rawPending !== tier ? rawPending : null;

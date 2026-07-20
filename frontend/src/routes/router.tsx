@@ -146,10 +146,10 @@ const HomeMarketingPage = lazy(() =>
 const McpPage = lazy(() => import("@/features/marketing/pages/McpPage"));
 
 const OnboardingPage = lazy(
-  () => import("@/features/onboarding/pages/OnboardingStep1Page"),
+  () => import("@/features/onboarding/pages/OnboardingStep2Page"),
 );
 const OnboardingStep2Page = lazy(
-  () => import("@/features/onboarding/pages/OnboardingStep2Page"),
+  () => import("@/features/onboarding/pages/OnboardingStep1Page"),
 );
 const OnboardingStep3Page = lazy(
   () => import("@/features/onboarding/pages/OnboardingStep3Page"),

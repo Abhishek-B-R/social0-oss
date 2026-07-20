@@ -1,10 +1,5 @@
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
-import { fetchApi } from "@/lib/fetch-api";
-
-import { useState, useEffect, useRef } from "react";
-import { IconLoader2 } from "@tabler/icons-react";
-import confetti from "canvas-confetti";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { setOnboardingGoal } from "@/api/onboarding";
 import { DOCS_ONBOARDING_GOAL_URL } from "@/lib/docs-url";
 
@@ -15,163 +10,89 @@ const GOALS = [
   { id: "exploring", label: "Just exploring" },
 ] as const;
 
+/** Step 1 — goal picker (shown before the paywall). */
 export default function OnboardingGoalPage() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const invalidateQueries = useInvalidateQueries();
-  const paid = searchParams.get("paid") === "1";
   const [selected, setSelected] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [paymentVerified, setPaymentVerified] = useState<boolean | null>(null);
-  const [verifying, setVerifying] = useState(false);
-  const syncAttempted = useRef(false);
-
-  // After payment redirect, sync subscription from Dodo. Only stay on step 2 if user has a paid plan in DB.
-  useEffect(() => {
-    if (!paid || syncAttempted.current) return;
-    syncAttempted.current = true;
-    setVerifying(true);
-    fetchApi("/api/billing/sync", { method: "POST", credentials: "include" })
-      .then((res) => res.json())
-      .then((data) => {
-        const hasPaidTier =
-          data?.ok === true && data?.tier && data.tier !== "free";
-        setVerifying(false);
-        if (hasPaidTier) {
-          setPaymentVerified(true);
-          invalidateQueries();
-        } else {
-          navigate("/onboarding?payment_failed=1", { replace: true });
-        }
-      })
-      .catch(() => {
-        setVerifying(false);
-        navigate("/onboarding?payment_failed=1", { replace: true });
-      });
-  }, [paid, navigate, invalidateQueries]);
-
-  useEffect(() => {
-    if (paid && paymentVerified) {
-      const duration = 2_000;
-      const end = Date.now() + duration;
-      const frame = () => {
-        confetti({
-          particleCount: 2,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0 },
-          colors: ["#10b981", "#34d399", "#6ee7b7"],
-        });
-        confetti({
-          particleCount: 2,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1 },
-          colors: ["#10b981", "#34d399", "#6ee7b7"],
-        });
-        if (Date.now() < end) requestAnimationFrame(frame);
-      };
-      frame();
-    }
-  }, [paid]);
 
   async function handleNext() {
     if (!selected) return;
     setSaving(true);
     try {
       await setOnboardingGoal(selected);
-      navigate("/onboarding/step3", { replace: true });
+      navigate("/onboarding/step2", { replace: true });
     } finally {
       setSaving(false);
     }
   }
 
-  if (paid && verifying) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-3 py-24">
-        <IconLoader2
-          className="h-8 w-8 shrink-0 animate-spin text-accent"
-          strokeWidth={1.5}
-        />
-        <p className="text-sm text-muted-foreground">
-          Confirming your subscription…
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full max-w-3xl mx-auto">
-      <a
-        href={DOCS_ONBOARDING_GOAL_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute top-5 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
-        title="Documentation for this page"
-        aria-label="Documentation for this page"
-      >
-        <svg
-          className="w-4 h-4"
-          fill="currentColor"
-          viewBox="0 0 20 20"
-          aria-hidden
+    <div className="flex w-full flex-1 flex-col items-center justify-center">
+      <div className="relative mx-auto w-full max-w-3xl">
+        <a
+          href={DOCS_ONBOARDING_GOAL_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute right-0 top-0 z-10 flex items-center gap-2 rounded-full p-1.5 text-text-muted transition-colors hover:bg-muted hover:text-text"
+          title="Documentation for this page"
+          aria-label="Documentation for this page"
         >
-          <path
-            fillRule="evenodd"
-            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-            clipRule="evenodd"
-          />
-        </svg>
-      </a>
-      <h1 className="mb-2 text-center font-serif text-2xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-3xl">
-        What&apos;s your goal?
-      </h1>
-      <p className="text-center text-muted-foreground mb-8">
-        Optional - helps us personalize your experience. You can skip this.
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-        {GOALS.map((goal) => (
-          <button
-            key={goal.id}
-            type="button"
-            onClick={() => setSelected(goal.id)}
-            className={`rounded-xl border-2 px-4 py-4 text-left font-medium transition-colors ${
-              selected === goal.id
-                ? "border-emerald-500 bg-emerald-500/10 text-foreground"
-                : "border-border bg-card hover:border-emerald-300 hover:bg-muted/50 text-foreground"
-            }`}
+          <svg
+            className="h-4 w-4"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+            aria-hidden
           >
-            {goal.label}
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </a>
+        <h1 className="mb-2 text-center font-serif text-2xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-3xl">
+          What&apos;s your goal?
+        </h1>
+        <p className="mb-8 text-center text-muted-foreground">
+          Optional - helps us personalize your experience. You can skip this.
+        </p>
+
+        <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {GOALS.map((goal) => (
+            <button
+              key={goal.id}
+              type="button"
+              onClick={() => setSelected(goal.id)}
+              className={`rounded-xl border-2 px-4 py-4 text-left font-medium transition-colors ${
+                selected === goal.id
+                  ? "border-emerald-500 bg-emerald-500/10 text-foreground"
+                  : "border-border bg-card text-foreground hover:border-emerald-300 hover:bg-muted/50"
+              }`}
+            >
+              {goal.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-col items-center gap-3">
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={saving || !selected}
+            className="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? "…" : "Next →"}
           </button>
-        ))}
+          <button
+            type="button"
+            onClick={() => navigate("/onboarding/step2")}
+            className="text-sm text-muted-foreground underline hover:text-foreground"
+          >
+            Skip for now
+          </button>
+        </div>
       </div>
-
-      <div className="flex flex-col items-center gap-3 mb-10">
-        <button
-          type="button"
-          onClick={handleNext}
-          disabled={saving || !selected}
-          className="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {saving ? "…" : "Next →"}
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate("/onboarding/step3")}
-          className="text-sm text-muted-foreground hover:text-foreground underline"
-        >
-          Skip for now
-        </button>
-      </div>
-
-      {/* <blockquote className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground italic">
-        &ldquo;Social0 saved me hours every week. I schedule everything in one
-        place and my engagement went up.&rdquo;
-        <footer className="mt-2 not-italic text-foreground font-medium">
-          - Early user
-        </footer>
-      </blockquote> */}
     </div>
   );
 }

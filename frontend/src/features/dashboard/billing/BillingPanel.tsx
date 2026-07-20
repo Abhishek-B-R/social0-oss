@@ -197,8 +197,8 @@ export function BillingPanel({
   const [waitingForWebhook, setWaitingForWebhook] = useState(
     Boolean(justSubscribed && subscription.tier === "free"),
   );
-  const showTrialInfo =
-    subscription.tier === "free" && !accountLimit.hasUsedTrial;
+  // FREE TRIAL DISABLED — was: subscription.tier === "free" && !accountLimit.hasUsedTrial
+  const showTrialInfo = false;
 
   // After return from checkout (?success=1): verify plan actually changed by polling sync; stop after 3 attempts and clear URL
   useEffect(() => {
@@ -302,7 +302,7 @@ export function BillingPanel({
 
   const pricePerMonth =
     subscription.tier === "starter"
-      ? 6
+      ? 9
       : subscription.tier === "growth"
         ? 19
         : subscription.tier === "pro"
@@ -509,26 +509,43 @@ export function BillingPanel({
     }
   };
 
-  const handleCancelDowngrade = async () => {
+  const handleCancelPendingPlanChange = async () => {
+    const pendingLabel =
+      subscription.pendingPlanTier === "pro"
+        ? "Pro"
+        : subscription.pendingPlanTier === "growth"
+          ? "Growth"
+          : "Starter";
+    const isPendingUpgrade =
+      subscription.pendingPlanTier != null &&
+      ((subscription.tier === "starter" &&
+        (subscription.pendingPlanTier === "growth" ||
+          subscription.pendingPlanTier === "pro")) ||
+        (subscription.tier === "growth" &&
+          subscription.pendingPlanTier === "pro"));
     try {
       const res = await fetchApi("/api/billing/cancel-downgrade", {
         method: "POST",
         credentials: "include",
       });
       if (res.ok) {
-        toast.success("Downgrade cancelled.");
+        toast.success(
+          isPendingUpgrade
+            ? `Scheduled upgrade to ${pendingLabel} cancelled.`
+            : "Downgrade cancelled.",
+        );
         invalidateQueries();
       } else {
         const data = await res.json().catch(() => ({}));
         toast.error(
           toFriendlyBillingError(
             data.error,
-            "Failed to cancel downgrade. Please try again.",
+            "Failed to cancel plan change. Please try again.",
           ),
         );
       }
     } catch {
-      toast.error("Failed to cancel downgrade. Please try again.");
+      toast.error("Failed to cancel plan change. Please try again.");
     }
   };
 
@@ -539,7 +556,7 @@ export function BillingPanel({
     });
     setLoadingChangePlan(plan);
     try {
-      // Paid → higher paid: show preview so user sees exact charge before confirming.
+      // Paid → higher paid: show preview so user picks Upgrade now vs on renewal.
       const needsPreview =
         (plan === "growth" && subscription.tier === "starter") ||
         (plan === "pro" &&
@@ -561,112 +578,129 @@ export function BillingPanel({
           setLoadingChangePlan(null);
           return;
         }
-        // Preview failed (e.g. no subscription) - fall back to direct change-plan.
+        // Preview failed - still open dialog without amount so user can schedule.
+        setUpgradePreview(null);
+        setUpgradeConfirmPlan(plan);
+        setUpgradeConfirmOpen(true);
+        setLoadingChangePlan(null);
+        return;
       }
 
-      const res = await fetchApi("/api/billing/change-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ plan, scheduleAtPeriodEnd: false }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success && data.pending) {
-        toast.info(
-          "Payment processing - your plan will update automatically once payment clears.",
-        );
-        return;
-      }
-      if (data.requireCheckout === true) {
-        const ok = await redirectToCheckoutForPlan(plan);
-        if (ok) return;
-      }
-      if (res.status === 409) {
-        if (data.code === "use_portal") {
-          toast.info(
-            typeof data.error === "string"
-              ? data.error
-              : "Update your payment method in the customer portal.",
-          );
-          await handleChangePlan();
-          return;
-        }
-        if (data.code === "use_change_plan") {
-          toast.info(
-            typeof data.error === "string"
-              ? data.error
-              : "You already have an active subscription.",
-          );
-          return;
-        }
-        setUpgradePending(true);
-        toast.info(
-          "Your upgrade payment is still being processed. You'll be moved to the new plan automatically - no action needed. If you didn't receive a payment request, try again after a few minutes.",
-        );
-        return;
-      }
-      if (res.status === 404 && data.error === "no_active_subscription") {
-        const ok = await redirectToCheckoutForPlan(plan);
-        if (ok) return;
-      }
-      toast.error(
-        toFriendlyBillingError(
-          data.error,
-          "Failed to change plan. Please try again.",
-        ),
-      );
+      await executeUpgrade(plan, false);
     } finally {
       setLoadingChangePlan(null);
     }
   };
 
-  const handleConfirmUpgrade = async () => {
-    if (!upgradeConfirmPlan || !upgradePreview) return;
-    setLoadingChangePlan(upgradeConfirmPlan);
-    try {
-      const res = await fetchApi("/api/billing/change-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          plan: upgradeConfirmPlan,
-          scheduleAtPeriodEnd: false,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success && data.pending) {
-        setUpgradeConfirmOpen(false);
-        setUpgradeConfirmPlan(null);
-        setUpgradePreview(null);
-        toast.info(
-          "Payment processing - your plan will update automatically once payment clears.",
-        );
-        return;
-      }
-      if (data.requireCheckout === true) {
-        const ok = await redirectToCheckoutForPlan(upgradeConfirmPlan);
-        if (ok) return;
-      }
-      if (res.status === 409) {
-        setUpgradeConfirmOpen(false);
-        setUpgradeConfirmPlan(null);
-        setUpgradePreview(null);
+  const executeUpgrade = async (
+    plan: PaidPlan,
+    scheduleAtPeriodEnd: boolean,
+  ) => {
+    const planLabel =
+      plan === "pro" ? "Pro" : plan === "growth" ? "Growth" : "Starter";
+    const res = await fetchApi("/api/billing/change-plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ plan, scheduleAtPeriodEnd }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data.success && data.scheduled) {
+      toast.success(
+        `Upgrade to ${planLabel} scheduled for ${renewalDate ?? "your renewal date"}. No charge today.`,
+      );
+      invalidateQueries();
+      return true;
+    }
+
+    if (res.ok && data.success) {
+      if (data.pending) {
         setUpgradePending(true);
         toast.info(
-          "Your upgrade payment is still being processed. You'll be moved to the new plan automatically - no action needed. If you didn't receive a payment request, try again after a few minutes.",
+          `You'll be charged on your saved payment method. Once payment succeeds, you'll move to ${planLabel} automatically. Track status anytime via Manage Subscription.`,
         );
-        return;
+      } else {
+        toast.success(`You're on ${planLabel}.`);
+        invalidateQueries();
       }
-      if (res.status === 404 && data.error === "no_active_subscription") {
-        const ok = await redirectToCheckoutForPlan(upgradeConfirmPlan);
-        if (ok) return;
+      return true;
+    }
+
+    if (data.requireCheckout === true) {
+      const ok = await redirectToCheckoutForPlan(plan);
+      if (ok) return true;
+    }
+    if (res.status === 409) {
+      if (data.code === "use_portal") {
+        toast.info(
+          typeof data.error === "string"
+            ? data.error
+            : "Update your payment method in the customer portal.",
+        );
+        await handleChangePlan();
+        return true;
       }
-      toast.error(
-        toFriendlyBillingError(
-          data.error,
-          "Failed to change plan. Please try again.",
-        ),
+      if (data.code === "use_change_plan") {
+        toast.info(
+          typeof data.error === "string"
+            ? data.error
+            : "You already have an active subscription.",
+        );
+        return true;
+      }
+      if (data.code === "pending_plan_change") {
+        toast.info(
+          typeof data.error === "string"
+            ? data.error
+            : "A previous plan change is still pending.",
+        );
+        return true;
+      }
+      setUpgradePending(true);
+      toast.info(
+        "Your upgrade payment is still being processed. You'll move to the new plan automatically once it succeeds. Track status anytime via Manage Subscription.",
       );
+      return true;
+    }
+    if (res.status === 404 && data.error === "no_active_subscription") {
+      const ok = await redirectToCheckoutForPlan(plan);
+      if (ok) return true;
+    }
+    toast.error(
+      toFriendlyBillingError(
+        data.error,
+        "Failed to change plan. Please try again.",
+      ),
+    );
+    return false;
+  };
+
+  const handleConfirmUpgradeNow = async () => {
+    if (!upgradeConfirmPlan) return;
+    setLoadingChangePlan(upgradeConfirmPlan);
+    try {
+      const ok = await executeUpgrade(upgradeConfirmPlan, false);
+      if (ok) {
+        setUpgradeConfirmOpen(false);
+        setUpgradeConfirmPlan(null);
+        setUpgradePreview(null);
+      }
+    } finally {
+      setLoadingChangePlan(null);
+    }
+  };
+
+  const handleConfirmUpgradeOnRenewal = async () => {
+    if (!upgradeConfirmPlan) return;
+    setLoadingChangePlan(upgradeConfirmPlan);
+    try {
+      const ok = await executeUpgrade(upgradeConfirmPlan, true);
+      if (ok) {
+        setUpgradeConfirmOpen(false);
+        setUpgradeConfirmPlan(null);
+        setUpgradePreview(null);
+      }
     } finally {
       setLoadingChangePlan(null);
     }
@@ -807,19 +841,43 @@ export function BillingPanel({
         </div>
       )}
 
+      {upgradePending && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+          Upgrade payment is processing with your payment provider. You&apos;ll
+          move to the new plan automatically once payment succeeds. Track whether
+          it&apos;s done via Manage Subscription.
+        </div>
+      )}
+
       {subscription.pendingPlanTier && subscription.tier !== "free" && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 flex items-center justify-between flex-wrap gap-2">
           <span>
-            Your plan will downgrade to{" "}
-            {subscription.pendingPlanTier === "starter" ? "Starter" : "Growth"}{" "}
+            {((subscription.tier === "starter" &&
+              (subscription.pendingPlanTier === "growth" ||
+                subscription.pendingPlanTier === "pro")) ||
+            (subscription.tier === "growth" &&
+              subscription.pendingPlanTier === "pro"))
+              ? "Your plan will upgrade to "
+              : "Your plan will downgrade to "}
+            {subscription.pendingPlanTier === "pro"
+              ? "Pro"
+              : subscription.pendingPlanTier === "growth"
+                ? "Growth"
+                : "Starter"}{" "}
             on {renewalDate ?? "your renewal date"}.
           </span>
           <button
             type="button"
-            onClick={handleCancelDowngrade}
+            onClick={handleCancelPendingPlanChange}
             className="text-xs underline hover:no-underline ml-4"
           >
-            Cancel downgrade
+            {((subscription.tier === "starter" &&
+              (subscription.pendingPlanTier === "growth" ||
+                subscription.pendingPlanTier === "pro")) ||
+            (subscription.tier === "growth" &&
+              subscription.pendingPlanTier === "pro"))
+              ? "Cancel upgrade"
+              : "Cancel downgrade"}
           </button>
         </div>
       )}
@@ -948,7 +1006,7 @@ export function BillingPanel({
                   disabled={loadingChangePlan !== null || upgradePending}
                   onClick={() => handleUpgradePlan("growth")}
                 >
-                  Upgrade (starts new billing cycle)
+                  Upgrade to Growth
                 </Button>
               ) : (
                 <>
@@ -1012,7 +1070,7 @@ export function BillingPanel({
                   disabled={loadingChangePlan !== null || upgradePending}
                   onClick={() => handleUpgradePlan("pro")}
                 >
-                  Upgrade (starts new billing cycle)
+                  Upgrade to Pro
                 </Button>
               ) : (
                 <>
@@ -1059,49 +1117,44 @@ export function BillingPanel({
                   : "Growth"}
             </DialogTitle>
             <DialogDescription>
-              You&apos;ll be charged{" "}
-              {upgradePreview?.immediateCharge?.summary
-                ? formatPreviewAmount(upgradePreview.immediateCharge.summary)
-                : "the amount below"}{" "}
-              immediately. Your billing cycle will restart from today.
+              Choose when you want the upgrade to take effect.
             </DialogDescription>
           </DialogHeader>
-          {upgradePreview && upgradeConfirmPlan && (
-            <div className="rounded-xl border border-border p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Upgrading to</p>
-                  <p className="font-medium">
-                    {upgradeConfirmPlan === "pro"
-                      ? "Pro"
-                      : upgradeConfirmPlan === "growth"
-                        ? "Growth"
-                        : "Starter"}{" "}
-                    plan
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">
-                    You&apos;ll be charged now
-                  </p>
-                  <p className="text-xl font-medium">
-                    {formatPreviewAmount(
-                      upgradePreview.immediateCharge.summary,
-                    )}
-                  </p>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Your billing cycle will restart from today.
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={handleConfirmUpgradeNow}
+              disabled={loadingChangePlan !== null || !upgradeConfirmPlan}
+              className="w-full rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-accent/50 hover:bg-accent/5 disabled:opacity-50"
+            >
+              <p className="font-medium text-foreground">Upgrade now</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {upgradePreview?.immediateCharge?.summary
+                  ? `Charge ${formatPreviewAmount(upgradePreview.immediateCharge.summary)} on your saved payment method`
+                  : "Charge the prorated difference on your saved payment method"}
+                . Access unlocks after payment succeeds — track it via Manage
+                Subscription.
               </p>
               {subscription.cancelAtPeriodEnd && (
-                <p className="text-xs text-accent">
+                <p className="mt-1 text-xs text-accent">
                   Your cancellation will be removed after upgrade.
                 </p>
               )}
-            </div>
-          )}
-          <DialogFooter className="mt-4 gap-2 sm:gap-0">
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmUpgradeOnRenewal}
+              disabled={loadingChangePlan !== null || !upgradeConfirmPlan}
+              className="w-full rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-accent/50 hover:bg-accent/5 disabled:opacity-50"
+            >
+              <p className="font-medium text-foreground">Upgrade on renewal</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                No payment today · Starts on{" "}
+                {renewalDate ?? "your renewal date"}
+              </p>
+            </button>
+          </div>
+          <DialogFooter className="mt-2">
             <Button
               variant="outline"
               onClick={() => {
@@ -1112,16 +1165,6 @@ export function BillingPanel({
               disabled={loadingChangePlan !== null}
             >
               Cancel
-            </Button>
-            <Button
-              onClick={handleConfirmUpgrade}
-              disabled={
-                loadingChangePlan !== null ||
-                !upgradePreview ||
-                !upgradeConfirmPlan
-              }
-            >
-              Continue Upgrade
             </Button>
           </DialogFooter>
         </DialogContent>

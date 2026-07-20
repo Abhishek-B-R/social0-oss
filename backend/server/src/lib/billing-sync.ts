@@ -6,6 +6,7 @@ import { getTierFromProductId, PLAN_IDS } from "@social0/shared";
 import { setSubscription } from "./subscription.js";
 import {
   backfillBillingIds,
+  getLatestSubscriptionPayment,
   listOpenDodoSubscriptions,
 } from "./billing-guards.js";
 
@@ -57,31 +58,25 @@ export async function syncSubscriptionForUserId(
         const tier = getTierFromProductId(sub.product_id ?? "");
         if (tier === "free") continue;
 
-        // Before trusting this upgrade, make sure there isn't a recent payment for this
-        // subscription still in progress. We only sync the upgrade once Dodo shows a
-        // succeeded payment (webhook remains the primary source of truth).
+        // Only sync upgrade when the newest payment has succeeded.
         const subscriptionId = sub.subscription_id ?? null;
         if (subscriptionId) {
           try {
-            const payments = await client.payments.list({
-              subscription_id: subscriptionId,
-              limit: 1,
-            } as any);
-            const item = Array.isArray((payments as any)?.items)
-              ? (payments as any).items[0]
-              : null;
-            const paymentStatus =
-              item && typeof (item as any).status === "string"
-                ? (item as any).status
-                : null;
-
-            if (paymentStatus && paymentStatus !== "succeeded") {
-              // Payment is still processing or not successful yet - don't upgrade tier.
+            const latest = await getLatestSubscriptionPayment(subscriptionId);
+            const paymentStatus = latest?.status ?? null;
+            if (paymentStatus !== "succeeded") {
+              sawUnpaidActiveSubscription = true;
+              continue;
+            }
+            const amount =
+              typeof latest?.total_amount === "number"
+                ? latest.total_amount
+                : 0;
+            if (amount <= 0) {
               sawUnpaidActiveSubscription = true;
               continue;
             }
           } catch {
-            // If we can't read payments, be conservative and avoid changing tier here.
             sawUnpaidActiveSubscription = true;
             continue;
           }

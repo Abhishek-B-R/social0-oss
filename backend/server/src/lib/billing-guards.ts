@@ -7,8 +7,11 @@ import { getSubscriptionForUser } from "./subscription.js";
 import { env } from "./env.js";
 import { normalizeBillingEmail } from "./email-billing.js";
 
-// ponytail: 3 days while free tier (5 lifetime posts) exists; restore to 7 when free plan is removed
+// FREE TRIAL DISABLED — keep constant for easy restore.
+// ponytail: 3 days while free tier (10 lifetime posts) exists; restore to 7 when free plan is removed
 export const TRIAL_PERIOD_DAYS = 3;
+/** Set true to re-enable Dodo trial_period_days on checkout. */
+export const FREE_TRIAL_ENABLED = false;
 
 const BLOCKING_DODO_STATUSES = ["active", "on_hold", "pending"] as const;
 
@@ -186,7 +189,7 @@ export async function evaluateCheckoutEligibility(
   email: string,
 ): Promise<CheckoutEligibility> {
   const sub = await getSubscriptionForUser(userId);
-  const normalizedEmail = normalizeBillingEmail(email);
+  // const normalizedEmail = normalizeBillingEmail(email); // FREE TRIAL DISABLED
 
   if (isActiveTier(sub.tier) && sub.subscriptionId) {
     return {
@@ -211,15 +214,20 @@ export async function evaluateCheckoutEligibility(
     };
   }
 
-  const trialClaim = await db.query.trialClaims.findFirst({
-    where: eq(trialClaims.normalizedEmail, normalizedEmail),
-    columns: { normalizedEmail: true },
-  });
-  const trialUsed = sub.hasUsedTrial || Boolean(trialClaim);
-
+  // FREE TRIAL DISABLED — always charge from day one.
+  // Original:
+  // const trialClaim = await db.query.trialClaims.findFirst({
+  //   where: eq(trialClaims.normalizedEmail, normalizedEmail),
+  //   columns: { normalizedEmail: true },
+  // });
+  // const trialUsed = sub.hasUsedTrial || Boolean(trialClaim);
+  // return {
+  //   allowed: true,
+  //   trialPeriodDays: trialUsed ? 0 : TRIAL_PERIOD_DAYS,
+  // };
   return {
     allowed: true,
-    trialPeriodDays: trialUsed ? 0 : TRIAL_PERIOD_DAYS,
+    trialPeriodDays: FREE_TRIAL_ENABLED ? TRIAL_PERIOD_DAYS : 0,
   };
 }
 
@@ -261,15 +269,13 @@ type DodoPaymentRow = {
   payment_id?: string;
 };
 
-/** Latest succeeded payment with amount > 0 within the last window (for upgrade verification). */
-export async function findRecentPaidUpgradePayment(
+/** Newest payment for a subscription (by created_at). */
+export async function getLatestSubscriptionPayment(
   subscriptionId: string,
-  windowMs = 15 * 60 * 1000,
 ): Promise<DodoPaymentRow | null> {
   const client = dodoClient();
   if (!client) return null;
 
-  const cutoff = Date.now() - windowMs;
   try {
     const list = await (
       client.payments as { list: (q: object) => Promise<unknown> }
@@ -280,19 +286,34 @@ export async function findRecentPaidUpgradePayment(
     const items = Array.isArray((list as { items?: unknown[] })?.items)
       ? ((list as { items: unknown[] }).items as DodoPaymentRow[])
       : [];
+    if (items.length === 0) return null;
 
-    for (const item of items) {
-      if (item.status !== "succeeded") continue;
-      const amount =
-        typeof item.total_amount === "number" ? item.total_amount : 0;
-      if (amount <= 0) continue;
-      const created =
-        typeof item.created_at === "string" ? Date.parse(item.created_at) : NaN;
-      if (!Number.isFinite(created) || created < cutoff) continue;
-      return item;
-    }
+    items.sort((a, b) => {
+      const ta =
+        typeof a.created_at === "string" ? Date.parse(a.created_at) : 0;
+      const tb =
+        typeof b.created_at === "string" ? Date.parse(b.created_at) : 0;
+      return tb - ta;
+    });
+    return items[0] ?? null;
   } catch {
     return null;
   }
-  return null;
+}
+
+/**
+ * Upgrade unlock gate: the chronologically latest payment must be succeeded
+ * with amount > 0. Skips older succeeded charges (e.g. original signup) when a
+ * newer upgrade payment is still processing.
+ */
+export async function findRecentPaidUpgradePayment(
+  subscriptionId: string,
+): Promise<DodoPaymentRow | null> {
+  const latest = await getLatestSubscriptionPayment(subscriptionId);
+  if (!latest) return null;
+  if (latest.status !== "succeeded") return null;
+  const amount =
+    typeof latest.total_amount === "number" ? latest.total_amount : 0;
+  if (amount <= 0) return null;
+  return latest;
 }

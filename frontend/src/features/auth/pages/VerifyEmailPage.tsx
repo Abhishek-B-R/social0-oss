@@ -179,7 +179,7 @@ function VerifyEmailContent() {
                 disabled={
                   verifying || resending || otpString.length !== OTP_LENGTH
                 }
-                className="w-full rounded-[10px] bg-accent hover:bg-accent-hover disabled:opacity-50 text-white font-medium py-3 px-4 transition-colors"
+                className="w-full rounded-[10px] bg-foreground text-background hover:opacity-90 disabled:opacity-50 font-medium py-3 px-4 transition-opacity"
               >
                 {verifying ? "Verifying…" : "Verify"}
               </button>
