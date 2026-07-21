@@ -93,9 +93,9 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
 
   return (
     <section id="pricing" className="px-6 py-24 lg:px-8">
-      <div className="mx-auto max-w-[1280px]">
+      <div className="mx-auto max-w-7xl">
         {/* Section header */}
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="mb-3 text-[11px] uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
               Pricing
@@ -106,13 +106,11 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
               No gotchas.
             </h2>
           </div>
-          <div className="flex flex-col items-end gap-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-[13px] text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              Early adopter pricing - early users keep this price forever
-            </div>
-            <BillingIntervalToggle value={interval} onChange={setInterval} />
-          </div>
+          <BillingIntervalToggle
+            value={interval}
+            onChange={setInterval}
+            className="mt-10 sm:mt-12"
+          />
         </div>
         <p className="mb-3 text-[15px] text-muted-foreground">
           Start free today. Upgrade when you&apos;re ready — every plan includes
@@ -173,14 +171,14 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
             <div className="relative z-10 mt-6 mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
               {interval === "yearly" ? (
                 <>
-                    <div className={`${basePlanPrice} flex items-start`}>
-                      <span>${starterMonthly.dollars}</span>
-                      {starterMonthly.cents != null ? (
-                        <span className="mt-2 font-serif text-[28px] leading-none tracking-tight">
-                          .{starterMonthly.cents}
-                        </span>
-                      ) : null}
-                    </div>
+                  <div className={`${basePlanPrice} flex items-start`}>
+                    <span>${starterMonthly.dollars}</span>
+                    {starterMonthly.cents != null ? (
+                      <span className="mt-2 font-serif text-[28px] leading-none tracking-tight">
+                        .{starterMonthly.cents}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="text-[13px] text-muted-foreground">
                     /month
                   </div>

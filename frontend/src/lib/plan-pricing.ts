@@ -77,7 +77,10 @@ function toParts(amount: number): { dollars: number; cents: string | null } {
 
 /** Effective monthly rate for yearly plans (display-rounded). */
 export function getEffectiveMonthly(tier: PaidPlanTier): number {
-  return roundEffectiveMonthlyDisplay(YEARLY[tier].price / 12);
+  const raw = YEARLY[tier].price / 12;
+  // Starter: $8; Growth: $16.5; Pro: $29
+  if (tier === "starter") return Math.round(raw);
+  return roundEffectiveMonthlyDisplay(raw);
 }
 
 /** List monthly rate for yearly plans (list price ÷ 12), when applicable. */
