@@ -6,6 +6,7 @@
  *
  * Yearly UI leads with effective monthly ($/mo), with list monthly struck when
  * applicable, plus "Billed as $X/year" secondary copy.
+ * All paid prices are tax-exclusive; UI shows "+ GST" where relevant.
  */
 
 import type { BillingInterval, PaidPlanTier } from "@/lib/plans";
@@ -57,14 +58,26 @@ function roundCents(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-function toParts(amount: number): { dollars: number; cents: string } {
-  const [dollars, cents] = amount.toFixed(2).split(".");
+/** Round effective monthly for display: 16.58 → 16.5, 29.08 → 29. */
+function roundEffectiveMonthlyDisplay(n: number): number {
+  return Math.round(n * 2) / 2;
+}
+
+function toParts(amount: number): { dollars: number; cents: string | null } {
+  if (Number.isInteger(amount)) {
+    return { dollars: amount, cents: null };
+  }
+  const fixed =
+    Math.abs(amount * 10 - Math.round(amount * 10)) < 1e-9
+      ? amount.toFixed(1)
+      : amount.toFixed(2);
+  const [dollars, cents] = fixed.split(".");
   return { dollars: Number(dollars), cents };
 }
 
-/** Effective monthly rate for yearly plans (charged price ÷ 12). */
+/** Effective monthly rate for yearly plans (display-rounded). */
 export function getEffectiveMonthly(tier: PaidPlanTier): number {
-  return roundCents(YEARLY[tier].price / 12);
+  return roundEffectiveMonthlyDisplay(YEARLY[tier].price / 12);
 }
 
 /** List monthly rate for yearly plans (list price ÷ 12), when applicable. */
@@ -76,7 +89,7 @@ export function getListMonthly(tier: PaidPlanTier): number | null {
 
 export function getEffectiveMonthlyParts(tier: PaidPlanTier): {
   dollars: number;
-  cents: string;
+  cents: string | null;
 } {
   return toParts(getEffectiveMonthly(tier));
 }
@@ -87,11 +100,16 @@ export function getListMonthlyParts(tier: PaidPlanTier): {
 } | null {
   const list = getListMonthly(tier);
   if (list == null) return null;
-  return toParts(list);
+  const [dollars, cents] = list.toFixed(2).split(".");
+  return { dollars: Number(dollars), cents };
 }
 
 export function formatMoney(amount: number): string {
-  return Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+  if (Number.isInteger(amount)) return String(amount);
+  if (Math.abs(amount * 10 - Math.round(amount * 10)) < 1e-9) {
+    return amount.toFixed(1);
+  }
+  return amount.toFixed(2);
 }
 
 export function formatEffectiveMonthly(tier: PaidPlanTier): string {
@@ -103,12 +121,17 @@ export function formatListMonthly(tier: PaidPlanTier): string | null {
   return list == null ? null : formatMoney(list);
 }
 
+/** Prices are tax-exclusive; GST is charged on top at checkout. */
+export const TAX_NOTE = "+ GST";
+
 export function formatPlanPriceLabel(
   tier: PaidPlanTier,
   interval: BillingInterval,
 ): string {
   const { price } = getPlanPrice(tier, interval);
-  return interval === "yearly" ? `$${price}/year` : `$${price}/month`;
+  return interval === "yearly"
+    ? `$${price}/year ${TAX_NOTE}`
+    : `$${price}/month ${TAX_NOTE}`;
 }
 
 /** Hero price unit — yearly toggle still leads with /month (effective rate). */
@@ -117,5 +140,5 @@ export function periodSuffix(_interval: BillingInterval): string {
 }
 
 export function billedAsYearlyLabel(tier: PaidPlanTier): string {
-  return `Billed as $${YEARLY[tier].price}/year`;
+  return `Billed as $${YEARLY[tier].price}/year ${TAX_NOTE}`;
 }

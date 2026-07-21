@@ -27,6 +27,7 @@ import {
   formatListMonthly,
   formatPlanPriceLabel,
   getPlanPrice,
+  TAX_NOTE,
 } from "@/lib/plan-pricing";
 const POLL_INTERVAL_MS = 2000;
 const PAYMENT_DECLINED_MESSAGE =
@@ -934,7 +935,10 @@ export function BillingPanel({
                   ? formatEffectiveMonthly("starter")
                   : starterPrice.price}
               </span>
-              <span className="text-xs text-muted-foreground">/month</span>
+              <span className="text-xs text-muted-foreground">
+                /month
+                {billingInterval === "monthly" ? ` ${TAX_NOTE}` : ""}
+              </span>
             </div>
             {billingInterval === "yearly" ? (
               <p className="mb-2 text-xs text-muted-foreground">
@@ -1032,7 +1036,10 @@ export function BillingPanel({
                   ? formatEffectiveMonthly("growth")
                   : growthPrice.price}
               </span>
-              <span className="text-xs text-muted-foreground">/month</span>
+              <span className="text-xs text-muted-foreground">
+                /month
+                {billingInterval === "monthly" ? ` ${TAX_NOTE}` : ""}
+              </span>
               {billingInterval === "yearly" && growthPrice.savePercent != null ? (
                 <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
                   Save {growthPrice.savePercent}%
@@ -1139,7 +1146,10 @@ export function BillingPanel({
                   ? formatEffectiveMonthly("pro")
                   : proPrice.price}
               </span>
-              <span className="text-xs text-muted-foreground">/month</span>
+              <span className="text-xs text-muted-foreground">
+                /month
+                {billingInterval === "monthly" ? ` ${TAX_NOTE}` : ""}
+              </span>
               {billingInterval === "yearly" && proPrice.savePercent != null ? (
                 <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
                   Save {proPrice.savePercent}%

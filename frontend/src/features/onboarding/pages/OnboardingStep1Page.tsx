@@ -11,6 +11,7 @@ import {
   formatEffectiveMonthly,
   formatListMonthly,
   getPlanPrice,
+  TAX_NOTE,
 } from "@/lib/plan-pricing";
 import { BillingIntervalToggle } from "@/components/billing/BillingIntervalToggle";
 import { setOnboardingCompleted } from "@/api/onboarding";
@@ -343,7 +344,9 @@ function OnboardingWelcomeContent() {
                     ? formatEffectiveMonthly(plan.id)
                     : pricing.price}
                 </span>
-                <span className="text-sm text-muted-foreground">/mo</span>
+                <span className="text-sm text-muted-foreground">
+                  /mo{interval === "monthly" ? ` ${TAX_NOTE}` : ""}
+                </span>
                 {interval === "yearly" && pricing.savePercent != null ? (
                   <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-emerald-700 dark:text-emerald-300">
                     Save {pricing.savePercent}%

@@ -7,6 +7,7 @@ import {
   getEffectiveMonthlyParts,
   getListMonthlyParts,
   getPlanPrice,
+  TAX_NOTE,
 } from "@/lib/plan-pricing";
 
 const freeFeatures = [
@@ -172,12 +173,14 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
             <div className="relative z-10 mt-6 mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
               {interval === "yearly" ? (
                 <>
-                  <div className={`${basePlanPrice} flex items-start`}>
-                    <span>${starterMonthly.dollars}</span>
-                    <span className="mt-2 font-serif text-[28px] leading-none tracking-tight">
-                      .{starterMonthly.cents}
-                    </span>
-                  </div>
+                    <div className={`${basePlanPrice} flex items-start`}>
+                      <span>${starterMonthly.dollars}</span>
+                      {starterMonthly.cents != null ? (
+                        <span className="mt-2 font-serif text-[28px] leading-none tracking-tight">
+                          .{starterMonthly.cents}
+                        </span>
+                      ) : null}
+                    </div>
                   <div className="text-[13px] text-muted-foreground">
                     /month
                   </div>
@@ -186,7 +189,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                 <>
                   <div className={basePlanPrice}>${starter.price}</div>
                   <div className="text-[13px] text-muted-foreground">
-                    /month
+                    /month {TAX_NOTE}
                   </div>
                 </>
               )}
@@ -258,9 +261,11 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                   <div className="flex flex-nowrap items-baseline gap-x-2.5">
                     <div className="flex shrink-0 items-start font-serif text-[clamp(40px,7vw,56px)] leading-none tracking-tight text-foreground">
                       <span>${growthMonthly.dollars}</span>
-                      <span className="mt-1.5 text-[clamp(18px,3vw,24px)] leading-none tracking-tight">
-                        .{growthMonthly.cents}
-                      </span>
+                      {growthMonthly.cents != null ? (
+                        <span className="mt-1.5 text-[clamp(18px,3vw,24px)] leading-none tracking-tight">
+                          .{growthMonthly.cents}
+                        </span>
+                      ) : null}
                     </div>
                     <div className="flex shrink-0 items-baseline gap-1.5 whitespace-nowrap">
                       {growthListMonthly ? (
@@ -293,6 +298,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                       ) : null}
                       <span className="text-[12px] text-muted-foreground">
                         /month
+                        {interval === "monthly" ? ` ${TAX_NOTE}` : ""}
                       </span>
                     </div>
                   </div>
@@ -371,9 +377,11 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                   <div className="flex flex-nowrap items-baseline gap-x-2.5">
                     <div className="flex shrink-0 items-start font-serif text-[clamp(40px,7vw,56px)] leading-none tracking-tight text-foreground">
                       <span>${proMonthly.dollars}</span>
-                      <span className="mt-1.5 text-[clamp(18px,3vw,24px)] leading-none tracking-tight">
-                        .{proMonthly.cents}
-                      </span>
+                      {proMonthly.cents != null ? (
+                        <span className="mt-1.5 text-[clamp(18px,3vw,24px)] leading-none tracking-tight">
+                          .{proMonthly.cents}
+                        </span>
+                      ) : null}
                     </div>
                     <div className="flex shrink-0 items-baseline gap-1.5 whitespace-nowrap">
                       {proListMonthly ? (
@@ -405,7 +413,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                         </span>
                       ) : null}
                       <span className="text-[12px] text-muted-foreground">
-                        /month
+                        /month {TAX_NOTE}
                       </span>
                     </div>
                   </div>
