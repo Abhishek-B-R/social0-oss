@@ -43,7 +43,9 @@ const HOSTED_MCP_URL = "https://mcp.social0.app/mcp";
 
 const MCP_TOOLS = [
   "list_accounts",
-  "create_post",
+  "create_draft",
+  "update_draft",
+  "delete_draft",
   "publish_post",
   "publish_now",
   "schedule_post",

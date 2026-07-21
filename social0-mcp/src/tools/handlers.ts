@@ -138,7 +138,7 @@ export async function handleCreatePost(input: CreatePostInput): Promise<CallTool
   try {
     const accounts = await accountsApi.listAccounts();
     const { accountIds, error } = await resolveAccountsForPost(
-      "create post",
+      "create draft",
       input.platforms,
       accounts,
       input.media,
@@ -160,7 +160,7 @@ export async function handleCreatePost(input: CreatePostInput): Promise<CallTool
       message: `Draft created (${created.id}). Use publish_post or schedule_post when ready.`,
     });
   } catch (error) {
-    return handleApiError("create post", error);
+    return handleApiError("create draft", error);
   }
 }
 
@@ -176,16 +176,16 @@ export async function handleUpdatePost(input: UpdatePostInput): Promise<CallTool
       const accounts = await accountsApi.listAccounts();
       const { accountIds, errors } = resolveAccountIds(input.platforms, accounts);
       if (errors.length > 0) {
-        return textResult(formatToolError("update post", errors.join("; ")), true);
+        return textResult(formatToolError("update draft", errors.join("; ")), true);
       }
       const media = input.media ?? (await postsApi.getPost(input.post_id)).media_ids;
       const { form, mediaErrors } = await resolvePostFormFromMediaIds(media);
       if (mediaErrors.length > 0) {
-        return textResult(formatToolError("update post", mediaErrors.join("; ")), true);
+        return textResult(formatToolError("update draft", mediaErrors.join("; ")), true);
       }
       const formErrors = validatePlatformsForForm(form, accountIds, accounts, media);
       if (formErrors.length > 0) {
-        return textResult(formatToolError("update post", formErrors.join("; ")), true);
+        return textResult(formatToolError("update draft", formErrors.join("; ")), true);
       }
       payload.platforms = accountIds;
     }
@@ -193,16 +193,19 @@ export async function handleUpdatePost(input: UpdatePostInput): Promise<CallTool
     const post = await postsApi.updatePost(input.post_id, payload);
     return jsonResult({ success: true, post });
   } catch (error) {
-    return handleApiError("update post", error);
+    return handleApiError("update draft", error);
   }
 }
 
 export async function handleDeletePost(input: DeletePostInput): Promise<CallToolResult> {
   try {
     await postsApi.deletePost(input.post_id);
-    return jsonResult({ success: true, message: `Post ${input.post_id} deleted.` });
+    return jsonResult({
+      success: true,
+      message: `Unpublished draft/schedule ${input.post_id} deleted from Social0. Published network posts are unaffected and cannot be deleted via this tool.`,
+    });
   } catch (error) {
-    return handleApiError("delete post", error);
+    return handleApiError("delete draft", error);
   }
 }
 
@@ -329,7 +332,7 @@ export async function handleUploadMedia(input: UploadMediaInput): Promise<CallTo
       mediaId: media.id,
       url: media.url,
       source: file.source,
-      message: `Uploaded ${file.filename} via ${file.source}. Use mediaId in create_post, publish_post, schedule_post, publish_now, or schedule_content.`,
+      message: `Uploaded ${file.filename} via ${file.source}. Use mediaId in create_draft, publish_post, schedule_post, publish_now, or schedule_content.`,
     });
   } catch (error) {
     return handleApiError("upload media", error);

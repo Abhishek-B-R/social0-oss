@@ -40,9 +40,9 @@ export const TOOL_DEFINITIONS: Tool[] = [
     },
   },
   {
-    name: "create_post",
+    name: "create_draft",
     description:
-      "Create a new Social0 post draft with caption text, target platforms, and optional media. Use when the user wants to write or draft content without publishing immediately. Example: 'Create a LinkedIn post about AI.'",
+      "Create an unpublished Social0 draft (does not post to any network). Use when the user wants to write content first and publish/schedule later. For one-step live posting use publish_now. Example: 'Draft a LinkedIn post about AI.'",
     inputSchema: {
       type: "object",
       properties: {
@@ -64,13 +64,13 @@ export const TOOL_DEFINITIONS: Tool[] = [
     },
   },
   {
-    name: "update_post",
+    name: "update_draft",
     description:
-      "Update an existing Social0 draft or scheduled post — change caption, platforms, or media. Use when the user wants to edit a post before publishing.",
+      "Update an unpublished Social0 draft or scheduled post — caption, platforms, or media. Does not edit already-published live posts. Use before publish_post / schedule_post.",
     inputSchema: {
       type: "object",
       properties: {
-        post_id: { type: "string", format: "uuid", description: "Post ID to update" },
+        post_id: { type: "string", format: "uuid", description: "Draft or scheduled post ID to update" },
         content: { type: "string", description: "Updated caption" },
         platforms: {
           type: "array",
@@ -89,13 +89,17 @@ export const TOOL_DEFINITIONS: Tool[] = [
     },
   },
   {
-    name: "delete_post",
+    name: "delete_draft",
     description:
-      "Permanently delete a Social0 draft or scheduled post. Use when the user wants to remove a post. Example: 'Delete yesterday's draft.'",
+      "Delete an unpublished Social0 draft or scheduled post from Social0. Published/live social posts cannot be deleted with this tool — only drafts and not-yet-published schedules. Example: 'Delete yesterday's draft.'",
     inputSchema: {
       type: "object",
       properties: {
-        post_id: { type: "string", format: "uuid", description: "Post ID to delete" },
+        post_id: {
+          type: "string",
+          format: "uuid",
+          description: "Draft or scheduled post ID to delete (not a published post)",
+        },
       },
       required: ["post_id"],
       additionalProperties: false,
@@ -141,7 +145,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
   {
     name: "publish_post",
     description:
-      "Publish an existing Social0 draft immediately to connected platforms. Returns a tracking ID to monitor progress. Example: 'Publish my latest draft to Twitter.'",
+      "Publish an existing unpublished Social0 draft (or scheduled post) immediately to connected platforms. Returns a tracking ID to monitor progress. Example: 'Publish my latest draft to Twitter.'",
     inputSchema: {
       type: "object",
       properties: {
@@ -169,11 +173,11 @@ export const TOOL_DEFINITIONS: Tool[] = [
   {
     name: "schedule_post",
     description:
-      "Schedule an existing Social0 post for future publishing at a specific date and time. Example: 'Schedule tomorrow's announcement at 9 AM.'",
+      "Schedule an existing unpublished Social0 draft for future publishing at a specific date and time. Example: 'Schedule tomorrow's announcement at 9 AM.'",
     inputSchema: {
       type: "object",
       properties: {
-        post_id: { type: "string", format: "uuid", description: "Post ID to schedule" },
+        post_id: { type: "string", format: "uuid", description: "Draft ID to schedule" },
         scheduled_at: {
           type: "string",
           description: "ISO 8601 datetime, e.g. 2026-07-12T09:00:00.000Z",
@@ -233,7 +237,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
   {
     name: "publish_now",
     description:
-      "Create a new post and publish it immediately in one step. Best for quick posts when no draft is needed.",
+      "Create content and publish it live to connected platforms in one step (writes to external social networks). Prefer this over create_draft when the user wants to post immediately.",
     inputSchema: {
       type: "object",
       properties: {
@@ -257,7 +261,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
   {
     name: "schedule_content",
     description:
-      "Create a new post and schedule it for future publishing in one step. Example: 'Schedule a LinkedIn post about our launch for tomorrow at 9 AM.'",
+      "Create content and schedule it for future publishing in one step (does not publish immediately). Example: 'Schedule a LinkedIn post about our launch for tomorrow at 9 AM.'",
     inputSchema: {
       type: "object",
       properties: {

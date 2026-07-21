@@ -4,7 +4,7 @@ description: >
   Create, schedule, and publish social media posts across Instagram, TikTok, YouTube, X, LinkedIn,
   Facebook, Pinterest, Threads, and Bluesky via the Social0 CLI (preferred) or MCP. Covers account
   listing, media upload, drafts, instant publish, scheduling, and per-platform publish status.
-last-updated: 2026-07-16
+last-updated: 2026-07-21
 metadata:
   openclaw:
     primaryEnv: SOCIAL0_API_KEY
@@ -166,18 +166,20 @@ Use when the host exposes Social0 as MCP tools and shell/CLI is not available.
 | Tool | Description |
 |------|-------------|
 | `list_accounts` | Connected accounts (`id`, `platform`, `username`, status). **Call first** when accounts are ambiguous |
-| `create_post` | Create a **draft** (caption, platforms, media IDs, optional `platform_options`) |
-| `update_post` | Update a draft / scheduled post |
-| `delete_post` | Delete a post by ID |
+| `create_draft` | Create an **unpublished draft** (does not post live) |
+| `update_draft` | Update a draft / scheduled post (not live published posts) |
+| `delete_draft` | Delete an unpublished draft/schedule only — **cannot** delete live network posts |
 | `list_posts` | List posts (`status`, `platform`, search, limit) |
 | `get_post` | Full post + per-platform publication rows |
 | `upload_media` | Upload via `url`, base64 `data`, or local `file_path` → media ID |
 | `publish_post` | Publish an existing draft/scheduled post → `tracking_id` |
-| `schedule_post` | Schedule an existing post (`scheduled_at` ISO-8601 UTC) |
-| `publish_now` | Create + publish in one step → `post_id` + `tracking_id` |
+| `schedule_post` | Schedule an existing draft (`scheduled_at` ISO-8601 UTC) |
+| `publish_now` | Create + publish live in one step → `post_id` + `tracking_id` |
 | `schedule_content` | Create + schedule in one step |
 | `get_publish_status` | Poll by `tracking_id` until terminal |
 | `suggest_best_platforms` | Heuristic platform suggestions (does not publish) |
+
+Deprecated CallTool aliases: `create_post` / `update_post` / `delete_post` (still work; not listed).
 
 ### Media (`upload_media`)
 

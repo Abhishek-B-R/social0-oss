@@ -2,6 +2,14 @@
 
 All notable changes to the Social0 MCP server are documented here.
 
+## [0.4.0] - 2026-07-21
+
+### Changed
+
+- **Breaking (listed tools):** `create_post` → `create_draft`, `update_post` → `update_draft`, `delete_post` → `delete_draft`
+- Descriptions clarify that draft tools never publish and `delete_draft` cannot remove live/published network posts (API only allows draft/scheduled)
+- Deprecated CallTool aliases (`create_post` / `update_post` / `delete_post`) still work but are **not** advertised in `tools/list`
+
 ## Unreleased
 
 ### Changed

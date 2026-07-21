@@ -30,7 +30,7 @@ No inputs. Returns connected accounts (`id`, `platform`, `username`, `is_active`
 
 ---
 
-### `create_post`
+### `create_draft`
 
 | Param | Required | Notes |
 |-------|----------|--------|
@@ -39,27 +39,37 @@ No inputs. Returns connected accounts (`id`, `platform`, `username`, `is_active`
 | `media` | no | Media UUIDs from `upload_media` |
 | `platform_options` | no | Advanced per-platform settings (object) |
 
-Creates a **draft**. Does not publish.
+Creates an **unpublished draft**. Does **not** post to any network. Use `publish_post` / `schedule_post` / `publish_now` to go live.
+
+Deprecated CallTool alias: `create_post` (not listed in `tools/list`).
 
 ---
 
-### `update_post`
+### `update_draft`
 
 | Param | Required | Notes |
 |-------|----------|--------|
-| `post_id` | yes | UUID |
+| `post_id` | yes | UUID of a draft or scheduled post |
 | `content` | no | |
 | `platforms` | no | |
 | `media` | no | |
 | `platform_options` | no | |
 
+Updates **unpublished** drafts/schedules only — not live published posts.
+
+Deprecated CallTool alias: `update_post`.
+
 ---
 
-### `delete_post`
+### `delete_draft`
 
 | Param | Required |
 |-------|----------|
 | `post_id` | yes |
+
+Deletes an **unpublished** draft or scheduled post from Social0. **Published/live network posts cannot be deleted** with this tool (API returns an error).
+
+Deprecated CallTool alias: `delete_post`.
 
 ---
 
@@ -122,7 +132,7 @@ Provide **exactly one** media source:
 | `filename` | for `data` | With extension (`photo.png`). Optional for `url` |
 | `mime_type` | optional | e.g. `image/png` — inferred from filename/url when possible |
 
-Returns media `id` for `create_post` / `publish_now` / etc.
+Returns media `id` for `create_draft` / `publish_now` / etc.
 
 **Remote hosts:** always prefer `url` or `data`. Do **not** pass sandbox paths like `/home/claude/...` — the MCP process cannot see that disk.
 
@@ -204,13 +214,14 @@ Aliases: `x`/`twitter` → `twitter_x`; `ig` → `instagram`; `fb` → `facebook
 ## Recommended agent behavior
 
 1. Call `list_accounts` before first publish in a session.  
-2. Prefer `publish_now` / `schedule_content` for simple one-shots; use draft tools when the user wants to edit first.  
+2. Prefer `publish_now` / `schedule_content` for simple one-shots; use `create_draft` / `update_draft` when the user wants to edit first.  
 3. After any publish, return `tracking_id` and poll until terminal (or tell the user how to check).  
 4. On `partial`, summarize which platforms failed and why.  
 5. Never invent account UUIDs or tracking IDs.  
 6. Never claim MCP can connect Instagram/Facebook/etc. — send users to the dashboard.  
 7. For media from remote AI hosts, use `upload_media` with `url` or `data` (base64) — never a sandbox filesystem path. `file_path` only works for files on the MCP server machine.  
-8. Schedule times: confirm timezone; default to UTC ISO-8601.
+8. Schedule times: confirm timezone; default to UTC ISO-8601.  
+9. `delete_draft` only removes unpublished Social0 drafts/schedules — it does not delete live posts on networks.
 
 ---
 

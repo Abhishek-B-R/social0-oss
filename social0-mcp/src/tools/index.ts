@@ -33,11 +33,12 @@ import {
   handleUploadMedia,
 } from "./handlers.js";
 
+/** Canonical tool names advertised via tools/list. */
 const TOOL_SCHEMAS: Record<ToolName, z.ZodTypeAny> = {
   list_accounts: listAccountsInputSchema,
-  create_post: createPostInputSchema,
-  update_post: updatePostInputSchema,
-  delete_post: deletePostInputSchema,
+  create_draft: createPostInputSchema,
+  update_draft: updatePostInputSchema,
+  delete_draft: deletePostInputSchema,
   list_posts: listPostsInputSchema,
   get_post: getPostInputSchema,
   publish_post: publishPostInputSchema,
@@ -49,6 +50,16 @@ const TOOL_SCHEMAS: Record<ToolName, z.ZodTypeAny> = {
   suggest_best_platforms: suggestBestPlatformsInputSchema,
 };
 
+/**
+ * Deprecated CallTool aliases (not listed in tools/list) so older agents keep working.
+ * Prefer the draft_* names — create/update/delete only affect unpublished drafts/schedules.
+ */
+const TOOL_ALIASES: Record<string, ToolName> = {
+  create_post: "create_draft",
+  update_post: "update_draft",
+  delete_post: "delete_draft",
+};
+
 function formatZodError(error: z.ZodError): string {
   return error.issues
     .map((issue) => {
@@ -58,11 +69,16 @@ function formatZodError(error: z.ZodError): string {
     .join("\n");
 }
 
+function resolveToolName(raw: string): ToolName | undefined {
+  if (raw in TOOL_SCHEMAS) return raw as ToolName;
+  return TOOL_ALIASES[raw];
+}
+
 export function createMcpServer(): Server {
   const server = new Server(
     {
       name: "social0-mcp",
-      version: "0.2.1",
+      version: "0.4.0",
       title: "Social0",
       websiteUrl: "https://social0.app",
       icons: [
@@ -85,9 +101,15 @@ export function createMcpServer(): Server {
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const name = request.params.name as ToolName;
-    const schema = TOOL_SCHEMAS[name];
+    const name = resolveToolName(request.params.name);
+    if (!name) {
+      return {
+        content: [{ type: "text", text: `Unknown tool: ${request.params.name}` }],
+        isError: true,
+      };
+    }
 
+    const schema = TOOL_SCHEMAS[name];
     if (!schema) {
       return {
         content: [{ type: "text", text: `Unknown tool: ${request.params.name}` }],
@@ -111,11 +133,11 @@ export function createMcpServer(): Server {
     switch (name) {
       case "list_accounts":
         return handleListAccounts();
-      case "create_post":
+      case "create_draft":
         return handleCreatePost(parsed.data);
-      case "update_post":
+      case "update_draft":
         return handleUpdatePost(parsed.data);
-      case "delete_post":
+      case "delete_draft":
         return handleDeletePost(parsed.data);
       case "list_posts":
         return handleListPosts(parsed.data);
