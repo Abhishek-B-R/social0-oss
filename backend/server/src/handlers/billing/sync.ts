@@ -1,7 +1,7 @@
 import { auth } from "../../lib/auth.js";
 import { headers } from "../../lib/http/request-cookies.js";
 import { RouteResponse } from "../../lib/http/http.js";
-import { PLAN_IDS } from "@social0/shared";
+import { allPlanProductIds } from "@social0/shared";
 import { syncSubscriptionForUserId } from "../../lib/billing-sync.js";
 import { billingSyncLimiter, enforceRateLimit } from "../../lib/ratelimit.js";
 
@@ -22,9 +22,7 @@ export async function syncBilling(request: Request) {
     return RouteResponse.json({ error: rate.error }, { status: rate.status });
   }
 
-  const productIds = [PLAN_IDS.starter, PLAN_IDS.growth, PLAN_IDS.pro].filter(
-    Boolean,
-  );
+  const productIds = allPlanProductIds();
   if (!apiKey || productIds.length === 0) {
     return RouteResponse.json(
       { ok: false, error: "Billing sync not configured" },

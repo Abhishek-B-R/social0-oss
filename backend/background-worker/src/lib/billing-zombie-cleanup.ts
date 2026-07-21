@@ -2,7 +2,7 @@ import DodoPayments from "dodopayments";
 import { db } from "../db/index.js";
 import { userSettings } from "../db/schema.js";
 import { eq } from "drizzle-orm";
-import { PLAN_IDS } from "@social0/shared";
+import { allPlanProductIds } from "@social0/shared";
 import { env } from "./env.js";
 import { setSubscription } from "./subscription.js";
 import { syncConnectedAccountsToLimit } from "./plan-limits.js";
@@ -255,9 +255,7 @@ async function collectZombieCandidates(
   client: DodoPayments,
   force: boolean,
 ): Promise<{ candidates: ZombieCandidate[]; listErrors: number }> {
-  const productIds = [PLAN_IDS.starter, PLAN_IDS.growth, PLAN_IDS.pro].filter(
-    Boolean,
-  );
+  const productIds = allPlanProductIds();
   const candidates: ZombieCandidate[] = [];
   const seen = new Set<string>();
   let listErrors = 0;

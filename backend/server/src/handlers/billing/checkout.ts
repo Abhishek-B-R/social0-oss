@@ -2,11 +2,14 @@ import { auth } from "../../lib/auth.js";
 import { headers } from "../../lib/http/request-cookies.js";
 import { RouteResponse } from "../../lib/http/http.js";
 import DodoPayments from "dodopayments";
-import { PLAN_IDS } from "@social0/shared";
+import {
+  getProductId,
+  parseBillingInterval,
+  sanitizeReturnToPath,
+} from "@social0/shared";
 import { resolveAppUrlFromRequest } from "../../lib/app-url.js";
 import { env } from "../../lib/env.js";
 import { checkoutLimiter, enforceRateLimit } from "../../lib/ratelimit.js";
-import { sanitizeReturnToPath } from "@social0/shared";
 import {
   createCustomerPortalUrl,
   evaluateCheckoutEligibility,
@@ -31,6 +34,7 @@ export async function createCheckout(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const plan = body.plan as string | undefined;
+  const interval = parseBillingInterval(body.interval);
   const successUrl =
     typeof body.successUrl === "string" ? body.successUrl.trim() : null;
   if (!plan || (plan !== "starter" && plan !== "growth" && plan !== "pro")) {
@@ -42,12 +46,7 @@ export async function createCheckout(request: Request) {
 
   const planTier = plan as "starter" | "growth" | "pro";
 
-  const productId =
-    plan === "starter"
-      ? PLAN_IDS.starter
-      : plan === "growth"
-        ? PLAN_IDS.growth
-        : PLAN_IDS.pro;
+  const productId = getProductId(planTier, interval);
   if (!productId) {
     return RouteResponse.json(
       { error: "Billing is not configured for this plan." },
@@ -103,6 +102,7 @@ export async function createCheckout(request: Request) {
     const resolved = await resolveCheckoutSession({
       userId: session.user.id,
       plan: planTier,
+      interval,
       trialPeriodDays: eligibility.trialPeriodDays,
       createSession: async () => {
         const sessionResponse = await client.checkoutSessions.create({

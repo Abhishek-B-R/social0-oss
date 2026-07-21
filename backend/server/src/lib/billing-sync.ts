@@ -2,7 +2,7 @@ import { db } from "../db/index.js";
 import { user } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import DodoPayments from "dodopayments";
-import { getTierFromProductId, PLAN_IDS } from "@social0/shared";
+import { getTierFromProductId, allPlanProductIds } from "@social0/shared";
 import { setSubscription } from "./subscription.js";
 import {
   backfillBillingIds,
@@ -27,9 +27,7 @@ export type SyncSubscriptionResult = {
 export async function syncSubscriptionForUserId(
   userId: string,
 ): Promise<SyncSubscriptionResult> {
-  const productIds = [PLAN_IDS.starter, PLAN_IDS.growth, PLAN_IDS.pro].filter(
-    Boolean,
-  );
+  const productIds = allPlanProductIds();
   if (!apiKey || productIds.length === 0) {
     return { ok: false };
   }

@@ -42,12 +42,28 @@ export function getCannyBoardToken(): string {
 
 export function getDodoProductId(
   tier: "starter" | "growth" | "pro",
+  interval: "monthly" | "yearly" = "monthly",
 ): string {
-  const key = {
-    starter: "VITE_DODO_PAYMENTS_STARTER_PRODUCT_ID",
-    growth: "VITE_DODO_PAYMENTS_GROWTH_PRODUCT_ID",
-    pro: "VITE_DODO_PAYMENTS_PRO_PRODUCT_ID",
-  }[tier] as keyof ImportMetaEnv;
+  if (interval === "yearly") {
+    if (tier === "starter") {
+      return (
+        import.meta.env.VITE_DODO_PAYMENTS_STARTER_YEARLY_PRODUCT_ID ??
+        import.meta.env.VITE_DODO_PAYMENTS_LITE_YEARLY_PRODUCT_ID ??
+        ""
+      );
+    }
+    if (tier === "growth") {
+      return import.meta.env.VITE_DODO_PAYMENTS_GROWTH_YEARLY_PRODUCT_ID ?? "";
+    }
+    return import.meta.env.VITE_DODO_PAYMENTS_PRO_YEARLY_PRODUCT_ID ?? "";
+  }
+  const key = (
+    {
+      starter: "VITE_DODO_PAYMENTS_STARTER_PRODUCT_ID",
+      growth: "VITE_DODO_PAYMENTS_GROWTH_PRODUCT_ID",
+      pro: "VITE_DODO_PAYMENTS_PRO_PRODUCT_ID",
+    } as const
+  )[tier];
   return import.meta.env[key] ?? "";
 }
 

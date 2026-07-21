@@ -2,7 +2,7 @@ import DodoPayments from "dodopayments";
 import { db } from "../db/index.js";
 import { trialClaims, userSettings } from "../db/schema.js";
 import { eq } from "drizzle-orm";
-import { PLAN_IDS, isActiveTier } from "@social0/shared";
+import { allPlanProductIds, isActiveTier } from "@social0/shared";
 import { getSubscriptionForUser } from "./subscription.js";
 import { env } from "./env.js";
 import { normalizeBillingEmail } from "./email-billing.js";
@@ -41,9 +41,7 @@ export async function listOpenDodoSubscriptions(
   if (!client) return [];
 
   const normalizedEmail = normalizeBillingEmail(email);
-  const productIds = [PLAN_IDS.starter, PLAN_IDS.growth, PLAN_IDS.pro].filter(
-    Boolean,
-  );
+  const productIds = allPlanProductIds();
   const results: DodoSubscriptionSummary[] = [];
   const seen = new Set<string>();
 

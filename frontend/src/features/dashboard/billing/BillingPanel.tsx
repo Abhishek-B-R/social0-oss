@@ -11,6 +11,7 @@ import type { AccountLimitResult } from "@/lib/plan-limits";
 import { formatDate } from "@/lib/date-format";
 import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 import { Button } from "@/components/ui/button";
+import { BillingIntervalToggle } from "@/components/billing/BillingIntervalToggle";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { BillingInterval } from "@/lib/plans";
+import {
+  billedAsYearlyLabel,
+  formatEffectiveMonthly,
+  formatListMonthly,
+  formatPlanPriceLabel,
+  getPlanPrice,
+} from "@/lib/plan-pricing";
 const POLL_INTERVAL_MS = 2000;
 const PAYMENT_DECLINED_MESSAGE =
   "Your payment could not be processed. Please check your card details or try a different payment method.";
@@ -194,6 +203,8 @@ export function BillingPanel({
   const [showRenewedTodayBanner] = useState(false);
   const [renewedOnDate] = useState<Date | null>(null);
   const [upgradePending, setUpgradePending] = useState(false);
+  const [billingInterval, setBillingInterval] =
+    useState<BillingInterval>("yearly");
   const [waitingForWebhook, setWaitingForWebhook] = useState(
     Boolean(justSubscribed && subscription.tier === "free"),
   );
@@ -300,14 +311,21 @@ export function BillingPanel({
           ? "Starter (Lite)"
           : "Free";
 
-  const pricePerMonth =
-    subscription.tier === "starter"
-      ? 9
-      : subscription.tier === "growth"
-        ? 19
-        : subscription.tier === "pro"
-          ? 35
-          : 0;
+  const currentInterval: BillingInterval =
+    subscription.interval === "yearly" || subscription.interval === "monthly"
+      ? subscription.interval
+      : "monthly";
+
+  const priceLabel =
+    subscription.tier === "starter" ||
+    subscription.tier === "growth" ||
+    subscription.tier === "pro"
+      ? formatPlanPriceLabel(subscription.tier, currentInterval)
+      : "$0/month";
+
+  const starterPrice = getPlanPrice("starter", billingInterval);
+  const growthPrice = getPlanPrice("growth", billingInterval);
+  const proPrice = getPlanPrice("pro", billingInterval);
 
   const renewalDate =
     subscription.expiresAt && timezone
@@ -479,6 +497,7 @@ export function BillingPanel({
         credentials: "include",
         body: JSON.stringify({
           plan: targetDowngradePlan,
+          interval: billingInterval,
           scheduleAtPeriodEnd: true,
           reason: downgradeReason.trim(),
         }),
@@ -566,7 +585,7 @@ export function BillingPanel({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ plan }),
+          body: JSON.stringify({ plan, interval: billingInterval }),
         });
         const previewData = await previewRes.json().catch(() => ({}));
         if (previewRes.ok && previewData.immediateCharge) {
@@ -602,7 +621,11 @@ export function BillingPanel({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ plan, scheduleAtPeriodEnd }),
+      body: JSON.stringify({
+        plan,
+        interval: billingInterval,
+        scheduleAtPeriodEnd,
+      }),
     });
     const data = await res.json().catch(() => ({}));
 
@@ -713,6 +736,7 @@ export function BillingPanel({
       credentials: "include",
       body: JSON.stringify({
         plan,
+        interval: billingInterval,
         successUrl: "/dashboard/billing?success=1",
       }),
     });
@@ -787,7 +811,7 @@ export function BillingPanel({
             : renewalDate
               ? `Renews ${renewalDate}`
               : "Renews -"}{" "}
-          · {pricePerMonth > 0 ? `$${pricePerMonth}/month` : "$0/month"}
+          · {priceLabel}
         </p>
 
         <div className="mt-4">
@@ -883,7 +907,14 @@ export function BillingPanel({
       )}
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Plans</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-foreground">Plans</h2>
+          <BillingIntervalToggle
+            value={billingInterval}
+            onChange={setBillingInterval}
+            size="sm"
+          />
+        </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {/* Starter card */}
           <div
@@ -896,12 +927,20 @@ export function BillingPanel({
             <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               Starter
             </div>
-            <div className="mb-2 flex items-baseline gap-2">
+            <div className="mb-2 flex flex-wrap items-baseline gap-2">
               <span className="font-serif text-2xl font-bold text-foreground">
-                $9
+                $
+                {billingInterval === "yearly"
+                  ? formatEffectiveMonthly("starter")
+                  : starterPrice.price}
               </span>
               <span className="text-xs text-muted-foreground">/month</span>
             </div>
+            {billingInterval === "yearly" ? (
+              <p className="mb-2 text-xs text-muted-foreground">
+                {billedAsYearlyLabel("starter")}
+              </p>
+            ) : null}
             <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
               {STARTER_BILLING_FEATURES.map((f) => (
                 <li key={f} className="flex items-center gap-2">
@@ -912,9 +951,19 @@ export function BillingPanel({
             </ul>
             <div className="mt-6">
               {subscription.tier === "starter" ? (
-                <Button disabled className="w-full" variant="outline">
-                  Current plan
-                </Button>
+                currentInterval !== billingInterval ? (
+                  <Button
+                    className="w-full"
+                    disabled={loadingChangePlan !== null || upgradePending}
+                    onClick={() => void executeUpgrade("starter", false)}
+                  >
+                    Switch to {billingInterval === "yearly" ? "yearly" : "monthly"}
+                  </Button>
+                ) : (
+                  <Button disabled className="w-full" variant="outline">
+                    Current plan
+                  </Button>
+                )
               ) : subscription.tier === "growth" ||
                 subscription.tier === "pro" ? (
                 <Button
@@ -965,15 +1014,36 @@ export function BillingPanel({
             <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               Growth
             </div>
-            <div className="mb-2 flex items-baseline gap-2">
+            <div className="mb-2 flex flex-wrap items-baseline gap-2">
+              {billingInterval === "yearly" &&
+              formatListMonthly("growth") != null ? (
+                <span className="text-sm text-muted-foreground line-through decoration-red-500 decoration-2">
+                  ${formatListMonthly("growth")}
+                </span>
+              ) : billingInterval === "monthly" &&
+                growthPrice.listPrice != null ? (
+                <span className="text-sm text-muted-foreground line-through decoration-red-500 decoration-2">
+                  ${growthPrice.listPrice}
+                </span>
+              ) : null}
               <span className="font-serif text-2xl font-bold text-foreground">
-                $19
-              </span>
-              <span className="text-sm text-muted-foreground line-through">
-                $29
+                $
+                {billingInterval === "yearly"
+                  ? formatEffectiveMonthly("growth")
+                  : growthPrice.price}
               </span>
               <span className="text-xs text-muted-foreground">/month</span>
+              {billingInterval === "yearly" && growthPrice.savePercent != null ? (
+                <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
+                  Save {growthPrice.savePercent}%
+                </span>
+              ) : null}
             </div>
+            {billingInterval === "yearly" ? (
+              <p className="mb-2 text-xs text-muted-foreground">
+                {billedAsYearlyLabel("growth")}
+              </p>
+            ) : null}
             <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
               {GROWTH_BILLING_FEATURES.map((f) => (
                 <li key={f} className="flex items-center gap-2">
@@ -984,9 +1054,19 @@ export function BillingPanel({
             </ul>
             <div className="mt-6">
               {subscription.tier === "growth" ? (
-                <Button disabled className="w-full">
-                  Current plan
-                </Button>
+                currentInterval !== billingInterval ? (
+                  <Button
+                    className="w-full"
+                    disabled={loadingChangePlan !== null || upgradePending}
+                    onClick={() => void executeUpgrade("growth", false)}
+                  >
+                    Switch to {billingInterval === "yearly" ? "yearly" : "monthly"}
+                  </Button>
+                ) : (
+                  <Button disabled className="w-full">
+                    Current plan
+                  </Button>
+                )
               ) : subscription.tier === "pro" ? (
                 <Button
                   variant="outline"
@@ -1041,15 +1121,36 @@ export function BillingPanel({
             <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               Pro
             </div>
-            <div className="mb-2 flex items-baseline gap-2">
+            <div className="mb-2 flex flex-wrap items-baseline gap-2">
+              {billingInterval === "yearly" &&
+              formatListMonthly("pro") != null ? (
+                <span className="text-sm text-muted-foreground line-through decoration-red-500 decoration-2">
+                  ${formatListMonthly("pro")}
+                </span>
+              ) : billingInterval === "monthly" &&
+                proPrice.listPrice != null ? (
+                <span className="text-sm text-muted-foreground line-through decoration-red-500 decoration-2">
+                  ${proPrice.listPrice}
+                </span>
+              ) : null}
               <span className="font-serif text-2xl font-bold text-foreground">
-                $35
-              </span>
-              <span className="text-sm text-muted-foreground line-through">
-                $49
+                $
+                {billingInterval === "yearly"
+                  ? formatEffectiveMonthly("pro")
+                  : proPrice.price}
               </span>
               <span className="text-xs text-muted-foreground">/month</span>
+              {billingInterval === "yearly" && proPrice.savePercent != null ? (
+                <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
+                  Save {proPrice.savePercent}%
+                </span>
+              ) : null}
             </div>
+            {billingInterval === "yearly" ? (
+              <p className="mb-2 text-xs text-muted-foreground">
+                {billedAsYearlyLabel("pro")}
+              </p>
+            ) : null}
             <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
               {PRO_BILLING_FEATURES.map((f) => (
                 <li key={f} className="flex items-center gap-2">
@@ -1060,9 +1161,19 @@ export function BillingPanel({
             </ul>
             <div className="mt-6">
               {subscription.tier === "pro" ? (
-                <Button disabled className="w-full">
-                  Current plan
-                </Button>
+                currentInterval !== billingInterval ? (
+                  <Button
+                    className="w-full"
+                    disabled={loadingChangePlan !== null || upgradePending}
+                    onClick={() => void executeUpgrade("pro", false)}
+                  >
+                    Switch to {billingInterval === "yearly" ? "yearly" : "monthly"}
+                  </Button>
+                ) : (
+                  <Button disabled className="w-full">
+                    Current plan
+                  </Button>
+                )
               ) : subscription.tier === "starter" ||
                 subscription.tier === "growth" ? (
                 <Button
@@ -1282,8 +1393,8 @@ export function BillingPanel({
                   {renewalDate ?? "your renewal date"}. After that, your plan
                   switches to{" "}
                   {targetDowngradePlan === "growth"
-                    ? "Growth ($19/month)"
-                    : "Starter ($9/month)"}
+                    ? `Growth (${formatPlanPriceLabel("growth", billingInterval)})`
+                    : `Starter (${formatPlanPriceLabel("starter", billingInterval)})`}
                   . You won&apos;t be charged now.
                 </p>
                 {subscription.cancelAtPeriodEnd && (

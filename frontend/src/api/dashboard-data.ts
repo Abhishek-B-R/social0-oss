@@ -87,6 +87,7 @@ export type SubscriptionState = {
   expiresAt: Date | null;
   cancelAtPeriodEnd: boolean;
   paused: boolean;
+  interval?: "monthly" | "yearly" | null;
 };
 
 export type SerializedSubscriptionState = Omit<SubscriptionState, "expiresAt"> & {

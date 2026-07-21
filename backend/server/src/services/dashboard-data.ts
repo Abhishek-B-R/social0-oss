@@ -11,9 +11,15 @@ import {
 } from "@/lib/posts-list/posts-list-data";
 import type { PublicationRow, StatusFilter } from "@social0/shared";
 import { getSubscriptionForUser } from "@/lib/subscription";
-import { getPlanLimits } from "@social0/shared";
+import {
+  getIntervalFromProductId,
+  getPlanLimits,
+  type BillingInterval,
+} from "@social0/shared";
 import { getUserSettingsSnapshot } from "@/services/settings";
 import type { SubscriptionState } from "@/lib/subscription";
+import { env } from "@/lib/env";
+import DodoPayments from "dodopayments";
 import {
   checkAccountLimits,
   checkFreePostLimit,
@@ -422,8 +428,25 @@ export async function loadBillingPageData(): Promise<LoadBillingPageDataResult> 
       checkAccountLimits(userId, "linkedin"),
     ]);
 
+  let interval: BillingInterval | null = null;
+  if (subscription.subscriptionId && env.DODO_PAYMENTS_API_KEY) {
+    try {
+      const client = new DodoPayments({
+        bearerToken: env.DODO_PAYMENTS_API_KEY,
+        environment: env.DODO_PAYMENTS_ENVIRONMENT ?? "test_mode",
+      });
+      const sub = await client.subscriptions.retrieve(
+        subscription.subscriptionId,
+      );
+      interval = getIntervalFromProductId(sub.product_id ?? "") ?? null;
+    } catch {
+      // Best-effort — UI falls back to monthly display prices.
+    }
+  }
+
   const serialized: SerializedSubscriptionState = {
     ...subscription,
+    interval,
     expiresAt: subscription.expiresAt
       ? subscription.expiresAt.toISOString()
       : null,

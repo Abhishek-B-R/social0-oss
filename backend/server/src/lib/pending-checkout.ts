@@ -9,6 +9,7 @@ const CHECKOUT_LOCK_TTL_SEC = 30;
 
 export type PendingCheckout = {
   plan: "starter" | "growth" | "pro";
+  interval?: "monthly" | "yearly";
   sessionId: string;
   url: string;
   trialPeriodDays: number;
@@ -113,6 +114,15 @@ async function releaseCheckoutLock(userId: string): Promise<void> {
   await redis.del(lockRedisKey(userId));
 }
 
+function pendingMatches(
+  pending: PendingCheckout,
+  plan: "starter" | "growth" | "pro",
+  interval: "monthly" | "yearly",
+): boolean {
+  const pendingInterval = pending.interval ?? "monthly";
+  return pending.plan === plan && pendingInterval === interval;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -128,14 +138,16 @@ export type ResolveCheckoutResult =
 export async function resolveCheckoutSession(params: {
   userId: string;
   plan: "starter" | "growth" | "pro";
+  interval?: "monthly" | "yearly";
   trialPeriodDays: number;
   createSession: () => Promise<{ sessionId: string; url: string }>;
 }): Promise<ResolveCheckoutResult> {
   const { userId, plan, trialPeriodDays, createSession } = params;
+  const interval = params.interval ?? "monthly";
 
   const existing = await getPendingCheckout(userId);
   if (existing) {
-    if (existing.plan === plan) {
+    if (pendingMatches(existing, plan, interval)) {
       return { ok: true, url: existing.url, reused: true };
     }
     return {
@@ -153,7 +165,7 @@ export async function resolveCheckoutSession(params: {
       await sleep(150);
       const raced = await getPendingCheckout(userId);
       if (raced) {
-        if (raced.plan === plan) {
+        if (pendingMatches(raced, plan, interval)) {
           return { ok: true, url: raced.url, reused: true };
         }
         return {
@@ -175,7 +187,7 @@ export async function resolveCheckoutSession(params: {
   try {
     const again = await getPendingCheckout(userId);
     if (again) {
-      if (again.plan === plan) {
+      if (pendingMatches(again, plan, interval)) {
         return { ok: true, url: again.url, reused: true };
       }
       return {
@@ -190,6 +202,7 @@ export async function resolveCheckoutSession(params: {
     const session = await createSession();
     const pending: PendingCheckout = {
       plan,
+      interval,
       sessionId: session.sessionId,
       url: session.url,
       trialPeriodDays,

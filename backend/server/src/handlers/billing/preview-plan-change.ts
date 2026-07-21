@@ -5,7 +5,7 @@ import DodoPayments from "dodopayments";
 import { db } from "../../db/index.js";
 import { userSettings } from "../../db/schema.js";
 import { eq } from "drizzle-orm";
-import { PLAN_IDS } from "@social0/shared";
+import { getProductId, parseBillingInterval } from "@social0/shared";
 
 
 const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
@@ -24,6 +24,7 @@ export async function previewPlanChange(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
+  const interval = parseBillingInterval(body.interval);
   const plan =
     body.plan === "starter" || body.plan === "growth" || body.plan === "pro"
       ? body.plan
@@ -32,12 +33,7 @@ export async function previewPlanChange(request: Request) {
     return RouteResponse.json({ error: "Invalid plan" }, { status: 400 });
   }
 
-  const productId =
-    plan === "starter"
-      ? PLAN_IDS.starter
-      : plan === "growth"
-        ? PLAN_IDS.growth
-        : PLAN_IDS.pro;
+  const productId = getProductId(plan, interval);
   if (!productId) {
     return RouteResponse.json({ error: "Plan not configured" }, { status: 503 });
   }

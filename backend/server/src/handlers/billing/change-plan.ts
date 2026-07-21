@@ -6,7 +6,7 @@ import DodoPayments from "dodopayments";
 import { db } from "../../db/index.js";
 import { userSettings } from "../../db/schema.js";
 import { eq } from "drizzle-orm";
-import { PLAN_IDS } from "@social0/shared";
+import { getProductId, parseBillingInterval } from "@social0/shared";
 import { env } from "../../lib/env.js";
 import {
   listOpenDodoSubscriptions,
@@ -37,12 +37,6 @@ function planLabel(plan: PaidPlan): string {
   return "Starter";
 }
 
-function productIdForPlan(plan: PaidPlan): string {
-  if (plan === "starter") return PLAN_IDS.starter;
-  if (plan === "growth") return PLAN_IDS.growth;
-  return PLAN_IDS.pro;
-}
-
 /** Best-effort: drop any Dodo-scheduled plan change (404 = nothing pending). */
 async function clearScheduledPlanChange(subscriptionId: string): Promise<void> {
   try {
@@ -71,6 +65,7 @@ export async function changePlan(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const scheduleAtPeriodEnd = Boolean(body.scheduleAtPeriodEnd);
+  const interval = parseBillingInterval(body.interval);
   const plan: PaidPlan | null =
     body.plan === "starter" || body.plan === "growth" || body.plan === "pro"
       ? body.plan
@@ -81,7 +76,7 @@ export async function changePlan(request: Request) {
     return RouteResponse.json({ error: "Invalid plan" }, { status: 400 });
   }
 
-  const productId = productIdForPlan(plan);
+  const productId = getProductId(plan, interval);
   if (!productId) {
     return RouteResponse.json({ error: "Plan not configured" }, { status: 503 });
   }
@@ -132,19 +127,8 @@ export async function changePlan(request: Request) {
   }
 
   const currentTier = (row.subscriptionTier as string) ?? "free";
-  if (currentTier === plan) {
-    return RouteResponse.json(
-      { error: `Already on ${planLabel(plan)} plan` },
-      { status: 400 },
-    );
-  }
-
   const isUpgrade = tierRank(plan) > tierRank(currentTier);
   const isDowngrade = tierRank(plan) < tierRank(currentTier);
-
-  if (scheduleAtPeriodEnd && !isUpgrade && !isDowngrade) {
-    return RouteResponse.json({ error: "Invalid plan change" }, { status: 400 });
-  }
 
   if (!scheduleAtPeriodEnd && isDowngrade) {
     return RouteResponse.json(
@@ -156,6 +140,7 @@ export async function changePlan(request: Request) {
   try {
     let subscription: {
       status?: string;
+      product_id?: string | null;
       previous_billing_date?: string | null;
     } | null;
     try {
@@ -182,6 +167,21 @@ export async function changePlan(request: Request) {
         { error: "no_active_subscription" },
         { status: 404 },
       );
+    }
+
+    const currentProductId = subscription?.product_id ?? "";
+    if (currentProductId === productId) {
+      return RouteResponse.json(
+        { error: `Already on ${planLabel(plan)} plan` },
+        { status: 400 },
+      );
+    }
+
+    const isIntervalOnlyChange =
+      currentTier === plan && currentProductId !== productId;
+
+    if (scheduleAtPeriodEnd && !isUpgrade && !isDowngrade && !isIntervalOnlyChange) {
+      return RouteResponse.json({ error: "Invalid plan change" }, { status: 400 });
     }
 
     if (scheduleAtPeriodEnd) {

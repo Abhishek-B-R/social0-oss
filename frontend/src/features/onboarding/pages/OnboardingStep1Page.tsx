@@ -5,7 +5,14 @@ import { useState, useEffect, Suspense } from "react";
 import { usePostHog } from "@posthog/react";
 import Link from "@/components/AppLink";
 import { IconLoader2 } from "@tabler/icons-react";
-import { getPlanLimits } from "@/lib/plans";
+import { getPlanLimits, type BillingInterval } from "@/lib/plans";
+import {
+  billedAsYearlyLabel,
+  formatEffectiveMonthly,
+  formatListMonthly,
+  getPlanPrice,
+} from "@/lib/plan-pricing";
+import { BillingIntervalToggle } from "@/components/billing/BillingIntervalToggle";
 import { setOnboardingCompleted } from "@/api/onboarding";
 import { DOCS_ONBOARDING_URL } from "@/lib/docs-url";
 import { toast } from "sonner";
@@ -50,8 +57,6 @@ type PaidPlanId = "starter" | "growth" | "pro";
 const PAID_PLANS: Array<{
   id: PaidPlanId;
   name: string;
-  price: number;
-  listPrice?: number;
   tagline: string;
   badge?: string;
   features: string[];
@@ -60,7 +65,6 @@ const PAID_PLANS: Array<{
   {
     id: "starter",
     name: "Starter",
-    price: 9,
     tagline: "For creators getting started",
     features: [
       "Up to 5 connected accounts",
@@ -73,8 +77,6 @@ const PAID_PLANS: Array<{
   {
     id: "growth",
     name: "Growth",
-    price: 19,
-    listPrice: 29,
     tagline: "Early adopter pricing",
     badge: "Popular",
     emphasized: true,
@@ -89,8 +91,6 @@ const PAID_PLANS: Array<{
   {
     id: "pro",
     name: "Pro",
-    price: 35,
-    listPrice: 49,
     tagline: "For teams & agencies",
     badge: "Teams",
     features: [
@@ -109,6 +109,7 @@ function OnboardingWelcomeContent() {
   const posthog = usePostHog();
   const [loadingPlan, setLoadingPlan] = useState<PaidPlanId | null>(null);
   const [skipping, setSkipping] = useState(false);
+  const [interval, setInterval] = useState<BillingInterval>("yearly");
 
   useEffect(() => {
     if (searchParams.get("payment_failed") === "1") {
@@ -131,7 +132,7 @@ function OnboardingWelcomeContent() {
   async function handleSelectPlan(plan: PaidPlanId) {
     if (loadingPlan !== null) return;
     toast.dismiss();
-    posthog?.capture("checkout_started", { plan });
+    posthog?.capture("checkout_started", { plan, interval });
     setLoadingPlan(plan);
     try {
       const res = await fetchApi("/api/billing/checkout", {
@@ -140,6 +141,7 @@ function OnboardingWelcomeContent() {
         credentials: "include",
         body: JSON.stringify({
           plan,
+          interval,
           successUrl: "/onboarding/step3?paid=1",
         }),
       });
@@ -279,7 +281,7 @@ function OnboardingWelcomeContent() {
 
       {/* Bottom — full-width horizontal pricing */}
       <section className="w-full">
-        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
               Need more? Upgrade anytime
@@ -289,10 +291,17 @@ function OnboardingWelcomeContent() {
               Cancel anytime · lock in early-adopter pricing
             </p>
           </div>
+          <BillingIntervalToggle
+            value={interval}
+            onChange={setInterval}
+            size="sm"
+          />
         </div>
 
         <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-3 md:gap-5">
-          {PAID_PLANS.map((plan) => (
+          {PAID_PLANS.map((plan) => {
+            const pricing = getPlanPrice(plan.id, interval);
+            return (
             <div
               key={plan.id}
               className={`relative flex h-full flex-col rounded-2xl border bg-card p-5 shadow-sm sm:p-6 ${
@@ -317,16 +326,35 @@ function OnboardingWelcomeContent() {
                 {plan.name}
               </h3>
               <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                {plan.listPrice != null ? (
-                  <span className="text-sm text-muted-foreground line-through">
-                    ${plan.listPrice}
-                  </span>
-                ) : null}
+                {interval === "yearly"
+                  ? formatListMonthly(plan.id) != null && (
+                      <span className="text-sm text-muted-foreground line-through decoration-red-500 decoration-2">
+                        ${formatListMonthly(plan.id)}
+                      </span>
+                    )
+                  : pricing.listPrice != null && (
+                      <span className="text-sm text-muted-foreground line-through decoration-red-500 decoration-2">
+                        ${pricing.listPrice}
+                      </span>
+                    )}
                 <span className="font-serif text-3xl font-semibold tracking-tight text-foreground">
-                  ${plan.price}
+                  $
+                  {interval === "yearly"
+                    ? formatEffectiveMonthly(plan.id)
+                    : pricing.price}
                 </span>
                 <span className="text-sm text-muted-foreground">/mo</span>
+                {interval === "yearly" && pricing.savePercent != null ? (
+                  <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-emerald-700 dark:text-emerald-300">
+                    Save {pricing.savePercent}%
+                  </span>
+                ) : null}
               </div>
+              {interval === "yearly" ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {billedAsYearlyLabel(plan.id)}
+                </p>
+              ) : null}
               <p className="mt-2 text-sm text-muted-foreground">{plan.tagline}</p>
 
               <ul className="mt-5 flex-1 space-y-2 text-sm text-muted-foreground">
@@ -353,7 +381,8 @@ function OnboardingWelcomeContent() {
                   : /* FREE TRIAL DISABLED — was: "Start free trial" */ "Subscribe"}
               </button>
             </div>
-          ))}
+            );
+          })}
         </div>
       </section>
     </div>

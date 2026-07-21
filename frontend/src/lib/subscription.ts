@@ -1,4 +1,4 @@
-import type { SubscriptionTier } from "@/lib/plans";
+import type { SubscriptionTier, BillingInterval } from "@/lib/plans";
 
 export type SubscriptionState = {
   tier: SubscriptionTier;
@@ -9,4 +9,5 @@ export type SubscriptionState = {
   pendingPlanTier: "starter" | "growth" | "pro" | null;
   cancelAtPeriodEnd: boolean;
   paused?: boolean;
+  interval?: BillingInterval | null;
 };

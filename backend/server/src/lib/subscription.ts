@@ -2,7 +2,7 @@
 import { db } from "../db/index.js";
 import { userSettings } from "../db/schema.js";
 import { eq, sql } from "drizzle-orm";
-import type { SubscriptionTier } from "@social0/shared";
+import type { BillingInterval, SubscriptionTier } from "@social0/shared";
 
 export type SubscriptionState = {
   tier: SubscriptionTier;
@@ -15,6 +15,8 @@ export type SubscriptionState = {
   pendingPlanTier: "starter" | "growth" | "pro" | null;
   /** True when user cancelled at period end; access until expiresAt. */
   cancelAtPeriodEnd: boolean;
+  /** Billing interval of the active Dodo product, when known. */
+  interval?: BillingInterval | null;
 };
 
 export async function getSubscriptionForUser(

@@ -1,17 +1,63 @@
 /**
  * Subscription plan limits and feature flags.
- * Starter (Lite): $9/mo. Growth: $29/mo (early adopter $19). Pro: $49/mo (early adopter $35).
+ * Monthly (early adopter): Starter $9, Growth $19 (list $29), Pro $35 (list $49).
+ * Yearly (early adopter): Starter $99, Growth $199 (list $299), Pro $349 (list $499).
  */
 
 import { getDodoProductId } from "./env";
 
 export type SubscriptionTier = "free" | "starter" | "growth" | "pro";
+export type BillingInterval = "monthly" | "yearly";
+export type PaidPlanTier = "starter" | "growth" | "pro";
 
-export const PLAN_IDS = {
-  starter: getDodoProductId("starter"),
-  growth: getDodoProductId("growth"),
-  pro: getDodoProductId("pro"),
+const monthlyIds = {
+  starter: getDodoProductId("starter", "monthly"),
+  growth: getDodoProductId("growth", "monthly"),
+  pro: getDodoProductId("pro", "monthly"),
 } as const;
+
+const yearlyIds = {
+  starter: getDodoProductId("starter", "yearly"),
+  growth: getDodoProductId("growth", "yearly"),
+  pro: getDodoProductId("pro", "yearly"),
+} as const;
+
+/** Monthly product IDs (backward-compatible flat shape). */
+export const PLAN_IDS = {
+  starter: monthlyIds.starter,
+  growth: monthlyIds.growth,
+  pro: monthlyIds.pro,
+  monthly: monthlyIds,
+  yearly: yearlyIds,
+} as const;
+
+export function getProductId(
+  tier: PaidPlanTier,
+  interval: BillingInterval = "monthly",
+): string {
+  return interval === "yearly" ? yearlyIds[tier] : monthlyIds[tier];
+}
+
+export function getIntervalFromProductId(
+  productId: string,
+): BillingInterval | null {
+  if (!productId) return null;
+  if (
+    productId === yearlyIds.starter ||
+    productId === yearlyIds.growth ||
+    productId === yearlyIds.pro
+  ) {
+    return "yearly";
+  }
+  if (
+    productId === monthlyIds.starter ||
+    productId === monthlyIds.growth ||
+    productId === monthlyIds.pro
+  ) {
+    return "monthly";
+  }
+  return null;
+}
 
 export interface PlanLimits {
   maxConnectedAccounts: number;
@@ -81,9 +127,21 @@ export function getPlanLimits(
 }
 
 export function getTierFromProductId(productId: string): SubscriptionTier {
-  if (productId === PLAN_IDS.starter) return "starter";
-  if (productId === PLAN_IDS.growth) return "growth";
-  if (productId === PLAN_IDS.pro) return "pro";
+  if (
+    productId === monthlyIds.starter ||
+    productId === yearlyIds.starter
+  ) {
+    return "starter";
+  }
+  if (
+    productId === monthlyIds.growth ||
+    productId === yearlyIds.growth
+  ) {
+    return "growth";
+  }
+  if (productId === monthlyIds.pro || productId === yearlyIds.pro) {
+    return "pro";
+  }
   return "free";
 }
 
