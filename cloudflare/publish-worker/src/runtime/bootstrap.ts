@@ -33,7 +33,7 @@ export function bootstrapWorkerRuntime(env: Env): void {
     env.GOOGLE_CLIENT_SECRET ?? "worker-unused";
   process.env.RESEND_API_KEY = env.RESEND_API_KEY ?? "worker-unused";
   process.env.RESEND_FROM_EMAIL =
-    env.RESEND_FROM_EMAIL ?? "noreply@social0.app";
+    env.RESEND_FROM_EMAIL ?? "abhishek from social0 <abhishek@social0.app>";
 
   // Production schema refinements (unused on this Worker path).
   process.env.CRON_SECRET = env.CRON_SECRET ?? "worker-unused-cron-secret";
