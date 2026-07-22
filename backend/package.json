@@ -7,7 +7,7 @@
     "background-worker"
   ],
   "scripts": {
-    "build": "npm run build -w @social0/shared && npm run build -w @social0/background-worker && npm run build -w @social0/server",
+    "build": "bun run --filter @social0/shared build && bun run --filter @social0/background-worker build && bun run --filter @social0/server build",
     "dev:server": "bun run --filter @social0/server dev",
     "dev:background-worker": "bun run --filter @social0/background-worker dev",
     "dev": "bun run dev:server & bun run dev:background-worker",
