@@ -39,11 +39,11 @@ import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSet
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { MdOutlineVideoLibrary, MdClose } from "react-icons/md";
+import { TikTokSettings } from "@/components/TikTokSettings";
 import {
-  type TikTokPostSettings,
-  TikTokSettings,
   DEFAULT_TIKTOK_POST_SETTINGS,
-} from "@/components/TikTokSettings";
+  type TikTokPostSettings,
+} from "@/components/tiktok-post-settings";
 import type { PinterestPostSettings } from "@/lib/pinterest-settings";
 import { PinterestConfigInline } from "@/components/PinterestConfigInline";
 import {

@@ -14,7 +14,7 @@ export async function fetchWithTimeout(
     return await fetch(input, { ...fetchInit, signal: controller.signal });
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
-      throw new Error(`Request timed out after ${timeoutMs}ms`);
+      throw new Error(`Request timed out after ${timeoutMs}ms`, { cause: err });
     }
     throw err;
   } finally {

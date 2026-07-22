@@ -13,11 +13,7 @@ import { startOfWeek, startOfMonth } from "date-fns";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { isActiveTier } from "@social0/shared";
 import { POSTS_PAGE_SIZE } from "@social0/shared";
-import type {
-  PublicationRow,
-  PostsListParams,
-  StatusFilter,
-} from "@social0/shared";
+import type { PublicationRow, PostsListParams } from "@social0/shared";
 
 export { POSTS_PAGE_SIZE } from "@social0/shared";
 export type {

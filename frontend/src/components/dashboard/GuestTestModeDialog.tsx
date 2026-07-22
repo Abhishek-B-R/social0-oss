@@ -1,6 +1,6 @@
 
 import { useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "@/components/AppLink";
 import {
   Dialog,
@@ -15,18 +15,25 @@ import { signInUrl } from "@/lib/sign-in-url";
 
 const DISMISS_KEY = "social0-guest-dashboard-dialog-dismissed";
 
+function readDismissed(): boolean {
+  try {
+    return sessionStorage.getItem(DISMISS_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function GuestTestModeDialog() {
   const pathname = useLocation().pathname;
   const signInHref = signInUrl(pathname);
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (sessionStorage.getItem(DISMISS_KEY) === "1") return;
-    setOpen(true);
-  }, []);
+  const [open, setOpen] = useState(() => !readDismissed());
 
   const handleExplore = () => {
-    sessionStorage.setItem(DISMISS_KEY, "1");
+    try {
+      sessionStorage.setItem(DISMISS_KEY, "1");
+    } catch {
+      // ignore quota / private mode
+    }
     setOpen(false);
   };
 

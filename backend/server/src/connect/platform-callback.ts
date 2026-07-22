@@ -346,7 +346,7 @@ export async function platformCallback(
   let workspaceId: string | null;
   let codeVerifier: string | undefined;
   let successRedirect = "/dashboard/connections";
-  let isReauth = false;
+  let isReauth: boolean;
   let reauthAccountId: string | undefined;
   try {
     const decrypted = decrypt(state);
@@ -428,7 +428,7 @@ export async function platformCallback(
   try {
     // Exchange code for tokens - platform-specific handling
     let tokenResponse: Response;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- platform OAuth payloads vary widely
     let tokens: any;
 
     const redirectUri = `${getConnectCallbackBaseUrl()}/api/connect/${platform}/callback`;
@@ -483,6 +483,7 @@ export async function platformCallback(
         });
         throw new Error(
           `Failed to connect to ${platform} API: ${err.code === "ECONNRESET" ? "Connection was reset. This may be a temporary network issue - please try again." : err.message}`,
+          { cause: fetchError },
         );
       }
 
@@ -573,12 +574,6 @@ export async function platformCallback(
         console.error("❌ TikTok PKCE: Missing code_verifier");
         throw new Error("Missing code_verifier for TikTok PKCE");
       }
-
-      // CRITICAL: Manually verify challenge matches verifier
-      const expectedChallenge = crypto
-        .createHash("sha256")
-        .update(codeVerifier)
-        .digest("base64url");
 
       const tokenRequestBody = new URLSearchParams({
         client_key: clientId, // TikTok uses client_key instead of client_id

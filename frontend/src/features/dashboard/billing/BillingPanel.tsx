@@ -250,7 +250,7 @@ export function BillingPanel({
     };
 
     poll();
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, invalidateQueries]);
 
   useEffect(() => {
     if (!waitingForWebhook) return;

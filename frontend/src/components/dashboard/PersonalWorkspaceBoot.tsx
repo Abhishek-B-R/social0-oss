@@ -10,7 +10,7 @@ import {
 } from "@/lib/dashboard-base-path";
 import { useLocation, useNavigate } from "react-router-dom";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
-import { clearTeamBootstrap } from "@/layouts/TeamAppLayout";
+import { clearTeamBootstrap } from "@/layouts/team-bootstrap";
 
 /**
  * On personal /dashboard routes (not team app / team settings):

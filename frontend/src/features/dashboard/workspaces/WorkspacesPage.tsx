@@ -1,4 +1,5 @@
 import {
+  createElement,
   useEffect,
   useMemo,
   useRef,
@@ -92,7 +93,10 @@ export function WorkspacesPage() {
     queryFn: listWorkspaceBoard,
   });
 
-  const cards = boardQuery.data?.cards ?? [];
+  const cards = useMemo(
+    () => boardQuery.data?.cards ?? [],
+    [boardQuery.data?.cards],
+  );
   const canCreate = !!boardQuery.data?.canCreate;
   const canCreateTeam = !!boardQuery.data?.canCreateTeam;
   const ownedTeamCount = boardQuery.data?.ownedTeamCount ?? 0;
@@ -758,7 +762,7 @@ function AccountRow({
   moving: boolean;
   onMove: (accountId: string, targetWorkspaceId: string | null) => void;
 }) {
-  const PlatformIcon = getPlatformIcon(account.platform);
+  const platformIcon = getPlatformIcon(account.platform);
   const destinations = moveTargets.filter((t) => {
     if (t.id === currentWorkspaceId || !t.canManage) return false;
     // Same owner pool (Main ↔ owned workspaces, or within one team's workspaces).
@@ -784,9 +788,9 @@ function AccountRow({
           platform={account.platform}
           size="sm"
         />
-        {PlatformIcon ? (
+        {platformIcon ? (
           <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-bg-elevated ring-1 ring-border">
-            <PlatformIcon className="h-2.5 w-2.5" />
+            {createElement(platformIcon, { className: "h-2.5 w-2.5" })}
           </span>
         ) : null}
       </div>

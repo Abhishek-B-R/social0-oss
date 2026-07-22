@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { apiError } from "../../lib/api-errors.js";
-import { loadJobSnapshotFromDb } from "../../lib/job-snapshot-from-db.js";
 import { requireV1ApiKey, v1UserId } from "../../middleware/api-auth.js";
 import { v1ConfirmMedia, v1GetMedia, v1PresignMedia } from "../../services/v1-media.js";
 

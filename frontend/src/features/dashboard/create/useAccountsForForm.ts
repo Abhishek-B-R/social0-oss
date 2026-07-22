@@ -14,6 +14,7 @@ export function useAccountsForForm(allowedPlatforms?: string[] | null) {
   const allowedKey = allowedPlatforms?.join(",") ?? "";
 
   const refetch = useCallback(async () => {
+    await Promise.resolve();
     setLoading(true);
     toast.dismiss();
     try {
@@ -39,7 +40,13 @@ export function useAccountsForForm(allowedPlatforms?: string[] | null) {
   }, [allowedKey]);
 
   useEffect(() => {
-    void refetch();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void refetch();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [refetch]);
 
   return { accounts, loading, refetch };

@@ -53,7 +53,9 @@ export async function uploadTwitterImage(
         accessSecret,
       );
     } catch (e) {
-      throw new Error(formatTwitterMediaError(e, "Twitter image upload"));
+      throw new Error(formatTwitterMediaError(e, "Twitter image upload"), {
+        cause: e,
+      });
     }
   }
 
@@ -65,7 +67,9 @@ export async function uploadTwitterImage(
     });
     return mediaId;
   } catch (e) {
-    throw new Error(formatTwitterMediaError(e, "Twitter image upload"));
+    throw new Error(formatTwitterMediaError(e, "Twitter image upload"), {
+      cause: e,
+    });
   }
 }
 
@@ -85,6 +89,7 @@ export async function uploadTwitterVideo(
     const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
     throw new Error(
       `Twitter video upload: Could not fetch video from storage. The server may not be able to reach the media URL (${msg}).`,
+      { cause: fetchErr },
     );
   }
   if (!videoRes.ok) {
@@ -105,7 +110,9 @@ export async function uploadTwitterVideo(
         accessSecret,
       );
     } catch (e) {
-      throw new Error(formatTwitterMediaError(e, "Twitter video upload"));
+      throw new Error(formatTwitterMediaError(e, "Twitter video upload"), {
+        cause: e,
+      });
     }
   }
 
@@ -129,6 +136,7 @@ export async function uploadTwitterVideo(
     if (!mediaId)
       throw new Error(
         formatTwitterMediaError(lastUploadError, "Twitter video upload"),
+        { cause: lastUploadError },
       );
 
     let status = await client.v1.mediaInfo(mediaId);
@@ -158,6 +166,8 @@ export async function uploadTwitterVideo(
 
     return mediaId;
   } catch (e) {
-    throw new Error(formatTwitterMediaError(e, "Twitter video upload"));
+    throw new Error(formatTwitterMediaError(e, "Twitter video upload"), {
+      cause: e,
+    });
   }
 }

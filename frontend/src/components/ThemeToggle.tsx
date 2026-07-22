@@ -22,9 +22,12 @@ type ThemeToggleProps = {
 
 export function ThemeToggle({ variant = "full" }: ThemeToggleProps) {
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => setMounted(true), []);
+  // Avoid hydration mismatch: server/first paint shows placeholder.
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   if (!mounted) {
     return (

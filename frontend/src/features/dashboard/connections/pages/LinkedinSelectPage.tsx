@@ -30,7 +30,7 @@ export default function LinkedInSelectPage() {
   const [personalProfile, setPersonalProfile] =
     useState<PersonalProfile | null>(null);
   const [companyPages, setCompanyPages] = useState<CompanyPage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(token));
   const [submitLoading, setSubmitLoading] = useState(false);
 
   const [selectedPersonal, setSelectedPersonal] = useState(true);
@@ -45,31 +45,36 @@ export default function LinkedInSelectPage() {
   useEffect(() => {
     if (!token) {
       toast.error("Missing token");
-      setLoading(false);
       return;
     }
-    fetchApi(`/api/connect/linkedin/select?token=${encodeURIComponent(token)}`, {
-      credentials: "include",
-    })
-      .then((res) => {
-        if (!res.ok)
-          return res
-            .json()
-            .then((d) =>
-              Promise.reject(new Error(d.error ?? "Failed to load accounts")),
-            );
-        return res.json();
-      })
-      .then((data) => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetchApi(
+          `/api/connect/linkedin/select?token=${encodeURIComponent(token)}`,
+          { credentials: "include" },
+        );
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.error ?? "Failed to load accounts");
+        }
+        const data = await res.json();
+        if (cancelled) return;
         setPersonalProfile(data.personalProfile ?? null);
         setCompanyPages(data.companyPages ?? []);
-      })
-      .catch((err) => {
-        toast.error(err.message ?? "Failed to load accounts");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      } catch (err) {
+        if (!cancelled) {
+          toast.error(
+            err instanceof Error ? err.message : "Failed to load accounts",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   const toggleCompany = useCallback((urn: string) => {

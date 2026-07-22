@@ -37,25 +37,22 @@ export function DeferredSection({
 }: DeferredSectionProps) {
   const { hash } = useLocation();
   const ref = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(() => Boolean(hash));
-
-  useEffect(() => {
-    if (hash) setActive(true);
-  }, [hash]);
+  const [observed, setObserved] = useState(false);
+  const active = Boolean(hash) || observed;
 
   useEffect(() => {
     const el = ref.current;
     if (!el || active) return;
 
     if (typeof IntersectionObserver === "undefined") {
-      setActive(true);
-      return;
+      const id = requestAnimationFrame(() => setObserved(true));
+      return () => cancelAnimationFrame(id);
     }
 
     const io = new IntersectionObserver(
       ([entry]) => {
         if (!entry?.isIntersecting) return;
-        setActive(true);
+        setObserved(true);
         io.disconnect();
       },
       { rootMargin },

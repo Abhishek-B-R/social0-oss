@@ -184,8 +184,7 @@ async function handleSubscriptionActiveOrUpdated(payload: {
       const trialClaimed = await hasTrialBeenClaimed(email, userId);
       if (trialClaimed && apiKey && incomingSubId) {
         const client = new DodoPayments({ bearerToken: apiKey, environment });
-        let latestPayment: { status?: string; total_amount?: number } | null =
-          null;
+        let latestPayment: { status?: string; total_amount?: number } | null;
         try {
           const list = await (
             client.payments as { list: (q: object) => Promise<unknown> }

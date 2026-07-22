@@ -28,7 +28,7 @@ import {
   invalidateTeamRoomQueries,
   WORKSPACES_QUERY_KEY,
 } from "@/lib/team-query-keys";
-import { clearTeamBootstrap } from "@/layouts/TeamAppLayout";
+import { clearTeamBootstrap } from "@/layouts/team-bootstrap";
 
 export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   const queryClient = useQueryClient();
@@ -75,9 +75,11 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   }, [open]);
 
   // Close the menu if the route changes underneath it (client-side nav).
-  useEffect(() => {
+  const [menuPath, setMenuPath] = useState(pathname);
+  if (menuPath !== pathname) {
+    setMenuPath(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
   useEffect(() => {
     if (!open || !buttonRef.current) return;

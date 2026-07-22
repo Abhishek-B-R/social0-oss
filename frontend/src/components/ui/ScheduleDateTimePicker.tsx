@@ -47,29 +47,42 @@ export function ScheduleDateTimePicker({
     () => maxDate ?? new Date(startOfToday().getTime() + 365 * 24 * 60 * 60 * 1000),
     [maxDate],
   );
-  // Compute initial date and time
-  const initialDate = useMemo(() => {
+
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
     if (value) return value;
     const today = startOfToday();
     const now = new Date();
     return setMinutes(setHours(today, now.getHours()), now.getMinutes());
-  }, []);
-
-  const initialTime = useMemo(() => {
-    if (value) return format(value, "HH:mm");
-    return getCurrentTime();
-  }, []);
-
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
-    value || initialDate
-  );
-  const [timeValue, setTimeValue] = useState(
-    value ? format(value, "HH:mm") : initialTime
+  });
+  const [timeValue, setTimeValue] = useState(() =>
+    value ? format(value, "HH:mm") : getCurrentTime(),
   );
   const [timeError, setTimeError] = useState<string | null>(null);
   const datePickerRef = useRef<HTMLDivElement>(null);
   const timeInputRef = useRef<HTMLInputElement>(null);
-  const hasInitialized = useRef(false);
+  const [hasInitialized, setHasInitialized] = useState(Boolean(value));
+  const [syncedValueMs, setSyncedValueMs] = useState<number | null>(
+    () => value?.getTime() ?? null,
+  );
+  const valueMs = value?.getTime() ?? null;
+
+  if (syncedValueMs !== valueMs) {
+    setSyncedValueMs(valueMs);
+    if (value) {
+      setSelectedDate(value);
+      setTimeValue(format(value, "HH:mm"));
+      setHasInitialized(true);
+    } else if (hasInitialized) {
+      const today = startOfToday();
+      const now = new Date();
+      const todayWithTime = setMinutes(
+        setHours(today, now.getHours()),
+        now.getMinutes(),
+      );
+      setSelectedDate(todayWithTime);
+      setTimeValue(getCurrentTime());
+    }
+  }
 
   const applyCombined = (combined: Date) => {
     const now = new Date();
@@ -88,35 +101,18 @@ export function ScheduleDateTimePicker({
 
   // Auto-initialize when value is null on mount (only once)
   useEffect(() => {
-    if (!hasInitialized.current && !value) {
-      const today = startOfToday();
-      const now = new Date();
-      const initial = setMinutes(setHours(today, now.getHours()), now.getMinutes());
-      // Use setTimeout to avoid calling onChange during render
-      setTimeout(() => {
-        onChange(initial);
-      }, 0);
+    if (hasInitialized || value) return;
+    const today = startOfToday();
+    const now = new Date();
+    const initial = setMinutes(setHours(today, now.getHours()), now.getMinutes());
+    const id = window.setTimeout(() => {
+      setHasInitialized(true);
       setSelectedDate(initial);
       setTimeValue(format(initial, "HH:mm"));
-      hasInitialized.current = true;
-    }
-  }, []);
-
-  // Sync internal state when value prop changes externally
-  useEffect(() => {
-    if (value) {
-      setSelectedDate(value);
-      setTimeValue(format(value, "HH:mm"));
-      hasInitialized.current = true;
-    } else if (hasInitialized.current) {
-      // Reset to today/now if value becomes null after initialization
-      const today = startOfToday();
-      const now = new Date();
-      const todayWithTime = setMinutes(setHours(today, now.getHours()), now.getMinutes());
-      setSelectedDate(todayWithTime);
-      setTimeValue(getCurrentTime());
-    }
-  }, [value]);
+      onChange(initial);
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [hasInitialized, onChange, value]);
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) {

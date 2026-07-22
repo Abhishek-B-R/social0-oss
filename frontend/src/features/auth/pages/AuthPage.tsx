@@ -15,11 +15,11 @@ import {
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 import { fetchApi } from "@/lib/fetch-api";
+import { LegalConsentCheckboxes } from "@/components/auth/LegalConsentCheckboxes";
 import {
   EMPTY_LEGAL_CONSENT,
-  LegalConsentCheckboxes,
   type LegalConsentValues,
-} from "@/components/auth/LegalConsentCheckboxes";
+} from "@/components/auth/legal-consent";
 
 const TIMEOUT_MS = 10_000;
 
@@ -57,7 +57,8 @@ function AuthPageContent() {
   const callbackUrl = resolveCallbackUrl(searchParams.get("callbackUrl"));
   const authCallbackUrl = absoluteCallbackUrl(callbackUrl);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [resetSuccess, setResetSuccess] = useState(false);
+  const resetSuccess = searchParams.get("reset") === "success";
+  const sessionExpired = searchParams.get("session") === "expired";
   useEffect(() => {
     if (isPending || !session) return;
     if (session.user.emailVerified === false) {
@@ -69,11 +70,10 @@ function AuthPageContent() {
     assignSafeRedirectUrl(callbackUrl);
   }, [isPending, session, callbackUrl, navigate]);
   useEffect(() => {
-    if (searchParams.get("reset") === "success") setResetSuccess(true);
-    if (searchParams.get("session") === "expired") {
+    if (sessionExpired) {
       toast.error("Your session expired. Please sign in again.");
     }
-  }, [searchParams]);
+  }, [sessionExpired]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");

@@ -1,6 +1,5 @@
 
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useEffect, useState, useMemo } from "react";
 import { loadBillingPageData } from "@/api/dashboard-data";
 import type { SubscriptionState } from "@/lib/subscription";
@@ -11,7 +10,6 @@ import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 
 export function BillingPage() {
   const navigate = useNavigate();
-  const invalidateQueries = useInvalidateQueries();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +45,7 @@ export function BillingPage() {
     return () => {
       cancelled = true;
     };
-  }, [invalidateQueries]);
+  }, [navigate]);
 
   const subscription: SubscriptionState | null = useMemo(() => {
     if (!raw) return null;

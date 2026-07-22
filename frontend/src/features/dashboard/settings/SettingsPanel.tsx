@@ -99,10 +99,11 @@ function ProfileSettingsSection({
   const invalidateQueries = useInvalidateQueries();
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [savingName, setSavingName] = useState(false);
-
-  useEffect(() => {
+  const [syncedDisplayName, setSyncedDisplayName] = useState(initialDisplayName);
+  if (syncedDisplayName !== initialDisplayName) {
+    setSyncedDisplayName(initialDisplayName);
     setDisplayName(initialDisplayName);
-  }, [initialDisplayName]);
+  }
 
   const saveProfileImage = async (url: string): Promise<{ error?: string }> => {
     const { error } = await authClient.updateUser({ image: url });
@@ -816,16 +817,18 @@ function AvatarEditor({
   /** Local preview so the UI updates immediately; session props can lag behind DB after save. */
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentUrl);
   const [imgFailed, setImgFailed] = useState(false);
-
-  useEffect(() => {
+  const [syncedUrl, setSyncedUrl] = useState(currentUrl);
+  if (syncedUrl !== currentUrl) {
+    setSyncedUrl(currentUrl);
     setPreviewUrl(currentUrl);
-  }, [currentUrl]);
+  }
 
   const displaySrc = previewUrl?.trim() || null;
-
-  useEffect(() => {
+  const [failedForSrc, setFailedForSrc] = useState(displaySrc);
+  if (failedForSrc !== displaySrc) {
+    setFailedForSrc(displaySrc);
     setImgFailed(false);
-  }, [displaySrc]);
+  }
 
   const sizeClass = size === "lg" ? "h-20 w-20 text-2xl" : "h-14 w-14 text-lg";
 
@@ -1013,51 +1016,76 @@ export function SettingsPanel({
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [changeEmailSuccess, setChangeEmailSuccess] = useState(false);
   const [currentEmail, setCurrentEmail] = useState(email);
-  const [clientTimezone, setClientTimezone] = useState("");
+  const [syncedEmail, setSyncedEmail] = useState(email);
+  if (syncedEmail !== email) {
+    setSyncedEmail(email);
+    setCurrentEmail(email);
+  }
+  const [clientTimezone] = useState(() => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      return typeof tz === "string" && tz.trim() ? tz.trim() : "";
+    } catch {
+      return "";
+    }
+  });
   /** Controlled so the select updates after save (uncontrolled defaultValue does not). */
   const [timezoneValue, setTimezoneValue] = useState(settings.timezone ?? "UTC");
+  const [syncedTimezone, setSyncedTimezone] = useState(
+    settings.timezone ?? "UTC",
+  );
+  const nextTimezone = settings.timezone ?? "UTC";
+  if (syncedTimezone !== nextTimezone) {
+    setSyncedTimezone(nextTimezone);
+    setTimezoneValue(nextTimezone);
+  }
   const [timezonePending, startTimezoneTransition] = useTransition();
   const [dateFormatValue, setDateFormatValue] = useState<DateFormatKey>(
     settings.dateFormat ?? "dd/MM/yyyy",
   );
+  const [syncedDateFormat, setSyncedDateFormat] = useState<DateFormatKey>(
+    settings.dateFormat ?? "dd/MM/yyyy",
+  );
+  const nextDateFormat = settings.dateFormat ?? "dd/MM/yyyy";
+  if (syncedDateFormat !== nextDateFormat) {
+    setSyncedDateFormat(nextDateFormat);
+    setDateFormatValue(nextDateFormat);
+  }
   const [use24HourTimeFormatValue, setUse24HourTimeFormatValue] = useState(
     settings.use24HourTimeFormat ?? false,
   );
+  const [syncedUse24, setSyncedUse24] = useState(
+    settings.use24HourTimeFormat ?? false,
+  );
+  const nextUse24 = settings.use24HourTimeFormat ?? false;
+  if (syncedUse24 !== nextUse24) {
+    setSyncedUse24(nextUse24);
+    setUse24HourTimeFormatValue(nextUse24);
+  }
   const [preferencesPending, startPreferencesTransition] = useTransition();
   const [automationEmailsValue, setAutomationEmailsValue] = useState(
     settings.automationEmails ?? false,
   );
+  const [syncedAutomationEmails, setSyncedAutomationEmails] = useState(
+    settings.automationEmails ?? false,
+  );
+  const nextAutomationEmails = settings.automationEmails ?? false;
+  if (syncedAutomationEmails !== nextAutomationEmails) {
+    setSyncedAutomationEmails(nextAutomationEmails);
+    setAutomationEmailsValue(nextAutomationEmails);
+  }
   const [emailOnPostFailedValue, setEmailOnPostFailedValue] = useState(
     settings.emailOnPostFailed ?? false,
   );
+  const [syncedEmailOnPostFailed, setSyncedEmailOnPostFailed] = useState(
+    settings.emailOnPostFailed ?? false,
+  );
+  const nextEmailOnPostFailed = settings.emailOnPostFailed ?? false;
+  if (syncedEmailOnPostFailed !== nextEmailOnPostFailed) {
+    setSyncedEmailOnPostFailed(nextEmailOnPostFailed);
+    setEmailOnPostFailedValue(nextEmailOnPostFailed);
+  }
   const [emailPrefsPending, startEmailPrefsTransition] = useTransition();
-
-  useEffect(() => {
-    setTimezoneValue(settings.timezone ?? "UTC");
-  }, [settings.timezone]);
-
-  useEffect(() => {
-    setDateFormatValue(settings.dateFormat ?? "dd/MM/yyyy");
-    setUse24HourTimeFormatValue(settings.use24HourTimeFormat ?? false);
-  }, [settings.dateFormat, settings.use24HourTimeFormat]);
-
-  useEffect(() => {
-    setAutomationEmailsValue(settings.automationEmails ?? false);
-    setEmailOnPostFailedValue(settings.emailOnPostFailed ?? false);
-  }, [settings.automationEmails, settings.emailOnPostFailed]);
-
-  useEffect(() => {
-    setCurrentEmail(email);
-  }, [email]);
-
-  useEffect(() => {
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      if (typeof tz === "string" && tz.trim()) setClientTimezone(tz.trim());
-    } catch {
-      // ignore
-    }
-  }, []);
 
   useEffect(() => {
     const syncFromHash = () => {

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { usePostHog } from "@posthog/react";
 import { capturePostAction } from "@/lib/posthog-events";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import Link from "@/components/AppLink";
 import { X, Upload } from "lucide-react";
 import { updatePost } from "@/api/posts";
@@ -57,17 +57,13 @@ export function EditPostForm({
   const [idsToRemove, setIdsToRemove] = useState<Set<string>>(new Set());
   const [newFiles, setNewFiles] = useState<NewFileItem[]>([]);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
+  const [syncedPostId, setSyncedPostId] = useState(post.id);
+  if (syncedPostId !== post.id) {
+    setSyncedPostId(post.id);
     setContent(post.originalContent ?? "");
     setSelectedIds(new Set(post.connectedAccountIds));
     setScheduledAt(post.scheduledAt ? new Date(post.scheduledAt) : null);
-  }, [
-    post.id,
-    post.originalContent,
-    post.connectedAccountIds,
-    post.scheduledAt,
-  ]);
+  }
 
   const platformName = (platformId: string) =>
     PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;

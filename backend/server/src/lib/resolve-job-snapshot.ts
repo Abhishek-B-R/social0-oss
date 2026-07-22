@@ -240,7 +240,7 @@ export async function resolveJobSnapshot(
     loadJobSnapshotFromDb(trackingId),
   ]);
 
-  let snapshot = pickBetterJobSnapshot(redisSnapshot, dbSnapshot);
+  const snapshot = pickBetterJobSnapshot(redisSnapshot, dbSnapshot);
   if (!snapshot) return null;
 
   return enrichSnapshotFromPublications(snapshot);

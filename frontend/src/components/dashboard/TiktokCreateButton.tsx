@@ -2,7 +2,7 @@
 import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 /** Brand-aligned floating create button: green core + subtle dual glow. Premium SaaS, not neon. */
 const TOKENS = {
@@ -32,9 +32,11 @@ export function TiktokCreateButton({
 }: CreateButtonProps) {
   const pathname = useLocation().pathname;
   const [navPending, setNavPending] = useState(false);
-  useEffect(() => {
+  const [pendingPath, setPendingPath] = useState(pathname);
+  if (pendingPath !== pathname) {
+    setPendingPath(pathname);
     setNavPending(false);
-  }, [pathname]);
+  }
 
   return (
     <Link

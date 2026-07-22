@@ -20,7 +20,7 @@ export default function InstagramSelectPage() {
     "/dashboard/connections";
 
   const [accounts, setAccounts] = useState<AccountPickerAccount[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(token));
   const [submitLoading, setSubmitLoading] = useState(false);
 
   useEffect(() => {
@@ -30,24 +30,21 @@ export default function InstagramSelectPage() {
   useEffect(() => {
     if (!token) {
       toast.error("Missing token");
-      setLoading(false);
       return;
     }
-    fetchApi(`/api/connect/instagram-facebook/select?token=${encodeURIComponent(token)}`,
-      {
-        credentials: "include",
-      },
-    )
-      .then((res) => {
-        if (!res.ok)
-          return res
-            .json()
-            .then((d) =>
-              Promise.reject(new Error(d.error ?? "Failed to load accounts")),
-            );
-        return res.json();
-      })
-      .then((data) => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetchApi(
+          `/api/connect/instagram-facebook/select?token=${encodeURIComponent(token)}`,
+          { credentials: "include" },
+        );
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.error ?? "Failed to load accounts");
+        }
+        const data = await res.json();
+        if (cancelled) return;
         const rawPages = data.pages ?? [];
         setAccounts(
           rawPages.map(
@@ -65,13 +62,19 @@ export default function InstagramSelectPage() {
             }),
           ),
         );
-      })
-      .catch((err) => {
-        toast.error(err.message ?? "Failed to load accounts");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      } catch (err) {
+        if (!cancelled) {
+          toast.error(
+            err instanceof Error ? err.message : "Failed to load accounts",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   const handleSelect = useCallback(

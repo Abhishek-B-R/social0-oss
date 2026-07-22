@@ -34,7 +34,7 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
   toRef,
   curvature = 0,
   reverse = false,
-  duration = Math.random() * 3 + 4,
+  duration: durationProp,
   delay = 0,
   repeatDelay = 0,
   pathColor = "gray",
@@ -50,6 +50,8 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
   const id = useId();
   const [pathD, setPathD] = useState("");
   const [svgDimensions, setSvgDimensions] = useState({ width: 0, height: 0 });
+  const [randomDuration] = useState(() => Math.random() * 3 + 4);
+  const duration = durationProp ?? randomDuration;
 
   const gradientCoordinates = reverse
     ? {

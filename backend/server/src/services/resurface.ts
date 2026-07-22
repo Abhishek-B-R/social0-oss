@@ -584,11 +584,11 @@ export async function updateResurfaceSchedule(
   }
 
   const done = schedule.resurfacesDone ?? 0;
-  let nextInterval =
+  const nextInterval =
     updates.intervalHours !== undefined
       ? Math.max(0.5, Math.round(updates.intervalHours * 10) / 10)
       : (schedule.intervalHours ?? 4);
-  let nextMax =
+  const nextMax =
     updates.maxResurfaces !== undefined
       ? Math.min(
           Math.max(1, Math.round(updates.maxResurfaces)),

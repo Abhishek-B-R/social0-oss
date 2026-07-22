@@ -2,8 +2,6 @@
 import { useState } from "react";
 import { landingFaqs } from "./landing-faqs";
 
-export { landingFaqs } from "./landing-faqs";
-
 export function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 

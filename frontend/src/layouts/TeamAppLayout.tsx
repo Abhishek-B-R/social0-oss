@@ -12,18 +12,11 @@ import {
 } from "@/lib/dashboard-base-path";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
-
-/** Survives layout remounts so in-team navigations don't flash the gate. */
-const bootstrappedTeams = new Set<string>();
-
-/** Call when deliberately leaving a team URL tree (e.g. switcher → Main). */
-export function clearTeamBootstrap(teamId?: string | null) {
-  if (teamId) {
-    bootstrappedTeams.delete(teamId);
-    return;
-  }
-  bootstrappedTeams.clear();
-}
+import {
+  hasTeamBootstrap,
+  markTeamBootstrapped,
+  unmarkTeamBootstrapped,
+} from "@/layouts/team-bootstrap";
 
 /**
  * Gate for /dashboard/teams/:teamId/* — ensures membership and activates
@@ -34,7 +27,7 @@ export function TeamAppLayout() {
   const { teamId } = useParams<{ teamId: string }>();
   const queryClient = useQueryClient();
   const [ready, setReady] = useState(
-    () => !!teamId && bootstrappedTeams.has(teamId),
+    () => !!teamId && hasTeamBootstrap(teamId),
   );
   const [error, setError] = useState<string | null>(null);
   const inFlightFor = useRef<string | null>(null);
@@ -49,56 +42,64 @@ export function TeamAppLayout() {
     if (!teamId || !data) return;
     if (inFlightFor.current === teamId) return;
 
-    const team: TeamListItem | undefined = data.teams.find(
-      (t) => t.id === teamId,
-    );
-    if (!team) {
-      bootstrappedTeams.delete(teamId);
-      setError("Team not found or you no longer have access.");
-      setReady(false);
-      return;
-    }
-
-    const stored = readTeamWorkspaceId(teamId);
-    const storedValid =
-      stored && team.workspaces.some((w) => w.id === stored) ? stored : null;
-    const targetId =
-      storedValid ??
-      team.defaultWorkspaceId ??
-      team.workspaces[0]?.id ??
-      null;
-
-    if (!targetId) {
-      bootstrappedTeams.delete(teamId);
-      setError("This team has no workspaces yet.");
-      setReady(false);
-      return;
-    }
-
-    const active = data.workspaces.find((w) => w.isActive);
-    const alreadyActive = data.workspaces.some(
-      (w) => w.id === targetId && w.isActive,
-    );
-
-    // Already gated for this team — never switchWorkspace again from a
-    // query refetch (that caused infinite switch → invalidate → switch loops).
-    if (bootstrappedTeams.has(teamId)) {
-      // Mid-leave: active workspace is no longer this team's (Main or another
-      // team). Don't yank it back — the switcher is navigating away.
-      if (active && active.teamId !== teamId) {
-        setReady(true);
-        setError(null);
-        return;
-      }
-      setReady(true);
-      setError(null);
-      return;
-    }
-
     let cancelled = false;
     inFlightFor.current = teamId;
 
-    (async () => {
+    void (async () => {
+      // Yield so status updates aren't synchronous setState-in-effect.
+      await Promise.resolve();
+      if (cancelled) return;
+
+      const team: TeamListItem | undefined = data.teams.find(
+        (t) => t.id === teamId,
+      );
+      if (!team) {
+        unmarkTeamBootstrapped(teamId);
+        setError("Team not found or you no longer have access.");
+        setReady(false);
+        inFlightFor.current = null;
+        return;
+      }
+
+      const stored = readTeamWorkspaceId(teamId);
+      const storedValid =
+        stored && team.workspaces.some((w) => w.id === stored) ? stored : null;
+      const targetId =
+        storedValid ??
+        team.defaultWorkspaceId ??
+        team.workspaces[0]?.id ??
+        null;
+
+      if (!targetId) {
+        unmarkTeamBootstrapped(teamId);
+        setError("This team has no workspaces yet.");
+        setReady(false);
+        inFlightFor.current = null;
+        return;
+      }
+
+      const active = data.workspaces.find((w) => w.isActive);
+      const alreadyActive = data.workspaces.some(
+        (w) => w.id === targetId && w.isActive,
+      );
+
+      // Already gated for this team — never switchWorkspace again from a
+      // query refetch (that caused infinite switch → invalidate → switch loops).
+      if (hasTeamBootstrap(teamId)) {
+        // Mid-leave: active workspace is no longer this team's (Main or another
+        // team). Don't yank it back — the switcher is navigating away.
+        if (active && active.teamId !== teamId) {
+          setReady(true);
+          setError(null);
+          inFlightFor.current = null;
+          return;
+        }
+        setReady(true);
+        setError(null);
+        inFlightFor.current = null;
+        return;
+      }
+
       setError(null);
       try {
         if (!alreadyActive) {
@@ -106,7 +107,7 @@ export function TeamAppLayout() {
           writeTeamWorkspaceId(teamId, targetId);
           // Mark bootstrapped before invalidate so a refetch can't re-enter
           // the switch path.
-          bootstrappedTeams.add(teamId);
+          markTeamBootstrapped(teamId);
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY }),
             queryClient.invalidateQueries({ queryKey: ["team"] }),
@@ -115,7 +116,7 @@ export function TeamAppLayout() {
           ]);
         } else {
           writeTeamWorkspaceId(teamId, targetId);
-          bootstrappedTeams.add(teamId);
+          markTeamBootstrapped(teamId);
         }
         if (!cancelled) {
           inFlightFor.current = null;
@@ -123,7 +124,7 @@ export function TeamAppLayout() {
         }
       } catch (err) {
         if (!cancelled) {
-          bootstrappedTeams.delete(teamId);
+          unmarkTeamBootstrapped(teamId);
           inFlightFor.current = null;
           setError(
             err instanceof Error

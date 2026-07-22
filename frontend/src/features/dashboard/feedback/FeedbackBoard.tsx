@@ -146,8 +146,10 @@ export function FeedbackBoard() {
     if (!sdkLoaded || !ssoToken || !boardToken || !mountRef.current) return;
 
     if (typeof window.Canny !== "function") {
-      setLoadFailed(true);
-      toast.error("Feedback widget not available");
+      queueMicrotask(() => {
+        setLoadFailed(true);
+        toast.error("Feedback widget not available");
+      });
       return;
     }
 

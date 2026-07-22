@@ -151,7 +151,7 @@ export function BulkToolsImage({
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
     null,
   );
-  const hasRestoredAutoFeaturesRef = useRef(false);
+  const [hasRestoredAutoFeatures, setHasRestoredAutoFeatures] = useState(false);
 
   const platformName = (id: string) =>
     PLATFORMS.find((p) => p.id === id)?.name ?? id;
@@ -194,37 +194,34 @@ export function BulkToolsImage({
   const hasXForAutoFeatures = selectedAccounts.some(
     (a) => a.platform === "twitter_x",
   );
-  useEffect(() => {
-    if (!hasPinterestSelected) {
-      if (pinterestError) setPinterestError(null);
-      return;
-    }
-    if (
-      !hasMissingPinterestBoard(
-        pinterestAccounts,
-        pinterestSettingsByAccount,
-      ) &&
-      pinterestError
-    ) {
-      setPinterestError(null);
-    }
-  }, [
-    hasPinterestSelected,
+  const pinterestBoardMissing = hasMissingPinterestBoard(
     pinterestAccounts,
     pinterestSettingsByAccount,
-    pinterestError,
-  ]);
+  );
+  if (
+    pinterestError &&
+    (!hasPinterestSelected || !pinterestBoardMissing)
+  ) {
+    setPinterestError(null);
+  }
 
   // Restore remembered auto features the first time X is selected.
-  useEffect(() => {
-    if (!hasXForAutoFeatures) return;
-    if (!rememberAutoFeatures) return;
-    if (hasRestoredAutoFeaturesRef.current) return;
+  if (
+    hasXForAutoFeatures &&
+    rememberAutoFeatures &&
+    !hasRestoredAutoFeatures
+  ) {
     const { autoRepostConfig, autoPlugConfig } = getAutoFeaturesInitialState();
     if (autoRepostConfig) setResurfaceConfig(autoRepostConfig);
     if (autoPlugConfig) setAutoPlugConfig(autoPlugConfig);
-    hasRestoredAutoFeaturesRef.current = true;
-  }, [hasXForAutoFeatures, rememberAutoFeatures, getAutoFeaturesInitialState]);
+    setHasRestoredAutoFeatures(true);
+  }
+
+  // Clear auto features when X is deselected (they only apply to X).
+  if (!hasXForAutoFeatures && (resurfaceConfig || autoPlugConfig)) {
+    setResurfaceConfig(null);
+    setAutoPlugConfig(null);
+  }
 
   // Persist remembered auto features when enabled and X is selected.
   useEffect(() => {
@@ -239,13 +236,6 @@ export function BulkToolsImage({
     persistAutoRepost,
     persistAutoPlug,
   ]);
-
-  // Clear auto features when X is deselected (they only apply to X).
-  useEffect(() => {
-    if (hasXForAutoFeatures) return;
-    setResurfaceConfig(null);
-    setAutoPlugConfig(null);
-  }, [hasXForAutoFeatures]);
 
   const filteredAccounts = useMemo(() => {
     if (!accountSearch.trim()) return accounts;

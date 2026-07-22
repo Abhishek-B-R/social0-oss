@@ -84,6 +84,7 @@ export function QueueScheduleSection({
   const [editMinute, setEditMinute] = useState(0);
 
   const fetchSlots = async () => {
+    await Promise.resolve();
     toast.dismiss();
     try {
       const res = await fetchApi("/api/queue/slots");
@@ -101,7 +102,13 @@ export function QueueScheduleSection({
   };
 
   useEffect(() => {
-    fetchSlots();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void fetchSlots();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleAddTime = () => {

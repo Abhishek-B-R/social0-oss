@@ -36,6 +36,8 @@ export function PinterestConfigInline({
   const [createSubmitting, setCreateSubmitting] = useState(false);
 
   const fetchBoards = useCallback(async () => {
+    // Yield so mount/visibility-triggered loads aren't sync setState-in-effect.
+    await Promise.resolve();
     if (!accountId || !isVisible) {
       setBoards([]);
       setBoardsLoading(false);
@@ -62,7 +64,14 @@ export function PinterestConfigInline({
   }, [accountId, isVisible]);
 
   useEffect(() => {
-    if (isVisible) fetchBoards();
+    if (!isVisible) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void fetchBoards();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [isVisible, fetchBoards]);
 
   useEffect(() => {

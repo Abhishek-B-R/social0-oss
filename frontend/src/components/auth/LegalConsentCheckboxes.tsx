@@ -1,11 +1,6 @@
 
 import { Link } from "react-router-dom";
-
-export type LegalConsentValues = {
-  acceptTerms: boolean;
-  acceptPrivacy: boolean;
-  marketingOptIn: boolean;
-};
+import type { LegalConsentValues } from "@/components/auth/legal-consent";
 
 type LegalConsentCheckboxesProps = {
   values: LegalConsentValues;
@@ -99,9 +94,3 @@ export function LegalConsentCheckboxes({
     </fieldset>
   );
 }
-
-export const EMPTY_LEGAL_CONSENT: LegalConsentValues = {
-  acceptTerms: false,
-  acceptPrivacy: false,
-  marketingOptIn: false,
-};

@@ -42,6 +42,7 @@ export function ConnectionsPage() {
 
   /** Re-pulls accounts; silent (no skeleton) unless it's the initial load. */
   const refetch = useCallback(async () => {
+    await Promise.resolve();
     const seq = ++fetchSeq.current;
     const result = await loadConnectionsPageData();
     if (seq !== fetchSeq.current) return; // a newer fetch superseded this one
@@ -66,7 +67,13 @@ export function ConnectionsPage() {
   // Initial load, plus refetch whenever OAuth flows land back here with
   // query params (?connected=..., ?reauth=..., ?error=...).
   useEffect(() => {
-    void refetch();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void refetch();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [refetch, searchParams]);
 
   // Refetch when the tab regains focus - covers OAuth completed in another

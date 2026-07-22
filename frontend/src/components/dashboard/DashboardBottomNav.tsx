@@ -1,6 +1,6 @@
 import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   IconList,
   IconLink,
@@ -20,6 +20,11 @@ export function DashboardBottomNav() {
   const dash = useDashboardPath();
   const relative = getDashboardRelativePath(pathname);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [pendingPath, setPendingPath] = useState(pathname);
+  if (pendingPath !== pathname) {
+    setPendingPath(pathname);
+    setPendingHref(null);
+  }
 
   const createHref = dash("composer");
 
@@ -50,10 +55,6 @@ export function DashboardBottomNav() {
       icon: IconDots,
     },
   ];
-
-  useEffect(() => {
-    setPendingHref(null);
-  }, [pathname]);
 
   const isActive = (key: string) => {
     if (key === "connections") return relative === "connections";

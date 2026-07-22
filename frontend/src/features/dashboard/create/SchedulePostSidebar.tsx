@@ -177,18 +177,16 @@ export function SchedulePostSidebar({
   }, [combinedDateTime, use24HourTimeFormat, dateFormat, timezone]);
 
   // Keep the parent `scheduledAt` in sync with our inputs while scheduled mode is on.
-  useEffect(() => {
-    if (!isScheduled) return;
-    if (!combinedDateTime) return;
-    if (scheduledAt?.getTime() === combinedDateTime.getTime()) return;
+  if (
+    isScheduled &&
+    combinedDateTime &&
+    scheduledAt?.getTime() !== combinedDateTime.getTime()
+  ) {
     setScheduledAt(combinedDateTime);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScheduled, combinedDateTime]);
+  }
 
-  // If scheduled mode is enabled and no datetime exists yet, initialize to today 21:00 (9 PM), or soon if that has passed.
-  useEffect(() => {
-    if (!isScheduled) return;
-    if (scheduledAt) return;
+  // If scheduled mode is enabled and no datetime exists yet, initialize defaults.
+  if (isScheduled && !scheduledAt) {
     setScheduledAt(defaultScheduledAt);
     const yyyy = defaultScheduledAt.getFullYear();
     const mm = String(defaultScheduledAt.getMonth() + 1).padStart(2, "0");
@@ -197,8 +195,7 @@ export function SchedulePostSidebar({
     const hh = String(defaultScheduledAt.getHours()).padStart(2, "0");
     const mi = String(defaultScheduledAt.getMinutes()).padStart(2, "0");
     setTimeValue(`${hh}:${mi}`);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScheduled]);
+  }
 
   const handlePostNow = () => {
     intendedModeRef.current = "now";
@@ -230,13 +227,18 @@ export function SchedulePostSidebar({
 
   useEffect(() => {
     if (!isScheduled) {
-      setNextSlot(null);
-      setNextSlotLoading(false);
+      queueMicrotask(() => {
+        setNextSlot(null);
+        setNextSlotLoading(false);
+      });
       return;
     }
     let cancelled = false;
-    setNextSlotLoading(true);
-    setNextSlot(null);
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setNextSlotLoading(true);
+      setNextSlot(null);
+    });
     fetchApi("/api/queue/next-slot")
       .then((res) => res.json())
       .then((data) => {

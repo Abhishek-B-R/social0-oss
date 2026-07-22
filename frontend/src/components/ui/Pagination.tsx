@@ -2,8 +2,6 @@
 import Link from "@/components/AppLink";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-const PAGE_SIZE = 12;
-
 export type PaginationProps = {
   currentPage: number;
   totalPages: number;
@@ -14,7 +12,7 @@ export type PaginationProps = {
 /**
  * Builds the URL for a given page, preserving all existing search params (platform, account, sort, etc.).
  */
-export function buildPaginationUrl(
+function buildPaginationUrl(
   basePath: string,
   page: number,
   searchParams: Record<string, string | string[] | undefined>
@@ -101,5 +99,3 @@ export function Pagination({
     </nav>
   );
 }
-
-export { PAGE_SIZE };

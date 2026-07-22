@@ -41,10 +41,12 @@ import {
   MdClose,
 } from "react-icons/md";
 import {
-  type TikTokPostSettings,
   TikTokSettings,
-  DEFAULT_TIKTOK_POST_SETTINGS,
 } from "@/components/TikTokSettings";
+import {
+  DEFAULT_TIKTOK_POST_SETTINGS,
+  type TikTokPostSettings,
+} from "@/components/tiktok-post-settings";
 import {
   XPostSettingsInline,
   type XPostSettings,

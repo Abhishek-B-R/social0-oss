@@ -94,7 +94,7 @@ async function withIdempotency(
 export async function registerPostsRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireV1ApiKey);
 
-  app.get("/posts", async (request, reply) => {
+  app.get("/posts", async (request, _reply) => {
     const userId = v1UserId(request);
     const query = request.query as Record<string, string | undefined>;
     const result = await v1ListPosts(userId, {

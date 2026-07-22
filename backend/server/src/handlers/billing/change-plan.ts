@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { auth } from "../../lib/auth.js";
 import { headers } from "../../lib/http/request-cookies.js";
 import { RouteResponse } from "../../lib/http/http.js";

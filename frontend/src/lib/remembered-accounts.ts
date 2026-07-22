@@ -95,37 +95,40 @@ export function useApplyRememberedSelectionWhenReady(options: {
 }): { isHydrated: boolean } {
   const [isHydrated, setIsHydrated] = useState(false);
   const appliedRef = useRef(false);
+  const {
+    skip,
+    accountsLoading,
+    accounts,
+    getInitialSelectedIds,
+    setSelectedIds,
+  } = options;
 
   useEffect(() => {
-    if (options.skip) {
+    if (skip) {
       appliedRef.current = false;
-      setIsHydrated(false);
+      queueMicrotask(() => setIsHydrated(false));
       return;
     }
-    if (options.accountsLoading) return;
+    if (accountsLoading) return;
     if (appliedRef.current) return;
 
     // Mark hydrated first so the persist effect can safely write on the next render.
     appliedRef.current = true;
-    setIsHydrated(true);
+    queueMicrotask(() => {
+      setIsHydrated(true);
 
-    const validIds = new Set(
-      options.accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
-    );
-    if (validIds.size === 0) return;
-    const restored = options.getInitialSelectedIds(validIds);
-    if (restored.size === 0) return;
-    options.setSelectedIds((prev) => {
-      if (prev.size > 0) return prev;
-      return restored;
+      const validIds = new Set(
+        accounts.filter((a) => !a.tokenExpired).map((a) => a.id),
+      );
+      if (validIds.size === 0) return;
+      const restored = getInitialSelectedIds(validIds);
+      if (restored.size === 0) return;
+      setSelectedIds((prev) => {
+        if (prev.size > 0) return prev;
+        return restored;
+      });
     });
-  }, [
-    options.skip,
-    options.accountsLoading,
-    options.accounts,
-    options.getInitialSelectedIds,
-    options.setSelectedIds,
-  ]);
+  }, [skip, accountsLoading, accounts, getInitialSelectedIds, setSelectedIds]);
 
   return { isHydrated };
 }

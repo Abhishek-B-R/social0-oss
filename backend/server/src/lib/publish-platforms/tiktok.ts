@@ -44,7 +44,7 @@ async function buildTikTokPublishedResult(
   accessToken: string,
   platformPostId?: string | null,
 ): Promise<PublishPlatformResult> {
-  let platformPostUrl: string | null = null;
+  let platformPostUrl: string | null;
   try {
     platformPostUrl = await resolveTikTokPublishedProfileUrl(pub, accessToken);
   } catch {
@@ -118,6 +118,9 @@ export async function publishToTikTok(
           brand_organic?: boolean;
           brand_content?: boolean;
           brand_organic_toggle?: boolean;
+          post_as_draft?: boolean;
+          mark_ai_generated?: boolean;
+          video_title?: string;
         }
       >
     | undefined;
@@ -148,8 +151,8 @@ export async function publishToTikTok(
   const caption = post.finalContent?.trim() ?? "";
   const captionTruncated = truncate(caption, 2200);
 
-  const postAsDraft = !!(accountSettings as any).post_as_draft;
-  const markAiGenerated = !!(accountSettings as any).mark_ai_generated;
+  const postAsDraft = !!accountSettings.post_as_draft;
+  const markAiGenerated = !!accountSettings.mark_ai_generated;
 
   // Base post_info shared by video and photo (only used when not posting as draft)
   const basePostInfo: {
@@ -166,7 +169,7 @@ export async function publishToTikTok(
     privacy_level: accountSettings.privacy_level,
   };
 
-  const userTitle = (accountSettings as any).video_title?.trim();
+  const userTitle = accountSettings.video_title?.trim();
   if (userTitle) {
     basePostInfo.title = userTitle.slice(0, 150);
     if (captionTruncated) {
@@ -265,7 +268,7 @@ export async function publishToTikTok(
       photoPostInfo.auto_add_music = tiktokOptions?.autoAddMusic ?? true;
     }
 
-    const userPhotoTitle = (accountSettings as any).video_title?.trim();
+    const userPhotoTitle = accountSettings.video_title?.trim();
     if (userPhotoTitle) {
       photoPostInfo.title = userPhotoTitle.slice(0, 90);
       if (caption) photoPostInfo.description = truncate(caption, 4000);

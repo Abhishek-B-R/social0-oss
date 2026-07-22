@@ -87,18 +87,25 @@ export function VideoCard({
   const thumbVideoRef = useRef<HTMLVideoElement>(null);
   const thumbCanvasRef = useRef<HTMLCanvasElement>(null);
   const [thumbReady, setThumbReady] = useState(false);
+  const [thumbPreviewUrl, setThumbPreviewUrl] = useState(item.previewUrl);
+  if (thumbPreviewUrl !== item.previewUrl) {
+    setThumbPreviewUrl(item.previewUrl);
+    setThumbReady(false);
+  }
   const [isPlaying, setIsPlaying] = useState(false);
-  const [dateStr, setDateStr] = useState(formatDateForInput(item.scheduledAt));
-  const [timeStr, setTimeStr] = useState(formatTimeForInput(item.scheduledAt));
-
-  useEffect(() => {
+  const scheduledAtMs = item.scheduledAt.getTime();
+  const [dateStr, setDateStr] = useState(() =>
+    formatDateForInput(item.scheduledAt),
+  );
+  const [timeStr, setTimeStr] = useState(() =>
+    formatTimeForInput(item.scheduledAt),
+  );
+  const [syncedScheduledAt, setSyncedScheduledAt] = useState(scheduledAtMs);
+  if (syncedScheduledAt !== scheduledAtMs) {
+    setSyncedScheduledAt(scheduledAtMs);
     setDateStr(formatDateForInput(item.scheduledAt));
     setTimeStr(formatTimeForInput(item.scheduledAt));
-  }, [item.scheduledAt]);
-
-  useEffect(() => {
-    setThumbReady(false);
-  }, [item.previewUrl]);
+  }
 
   useEffect(() => {
     if (!isPlaying) return;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { IconChevronDown, IconPlus } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { createTeam, createWorkspaceInTeam } from "@/api/team";
@@ -42,6 +42,7 @@ export function CreateWorkspaceDialog({
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceTouched, setWorkspaceTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [wasOpen, setWasOpen] = useState(open);
 
   const defaultWorkspaceName = (name: string) => {
     const trimmed = name.trim();
@@ -52,33 +53,33 @@ export function CreateWorkspaceDialog({
     return `${base}${suffix}`;
   };
 
-  useEffect(() => {
-    if (!open) return;
-    const hasTeams = ownedTeams.length > 0;
-    const preferExisting = !!prefillTeamId || (!canCreateTeam && hasTeams);
-    setTeamMode(preferExisting || !!prefillTeamId);
-    setTeamChoice(preferExisting ? "existing" : "new");
-    setExistingTeamId(
-      prefillTeamId && ownedTeams.some((t) => t.id === prefillTeamId)
-        ? prefillTeamId
-        : ownedTeams[0]?.id ?? "",
-    );
-    setTeamName("");
-    setWorkspaceName("");
-    setWorkspaceTouched(false);
-    setSubmitting(false);
-  }, [open, prefillTeamId, ownedTeams, canCreateTeam]);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      const hasTeams = ownedTeams.length > 0;
+      const preferExisting = !!prefillTeamId || (!canCreateTeam && hasTeams);
+      setTeamMode(preferExisting || !!prefillTeamId);
+      setTeamChoice(preferExisting ? "existing" : "new");
+      setExistingTeamId(
+        prefillTeamId && ownedTeams.some((t) => t.id === prefillTeamId)
+          ? prefillTeamId
+          : ownedTeams[0]?.id ?? "",
+      );
+      setTeamName("");
+      setWorkspaceName("");
+      setWorkspaceTouched(false);
+      setSubmitting(false);
+    }
+  }
 
   // Keep default workspace name in sync with a new team name until the user edits it.
-  // Existing teams already have a default workspace — leave the name blank for those.
-  useEffect(() => {
-    if (!open || !teamMode || workspaceTouched) return;
-    if (teamChoice === "new") {
-      setWorkspaceName(defaultWorkspaceName(teamName));
-      return;
+  if (open && teamMode && !workspaceTouched) {
+    const nextName =
+      teamChoice === "new" ? defaultWorkspaceName(teamName) : "";
+    if (workspaceName !== nextName) {
+      setWorkspaceName(nextName);
     }
-    setWorkspaceName("");
-  }, [open, teamMode, teamChoice, teamName, workspaceTouched]);
+  }
 
   const canSubmit = (() => {
     if (!workspaceName.trim()) return false;

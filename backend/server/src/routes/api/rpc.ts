@@ -14,7 +14,7 @@ import * as publish from "../../services/publish.js";
 import * as resurface from "../../services/resurface.js";
 import * as settings from "../../services/settings.js";
 
-type RpcHandler = (...args: any[]) => Promise<unknown>;
+type RpcHandler = (...args: never[]) => Promise<unknown>;
 
 const RPC_MUTATION_HANDLERS = new Set([
   "posts.createPost",
@@ -148,7 +148,10 @@ export async function registerRpcRoutes(app: FastifyInstance) {
     try {
       const result = await runWithRequestContext(
         { req: request, reply },
-        async () => handler(...reviveArgs(args)),
+        async () =>
+          (handler as (...args: unknown[]) => Promise<unknown>)(
+            ...reviveArgs(args),
+          ),
       );
       if (!reply.sent) {
         return result ?? null;

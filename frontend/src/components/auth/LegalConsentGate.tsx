@@ -8,11 +8,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { LegalConsentCheckboxes } from "@/components/auth/LegalConsentCheckboxes";
 import {
   EMPTY_LEGAL_CONSENT,
-  LegalConsentCheckboxes,
   type LegalConsentValues,
-} from "@/components/auth/LegalConsentCheckboxes";
+} from "@/components/auth/legal-consent";
 import { toast } from "sonner";
 import { friendlyAuthError } from "@/lib/auth-errors";
 
@@ -28,6 +28,7 @@ export function LegalConsentGate() {
     useState<LegalConsentValues>(EMPTY_LEGAL_CONSENT);
 
   const checkStatus = useCallback(async () => {
+    await Promise.resolve();
     setLoading(true);
     try {
       const res = await fetchApi("/api/legal/status", { credentials: "include" });
@@ -49,7 +50,13 @@ export function LegalConsentGate() {
   }, []);
 
   useEffect(() => {
-    void checkStatus();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void checkStatus();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [checkStatus]);
 
   const handleAccept = async () => {

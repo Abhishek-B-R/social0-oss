@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
 import crypto from "crypto";
 import { eq, and } from "drizzle-orm";
 import {

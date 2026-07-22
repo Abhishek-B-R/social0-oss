@@ -291,7 +291,7 @@ export async function GET(request: Request) {
           // Plain retweet
           try {
             await client.v2.unretweet(userId, platformPostId);
-          } catch (unrtErr) {
+          } catch (_unrtErr) {
             // May already be unretweeted
           }
           await client.v2.retweet(userId, platformPostId);

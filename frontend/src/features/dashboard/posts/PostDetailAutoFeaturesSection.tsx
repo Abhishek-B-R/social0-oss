@@ -496,6 +496,7 @@ export function PostDetailAutoFeaturesSection({
     isScheduled,
     pendingAutoPlugFromServer,
     pendingResurfaceFromServer,
+    postId,
     repostEditLocked,
     resurfaceDetail,
     refresh,

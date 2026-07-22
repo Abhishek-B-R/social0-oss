@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
 
 const MAX_CAPTION = 2200;
@@ -66,14 +66,20 @@ export function ImageCard({
   onDelete,
   onToggleCollapsed,
 }: ImageCardProps) {
-  const [dateStr, setDateStr] = useState(formatDateForInput(item.scheduledAt));
-  const [timeStr, setTimeStr] = useState(formatTimeForInput(item.scheduledAt));
-  const collapsed = item.collapsed === true;
-
-  useEffect(() => {
+  const scheduledAtMs = item.scheduledAt.getTime();
+  const [dateStr, setDateStr] = useState(() =>
+    formatDateForInput(item.scheduledAt),
+  );
+  const [timeStr, setTimeStr] = useState(() =>
+    formatTimeForInput(item.scheduledAt),
+  );
+  const [syncedScheduledAt, setSyncedScheduledAt] = useState(scheduledAtMs);
+  if (syncedScheduledAt !== scheduledAtMs) {
+    setSyncedScheduledAt(scheduledAtMs);
     setDateStr(formatDateForInput(item.scheduledAt));
     setTimeStr(formatTimeForInput(item.scheduledAt));
-  }, [item.scheduledAt]);
+  }
+  const collapsed = item.collapsed === true;
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;

@@ -18,7 +18,12 @@ export function sanitizeFilename(filename: string): string {
   // Remove path components
   const basename = filename.split("/").pop() || filename;
   // Remove null bytes and control characters
-  const sanitized = basename.replace(/[\x00-\x1f\x7f]/g, "");
+  const sanitized = [...basename]
+    .filter((ch) => {
+      const code = ch.charCodeAt(0);
+      return code >= 0x20 && code !== 0x7f;
+    })
+    .join("");
   // Limit length
   return sanitized.slice(0, 255);
 }
