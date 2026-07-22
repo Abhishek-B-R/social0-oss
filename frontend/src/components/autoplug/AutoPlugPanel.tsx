@@ -59,7 +59,9 @@ export function AutoPlugPanel({
       isWithinAutoPlugWindow(publishedAt));
 
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
   useEffect(() => {
     if (!visible && !modalMode) onChangeRef.current(null);
   }, [visible, modalMode]);
@@ -111,7 +113,9 @@ function AutoPlugPanelInner({
     (enabled || modalMode) && plugCommentTrimmed.length === 0;
 
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
   useEffect(() => {
     const notify = onChangeRef.current;
     if (!enabled) {

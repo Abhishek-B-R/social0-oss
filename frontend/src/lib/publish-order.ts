@@ -156,8 +156,6 @@ export async function publishPostWithParallelProgress(
   options: PublishOptions | undefined,
   onPoll: (rows: PublicationProgressRow[]) => void,
 ): Promise<PublishResult> {
-  let pollTimer: ReturnType<typeof setInterval> | null = null;
-
   const pollOnce = async () => {
     try {
       const rows = await getPostPublicationList(postId);
@@ -167,7 +165,7 @@ export async function publishPostWithParallelProgress(
     }
   };
 
-  pollTimer = setInterval(() => {
+  const pollTimer = setInterval(() => {
     void pollOnce();
   }, PROGRESS_POLL_MS);
 
@@ -206,7 +204,7 @@ export async function publishPostWithParallelProgress(
     await pollOnce();
     return await publishWithTimeout();
   } finally {
-    if (pollTimer) clearInterval(pollTimer);
+    clearInterval(pollTimer);
     await pollOnce();
   }
 }

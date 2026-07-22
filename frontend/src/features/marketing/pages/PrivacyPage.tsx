@@ -2,7 +2,6 @@ import type { PageMetadata } from "@/lib/seo";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { DOCS_PRIVACY_URL } from "@/lib/docs-url";
-import { MdQuestionMark } from "react-icons/md";
 
 export const metadata: PageMetadata = {
   title: "Privacy Policy | Social0 - Social Media Scheduling Tool",

@@ -970,10 +970,7 @@ export function VideoPostForm({
       const file = e.clipboardData?.files?.[0];
       if (!file || !file.type.startsWith("video/")) return;
       e.preventDefault();
-      const platforms = accounts
-        .filter((a) => selectedIds.has(a.id))
-        .map((a) => a.platform);
-      const validation = validateMediaFile(file, platforms);
+      const validation = validateMediaFile(file);
       if (!validation.allowed) {
         toast.error(
           validation.error ?? "File too large for selected platforms.",
@@ -1004,11 +1001,6 @@ export function VideoPostForm({
     return () => window.removeEventListener("beforeunload", handler);
   }, [isUploading]);
 
-  const selectedPlatforms = useMemo(
-    () => accounts.filter((a) => selectedIds.has(a.id)).map((a) => a.platform),
-    [accounts, selectedIds],
-  );
-
   // --- SECTION: media upload handlers ---
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1017,7 +1009,7 @@ export function VideoPostForm({
       toast.error("Please select a video file (MP4, WebM, etc.).");
       return;
     }
-    const validation = validateMediaFile(file, selectedPlatforms);
+    const validation = validateMediaFile(file);
     if (!validation.allowed) {
       toast.error(validation.error ?? "File too large for selected platforms.");
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -1061,7 +1053,7 @@ export function VideoPostForm({
       toast.error("Please drop a video file (MP4, WebM, etc.).");
       return;
     }
-    const validation = validateMediaFile(file, selectedPlatforms);
+    const validation = validateMediaFile(file);
     if (!validation.allowed) {
       toast.error(validation.error ?? "File too large for selected platforms.");
       return;

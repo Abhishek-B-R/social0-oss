@@ -1,7 +1,6 @@
 import type { PageMetadata } from "@/lib/seo";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
-import { MdQuestionMark } from "react-icons/md";
 import { DOCS_TERMS_URL } from "@/lib/docs-url";
 
 export const metadata: PageMetadata = {

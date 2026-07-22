@@ -1,5 +1,4 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { fetchApi } from "@/lib/fetch-api";
 import { apiUrl } from "@/lib/env";
 
@@ -99,7 +98,6 @@ export function ConnectionsList({
   );
   const navigate = useNavigate();
   const dash = useDashboardPath();
-  const invalidateQueries = useInvalidateQueries();
   const [searchParams] = useSearchParams();
 
   useEffect(() => {

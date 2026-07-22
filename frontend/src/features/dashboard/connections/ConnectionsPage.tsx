@@ -20,7 +20,9 @@ export function ConnectionsPage() {
   >(null);
   const fetchSeq = useRef(0);
   const dataRef = useRef(data);
-  dataRef.current = data;
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   const handleAccountDisconnected = useCallback((accountId: string) => {
     setData((prev) => {

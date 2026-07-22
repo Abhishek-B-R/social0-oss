@@ -1,5 +1,4 @@
 
-import { useNavigate } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { usePostHog } from "@posthog/react";
 import { capturePostAction } from "@/lib/posthog-events";
@@ -16,7 +15,6 @@ export function PostCardDeleteButton({
   /** e.g. "Cancel" for scheduled posts; default "Delete" */
   buttonLabel?: string;
 }) {
-  const navigate = useNavigate();
   const invalidateQueries = useInvalidateQueries();
   const posthog = usePostHog();
   const [open, setOpen] = useState(false);

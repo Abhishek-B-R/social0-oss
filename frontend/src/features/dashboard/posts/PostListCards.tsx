@@ -1,5 +1,4 @@
 
-import { useNavigate } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import Link from "@/components/AppLink";
 import { AlertCircle, MoreHorizontal } from "lucide-react";
@@ -227,7 +226,6 @@ function QuickActionsMenu({
   status: QuickActionStatus;
   composerSlug: "text" | "image" | "video" | "threads" | "collection";
 }) {
-  const navigate = useNavigate();
   const invalidateQueries = useInvalidateQueries();
   const posthog = usePostHog();
   const [open, setOpen] = useState(false);
@@ -435,7 +433,6 @@ export function PostListCards({
   userPosts,
   publicationsByPostId,
   firstMediaByPost,
-  resurfaceByPostId = {},
   queuedPostIds,
   emptyMessage = "You haven't created any posts yet.",
   filterMessage = "No posts match your filters.",

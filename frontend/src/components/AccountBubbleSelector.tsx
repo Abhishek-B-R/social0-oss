@@ -117,9 +117,6 @@ export function AccountBubbleSelector({
   const platformClass = compact
     ? "text-xs text-text-muted"
     : "text-xs text-text-muted";
-  const initialClass =
-    "flex h-full w-full items-center justify-center rounded-full bg-muted font-semibold text-muted-foreground " +
-    (compact ? "text-sm" : "text-lg");
 
   return (
     <div className={cn("flex flex-wrap items-center", bubbleGap)}>

@@ -1,5 +1,4 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useState, useEffect, Suspense } from "react";
 import { usePostHog } from "@posthog/react";
 import Link from "@/components/AppLink";
@@ -53,7 +52,6 @@ function Spinner() {
 function AuthPageContent() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const invalidateQueries = useInvalidateQueries();
   const { data: session, isPending } = useSession();
   const posthog = usePostHog();
   const callbackUrl = resolveCallbackUrl(searchParams.get("callbackUrl"));

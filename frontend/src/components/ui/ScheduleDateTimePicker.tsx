@@ -37,12 +37,16 @@ function createDateWithTime(time: string, baseDate?: Date): Date {
 export function ScheduleDateTimePicker({
   value,
   onChange,
-  placeholder = "Pick date & time",
-  minDate = new Date(),
-  maxDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+  minDate,
+  maxDate,
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
 }: ScheduleDateTimePickerProps) {
+  const resolvedMinDate = minDate ?? startOfToday();
+  const resolvedMaxDate = useMemo(
+    () => maxDate ?? new Date(startOfToday().getTime() + 365 * 24 * 60 * 60 * 1000),
+    [maxDate],
+  );
   // Compute initial date and time
   const initialDate = useMemo(() => {
     if (value) return value;
@@ -69,12 +73,12 @@ export function ScheduleDateTimePicker({
 
   const applyCombined = (combined: Date) => {
     const now = new Date();
-    const earliestAllowed = isBefore(minDate, now) ? now : minDate;
+    const earliestAllowed = isBefore(resolvedMinDate, now) ? now : resolvedMinDate;
     if (isBefore(combined, earliestAllowed)) {
       setTimeError("Scheduled time must be in the future.");
       return;
     }
-    if (isBefore(maxDate, combined)) {
+    if (isBefore(resolvedMaxDate, combined)) {
       setTimeError("Scheduled time must be within the next 1 year.");
       return;
     }
@@ -184,7 +188,7 @@ export function ScheduleDateTimePicker({
             onSelect={handleDateSelect}
             disabled={(date) =>
               startOfDay(date) < startOfDay(new Date()) ||
-              startOfDay(date) > startOfDay(maxDate)
+              startOfDay(date) > startOfDay(resolvedMaxDate)
             }
             defaultMonth={selectedDate || startOfToday()}
             classNames={{

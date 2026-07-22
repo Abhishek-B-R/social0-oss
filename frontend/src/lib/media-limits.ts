@@ -78,10 +78,7 @@ export type ValidateMediaResult =
  * Images: never block (server compresses per platform).
  * Videos: enforce CLIENT_MAX_VIDEO_UPLOAD_BYTES only - platform limits apply at publish time.
  */
-export function validateMediaFile(
-  file: File,
-  _selectedPlatforms: string[],
-): ValidateMediaResult {
+export function validateMediaFile(file: File): ValidateMediaResult {
   const isImage = file.type.startsWith("image/");
   const isVideo = file.type.startsWith("video/");
   if (!isImage && !isVideo) {

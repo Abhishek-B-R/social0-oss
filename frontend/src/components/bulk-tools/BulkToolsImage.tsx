@@ -48,7 +48,6 @@ const LIMITS = {
   maxCount: 100, // 100 images max count (global)
   maxPerSlot: 50, // 50 images per bulk slot/session
 };
-const MAX_IMAGES = LIMITS.maxCount;
 const MAX_IMAGES_PER_SLOT = LIMITS.maxPerSlot;
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024; // 50MB - API may limit to 10MB
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";

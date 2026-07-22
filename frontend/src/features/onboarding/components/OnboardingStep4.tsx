@@ -115,7 +115,6 @@ function fireBurst(fire: CreateTypes) {
 export function OnboardingStep4() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fireRef = useRef<CreateTypes | null>(null);
-  const stopRef = useRef<(() => void) | null>(null);
 
   const sizeCanvas = (node: HTMLCanvasElement) => {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -137,18 +136,6 @@ export function OnboardingStep4() {
       useWorker: false,
       disableForReducedMotion: false,
     });
-  }, []);
-
-  const celebrate = useCallback(() => {
-    stopRef.current?.();
-    const fire = fireRef.current;
-    if (!fire) {
-      console.warn("[onboarding] confetti not ready");
-      return;
-    }
-    if (canvasRef.current) sizeCanvas(canvasRef.current);
-    console.log("[onboarding] firing confetti");
-    stopRef.current = fireBurst(fire);
   }, []);
 
   useEffect(() => {

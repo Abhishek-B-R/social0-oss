@@ -95,15 +95,12 @@ export function EditPostForm({
   };
 
   const isVideo = (mime: string) => mime.startsWith("video/");
-  const selectedPlatforms = accounts
-    .filter((a) => selectedIds.has(a.id))
-    .map((a) => a.platform);
 
   const addFiles = useCallback(
     (files: FileList | File[]) => {
       const list = Array.isArray(files) ? files : Array.from(files);
       for (const file of list) {
-        const validation = validateMediaFile(file, selectedPlatforms);
+        const validation = validateMediaFile(file);
         if (!validation.allowed) {
           toast.error(
             validation.error ?? "File too large for selected platforms.",
@@ -118,7 +115,7 @@ export function EditPostForm({
       toast.dismiss();
       setNewFiles((prev) => [...prev, ...toAdd]);
     },
-    [selectedPlatforms],
+    [],
   );
 
   const removeNewFile = (previewUrl: string) => {

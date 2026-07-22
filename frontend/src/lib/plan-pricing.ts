@@ -138,7 +138,7 @@ export function formatPlanPriceLabel(
 }
 
 /** Hero price unit — yearly toggle still leads with /month (effective rate). */
-export function periodSuffix(_interval: BillingInterval): string {
+export function periodSuffix(): string {
   return "/month";
 }
 

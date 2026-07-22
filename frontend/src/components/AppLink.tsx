@@ -25,10 +25,12 @@ function routerTo(href: string): RouterLinkProps["to"] {
 export default function AppLink({
   href,
   children,
-  prefetch: _prefetch,
+  prefetch,
   onClick,
   ...rest
 }: AppLinkProps) {
+  // Accepted for API compatibility; not forwarded to the DOM/router link.
+  void prefetch;
   const location = useLocation();
   const navigate = useNavigate();
   // API routes must be full page loads (OAuth redirects), not client-side router navigation.

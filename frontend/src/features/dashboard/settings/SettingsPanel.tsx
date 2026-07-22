@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { fetchApi } from "@/lib/fetch-api";
 
@@ -97,7 +96,6 @@ function ProfileSettingsSection({
   email: string;
   isCredentialUser: boolean;
 }) {
-  const navigate = useNavigate();
   const invalidateQueries = useInvalidateQueries();
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [savingName, setSavingName] = useState(false);
@@ -255,7 +253,6 @@ function ChangePasswordForm({
   onSuccess: () => void;
   setLoading: (v: boolean) => void;
 }) {
-  const navigate = useNavigate();
   const invalidateQueries = useInvalidateQueries();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -358,7 +355,6 @@ function ChangeEmailForm({
   resendCooldown?: number;
   onResend?: () => void;
 }) {
-  const navigate = useNavigate();
   const invalidateQueries = useInvalidateQueries();
   const setOtpFromString = useCallback(
     (s: string) => {
@@ -813,7 +809,6 @@ function AvatarEditor({
   /** Shown after a successful save; omit when the parent handles feedback. */
   successMessage?: string;
 }) {
-  const navigate = useNavigate();
   const invalidateQueries = useInvalidateQueries();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
@@ -1013,7 +1008,6 @@ export function SettingsPanel({
   timeZones: string[];
   isCredentialUser: boolean;
 }) {
-  const navigate = useNavigate();
   const invalidateQueries = useInvalidateQueries();
   const [activeTab, setActiveTab] = useState<SettingsTabId>("profile");
   const [passwordSuccess, setPasswordSuccess] = useState(false);

@@ -5,7 +5,8 @@ export function fetchApi(
   path: string,
   init?: RequestInit,
 ): Promise<Response> {
-  const { credentials: _omit, ...rest } = init ?? {};
+  const rest = { ...(init ?? {}) };
+  delete rest.credentials;
   return fetch(apiUrl(path), {
     ...rest,
     credentials: "include",

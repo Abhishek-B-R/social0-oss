@@ -1,5 +1,4 @@
 
-import { useNavigate } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useCallback, useState, type ReactNode } from "react";
 import Link from "@/components/AppLink";
@@ -162,7 +161,6 @@ export function PostDetailAutoFeaturesSection({
   pendingAutoPlugFromServer?: Partial<AutoPlugConfig> | null;
   pendingResurfaceFromServer?: Partial<AutoResurfaceConfig> | null;
 }) {
-  const navigate = useNavigate();
   const invalidateQueries = useInvalidateQueries();
   const { accounts, loading } = useAccountsForForm(null);
   const [plugModalOpen, setPlugModalOpen] = useState(false);

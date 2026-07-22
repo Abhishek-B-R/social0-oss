@@ -1,6 +1,5 @@
 
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useState, useCallback, Suspense } from "react";
 import Link from "@/components/AppLink";
 import { authClient } from "@/lib/auth-client";
@@ -13,7 +12,6 @@ const OTP_LENGTH = 6;
 function ResetPasswordContent() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const invalidateQueries = useInvalidateQueries();
   const emailParam = searchParams.get("email") ?? "";
   const [email] = useState(decodeURIComponent(emailParam));
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));

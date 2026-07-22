@@ -24,13 +24,13 @@ function landingNavHref(href: string, pathname: string | null) {
   return href;
 }
 
-function navLinksForPath(_pathname: string | null): NavLink[] {
+function navLinksForPath(): NavLink[] {
   return landingNavLinks;
 }
 
 export function LandingHeader() {
   const pathname = useLocation().pathname;
-  const navLinks = navLinksForPath(pathname);
+  const navLinks = navLinksForPath();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const { data: session } = useSession();

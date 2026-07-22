@@ -936,17 +936,12 @@ export function ThreadsPostForm({
     return Math.max(0, ...imageOrders, ...videoOrders);
   };
 
-  const selectedPlatforms = useMemo(
-    () => accounts.filter((a) => selectedIds.has(a.id)).map((a) => a.platform),
-    [accounts, selectedIds],
-  );
-
   const addImagesToPost = (postId: number, files: FileList | File[] | null) => {
     if (!files || files.length === 0) return;
     const fileArray = Array.from(files);
     for (const file of fileArray) {
       if (!file.type.startsWith("image/")) continue;
-      const validation = validateMediaFile(file, selectedPlatforms);
+      const validation = validateMediaFile(file);
       if (!validation.allowed) {
         toast.error(
           validation.error ?? "File too large for selected platforms.",
@@ -1033,7 +1028,7 @@ export function ThreadsPostForm({
     const fileArray = Array.from(files);
     for (const file of fileArray) {
       if (!file.type.startsWith("video/")) continue;
-      const validation = validateMediaFile(file, selectedPlatforms);
+      const validation = validateMediaFile(file);
       if (!validation.allowed) {
         toast.error(
           validation.error ?? "File too large for selected platforms.",

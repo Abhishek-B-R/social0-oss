@@ -738,17 +738,12 @@ export function CollectionPostForm({
     return Math.max(0, ...imageOrders, ...videoOrders);
   };
 
-  const selectedPlatforms = useMemo(
-    () => accounts.filter((a) => selectedIds.has(a.id)).map((a) => a.platform),
-    [accounts, selectedIds],
-  );
-
   const onUnifiedFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length) return;
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const validation = validateMediaFile(file, selectedPlatforms);
+      const validation = validateMediaFile(file);
       if (!validation.allowed) {
         toast.error(
           validation.error ?? "File too large for selected platforms.",
@@ -816,7 +811,7 @@ export function CollectionPostForm({
     if (!files?.length) return;
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const validation = validateMediaFile(file, selectedPlatforms);
+      const validation = validateMediaFile(file);
       if (!validation.allowed) {
         toast.error(
           validation.error ?? "File too large for selected platforms.",
@@ -886,10 +881,7 @@ export function CollectionPostForm({
       }
       const file = e.clipboardData?.files?.[0];
       if (!file) return;
-      const platforms = accounts
-        .filter((a) => selectedIds.has(a.id))
-        .map((a) => a.platform);
-      const validation = validateMediaFile(file, platforms);
+      const validation = validateMediaFile(file);
       if (!validation.allowed) {
         toast.error(
           validation.error ?? "File too large for selected platforms.",

@@ -2,7 +2,6 @@ import Link from "@/components/AppLink";
 import { Video, ImageIcon, Layers } from "lucide-react";
 import { getPlatformIcon } from "@/lib/platform-icons";
 import { CONTENT_TYPES } from "@/lib/content-types";
-import { MdQuestionMark } from "react-icons/md";
 import { DOCS_BULK_TOOLS_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
 import { useDashboardPath } from "@/lib/dashboard-base-path";

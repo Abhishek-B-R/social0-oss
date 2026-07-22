@@ -49,7 +49,9 @@ function parseRememberedPayload(raw: string): RememberedAccountsData | null {
         ),
       };
     }
-  } catch (_) {}
+  } catch {
+    // ignore storage read errors
+  }
   return null;
 }
 
@@ -60,7 +62,9 @@ function readStored(key: string): RememberedAccountsData {
     if (!raw) return { remember: false, accountIds: [] };
     const parsed = parseRememberedPayload(raw);
     if (parsed) return parsed;
-  } catch (_) {}
+  } catch {
+    // ignore storage read errors
+  }
   return { remember: false, accountIds: [] };
 }
 
@@ -68,7 +72,9 @@ function writeStored(key: string, data: RememberedAccountsData): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(data));
-  } catch (_) {}
+  } catch {
+    // ignore storage write errors
+  }
 }
 
 /**

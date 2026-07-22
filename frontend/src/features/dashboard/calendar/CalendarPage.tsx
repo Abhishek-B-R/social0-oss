@@ -1,5 +1,4 @@
 
-import { useNavigate } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useEffect, useState } from "react";
 import { loadCalendarPageData } from "@/api/dashboard-data";
@@ -10,7 +9,6 @@ import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 
 export function CalendarPage() {
-  const navigate = useNavigate();
   const invalidateQueries = useInvalidateQueries();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -1,6 +1,5 @@
 
 import { useNavigate } from "react-router-dom";
-import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useState } from "react";
 import Link from "@/components/AppLink";
 import { authClient } from "@/lib/auth-client";
@@ -10,7 +9,6 @@ import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate();
-  const invalidateQueries = useInvalidateQueries();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 

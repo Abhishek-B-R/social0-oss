@@ -28,7 +28,6 @@ type CreateButtonProps = {
 export function TiktokCreateButton({
   href,
   isActive = false,
-  label = "Create",
   "aria-label": ariaLabel,
 }: CreateButtonProps) {
   const pathname = useLocation().pathname;

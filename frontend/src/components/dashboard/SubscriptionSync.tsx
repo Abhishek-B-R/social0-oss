@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { fetchApi } from "@/lib/fetch-api";
 
@@ -16,7 +15,6 @@ type SubscriptionSyncProps = {
  * Uses sessionStorage so we don't bombard the API on every dashboard navigation.
  */
 export function SubscriptionSync({ tier }: SubscriptionSyncProps) {
-  const navigate = useNavigate();
   const invalidateQueries = useInvalidateQueries();
   const didRun = useRef(false);
 

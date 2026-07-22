@@ -1,7 +1,6 @@
 
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
-import { Filter, ChevronDown } from "lucide-react";
+import { Filter } from "lucide-react";
 
 type Option = { value: string; label: string };
 
@@ -26,7 +25,6 @@ export function AllPostsFilters({
   basePath?: string;
 }) {
   const navigate = useNavigate();
-  const invalidateQueries = useInvalidateQueries();
   const [searchParams] = useSearchParams();
 
   const sort = searchParams.get("sort") || "newest";

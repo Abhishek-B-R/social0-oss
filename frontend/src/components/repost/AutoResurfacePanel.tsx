@@ -70,7 +70,6 @@ function formatFirstReshare(
 export function AutoResurfacePanel({
   selectedAccountIds,
   allAccounts,
-  postId,
   publishedAt,
   onChange,
   initialConfig,
@@ -91,7 +90,9 @@ export function AutoResurfacePanel({
       isWithinResurfaceWindow(publishedAt));
 
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
   useEffect(() => {
     if (!visible && !modalMode) onChangeRef.current(null);
   }, [visible, modalMode]);
@@ -148,7 +149,9 @@ function AutoResurfacePanelInner({
   const [extraIntervalHours, setExtraIntervalHours] = useState<number[]>([]);
 
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
   useEffect(() => {
     const notify = onChangeRef.current;
     if (!enabled) {

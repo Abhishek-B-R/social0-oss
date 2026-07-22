@@ -11,6 +11,7 @@ import { toast } from "sonner";
 export function useAccountsForForm(allowedPlatforms?: string[] | null) {
   const [accounts, setAccounts] = useState<AccountForForm[]>([]);
   const [loading, setLoading] = useState(true);
+  const allowedKey = allowedPlatforms?.join(",") ?? "";
 
   const refetch = useCallback(async () => {
     setLoading(true);
@@ -27,9 +28,7 @@ export function useAccountsForForm(allowedPlatforms?: string[] | null) {
       }
       const data = (await res.json()) as ApiAccountRow[];
       const allowedSet =
-        allowedPlatforms && allowedPlatforms.length > 0
-          ? new Set(allowedPlatforms)
-          : null;
+        allowedKey.length > 0 ? new Set(allowedKey.split(",")) : null;
       setAccounts(transformAccountsForForm(data, allowedSet));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load accounts");
@@ -37,11 +36,10 @@ export function useAccountsForForm(allowedPlatforms?: string[] | null) {
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allowedPlatforms?.join(",")]);
+  }, [allowedKey]);
 
   useEffect(() => {
-    refetch();
+    void refetch();
   }, [refetch]);
 
   return { accounts, loading, refetch };

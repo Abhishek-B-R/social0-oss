@@ -80,10 +80,9 @@ type UploadPublishOverlayProps = {
 };
 
 function MediaTypeIcon({ type }: { type: "image" | "video" | "mixed" }) {
-  // eslint-disable-next-line jsx-a11y/alt-text
-  if (type === "image") return <Image className="h-6 w-6 text-emerald-600" />;
-  if (type === "video") return <Video className="h-6 w-6 text-emerald-600" />;
-  return <Layers className="h-6 w-6 text-emerald-600" />;
+  if (type === "image") return <Image className="h-6 w-6 text-emerald-600" aria-hidden />;
+  if (type === "video") return <Video className="h-6 w-6 text-emerald-600" aria-hidden />;
+  return <Layers className="h-6 w-6 text-emerald-600" aria-hidden />;
 }
 
 function mediaTypeLabel(type: "image" | "video" | "mixed"): string {

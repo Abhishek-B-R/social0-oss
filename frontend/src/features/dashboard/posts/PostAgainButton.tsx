@@ -1,5 +1,4 @@
 
-import { useNavigate } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { usePostHog } from "@posthog/react";
 import { capturePostAction } from "@/lib/posthog-events";
@@ -35,7 +34,6 @@ export function PostAgainButton({
   onStarted?: () => void;
   onFinished?: () => void;
 }) {
-  const navigate = useNavigate();
   const invalidateQueries = useInvalidateQueries();
   const posthog = usePostHog();
   const [loading, setLoading] = useState(false);

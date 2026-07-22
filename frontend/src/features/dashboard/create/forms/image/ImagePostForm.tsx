@@ -811,11 +811,6 @@ export function ImagePostForm({
     }
   };
 
-  const selectedPlatforms = useMemo(
-    () => accounts.filter((a) => selectedIds.has(a.id)).map((a) => a.platform),
-    [accounts, selectedIds],
-  );
-
   // --- SECTION: media upload handlers ---
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -845,7 +840,7 @@ export function ImagePostForm({
         toast.error("Please select only image files (JPEG, PNG, GIF, WebP).");
         continue;
       }
-      const validation = validateMediaFile(file, selectedPlatforms);
+      const validation = validateMediaFile(file);
       if (!validation.allowed) {
         toast.error(validation.error);
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -899,11 +894,8 @@ export function ImagePostForm({
       toast.error("TikTok allows at most 35 images per post.");
       return;
     }
-    const platforms = accounts
-      .filter((a) => selectedIds.has(a.id))
-      .map((a) => a.platform);
     for (const file of imageFiles) {
-      const validation = validateMediaFile(file, platforms);
+      const validation = validateMediaFile(file);
       if (!validation.allowed) {
         toast.error(
           validation.error ?? "File too large for selected platforms.",
