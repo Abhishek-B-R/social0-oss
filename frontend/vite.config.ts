@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import transformImports from "@rolldown/plugin-transform-imports";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
@@ -56,17 +55,7 @@ export default defineConfig(({ mode }) => {
     `${Date.now()}`;
 
   return {
-    plugins: [
-      react(),
-      tailwindcss(),
-      // Avoid resolving the 6k-export @tabler/icons-react barrel on every build.
-      transformImports({
-        "@tabler/icons-react": {
-          transform: "@tabler/icons-react/dist/esm/icons/{{member}}",
-          preventFullImport: true,
-        },
-      }),
-    ],
+    plugins: [react(), tailwindcss()],
     define: {
       "import.meta.env.VITE_CANNY_BOARD_TOKEN": JSON.stringify(cannyBoardToken),
       "import.meta.env.VITE_APP_BUILD_ID": JSON.stringify(appBuildId),

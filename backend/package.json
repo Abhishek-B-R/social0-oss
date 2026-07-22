@@ -7,7 +7,7 @@
     "background-worker"
   ],
   "scripts": {
-    "build": "bun run --filter @social0/shared build && bun run --filter @social0/background-worker build && bun run --filter @social0/server build",
+    "build": "npm run build -w @social0/shared && npm run build -w @social0/background-worker && npm run build -w @social0/server",
     "dev:server": "bun run --filter @social0/server dev",
     "dev:background-worker": "bun run --filter @social0/background-worker dev",
     "dev": "bun run dev:server & bun run dev:background-worker",
@@ -28,8 +28,5 @@
   },
   "engines": {
     "node": ">=20"
-  },
-  "overrides": {
-    "esbuild": "0.25.12"
   }
 }
