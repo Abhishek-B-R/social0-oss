@@ -53,9 +53,7 @@ export function DeleteAccountSection({ className }: { className?: string }) {
     <div className={cn("mt-10", className)}>
       <h3 className="text-base font-semibold text-foreground">Delete account</h3>
       <p className="mt-2 text-sm text-muted-foreground">
-        Close your Social0 account: remove login, connections, teams, and API
-        access. Post history stays in our systems; content already on social
-        platforms is unchanged.
+        Permanently close your Social0 account. This cannot be undone.
       </p>
       <button
         type="button"
@@ -78,11 +76,7 @@ export function DeleteAccountSection({ className }: { className?: string }) {
               Delete account?
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              This closes your Social0 account. We remove your login, connected
-              platforms, teams/workspaces, API keys, webhooks, and queues.
-              Subscriptions are cancelled when possible. Post history is kept in
-              our database; posts already published on social platforms are not
-              removed from those platforms.
+              This permanently closes your account. Type DELETE to confirm.
             </DialogDescription>
           </DialogHeader>
 
