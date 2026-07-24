@@ -918,15 +918,7 @@ export function BillingPanel({
         </div>
         <p className="mb-4 text-xs text-muted-foreground">
           Prices are tax-exclusive. Applicable GST (or other taxes) is added at
-          checkout and shown on invoices from our payment processor. Fees are
-          non-refundable except where required by law — see{" "}
-          <a
-            href="/refund"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            Refund &amp; Cancellation
-          </a>
-          .
+          checkout and shown on invoices from our payment processor.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {/* Starter card */}
