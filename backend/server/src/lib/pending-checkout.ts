@@ -129,11 +129,13 @@ function sleep(ms: number): Promise<void> {
 
 export type ResolveCheckoutResult =
   | { ok: true; url: string; reused: boolean }
-  | { ok: false; code: "checkout_in_progress"; error: string; url?: string };
+  | { ok: false; code: "checkout_in_progress"; error: string };
 
 /**
- * Returns an existing open checkout for this user, or creates one via `createSession`.
- * Serializes concurrent requests (double-tab / double-click) to a single Dodo session.
+ * Returns an existing open checkout for this user+plan+interval, or creates one.
+ * A pending session for a *different* plan/interval is superseded (cleared) so
+ * plan buttons always open the product the user actually clicked.
+ * Concurrent same-plan requests still serialize to a single Dodo session.
  */
 export async function resolveCheckoutSession(params: {
   userId: string;
@@ -150,32 +152,31 @@ export async function resolveCheckoutSession(params: {
     if (pendingMatches(existing, plan, interval)) {
       return { ok: true, url: existing.url, reused: true };
     }
-    return {
-      ok: false,
-      code: "checkout_in_progress",
-      error:
-        "A checkout is already in progress for this account. Complete or close it before starting another.",
-      url: existing.url,
-    };
+    // User switched plans — drop the stale session instead of forcing its URL.
+    await clearPendingCheckout(userId);
   }
 
-  const lockAcquired = await acquireCheckoutLock(userId);
+  let lockAcquired = await acquireCheckoutLock(userId);
   if (!lockAcquired) {
     for (let i = 0; i < 20; i++) {
       await sleep(150);
       const raced = await getPendingCheckout(userId);
-      if (raced) {
-        if (pendingMatches(raced, plan, interval)) {
-          return { ok: true, url: raced.url, reused: true };
-        }
-        return {
-          ok: false,
-          code: "checkout_in_progress",
-          error:
-            "A checkout is already in progress for this account. Complete or close it before starting another.",
-          url: raced.url,
-        };
+      if (raced && pendingMatches(raced, plan, interval)) {
+        return { ok: true, url: raced.url, reused: true };
       }
+      if (raced && !pendingMatches(raced, plan, interval)) {
+        // Another request created a different plan; wait for lock to supersede.
+        continue;
+      }
+      lockAcquired = await acquireCheckoutLock(userId);
+      if (lockAcquired) break;
+    }
+  }
+
+  if (!lockAcquired) {
+    const raced = await getPendingCheckout(userId);
+    if (raced && pendingMatches(raced, plan, interval)) {
+      return { ok: true, url: raced.url, reused: true };
     }
     return {
       ok: false,
@@ -186,17 +187,11 @@ export async function resolveCheckoutSession(params: {
 
   try {
     const again = await getPendingCheckout(userId);
+    if (again && pendingMatches(again, plan, interval)) {
+      return { ok: true, url: again.url, reused: true };
+    }
     if (again) {
-      if (pendingMatches(again, plan, interval)) {
-        return { ok: true, url: again.url, reused: true };
-      }
-      return {
-        ok: false,
-        code: "checkout_in_progress",
-        error:
-          "A checkout is already in progress for this account. Complete or close it before starting another.",
-        url: again.url,
-      };
+      await clearPendingCheckout(userId);
     }
 
     const session = await createSession();

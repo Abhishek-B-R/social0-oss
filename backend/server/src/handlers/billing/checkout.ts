@@ -135,7 +135,6 @@ export async function createCheckout(request: Request) {
         {
           error: resolved.error,
           code: resolved.code,
-          ...(resolved.url ? { url: resolved.url } : {}),
         },
         { status: 409 },
       );

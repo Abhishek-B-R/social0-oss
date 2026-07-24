@@ -742,16 +742,9 @@ export function BillingPanel({
       }),
     });
     const data = await res.json().catch(() => ({}));
-    if ((res.ok || res.status === 409) && typeof data.url === "string") {
-      if (res.status === 409 && data.code === "checkout_in_progress") {
-        toast.info("Opening your existing checkout…");
-      } else if (res.status === 409 && data.code === "use_portal") {
-        toast.info(
-          typeof data.error === "string"
-            ? data.error
-            : "Opening the customer portal to update your payment method…",
-        );
-      }
+    // Only follow URLs for a successful checkout (or an explicit portal handoff).
+    // Never redirect on checkout_in_progress — that used to reopen another plan's session.
+    if (res.ok && typeof data.url === "string") {
       if (!assignSafeRedirectUrl(data.url)) {
         toast.error("Failed to start checkout. Please try again.");
         return false;
@@ -762,10 +755,25 @@ export function BillingPanel({
       toast.info(
         typeof data.error === "string"
           ? data.error
-          : "Open the customer portal to fix your subscription.",
+          : "Opening the customer portal to update your payment method…",
       );
+      if (typeof data.url === "string") {
+        if (!assignSafeRedirectUrl(data.url)) {
+          toast.error("Failed to open the customer portal. Please try again.");
+          return false;
+        }
+        return true;
+      }
       await handleChangePlan();
       return true;
+    }
+    if (res.status === 409 && data.code === "checkout_in_progress") {
+      toast.info(
+        typeof data.error === "string"
+          ? data.error
+          : "Checkout is already being prepared. Try again in a few seconds.",
+      );
+      return false;
     }
     if (res.status === 409 && data.code === "use_change_plan") {
       toast.info(
