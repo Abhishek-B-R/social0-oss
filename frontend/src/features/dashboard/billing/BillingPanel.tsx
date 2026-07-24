@@ -2,7 +2,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { fetchApi } from "@/lib/fetch-api";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { usePostHog } from "@posthog/react";
 import { IconLoader2, IconX } from "@tabler/icons-react";
 import { toast } from "sonner";
@@ -114,6 +114,27 @@ function formatPreviewAmount(raw: PreviewChargeSummary): string {
   return cur === "USD" ? `$${amount}` : `${cur} ${amount}`;
 }
 
+function PlanButtonLabel({
+  loading,
+  children,
+}: {
+  loading: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center justify-center gap-2">
+      {loading ? (
+        <IconLoader2
+          className="h-4 w-4 shrink-0 animate-spin"
+          strokeWidth={1.5}
+          aria-hidden
+        />
+      ) : null}
+      {children}
+    </span>
+  );
+}
+
 const STARTER_BILLING_FEATURES = [
   "Connect up to 5 accounts",
   "Multiple accounts per platform",
@@ -198,6 +219,9 @@ export function BillingPanel({
   const [upgradeConfirmPlan, setUpgradeConfirmPlan] = useState<PaidPlan | null>(
     null,
   );
+  const [confirmUpgradeAction, setConfirmUpgradeAction] = useState<
+    "now" | "renewal" | null
+  >(null);
   const [upgradePreview, setUpgradePreview] = useState<{
     immediateCharge: { summary: PreviewChargeSummary };
   } | null>(null);
@@ -703,6 +727,7 @@ export function BillingPanel({
   const handleConfirmUpgradeNow = async () => {
     if (!upgradeConfirmPlan) return;
     setLoadingChangePlan(upgradeConfirmPlan);
+    setConfirmUpgradeAction("now");
     try {
       const ok = await executeUpgrade(upgradeConfirmPlan, false);
       if (ok) {
@@ -712,12 +737,14 @@ export function BillingPanel({
       }
     } finally {
       setLoadingChangePlan(null);
+      setConfirmUpgradeAction(null);
     }
   };
 
   const handleConfirmUpgradeOnRenewal = async () => {
     if (!upgradeConfirmPlan) return;
     setLoadingChangePlan(upgradeConfirmPlan);
+    setConfirmUpgradeAction("renewal");
     try {
       const ok = await executeUpgrade(upgradeConfirmPlan, true);
       if (ok) {
@@ -727,6 +754,7 @@ export function BillingPanel({
       }
     } finally {
       setLoadingChangePlan(null);
+      setConfirmUpgradeAction(null);
     }
   };
 
@@ -796,6 +824,15 @@ export function BillingPanel({
     }
   };
 
+  const handleSwitchInterval = async (plan: PaidPlan) => {
+    setLoadingChangePlan(plan);
+    try {
+      await executeUpgrade(plan, false);
+    } finally {
+      setLoadingChangePlan(null);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <div className="border border-border rounded-xl p-6">
@@ -836,7 +873,9 @@ export function BillingPanel({
             disabled={loading !== null}
             className="min-w-44 justify-center"
           >
-            Manage Subscription
+            <PlanButtonLabel loading={loading === "portal"}>
+              Manage Subscription
+            </PlanButtonLabel>
           </Button>
 
           {subscription.tier !== "free" && !subscription.cancelAtPeriodEnd && (
@@ -971,9 +1010,12 @@ export function BillingPanel({
                   <Button
                     className="w-full"
                     disabled={loadingChangePlan !== null || upgradePending}
-                    onClick={() => void executeUpgrade("starter", false)}
+                    onClick={() => void handleSwitchInterval("starter")}
                   >
-                    Switch to {billingInterval === "yearly" ? "yearly" : "monthly"}
+                    <PlanButtonLabel loading={loadingChangePlan === "starter"}>
+                      Switch to{" "}
+                      {billingInterval === "yearly" ? "yearly" : "monthly"}
+                    </PlanButtonLabel>
                   </Button>
                 ) : (
                   <Button disabled className="w-full" variant="outline">
@@ -1001,9 +1043,11 @@ export function BillingPanel({
                     disabled={loadingChangePlan !== null}
                     onClick={() => handleUpgradeFromFree("starter")}
                   >
-                    {showTrialInfo
-                      ? "Start 3-day free trial"
-                      : "Upgrade to Starter"}
+                    <PlanButtonLabel loading={loadingChangePlan === "starter"}>
+                      {showTrialInfo
+                        ? "Start 3-day free trial"
+                        : "Upgrade to Starter"}
+                    </PlanButtonLabel>
                   </Button>
                   {showTrialInfo && (
                     <p className="mt-2 text-center text-xs text-muted-foreground">
@@ -1077,9 +1121,12 @@ export function BillingPanel({
                   <Button
                     className="w-full"
                     disabled={loadingChangePlan !== null || upgradePending}
-                    onClick={() => void executeUpgrade("growth", false)}
+                    onClick={() => void handleSwitchInterval("growth")}
                   >
-                    Switch to {billingInterval === "yearly" ? "yearly" : "monthly"}
+                    <PlanButtonLabel loading={loadingChangePlan === "growth"}>
+                      Switch to{" "}
+                      {billingInterval === "yearly" ? "yearly" : "monthly"}
+                    </PlanButtonLabel>
                   </Button>
                 ) : (
                   <Button disabled className="w-full">
@@ -1105,7 +1152,9 @@ export function BillingPanel({
                   disabled={loadingChangePlan !== null || upgradePending}
                   onClick={() => handleUpgradePlan("growth")}
                 >
-                  Upgrade to Growth
+                  <PlanButtonLabel loading={loadingChangePlan === "growth"}>
+                    Upgrade to Growth
+                  </PlanButtonLabel>
                 </Button>
               ) : (
                 <>
@@ -1114,9 +1163,11 @@ export function BillingPanel({
                     disabled={loadingChangePlan !== null}
                     onClick={() => handleUpgradeFromFree("growth")}
                   >
-                    {showTrialInfo
-                      ? "Start 3-day free trial"
-                      : "Upgrade to Growth"}
+                    <PlanButtonLabel loading={loadingChangePlan === "growth"}>
+                      {showTrialInfo
+                        ? "Start 3-day free trial"
+                        : "Upgrade to Growth"}
+                    </PlanButtonLabel>
                   </Button>
                   {showTrialInfo && (
                     <p className="mt-2 text-center text-xs text-muted-foreground">
@@ -1187,9 +1238,12 @@ export function BillingPanel({
                   <Button
                     className="w-full"
                     disabled={loadingChangePlan !== null || upgradePending}
-                    onClick={() => void executeUpgrade("pro", false)}
+                    onClick={() => void handleSwitchInterval("pro")}
                   >
-                    Switch to {billingInterval === "yearly" ? "yearly" : "monthly"}
+                    <PlanButtonLabel loading={loadingChangePlan === "pro"}>
+                      Switch to{" "}
+                      {billingInterval === "yearly" ? "yearly" : "monthly"}
+                    </PlanButtonLabel>
                   </Button>
                 ) : (
                   <Button disabled className="w-full">
@@ -1203,7 +1257,9 @@ export function BillingPanel({
                   disabled={loadingChangePlan !== null || upgradePending}
                   onClick={() => handleUpgradePlan("pro")}
                 >
-                  Upgrade to Pro
+                  <PlanButtonLabel loading={loadingChangePlan === "pro"}>
+                    Upgrade to Pro
+                  </PlanButtonLabel>
                 </Button>
               ) : (
                 <>
@@ -1212,9 +1268,11 @@ export function BillingPanel({
                     disabled={loadingChangePlan !== null}
                     onClick={() => handleUpgradeFromFree("pro")}
                   >
-                    {showTrialInfo
-                      ? "Start 3-day free trial"
-                      : "Upgrade to Pro"}
+                    <PlanButtonLabel loading={loadingChangePlan === "pro"}>
+                      {showTrialInfo
+                        ? "Start 3-day free trial"
+                        : "Upgrade to Pro"}
+                    </PlanButtonLabel>
                   </Button>
                   {showTrialInfo && (
                     <p className="mt-2 text-center text-xs text-muted-foreground">
@@ -1236,6 +1294,7 @@ export function BillingPanel({
             setUpgradeConfirmOpen(false);
             setUpgradeConfirmPlan(null);
             setUpgradePreview(null);
+            setConfirmUpgradeAction(null);
           }
         }}
       >
@@ -1260,7 +1319,11 @@ export function BillingPanel({
               disabled={loadingChangePlan !== null || !upgradeConfirmPlan}
               className="w-full rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-accent/50 hover:bg-accent/5 disabled:opacity-50"
             >
-              <p className="font-medium text-foreground">Upgrade now</p>
+              <p className="font-medium text-foreground">
+                <PlanButtonLabel loading={confirmUpgradeAction === "now"}>
+                  Upgrade now
+                </PlanButtonLabel>
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {upgradePreview?.immediateCharge?.summary
                   ? `Charge ${formatPreviewAmount(upgradePreview.immediateCharge.summary)} on your saved payment method`
@@ -1280,7 +1343,11 @@ export function BillingPanel({
               disabled={loadingChangePlan !== null || !upgradeConfirmPlan}
               className="w-full rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-accent/50 hover:bg-accent/5 disabled:opacity-50"
             >
-              <p className="font-medium text-foreground">Upgrade on renewal</p>
+              <p className="font-medium text-foreground">
+                <PlanButtonLabel loading={confirmUpgradeAction === "renewal"}>
+                  Upgrade on renewal
+                </PlanButtonLabel>
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 No payment today · Starts on{" "}
                 {renewalDate ?? "your renewal date"}
