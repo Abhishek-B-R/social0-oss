@@ -60,3 +60,9 @@ export async function updateTimezone(formData: FormData): Promise<void> {
 export async function signOutAllDevices(): Promise<void> {
   await rpc("settings.signOutAllDevices");
 }
+
+export async function deleteAccount(
+  confirmation: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  return rpc("settings.deleteAccount", confirmation);
+}

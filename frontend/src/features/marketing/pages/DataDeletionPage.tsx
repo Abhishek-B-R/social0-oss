@@ -2,15 +2,16 @@ import type { PageMetadata } from "@/lib/seo";
 import Link from "@/components/AppLink";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
+import { LEGAL_ENTITY } from "@/lib/legal-entity";
 
 export const metadata: PageMetadata = {
   title: "Data Deletion Request | Social0 - Social Media Scheduling Tool",
   description:
-    "Disconnect accounts in Connections, or email to request deletion of post content and personal data from Social0.",
+    "Delete your Social0 account in Settings, disconnect platforms in Connections, or email privacy@social0.app to request data deletion.",
   alternates: { canonical: "https://social0.app/data-deletion" },
 };
 
-const REQUEST_EMAIL = "abhishek@social0.app";
+const REQUEST_EMAIL = LEGAL_ENTITY.privacyEmail;
 const REQUEST_SUBJECT = "Data Deletion Request";
 
 export default function DataDeletionPage() {
@@ -26,11 +27,29 @@ export default function DataDeletionPage() {
 
         <div className="prose prose-zinc dark:prose-invert max-w-none space-y-10 text-base leading-relaxed text-foreground">
           <p className="text-muted-foreground text-lg leading-relaxed">
-            You can manage connected platforms yourself, or ask us to delete
-            your post content and other data held in Social0. This page explains
-            what we hold, the difference between disconnecting and a full
-            deletion request, and what happens when we process an email request.
+            You can delete your Social0 account in the app, disconnect platforms
+            yourself, or email us to request deletion. This page explains what
+            we hold and what happens when deletion is processed.
           </p>
+
+          <section>
+            <h2 className="text-xl sm:text-2xl font-semibold font-serif text-foreground mb-3">
+              Fastest option: delete your account in Settings
+            </h2>
+            <p className="text-muted-foreground mb-3">
+              Signed-in users can close their Social0 account from{" "}
+              <Link
+                href="/dashboard/settings"
+                className="text-foreground font-medium underline underline-offset-2 hover:text-accent transition-colors"
+              >
+                Dashboard → Settings → Security
+              </Link>
+              . That removes login access, connected platforms, teams, API keys,
+              and related account settings. Post history may be retained in our
+              systems; content already published on third-party platforms is not
+              removed by Social0.
+            </p>
+          </section>
 
           <section>
             <h2 className="text-xl sm:text-2xl font-semibold font-serif text-foreground mb-3">
@@ -44,15 +63,11 @@ export default function DataDeletionPage() {
               >
                 Connections
               </Link>{" "}
-              and click the remove (×) icon next to the platform. That revokes
-              the connection and removes it from Social0-it does{" "}
-              <span className="text-foreground font-medium">not</span> delete
-              your drafts, scheduled posts, published post records, or uploaded
-              media already stored in Social0.
-            </p>
-            <p className="text-muted-foreground">
-              If you want that post content and media removed from our systems
-              as well, use the email request below.
+              and remove the platform. That revokes the connection in Social0 —
+              it does{" "}
+              <span className="text-foreground font-medium">not</span> by itself
+              delete your drafts, scheduled posts, published post records, or
+              uploaded media already stored in Social0.
             </p>
           </section>
 
@@ -72,17 +87,19 @@ export default function DataDeletionPage() {
                 Uploaded media (e.g. images and videos you attach to posts)
               </li>
               <li>Account settings and preferences tied to your profile</li>
+              <li>
+                Billing metadata (subscription/customer IDs) — card details are
+                held by {LEGAL_ENTITY.paymentProcessor.name}, not Social0
+              </li>
             </ul>
           </section>
 
           <section>
             <h2 className="text-xl sm:text-2xl font-semibold font-serif text-foreground mb-3">
-              How to request post content and account data deletion
+              Email request (if you cannot use in-app deletion)
             </h2>
             <p className="text-muted-foreground mb-3">
-              To have your posts, drafts, media, and other personal data removed
-              from Social0 (beyond disconnecting platforms in Connections), send
-              an email to{" "}
+              Send an email to{" "}
               <a
                 href={mailtoHref}
                 className="text-foreground font-medium underline underline-offset-2 hover:text-accent transition-colors"
@@ -97,8 +114,8 @@ export default function DataDeletionPage() {
               covered so we can verify ownership.
             </p>
             <p className="text-sm text-muted-foreground">
-              We may follow up from the same address if we need to confirm your
-              identity before completing the request.
+              We may follow up if we need to confirm your identity before
+              completing the request.
             </p>
           </section>
 
@@ -109,7 +126,9 @@ export default function DataDeletionPage() {
             <p className="text-muted-foreground">
               We aim to process data deletion requests within{" "}
               <strong className="text-foreground font-semibold">30 days</strong>{" "}
-              of receiving a complete, verifiable request.
+              of receiving a complete, verifiable request (in-app deletion is
+              typically immediate for app data, with processor-side billing
+              records retained as required).
             </p>
           </section>
 
@@ -118,11 +137,13 @@ export default function DataDeletionPage() {
               What gets deleted
             </h2>
             <p className="text-muted-foreground">
-              When your request is approved and processed, we permanently remove
-              your connected accounts, posts, media uploads, and other personal
-              information tied to your Social0 account, subject to any limited
-              retention required by law (for example, minimal billing or fraud
-              records where applicable).
+              When account closure is processed, we remove login credentials,
+              connected accounts, teams/workspaces you own, API keys, webhooks,
+              queues, and settings. Post and media records may be retained.
+              Content already published to third-party platforms is not deleted
+              from those platforms by Social0 — manage that content on each
+              platform. Limited billing or fraud records may also be retained
+              where required.
             </p>
           </section>
 

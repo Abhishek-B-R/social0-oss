@@ -11,7 +11,7 @@ export const landingFaqs = [
   {
     question: "Can I cancel anytime?",
     answer:
-      "Absolutely. No contracts, no cancellation fees. You can cancel your subscription at any time from your dashboard.",
+      "Yes. No contracts and no cancellation fees. Cancel anytime from Billing; you keep access until the end of the current billing period. Subscription fees are non-refundable except where required by law — see our Refund & Cancellation Policy.",
   },
   {
     question: "Do I need to give Social0 my social media passwords?",

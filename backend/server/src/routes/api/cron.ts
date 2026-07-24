@@ -79,4 +79,18 @@ export async function registerCronRoutes(app: FastifyInstance) {
       );
     },
   );
+
+  app.post("/cron/notify-legal-update", async (request, reply) => {
+    if (!verifyCronSecretFromAuthorizationHeader(request.headers.authorization)) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
+    const body = (request.body ?? {}) as { force?: boolean };
+    const { notifyUsersOfLegalUpdate } = await import(
+      "../../lib/legal-update-notify.js"
+    );
+    const result = await notifyUsersOfLegalUpdate({
+      force: body.force === true,
+    });
+    return reply.status(200).send(result);
+  });
 }

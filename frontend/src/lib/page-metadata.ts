@@ -180,12 +180,22 @@ export function staticRouteSeo(pathname: string): PageSeoConfig | null {
         },
         "/privacy",
       );
+    case "/refund":
+      return metadataToSeoConfig(
+        {
+          title: "Refund & Cancellation Policy | Social0",
+          description:
+            "Social0 refund and cancellation policy. Subscriptions are non-refundable except where required by law. Cancel anytime from Billing.",
+          alternates: { canonical: absoluteUrl("/refund") },
+        },
+        "/refund",
+      );
     case "/data-deletion":
       return metadataToSeoConfig(
         {
           title: "Data Deletion | Social0",
           description:
-            "How to request deletion of your Social0 account data in compliance with platform policies.",
+            "How to delete your Social0 account or request deletion of your account data.",
           alternates: { canonical: absoluteUrl("/data-deletion") },
         },
         "/data-deletion",

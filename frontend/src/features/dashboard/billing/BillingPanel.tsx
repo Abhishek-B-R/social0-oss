@@ -916,6 +916,18 @@ export function BillingPanel({
             size="sm"
           />
         </div>
+        <p className="mb-4 text-xs text-muted-foreground">
+          Prices are tax-exclusive. Applicable GST (or other taxes) is added at
+          checkout and shown on invoices from our payment processor. Fees are
+          non-refundable except where required by law — see{" "}
+          <a
+            href="/refund"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            Refund &amp; Cancellation
+          </a>
+          .
+        </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {/* Starter card */}
           <div
@@ -937,7 +949,7 @@ export function BillingPanel({
               </span>
               <span className="text-xs text-muted-foreground">
                 /month
-                {billingInterval === "monthly" ? ` ${TAX_NOTE}` : ""}
+                {` ${TAX_NOTE}`}
               </span>
             </div>
             {billingInterval === "yearly" ? (
@@ -1038,7 +1050,7 @@ export function BillingPanel({
               </span>
               <span className="text-xs text-muted-foreground">
                 /month
-                {billingInterval === "monthly" ? ` ${TAX_NOTE}` : ""}
+                {` ${TAX_NOTE}`}
               </span>
               {billingInterval === "yearly" && growthPrice.savePercent != null ? (
                 <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
@@ -1148,7 +1160,7 @@ export function BillingPanel({
               </span>
               <span className="text-xs text-muted-foreground">
                 /month
-                {billingInterval === "monthly" ? ` ${TAX_NOTE}` : ""}
+                {` ${TAX_NOTE}`}
               </span>
               {billingInterval === "yearly" && proPrice.savePercent != null ? (
                 <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">

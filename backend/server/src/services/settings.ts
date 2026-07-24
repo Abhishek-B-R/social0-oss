@@ -1,13 +1,29 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { userSettings, connectedAccounts, account, user } from "@/db/schema";
+import {
+  userSettings,
+  connectedAccounts,
+  account,
+  user,
+  session as sessionTable,
+  apiKeys,
+  userWebhookSubscriptions,
+  queueSlots,
+  queuedPosts,
+  teams,
+  teamMembers,
+  legalAcceptances,
+} from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { headers } from "../lib/http/request-cookies.js";
+import { headers, cookies } from "../lib/http/request-cookies.js";
 import { redirect } from "../lib/http/route-redirect.js";
 import type { DateFormatKey } from "@social0/shared";
+import { decryptToken } from "@social0/shared";
 import { requireSessionUserId } from "@/lib/require-session-user";
 import { isSafeOutboundUrl } from "@social0/shared";
+import { revokeTokenOnPlatform } from "../lib/revoke-token.js";
+import type { Platform } from "../lib/platforms.js";
 
 export type SettingsConnectionPayload = {
   id: string;
@@ -326,4 +342,150 @@ export async function signOutAllDevices(): Promise<{ success: true }> {
   });
 
   return { success: true };
+}
+
+export type DeleteAccountResult =
+  | { success: true }
+  | { success: false; error: string };
+
+/**
+ * Close the signed-in user's Social0 account.
+ *
+ * Removes identity + access (auth, settings, connections, teams, API keys,
+ * webhooks, queues). Keeps post/media history in the DB (posts stay linked to
+ * an anonymized user row so FKs remain valid).
+ */
+export async function deleteAccount(
+  confirmation: string,
+): Promise<DeleteAccountResult> {
+  if (typeof confirmation !== "string" || confirmation.trim() !== "DELETE") {
+    return {
+      success: false,
+      error: "Type DELETE to confirm permanent account deletion.",
+    };
+  }
+
+  const sessionHeaders = await headers();
+  const session = await auth.api.getSession({
+    headers: sessionHeaders,
+    query: { disableCookieCache: true },
+  });
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const userId = session.user.id;
+
+  // Kill sessions first (Postgres + Redis secondary storage) while the user still exists.
+  try {
+    await auth.api.revokeSessions({ headers: sessionHeaders });
+  } catch (err) {
+    console.warn("[deleteAccount] revokeSessions failed:", err);
+  }
+  try {
+    await auth.api.signOut({ headers: sessionHeaders });
+  } catch (err) {
+    console.warn("[deleteAccount] signOut failed:", err);
+  }
+  try {
+    await clearBetterAuthCookies();
+  } catch {
+    /* best effort */
+  }
+
+  const settingsRow = await db.query.userSettings.findFirst({
+    where: eq(userSettings.userId, userId),
+    columns: { subscriptionId: true },
+  });
+
+  if (settingsRow?.subscriptionId) {
+    try {
+      const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
+      const environment =
+        (process.env.DODO_PAYMENTS_ENVIRONMENT as "test_mode" | "live_mode") ??
+        "test_mode";
+      if (apiKey) {
+        const DodoPayments = (await import("dodopayments")).default;
+        const client = new DodoPayments({ bearerToken: apiKey, environment });
+        await client.subscriptions.update(settingsRow.subscriptionId, {
+          status: "cancelled",
+        });
+      }
+    } catch (err) {
+      console.warn("[deleteAccount] Dodo cancel failed:", err);
+    }
+  }
+
+  const accounts = await db.query.connectedAccounts.findMany({
+    where: eq(connectedAccounts.userId, userId),
+    columns: {
+      id: true,
+      platform: true,
+      encryptedAccessToken: true,
+    },
+  });
+
+  for (const row of accounts) {
+    try {
+      const accessToken = decryptToken(row.encryptedAccessToken, row.id);
+      await revokeTokenOnPlatform(row.platform as Platform, accessToken);
+    } catch {
+      /* best effort */
+    }
+  }
+
+  try {
+    // Access + account surface (not posts / media / publications).
+    await db
+      .delete(connectedAccounts)
+      .where(eq(connectedAccounts.userId, userId));
+    await db.delete(apiKeys).where(eq(apiKeys.userId, userId));
+    await db
+      .delete(userWebhookSubscriptions)
+      .where(eq(userWebhookSubscriptions.userId, userId));
+    await db.delete(queuedPosts).where(eq(queuedPosts.userId, userId));
+    await db.delete(queueSlots).where(eq(queueSlots.userId, userId));
+    await db.delete(teamMembers).where(eq(teamMembers.userId, userId));
+    // Owned teams cascade to workspaces / invites / members.
+    await db.delete(teams).where(eq(teams.ownerUserId, userId));
+    await db.delete(userSettings).where(eq(userSettings.userId, userId));
+    await db.delete(legalAcceptances).where(eq(legalAcceptances.userId, userId));
+    await db.delete(sessionTable).where(eq(sessionTable.userId, userId));
+    await db.delete(account).where(eq(account.userId, userId));
+
+    // Keep the user row so historical posts stay valid; wipe PII / login.
+    const deletedEmail = `deleted+${userId}@deleted.social0.invalid`;
+    await db
+      .update(user)
+      .set({
+        email: deletedEmail,
+        name: "Deleted account",
+        image: null,
+        emailVerified: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(user.id, userId));
+  } catch (err) {
+    console.error("[deleteAccount] failed:", err);
+    return {
+      success: false,
+      error: "Failed to delete account. Please contact support.",
+    };
+  }
+
+  return { success: true };
+}
+
+const BETTER_AUTH_COOKIE_NAMES = [
+  "better-auth.session_token",
+  "__Secure-better-auth.session_token",
+  "better-auth.session_data",
+  "__Secure-better-auth.session_data",
+] as const;
+
+async function clearBetterAuthCookies(): Promise<void> {
+  const jar = await cookies();
+  for (const name of BETTER_AUTH_COOKIE_NAMES) {
+    jar.delete(name);
+  }
 }

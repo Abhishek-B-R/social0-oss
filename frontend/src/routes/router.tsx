@@ -119,6 +119,7 @@ const AcceptInvitePage = lazy(() =>
 
 const TermsPage = lazy(() => import("@/features/marketing/pages/TermsPage"));
 const PrivacyPage = lazy(() => import("@/features/marketing/pages/PrivacyPage"));
+const RefundPage = lazy(() => import("@/features/marketing/pages/RefundPage"));
 const DataDeletionPage = lazy(
   () => import("@/features/marketing/pages/DataDeletionPage"),
 );
@@ -245,6 +246,14 @@ export function AppRouter() {
             element={
               <Lazy>
                 <PrivacyPage />
+              </Lazy>
+            }
+          />
+          <Route
+            path="refund"
+            element={
+              <Lazy>
+                <RefundPage />
               </Lazy>
             }
           />

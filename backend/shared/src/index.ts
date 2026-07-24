@@ -18,6 +18,7 @@ export * from "./lib/ssrf-guard.js";
 export * from "./lib/safe-fetch.js";
 export * from "./lib/user-webhook-signature.js";
 export * from "./constants/legal.js";
+export * from "./constants/legal-entity.js";
 export * from "./lib/database-url.js";
 export * from "./lib/plans.js";
 export * from "./lib/date-format.js";

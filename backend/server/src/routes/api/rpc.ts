@@ -39,6 +39,7 @@ const RPC_MUTATION_HANDLERS = new Set([
   "settings.updatePlatformPreferences",
   "settings.updateTimezone",
   "settings.signOutAllDevices",
+  "settings.deleteAccount",
   "onboarding.setOnboardingGoal",
   "onboarding.setOnboardingCompleted",
 ]);
@@ -86,6 +87,7 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
   "settings.updatePlatformPreferences": settings.updatePlatformPreferences,
   "settings.updateTimezone": settings.updateTimezone,
   "settings.signOutAllDevices": settings.signOutAllDevices,
+  "settings.deleteAccount": settings.deleteAccount,
 };
 
 function reviveArgs(args: unknown[]): unknown[] {

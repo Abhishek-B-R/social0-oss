@@ -5,7 +5,6 @@ import Image from "@/components/AppImage";
 import { useSession } from "@/lib/auth-client";
 import { getOnboardingStatus, type OnboardingStatus } from "@/api/onboarding";
 import { OnboardingProgress } from "@/components/onboarding/OnboardingProgress";
-import { LegalConsentGate } from "@/components/auth/LegalConsentGate";
 import { useQuery } from "@tanstack/react-query";
 
 export function OnboardingLayout() {
@@ -69,7 +68,6 @@ export function OnboardingLayout() {
       <main className="flex flex-1 flex-col w-full px-5 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12">
         <Outlet />
       </main>
-      {session && <LegalConsentGate />}
     </div>
   );
 }

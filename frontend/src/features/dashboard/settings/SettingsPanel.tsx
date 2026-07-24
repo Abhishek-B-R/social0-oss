@@ -51,6 +51,7 @@ import DocsInfoIcon from "@/components/info-icon";
 import { DOCS_SETTINGS_URL } from "@/lib/docs-url";
 import { toast } from "sonner";
 import { SignOutAllDevicesButton } from "@/components/SignOutAllDevicesButton";
+import { DeleteAccountSection } from "@/components/DeleteAccountSection";
 
 export type SettingsConnection = {
   id: string;
@@ -1194,6 +1195,7 @@ export function SettingsPanel({
               <div className={isCredentialUser ? "mt-6" : "mt-4"}>
                 <SignOutAllDevicesButton />
               </div>
+              <DeleteAccountSection />
             </div>
           </section>
         )}
