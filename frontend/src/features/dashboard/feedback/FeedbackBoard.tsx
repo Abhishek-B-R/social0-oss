@@ -14,26 +14,47 @@ declare global {
 
 const CANNY_SDK_URL = "https://sdk.canny.io/sdk.js";
 const CANNY_FALLBACK_URL = "https://social0.canny.io";
+const CANNY_SDK_SCRIPT_ID = "canny-jssdk";
+
+/** Official Canny stub so `Canny(...)` calls queue until sdk.js finishes loading. */
+function ensureCannyStub(): void {
+  if (typeof window.Canny === "function") return;
+  const queue: unknown[][] = [];
+  const stub = (...args: unknown[]) => {
+    queue.push(args);
+  };
+  (stub as typeof stub & { q: unknown[][] }).q = queue;
+  window.Canny = stub as Window["Canny"];
+}
 
 function loadCannySdk(): Promise<void> {
-  if (typeof window.Canny === "function") {
-    return Promise.resolve();
-  }
+  ensureCannyStub();
 
-  const existing = document.querySelector(
-    `script[src="${CANNY_SDK_URL}"]`,
+  const existing = document.getElementById(
+    CANNY_SDK_SCRIPT_ID,
   ) as HTMLScriptElement | null;
 
   if (existing) {
+    if (existing.dataset.loaded === "1") {
+      return Promise.resolve();
+    }
     return new Promise((resolve, reject) => {
-      if (typeof window.Canny === "function") {
-        resolve();
-        return;
-      }
-      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener(
+        "load",
+        () => {
+          existing.dataset.loaded = "1";
+          resolve();
+        },
+        { once: true },
+      );
       existing.addEventListener(
         "error",
-        () => reject(new Error("Failed to load feedback widget")),
+        () =>
+          reject(
+            new Error(
+              "Failed to load feedback widget (blocked or unreachable). Check CSP allows sdk.canny.io.",
+            ),
+          ),
         { once: true },
       );
     });
@@ -41,10 +62,19 @@ function loadCannySdk(): Promise<void> {
 
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
+    script.id = CANNY_SDK_SCRIPT_ID;
     script.src = CANNY_SDK_URL;
     script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load feedback widget"));
+    script.onload = () => {
+      script.dataset.loaded = "1";
+      resolve();
+    };
+    script.onerror = () =>
+      reject(
+        new Error(
+          "Failed to load feedback widget (blocked or unreachable). Check CSP allows sdk.canny.io.",
+        ),
+      );
     document.body.appendChild(script);
   });
 }
