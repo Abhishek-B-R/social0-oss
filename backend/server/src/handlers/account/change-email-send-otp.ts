@@ -34,7 +34,10 @@ export async function sendChangeEmailOtp(request: Request) {
 
   const ip = clientIp(request);
 
-  const userRate = await enforceRateLimit(changeEmailOtpLimiter, session.user.id);
+  const userRate = await enforceRateLimit(
+    changeEmailOtpLimiter,
+    session.user.id,
+  );
   if (!userRate.allowed) {
     return RouteResponse.json(
       { error: userRate.error },
@@ -44,11 +47,16 @@ export async function sendChangeEmailOtp(request: Request) {
 
   const ipRate = await enforceRateLimit(changeEmailOtpIpLimiter, ip);
   if (!ipRate.allowed) {
-    return RouteResponse.json({ error: ipRate.error }, { status: ipRate.status });
+    return RouteResponse.json(
+      { error: ipRate.error },
+      { status: ipRate.status },
+    );
   }
 
   const body = await request.json().catch(() => ({}));
-  const newEmail = body.newEmail ? String(body.newEmail).trim().toLowerCase() : "";
+  const newEmail = body.newEmail
+    ? String(body.newEmail).trim().toLowerCase()
+    : "";
   if (!newEmail) {
     return RouteResponse.json({ error: "Missing newEmail" }, { status: 400 });
   }
@@ -75,9 +83,7 @@ export async function sendChangeEmailOtp(request: Request) {
   const identifier = `change-email-otp-${newEmail}`;
   const expiresAt = new Date(Date.now() + OTP_EXPIRES_SEC * 1000);
 
-  await db
-    .delete(verification)
-    .where(eq(verification.identifier, identifier));
+  await db.delete(verification).where(eq(verification.identifier, identifier));
 
   await db.insert(verification).values({
     id: randomUUID(),
