@@ -1,4 +1,3 @@
-import { RouteResponse } from "../lib/route-response.js";
 import { db } from "../db/index.js";
 import {
   resurfaceSchedules,
@@ -11,18 +10,11 @@ import {
 import { and, eq, lte, desc, inArray } from "drizzle-orm";
 import { TwitterApi } from "twitter-api-v2";
 import { decryptToken } from "@social0/shared";
-import { verifyCronAuth } from "../lib/cron-auth.js";
 import { logCronSkipped } from "@social0/shared";
 import { getPlanLimits, type SubscriptionTier } from "@social0/shared";
 import { env } from "../lib/env.js";
 
-export const dynamic = "force-dynamic";
-export const maxDuration = 60;
-
-export async function GET(request: Request) {
-  const authError = verifyCronAuth(request);
-  if (authError) return authError;
-
+export async function runRepostCron() {
   const now = new Date();
 
   const pendingEvents = await db
@@ -40,7 +32,7 @@ export async function GET(request: Request) {
       ),
     )
     // Most overdue first - guarantees no event starves waiting behind newer ones.
-    // No explicit LIMIT - Vercel's maxDuration=60 is the natural execution cap.
+    // No explicit LIMIT - job runtime is bounded by the worker process.
     .orderBy(resurfaceEvents.nextExecuteAt);
 
   let processed = 0;
@@ -48,7 +40,7 @@ export async function GET(request: Request) {
   const appSecret = env.TWITTER_CONSUMER_SECRET;
 
   if (pendingEvents.length === 0) {
-    return RouteResponse.json({ processed });
+    return { processed };
   }
 
   // ── Batch pre-fetch: 3 queries instead of 3N ──────────────────────────────
@@ -341,5 +333,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return RouteResponse.json({ processed });
+  return { processed };
 }

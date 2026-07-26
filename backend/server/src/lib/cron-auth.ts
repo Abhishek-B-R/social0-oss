@@ -29,21 +29,3 @@ export function verifyCronSecretFromAuthorizationHeader(
   if (!token) return false;
   return constantTimeEquals(token, expected);
 }
-
-/**
- * Verifies cron auth (Bearer token === CRON_SECRET). Returns an error Response
- * to send, or null if the request is authorized.
- */
-export function verifyCronAuth(request: Request): Response | null {
-  const expected = expectedCronSecret();
-  if (!expected) {
-    return Response.json({ error: "Cron not configured" }, { status: 503 });
-  }
-  const token = bearerTokenFromAuthorizationHeader(
-    request.headers.get("authorization") ?? undefined,
-  );
-  if (!token || !constantTimeEquals(token, expected)) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  return null;
-}

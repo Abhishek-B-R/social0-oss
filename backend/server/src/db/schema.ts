@@ -141,8 +141,7 @@ export const connectedAccounts = pgTable("connected_accounts", {
   encryptedAccessToken: text("encrypted_access_token").notNull(),
   encryptedRefreshToken: text("encrypted_refresh_token"),
   tokenExpiresAt: timestamp("token_expires_at"),
-  platformMetadata:
-    jsonb("platform_metadata").$type<Record<string, unknown>>(),
+  platformMetadata: jsonb("platform_metadata").$type<Record<string, unknown>>(),
   isTwitterPremium: boolean("is_twitter_premium").default(false),
   platformAccountType: text("platform_account_type").default("personal"), // 'personal' | 'company' (e.g. LinkedIn company pages)
   createdAt: timestamp("created_at").defaultNow(),
@@ -524,18 +523,6 @@ export const subscriptionCancellations = pgTable("subscription_cancellations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ===== PLATFORM RATE LIMITS (optional) =====
-export const platformRateLimits = pgTable("platform_rate_limits", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  connectedAccountId: uuid("connected_account_id")
-    .references(() => connectedAccounts.id, { onDelete: "cascade" })
-    .notNull(),
-  requestCount: integer("request_count").default(0),
-  windowStart: timestamp("window_start").notNull(),
-  windowEnd: timestamp("window_end").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
 // ===== RESURFACE (X / Twitter) =====
 export const resurfaceSchedules = pgTable("resurface_schedules", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -608,7 +595,6 @@ export const connectedAccountsRelations = relations(
       references: [user.id],
     }),
     publications: many(postPublications),
-    rateLimits: many(platformRateLimits),
     autoPlugs: many(autoPlugs),
   }),
 );
@@ -726,16 +712,6 @@ export const teamInvitationsRelations = relations(
     invitedBy: one(user, {
       fields: [teamInvitations.invitedByUserId],
       references: [user.id],
-    }),
-  }),
-);
-
-export const platformRateLimitsRelations = relations(
-  platformRateLimits,
-  ({ one }) => ({
-    connectedAccount: one(connectedAccounts, {
-      fields: [platformRateLimits.connectedAccountId],
-      references: [connectedAccounts.id],
     }),
   }),
 );

@@ -1,25 +1,18 @@
-import { RouteResponse } from "../lib/route-response.js";
 import { db } from "../db/index.js";
 import { autoPlugs, connectedAccounts, userSettings } from "../db/schema.js";
 import { eq, inArray } from "drizzle-orm";
 import { TwitterApi } from "twitter-api-v2";
 import { decryptToken } from "@social0/shared";
-import { verifyCronAuth } from "../lib/cron-auth.js";
 import { logCronSkipped } from "@social0/shared";
 import { getPlanLimits, type SubscriptionTier } from "@social0/shared";
 import { env } from "../lib/env.js";
 
-export const maxDuration = 60;
-
-export async function GET(request: Request) {
-  const authError = verifyCronAuth(request);
-  if (authError) return authError;
-
+export async function runAutoplugCron() {
   const now = new Date();
 
   // Order oldest-first so all plugs cycle through across runs as they resolve.
-  // No explicit LIMIT - Vercel's maxDuration=60 is the natural execution cap.
-  // Each Twitter API call + DELAY_MS ≈ 300-700ms, so ≈80-180 items/run in practice.
+  // No explicit LIMIT - job runtime is bounded by the worker process.
+// Each Twitter API call + DELAY_MS ≈ 300-700ms, so ≈80-180 items/run in practice.
   const watching = await db
     .select()
     .from(autoPlugs)
@@ -52,7 +45,7 @@ export async function GET(request: Request) {
   }
 
   if (nonExpiredPlugs.length === 0) {
-    return RouteResponse.json({ checked, triggered, expired });
+    return { checked, triggered, expired };
   }
 
   const plugAccountIds = nonExpiredPlugs.map((p) => p.connectedAccountId);
@@ -220,5 +213,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return RouteResponse.json({ checked, triggered, expired });
+  return { checked, triggered, expired };
 }
