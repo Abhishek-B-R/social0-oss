@@ -34,7 +34,10 @@ import {
 import { getTwitterErrorMessage } from "../lib/twitter-errors.js";
 import { parseTikTokHandleFromProfileUrl } from "../lib/platform-view-url.js";
 import { maybeSendPostFailureEmail } from "../lib/post-failure-email.js";
-import { TwitterApi } from "twitter-api-v2";
+import {
+  createTwitterTweetFetch,
+  type CreateTwitterTweetPayload,
+} from "../lib/twitter-tweet-fetch.js";
 import { publishLog } from "../lib/publish-log.js";
 
 /** Extract a readable error from LinkedIn API response (status, message, serviceErrorCode). */
@@ -749,12 +752,6 @@ export async function executePublish(
         });
         return;
       }
-      const client = new TwitterApi({
-        appKey,
-        appSecret,
-        accessToken,
-        accessSecret,
-      });
       const xPostSettings = (() => {
         const md = post.metadata;
         if (!md || typeof md !== "object") return null;
@@ -777,23 +774,27 @@ export async function executePublish(
           message.includes("unknown parameter")
         );
       };
-      const sendTweet = async (
-        payload: Parameters<(typeof client.v2)["tweet"]>[0],
-      ) => {
+      // Always use fetch + OAuth 1.0a — twitter-api-v2 uses Node https.request,
+      // which throws `[unenv] https.request is not implemented yet!` on CF Workers.
+      const sendTweet = async (payload: CreateTwitterTweetPayload) => {
         if (!xPostSettings) {
-          return client.v2.tweet(payload);
+          return createTwitterTweetFetch(payload, accessToken, accessSecret);
         }
-        const payloadWithFlags = {
+        const payloadWithFlags: CreateTwitterTweetPayload = {
           ...payload,
           ...(xPostSettings.madeWithAi ? { made_with_ai: true } : {}),
           ...(xPostSettings.paidPartnership ? { paid_partnership: true } : {}),
-        } as Parameters<(typeof client.v2)["tweet"]>[0];
+        };
         try {
-          return await client.v2.tweet(payloadWithFlags);
+          return await createTwitterTweetFetch(
+            payloadWithFlags,
+            accessToken,
+            accessSecret,
+          );
         } catch (error) {
           if (!isUnsupportedXFlagError(error)) throw error;
-          // Graceful fallback in case the connected app tier/endpoint does not support these new fields yet.
-          return client.v2.tweet(payload);
+          // Graceful fallback if the connected app tier does not support these fields yet.
+          return createTwitterTweetFetch(payload, accessToken, accessSecret);
         }
       };
 
@@ -1015,9 +1016,7 @@ export async function executePublish(
               payload.reply = { in_reply_to_tweet_id: previousTweetId };
             }
 
-            const tweetData = await sendTweet(
-              payload as Parameters<typeof client.v2.tweet>[0],
-            );
+            const tweetData = await sendTweet(payload);
             const id = tweetData.data?.id;
             if (!id) throw new Error("Twitter did not return tweet ID");
             if (isFirst) firstTweetId = id;
@@ -1192,9 +1191,7 @@ export async function executePublish(
             text: tweetText,
           };
           if (mediaTuple) payload.media = { media_ids: mediaTuple };
-          const tweetData = await sendTweet(
-            payload as Parameters<typeof client.v2.tweet>[0],
-          );
+          const tweetData = await sendTweet(payload);
           firstTweetId = tweetData.data?.id ?? undefined;
         } else {
           // Thread: first tweet, then each part as reply to the previous tweet
@@ -1217,9 +1214,7 @@ export async function executePublish(
             if (!isFirst && previousTweetId) {
               payload.reply = { in_reply_to_tweet_id: previousTweetId };
             }
-            const tweetData = await sendTweet(
-              payload as Parameters<typeof client.v2.tweet>[0],
-            );
+            const tweetData = await sendTweet(payload);
             const id = tweetData.data?.id;
             if (!id) throw new Error("Twitter did not return tweet ID");
             if (isFirst) firstTweetId = id;

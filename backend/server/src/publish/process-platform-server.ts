@@ -9,7 +9,7 @@ import { maybeFinalizePostPublish } from "./finalize-post.js";
 
 /**
  * Run one platform publish on the API server (Node).
- * ponytail: Twitter video needs twitter-api-v2 / Node https — not CF Workers fetch OAuth.
+ * Used for immediate Twitter publishes and as a fallback path.
  */
 export async function runPlatformJobOnServer(
   app: FastifyInstance | null,

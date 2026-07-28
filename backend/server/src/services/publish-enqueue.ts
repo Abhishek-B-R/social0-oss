@@ -5,6 +5,7 @@ import {
   JOB_NAMES,
   getRedisUrl,
   platformPublishQueueName,
+  SERVER_SIDE_PUBLISH_PLATFORMS,
   type PublishPlatformJob,
   type PublishPostJob,
 } from "@social0/shared";
@@ -20,9 +21,6 @@ import {
   useCloudflarePublishDispatch,
 } from "./publish-dispatch.js";
 import { runPlatformJobOnServer } from "../publish/process-platform-server.js";
-
-/** Platforms that must publish on the API server (Node-only SDKs / OAuth). */
-const SERVER_SIDE_PUBLISH_PLATFORMS = new Set(["twitter_x"]);
 
 export type PublishPriority = "now" | "scheduled";
 
@@ -190,7 +188,7 @@ export async function prepareAndEnqueuePublish(
     };
 
     if (backend === "cloudflare" && SERVER_SIDE_PUBLISH_PLATFORMS.has(t.platform)) {
-      // Same path as dashboard RPC publish — twitter-api-v2 media upload on Node.
+      // Same path as dashboard RPC publish — keeps X on Node for immediate enqueue.
       void runPlatformJobOnServer(app, platformJob).catch((err) => {
         console.error("[publish] server-side platform job failed", err);
       });
