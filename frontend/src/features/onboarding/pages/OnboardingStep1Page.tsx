@@ -110,7 +110,7 @@ function OnboardingWelcomeContent() {
   const posthog = usePostHog();
   const [loadingPlan, setLoadingPlan] = useState<PaidPlanId | null>(null);
   const [skipping, setSkipping] = useState(false);
-  const [interval, setInterval] = useState<BillingInterval>("yearly");
+  const [interval, setInterval] = useState<BillingInterval>("monthly");
 
   useEffect(() => {
     if (searchParams.get("payment_failed") === "1") {

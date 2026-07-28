@@ -229,7 +229,7 @@ export function BillingPanel({
   const [renewedOnDate] = useState<Date | null>(null);
   const [upgradePending, setUpgradePending] = useState(false);
   const [billingInterval, setBillingInterval] =
-    useState<BillingInterval>("yearly");
+    useState<BillingInterval>("monthly");
   const [waitingForWebhook, setWaitingForWebhook] = useState(
     Boolean(justSubscribed && subscription.tier === "free"),
   );

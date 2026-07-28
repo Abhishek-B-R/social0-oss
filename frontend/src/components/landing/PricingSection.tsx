@@ -81,7 +81,7 @@ const proFeatures = [
 ];
 
 export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
-  const [interval, setInterval] = useState<BillingInterval>("yearly");
+  const [interval, setInterval] = useState<BillingInterval>("monthly");
   const starter = getPlanPrice("starter", interval);
   const growth = getPlanPrice("growth", interval);
   const pro = getPlanPrice("pro", interval);
