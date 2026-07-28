@@ -2,7 +2,13 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { accepted } from "../../middleware/auth.js";
 import { enqueueCronJob, queueNameForJob } from "../../services/enqueue.js";
 import { verifyCronSecretFromAuthorizationHeader } from "../../lib/cron-auth.js";
-import { JOB_NAMES, type JobName } from "@social0/shared";
+import {
+  JOB_NAMES,
+  SERVER_SIDE_PUBLISH_PLATFORMS,
+  type JobName,
+  type PublishPlatformJob,
+} from "@social0/shared";
+import { runPlatformJobOnServer } from "../../publish/process-platform-server.js";
 
 async function enqueueSchedulerCron(
   request: FastifyRequest,
@@ -34,6 +40,28 @@ function registerCronTrigger(
   handler: (request: FastifyRequest, reply: FastifyReply) => Promise<unknown>,
 ) {
   app.post(path, handler);
+}
+
+function parsePublishPlatformJob(body: unknown): PublishPlatformJob | null {
+  if (!body || typeof body !== "object") return null;
+  const o = body as Record<string, unknown>;
+  if (
+    typeof o.postId !== "string" ||
+    typeof o.userId !== "string" ||
+    typeof o.publicationId !== "string" ||
+    typeof o.connectedAccountId !== "string" ||
+    typeof o.platform !== "string"
+  ) {
+    return null;
+  }
+  return {
+    postId: o.postId,
+    userId: o.userId,
+    publicationId: o.publicationId,
+    connectedAccountId: o.connectedAccountId,
+    platform: o.platform as PublishPlatformJob["platform"],
+    ...(typeof o.trackingId === "string" ? { trackingId: o.trackingId } : {}),
+  };
 }
 
 export async function registerCronRoutes(app: FastifyInstance) {
@@ -79,6 +107,29 @@ export async function registerCronRoutes(app: FastifyInstance) {
       );
     },
   );
+
+  /**
+   * Run one platform publish on the API server (used for Twitter from cron).
+   * Auth: CRON_SECRET bearer. Returns 202 immediately; work continues in-process.
+   */
+  app.post("/cron/publish-platform", async (request, reply) => {
+    if (!verifyCronSecretFromAuthorizationHeader(request.headers.authorization)) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
+    const job = parsePublishPlatformJob(request.body);
+    if (!job) {
+      return reply.status(400).send({ error: "Invalid publish platform job" });
+    }
+    if (!SERVER_SIDE_PUBLISH_PLATFORMS.has(job.platform)) {
+      return reply.status(400).send({
+        error: `Platform ${job.platform} is not server-side only`,
+      });
+    }
+    void runPlatformJobOnServer(request.server, job).catch((err) => {
+      console.error("[cron/publish-platform] failed", job.platform, err);
+    });
+    return reply.status(202).send({ ok: true, platform: job.platform });
+  });
 
   app.post("/cron/notify-legal-update", async (request, reply) => {
     if (!verifyCronSecretFromAuthorizationHeader(request.headers.authorization)) {

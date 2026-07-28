@@ -157,6 +157,11 @@ export const FRONTEND_API_ROUTES: ApiRouteDef[] = [
     job: "cron.publish-scheduled",
     async: true,
   },
+  {
+    method: "POST",
+    path: "/api/cron/publish-platform",
+    note: "Run one server-side platform publish (Twitter)",
+  },
   { method: "POST", path: "/api/cron/repost", job: "cron.repost", async: true },
   {
     method: "POST",

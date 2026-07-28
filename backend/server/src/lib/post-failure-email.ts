@@ -29,6 +29,17 @@ async function claimPostFailureEmail(postId: string): Promise<boolean> {
   return claimed.length > 0;
 }
 
+/** Allow a later retry if the provider send failed after we claimed. */
+async function releasePostFailureEmailClaim(postId: string): Promise<void> {
+  await db
+    .update(posts)
+    .set({
+      metadata: sql`coalesce(${posts.metadata}, '{}'::jsonb) - ${FAILURE_EMAIL_SENT_KEY}`,
+      updatedAt: new Date(),
+    })
+    .where(eq(posts.id, postId));
+}
+
 function platformDisplayName(platformId: string): string {
   return PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
 }
@@ -110,12 +121,28 @@ export async function maybeSendPostFailureEmail(input: {
 
     const automationOn = settingsRow?.automationEmails ?? true;
     const postFailureOn = settingsRow?.emailOnPostFailed ?? true;
-    if (!automationOn || !postFailureOn) return;
+    if (!automationOn || !postFailureOn) {
+      console.info(
+        "[post-failure-email] skipped: preference off",
+        input.postId,
+        { automationOn, postFailureOn },
+      );
+      return;
+    }
 
     const email = userRow?.email?.trim();
-    if (!email) return;
+    if (!email) {
+      console.warn("[post-failure-email] skipped: user has no email", input.postId);
+      return;
+    }
 
-    if (!(await claimPostFailureEmail(input.postId))) return;
+    if (!(await claimPostFailureEmail(input.postId))) {
+      console.info(
+        "[post-failure-email] skipped: already claimed",
+        input.postId,
+      );
+      return;
+    }
 
     const postUrl = `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/dashboard/posts/${input.postId}`;
     const subject =
@@ -126,11 +153,21 @@ export async function maybeSendPostFailureEmail(input: {
           )}`
         : `${input.failures.length} platforms failed to publish your post`;
 
-    await sendEmail({
-      to: email,
-      subject,
-      html: buildPostFailureEmailHtml({ postUrl, failures: input.failures }),
-    });
+    try {
+      await sendEmail({
+        to: email,
+        subject,
+        html: buildPostFailureEmailHtml({ postUrl, failures: input.failures }),
+      });
+    } catch (sendErr) {
+      await releasePostFailureEmailClaim(input.postId).catch((releaseErr) =>
+        console.error(
+          "[post-failure-email] failed to release claim after send error:",
+          releaseErr,
+        ),
+      );
+      throw sendErr;
+    }
   } catch (err) {
     console.error("[post-failure-email] Failed to send:", err);
   }

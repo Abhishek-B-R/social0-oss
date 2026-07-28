@@ -1621,8 +1621,17 @@ export async function executePublish(
     }
   } else {
     const allPubs = await db
-      .select({ status: postPublications.status })
+      .select({
+        status: postPublications.status,
+        platform: connectedAccounts.platform,
+        platformUsername: connectedAccounts.platformUsername,
+        lastError: postPublications.lastError,
+      })
       .from(postPublications)
+      .innerJoin(
+        connectedAccounts,
+        eq(postPublications.connectedAccountId, connectedAccounts.id),
+      )
       .where(eq(postPublications.postId, postId));
     if (allPubs.length > 0) {
       const publishedCount = allPubs.filter(
@@ -1646,6 +1655,21 @@ export async function executePublish(
           .update(posts)
           .set({ status: newPostStatus, updatedAt: new Date() })
           .where(eq(posts.id, postId));
+      }
+      // Per-platform CF/worker jobs use publicationIdFilter — still notify when
+      // every platform has finished and at least one failed.
+      if (pendingCount === 0 && failedCount > 0) {
+        void maybeSendPostFailureEmail({
+          userId: post.userId,
+          postId,
+          failures: allPubs
+            .filter((p) => p.status === "failed")
+            .map((f) => ({
+              platform: f.platform,
+              platformUsername: f.platformUsername,
+              error: f.lastError,
+            })),
+        });
       }
     }
   }
