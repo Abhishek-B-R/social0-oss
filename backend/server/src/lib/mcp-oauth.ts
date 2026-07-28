@@ -101,6 +101,11 @@ function clientKey(clientId: string): string {
   return `mcp:oauth:client:${clientId}`;
 }
 
+/** Latest raw connector key for a user — lets stale OAuth tokens heal after re-auth. */
+function connectorRawKey(userId: string): string {
+  return `mcp:oauth:connector-raw:${userId}`;
+}
+
 function isAllowedRedirectUri(uri: string): boolean {
   try {
     const parsed = new URL(uri);
@@ -239,7 +244,41 @@ async function createConnectorApiKey(userId: string): Promise<string> {
     keyHash: hash,
     keyPrefix: prefix,
   });
+  // Keep raw available so older access tokens can heal after connector rotation.
+  if (redis) {
+    await redis.set(connectorRawKey(userId), raw, {
+      ex: REFRESH_TOKEN_TTL_SECONDS,
+    });
+  }
   return raw;
+}
+
+/**
+ * Re-auth rotates the connector API key but Claude may still present an older
+ * access/refresh token that embeds the revoked raw key. Prefer the latest
+ * connector raw from Redis; mint only if that is also gone.
+ */
+async function resolveOrRotateConnectorApiKey(
+  userId: string,
+  apiKeyRaw: string,
+): Promise<{ apiKeyRaw: string; rotated: boolean }> {
+  const auth = await resolveRawApiKey(apiKeyRaw);
+  if (auth && auth.userId === userId) {
+    return { apiKeyRaw, rotated: false };
+  }
+
+  if (redis) {
+    const latest = await redis.get<string>(connectorRawKey(userId));
+    if (typeof latest === "string" && latest.length > 0) {
+      const latestAuth = await resolveRawApiKey(latest);
+      if (latestAuth && latestAuth.userId === userId) {
+        return { apiKeyRaw: latest, rotated: true };
+      }
+    }
+  }
+
+  const rotated = await createConnectorApiKey(userId);
+  return { apiKeyRaw: rotated, rotated: true };
 }
 
 export async function denyMcpOAuthSession(sessionId: string): Promise<{
@@ -407,6 +446,11 @@ export async function refreshMcpAccessToken(input: {
   await store.del(refreshKey(input.refreshToken));
   await store.del(tokenKey(stored.accessToken));
 
+  const { apiKeyRaw } = await resolveOrRotateConnectorApiKey(
+    stored.userId,
+    stored.apiKeyRaw,
+  );
+
   const accessToken = randomBytes(32).toString("base64url");
   const refreshToken = randomBytes(32).toString("base64url");
   const expiresAt = Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL_SECONDS;
@@ -415,7 +459,7 @@ export async function refreshMcpAccessToken(input: {
     tokenKey(accessToken),
     {
       userId: stored.userId,
-      apiKeyRaw: stored.apiKeyRaw,
+      apiKeyRaw,
       clientId: input.clientId,
       scope: stored.scope,
       expiresAt,
@@ -425,7 +469,10 @@ export async function refreshMcpAccessToken(input: {
   await store.set(
     refreshKey(refreshToken),
     {
-      ...stored,
+      userId: stored.userId,
+      apiKeyRaw,
+      clientId: input.clientId,
+      scope: stored.scope,
       accessToken,
     } satisfies StoredRefreshToken,
     { ex: REFRESH_TOKEN_TTL_SECONDS },
@@ -509,12 +556,26 @@ export async function introspectMcpAccessToken(token: string): Promise<{
   if (!stored) return { active: false };
   if (stored.expiresAt <= Math.floor(Date.now() / 1000)) return { active: false };
 
+  const { apiKeyRaw, rotated } = await resolveOrRotateConnectorApiKey(
+    stored.userId,
+    stored.apiKeyRaw,
+  );
+
+  if (rotated) {
+    const ttl = Math.max(1, stored.expiresAt - Math.floor(Date.now() / 1000));
+    await redis.set(
+      tokenKey(token),
+      { ...stored, apiKeyRaw } satisfies StoredAccessToken,
+      { ex: ttl },
+    );
+  }
+
   return {
     active: true,
     scope: stored.scope,
     client_id: stored.clientId,
     exp: stored.expiresAt,
-    api_key: stored.apiKeyRaw,
+    api_key: apiKeyRaw,
   };
 }
 
