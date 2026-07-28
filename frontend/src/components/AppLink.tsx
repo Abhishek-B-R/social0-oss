@@ -10,6 +10,8 @@ type AppLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
   href: string;
   children?: ReactNode;
   prefetch?: boolean;
+  /** React Router location state (e.g. `{ from }` for back navigation). */
+  state?: unknown;
 };
 
 function routerTo(href: string): RouterLinkProps["to"] {
@@ -27,6 +29,7 @@ export default function AppLink({
   children,
   prefetch,
   onClick,
+  state,
   ...rest
 }: AppLinkProps) {
   // Accepted for API compatibility; not forwarded to the DOM/router link.
@@ -56,18 +59,22 @@ export default function AppLink({
     if (!samePath) return;
 
     event.preventDefault();
-    navigate({
-      pathname: url.pathname,
-      search: url.search,
-      hash: url.hash,
-    });
+    navigate(
+      {
+        pathname: url.pathname,
+        search: url.search,
+        hash: url.hash,
+      },
+      state !== undefined ? { state } : undefined,
+    );
   };
 
   return (
     <RouterLink
       to={to}
+      state={state}
       onClick={handleClick}
-      {...(rest as Omit<RouterLinkProps, "to" | "onClick">)}
+      {...(rest as Omit<RouterLinkProps, "to" | "onClick" | "state">)}
     >
       {children}
     </RouterLink>

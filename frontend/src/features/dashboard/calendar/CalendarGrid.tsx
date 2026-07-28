@@ -1,5 +1,6 @@
 
 import { useState, useMemo, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
 import {
   format,
@@ -69,9 +70,12 @@ function CalendarPostListItem({
   post: PostForCalendar;
   use24HourTimeFormat: boolean;
 }) {
+  const location = useLocation();
+  const from = `${location.pathname}${location.search}`;
   return (
     <Link
       href={`/dashboard/posts/${post.id}`}
+      state={{ from }}
       className="flex items-center gap-3 rounded-xl border border-border bg-bg p-3 shadow-sm hover:bg-bg-muted sm:gap-4 sm:p-4"
     >
       <span className="shrink-0 text-sm font-medium text-text-muted tabular-nums">
@@ -146,6 +150,9 @@ function DayCell({
     countScheduled > 0 ||
     countPartial > 0 ||
     countFailed > 0;
+
+  const location = useLocation();
+  const from = `${location.pathname}${location.search}`;
 
   if (mobileCompactCell) {
     return (
@@ -242,6 +249,7 @@ function DayCell({
             {!isExpanded && (
               <Link
                 href={`/dashboard/posts/${posts[0].id}`}
+                state={{ from }}
                 className="inline-flex items-center gap-1 rounded border border-border-subtle bg-bg px-1.5 py-0.5 text-[10px] font-medium text-text-muted shadow-sm hover:bg-bg-muted"
               >
                 <span
@@ -260,6 +268,7 @@ function DayCell({
                 <Link
                   key={post.id}
                   href={`/dashboard/posts/${post.id}`}
+                  state={{ from }}
                   className="block rounded border border-border-subtle bg-bg p-1.5 shadow-sm hover:bg-bg-muted"
                 >
                   <div className="flex items-center gap-2">
@@ -306,6 +315,7 @@ function DayCell({
               <Link
                 key={post.id}
                 href={`/dashboard/posts/${post.id}`}
+                state={{ from }}
                 className="block rounded border border-border-subtle bg-bg p-1.5 shadow-sm hover:bg-bg-muted"
               >
                 <div className="flex items-start gap-1.5">

@@ -1,5 +1,5 @@
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import type { ComponentType } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -27,6 +27,10 @@ import {
 } from "@/lib/twitter-errors";
 import { DOCS_POST_VIEW_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
+import {
+  resolvePostDetailBack,
+  type PostDetailLocationState,
+} from "@/lib/post-detail-back";
 import {
   loadPostDetailCoreData,
   loadPostDetailMediaData,
@@ -161,6 +165,10 @@ const DISPLAY_TYPE_TO_SLUG: Record<string, string> = {
 
 export function PostDetailView({ postId }: { postId: string }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const back = resolvePostDetailBack(
+    (location.state as PostDetailLocationState | null)?.from,
+  );
   const invalidateQueries = useInvalidateQueries();
   const [core, setCore] = useState<CoreData | null>(null);
   const [coreLoading, setCoreLoading] = useState(true);
@@ -341,13 +349,27 @@ export function PostDetailView({ postId }: { postId: string }) {
       )}
 
       <div className="flex items-center gap-2 justify-between">
-        <Link
-          href="/dashboard/posts"
+        <button
+          type="button"
+          onClick={() => {
+            const from = (location.state as PostDetailLocationState | null)
+              ?.from;
+            const resolved = resolvePostDetailBack(from);
+            if (
+              typeof from === "string" &&
+              resolved.href === from
+            ) {
+              navigate(from);
+              return;
+            }
+            // Preserve calendar → post → back without a hardcoded posts list.
+            navigate(-1);
+          }}
           className="inline-flex items-center gap-2 text-sm font-medium text-text-muted hover:text-text mb-6"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to posts
-        </Link>
+          {back.label}
+        </button>
         <DocsInfoIcon url={DOCS_POST_VIEW_URL} />
       </div>
 

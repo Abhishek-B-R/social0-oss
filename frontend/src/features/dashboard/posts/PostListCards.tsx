@@ -11,6 +11,7 @@ import { usePostHog } from "@posthog/react";
 import { capturePostAction } from "@/lib/posthog-events";
 import { PostAgainButton } from "./PostAgainButton";
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
 
 type PostRow = {
@@ -457,6 +458,9 @@ export function PostListCards({
   dateFormat?: string | null;
   timezone?: string | null;
 }) {
+  const location = useLocation();
+  const from = `${location.pathname}${location.search}`;
+
   if (userPosts.length === 0) {
     return (
       <div className="rounded-xl border border-border bg-card p-10 text-center">
@@ -543,6 +547,7 @@ export function PostListCards({
             )}
             <Link
               href={`/dashboard/posts/${post.id}`}
+              state={{ from }}
               className="block p-4 pr-12 active:opacity-95 touch-manipulation"
             >
               {/* TOP ROW: [Post type badge] left, [Status badge] right */}
