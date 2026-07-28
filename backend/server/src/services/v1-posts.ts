@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
 import {
@@ -71,6 +71,7 @@ async function validateOwnedAccounts(
     .where(
       and(
         eq(connectedAccounts.userId, userId),
+        isNull(connectedAccounts.workspaceId),
         inArray(connectedAccounts.id, normalizedIds),
       ),
     );

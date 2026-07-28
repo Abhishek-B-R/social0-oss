@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { connectedAccounts, verification } from "../db/schema.js";
 import { encrypt, encryptToken } from "@social0/shared";
@@ -25,9 +25,13 @@ const VALID_PLATFORMS: Platform[] = [
   "facebook",
 ];
 
+/** API keys / CLI / MCP use the personal (main) pool only — workspace accounts stay dashboard-scoped. */
 export async function v1ListAccounts(userId: string) {
   const accounts = await db.query.connectedAccounts.findMany({
-    where: eq(connectedAccounts.userId, userId),
+    where: and(
+      eq(connectedAccounts.userId, userId),
+      isNull(connectedAccounts.workspaceId),
+    ),
     orderBy: [asc(connectedAccounts.createdAt), asc(connectedAccounts.id)],
     columns: {
       id: true,
@@ -64,6 +68,7 @@ export async function v1DisconnectAccount(
       and(
         eq(connectedAccounts.id, accountId),
         eq(connectedAccounts.userId, userId),
+        isNull(connectedAccounts.workspaceId),
       ),
     )
     .limit(1);

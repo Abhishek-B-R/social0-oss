@@ -61,10 +61,19 @@ function errorMessage(body: ApiErrorBody | undefined, status: number): string {
 }
 
 export class Social0ApiClient {
-  private readonly apiKey: string;
+  /** Optional explicit key. When omitted, resolve per request via ALS / env. */
+  private readonly apiKeyOverride: string | undefined;
 
   constructor(apiKey?: string) {
-    this.apiKey = apiKey ?? getRequestApiKey();
+    this.apiKeyOverride = apiKey;
+  }
+
+  /**
+   * Must resolve at call time — the module-level `apiClient` singleton is
+   * constructed at import (before hosted MCP sets AsyncLocalStorage).
+   */
+  private resolveApiKey(): string {
+    return this.apiKeyOverride ?? getRequestApiKey();
   }
 
   async get<T>(path: string, options?: Omit<RequestOptions, "method" | "body">): Promise<T> {
@@ -115,6 +124,7 @@ export class Social0ApiClient {
   private async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const method = options.method ?? "GET";
     const url = buildUrl(config.v1Base, path);
+    const apiKey = this.resolveApiKey();
     let attempt = 0;
 
     while (true) {
@@ -127,7 +137,7 @@ export class Social0ApiClient {
 
       try {
         const headers: Record<string, string> = {
-          Authorization: `Bearer ${this.apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
           Accept: "application/json",
           ...options.headers,
         };
