@@ -221,7 +221,12 @@ export async function getPostsListData({
     .filter((id): id is string => !!id);
   const firstMediaByPost = new Map<
     string,
-    { mimeType: string; originalFilename: string | null }
+    {
+      mimeType: string;
+      originalFilename: string | null;
+      url: string | null;
+      thumbnailUrl: string | null;
+    }
   >();
   if (firstIds.length > 0) {
     const medias = await db
@@ -229,9 +234,16 @@ export async function getPostsListData({
         id: mediaUploads.id,
         mimeType: mediaUploads.mimeType,
         originalFilename: mediaUploads.originalFilename,
+        url: mediaUploads.url,
+        thumbnailUrl: mediaUploads.thumbnailUrl,
       })
       .from(mediaUploads)
-      .where(inArray(mediaUploads.id, firstIds));
+      .where(
+        and(
+          eq(mediaUploads.userId, userId),
+          inArray(mediaUploads.id, firstIds),
+        ),
+      );
     for (const p of userPostsWithStatus) {
       const firstId = (p.mediaIds ?? [])[0];
       if (firstId) {
@@ -240,6 +252,8 @@ export async function getPostsListData({
           firstMediaByPost.set(p.id, {
             mimeType: media.mimeType,
             originalFilename: media.originalFilename ?? null,
+            url: media.url ?? null,
+            thumbnailUrl: media.thumbnailUrl ?? null,
           });
         }
       }

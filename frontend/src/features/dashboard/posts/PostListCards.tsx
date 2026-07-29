@@ -1,9 +1,11 @@
 
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import Link from "@/components/AppLink";
-import { AlertCircle, MoreHorizontal } from "lucide-react";
-import { formatDateTime } from "@/lib/date-format";
+import AppImage from "@/components/AppImage";
+import { AlertCircle, MoreHorizontal, Play } from "lucide-react";
+import { formatDate } from "@/lib/date-format";
 import { PlatformIcon } from "@/components/PlatformIcon";
+import { AccountAvatar } from "@/components/AccountAvatar";
 import type { PublicationRow } from "./posts-list-types";
 import { publishPost } from "@/api/publish";
 import { deletePost } from "@/api/posts";
@@ -13,6 +15,81 @@ import { PostAgainButton } from "./PostAgainButton";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
+
+type FirstMediaMeta = {
+  mimeType: string;
+  originalFilename: string | null;
+  url: string | null;
+  thumbnailUrl: string | null;
+};
+
+/** Small list thumb: muted box first, media lazy-loads into it. */
+function ListAttachmentThumb({
+  mimeType,
+  url,
+  thumbnailUrl,
+  originalFilename,
+  extraCount,
+}: {
+  mimeType: string;
+  url: string | null;
+  thumbnailUrl: string | null;
+  originalFilename: string | null;
+  extraCount: number;
+}) {
+  const isVideo = mimeType.startsWith("video/");
+  const stillUrl = thumbnailUrl?.trim() || null;
+  const mediaUrl = url?.trim() || null;
+  // Images use url. Videos prefer a still; otherwise load video metadata for a frame.
+  const imageUrl = isVideo ? stillUrl : stillUrl || mediaUrl;
+
+  return (
+    <div className="mb-2 flex items-end gap-1.5">
+      <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-md bg-muted ring-1 ring-border">
+        {imageUrl ? (
+          <AppImage
+            src={imageUrl}
+            alt={originalFilename ?? "Attachment"}
+            width={44}
+            height={44}
+            className="h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+            unoptimized
+          />
+        ) : isVideo && mediaUrl ? (
+          <video
+            src={mediaUrl}
+            className="h-full w-full object-cover"
+            muted
+            playsInline
+            preload="metadata"
+            onLoadedMetadata={(e) => {
+              const v = e.currentTarget;
+              if (v.readyState >= 1) {
+                try {
+                  v.currentTime = Math.min(0.1, (v.duration || 1) * 0.01);
+                } catch {
+                  /* ignore seek errors */
+                }
+              }
+            }}
+          />
+        ) : null}
+        {isVideo && (
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/25">
+            <Play className="h-3.5 w-3.5 fill-white text-white" aria-hidden />
+          </span>
+        )}
+      </div>
+      {extraCount > 0 && (
+        <span className="text-[10px] font-medium text-muted-foreground">
+          +{extraCount}
+        </span>
+      )}
+    </div>
+  );
+}
 
 type PostRow = {
   id: string;
@@ -116,7 +193,37 @@ function getUiStatus(post: PostRow): string {
   return post.status ?? "draft";
 }
 
-function getTimestampLabel(
+function formatTimeOnly(
+  date: Date,
+  options: {
+    use24HourTimeFormat: boolean;
+    timezone?: string | null;
+  },
+): string {
+  const tz = options.timezone?.trim();
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      ...(tz && tz !== "UTC" ? { timeZone: tz } : {}),
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: !options.use24HourTimeFormat,
+    }).format(date);
+  } catch {
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: !options.use24HourTimeFormat,
+    }).format(date);
+  }
+}
+
+type TimestampParts = {
+  label: string;
+  dateLine: string;
+  timeLine: string;
+};
+
+function getTimestampParts(
   post: PostRow,
   publications: { publishedAt: Date | null }[],
   options: {
@@ -125,29 +232,42 @@ function getTimestampLabel(
     timezone?: string | null;
     isQueued?: boolean;
   },
-): string {
+): TimestampParts | null {
   const effectiveStatus = getUiStatus(post);
-  const fmt = (d: Date) =>
-    formatDateTime(d, {
-      use24HourTimeFormat: options.use24HourTimeFormat,
-      dateFormat: options.dateFormat,
-      timezone: options.timezone,
-    });
+  const dateOpts = {
+    use24HourTimeFormat: options.use24HourTimeFormat,
+    dateFormat: options.dateFormat,
+    timezone: options.timezone,
+  };
+
+  let when: Date | null = null;
+  let label = "Created at";
+
   if (effectiveStatus === "scheduled" && post.scheduledAt) {
-    const verb = options.isQueued ? "Queued" : "Scheduled";
-    return `${verb} for ${fmt(new Date(post.scheduledAt))}`;
-  }
-  if (effectiveStatus === "published") {
+    when = new Date(post.scheduledAt);
+    label = options.isQueued ? "Queued for" : "Scheduled for";
+  } else if (effectiveStatus === "published") {
     const publishedAts = publications
       .map((p) => p.publishedAt)
       .filter((d): d is Date => d != null);
-    const publishedAt =
+    when =
       publishedAts.length > 0
         ? new Date(Math.min(...publishedAts.map((d) => new Date(d).getTime())))
         : null;
-    return publishedAt ? `Posted at ${fmt(publishedAt)}` : "Posted";
+    label = "Posted at";
+    if (!when) return { label: "Posted", dateLine: "", timeLine: "" };
+  } else if (post.createdAt) {
+    when = new Date(post.createdAt);
+    label = "Created at";
+  } else {
+    return null;
   }
-  return post.createdAt ? `Created ${fmt(new Date(post.createdAt))}` : "-";
+
+  return {
+    label,
+    dateLine: formatDate(when, options.dateFormat, options.timezone),
+    timeLine: formatTimeOnly(when, dateOpts),
+  };
 }
 
 /** Status pill: label + optional prefix character. */
@@ -192,7 +312,7 @@ function getStatusBadge(status: string | null): {
       return {
         label: "Draft",
         prefix: "○",
-        className: "bg-muted text-foreground",
+        className: "bg-yellow-400 text-yellow-950 dark:bg-yellow-500 dark:text-yellow-950",
       };
   }
 }
@@ -417,7 +537,7 @@ function QuickActionsMenu({
   );
 }
 
-const MAX_PLATFORM_ICONS = 3;
+const MAX_PLATFORM_ICONS = 6;
 
 export type ResurfaceForPost = {
   id: string;
@@ -444,10 +564,7 @@ export function PostListCards({
 }: {
   userPosts: PostRow[];
   publicationsByPostId: Record<string, PublicationRow[]>;
-  firstMediaByPost: Map<
-    string,
-    { mimeType: string; originalFilename: string | null }
-  >;
+  firstMediaByPost: Map<string, FirstMediaMeta>;
   resurfaceByPostId?: Record<string, ResurfaceForPost>;
   /** When provided, posts in this set show a "Queued" badge instead of "Scheduled" */
   queuedPostIds?: Set<string>;
@@ -494,7 +611,7 @@ export function PostListCards({
         );
         const uiStatus = getUiStatus(post);
         const isQueued = queuedPostIds?.has(post.id) ?? false;
-        const timestampLabel = getTimestampLabel(
+        const timestampParts = getTimestampParts(
           post,
           publicationsByPostId[post.id] ?? [],
           { use24HourTimeFormat, dateFormat, timezone, isQueued },
@@ -534,7 +651,7 @@ export function PostListCards({
         return (
           <li
             key={post.id}
-            className="relative rounded-[12px] border border-border bg-card transition-shadow hover:border-accent hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
+            className="relative flex h-full flex-col overflow-hidden rounded-[12px] border border-border bg-card transition-shadow hover:border-accent hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
           >
             {quickStatus && (
               <div className="absolute right-2 top-2 z-10">
@@ -548,59 +665,95 @@ export function PostListCards({
             <Link
               href={`/dashboard/posts/${post.id}`}
               state={{ from }}
-              className="block p-4 pr-12 active:opacity-95 touch-manipulation"
+              className="flex min-h-[11.5rem] flex-1 flex-col active:opacity-95 touch-manipulation"
             >
-              {/* TOP ROW: [Post type badge] left, [Status badge] right */}
-              <div className="mb-1.5 flex items-center justify-between gap-2">
-                <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                  {displayType}
-                </span>
-                <span
-                  className={`rounded-md px-2 py-0.5 text-[11px] font-mono font-medium ${statusBadge.className}`}
+              <div className="flex flex-1 flex-col p-4 pb-3 pr-12">
+                {/* TOP ROW: [Post type badge] left, [Status badge] right */}
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                    {displayType}
+                  </span>
+                  <span
+                    className={`rounded-md px-2 py-0.5 text-[11px] font-mono font-medium ${statusBadge.className}`}
+                  >
+                    {statusBadge.prefix} {statusBadge.label}
+                  </span>
+                </div>
+                {/* MIDDLE: caption/title - larger, bolder, 2 lines */}
+                <p
+                  className={`mb-2 line-clamp-2 text-[15px] leading-snug ${
+                    hasCaption
+                      ? "font-semibold text-foreground"
+                      : "font-medium text-muted-foreground italic"
+                  }`}
                 >
-                  {statusBadge.prefix} {statusBadge.label}
-                </span>
-              </div>
-              {/* MIDDLE: caption/title - larger, bolder, 2 lines */}
-              <p
-                className={`mb-2 line-clamp-2 text-[15px] leading-snug ${
-                  hasCaption
-                    ? "font-semibold text-foreground"
-                    : "font-medium text-muted-foreground italic"
-                }`}
-              >
-                {preview}
-              </p>
-              {uiStatus === "failed" &&
-                getFriendlyFailureReason(post.failureReason) && (
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-2 flex items-center gap-1.5">
-                    <AlertCircle
-                      className="w-3.5 h-3.5 shrink-0"
-                      strokeWidth={1.5}
-                    />
-                    {getFriendlyFailureReason(post.failureReason)}
-                  </p>
+                  {preview}
+                </p>
+                {(mediaMeta || mediaIds.length > 0) && (
+                  <ListAttachmentThumb
+                    mimeType={mediaMeta?.mimeType ?? ""}
+                    url={mediaMeta?.url ?? null}
+                    thumbnailUrl={mediaMeta?.thumbnailUrl ?? null}
+                    originalFilename={mediaMeta?.originalFilename ?? null}
+                    extraCount={Math.max(0, mediaIds.length - 1)}
+                  />
                 )}
-              {/* BOTTOM ROW: [Platform icons left] [Date right muted] */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1">
+                {uiStatus === "failed" &&
+                  getFriendlyFailureReason(post.failureReason) && (
+                    <p className="mt-auto flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
+                      <AlertCircle
+                        className="h-3.5 w-3.5 shrink-0"
+                        strokeWidth={1.5}
+                      />
+                      {getFriendlyFailureReason(post.failureReason)}
+                    </p>
+                  )}
+              </div>
+
+              {/* Fixed footer — same place with or without attachments */}
+              <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/60 bg-muted/50 px-3 py-2">
+                <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
                   {showIcons.map((pub, i) => (
-                    <PlatformIcon
-                      key={`${post.id}-${i}-${pub.platform}`}
-                      platform={pub.platform}
-                      size={20}
-                      className="text-muted-foreground"
-                    />
+                    <span
+                      key={`${post.id}-${i}-${pub.connectedAccountId ?? pub.platform}`}
+                      className="relative inline-flex shrink-0"
+                      title={
+                        pub.platformUsername
+                          ? `@${pub.platformUsername}`
+                          : pub.platform
+                      }
+                    >
+                      <AccountAvatar
+                        accountId={pub.connectedAccountId ?? undefined}
+                        profileImageUrl={pub.profileImageUrl}
+                        username={pub.platformUsername}
+                        platform={pub.platform}
+                        isTwitterPremium={pub.isTwitterPremium ?? false}
+                        size="sm"
+                        className="ring-2 ring-muted"
+                      />
+                      <span className="absolute -left-0.5 -top-0.5 z-10 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-muted bg-card">
+                        <PlatformIcon platform={pub.platform} size={10} />
+                      </span>
+                    </span>
                   ))}
                   {extraCount > 0 && (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="shrink-0 whitespace-nowrap text-[10px] font-medium text-muted-foreground">
                       +{extraCount} more
                     </span>
                   )}
                 </div>
-                <span className="shrink-0 text-[11px] text-muted-foreground">
-                  {timestampLabel}
-                </span>
+                {timestampParts && (
+                  <div className="shrink-0 text-right text-[10px] leading-tight text-muted-foreground">
+                    <div>{timestampParts.label}</div>
+                    {timestampParts.dateLine ? (
+                      <div className="tabular-nums">{timestampParts.dateLine}</div>
+                    ) : null}
+                    {timestampParts.timeLine ? (
+                      <div className="tabular-nums">{timestampParts.timeLine}</div>
+                    ) : null}
+                  </div>
+                )}
               </div>
             </Link>
           </li>

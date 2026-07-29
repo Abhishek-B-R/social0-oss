@@ -8,6 +8,7 @@ import { capturePostLifecycle } from "@/lib/posthog-events";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   freePublishBlockReason,
+  getComposerSubmitBlockReason,
   getFreePostsRemaining,
   isFreePublishBlocked,
 } from "@/lib/free-tier-publish";
@@ -1069,7 +1070,19 @@ export function ImagePostForm({
     }
     setShowCaptionError(false);
 
-    if ((intendedModeRef.current ?? mode) === "scheduled") {
+    const effectiveModeEarly = intendedModeRef.current ?? mode;
+    const gateReason = getComposerSubmitBlockReason({
+      action: effectiveModeEarly,
+      selectedAccountCount: selectedIds.size,
+      subscriptionTier,
+      freePostsUsed,
+    });
+    if (gateReason) {
+      toast.error(gateReason);
+      return;
+    }
+
+    if (effectiveModeEarly === "scheduled") {
       if (!scheduledAt) {
         toast.error("Please select a date and time.");
         return;
@@ -2437,12 +2450,12 @@ export function ImagePostForm({
           primaryActionDisabled={isFreePublishBlocked(
             subscriptionTier,
             freePostsUsed,
-            mode,
+            "now",
           )}
           primaryActionDisabledReason={freePublishBlockReason(
             subscriptionTier,
             freePostsUsed,
-            mode,
+            "now",
           )}
           isGuest={isGuest}
           freePostsRemaining={

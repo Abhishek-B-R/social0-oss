@@ -377,14 +377,24 @@ export function SchedulePostSidebar({
                 <button
                   type="button"
                   onClick={handleSaveDraft}
-                  disabled={loading || submitDisabled}
+                  disabled={loading || submitDisabled || !hasAccountSelected}
+                  title={
+                    loading
+                      ? undefined
+                      : !hasAccountSelected
+                        ? "Select at least one account before saving a draft"
+                        : submitDisabled
+                          ? (submitDisabledReason ??
+                            "Complete the form to save a draft")
+                          : undefined
+                  }
                   className="w-full rounded-xl border border-border bg-bg-elevated py-3 font-medium text-text transition-colors hover:bg-bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Save to Drafts
                 </button>
                 {!hasAccountSelected && (
                   <p className="text-xs text-text-muted">
-                    Select an account to post
+                    Select an account to post or save a draft
                   </p>
                 )}
               </>

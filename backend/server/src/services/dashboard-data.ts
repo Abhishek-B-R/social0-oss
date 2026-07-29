@@ -206,7 +206,12 @@ export type LoadPostsPageDataResult =
         publicationsByPostId: Record<string, SerializedPublication[]>;
         firstMediaByPost: Record<
           string,
-          { mimeType: string; originalFilename: string | null }
+          {
+            mimeType: string;
+            originalFilename: string | null;
+            url: string | null;
+            thumbnailUrl: string | null;
+          }
         >;
         resurfaceByPostId: Record<
           string,

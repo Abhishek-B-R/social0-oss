@@ -43,13 +43,26 @@ function hydrateFromSerialized(data: {
   >;
   firstMediaByPost: Record<
     string,
-    { mimeType: string; originalFilename: string | null }
+    {
+      mimeType: string;
+      originalFilename: string | null;
+      url: string | null;
+      thumbnailUrl: string | null;
+    }
   >;
   queuedPostIds: string[];
 }): {
   userPosts: PostRow[];
   publicationsByPostId: Record<string, PublicationRow[]>;
-  firstMediaByPost: Map<string, { mimeType: string; originalFilename: string | null }>;
+  firstMediaByPost: Map<
+    string,
+    {
+      mimeType: string;
+      originalFilename: string | null;
+      url: string | null;
+      thumbnailUrl: string | null;
+    }
+  >;
   queuedPostIds: Set<string>;
 } {
   const userPosts: PostRow[] = data.userPosts.map((p) => ({

@@ -5,6 +5,7 @@ import { usePostHog } from "@posthog/react";
 import { capturePostLifecycle } from "@/lib/posthog-events";
 import {
   freePublishBlockReason,
+  getComposerSubmitBlockReason,
   getFreePostsRemaining,
   isFreePublishBlocked,
 } from "@/lib/free-tier-publish";
@@ -470,6 +471,17 @@ export function TextPostForm({
       return;
     }
     setShowContentError(false);
+    const effectiveModeEarly = intendedModeRef.current ?? mode;
+    const gateReason = getComposerSubmitBlockReason({
+      action: effectiveModeEarly,
+      selectedAccountCount: selectedIds.size,
+      subscriptionTier,
+      freePostsUsed,
+    });
+    if (gateReason) {
+      toast.error(gateReason);
+      return;
+    }
     setScheduledPostId(null);
     setDraftSavedPostId(null);
     if ((intendedModeRef.current ?? mode) === "scheduled") {
@@ -1239,12 +1251,12 @@ export function TextPostForm({
           primaryActionDisabled={isFreePublishBlocked(
             subscriptionTier,
             freePostsUsed,
-            mode,
+            "now",
           )}
           primaryActionDisabledReason={freePublishBlockReason(
             subscriptionTier,
             freePostsUsed,
-            mode,
+            "now",
           )}
           isGuest={isGuest}
           freePostsRemaining={
