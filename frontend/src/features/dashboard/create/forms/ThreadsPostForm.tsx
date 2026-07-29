@@ -2357,7 +2357,7 @@ export function ThreadsPostForm({
           rememberAutoFeatures={rememberAutoFeatures}
           onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
-          <div className="hidden lg:block rounded-xl border border-border bg-bg p-4 shadow-sm">
+          <div className="hidden lg:block rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
             <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-text">
               Thread Preview
             </h3>

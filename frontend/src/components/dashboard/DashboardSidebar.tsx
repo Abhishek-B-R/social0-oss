@@ -245,7 +245,7 @@ export function DashboardSidebar({
                 })();
               }}
               className={cn(
-                "flex items-center rounded-lg font-semibold text-sidebar-text transition-colors hover:bg-sidebar-active",
+                "flex items-center rounded-lg font-semibold text-sidebar-text",
                 logoPending && "opacity-60",
                 collapsed ? "justify-center p-1.5" : "gap-3 px-2 py-1.5",
               )}

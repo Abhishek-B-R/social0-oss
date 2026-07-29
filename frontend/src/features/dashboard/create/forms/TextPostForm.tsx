@@ -35,6 +35,7 @@ import {
 import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
 import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
+import { SwitchPostTypeLinks } from "../SwitchPostTypeLinks";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type {
@@ -551,7 +552,12 @@ export function TextPostForm({
       if (result.success) {
         setScheduledPostId(initialScheduledId);
         setOverlayPhase("done");
-        capturePostLifecycle(posthog, "post_scheduled", "text", accountIds.length);
+        capturePostLifecycle(
+          posthog,
+          "post_scheduled",
+          "text",
+          accountIds.length,
+        );
         invalidateQueries();
       } else {
         setOverlayPhase("idle");
@@ -573,7 +579,12 @@ export function TextPostForm({
         if (result.success) {
           setDraftSavedPostId(initialDraftId);
           setOverlayPhase("done");
-          capturePostLifecycle(posthog, "post_drafted", "text", accountIds.length);
+          capturePostLifecycle(
+            posthog,
+            "post_drafted",
+            "text",
+            accountIds.length,
+          );
           invalidateQueries();
         } else {
           setOverlayPhase("idle");
@@ -702,7 +713,12 @@ export function TextPostForm({
           );
         }
         await setupAutoPlug(result.postId);
-        capturePostLifecycle(posthog, "post_published", "text", accountIds.length);
+        capturePostLifecycle(
+          posthog,
+          "post_published",
+          "text",
+          accountIds.length,
+        );
         setOverlayPhase("done");
         navigate(dash(`posts/${result.postId}`), { replace: true });
         invalidateQueries();
@@ -846,7 +862,12 @@ export function TextPostForm({
           );
         }
         await setupAutoPlug(result.postId);
-        capturePostLifecycle(posthog, "post_published", "text", accountIds.length);
+        capturePostLifecycle(
+          posthog,
+          "post_published",
+          "text",
+          accountIds.length,
+        );
         setOverlayPhase("done");
         navigate(dash(`posts/${result.postId}`), { replace: true });
         invalidateQueries();
@@ -855,12 +876,22 @@ export function TextPostForm({
       if (effectiveMode === "draft" && result.postId) {
         setDraftSavedPostId(result.postId);
         setOverlayPhase("done");
-        capturePostLifecycle(posthog, "post_drafted", "text", accountIds.length);
+        capturePostLifecycle(
+          posthog,
+          "post_drafted",
+          "text",
+          accountIds.length,
+        );
       }
       if (effectiveMode === "scheduled" && result.postId) {
         setScheduledPostId(result.postId);
         setOverlayPhase("done");
-        capturePostLifecycle(posthog, "post_scheduled", "text", accountIds.length);
+        capturePostLifecycle(
+          posthog,
+          "post_scheduled",
+          "text",
+          accountIds.length,
+        );
       }
       invalidateQueries();
     } else {
@@ -1315,7 +1346,10 @@ export function TextPostForm({
           rememberAutoFeatures={rememberAutoFeatures}
           onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
-          <div className="hidden lg:block rounded-xl border border-border bg-bg p-4 shadow-sm mt-16">
+          {!initialDraftId && !initialScheduledId && !initialEditId ? (
+            <SwitchPostTypeLinks current="text" caption={content} />
+          ) : null}
+          <div className="hidden lg:block rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
             <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-text">
               Post Preview
             </h3>

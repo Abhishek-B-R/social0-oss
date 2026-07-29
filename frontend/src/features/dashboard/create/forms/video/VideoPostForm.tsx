@@ -104,6 +104,7 @@ import {
   hasMissingPinterestBoard,
 } from "@/lib/pinterest-board-validation";
 import { AspectRatioGuidanceBanner } from "@/components/AspectRatioGuidanceBanner";
+import { SwitchPostTypeLinks } from "../../SwitchPostTypeLinks";
 
 const defaultTiktokSettings: TikTokPostSettings = DEFAULT_TIKTOK_POST_SETTINGS;
 const defaultXPostSettings: XPostSettings = {
@@ -2739,6 +2740,15 @@ export function VideoPostForm({
           rememberAutoFeatures={rememberAutoFeatures}
           onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
+          {!initialDraftId && !initialScheduledId && !initialEditId ? (
+            <SwitchPostTypeLinks
+              current="video"
+              caption={content}
+              onBeforeSwitch={() => {
+                removeVideo();
+              }}
+            />
+          ) : null}
           <div className="hidden lg:block rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="flex rounded-full border border-border bg-bg-muted p-0.5">

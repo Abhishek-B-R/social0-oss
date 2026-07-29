@@ -4,6 +4,7 @@ import { useTheme } from "next-themes";
 import Link from "@/components/AppLink";
 import { signOut } from "@/lib/auth-client";
 import { DOCS_DASHBOARD_URL } from "@/lib/docs-url";
+import { LEGAL_ENTITY } from "@/lib/legal-entity";
 import { cn } from "@/lib/utils";
 import {
   ArrowSquareOut,
@@ -98,12 +99,14 @@ function MenuRow({
   );
 
   if (href) {
-    if (external) {
+    if (external || href.startsWith("mailto:")) {
+      const isMailto = href.startsWith("mailto:");
       return (
         <a
           href={href}
-          target="_blank"
-          rel="noopener noreferrer"
+          {...(!isMailto
+            ? { target: "_blank", rel: "noopener noreferrer" }
+            : {})}
           className={className}
           onClick={onClick}
         >
@@ -253,7 +256,7 @@ function AccountMenuPanel({
         <MenuRow
           icon={ChatCircle}
           label="Get support"
-          href="/dashboard/feedback"
+          href={`mailto:${LEGAL_ENTITY.supportEmail}`}
           onClick={onClose}
         />
         <MenuRow

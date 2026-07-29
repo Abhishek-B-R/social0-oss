@@ -84,6 +84,7 @@ import {
   getPinterestBoardRequiredMessage,
   hasMissingPinterestBoard,
 } from "@/lib/pinterest-board-validation";
+import { SwitchPostTypeLinks } from "../../SwitchPostTypeLinks";
 
 type TikTokAccountMetadata = {
   post_as_draft?: boolean;
@@ -2516,6 +2517,22 @@ export function ImagePostForm({
           rememberAutoFeatures={rememberAutoFeatures}
           onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
+          {!initialDraftId && !initialScheduledId && !initialEditId ? (
+            <SwitchPostTypeLinks
+              current="image"
+              caption={content}
+              onBeforeSwitch={() => {
+                setImages((prev) => {
+                  for (const item of prev) {
+                    if (item.preview.startsWith("blob:")) {
+                      URL.revokeObjectURL(item.preview);
+                    }
+                  }
+                  return [];
+                });
+              }}
+            />
+          ) : null}
           <div className="hidden lg:block max-h-[55vh] overflow-y-auto">
             <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-2">
