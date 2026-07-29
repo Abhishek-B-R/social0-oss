@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { IconChevronDown, IconPlus } from "@tabler/icons-react";
+import {
+  CaretDown,
+} from "@/icons/phosphor";
 import { toast } from "sonner";
 import { createTeam, createWorkspaceInTeam } from "@/api/team";
 import { Button } from "@/components/ui/button";
@@ -13,6 +15,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  WORKSPACE_ICON_OPTIONS,
+  type WorkspaceIconId,
+} from "@/lib/workspace-icon-options";
+import { cn } from "@/lib/utils";
 
 export function CreateWorkspaceDialog({
   open,
@@ -40,6 +47,8 @@ export function CreateWorkspaceDialog({
   const [existingTeamId, setExistingTeamId] = useState("");
   const [teamName, setTeamName] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");
+  const [workspaceIcon, setWorkspaceIcon] =
+    useState<WorkspaceIconId>("briefcase");
   const [workspaceTouched, setWorkspaceTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
@@ -67,6 +76,7 @@ export function CreateWorkspaceDialog({
       );
       setTeamName("");
       setWorkspaceName("");
+      setWorkspaceIcon("briefcase");
       setWorkspaceTouched(false);
       setSubmitting(false);
     }
@@ -95,11 +105,18 @@ export function CreateWorkspaceDialog({
       if (!teamMode) {
         await createTeam(workspaceName.trim(), workspaceName.trim(), {
           isCollaborative: false,
+          icon: workspaceIcon,
         });
       } else if (teamChoice === "existing") {
-        await createWorkspaceInTeam(existingTeamId, workspaceName.trim());
+        await createWorkspaceInTeam(
+          existingTeamId,
+          workspaceName.trim(),
+          workspaceIcon,
+        );
       } else {
-        await createTeam(teamName.trim(), workspaceName.trim());
+        await createTeam(teamName.trim(), workspaceName.trim(), {
+          icon: workspaceIcon,
+        });
       }
       toast.success("Workspace created");
       await onCreated();
@@ -128,6 +145,19 @@ export function CreateWorkspaceDialog({
         </DialogHeader>
 
         <div className="space-y-5">
+          {!canCreate && !canCreateTeam && ownedTeams.length === 0 ? (
+            <p className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm text-text-muted">
+              Creating workspaces needs a paid plan.{" "}
+              <a
+                href="/dashboard/billing"
+                className="font-medium text-accent hover:opacity-80"
+              >
+                Upgrade
+              </a>{" "}
+              to unlock this.
+            </p>
+          ) : null}
+
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-text">
@@ -256,10 +286,7 @@ export function CreateWorkspaceDialog({
                       </option>
                     ))}
                   </select>
-                  <IconChevronDown
-                    className="pointer-events-none absolute top-1/2 right-2.5 h-3.5 w-3.5 -translate-y-1/2 text-text-muted"
-                    strokeWidth={1.5}
-                  />
+                  <CaretDown className="pointer-events-none absolute top-1/2 right-2.5 h-3.5 w-3.5 -translate-y-1/2 text-text-muted" />
                 </span>
               ) : (
                 <p className="text-sm text-text-muted">
@@ -297,6 +324,40 @@ export function CreateWorkspaceDialog({
               }}
             />
           </div>
+
+          <div className="space-y-2">
+            <Label id="create-workspace-icon-label">Icon</Label>
+            <div
+              role="radiogroup"
+              aria-labelledby="create-workspace-icon-label"
+              className="grid grid-cols-5 gap-2"
+            >
+              {WORKSPACE_ICON_OPTIONS.map(({ id, label, Icon }) => {
+                const selected = workspaceIcon === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    aria-label={label}
+                    title={label}
+                    disabled={submitting}
+                    onClick={() => setWorkspaceIcon(id)}
+                    className={cn(
+                      "inline-flex h-10 w-full items-center justify-center rounded-xl border transition-[background-color,border-color,color,transform] duration-150",
+                      "active:scale-[0.97] disabled:opacity-60",
+                      selected
+                        ? "border-accent bg-accent/15 text-accent"
+                        : "border-border bg-bg text-text-muted hover:border-border hover:bg-muted hover:text-text",
+                    )}
+                  >
+                    <Icon className="h-4 w-4" size={16} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         <DialogFooter>
@@ -311,14 +372,7 @@ export function CreateWorkspaceDialog({
             disabled={submitting || !canSubmit}
             onClick={() => void handleSubmit()}
           >
-            {submitting ? (
-              "Creating…"
-            ) : (
-              <>
-                <IconPlus className="h-4 w-4" strokeWidth={1.5} />
-                Create
-              </>
-            )}
+            {submitting ? "Creating…" : "Create"}
           </Button>
         </DialogFooter>
       </DialogContent>

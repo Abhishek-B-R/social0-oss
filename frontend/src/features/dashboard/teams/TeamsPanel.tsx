@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "@/components/AppLink";
-import { IconPlus, IconUsers } from "@tabler/icons-react";
+import {
+  Plus,
+  UsersThree,
+} from "@/icons/phosphor";
 import { listWorkspaces, type TeamListItem } from "@/api/team";
 import DocsInfoIcon from "@/components/info-icon";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -73,7 +76,7 @@ export function TeamsPanel() {
               href="/dashboard/teams/create"
               className={cn(buttonVariants({ size: "sm" }))}
             >
-              <IconPlus className="h-4 w-4" strokeWidth={1.5} />
+              <Plus className="h-4 w-4" />
               Create team
             </Link>
           ) : null}
@@ -87,9 +90,8 @@ export function TeamsPanel() {
       <div className="mt-4">
         {teams.length === 0 ? (
           <div className="rounded-xl border border-border bg-bg-elevated p-8 text-center">
-            <IconUsers
+            <UsersThree
               className="mx-auto h-8 w-8 text-text-muted opacity-50"
-              strokeWidth={1.5}
             />
             <p className="mt-3 text-sm text-text-muted">
               No teams yet. Create one to invite people and share workspaces.
@@ -99,7 +101,7 @@ export function TeamsPanel() {
                 href="/dashboard/teams/create"
                 className={cn(buttonVariants({ size: "sm" }), "mt-4")}
               >
-                <IconPlus className="h-4 w-4" strokeWidth={1.5} />
+                <Plus className="h-4 w-4" />
                 Create team
               </Link>
             ) : null}

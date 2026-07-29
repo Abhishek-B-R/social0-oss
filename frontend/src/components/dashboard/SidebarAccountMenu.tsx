@@ -6,21 +6,21 @@ import { signOut } from "@/lib/auth-client";
 import { DOCS_DASHBOARD_URL } from "@/lib/docs-url";
 import { cn } from "@/lib/utils";
 import {
-  IconBook2,
-  IconBrandX,
-  IconChevronDown,
-  IconExternalLink,
-  IconHome,
-  IconKey,
-  IconLink,
-  IconLogout,
-  IconMessageCircle,
-  IconMoon,
-  IconSettings,
-  IconSun,
-  IconDeviceDesktop,
-  IconWallet,
-} from "@tabler/icons-react";
+  ArrowSquareOut,
+  BookOpen,
+  CaretDown,
+  ChatCircle,
+  Code,
+  CreditCard,
+  GearSix,
+  House,
+  Monitor,
+  Moon,
+  PlugsConnected,
+  SignOut,
+  Sun,
+  XLogo,
+} from "@/icons/phosphor";
 
 /** Strong ease-out — matches improve-animations / Emil UI budget. */
 const EASE_OUT: [number, number, number, number] = [0.23, 1, 0.32, 1];
@@ -57,7 +57,11 @@ function MenuRow({
   href,
   danger,
 }: {
-  icon: React.ComponentType<{ className?: string; size?: number }>;
+  icon: React.ComponentType<{
+    className?: string;
+    size?: number;
+    weight?: "thin" | "light" | "regular" | "bold" | "fill" | "duotone";
+  }>;
   label: string;
   external?: boolean;
   onClick?: () => void;
@@ -80,12 +84,14 @@ function MenuRow({
           danger ? "text-red-600 dark:text-red-400" : "text-sidebar-muted",
         )}
         size={16}
+        weight="regular"
       />
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {external ? (
-        <IconExternalLink
+        <ArrowSquareOut
           className="h-3.5 w-3.5 shrink-0 text-sidebar-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100"
           size={14}
+          weight="regular"
         />
       ) : null}
     </>
@@ -128,9 +134,9 @@ function ThemeSegment() {
   );
 
   const options = [
-    { value: "light" as const, label: "Light", Icon: IconSun },
-    { value: "dark" as const, label: "Dark", Icon: IconMoon },
-    { value: "system" as const, label: "System", Icon: IconDeviceDesktop },
+    { value: "light" as const, label: "Light", Icon: Sun },
+    { value: "dark" as const, label: "Dark", Icon: Moon },
+    { value: "system" as const, label: "System", Icon: Monitor },
   ];
 
   if (!ready) {
@@ -161,7 +167,11 @@ function ThemeSegment() {
                 : "text-sidebar-muted hover:text-sidebar-text",
             )}
           >
-            <Icon className="h-3.5 w-3.5 shrink-0" size={14} />
+            <Icon
+              className="h-3.5 w-3.5 shrink-0"
+              size={14}
+              weight={active ? "fill" : "regular"}
+            />
             <span>{label}</span>
           </button>
         );
@@ -224,7 +234,7 @@ function AccountMenuPanel({
           onClick={onClose}
           className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent transition-opacity hover:opacity-80 active:scale-[0.98]"
         >
-          <IconLink className="h-4 w-4" size={16} />
+          <PlugsConnected className="h-4 w-4" size={16} />
           Connect accounts
         </Link>
       </div>
@@ -234,27 +244,27 @@ function AccountMenuPanel({
           Resources
         </p>
         <MenuRow
-          icon={IconBook2}
+          icon={BookOpen}
           label="Docs"
           href={DOCS_DASHBOARD_URL}
           external
           onClick={onClose}
         />
         <MenuRow
-          icon={IconMessageCircle}
+          icon={ChatCircle}
           label="Get support"
           href="/dashboard/feedback"
           onClick={onClose}
         />
         <MenuRow
-          icon={IconBrandX}
+          icon={XLogo}
           label="Follow us"
           href="https://x.com/social0_app"
           external
           onClick={onClose}
         />
         <MenuRow
-          icon={IconHome}
+          icon={House}
           label="View landing page"
           href="/home"
           onClick={onClose}
@@ -265,19 +275,19 @@ function AccountMenuPanel({
 
       <div className="px-1.5 py-1.5">
         <MenuRow
-          icon={IconSettings}
+          icon={GearSix}
           label="Account settings"
           href="/dashboard/settings"
           onClick={onClose}
         />
         <MenuRow
-          icon={IconWallet}
+          icon={CreditCard}
           label="Billing"
           href="/dashboard/billing"
           onClick={onClose}
         />
         <MenuRow
-          icon={IconKey}
+          icon={Code}
           label="Developer"
           href="/dashboard/api-keys"
           onClick={onClose}
@@ -296,7 +306,7 @@ function AccountMenuPanel({
       <div className="mx-3 border-t border-sidebar-menu-border" />
 
       <div className="px-1.5 py-1.5 pb-2">
-        <MenuRow icon={IconLogout} label="Log out" danger onClick={onSignOut} />
+        <MenuRow icon={SignOut} label="Log out" danger onClick={onSignOut} />
       </div>
     </>
   );
@@ -499,7 +509,7 @@ export function SidebarAccountMenu({
                 {planLabel}
               </p>
             </div>
-            <IconChevronDown
+            <CaretDown
               className={cn(
                 "h-4 w-4 shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
                 variant === "sidebar" ? "text-sidebar-text" : "text-foreground",

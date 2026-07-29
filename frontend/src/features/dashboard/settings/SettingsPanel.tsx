@@ -10,11 +10,11 @@ import {
 } from "react";
 import Link from "@/components/AppLink";
 import {
-  IconUser,
-  IconLink,
-  IconCalendar,
-  IconAdjustments,
-} from "@tabler/icons-react";
+  CalendarBlank,
+  Faders,
+  PlugsConnected,
+  User,
+} from "@/icons/phosphor";
 import {
   updateAutomationEmails,
   updatePlatformPreferences,
@@ -61,10 +61,10 @@ export type SettingsConnection = {
 };
 
 const SETTINGS_TABS = [
-  { id: "profile", label: "Profile", icon: IconUser },
-  { id: "preferences", label: "Preferences", icon: IconAdjustments },
-  { id: "queue", label: "Queue", icon: IconCalendar },
-  { id: "connections", label: "Connections", icon: IconLink },
+  { id: "profile", label: "Profile", icon: User },
+  { id: "preferences", label: "Preferences", icon: Faders },
+  { id: "queue", label: "Queue", icon: CalendarBlank },
+  { id: "connections", label: "Connections", icon: PlugsConnected },
 ] as const;
 
 type SettingsTabId = (typeof SETTINGS_TABS)[number]["id"];
@@ -1127,7 +1127,7 @@ export function SettingsPanel({
                 : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
-            <tab.icon className="w-4 h-4" strokeWidth={1.5} />
+            <tab.icon className="w-4 h-4" />
             {tab.label}
           </button>
         ))}

@@ -10,12 +10,12 @@
   --brand-emerald-light: #34d399;
 
   /* Semantic dashboard color system */
-  --bg: #fafaf8;
-  --bg-subtle: #f0eee9;
-  --bg-muted: #f0eee9;
+  --bg: #f3f1ec;
+  --bg-subtle: #ebe8e2;
+  --bg-muted: #e8e4de;
   --bg-elevated: #ffffff;
   --border: #e5e7eb;
-  --border-subtle: #f0eee9;
+  --border-subtle: #ebe8e2;
   /* Composer writing surface — lifts off page bg without borrowing sidebar menu */
   --composer-card: #ffffff;
   --composer-card-border: #e8e4de;
@@ -29,16 +29,17 @@
   --accent-light: var(--brand-emerald-light);
   --hero-emerald: var(--brand-emerald-dark);
   --destructive: #ef4444;
+  /* White rail on warm page canvas (SuperX-style separation) */
   --sidebar-bg: #ffffff;
   --sidebar-text: #0a0a0a;
   --sidebar-muted: #6b7280;
-  --sidebar-border: #e5e7eb;
-  --sidebar-active: #e5e7eb;
+  --sidebar-border: #e5e1da;
+  --sidebar-active: #f0eee9;
   /* Account popup surface — slightly warm so it lifts off the sidebar */
   --sidebar-menu-bg: #f7f5f1;
   --sidebar-menu-border: #e5e1da;
 
-  --warm-bg: #fafaf8;
+  --warm-bg: #f3f1ec;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -210,10 +211,10 @@ html {
 
 .dark {
   /* Semantic dashboard color system (dark) */
-  --bg: #0a0a0a;
-  --bg-subtle: #111111;
-  --bg-muted: #1a1a1a;
-  --bg-elevated: #141414;
+  --bg: #000000;
+  --bg-subtle: #0c0c0c;
+  --bg-muted: #161616;
+  --bg-elevated: #121212;
   --border: #2a2a2a;
   --border-subtle: #1f1f1f;
   /* Warm charcoal card on near-black page — readable chips + clear edge */
@@ -249,23 +250,23 @@ html {
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.145 0 0);
+  --sidebar: oklch(0.18 0.008 70);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.205 0 0);
+  --sidebar-accent: oklch(0.22 0.008 70);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-ring: oklch(0.556 0 0);
 
-  /* Dashboard sidebar — set after shadcn tokens so they aren't overwritten */
-  --sidebar-bg: #000000;
+  /* Warm charcoal rail on pure black canvas (SuperX-style separation) */
+  --sidebar-bg: #141210;
   --sidebar-text: #f5f5f5;
-  --sidebar-muted: #737373;
-  --sidebar-border: #0a0a0a;
-  --sidebar-active: #111111;
-  /* Warm charcoal — lifts off pure black without copying SuperX #1B1917 */
-  --sidebar-menu-bg: #161412;
-  --sidebar-menu-border: #2a2723;
+  --sidebar-muted: #8a8680;
+  --sidebar-border: #252220;
+  --sidebar-active: #1e1c19;
+  /* Account popup — lifts a step above the rail */
+  --sidebar-menu-bg: #1c1916;
+  --sidebar-menu-border: #322e29;
 }
 
 @layer base {

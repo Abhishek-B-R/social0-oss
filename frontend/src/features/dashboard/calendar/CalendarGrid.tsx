@@ -38,6 +38,16 @@ export type PostForCalendar = {
   isTwitterPremium?: boolean | null;
 };
 
+function isPublishedPost(status: string) {
+  return status === "published";
+}
+
+function calendarPostCardClass(status: string) {
+  return isPublishedPost(status)
+    ? "border-border-subtle bg-bg-elevated hover:bg-bg-muted"
+    : "border-border-subtle bg-bg hover:bg-bg-muted";
+}
+
 const MAX_VISIBLE_PER_DAY = 2;
 const MOBILE_BREAKPOINT_PX = 768;
 
@@ -76,7 +86,11 @@ function CalendarPostListItem({
     <Link
       href={`/dashboard/posts/${post.id}`}
       state={{ from }}
-      className="flex items-center gap-3 rounded-xl border border-border bg-bg p-3 shadow-sm hover:bg-bg-muted sm:gap-4 sm:p-4"
+      className={`flex items-center gap-3 rounded-xl border border-border p-3 shadow-sm sm:gap-4 sm:p-4 ${
+        isPublishedPost(post.status)
+          ? "bg-bg-elevated hover:bg-bg-muted"
+          : "bg-bg hover:bg-bg-muted"
+      }`}
     >
       <span className="shrink-0 text-sm font-medium text-text-muted tabular-nums">
         {format(
@@ -269,7 +283,7 @@ function DayCell({
                   key={post.id}
                   href={`/dashboard/posts/${post.id}`}
                   state={{ from }}
-                  className="block rounded border border-border-subtle bg-bg p-1.5 shadow-sm hover:bg-bg-muted"
+                  className={`block rounded border p-1.5 shadow-sm ${calendarPostCardClass(post.status)}`}
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-text-muted tabular-nums">
@@ -316,7 +330,7 @@ function DayCell({
                 key={post.id}
                 href={`/dashboard/posts/${post.id}`}
                 state={{ from }}
-                className="block rounded border border-border-subtle bg-bg p-1.5 shadow-sm hover:bg-bg-muted"
+                className={`block rounded border p-1.5 shadow-sm ${calendarPostCardClass(post.status)}`}
               >
                 <div className="flex items-start gap-1.5">
                   <div className="min-w-0 flex-1">

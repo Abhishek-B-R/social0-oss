@@ -65,6 +65,10 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    optimizeDeps: {
+      // Never prebundle the Phosphor mega-barrel — it 504s Vite's dep optimizer.
+      exclude: ["@phosphor-icons/react"],
+    },
     build: {
       modulePreload: {
         resolveDependencies: (_filename, deps) =>

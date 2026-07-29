@@ -3,13 +3,11 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  IconBriefcase,
-  IconChevronDown,
-  IconHome,
-  IconPlus,
-  IconSettings,
-  IconUsers,
-} from "@tabler/icons-react";
+  CaretDown,
+  GearSix,
+  Plus,
+  UsersThree,
+} from "@/icons/phosphor";
 import { toast } from "sonner";
 import Link from "@/components/AppLink";
 import {
@@ -18,6 +16,7 @@ import {
   type TeamListItem,
   type WorkspaceListItem,
 } from "@/api/team";
+import { WorkspaceIcon } from "@/lib/workspace-icons";
 import { CreateWorkspaceDialog } from "@/features/dashboard/workspaces/CreateWorkspaceDialog";
 import {
   isTeamAppPath,
@@ -122,6 +121,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
       isActive: true,
       connectionCount: 0,
       memberCount: 1,
+      icon: "house",
     } satisfies WorkspaceListItem);
 
   const ownedTeams = useMemo(
@@ -139,12 +139,14 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
       name: string;
       subtitle: string;
       teamId: string | null;
+      icon: string;
     }[] = [
       {
         id: null,
         name: "Main",
         subtitle: "Personal",
         teamId: null,
+        icon: "house",
       },
     ];
     for (const team of ownedTeams) {
@@ -154,6 +156,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
           name: ws.name,
           subtitle: team.isCollaborative !== false ? team.name : "Personal",
           teamId: team.id,
+          icon: ws.icon ?? "briefcase",
         });
       }
     }
@@ -167,6 +170,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
       subtitle: string;
       teamId: string;
       team: TeamListItem;
+      icon: string;
     }[] = [];
     for (const team of joinedTeams) {
       for (const ws of team.workspaces) {
@@ -176,6 +180,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
           subtitle: team.name,
           teamId: team.id,
           team,
+          icon: ws.icon ?? "users",
         });
       }
     }
@@ -316,31 +321,18 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        {active.kind === "joined" ? (
-          <IconUsers
-            className="h-4 w-4 shrink-0 text-sidebar-muted"
-            strokeWidth={1.5}
-          />
-        ) : active.id === null ? (
-          <IconHome
-            className="h-4 w-4 shrink-0 text-sidebar-muted"
-            strokeWidth={1.5}
-          />
-        ) : (
-          <IconBriefcase
-            className="h-4 w-4 shrink-0 text-sidebar-muted"
-            strokeWidth={1.5}
-          />
-        )}
+        <WorkspaceIcon
+          id={active.icon ?? (active.id === null ? "house" : "briefcase")}
+          className="h-4 w-4 shrink-0 text-sidebar-muted"
+        />
         <span className="min-w-0 flex-1 truncate capitalize">
           {activeLabel}
         </span>
-        <IconChevronDown
+        <CaretDown
           className={cn(
             "h-4 w-4 shrink-0 text-sidebar-muted transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
             open && "rotate-180",
           )}
-          strokeWidth={1.5}
         />
       </button>
 
@@ -409,7 +401,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
                         active={isActive}
                         busy={busyId === (ws.id ?? "main")}
                         disabled={!!busyId}
-                        icon={ws.id === null ? "home" : "briefcase"}
+                        icon={ws.icon}
                         onSelect={() => {
                           if (ws.id === null) {
                             void handleSelectMain();
@@ -428,7 +420,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
                     <>
                       <div className="my-1 border-t border-sidebar-menu-border" />
                       <p className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-sidebar-muted">
-                        <IconUsers className="h-3.5 w-3.5" strokeWidth={1.5} />
+                        <UsersThree className="h-3.5 w-3.5" />
                         Teams
                       </p>
                       {joinedWorkspaces.map((ws) => (
@@ -441,7 +433,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
                           }
                           busy={busyId === ws.id}
                           disabled={!!busyId}
-                          icon="users"
+                          icon={ws.icon}
                           onSelect={() =>
                             void handleSelectJoined({
                               teamId: ws.teamId,
@@ -463,15 +455,12 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
                 onClick={() => setOpen(false)}
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm text-sidebar-text transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-[0.98]"
               >
-                <IconSettings
+                <GearSix
                   className="h-4 w-4 text-sidebar-muted"
-                  strokeWidth={1.5}
                 />
                 Manage Workspaces
               </Link>
-              {canCreate ||
-              canCreateTeam ||
-              collaborativeOwnedTeams.length > 0 ? (
+              {enabled ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -480,10 +469,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
                   }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-sm text-sidebar-text transition-[background-color,transform] duration-150 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-[0.98]"
                 >
-                  <IconPlus
-                    className="h-4 w-4 text-sidebar-muted"
-                    strokeWidth={1.5}
-                  />
+                  <Plus className="h-4 w-4 text-sidebar-muted" />
                   New Workspace
                 </button>
               ) : null}
@@ -523,7 +509,7 @@ function WorkspaceOption({
   active: boolean;
   busy: boolean;
   disabled?: boolean;
-  icon: "home" | "briefcase" | "users";
+  icon: string;
   onSelect: () => void;
 }) {
   return (
@@ -540,22 +526,10 @@ function WorkspaceOption({
           : "text-sidebar-text",
       )}
     >
-      {icon === "home" ? (
-        <IconHome
-          className="h-4 w-4 shrink-0 text-sidebar-muted"
-          strokeWidth={1.5}
-        />
-      ) : icon === "briefcase" ? (
-        <IconBriefcase
-          className="h-4 w-4 shrink-0 text-sidebar-muted"
-          strokeWidth={1.5}
-        />
-      ) : (
-        <IconUsers
-          className="h-4 w-4 shrink-0 text-sidebar-muted"
-          strokeWidth={1.5}
-        />
-      )}
+      <WorkspaceIcon
+        id={icon}
+        className="h-4 w-4 shrink-0 text-sidebar-muted"
+      />
       <span className="min-w-0 flex-1 truncate capitalize">
         {label}
         <span className="mt-0.5 block truncate text-xs font-normal normal-case text-sidebar-muted">

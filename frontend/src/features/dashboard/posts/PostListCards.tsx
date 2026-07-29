@@ -240,34 +240,41 @@ function getTimestampParts(
     timezone: options.timezone,
   };
 
-  let when: Date | null = null;
-  let label = "Created at";
-
   if (effectiveStatus === "scheduled" && post.scheduledAt) {
-    when = new Date(post.scheduledAt);
-    label = options.isQueued ? "Queued for" : "Scheduled for";
-  } else if (effectiveStatus === "published") {
+    const when = new Date(post.scheduledAt);
+    return {
+      label: options.isQueued ? "Queued for" : "Scheduled for",
+      dateLine: formatDate(when, options.dateFormat, options.timezone),
+      timeLine: formatTimeOnly(when, dateOpts),
+    };
+  }
+
+  if (effectiveStatus === "published") {
     const publishedAts = publications
       .map((p) => p.publishedAt)
       .filter((d): d is Date => d != null);
-    when =
+    const when =
       publishedAts.length > 0
         ? new Date(Math.min(...publishedAts.map((d) => new Date(d).getTime())))
         : null;
-    label = "Posted at";
     if (!when) return { label: "Posted", dateLine: "", timeLine: "" };
-  } else if (post.createdAt) {
-    when = new Date(post.createdAt);
-    label = "Created at";
-  } else {
-    return null;
+    return {
+      label: "Posted at",
+      dateLine: formatDate(when, options.dateFormat, options.timezone),
+      timeLine: formatTimeOnly(when, dateOpts),
+    };
   }
 
-  return {
-    label,
-    dateLine: formatDate(when, options.dateFormat, options.timezone),
-    timeLine: formatTimeOnly(when, dateOpts),
-  };
+  if (post.createdAt) {
+    const when = new Date(post.createdAt);
+    return {
+      label: "Created at",
+      dateLine: formatDate(when, options.dateFormat, options.timezone),
+      timeLine: formatTimeOnly(when, dateOpts),
+    };
+  }
+
+  return null;
 }
 
 /** Status pill: text label only. */

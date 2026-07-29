@@ -9,13 +9,11 @@ import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "@/components/AppLink";
 import {
-  IconBriefcase,
-  IconHome,
-  IconPencil,
-  IconPlus,
-  IconTrash,
-  IconUsers,
-} from "@tabler/icons-react";
+  PencilSimple,
+  Plus,
+  Trash,
+  UsersThree,
+} from "@/icons/phosphor";
 import { toast } from "sonner";
 import {
   deleteWorkspace,
@@ -27,6 +25,7 @@ import {
   type WorkspaceBoardCard,
   type WorkspaceBoardResponse,
 } from "@/api/team";
+import { WorkspaceIcon } from "@/lib/workspace-icons";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import DocsInfoIcon from "@/components/info-icon";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -105,14 +104,12 @@ export function WorkspacesPage() {
   const ownedTeamOptions = useMemo(() => {
     const map = new Map<string, string>();
     for (const card of cards) {
-      if (card.kind === "owned" && card.teamId && card.teamName) {
-        map.set(card.teamId, card.teamName);
-      }
+      if (card.kind !== "owned" || !card.teamId) continue;
+      // Solo containers have null teamName — still list them as add targets.
+      map.set(card.teamId, card.teamName ?? card.name);
     }
     return [...map.entries()].map(([id, name]) => ({ id, name }));
   }, [cards]);
-
-  const canOpenCreate = canCreate || canCreateTeam || ownedTeamOptions.length > 0;
 
   const openCreate = (prefillTeamId?: string | null) => {
     setCreatePrefillTeamId(prefillTeamId ?? null);
@@ -128,6 +125,7 @@ export function WorkspacesPage() {
         teamName: c.teamName,
         ownerUserId: c.ownerUserId,
         canManage: c.canManage,
+        icon: c.icon,
       })),
     [cards],
   );
@@ -342,24 +340,15 @@ export function WorkspacesPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {canOpenCreate ? (
-            <Button type="button" size="sm" onClick={() => openCreate()}>
-              <IconPlus className="h-4 w-4" strokeWidth={1.5} />
-              Add workspace
-            </Button>
-          ) : (
-            <Link
-              href="/dashboard/billing"
-              className={cn(buttonVariants({ size: "sm" }))}
-            >
-              Upgrade to Pro
-            </Link>
-          )}
+          <Button type="button" size="sm" onClick={() => openCreate()}>
+            <Plus className="h-4 w-4" />
+            Add workspace
+          </Button>
           <Link
             href="/dashboard/teams"
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
-            <IconUsers className="h-4 w-4" strokeWidth={1.5} />
+            <UsersThree className="h-4 w-4" />
             Teams
           </Link>
         </div>
@@ -405,34 +394,29 @@ export function WorkspacesPage() {
             }
           />
         ))}
+        <button
+          type="button"
+          onClick={() => openCreate()}
+          className="flex min-h-[11rem] flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-elevated px-4 py-8 text-center transition-[background-color,border-color,transform] duration-150 hover:border-accent/50 hover:bg-accent/5 active:scale-[0.99]"
+        >
+          <span className="text-sm font-medium text-text">Create workspace</span>
+          <span className="max-w-[14rem] text-xs text-text-muted">
+            {canCreate || canCreateTeam
+              ? "Pick a name and icon for a new workspace."
+              : "Available on paid plans — open to see options."}
+          </span>
+        </button>
       </div>
 
-      {cards.length <= 1 && ownedTeamOptions.length === 0 ? (
+      {!canCreate && !canCreateTeam ? (
         <p className="mt-4 text-sm text-text-muted">
-          Create a team to add more workspaces and move connections between
-          them.
-          {canOpenCreate ? (
-            <>
-              {" "}
-              <button
-                type="button"
-                onClick={() => openCreate()}
-                className="font-medium text-accent transition-opacity duration-150 ease-out hover:opacity-80"
-              >
-                Create a workspace
-              </button>
-            </>
-          ) : (
-            <>
-              {" "}
-              <Link
-                href="/dashboard/billing"
-                className="font-medium text-accent transition-opacity duration-150 ease-out hover:opacity-80"
-              >
-                Upgrade to Pro
-              </Link>
-            </>
-          )}
+          Creating workspaces needs a paid plan.{" "}
+          <Link
+            href="/dashboard/billing"
+            className="font-medium text-accent transition-opacity duration-150 ease-out hover:opacity-80"
+          >
+            Upgrade
+          </Link>
         </p>
       ) : null}
 
@@ -604,6 +588,7 @@ function WorkspaceBoardCardView({
     teamName: string | null;
     ownerUserId: string;
     canManage: boolean;
+    icon: string;
   }[];
   movingId: string | null;
   switching: boolean;
@@ -624,17 +609,10 @@ function WorkspaceBoardCardView({
       )}
     >
       <div className="flex items-start gap-3 border-b border-border px-4 py-3">
-        {isPersonal ? (
-          <IconHome
-            className="mt-0.5 h-4 w-4 shrink-0 text-text-muted"
-            strokeWidth={1.5}
-          />
-        ) : (
-          <IconBriefcase
-            className="mt-0.5 h-4 w-4 shrink-0 text-text-muted"
-            strokeWidth={1.5}
-          />
-        )}
+        <WorkspaceIcon
+          id={card.icon ?? (isPersonal ? "house" : "briefcase")}
+          className="mt-0.5 h-4 w-4 shrink-0 text-text-muted"
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <button
@@ -676,7 +654,7 @@ function WorkspaceBoardCardView({
               aria-label={`Rename ${card.name}`}
               title="Rename"
             >
-              <IconPencil className="h-4 w-4" strokeWidth={1.5} />
+              <PencilSimple className="h-4 w-4" />
             </button>
           ) : null}
           {onDelete ? (
@@ -687,15 +665,9 @@ function WorkspaceBoardCardView({
               aria-label={`Delete ${card.name}`}
               title="Delete"
             >
-              <IconTrash className="h-4 w-4" strokeWidth={1.5} />
+              <Trash className="h-4 w-4" />
             </button>
           ) : null}
-          <span
-            className="ml-1 tabular-nums text-xs text-text-muted"
-            title={`${card.connectionCount} connection${card.connectionCount === 1 ? "" : "s"}`}
-          >
-            {card.connectionCount}
-          </span>
         </div>
       </div>
 
@@ -757,6 +729,7 @@ function AccountRow({
     teamName: string | null;
     ownerUserId: string;
     canManage: boolean;
+    icon: string;
   }[];
   canMove: boolean;
   moving: boolean;
@@ -820,6 +793,7 @@ function MoveMenu({
     name: string;
     kind: WorkspaceBoardCard["kind"];
     teamName: string | null;
+    icon: string;
   }[];
   disabled: boolean;
   busy: boolean;
@@ -940,17 +914,13 @@ function MoveMenu({
                   }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text transition-colors duration-150 ease-out hover:bg-muted"
                 >
-                  {dest.kind === "personal" ? (
-                    <IconHome
-                      className="h-4 w-4 shrink-0 text-text-muted"
-                      strokeWidth={1.5}
-                    />
-                  ) : (
-                    <IconBriefcase
-                      className="h-4 w-4 shrink-0 text-text-muted"
-                      strokeWidth={1.5}
-                    />
-                  )}
+                  <WorkspaceIcon
+                    id={
+                      dest.icon ??
+                      (dest.kind === "personal" ? "house" : "briefcase")
+                    }
+                    className="h-4 w-4 shrink-0 text-text-muted"
+                  />
                   <span className="min-w-0 flex-1 truncate capitalize">
                     {dest.name}
                     {dest.teamName ? (

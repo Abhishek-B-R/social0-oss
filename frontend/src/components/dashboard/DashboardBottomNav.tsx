@@ -2,18 +2,22 @@ import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { useState } from "react";
 import {
-  IconList,
-  IconLink,
-  IconDots,
-  IconCalendar,
-} from "@tabler/icons-react";
+  CalendarDots,
+  DotsThree,
+  PlugsConnected,
+  Rows,
+} from "@/icons/phosphor";
 import { TiktokCreateButton } from "./TiktokCreateButton";
 import {
   getDashboardRelativePath,
   useDashboardPath,
 } from "@/lib/dashboard-base-path";
 
-type NavItemIcon = React.ComponentType<{ className?: string }>;
+type NavItemIcon = React.ComponentType<{
+  className?: string;
+  size?: number;
+  weight?: "thin" | "light" | "regular" | "bold" | "fill" | "duotone";
+}>;
 
 export function DashboardBottomNav() {
   const pathname = useLocation().pathname;
@@ -34,25 +38,25 @@ export function DashboardBottomNav() {
     icon?: NavItemIcon;
     key: string;
   }> = [
-    { key: "posts", href: dash("posts"), label: "Posts", icon: IconList },
+    { key: "posts", href: dash("posts"), label: "Posts", icon: Rows },
     {
       key: "calendar",
       href: dash("calendar"),
       label: "Calendar",
-      icon: IconCalendar,
+      icon: CalendarDots,
     },
     { key: "create", href: createHref, label: "Create" },
     {
       key: "connections",
       href: dash("connections"),
       label: "Connections",
-      icon: IconLink,
+      icon: PlugsConnected,
     },
     {
       key: "more",
       href: "/dashboard/more",
       label: "More",
-      icon: IconDots,
+      icon: DotsThree,
     },
   ];
 
@@ -118,7 +122,13 @@ export function DashboardBottomNav() {
             } ${pendingHref === href ? "opacity-60" : ""}`}
             aria-current={active ? "page" : undefined}
           >
-            {Icon && <Icon className="h-5 w-5 shrink-0" />}
+            {Icon && (
+              <Icon
+                className="h-5 w-5 shrink-0"
+                size={20}
+                weight={active ? "fill" : "regular"}
+              />
+            )}
             <span>{label}</span>
           </Link>
         );

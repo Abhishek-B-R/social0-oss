@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { IconLoader2 } from "@tabler/icons-react";
+import {
+  CircleNotch,
+} from "@/icons/phosphor";
 import { acceptTeamInvite } from "@/api/team";
 import Link from "@/components/AppLink";
 import { useSession } from "@/lib/auth-client";
@@ -82,9 +84,8 @@ export function AcceptInvitePage() {
   if (isPending || (!session && acceptState.status === "loading")) {
     return (
       <InviteShell>
-        <IconLoader2
+        <CircleNotch
           className="mx-auto h-8 w-8 animate-spin text-accent"
-          strokeWidth={1.5}
         />
         <h1 className="mt-4 font-serif text-xl font-semibold text-text">
           Checking your session…
@@ -96,9 +97,8 @@ export function AcceptInvitePage() {
   if (acceptState.status === "loading") {
     return (
       <InviteShell>
-        <IconLoader2
+        <CircleNotch
           className="mx-auto h-8 w-8 animate-spin text-accent"
-          strokeWidth={1.5}
         />
         <h1 className="mt-4 font-serif text-xl font-semibold text-text">
           Accepting invitation…

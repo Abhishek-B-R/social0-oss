@@ -7,7 +7,9 @@ import { useSession } from "@/lib/auth-client";
 import { loadConnectionsPageData } from "@/api/dashboard-data";
 import { ConnectStep } from "@/features/onboarding/components/ConnectStep";
 import { DOCS_ONBOARDING_CONNECT_URL } from "@/lib/docs-url";
-import { IconLoader2 } from "@tabler/icons-react";
+import {
+  CircleNotch,
+} from "@/icons/phosphor";
 import confetti from "canvas-confetti";
 
 export default function OnboardingStep3Page() {
@@ -77,9 +79,8 @@ export default function OnboardingStep3Page() {
   if (verifying) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-24">
-        <IconLoader2
+        <CircleNotch
           className="h-8 w-8 shrink-0 animate-spin text-accent"
-          strokeWidth={1.5}
         />
         <p className="text-sm text-muted-foreground">
           Confirming your subscription…

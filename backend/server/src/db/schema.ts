@@ -492,6 +492,8 @@ export const teamInvitations = pgTable("team_invitations", {
 export const workspaces = pgTable("workspaces", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
+  /** Phosphor icon key for switcher / board (e.g. briefcase, house). */
+  icon: text("icon").notNull().default("briefcase"),
   teamId: uuid("team_id")
     .references(() => teams.id, { onDelete: "cascade" })
     .notNull(),

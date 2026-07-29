@@ -324,9 +324,7 @@ export function Composer() {
             void captureVideoPoster(item.file).then((posterUrl) => {
               if (!posterUrl) return;
               setMedia((prev) =>
-                prev.map((m) =>
-                  m.id === item.id ? { ...m, posterUrl } : m,
-                ),
+                prev.map((m) => (m.id === item.id ? { ...m, posterUrl } : m)),
               );
             });
           }
@@ -658,7 +656,15 @@ export function Composer() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[42rem] px-1 pb-20 pt-[clamp(1.25rem,6.5vh,3.25rem)] sm:px-0 sm:pb-24 sm:pt-[clamp(2rem,8.5vh,4.75rem)]">
+    <div
+      className={cn(
+        "mx-auto w-full max-w-200 px-1 pb-20 sm:px-0 sm:pb-24",
+        "transition-[padding] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
+        isThread
+          ? "pt-[clamp(0.75rem,3vh,1.5rem)] sm:pt-[clamp(1rem,4vh,2rem)]"
+          : "pt-[clamp(1.25rem,6.5vh,3.25rem)] sm:pt-[clamp(2rem,8.5vh,4.75rem)]",
+      )}
+    >
       <div className="space-y-5 sm:space-y-6">
         <div className="space-y-1.5 sm:space-y-2">
           <div className="flex items-center gap-2">
@@ -695,7 +701,7 @@ export function Composer() {
         >
           <textarea
             ref={textareaRef}
-            className="min-h-[104px] max-h-[400px] w-full resize-none overflow-y-auto border-none bg-transparent px-1 py-1 text-[15px] leading-relaxed text-text outline-none placeholder:text-text-muted/80 sm:min-h-[112px] sm:text-base"
+            className="min-h-26 max-h-100 w-full resize-none overflow-y-auto border-none bg-transparent px-1 py-1 text-[15px] leading-relaxed text-text outline-none placeholder:text-text-muted/80 sm:min-h-28 sm:text-base"
             placeholder="Share what's on your mind..."
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -856,10 +862,12 @@ export function Composer() {
                       prev.map((s) => {
                         if (s.media.length <= THREAD_MAX_MEDIA_PER_POST)
                           return s;
-                        s.media.slice(THREAD_MAX_MEDIA_PER_POST).forEach((m) => {
-                          if (m.previewUrl.startsWith("blob:"))
-                            URL.revokeObjectURL(m.previewUrl);
-                        });
+                        s.media
+                          .slice(THREAD_MAX_MEDIA_PER_POST)
+                          .forEach((m) => {
+                            if (m.previewUrl.startsWith("blob:"))
+                              URL.revokeObjectURL(m.previewUrl);
+                          });
                         return {
                           ...s,
                           media: s.media.slice(0, THREAD_MAX_MEDIA_PER_POST),
@@ -899,9 +907,7 @@ export function Composer() {
                 loading ||
                 (!text.trim() &&
                   media.length === 0 &&
-                  !threadSlots.some(
-                    (s) => s.text.trim() || s.media.length > 0,
-                  ))
+                  !threadSlots.some((s) => s.text.trim() || s.media.length > 0))
               }
               className="order-first inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground shadow-sm transition-[background-color,transform,opacity] duration-150 hover:bg-accent-hover active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-70 disabled:active:scale-100 touch-manipulation sm:order-0 sm:w-auto sm:py-2"
             >
@@ -971,7 +977,7 @@ export function Composer() {
                     ref={(el) => {
                       if (el) threadTextareaRefs.current[slot.id] = el;
                     }}
-                    className="min-h-[120px] max-h-[250px] w-full resize-none overflow-y-auto rounded-xl border border-composer-card-border bg-bg px-4 py-3 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+                    className="min-h-30 max-h-62.5 w-full resize-none overflow-y-auto rounded-xl border border-composer-card-border bg-bg px-4 py-3 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
                     placeholder="What's in this post?"
                     value={slot.text}
                     onChange={(e) => {

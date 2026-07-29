@@ -17,6 +17,7 @@ export type CachedWorkspaceMeta = {
   id: string;
   name: string;
   teamId: string;
+  icon: string;
 };
 
 /** Workspace list entry without actor-specific `isActive`. */
@@ -24,6 +25,7 @@ export type CachedTeamWorkspace = {
   id: string;
   name: string;
   connectionCount: number;
+  icon: string;
 };
 
 function teamMetaKey(teamId: string) {

@@ -4,7 +4,9 @@ import { fetchApi } from "@/lib/fetch-api";
 import { useState, useEffect, Suspense } from "react";
 import { usePostHog } from "@posthog/react";
 import Link from "@/components/AppLink";
-import { IconLoader2 } from "@tabler/icons-react";
+import {
+  CircleNotch,
+} from "@/icons/phosphor";
 import { getPlanLimits, type BillingInterval } from "@/lib/plans";
 import {
   formatEffectiveMonthly,
@@ -236,9 +238,8 @@ function OnboardingWelcomeContent() {
             >
               {skipping ? (
                 <>
-                  <IconLoader2
+                  <CircleNotch
                     className="mr-2 h-4 w-4 animate-spin"
-                    strokeWidth={1.5}
                   />
                   Opening…
                 </>

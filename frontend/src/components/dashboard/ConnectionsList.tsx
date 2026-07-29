@@ -11,7 +11,10 @@ import { ConnectPlatformButton } from "./ConnectPlatformButton";
 import { DisconnectAccountModal } from "./DisconnectAccountModal";
 import { AlertTriangle, X, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { IconCrown, IconLoader2 } from "@tabler/icons-react";
+import {
+  CircleNotch,
+  Crown,
+} from "@/icons/phosphor";
 import { cn } from "@/lib/utils";
 import DocsInfoIcon from "../info-icon";
 import { DOCS_CONNECTIONS_URL } from "@/lib/docs-url";
@@ -430,7 +433,7 @@ export function ConnectionsList({
                               className="shrink-0 rounded p-0.5 text-text-muted transition-colors hover:bg-bg-muted hover:text-text cursor-auto"
                               title="Refresh account tokens"
                             >
-                              <RefreshCw className="h-3 w-3" strokeWidth={2} />
+                              <RefreshCw className="h-3 w-3" />
                             </Link>
                           )}
                           {canManageConnections && isExpired && (
@@ -496,12 +499,11 @@ export function ConnectionsList({
               >
                 {refreshingAllPremium ? (
                   <span className="h-4 w-4 text-amber-500 flex items-center justify-center">
-                    <IconLoader2 className="animate-spin h-4 w-4" />
+                    <CircleNotch className="animate-spin h-4 w-4" />
                   </span>
                 ) : (
-                  <IconCrown
+                  <Crown
                     className={cn("h-4 w-4 text-amber-500")}
-                    strokeWidth={1.5}
                   />
                 )}
                 <span className={refreshingAllPremium ? "animate-pulse" : ""}>

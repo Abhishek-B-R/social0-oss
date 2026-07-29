@@ -1,17 +1,17 @@
 import Link from "@/components/AppLink";
 import {
-  IconStack2,
-  IconList,
-  IconClock,
-  IconCircleCheck,
-  IconFileText,
-  IconTool,
-  IconUsers,
-  IconLayoutGrid,
-  IconSettings,
-  IconCreditCard,
-  IconKey,
-} from "@tabler/icons-react";
+  CheckCircle,
+  Clock,
+  Code,
+  CreditCard,
+  GearSix,
+  NoteBlank,
+  Rows,
+  Sliders,
+  SquaresFour,
+  Stack,
+  Users,
+} from "@/icons/phosphor";
 import { DOCS_MORE_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
 import { MorePageAccountCollapsible } from "@/components/dashboard/MorePageAccountCollapsible";
@@ -27,20 +27,20 @@ function getPlanLabel(tier: string): string {
 }
 
 const MANUAL_POSTING_LINKS = [
-  { href: "/dashboard/create", label: "Manual setup", icon: IconTool },
-  { href: "/dashboard/bulk-tools", label: "Bulk tools", icon: IconStack2 },
+  { href: "/dashboard/create", label: "Manual setup", icon: Sliders },
+  { href: "/dashboard/bulk-tools", label: "Bulk tools", icon: Stack },
 ] as const;
 
 const MORE_LINKS = [
-  { href: "/dashboard/posts", label: "All posts", icon: IconList },
-  { href: "/dashboard/posts/scheduled", label: "Scheduled", icon: IconClock },
-  { href: "/dashboard/posts/posted", label: "Posted", icon: IconCircleCheck },
-  { href: "/dashboard/posts/drafts", label: "Drafts", icon: IconFileText },
-  { href: "/dashboard/workspaces", label: "Workspaces", icon: IconLayoutGrid },
-  { href: "/dashboard/teams", label: "Teams", icon: IconUsers },
-  { href: "/dashboard/settings", label: "Account settings", icon: IconSettings },
-  { href: "/dashboard/billing", label: "Billing", icon: IconCreditCard },
-  { href: "/dashboard/api-keys", label: "Developer", icon: IconKey },
+  { href: "/dashboard/posts", label: "All posts", icon: Rows },
+  { href: "/dashboard/posts/scheduled", label: "Scheduled", icon: Clock },
+  { href: "/dashboard/posts/posted", label: "Posted", icon: CheckCircle },
+  { href: "/dashboard/posts/drafts", label: "Drafts", icon: NoteBlank },
+  { href: "/dashboard/workspaces", label: "Workspaces", icon: SquaresFour },
+  { href: "/dashboard/teams", label: "Teams", icon: Users },
+  { href: "/dashboard/settings", label: "Account settings", icon: GearSix },
+  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
+  { href: "/dashboard/api-keys", label: "Developer", icon: Code },
 ] as const;
 
 export function MorePage() {

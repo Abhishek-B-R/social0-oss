@@ -5,29 +5,21 @@ import Image from "@/components/AppImage";
 import Link from "@/components/AppLink";
 import { useTheme } from "next-themes";
 import {
-  IconBook2,
-  IconBrandX,
-  IconCalendar,
-  IconCircleCheck,
-  IconClock,
-  IconFilePlus,
-  IconFileText,
-  IconHome,
-  IconKey,
-  IconLayoutGrid,
-  IconLayoutSidebarLeftCollapse,
-  IconLayoutSidebarLeftExpand,
-  IconLink,
-  IconList,
-  IconLogin,
-  IconMessageCircle,
-  IconPencil,
-  IconSettings,
-  IconStack2,
-  IconTool,
-  IconUsers,
-  IconWallet,
-} from "@tabler/icons-react";
+  CalendarDots,
+  CheckCircle,
+  Clock,
+  NoteBlank,
+  Pencil,
+  Plus,
+  PlugsConnected,
+  Rows,
+  SidebarSimple,
+  SignIn,
+  Sliders,
+  SquaresFour,
+  Stack,
+  Users,
+} from "@/icons/phosphor";
 import { signInUrl } from "@/lib/sign-in-url";
 import { SidebarAccountMenu } from "@/components/dashboard/SidebarAccountMenu";
 import { SidebarHoverTip } from "@/components/dashboard/SidebarHoverTip";
@@ -46,10 +38,16 @@ import { toast } from "sonner";
 
 const SIDEBAR_COLLAPSED_KEY = "social0.sidebar.collapsed";
 
+type IconWeight = "thin" | "light" | "regular" | "bold" | "fill" | "duotone";
+
 type NavItem = {
   href: string;
   label: string;
-  icon: React.ComponentType<{ className?: string; size?: number }>;
+  icon: React.ComponentType<{
+    className?: string;
+    size?: number;
+    weight?: IconWeight;
+  }>;
 };
 
 function NavLink({
@@ -81,7 +79,11 @@ function NavLink({
         collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2",
       )}
     >
-      <Icon className="h-4 w-4 shrink-0 text-sidebar-text" size={16} />
+      <Icon
+        className="h-4 w-4 shrink-0 text-sidebar-text"
+        size={16}
+        weight={isActive ? "fill" : "regular"}
+      />
       {!collapsed ? <span className="truncate">{label}</span> : null}
     </Link>
   );
@@ -116,65 +118,6 @@ function Section({
       )}
       {children}
     </div>
-  );
-}
-
-function ExtLink({
-  href,
-  label,
-  icon: Icon,
-  collapsed,
-  pending,
-  onClick,
-}: {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string; size?: number }>;
-  collapsed: boolean;
-  pending?: boolean;
-  onClick?: () => void;
-}) {
-  const external = href.startsWith("http");
-  const className = cn(
-    "flex items-center rounded-lg text-sm font-medium text-sidebar-text transition-[background-color,opacity,transform] duration-150",
-    "hover:bg-sidebar-active active:scale-[0.98]",
-    pending && "opacity-60",
-    collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2",
-  );
-  const inner = (
-    <>
-      <Icon className="h-4 w-4 shrink-0 text-sidebar-text" size={16} />
-      {!collapsed ? <span className="truncate">{label}</span> : null}
-    </>
-  );
-
-  const node = external ? (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={collapsed ? label : undefined}
-      className={className}
-      onClick={onClick}
-    >
-      {inner}
-    </a>
-  ) : (
-    <Link
-      href={href}
-      prefetch
-      aria-label={collapsed ? label : undefined}
-      className={className}
-      onClick={onClick}
-    >
-      {inner}
-    </Link>
-  );
-
-  return (
-    <SidebarHoverTip label={label} enabled={collapsed}>
-      {node}
-    </SidebarHoverTip>
   );
 }
 
@@ -224,7 +167,6 @@ export function DashboardSidebar({
   const [collapsed, setCollapsed] = useState(false);
   const [logoPending, setLogoPending] = useState(false);
   const [composerCtaPending, setComposerCtaPending] = useState(false);
-  const [landingPending, setLandingPending] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -234,7 +176,6 @@ export function DashboardSidebar({
   useEffect(() => {
     setLogoPending(false);
     setComposerCtaPending(false);
-    setLandingPending(false);
   }, [pathname]);
 
   const toggleCollapsed = () => {
@@ -343,11 +284,7 @@ export function DashboardSidebar({
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               aria-pressed={collapsed}
             >
-              {collapsed ? (
-                <IconLayoutSidebarLeftExpand size={18} />
-              ) : (
-                <IconLayoutSidebarLeftCollapse size={18} />
-              )}
+              <SidebarSimple size={18} weight="regular" />
             </button>
           </SidebarHoverTip>
         </div>
@@ -361,7 +298,7 @@ export function DashboardSidebar({
                 aria-label="Workspaces"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-sidebar-text transition-[background-color,transform] duration-150 hover:bg-sidebar-active active:scale-[0.98]"
               >
-                <IconLayoutGrid className="h-4 w-4" size={16} />
+                <SquaresFour className="h-4 w-4" size={16} />
               </Link>
             </SidebarHoverTip>
           ) : (
@@ -391,7 +328,7 @@ export function DashboardSidebar({
                 : "w-full gap-2 px-4 py-2.5 text-sm",
             )}
           >
-            <IconFilePlus className="h-4 w-4 shrink-0" size={16} />
+            <Plus className="h-4 w-4 shrink-0" size={16} />
             {!collapsed ? <span>Create post</span> : null}
           </Link>
         </SidebarHoverTip>
@@ -408,21 +345,21 @@ export function DashboardSidebar({
             <NavLink
               href={dash("composer")}
               label="Composer"
-              icon={IconPencil}
+              icon={Pencil}
               collapsed={collapsed}
               isActive={relativeMatches(relative, "composer", { exact: true })}
             />
             <NavLink
               href={dash("create")}
               label="Manual setup"
-              icon={IconTool}
+              icon={Sliders}
               collapsed={collapsed}
               isActive={relativeMatches(relative, "create")}
             />
             <NavLink
               href={dash("bulk-tools")}
               label="Bulk tools"
-              icon={IconStack2}
+              icon={Stack}
               collapsed={collapsed}
               isActive={relativeMatches(relative, "bulk-tools")}
             />
@@ -432,35 +369,35 @@ export function DashboardSidebar({
             <NavLink
               href={dash("posts")}
               label="All"
-              icon={IconList}
+              icon={Rows}
               collapsed={collapsed}
               isActive={relative === "posts"}
             />
             <NavLink
               href={dash("posts/posted")}
               label="Posted"
-              icon={IconCircleCheck}
+              icon={CheckCircle}
               collapsed={collapsed}
               isActive={relativeMatches(relative, "posts/posted")}
             />
             <NavLink
               href={dash("posts/scheduled")}
               label="Scheduled"
-              icon={IconClock}
+              icon={Clock}
               collapsed={collapsed}
               isActive={relativeMatches(relative, "posts/scheduled")}
             />
             <NavLink
               href={dash("posts/drafts")}
               label="Drafts"
-              icon={IconFileText}
+              icon={NoteBlank}
               collapsed={collapsed}
               isActive={relativeMatches(relative, "posts/drafts")}
             />
             <NavLink
               href={dash("calendar")}
               label="Calendar"
-              icon={IconCalendar}
+              icon={CalendarDots}
               collapsed={collapsed}
               isActive={relativeMatches(relative, "calendar")}
             />
@@ -470,7 +407,7 @@ export function DashboardSidebar({
             <NavLink
               href={dash("connections")}
               label="Connections"
-              icon={IconLink}
+              icon={PlugsConnected}
               collapsed={collapsed}
               isActive={relative === "connections"}
             />
@@ -478,7 +415,7 @@ export function DashboardSidebar({
               <NavLink
                 href={`/dashboard/teams/${teamId}/settings`}
                 label="Team settings"
-                icon={IconUsers}
+                icon={Users}
                 collapsed={collapsed}
                 isActive={onTeamSettings}
               />
@@ -486,7 +423,7 @@ export function DashboardSidebar({
               <NavLink
                 href="/dashboard/teams"
                 label="Teams"
-                icon={IconUsers}
+                icon={Users}
                 collapsed={collapsed}
                 isActive={
                   pathname === "/dashboard/teams" ||
@@ -494,65 +431,6 @@ export function DashboardSidebar({
                 }
               />
             )}
-          </Section>
-
-          <Section title="Configuration" collapsed={collapsed}>
-            <NavLink
-              href="/dashboard/settings"
-              label="Settings"
-              icon={IconSettings}
-              collapsed={collapsed}
-              isActive={pathname.startsWith("/dashboard/settings")}
-            />
-            <NavLink
-              href="/dashboard/billing"
-              label="Billing"
-              icon={IconWallet}
-              collapsed={collapsed}
-              isActive={pathname.startsWith("/dashboard/billing")}
-            />
-            <NavLink
-              href="/dashboard/api-keys"
-              label="Developer"
-              icon={IconKey}
-              collapsed={collapsed}
-              isActive={pathname.startsWith("/dashboard/api-keys")}
-            />
-          </Section>
-
-          <Section title="Support" collapsed={collapsed}>
-            <NavLink
-              href="/dashboard/feedback"
-              label="Feedback"
-              icon={IconMessageCircle}
-              collapsed={collapsed}
-              isActive={pathname.startsWith("/dashboard/feedback")}
-            />
-          </Section>
-
-          <Section title="Resources" collapsed={collapsed}>
-            <ExtLink
-              href="https://x.com/social0_app"
-              label="Latest updates"
-              icon={IconBrandX}
-              collapsed={collapsed}
-            />
-            <ExtLink
-              href="https://docs.social0.app"
-              label="Docs"
-              icon={IconBook2}
-              collapsed={collapsed}
-            />
-            <ExtLink
-              href="/home"
-              label="View landing page"
-              icon={IconHome}
-              collapsed={collapsed}
-              pending={landingPending}
-              onClick={() => {
-                if (pathname !== "/home") setLandingPending(true);
-              }}
-            />
           </Section>
         </nav>
       </div>
@@ -573,7 +451,7 @@ export function DashboardSidebar({
                 collapsed ? "h-9 w-9" : "w-full gap-2 px-3 py-2.5 text-sm",
               )}
             >
-              {collapsed ? <IconLogin size={16} /> : "Sign in"}
+              {collapsed ? <SignIn size={16} /> : "Sign in"}
             </Link>
           </SidebarHoverTip>
         ) : sessionPending || !user ? (

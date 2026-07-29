@@ -3,7 +3,10 @@ import { useState, useEffect, Suspense } from "react";
 import { usePostHog } from "@posthog/react";
 import Link from "@/components/AppLink";
 import { FcGoogle } from "react-icons/fc";
-import { IconEye, IconEyeOff } from "@tabler/icons-react";
+import {
+  Eye,
+  EyeSlash,
+} from "@/icons/phosphor";
 import { signIn, useSession } from "@/lib/auth-client";
 import { absoluteCallbackUrl, resolveCallbackUrl } from "@/lib/sign-in-url";
 import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
@@ -338,9 +341,9 @@ function AuthPageContent() {
                       }
                     >
                       {showPassword ? (
-                        <IconEyeOff className="h-4 w-4" />
+                        <EyeSlash className="h-4 w-4" />
                       ) : (
-                        <IconEye className="h-4 w-4" />
+                        <Eye className="h-4 w-4" />
                       )}
                     </button>
                   </div>
@@ -426,9 +429,9 @@ function AuthPageContent() {
                       }
                     >
                       {showPassword ? (
-                        <IconEyeOff className="h-4 w-4" />
+                        <EyeSlash className="h-4 w-4" />
                       ) : (
-                        <IconEye className="h-4 w-4" />
+                        <Eye className="h-4 w-4" />
                       )}
                     </button>
                   </div>

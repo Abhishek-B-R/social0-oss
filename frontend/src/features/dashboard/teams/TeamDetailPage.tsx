@@ -3,14 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "@/components/AppLink";
 import {
-  IconArrowLeft,
-  IconCalendar,
-  IconChevronDown,
-  IconChevronRight,
-  IconPencil,
-  IconPlus,
-  IconTrash,
-} from "@tabler/icons-react";
+  ArrowLeft,
+  CalendarBlank,
+  CaretDown,
+  CaretRight,
+  PencilSimple,
+  Plus,
+  Trash,
+} from "@/icons/phosphor";
 import { toast } from "sonner";
 import {
   createWorkspaceInTeam,
@@ -326,7 +326,7 @@ export function TeamDetailPage() {
                   }}
                   className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
                 >
-                  <IconPencil className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <PencilSimple className="h-3.5 w-3.5" />
                   Edit
                 </button>
               ) : null}
@@ -414,9 +414,8 @@ export function TeamDetailPage() {
                     }
                     aria-busy={wsBusyId === ws.id || undefined}
                   >
-                    <IconTrash
+                    <Trash
                       className={`h-4 w-4 ${wsBusyId === ws.id ? "opacity-40" : ""}`}
-                      strokeWidth={1.5}
                     />
                   </button>
                 ) : null}
@@ -448,7 +447,7 @@ export function TeamDetailPage() {
                   "Adding…"
                 ) : (
                   <>
-                    <IconPlus className="h-4 w-4" strokeWidth={1.5} />
+                    <Plus className="h-4 w-4" />
                     Add workspace
                   </>
                 )}
@@ -492,9 +491,8 @@ export function TeamDetailPage() {
                     <option value="member">Member</option>
                     <option value="admin">Admin</option>
                   </select>
-                  <IconChevronDown
+                  <CaretDown
                     className="pointer-events-none absolute top-1/2 right-2.5 h-3.5 w-3.5 -translate-y-1/2 text-text-muted"
-                    strokeWidth={1.5}
                   />
                 </div>
                 <Button
@@ -560,9 +558,8 @@ export function TeamDetailPage() {
           href="/dashboard/settings#queue"
           className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated px-5 py-4 transition-colors duration-150 ease-out hover:bg-muted"
         >
-          <IconCalendar
+          <CalendarBlank
             className="h-5 w-5 shrink-0 text-text-muted"
-            strokeWidth={1.5}
           />
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-medium text-text">
@@ -572,9 +569,8 @@ export function TeamDetailPage() {
               Set recurring posting times for the team queue.
             </span>
           </span>
-          <IconChevronRight
+          <CaretRight
             className="h-5 w-5 shrink-0 text-text-muted"
-            strokeWidth={1.5}
           />
         </Link>
 
@@ -598,7 +594,7 @@ export function TeamDetailPage() {
                 setDeleteOpen(true);
               }}
             >
-              <IconTrash className="h-4 w-4" strokeWidth={1.5} />
+              <Trash className="h-4 w-4" />
               Delete team
             </Button>
           </section>
@@ -811,7 +807,7 @@ function BackLink() {
       href="/dashboard/teams"
       className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text"
     >
-      <IconArrowLeft className="h-4 w-4" strokeWidth={1.5} />
+      <ArrowLeft className="h-4 w-4" />
       Back to teams
     </Link>
   );
@@ -893,9 +889,8 @@ function MemberTableRow({
                 <option value="admin">Admin</option>
                 <option value="member">Member</option>
               </select>
-              <IconChevronDown
+              <CaretDown
                 className="pointer-events-none absolute top-1/2 right-1.5 h-3 w-3 -translate-y-1/2 text-text-muted"
-                strokeWidth={1.5}
               />
             </div>
           ) : (
@@ -919,7 +914,7 @@ function MemberTableRow({
               className="inline-flex h-7 w-7 items-center justify-center rounded-md text-destructive transition-colors duration-150 ease-out hover:bg-destructive/10 active:scale-[0.97] disabled:opacity-50"
               aria-label={`Remove ${member.email}`}
             >
-              <IconTrash className="h-4 w-4" strokeWidth={1.5} />
+              <Trash className="h-4 w-4" />
             </button>
           ) : (
             <span className="inline-flex h-7 w-7 items-center justify-center text-sm text-text-muted">
@@ -1027,9 +1022,8 @@ function InvitationTableRow({
             }
             aria-busy={busy || undefined}
           >
-            <IconTrash
+            <Trash
               className={`h-4 w-4 ${busy ? "opacity-40" : ""}`}
-              strokeWidth={1.5}
             />
           </button>
         ) : (

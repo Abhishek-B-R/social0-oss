@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "@/components/AppLink";
-import { IconArrowLeft } from "@tabler/icons-react";
+import {
+  ArrowLeft,
+} from "@/icons/phosphor";
 import { toast } from "sonner";
 import { createTeam, listWorkspaces } from "@/api/team";
 import { Button } from "@/components/ui/button";
@@ -66,7 +68,7 @@ export function CreateTeamPage() {
           href="/dashboard/teams"
           className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text"
         >
-          <IconArrowLeft className="h-4 w-4" strokeWidth={1.5} />
+          <ArrowLeft className="h-4 w-4" />
           Back to teams
         </Link>
         <div className="rounded-xl border border-border bg-bg-elevated p-6 text-sm text-text">
@@ -93,7 +95,7 @@ export function CreateTeamPage() {
           href="/dashboard/teams"
           className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text"
         >
-          <IconArrowLeft className="h-4 w-4" strokeWidth={1.5} />
+          <ArrowLeft className="h-4 w-4" />
           Back to teams
         </Link>
         <div className="rounded-xl border border-border bg-bg-elevated p-6 text-sm text-text">
@@ -118,7 +120,7 @@ export function CreateTeamPage() {
         href="/dashboard/teams"
         className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text"
       >
-        <IconArrowLeft className="h-4 w-4" strokeWidth={1.5} />
+        <ArrowLeft className="h-4 w-4" />
         Back to teams
       </Link>
 

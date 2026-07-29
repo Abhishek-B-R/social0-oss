@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { IconX } from "@tabler/icons-react";
+import {
+  X,
+} from "@/icons/phosphor";
 import { toast } from "sonner";
 import {
   acceptMyInvitation,
@@ -129,7 +131,7 @@ export function TeamInviteBanners() {
                 }
                 className="rounded-lg p-1.5 text-text-muted transition-colors duration-150 ease-out hover:bg-muted hover:text-text disabled:opacity-50"
               >
-                <IconX className="h-4 w-4" strokeWidth={1.5} />
+                <X className="h-4 w-4" />
               </button>
             </div>
           </div>

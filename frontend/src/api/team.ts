@@ -233,6 +233,7 @@ export type WorkspaceListItem = {
   isActive: boolean;
   connectionCount: number;
   memberCount: number;
+  icon: string;
 };
 
 export type TeamListItem = {
@@ -251,6 +252,7 @@ export type TeamListItem = {
     name: string;
     connectionCount: number;
     isActive: boolean;
+    icon: string;
   }[];
 };
 
@@ -294,6 +296,7 @@ export type WorkspaceBoardCard = {
   isActive: boolean;
   connectionCount: number;
   accounts: WorkspaceBoardAccount[];
+  icon: string;
 };
 
 export type WorkspaceBoardResponse = {
@@ -330,7 +333,7 @@ export async function moveAccountToWorkspace(
 export async function createTeam(
   name: string,
   workspaceName?: string,
-  opts?: { isCollaborative?: boolean },
+  opts?: { isCollaborative?: boolean; icon?: string },
 ): Promise<{ teamId: string; workspaceId: string }> {
   const res = await fetchApi("/api/team", {
     method: "POST",
@@ -339,6 +342,7 @@ export async function createTeam(
       name,
       ...(workspaceName?.trim() ? { workspaceName: workspaceName.trim() } : {}),
       ...(opts?.isCollaborative === false ? { isCollaborative: false } : {}),
+      ...(opts?.icon ? { icon: opts.icon } : {}),
     }),
   });
   if (!res.ok) {
@@ -358,11 +362,12 @@ export async function createWorkspace(
 export async function createWorkspaceInTeam(
   teamId: string,
   name: string,
+  icon?: string,
 ): Promise<{ workspaceId: string }> {
   const res = await fetchApi(`/api/team/${teamId}/workspaces`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, ...(icon ? { icon } : {}) }),
   });
   if (!res.ok) {
     throw new Error(await parseError(res, "Failed to create workspace"));

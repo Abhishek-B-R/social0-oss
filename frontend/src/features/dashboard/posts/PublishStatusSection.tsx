@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -120,10 +120,11 @@ export function PublishStatusSection({
     (postStatus === "published" || postStatus == null);
 
   const [logOpen, setLogOpen] = useState(needsAttention);
-
-  useEffect(() => {
+  const [seenNeedsAttention, setSeenNeedsAttention] = useState(needsAttention);
+  if (needsAttention !== seenNeedsAttention) {
+    setSeenNeedsAttention(needsAttention);
     if (needsAttention) setLogOpen(true);
-  }, [needsAttention]);
+  }
 
   const durationLabel = useMemo(() => {
     if (events.length < 2) return null;

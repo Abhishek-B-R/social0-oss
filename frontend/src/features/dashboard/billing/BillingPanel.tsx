@@ -4,7 +4,10 @@ import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect, type ReactNode } from "react";
 import { usePostHog } from "@posthog/react";
-import { IconLoader2, IconX } from "@tabler/icons-react";
+import {
+  CircleNotch,
+  X,
+} from "@/icons/phosphor";
 import { toast } from "sonner";
 import type { SubscriptionState } from "@/lib/subscription";
 import type { AccountLimitResult } from "@/lib/plan-limits";
@@ -122,9 +125,8 @@ function PlanButtonLabel({
   return (
     <span className="inline-flex items-center justify-center gap-2">
       {loading ? (
-        <IconLoader2
+        <CircleNotch
           className="h-4 w-4 shrink-0 animate-spin"
-          strokeWidth={1.5}
           aria-hidden
         />
       ) : null}
@@ -386,9 +388,8 @@ export function BillingPanel({
   if (verifying) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-        <IconLoader2
+        <CircleNotch
           className="w-4 h-4 shrink-0 animate-spin"
-          strokeWidth={1.5}
         />
         Confirming your subscription...
       </div>
@@ -1360,7 +1361,7 @@ export function BillingPanel({
                     setTargetDowngradePlan(null);
                   }}
                 >
-                  <IconX className="h-4 w-4" strokeWidth={1.5} />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
 
@@ -1424,7 +1425,7 @@ export function BillingPanel({
                     setTargetDowngradePlan(null);
                   }}
                 >
-                  <IconX className="h-4 w-4" strokeWidth={1.5} />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
 

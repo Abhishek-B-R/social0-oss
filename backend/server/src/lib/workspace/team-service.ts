@@ -81,6 +81,7 @@ export type TeamWorkspaceDto = {
   name: string;
   connectionCount: number;
   isActive: boolean;
+  icon: string;
 };
 
 export type TeamGetResponse = {
@@ -90,7 +91,7 @@ export type TeamGetResponse = {
     ownerUserId: string;
     defaultWorkspaceId?: string | null;
   } | null;
-  workspace: { id: string; name: string; teamId: string } | null;
+  workspace: { id: string; name: string; teamId: string; icon: string } | null;
   workspaces: TeamWorkspaceDto[];
   members: TeamMemberDto[];
   permissions: TeamPermissionsDto;
@@ -99,6 +100,31 @@ export type TeamGetResponse = {
   role: WorkspaceRole | null;
   isOwner: boolean;
 };
+
+/** Allowlisted Phosphor icon keys for workspaces. */
+export const WORKSPACE_ICON_IDS = [
+  "briefcase",
+  "house",
+  "buildings",
+  "users",
+  "megaphone",
+  "palette",
+  "code",
+  "camera",
+  "chart-line",
+  "rocket",
+] as const;
+
+export type WorkspaceIconId = (typeof WORKSPACE_ICON_IDS)[number];
+
+const WORKSPACE_ICON_SET = new Set<string>(WORKSPACE_ICON_IDS);
+
+export function normalizeWorkspaceIcon(raw: unknown): WorkspaceIconId {
+  if (typeof raw === "string" && WORKSPACE_ICON_SET.has(raw)) {
+    return raw as WorkspaceIconId;
+  }
+  return "briefcase";
+}
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -257,13 +283,18 @@ async function loadTeamWorkspaces(
     return cached
       .map((row) => ({
         ...row,
+        icon: normalizeWorkspaceIcon(row.icon),
         isActive: activeWorkspaceId === row.id,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   const rows = await db
-    .select({ id: workspaces.id, name: workspaces.name })
+    .select({
+      id: workspaces.id,
+      name: workspaces.name,
+      icon: workspaces.icon,
+    })
     .from(workspaces)
     .where(eq(workspaces.teamId, teamId));
 
@@ -285,6 +316,7 @@ async function loadTeamWorkspaces(
   const items: TeamWorkspaceDto[] = rows.map((row) => ({
     id: row.id,
     name: row.name,
+    icon: normalizeWorkspaceIcon(row.icon),
     connectionCount: countById.get(row.id) ?? 0,
     isActive: activeWorkspaceId === row.id,
   }));
@@ -292,15 +324,21 @@ async function loadTeamWorkspaces(
 
   await setCachedTeamWorkspaces(
     teamId,
-    items.map(({ id, name, connectionCount }) => ({
+    items.map(({ id, name, connectionCount, icon }) => ({
       id,
       name,
       connectionCount,
+      icon,
     })),
   );
   await Promise.all(
     items.map((ws) =>
-      setCachedWorkspaceMeta({ id: ws.id, name: ws.name, teamId }),
+      setCachedWorkspaceMeta({
+        id: ws.id,
+        name: ws.name,
+        teamId,
+        icon: ws.icon,
+      }),
     ),
   );
 
@@ -343,13 +381,19 @@ async function loadWorkspaceMeta(workspaceId: string) {
       id: workspaces.id,
       name: workspaces.name,
       teamId: workspaces.teamId,
+      icon: workspaces.icon,
     })
     .from(workspaces)
     .where(eq(workspaces.id, workspaceId))
     .limit(1);
   if (!row) return null;
 
-  const meta = { id: row.id, name: row.name, teamId: row.teamId };
+  const meta = {
+    id: row.id,
+    name: row.name,
+    teamId: row.teamId,
+    icon: normalizeWorkspaceIcon(row.icon),
+  };
   await setCachedWorkspaceMeta(meta);
   return meta;
 }
@@ -377,6 +421,9 @@ export async function getTeamForUser(
 
   const members = await loadTeamMembers(ctx.teamId, ctx.ownerUserId);
   const teamWorkspaces = await loadTeamWorkspaces(ctx.teamId, ctx.workspaceId);
+  const activeWs = ctx.workspaceId
+    ? teamWorkspaces.find((w) => w.id === ctx.workspaceId)
+    : null;
 
   return {
     team: {
@@ -389,6 +436,7 @@ export async function getTeamForUser(
           id: ctx.workspaceId,
           name: ctx.workspaceName ?? "Workspace",
           teamId: ctx.teamId,
+          icon: activeWs?.icon ?? "briefcase",
         }
       : null,
     workspaces: teamWorkspaces,
@@ -473,12 +521,16 @@ export async function getTeamByIdForUser(
             id: ctx.workspaceId,
             name: ctx.workspaceName ?? "Workspace",
             teamId: access.teamId,
+            icon:
+              teamWorkspaces.find((w) => w.id === ctx.workspaceId)?.icon ??
+              "briefcase",
           }
         : teamWorkspaces[0]
           ? {
               id: teamWorkspaces[0].id,
               name: teamWorkspaces[0].name,
               teamId: access.teamId,
+              icon: teamWorkspaces[0].icon,
             }
           : null,
     workspaces: teamWorkspaces,
@@ -1180,6 +1232,7 @@ export type WorkspaceListItem = {
   isActive: boolean;
   connectionCount: number;
   memberCount: number;
+  icon: string;
 };
 
 export type TeamListItem = {
@@ -1198,6 +1251,7 @@ export type TeamListItem = {
     name: string;
     connectionCount: number;
     isActive: boolean;
+    icon: string;
   }[];
 };
 
@@ -1268,6 +1322,7 @@ export async function listWorkspacesForUser(
       isActive: !ctx.workspaceId,
       connectionCount: personalCountRow?.count ?? 0,
       memberCount: 1,
+      icon: "house",
     },
   ];
 
@@ -1289,6 +1344,7 @@ export async function listWorkspacesForUser(
           id: workspaces.id,
           name: workspaces.name,
           teamId: workspaces.teamId,
+          icon: workspaces.icon,
         })
         .from(workspaces)
         .where(inArray(workspaces.teamId, teamIds)),
@@ -1318,7 +1374,13 @@ export async function listWorkspacesForUser(
 
     const workspacesByTeam = new Map<
       string,
-      { id: string; name: string; connectionCount: number; isActive: boolean }[]
+      {
+        id: string;
+        name: string;
+        connectionCount: number;
+        isActive: boolean;
+        icon: string;
+      }[]
     >();
     for (const ws of wsRows) {
       if (!ws.teamId) continue;
@@ -1328,6 +1390,7 @@ export async function listWorkspacesForUser(
         name: ws.name,
         connectionCount: connectionCountByWs.get(ws.id) ?? 0,
         isActive: ctx.workspaceId === ws.id,
+        icon: normalizeWorkspaceIcon(ws.icon),
       });
       workspacesByTeam.set(ws.teamId, list);
     }
@@ -1351,6 +1414,7 @@ export async function listWorkspacesForUser(
           isActive: ws.isActive,
           connectionCount: ws.connectionCount,
           memberCount,
+          icon: ws.icon,
         });
       }
 
@@ -1399,9 +1463,10 @@ export async function createTeamForUser(
   actorUserId: string,
   nameRaw: unknown,
   workspaceNameRaw?: unknown,
-  opts?: { isCollaborative?: boolean },
+  opts?: { isCollaborative?: boolean; icon?: unknown },
 ): Promise<{ teamId: string; workspaceId: string }> {
   const isCollaborative = opts?.isCollaborative !== false;
+  const icon = normalizeWorkspaceIcon(opts?.icon);
   const sub = await getSubscriptionForUser(actorUserId);
   const limits = getPlanLimits(sub.tier);
 
@@ -1472,7 +1537,7 @@ export async function createTeamForUser(
 
   const [createdWs] = await db
     .insert(workspaces)
-    .values({ name: workspaceName, teamId: createdTeam.id })
+    .values({ name: workspaceName, teamId: createdTeam.id, icon })
     .returning({ id: workspaces.id });
 
   await db
@@ -1492,9 +1557,10 @@ export async function createTeamForUser(
     id: createdWs.id,
     name: workspaceName,
     teamId: createdTeam.id,
+    icon,
   });
   await setCachedTeamWorkspaces(createdTeam.id, [
-    { id: createdWs.id, name: workspaceName, connectionCount: 0 },
+    { id: createdWs.id, name: workspaceName, connectionCount: 0, icon },
   ]);
   return { teamId: createdTeam.id, workspaceId: createdWs.id };
 }
@@ -1515,6 +1581,7 @@ export async function createWorkspaceInTeam(
   actorUserId: string,
   teamId: string,
   nameRaw: unknown,
+  iconRaw?: unknown,
 ): Promise<{ workspaceId: string }> {
   const name =
     typeof nameRaw === "string" && nameRaw.trim()
@@ -1523,6 +1590,7 @@ export async function createWorkspaceInTeam(
   if (!name) {
     throw new TeamServiceError(400, "A workspace name is required.");
   }
+  const icon = normalizeWorkspaceIcon(iconRaw);
 
   const team = await db.query.teams.findFirst({
     where: eq(teams.id, teamId),
@@ -1547,7 +1615,7 @@ export async function createWorkspaceInTeam(
 
   const [created] = await db
     .insert(workspaces)
-    .values({ name, teamId: team.id })
+    .values({ name, teamId: team.id, icon })
     .returning({ id: workspaces.id });
 
   if (!team.defaultWorkspaceId) {
@@ -1568,6 +1636,7 @@ export async function createWorkspaceInTeam(
     id: created.id,
     name,
     teamId: team.id,
+    icon,
   });
   await invalidateTeamWorkspacesCache(team.id);
   await setActiveWorkspace(actorUserId, created.id);
@@ -1628,6 +1697,7 @@ export async function renameWorkspaceForUser(
       workspaceId: workspaces.id,
       workspaceName: workspaces.name,
       teamId: workspaces.teamId,
+      icon: workspaces.icon,
       ownerUserId: teams.ownerUserId,
     })
     .from(workspaces)
@@ -1654,6 +1724,7 @@ export async function renameWorkspaceForUser(
     id: workspaceId,
     name,
     teamId: row.teamId,
+    icon: normalizeWorkspaceIcon(row.icon),
   });
   await invalidateTeamWorkspacesCache(row.teamId);
 
@@ -2011,6 +2082,7 @@ export type WorkspaceBoardCard = {
   isActive: boolean;
   connectionCount: number;
   accounts: WorkspaceBoardAccount[];
+  icon: string;
 };
 
 export type WorkspaceBoardResponse = {
@@ -2082,6 +2154,7 @@ export async function listWorkspaceBoardForUser(
     isActive: !ctx.workspaceId,
     connectionCount: personalAccounts.length,
     accounts: personalAccounts,
+    icon: "house",
   });
 
   const uniqueOwnerIds = [
@@ -2138,6 +2211,7 @@ export async function listWorkspaceBoardForUser(
         isActive: ws.isActive,
         connectionCount: accounts.length,
         accounts,
+        icon: ws.icon,
       });
     }
   }

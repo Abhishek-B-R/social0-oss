@@ -375,6 +375,7 @@ export async function registerTeamRoutes(app: FastifyInstance) {
       workspaceName?: string;
       teamId?: string;
       isCollaborative?: boolean;
+      icon?: string;
     };
 
     try {
@@ -383,6 +384,7 @@ export async function registerTeamRoutes(app: FastifyInstance) {
           userId,
           body.teamId.trim(),
           body.name ?? body.workspaceName,
+          body.icon,
         );
         return reply.status(201).send({ success: true, ...result });
       }
@@ -392,6 +394,7 @@ export async function registerTeamRoutes(app: FastifyInstance) {
         body.workspaceName,
         {
           isCollaborative: body.isCollaborative !== false,
+          icon: body.icon,
         },
       );
       return reply.status(201).send({ success: true, ...result });
@@ -417,6 +420,7 @@ export async function registerTeamRoutes(app: FastifyInstance) {
       name?: string;
       workspaceName?: string;
       isCollaborative?: boolean;
+      icon?: string;
     };
     try {
       const result = await createTeamForUser(
@@ -427,6 +431,7 @@ export async function registerTeamRoutes(app: FastifyInstance) {
           // POST /team is the explicit "create team" path — always collaborative
           // unless a solo workspace container is requested.
           isCollaborative: body.isCollaborative !== false,
+          icon: body.icon,
         },
       );
       return reply.status(201).send({ success: true, ...result });
@@ -642,9 +647,14 @@ export async function registerTeamRoutes(app: FastifyInstance) {
     }
 
     const { teamId } = request.params as { teamId: string };
-    const body = (request.body ?? {}) as { name?: string };
+    const body = (request.body ?? {}) as { name?: string; icon?: string };
     try {
-      const result = await createWorkspaceInTeam(userId, teamId, body.name);
+      const result = await createWorkspaceInTeam(
+        userId,
+        teamId,
+        body.name,
+        body.icon,
+      );
       return reply.status(201).send({ success: true, ...result });
     } catch (err) {
       const { status, body: errBody } = serviceError(err);

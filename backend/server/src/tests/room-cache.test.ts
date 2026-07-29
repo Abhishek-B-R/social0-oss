@@ -67,10 +67,16 @@ describe("room-cache", () => {
       id: "ws-1",
       name: "Design",
       teamId: "team-1",
+      icon: "palette",
     });
     expect(mockRedis.set).toHaveBeenCalledWith(
       "workspace:meta:ws-1",
-      JSON.stringify({ id: "ws-1", name: "Design", teamId: "team-1" }),
+      JSON.stringify({
+        id: "ws-1",
+        name: "Design",
+        teamId: "team-1",
+        icon: "palette",
+      }),
       { ex: 300 },
     );
 
