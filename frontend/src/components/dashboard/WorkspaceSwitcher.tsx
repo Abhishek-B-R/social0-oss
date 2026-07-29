@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -29,6 +30,9 @@ import {
   WORKSPACES_QUERY_KEY,
 } from "@/lib/team-query-keys";
 import { clearTeamBootstrap } from "@/layouts/team-bootstrap";
+import { cn } from "@/lib/utils";
+
+const EASE_OUT: [number, number, number, number] = [0.23, 1, 0.32, 1];
 
 export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   const queryClient = useQueryClient();
@@ -41,6 +45,8 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const reduceMotion = useReducedMotion();
+  const duration = reduceMotion ? 0.12 : 0.2;
 
   const { data, isLoading } = useQuery({
     queryKey: WORKSPACES_QUERY_KEY,
@@ -301,7 +307,12 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-bg px-3 py-2 text-left text-sm font-medium text-sidebar-text transition-colors hover:bg-sidebar-active"
+        className={cn(
+          "flex w-full items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-bg px-3 py-2 text-left text-sm font-medium text-sidebar-text",
+          "transition-[background-color,transform] duration-150",
+          "hover:bg-sidebar-active active:scale-[0.98]",
+          open && "bg-sidebar-active",
+        )}
         aria-expanded={open}
         aria-haspopup="listbox"
       >
@@ -325,126 +336,161 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
           {activeLabel}
         </span>
         <IconChevronDown
-          className={`h-4 w-4 shrink-0 text-sidebar-muted transition-transform ${open ? "rotate-180" : ""}`}
+          className={cn(
+            "h-4 w-4 shrink-0 text-sidebar-muted transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
+            open && "rotate-180",
+          )}
           strokeWidth={1.5}
         />
       </button>
 
-      {open ? (
-        <div
-          ref={menuRef}
-          className="fixed z-50 flex w-70 flex-col overflow-hidden rounded-xl border border-border bg-bg-elevated shadow-lg"
-          style={{
-            top: menuPos.top,
-            left: menuPos.left,
-            maxHeight: menuMaxHeight,
-          }}
-        >
-          <div className="min-h-0 flex-1 overflow-y-auto py-1">
-            {isLoading ? (
-              <p className="px-3 py-3 text-sm text-text-muted">Loading…</p>
-            ) : (
-              <>
-                <p className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-text-muted">
-                  Personal
-                </p>
-                {personalWorkspaces.map((ws) => {
-                  const onThisTeam =
-                    !!ws.teamId &&
-                    isTeamAppPath(pathname) &&
-                    pathname.includes(`/teams/${ws.teamId}/`);
-                  const isActive =
-                    ws.id === null
-                      ? !isTeamAppPath(pathname) && active.id === null
-                      : active.id === ws.id &&
-                        (onThisTeam || !isTeamAppPath(pathname));
-                  return (
-                    <WorkspaceOption
-                      key={ws.id ?? "main"}
-                      label={ws.name}
-                      subtitle={ws.subtitle}
-                      active={isActive}
-                      busy={busyId === (ws.id ?? "main")}
-                      disabled={!!busyId}
-                      icon={ws.id === null ? "home" : "briefcase"}
-                      onSelect={() => {
-                        if (ws.id === null) {
-                          void handleSelectMain();
-                        } else if (ws.teamId) {
-                          void handleSelectOwned({
-                            teamId: ws.teamId,
-                            workspaceId: ws.id,
-                          });
-                        }
-                      }}
-                    />
-                  );
-                })}
-
-                {joinedWorkspaces.length > 0 ? (
-                  <>
-                    <div className="my-1 border-t border-border" />
-                    <p className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-text-muted">
-                      <IconUsers className="h-3.5 w-3.5" strokeWidth={1.5} />
-                      Teams
-                    </p>
-                    {joinedWorkspaces.map((ws) => (
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            ref={menuRef}
+            role="listbox"
+            aria-label="Workspaces"
+            initial={
+              reduceMotion
+                ? { opacity: 0 }
+                : {
+                    opacity: 0,
+                    transform: "translateY(-8px) scale(0.96)",
+                  }
+            }
+            animate={
+              reduceMotion
+                ? { opacity: 1 }
+                : {
+                    opacity: 1,
+                    transform: "translateY(0px) scale(1)",
+                  }
+            }
+            exit={
+              reduceMotion
+                ? { opacity: 0 }
+                : {
+                    opacity: 0,
+                    transform: "translateY(-6px) scale(0.97)",
+                  }
+            }
+            transition={{ duration, ease: EASE_OUT }}
+            style={{
+              top: menuPos.top,
+              left: menuPos.left,
+              maxHeight: menuMaxHeight,
+              transformOrigin: "top left",
+            }}
+            className="fixed z-50 flex w-70 flex-col overflow-hidden rounded-2xl border border-sidebar-menu-border bg-sidebar-menu-bg shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)] dark:shadow-[0_16px_48px_-12px_rgba(0,0,0,0.75)]"
+          >
+            <div className="min-h-0 flex-1 overflow-y-auto py-1">
+              {isLoading ? (
+                <p className="px-3 py-3 text-sm text-sidebar-muted">Loading…</p>
+              ) : (
+                <>
+                  <p className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-sidebar-muted">
+                    Personal
+                  </p>
+                  {personalWorkspaces.map((ws) => {
+                    const onThisTeam =
+                      !!ws.teamId &&
+                      isTeamAppPath(pathname) &&
+                      pathname.includes(`/teams/${ws.teamId}/`);
+                    const isActive =
+                      ws.id === null
+                        ? !isTeamAppPath(pathname) && active.id === null
+                        : active.id === ws.id &&
+                          (onThisTeam || !isTeamAppPath(pathname));
+                    return (
                       <WorkspaceOption
-                        key={ws.id}
+                        key={ws.id ?? "main"}
                         label={ws.name}
                         subtitle={ws.subtitle}
-                        active={isTeamAppPath(pathname) && active.id === ws.id}
-                        busy={busyId === ws.id}
+                        active={isActive}
+                        busy={busyId === (ws.id ?? "main")}
                         disabled={!!busyId}
-                        icon="users"
-                        onSelect={() =>
-                          void handleSelectJoined({
-                            teamId: ws.teamId,
-                            workspaceId: ws.id,
-                            team: ws.team,
-                          })
-                        }
+                        icon={ws.id === null ? "home" : "briefcase"}
+                        onSelect={() => {
+                          if (ws.id === null) {
+                            void handleSelectMain();
+                          } else if (ws.teamId) {
+                            void handleSelectOwned({
+                              teamId: ws.teamId,
+                              workspaceId: ws.id,
+                            });
+                          }
+                        }}
                       />
-                    ))}
-                  </>
-                ) : null}
-              </>
-            )}
-          </div>
+                    );
+                  })}
 
-          <div className="shrink-0 border-t border-border py-1">
-            <Link
-              href="/dashboard/workspaces"
-              onClick={() => setOpen(false)}
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-text hover:bg-sidebar-active"
-            >
-              <IconSettings
-                className="h-4 w-4 text-text-muted"
-                strokeWidth={1.5}
-              />
-              Manage Workspaces
-            </Link>
-            {canCreate ||
-            canCreateTeam ||
-            collaborativeOwnedTeams.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  setCreateOpen(true);
-                }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-text hover:bg-sidebar-active"
+                  {joinedWorkspaces.length > 0 ? (
+                    <>
+                      <div className="my-1 border-t border-sidebar-menu-border" />
+                      <p className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-sidebar-muted">
+                        <IconUsers className="h-3.5 w-3.5" strokeWidth={1.5} />
+                        Teams
+                      </p>
+                      {joinedWorkspaces.map((ws) => (
+                        <WorkspaceOption
+                          key={ws.id}
+                          label={ws.name}
+                          subtitle={ws.subtitle}
+                          active={
+                            isTeamAppPath(pathname) && active.id === ws.id
+                          }
+                          busy={busyId === ws.id}
+                          disabled={!!busyId}
+                          icon="users"
+                          onSelect={() =>
+                            void handleSelectJoined({
+                              teamId: ws.teamId,
+                              workspaceId: ws.id,
+                              team: ws.team,
+                            })
+                          }
+                        />
+                      ))}
+                    </>
+                  ) : null}
+                </>
+              )}
+            </div>
+
+            <div className="shrink-0 border-t border-sidebar-menu-border py-1">
+              <Link
+                href="/dashboard/workspaces"
+                onClick={() => setOpen(false)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-sidebar-text transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-[0.98]"
               >
-                <IconPlus
-                  className="h-4 w-4 text-text-muted"
+                <IconSettings
+                  className="h-4 w-4 text-sidebar-muted"
                   strokeWidth={1.5}
                 />
-                New Workspace
-              </button>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+                Manage Workspaces
+              </Link>
+              {canCreate ||
+              canCreateTeam ||
+              collaborativeOwnedTeams.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setCreateOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-sidebar-text transition-[background-color,transform] duration-150 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-[0.98]"
+                >
+                  <IconPlus
+                    className="h-4 w-4 text-sidebar-muted"
+                    strokeWidth={1.5}
+                  />
+                  New Workspace
+                </button>
+              ) : null}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <CreateWorkspaceDialog
         open={createOpen}
@@ -486,33 +532,33 @@ function WorkspaceOption({
       disabled={disabled || busy}
       onClick={onSelect}
       aria-busy={busy || undefined}
-      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-[opacity,colors] duration-150 ease-out hover:bg-sidebar-active disabled:opacity-50 ${
-        busy
-          ? "bg-sidebar-active font-medium text-sidebar-text opacity-100"
-          : active
-            ? "bg-sidebar-active font-medium text-sidebar-text"
-            : "text-text"
-      }`}
+      className={cn(
+        "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-[opacity,background-color,transform] duration-150 ease-out",
+        "hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-[0.98] disabled:opacity-50",
+        busy || active
+          ? "bg-black/[0.04] font-medium text-sidebar-text dark:bg-white/[0.06]"
+          : "text-sidebar-text",
+      )}
     >
       {icon === "home" ? (
         <IconHome
-          className="h-4 w-4 shrink-0 text-text-muted"
+          className="h-4 w-4 shrink-0 text-sidebar-muted"
           strokeWidth={1.5}
         />
       ) : icon === "briefcase" ? (
         <IconBriefcase
-          className="h-4 w-4 shrink-0 text-text-muted"
+          className="h-4 w-4 shrink-0 text-sidebar-muted"
           strokeWidth={1.5}
         />
       ) : (
         <IconUsers
-          className="h-4 w-4 shrink-0 text-text-muted"
+          className="h-4 w-4 shrink-0 text-sidebar-muted"
           strokeWidth={1.5}
         />
       )}
       <span className="min-w-0 flex-1 truncate capitalize">
         {label}
-        <span className="mt-0.5 block truncate text-xs font-normal normal-case text-text-muted">
+        <span className="mt-0.5 block truncate text-xs font-normal normal-case text-sidebar-muted">
           {busy ? "Opening…" : subtitle}
         </span>
       </span>

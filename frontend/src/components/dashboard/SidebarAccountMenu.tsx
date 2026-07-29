@@ -25,6 +25,8 @@ import {
 /** Strong ease-out — matches improve-animations / Emil UI budget. */
 const EASE_OUT: [number, number, number, number] = [0.23, 1, 0.32, 1];
 
+type AccountMenuVariant = "sidebar" | "page";
+
 type SidebarAccountMenuProps = {
   user: {
     name?: string | null;
@@ -32,6 +34,9 @@ type SidebarAccountMenuProps = {
     image?: string | null;
   };
   planLabel: string;
+  /** sidebar: opens upward in the nav. page: opens downward on More. */
+  variant?: AccountMenuVariant;
+  className?: string;
 };
 
 function planBadgeLabel(planLabel: string): string | null {
@@ -128,7 +133,7 @@ function ThemeSegment() {
 
   if (!ready) {
     return (
-      <div className="h-9 w-full animate-pulse rounded-lg bg-sidebar-active/60" />
+      <div className="h-9 w-full animate-pulse rounded-lg bg-black/[0.04] dark:bg-white/[0.06]" />
     );
   }
 
@@ -155,7 +160,7 @@ function ThemeSegment() {
             )}
           >
             <Icon className="h-3.5 w-3.5 shrink-0" size={14} />
-            <span className="hidden min-[220px]:inline">{label}</span>
+            <span>{label}</span>
           </button>
         );
       })}
@@ -163,9 +168,143 @@ function ThemeSegment() {
   );
 }
 
+function AccountMenuPanel({
+  displayName,
+  email,
+  image,
+  badge,
+  planLabel,
+  onClose,
+  onSignOut,
+}: {
+  displayName: string;
+  email?: string | null;
+  image?: string | null;
+  badge: string | null;
+  planLabel: string;
+  onClose: () => void;
+  onSignOut: () => void;
+}) {
+  return (
+    <>
+      <div className="border-b border-sidebar-menu-border bg-gradient-to-b from-accent/[0.08] to-transparent px-3 pb-4 pt-3.5">
+        <div className="flex items-center gap-2.5">
+          <div className="relative shrink-0">
+            {image ? (
+              <img
+                src={image}
+                alt=""
+                className="h-10 w-10 rounded-full object-cover ring-1 ring-sidebar-menu-border"
+              />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent ring-1 ring-sidebar-menu-border">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            {badge ? (
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded bg-accent px-1 py-[1px] text-[8px] font-bold leading-none tracking-wide text-accent-foreground shadow-sm">
+                {badge}
+              </span>
+            ) : null}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-sidebar-text">
+              {displayName}
+            </p>
+            <p className="truncate text-xs text-sidebar-muted">
+              {email || planLabel}
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/dashboard/connections"
+          prefetch
+          onClick={onClose}
+          className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent transition-opacity hover:opacity-80 active:scale-[0.98]"
+        >
+          <IconLink className="h-4 w-4" size={16} />
+          Connect accounts
+        </Link>
+      </div>
+
+      <div className="px-1.5 pb-1.5 pt-2.5">
+        <p className="px-2.5 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-muted">
+          Resources
+        </p>
+        <MenuRow
+          icon={IconBook2}
+          label="Docs"
+          href={DOCS_DASHBOARD_URL}
+          external
+          onClick={onClose}
+        />
+        <MenuRow
+          icon={IconMessageCircle}
+          label="Get support"
+          href="/dashboard/feedback"
+          onClick={onClose}
+        />
+        <MenuRow
+          icon={IconBrandX}
+          label="Follow us"
+          href="https://x.com/social0_app"
+          external
+          onClick={onClose}
+        />
+        <MenuRow
+          icon={IconHome}
+          label="View landing page"
+          href="/home"
+          onClick={onClose}
+        />
+      </div>
+
+      <div className="mx-3 border-t border-sidebar-menu-border" />
+
+      <div className="px-1.5 py-1.5">
+        <MenuRow
+          icon={IconSettings}
+          label="Account settings"
+          href="/dashboard/settings"
+          onClick={onClose}
+        />
+        <MenuRow
+          icon={IconWallet}
+          label="Billing"
+          href="/dashboard/billing"
+          onClick={onClose}
+        />
+        <MenuRow
+          icon={IconKey}
+          label="Developer"
+          href="/dashboard/api-keys"
+          onClick={onClose}
+        />
+      </div>
+
+      <div className="mx-3 border-t border-sidebar-menu-border" />
+
+      <div className="px-3 py-2.5">
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-sidebar-muted">
+          Theme
+        </p>
+        <ThemeSegment />
+      </div>
+
+      <div className="mx-3 border-t border-sidebar-menu-border" />
+
+      <div className="px-1.5 py-1.5 pb-2">
+        <MenuRow icon={IconLogout} label="Log out" danger onClick={onSignOut} />
+      </div>
+    </>
+  );
+}
+
 export function SidebarAccountMenu({
   user,
   planLabel,
+  variant = "sidebar",
+  className,
 }: SidebarAccountMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -174,6 +313,7 @@ export function SidebarAccountMenu({
   const displayName = user.name || user.email || "User";
   const badge = planBadgeLabel(planLabel);
   const close = () => setOpen(false);
+  const opensUp = variant === "sidebar";
 
   useEffect(() => {
     if (!open) return;
@@ -200,9 +340,11 @@ export function SidebarAccountMenu({
   };
 
   const duration = reduceMotion ? 0.12 : 0.2;
+  const enterY = opensUp ? 8 : -8;
+  const exitY = opensUp ? 6 : -6;
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className={cn("relative", className)}>
       <AnimatePresence>
         {open ? (
           <motion.div
@@ -214,7 +356,7 @@ export function SidebarAccountMenu({
                 ? { opacity: 0 }
                 : {
                     opacity: 0,
-                    transform: "translateY(8px) scale(0.96)",
+                    transform: `translateY(${enterY}px) scale(0.96)`,
                   }
             }
             animate={
@@ -230,128 +372,29 @@ export function SidebarAccountMenu({
                 ? { opacity: 0 }
                 : {
                     opacity: 0,
-                    transform: "translateY(6px) scale(0.97)",
+                    transform: `translateY(${exitY}px) scale(0.97)`,
                   }
             }
             transition={{ duration, ease: EASE_OUT }}
-            style={{ transformOrigin: "bottom center" }}
-            className="absolute bottom-[calc(100%+0.5rem)] left-0 z-50 w-64 overflow-hidden rounded-2xl border border-sidebar-menu-border bg-sidebar-menu-bg shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)] dark:shadow-[0_16px_48px_-12px_rgba(0,0,0,0.75)]"
+            style={{
+              transformOrigin: opensUp ? "bottom center" : "top center",
+            }}
+            className={cn(
+              "z-50 overflow-hidden rounded-2xl border border-sidebar-menu-border bg-sidebar-menu-bg shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)] dark:shadow-[0_16px_48px_-12px_rgba(0,0,0,0.75)]",
+              opensUp
+                ? "absolute bottom-[calc(100%+0.5rem)] left-0 w-64"
+                : "absolute top-[calc(100%+0.5rem)] left-0 right-0 w-full min-w-64",
+            )}
           >
-            {/* Header */}
-            <div className="border-b border-sidebar-menu-border bg-gradient-to-b from-accent/[0.08] to-transparent px-3 pb-4 pt-3.5">
-              <div className="flex items-center gap-2.5">
-                <div className="relative shrink-0">
-                  {user.image ? (
-                    <img
-                      src={user.image}
-                      alt=""
-                      className="h-10 w-10 rounded-full object-cover ring-1 ring-sidebar-border"
-                    />
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent ring-1 ring-sidebar-border">
-                      {displayName.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  {badge ? (
-                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded bg-accent px-1 py-[1px] text-[8px] font-bold leading-none tracking-wide text-accent-foreground shadow-sm">
-                      {badge}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-sidebar-text">
-                    {displayName}
-                  </p>
-                  <p className="truncate text-xs text-sidebar-muted">
-                    {user.email || planLabel}
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/dashboard/connections"
-                prefetch
-                onClick={close}
-                className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent transition-opacity hover:opacity-80 active:scale-[0.98]"
-              >
-                <IconLink className="h-4 w-4" size={16} />
-                Connect accounts
-              </Link>
-            </div>
-
-            <div className="px-1.5 pb-1.5 pt-2.5">
-              <p className="px-2.5 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-muted">
-                Resources
-              </p>
-              <MenuRow
-                icon={IconBook2}
-                label="Docs"
-                href={DOCS_DASHBOARD_URL}
-                external
-                onClick={close}
-              />
-              <MenuRow
-                icon={IconMessageCircle}
-                label="Get support"
-                href="/dashboard/feedback"
-                onClick={close}
-              />
-              <MenuRow
-                icon={IconBrandX}
-                label="Follow us"
-                href="https://x.com/social0_app"
-                external
-                onClick={close}
-              />
-              <MenuRow
-                icon={IconHome}
-                label="View landing page"
-                href="/home"
-                onClick={close}
-              />
-            </div>
-
-            <div className="mx-3 border-t border-sidebar-menu-border" />
-
-            <div className="px-1.5 py-1.5">
-              <MenuRow
-                icon={IconSettings}
-                label="Account settings"
-                href="/dashboard/settings"
-                onClick={close}
-              />
-              <MenuRow
-                icon={IconWallet}
-                label="Billing"
-                href="/dashboard/billing"
-                onClick={close}
-              />
-              <MenuRow
-                icon={IconKey}
-                label="Developer"
-                href="/dashboard/api-keys"
-                onClick={close}
-              />
-            </div>
-
-            <div className="mx-3 border-t border-sidebar-menu-border" />
-
-            <div className="px-3 py-2.5">
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-sidebar-muted">
-                Theme
-              </p>
-              <ThemeSegment />
-            </div>
-
-            <div className="mx-3 border-t border-sidebar-menu-border" />
-
-            <div className="px-1.5 py-1.5 pb-2">
-              <MenuRow
-                icon={IconLogout}
-                label="Log out"
-                danger
-                onClick={() => void handleSignOut()}
-              />
-            </div>
+            <AccountMenuPanel
+              displayName={displayName}
+              email={user.email}
+              image={user.image}
+              badge={badge}
+              planLabel={planLabel}
+              onClose={close}
+              onSignOut={() => void handleSignOut()}
+            />
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -360,10 +403,20 @@ export function SidebarAccountMenu({
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "sidebar-user-block flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left",
+          "flex w-full items-center gap-3 rounded-xl text-left",
           "transition-[background-color,transform] duration-150",
-          "hover:bg-sidebar-active active:scale-[0.98]",
-          open && "bg-sidebar-active",
+          "active:scale-[0.98]",
+          variant === "sidebar"
+            ? cn(
+                "sidebar-user-block px-3 py-2",
+                "hover:bg-sidebar-active",
+                open && "bg-sidebar-active",
+              )
+            : cn(
+                "px-1 py-1.5 -mx-1 touch-manipulation",
+                "hover:bg-bg-subtle",
+                open && "bg-bg-subtle",
+              ),
         )}
         aria-expanded={open}
         aria-haspopup="menu"
@@ -375,10 +428,18 @@ export function SidebarAccountMenu({
             <img
               src={user.image}
               alt=""
-              className="h-9 w-9 rounded-full object-cover"
+              className={cn(
+                "rounded-full object-cover",
+                variant === "sidebar" ? "h-9 w-9" : "h-10 w-10",
+              )}
             />
           ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent">
+            <div
+              className={cn(
+                "flex items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent",
+                variant === "sidebar" ? "h-9 w-9" : "h-10 w-10",
+              )}
+            >
               {displayName.charAt(0).toUpperCase()}
             </div>
           )}
@@ -389,14 +450,27 @@ export function SidebarAccountMenu({
           ) : null}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-sidebar-text">
+          <p
+            className={cn(
+              "truncate text-sm font-medium",
+              variant === "sidebar" ? "text-sidebar-text" : "text-foreground",
+            )}
+          >
             {displayName}
           </p>
-          <p className="truncate text-xs text-sidebar-text">{planLabel}</p>
+          <p
+            className={cn(
+              "truncate text-xs",
+              variant === "sidebar" ? "text-sidebar-text" : "text-text-muted",
+            )}
+          >
+            {planLabel}
+          </p>
         </div>
         <IconChevronDown
           className={cn(
-            "h-4 w-4 shrink-0 text-sidebar-text transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
+            "h-4 w-4 shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
+            variant === "sidebar" ? "text-sidebar-text" : "text-foreground",
             open && "rotate-180",
           )}
           size={16}

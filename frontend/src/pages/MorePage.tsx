@@ -1,16 +1,16 @@
 import Link from "@/components/AppLink";
 import {
-  IconSettings,
   IconStack2,
   IconList,
   IconClock,
   IconCircleCheck,
   IconFileText,
-  IconCreditCard,
-  IconMessageCircle,
   IconTool,
   IconUsers,
   IconLayoutGrid,
+  IconSettings,
+  IconCreditCard,
+  IconKey,
 } from "@tabler/icons-react";
 import { DOCS_MORE_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
@@ -38,9 +38,9 @@ const MORE_LINKS = [
   { href: "/dashboard/posts/drafts", label: "Drafts", icon: IconFileText },
   { href: "/dashboard/workspaces", label: "Workspaces", icon: IconLayoutGrid },
   { href: "/dashboard/teams", label: "Teams", icon: IconUsers },
-  { href: "/dashboard/settings", label: "Settings", icon: IconSettings },
-  { href: "/dashboard/api-keys", label: "Developer", icon: IconSettings },
+  { href: "/dashboard/settings", label: "Account settings", icon: IconSettings },
   { href: "/dashboard/billing", label: "Billing", icon: IconCreditCard },
+  { href: "/dashboard/api-keys", label: "Developer", icon: IconKey },
 ] as const;
 
 export function MorePage() {
@@ -111,15 +111,6 @@ export function MorePage() {
               </Link>
             </li>
           ))}
-          <li>
-            <Link
-              href="/dashboard/feedback"
-              className="flex min-h-[44px] items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors active:bg-bg-muted touch-manipulation"
-            >
-              <IconMessageCircle className="h-4 w-4 shrink-0 text-text-muted" size={16} />
-              Share feedback
-            </Link>
-          </li>
         </ul>
       </section>
     </div>
