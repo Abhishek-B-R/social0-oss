@@ -38,10 +38,16 @@ function formatDuration(ms: number): string {
   return `${min}m ${rem}s`;
 }
 
+type DateTimeFormatOpts = {
+  timezone: string | null;
+  dateFormat: string | null;
+  use24HourTimeFormat: boolean;
+};
+
 function formatLogTime(
   iso: string,
-  formatDateTime: (d: Date, opts: Record<string, unknown>) => string,
-  opts: Record<string, unknown>,
+  formatDateTime: (d: Date, opts: DateTimeFormatOpts) => string,
+  opts: DateTimeFormatOpts,
 ): string {
   return formatDateTime(new Date(iso), opts);
 }
@@ -93,14 +99,7 @@ export function PublishStatusSection({
   timezone: string | null;
   dateFormat: string | null;
   use24HourTimeFormat: boolean;
-  formatDateTime: (
-    date: Date,
-    opts: {
-      timezone: string | null;
-      dateFormat: string | null;
-      use24HourTimeFormat: boolean;
-    },
-  ) => string;
+  formatDateTime: (date: Date, opts: DateTimeFormatOpts) => string;
 }) {
   const needsAttention = useMemo(() => {
     if (
