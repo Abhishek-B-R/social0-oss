@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useCallback, useRef, useEffect } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ImagePlus,
   FileText,
@@ -28,6 +29,7 @@ import {
   VIDEO_DURATION_MESSAGE,
 } from "@/lib/video-duration";
 import { DOCS_COMPOSER_URL } from "@/lib/docs-url";
+import { cn } from "@/lib/utils";
 import DocsInfoIcon from "@/components/info-icon";
 import { AspectRatioGuidanceBanner } from "@/components/AspectRatioGuidanceBanner";
 import { toast } from "sonner";
@@ -37,6 +39,8 @@ import {
 } from "@/lib/media-limits";
 
 const THREAD_MAX_MEDIA_PER_POST = 4;
+
+const EASE_OUT: [number, number, number, number] = [0.23, 1, 0.32, 1];
 
 /** Play icon: dark circle + white triangle, bottom-right (matches typical video thumb UI). */
 function VideoPlayBadge({ compact }: { compact?: boolean }) {
@@ -79,6 +83,8 @@ type ThreadSlot = {
 export function Composer() {
   const navigate = useNavigate();
   const dash = useDashboardPath();
+  const reduceMotion = useReducedMotion();
+  const motionDuration = reduceMotion ? 0.12 : 0.2;
   const [text, setText] = useState("");
   const [media, setMedia] = useState<(ComposerMediaItem & { id: string })[]>(
     [],
@@ -652,421 +658,472 @@ export function Composer() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 px-1 py-6 sm:mt-10 sm:space-y-6 sm:px-0 sm:py-0">
-      <div className="space-y-1.5 sm:space-y-2">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold font-serif tracking-tight text-foreground sm:text-3xl sm:mb-2 landing">
-            Composer
-          </h1>
-          <DocsInfoIcon url={DOCS_COMPOSER_URL} />
+    <div className="mx-auto w-full max-w-[42rem] px-1 pb-20 pt-[clamp(1.25rem,6.5vh,3.25rem)] sm:px-0 sm:pb-24 sm:pt-[clamp(2rem,8.5vh,4.75rem)]">
+      <div className="space-y-5 sm:space-y-6">
+        <div className="space-y-1.5 sm:space-y-2">
+          <div className="flex items-center gap-2">
+            <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground landing sm:mb-0.5 sm:text-[2rem] sm:leading-tight">
+              Composer
+            </h1>
+            <DocsInfoIcon url={DOCS_COMPOSER_URL} />
+          </div>
+          <p className="max-w-xl text-sm leading-snug text-text-muted sm:leading-normal">
+            Type anything, paste, drag and drop, or upload images/videos —
+            we&apos;ll route you to the right post flow.
+          </p>
         </div>
-        <p className="text-sm leading-snug text-text-muted sm:leading-normal">
-          Type anything, paste, drag and drop, or upload images/videos -
-          we&apos;ll route you to the right post flow. You can always adjust
-          details on the next screen.
-        </p>
-      </div>
 
-      <div
-        className={`rounded-2xl border-2 bg-bg-elevated p-4 shadow-sm transition-all duration-200 hover:border-muted-foreground/30 focus-within:border-accent/30 dark:focus-within:border-accent/40 focus-within:ring-2 focus-within:ring-accent/20 sm:rounded-2xl sm:p-5 sm:focus-within:ring-1 sm:focus-within:ring-accent/30 ${
-          isFileDragOver
-            ? "border-accent ring-2 ring-accent/30"
-            : "border-border"
-        }`}
-        onDragEnter={(e) => {
-          if (!hasFileDrag(e)) return;
-          e.preventDefault();
-          setIsFileDragOver(true);
-        }}
-        onDragOver={handleComposerDragOver}
-        onDragLeave={handleComposerDragLeave}
-        onDrop={handleComposerDrop}
-      >
-        <textarea
-          ref={textareaRef}
-          className="min-h-[88px] max-h-[400px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-base text-text outline-none placeholder:text-text-muted sm:min-h-[70px]"
-          placeholder="Share what's on your mind..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onDragOver={(e) => {
+        <div
+          className={cn(
+            "rounded-[1.35rem] border bg-composer-card sm:rounded-[1.5rem]",
+            "border-composer-card-border/90",
+            "shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_10px_36px_-18px_rgba(0,0,0,0.45)]",
+            "p-4 sm:p-5",
+            "transition-[border-color,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
+            "focus-within:border-accent/40 focus-within:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent),0_10px_36px_-18px_rgba(0,0,0,0.45)]",
+            isFileDragOver &&
+              "border-accent shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_24%,transparent)]",
+          )}
+          onDragEnter={(e) => {
             if (!hasFileDrag(e)) return;
             e.preventDefault();
-            e.dataTransfer.dropEffect = "copy";
+            setIsFileDragOver(true);
           }}
-          onPaste={onPaste}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+          onDragOver={handleComposerDragOver}
+          onDragLeave={handleComposerDragLeave}
+          onDrop={handleComposerDrop}
+        >
+          <textarea
+            ref={textareaRef}
+            className="min-h-[104px] max-h-[400px] w-full resize-none overflow-y-auto border-none bg-transparent px-1 py-1 text-[15px] leading-relaxed text-text outline-none placeholder:text-text-muted/80 sm:min-h-[112px] sm:text-base"
+            placeholder="Share what's on your mind..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onDragOver={(e) => {
+              if (!hasFileDrag(e)) return;
               e.preventDefault();
-              handleSubmit();
-            }
-          }}
-          autoFocus
-        />
+              e.dataTransfer.dropEffect = "copy";
+            }}
+            onPaste={onPaste}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
+            autoFocus
+          />
 
-        {media.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs text-text-muted">
-              Drag to reorder · Click remove on hover
-            </p>
-            <div className="flex items-center gap-1">
-              {scrollArrows.left && (
-                <button
-                  type="button"
-                  onClick={() => scrollMediaStrip("left")}
-                  className="flex h-24 w-8 shrink-0 items-center justify-center rounded-lg bg-bg-elevated text-text-muted hover:bg-bg-hover hover:text-text transition-colors"
-                  aria-label="Scroll left"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-              )}
-              <div
-                ref={mediaStripRef}
-                className="flex flex-1 min-w-0 gap-3 overflow-x-auto overflow-y-hidden py-1 scroll-smooth scrollbar-thin"
-                style={{ scrollbarWidth: "thin" }}
-              >
-                {media.map((item, index) => (
-                  <div
-                    key={item.id}
-                    draggable
-                    onDragStart={() => handleMediaDragStart(index)}
-                    onDragOver={(e) => handleMediaDragOver(e, index)}
-                    onDragEnd={handleMediaDragEnd}
-                    className="group relative flex h-24 w-24 shrink-0 cursor-move items-center justify-center overflow-hidden rounded-xl border border-border bg-bg-muted hover:border-accent transition-colors"
+          {media.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-text-muted">
+                Drag to reorder · Click remove on hover
+              </p>
+              <div className="flex items-center gap-1">
+                {scrollArrows.left && (
+                  <button
+                    type="button"
+                    onClick={() => scrollMediaStrip("left")}
+                    className="flex h-24 w-8 shrink-0 items-center justify-center rounded-lg bg-composer-chip text-text-muted transition-[background-color,color,transform] duration-150 hover:bg-composer-chip-hover hover:text-text active:scale-[0.97]"
+                    aria-label="Scroll left"
                   >
-                    {item.type === "image" ? (
-                      <img
-                        src={item.previewUrl}
-                        alt=""
-                        className="h-full w-full object-cover pointer-events-none"
-                        draggable={false}
-                      />
-                    ) : (
-                      <>
-                        <video
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                )}
+                <div
+                  ref={mediaStripRef}
+                  className="flex min-w-0 flex-1 gap-3 overflow-x-auto overflow-y-hidden py-1 scroll-smooth scrollbar-thin"
+                  style={{ scrollbarWidth: "thin" }}
+                >
+                  {media.map((item, index) => (
+                    <div
+                      key={item.id}
+                      draggable
+                      onDragStart={() => handleMediaDragStart(index)}
+                      onDragOver={(e) => handleMediaDragOver(e, index)}
+                      onDragEnd={handleMediaDragEnd}
+                      className="group relative flex h-24 w-24 shrink-0 cursor-move items-center justify-center overflow-hidden rounded-xl border border-composer-card-border bg-composer-chip transition-[border-color] duration-150 hover:border-accent"
+                    >
+                      {item.type === "image" ? (
+                        <img
                           src={item.previewUrl}
-                          poster={item.posterUrl}
-                          className="h-full w-full object-cover pointer-events-none"
-                          muted
-                          playsInline
-                          preload="auto"
+                          alt=""
+                          className="pointer-events-none h-full w-full object-cover"
                           draggable={false}
                         />
-                        <VideoPlayBadge />
-                      </>
-                    )}
-                    <div className="absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center pointer-events-none">
-                      <span className="text-xs font-bold text-white">
-                        {index + 1}
-                      </span>
+                      ) : (
+                        <>
+                          <video
+                            src={item.previewUrl}
+                            poster={item.posterUrl}
+                            className="pointer-events-none h-full w-full object-cover"
+                            muted
+                            playsInline
+                            preload="auto"
+                            draggable={false}
+                          />
+                          <VideoPlayBadge />
+                        </>
+                      )}
+                      <div className="pointer-events-none absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center">
+                        <span className="text-xs font-bold text-white">
+                          {index + 1}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeMedia(item.id)}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-black/80 active:scale-[0.97]"
+                        aria-label="Remove"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeMedia(item.id)}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity"
-                      aria-label="Remove"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                {scrollArrows.right && (
+                  <button
+                    type="button"
+                    onClick={() => scrollMediaStrip("right")}
+                    className="flex h-24 w-8 shrink-0 items-center justify-center rounded-lg bg-composer-chip text-text-muted transition-[background-color,color,transform] duration-150 hover:bg-composer-chip-hover hover:text-text active:scale-[0.97]"
+                    aria-label="Scroll right"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                )}
               </div>
-              {scrollArrows.right && (
-                <button
-                  type="button"
-                  onClick={() => scrollMediaStrip("right")}
-                  className="flex h-24 w-8 shrink-0 items-center justify-center rounded-lg bg-bg-elevated text-text-muted hover:bg-bg-hover hover:text-text transition-colors"
-                  aria-label="Scroll right"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
+              {media.some(
+                (m) => m.type === "video" && aspectGuidanceByMediaId[m.id],
+              ) && (
+                <div className="pt-1">
+                  <AspectRatioGuidanceBanner
+                    guidance={NON_STANDARD_VIDEO_ASPECT_GUIDANCE}
+                  />
+                </div>
               )}
             </div>
-            {media.some(
-              (m) => m.type === "video" && aspectGuidanceByMediaId[m.id],
-            ) && (
-              <div className="pt-1">
-                <AspectRatioGuidanceBanner
-                  guidance={NON_STANDARD_VIDEO_ASPECT_GUIDANCE}
-                />
-              </div>
-            )}
-          </div>
-        )}
+          )}
 
-        {isThread && (
-          <p className="text-xs text-text-muted rounded-lg border border-border/60 bg-bg-muted/50 px-3 py-2">
-            Threads can contain at most 4 attachments per post.
-          </p>
-        )}
-        <div className="flex flex-col gap-3 pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:pt-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <label
-              className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition-colors touch-manipulation sm:py-1.5 ${
-                isThread && media.length >= THREAD_MAX_MEDIA_PER_POST
-                  ? "cursor-not-allowed border-border bg-bg-muted opacity-70"
-                  : "border-border bg-bg-muted text-text-muted hover:bg-bg-hover hover:text-text"
-              }`}
-            >
-              <ImagePlus className="h-4 w-4 shrink-0" />
-              <span>Images / Videos{isThread ? " (max 4)" : ""}</span>
-              <input
-                type="file"
-                accept="image/*,video/*"
-                multiple
-                className="hidden"
-                onChange={(e) => handleFiles(e.target.files)}
-                disabled={isThread && media.length >= THREAD_MAX_MEDIA_PER_POST}
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => {
-                const next = !isThread;
-                setIsThread(next);
-                if (next) {
-                  if (threadSlots.length === 0) addThreadSlot();
-                  setMedia((prev) => {
-                    if (prev.length <= THREAD_MAX_MEDIA_PER_POST) return prev;
-                    prev.slice(THREAD_MAX_MEDIA_PER_POST).forEach((m) => {
-                      if (m.previewUrl.startsWith("blob:"))
-                        URL.revokeObjectURL(m.previewUrl);
-                    });
-                    return prev.slice(0, THREAD_MAX_MEDIA_PER_POST);
-                  });
-                  setThreadSlots((prev) =>
-                    prev.map((s) => {
-                      if (s.media.length <= THREAD_MAX_MEDIA_PER_POST) return s;
-                      s.media.slice(THREAD_MAX_MEDIA_PER_POST).forEach((m) => {
+          {isThread && (
+            <p className="rounded-lg border border-composer-card-border/70 bg-composer-chip/70 px-3 py-2 text-xs text-text-muted">
+              Threads can contain at most 4 attachments per post.
+            </p>
+          )}
+
+          <div className="mt-3 flex flex-col gap-3 border-t border-composer-card-border/60 pt-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <label
+                className={cn(
+                  "inline-flex cursor-pointer items-center gap-2 rounded-full px-3.5 py-2 text-xs font-medium touch-manipulation sm:py-1.5",
+                  "bg-composer-chip text-text",
+                  "transition-[background-color,color,transform] duration-150",
+                  "hover:bg-composer-chip-hover active:scale-[0.97]",
+                  isThread &&
+                    media.length >= THREAD_MAX_MEDIA_PER_POST &&
+                    "cursor-not-allowed opacity-70",
+                )}
+              >
+                <ImagePlus className="h-4 w-4 shrink-0 text-text-muted" />
+                <span>Images / Videos{isThread ? " (max 4)" : ""}</span>
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handleFiles(e.target.files)}
+                  disabled={
+                    isThread && media.length >= THREAD_MAX_MEDIA_PER_POST
+                  }
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !isThread;
+                  setIsThread(next);
+                  if (next) {
+                    if (threadSlots.length === 0) addThreadSlot();
+                    setMedia((prev) => {
+                      if (prev.length <= THREAD_MAX_MEDIA_PER_POST) return prev;
+                      prev.slice(THREAD_MAX_MEDIA_PER_POST).forEach((m) => {
                         if (m.previewUrl.startsWith("blob:"))
                           URL.revokeObjectURL(m.previewUrl);
                       });
-                      return {
-                        ...s,
-                        media: s.media.slice(0, THREAD_MAX_MEDIA_PER_POST),
-                      };
-                    }),
-                  );
-                } else {
-                  setThreadSlots([]);
-                }
-              }}
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition-colors touch-manipulation sm:py-1.5 ${
-                isThread
-                  ? "border-accent bg-accent/10 text-accent"
-                  : "border-border bg-bg-muted text-text-muted hover:bg-bg-hover hover:text-text"
-              }`}
+                      return prev.slice(0, THREAD_MAX_MEDIA_PER_POST);
+                    });
+                    setThreadSlots((prev) =>
+                      prev.map((s) => {
+                        if (s.media.length <= THREAD_MAX_MEDIA_PER_POST)
+                          return s;
+                        s.media.slice(THREAD_MAX_MEDIA_PER_POST).forEach((m) => {
+                          if (m.previewUrl.startsWith("blob:"))
+                            URL.revokeObjectURL(m.previewUrl);
+                        });
+                        return {
+                          ...s,
+                          media: s.media.slice(0, THREAD_MAX_MEDIA_PER_POST),
+                        };
+                      }),
+                    );
+                  } else {
+                    setThreadSlots([]);
+                  }
+                }}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-medium touch-manipulation sm:py-1.5",
+                  "transition-[background-color,color,transform] duration-150",
+                  "active:scale-[0.97]",
+                  isThread
+                    ? "bg-accent/10 text-accent"
+                    : "bg-composer-chip text-text hover:bg-composer-chip-hover",
+                )}
+              >
+                <Plus className="h-3 w-3 shrink-0" />
+                <span>Add another post as thread</span>
+              </button>
+            </div>
+
+            {text.length > 0 && (
+              <p
+                className="text-right text-xs text-text-muted sm:order-0"
+                aria-live="polite"
+              >
+                {text.length} character{text.length !== 1 ? "s" : ""}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={
+                loading ||
+                (!text.trim() &&
+                  media.length === 0 &&
+                  !threadSlots.some(
+                    (s) => s.text.trim() || s.media.length > 0,
+                  ))
+              }
+              className="order-first inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground shadow-sm transition-[background-color,transform,opacity] duration-150 hover:bg-accent-hover active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-70 disabled:active:scale-100 touch-manipulation sm:order-0 sm:w-auto sm:py-2"
             >
-              <Plus className="h-3 w-3 shrink-0" />
-              <span>Add another post as thread</span>
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
+              <span>{loading ? "Loading…" : "Continue"}</span>
             </button>
           </div>
-
-          {text.length > 0 && (
-            <p
-              className="text-right text-xs text-text-muted sm:order-0"
-              aria-live="polite"
-            >
-              {text.length} character{text.length !== 1 ? "s" : ""}
-            </p>
-          )}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={
-              loading ||
-              (!text.trim() &&
-                media.length === 0 &&
-                !threadSlots.some((s) => s.text.trim() || s.media.length > 0))
-            }
-            className="order-first inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70 touch-manipulation sm:order-0 sm:w-auto sm:py-2"
-          >
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            ) : (
-              <FileText className="h-4 w-4" />
-            )}
-            <span>{loading ? "Loading…" : "Continue"}</span>
-          </button>
         </div>
-      </div>
 
-      {isThread && (
-        <div className="space-y-4">
-          {threadSlots.map((slot, index) => (
-            <div
-              key={slot.id}
-              className="rounded-2xl border border-border bg-bg-elevated p-4 sm:p-5 shadow-sm space-y-4"
-              onDragOver={(e) => {
-                if (!hasFileDrag(e)) return;
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "copy";
-              }}
-              onDrop={(e) => handleThreadSlotFileDrop(slot.id, e)}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-text-muted">
-                  Post {index + 2}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => removeThreadSlot(slot.id)}
-                  className="rounded-full p-1.5 text-text-muted hover:bg-bg-hover hover:text-text transition-colors"
-                  aria-label="Remove post"
+        {isThread && (
+          <div className="space-y-4">
+            <AnimatePresence initial={false}>
+              {threadSlots.map((slot, index) => (
+                <motion.div
+                  key={slot.id}
+                  initial={
+                    reduceMotion
+                      ? { opacity: 0 }
+                      : {
+                          opacity: 0,
+                          transform: "translateY(6px) scale(0.97)",
+                        }
+                  }
+                  animate={
+                    reduceMotion
+                      ? { opacity: 1 }
+                      : {
+                          opacity: 1,
+                          transform: "translateY(0px) scale(1)",
+                        }
+                  }
+                  exit={
+                    reduceMotion
+                      ? { opacity: 0 }
+                      : {
+                          opacity: 0,
+                          transform: "translateY(4px) scale(0.98)",
+                        }
+                  }
+                  transition={{ duration: motionDuration, ease: EASE_OUT }}
+                  className="space-y-4 rounded-2xl border border-composer-card-border bg-composer-card p-4 shadow-sm sm:p-5"
+                  onDragOver={(e) => {
+                    if (!hasFileDrag(e)) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "copy";
+                  }}
+                  onDrop={(e) => handleThreadSlotFileDrop(slot.id, e)}
                 >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-              <textarea
-                ref={(el) => {
-                  if (el) threadTextareaRefs.current[slot.id] = el;
-                }}
-                className="min-h-[120px] max-h-[250px] w-full resize-none overflow-y-auto rounded-xl border border-input bg-bg px-4 py-3 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-                placeholder="What's in this post?"
-                value={slot.text}
-                onChange={(e) => {
-                  updateThreadSlot(slot.id, { text: e.target.value });
-                  requestAnimationFrame(() =>
-                    resizeThreadSlotTextarea(e.target as HTMLTextAreaElement),
-                  );
-                }}
-                onDragOver={(e) => {
-                  if (!hasFileDrag(e)) return;
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "copy";
-                }}
-              />
-              {slot.media.length > 0 && (
-                <div className="space-y-1">
-                  <p className="text-xs text-text-muted">
-                    Drag to reorder · max 4 per post
-                  </p>
-                  <div className="flex gap-2 overflow-x-auto overflow-y-hidden py-1 scroll-smooth">
-                    {slot.media.map((item, idx) => (
-                      <div
-                        key={item.id}
-                        draggable
-                        onDragStart={() =>
-                          handleThreadSlotMediaDragStart(slot.id, idx)
-                        }
-                        onDragOver={(e) =>
-                          handleThreadSlotMediaDragOver(slot.id, idx, e)
-                        }
-                        onDragEnd={handleThreadSlotMediaDragEnd}
-                        className="group relative flex h-20 w-20 shrink-0 cursor-move items-center justify-center overflow-hidden rounded-xl border border-border bg-bg-muted hover:border-accent transition-colors"
-                      >
-                        {item.type === "image" ? (
-                          <img
-                            src={item.previewUrl}
-                            alt=""
-                            className="h-full w-full object-cover pointer-events-none"
-                            draggable={false}
-                          />
-                        ) : (
-                          <>
-                            <video
-                              src={item.previewUrl}
-                              poster={item.posterUrl}
-                              className="h-full w-full object-cover pointer-events-none"
-                              muted
-                              playsInline
-                              preload="auto"
-                              draggable={false}
-                            />
-                            <VideoPlayBadge compact />
-                          </>
-                        )}
-                        <div className="absolute left-0 right-0 top-0 bg-black/60 px-1 py-0.5 text-center pointer-events-none">
-                          <span className="text-xs font-bold text-white">
-                            {idx + 1}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            removeThreadSlotMedia(slot.id, item.id)
-                          }
-                          onMouseDown={(e) => e.stopPropagation()}
-                          className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity"
-                          aria-label="Remove"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-text-muted">
+                      Post {index + 2}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeThreadSlot(slot.id)}
+                      className="rounded-full p-1.5 text-text-muted transition-[background-color,color,transform] duration-150 hover:bg-composer-chip hover:text-text active:scale-[0.97]"
+                      aria-label="Remove post"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
-                  {slot.media.some(
-                    (m) => m.type === "video" && aspectGuidanceByMediaId[m.id],
-                  ) && (
-                    <div className="pt-1">
-                      <AspectRatioGuidanceBanner
-                        guidance={NON_STANDARD_VIDEO_ASPECT_GUIDANCE}
-                      />
+                  <textarea
+                    ref={(el) => {
+                      if (el) threadTextareaRefs.current[slot.id] = el;
+                    }}
+                    className="min-h-[120px] max-h-[250px] w-full resize-none overflow-y-auto rounded-xl border border-composer-card-border bg-bg px-4 py-3 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+                    placeholder="What's in this post?"
+                    value={slot.text}
+                    onChange={(e) => {
+                      updateThreadSlot(slot.id, { text: e.target.value });
+                      requestAnimationFrame(() =>
+                        resizeThreadSlotTextarea(
+                          e.target as HTMLTextAreaElement,
+                        ),
+                      );
+                    }}
+                    onDragOver={(e) => {
+                      if (!hasFileDrag(e)) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "copy";
+                    }}
+                  />
+                  {slot.media.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-text-muted">
+                        Drag to reorder · max 4 per post
+                      </p>
+                      <div className="flex gap-2 overflow-x-auto overflow-y-hidden py-1 scroll-smooth">
+                        {slot.media.map((item, idx) => (
+                          <div
+                            key={item.id}
+                            draggable
+                            onDragStart={() =>
+                              handleThreadSlotMediaDragStart(slot.id, idx)
+                            }
+                            onDragOver={(e) =>
+                              handleThreadSlotMediaDragOver(slot.id, idx, e)
+                            }
+                            onDragEnd={handleThreadSlotMediaDragEnd}
+                            className="group relative flex h-20 w-20 shrink-0 cursor-move items-center justify-center overflow-hidden rounded-xl border border-composer-card-border bg-composer-chip transition-[border-color] duration-150 hover:border-accent"
+                          >
+                            {item.type === "image" ? (
+                              <img
+                                src={item.previewUrl}
+                                alt=""
+                                className="pointer-events-none h-full w-full object-cover"
+                                draggable={false}
+                              />
+                            ) : (
+                              <>
+                                <video
+                                  src={item.previewUrl}
+                                  poster={item.posterUrl}
+                                  className="pointer-events-none h-full w-full object-cover"
+                                  muted
+                                  playsInline
+                                  preload="auto"
+                                  draggable={false}
+                                />
+                                <VideoPlayBadge compact />
+                              </>
+                            )}
+                            <div className="pointer-events-none absolute left-0 right-0 top-0 bg-black/60 px-1 py-0.5 text-center">
+                              <span className="text-xs font-bold text-white">
+                                {idx + 1}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeThreadSlotMedia(slot.id, item.id)
+                              }
+                              onMouseDown={(e) => e.stopPropagation()}
+                              className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-black/80 active:scale-[0.97]"
+                              aria-label="Remove"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      {slot.media.some(
+                        (m) =>
+                          m.type === "video" && aspectGuidanceByMediaId[m.id],
+                      ) && (
+                        <div className="pt-1">
+                          <AspectRatioGuidanceBanner
+                            guidance={NON_STANDARD_VIDEO_ASPECT_GUIDANCE}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <label
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                    slot.media.length >= THREAD_MAX_MEDIA_PER_POST
-                      ? "cursor-not-allowed border-border bg-bg-muted text-text-muted opacity-70"
-                      : "cursor-pointer border-border bg-bg-muted text-text-muted hover:bg-bg-hover hover:text-text"
-                  }`}
-                >
-                  <ImagePlus className="h-4 w-4" />
-                  <span>Images / Videos (max 4)</span>
-                  <input
-                    type="file"
-                    accept="image/*,video/*"
-                    multiple
-                    className="hidden"
-                    onChange={(e) =>
-                      handleThreadSlotFiles(slot.id, e.target.files)
-                    }
-                    disabled={slot.media.length >= THREAD_MAX_MEDIA_PER_POST}
-                  />
-                </label>
-                <p
-                  className="text-right text-xs text-text-muted mt-1"
-                  aria-live="polite"
-                >
-                  {slot.text.length} character
-                  {slot.text.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={addThreadSlot}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-bg-elevated py-4 text-sm font-medium text-text-muted hover:border-accent hover:bg-accent/5 hover:text-accent transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add another post</span>
-          </button>
+                  <div className="flex items-center justify-between">
+                    <label
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium",
+                        "border-composer-card-border bg-composer-chip text-text",
+                        "transition-[background-color,color,border-color,transform] duration-150",
+                        "active:scale-[0.97]",
+                        slot.media.length >= THREAD_MAX_MEDIA_PER_POST
+                          ? "cursor-not-allowed opacity-70"
+                          : "cursor-pointer hover:bg-composer-chip-hover",
+                      )}
+                    >
+                      <ImagePlus className="h-4 w-4 text-text-muted" />
+                      <span>Images / Videos (max 4)</span>
+                      <input
+                        type="file"
+                        accept="image/*,video/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) =>
+                          handleThreadSlotFiles(slot.id, e.target.files)
+                        }
+                        disabled={
+                          slot.media.length >= THREAD_MAX_MEDIA_PER_POST
+                        }
+                      />
+                    </label>
+                    <p
+                      className="mt-1 text-right text-xs text-text-muted"
+                      aria-live="polite"
+                    >
+                      {slot.text.length} character
+                      {slot.text.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            <button
+              type="button"
+              onClick={addThreadSlot}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-composer-card-border bg-composer-card py-4 text-sm font-medium text-text-muted transition-[border-color,background-color,color,transform] duration-150 hover:border-accent hover:bg-accent/5 hover:text-accent active:scale-[0.99]"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add another post</span>
+            </button>
+          </div>
+        )}
+
+        <div className="space-y-2 pt-0.5">
+          <p className="flex items-center gap-2 text-sm leading-snug text-text-muted">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent">
+              ✓
+            </span>
+            You can connect your accounts from{" "}
+            <Link
+              href={dash("connections")}
+              className="font-medium text-accent transition-colors hover:text-accent-hover hover:underline"
+            >
+              here
+            </Link>
+            .
+          </p>
         </div>
-      )}
-
-      <p className="text-xs leading-relaxed text-text-muted sm:text-xs">
-        Paste or drop almost anything here. We&apos;ll detect whether it&apos;s
-        text, images, video, or a combination and start you in the best-fitting
-        post builder.
-      </p>
-
-      <p className="flex items-center gap-2 text-sm leading-snug text-text-muted">
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent">
-          ✓
-        </span>
-        You can connect your accounts from
-        <Link
-          href={dash("connections")}
-          className="font-medium text-accent hover:text-accent-hover hover:underline"
-        >
-          here
-        </Link>
-        .
-      </p>
+      </div>
     </div>
   );
 }

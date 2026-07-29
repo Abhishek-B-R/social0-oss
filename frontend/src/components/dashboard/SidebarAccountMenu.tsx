@@ -36,6 +36,8 @@ type SidebarAccountMenuProps = {
   planLabel: string;
   /** sidebar: opens upward in the nav. page: opens downward on More. */
   variant?: AccountMenuVariant;
+  /** Icon-only trigger when the desktop sidebar is collapsed. */
+  railCollapsed?: boolean;
   className?: string;
 };
 
@@ -304,6 +306,7 @@ export function SidebarAccountMenu({
   user,
   planLabel,
   variant = "sidebar",
+  railCollapsed = false,
   className,
 }: SidebarAccountMenuProps) {
   const [open, setOpen] = useState(false);
@@ -313,7 +316,8 @@ export function SidebarAccountMenu({
   const displayName = user.name || user.email || "User";
   const badge = planBadgeLabel(planLabel);
   const close = () => setOpen(false);
-  const opensUp = variant === "sidebar";
+  const opensUp = variant === "sidebar" && !railCollapsed;
+  const opensRail = variant === "sidebar" && railCollapsed;
 
   useEffect(() => {
     if (!open) return;
@@ -340,8 +344,10 @@ export function SidebarAccountMenu({
   };
 
   const duration = reduceMotion ? 0.12 : 0.2;
-  const enterY = opensUp ? 8 : -8;
-  const exitY = opensUp ? 6 : -6;
+  const enterY = opensRail ? 0 : opensUp ? 8 : -8;
+  const exitY = opensRail ? 0 : opensUp ? 6 : -6;
+  const enterX = opensRail ? -8 : 0;
+  const exitX = opensRail ? -6 : 0;
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>
@@ -356,7 +362,7 @@ export function SidebarAccountMenu({
                 ? { opacity: 0 }
                 : {
                     opacity: 0,
-                    transform: `translateY(${enterY}px) scale(0.96)`,
+                    transform: `translate(${enterX}px, ${enterY}px) scale(0.96)`,
                   }
             }
             animate={
@@ -364,7 +370,7 @@ export function SidebarAccountMenu({
                 ? { opacity: 1 }
                 : {
                     opacity: 1,
-                    transform: "translateY(0px) scale(1)",
+                    transform: "translate(0px, 0px) scale(1)",
                   }
             }
             exit={
@@ -372,18 +378,24 @@ export function SidebarAccountMenu({
                 ? { opacity: 0 }
                 : {
                     opacity: 0,
-                    transform: `translateY(${exitY}px) scale(0.97)`,
+                    transform: `translate(${exitX}px, ${exitY}px) scale(0.97)`,
                   }
             }
             transition={{ duration, ease: EASE_OUT }}
             style={{
-              transformOrigin: opensUp ? "bottom center" : "top center",
+              transformOrigin: opensRail
+                ? "bottom left"
+                : opensUp
+                  ? "bottom center"
+                  : "top center",
             }}
             className={cn(
               "z-50 overflow-hidden rounded-2xl border border-sidebar-menu-border bg-sidebar-menu-bg shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)] dark:shadow-[0_16px_48px_-12px_rgba(0,0,0,0.75)]",
-              opensUp
-                ? "absolute bottom-[calc(100%+0.5rem)] left-0 w-64"
-                : "absolute top-[calc(100%+0.5rem)] left-0 right-0 w-full min-w-64",
+              opensRail
+                ? "absolute bottom-0 left-[calc(100%+0.5rem)] w-64"
+                : opensUp
+                  ? "absolute bottom-[calc(100%+0.5rem)] left-0 w-64"
+                  : "absolute top-[calc(100%+0.5rem)] left-0 right-0 w-full min-w-64",
             )}
           >
             <AccountMenuPanel
@@ -403,20 +415,26 @@ export function SidebarAccountMenu({
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "flex w-full items-center gap-3 rounded-xl text-left",
+          "flex items-center rounded-xl text-left",
           "transition-[background-color,transform] duration-150",
           "active:scale-[0.98]",
-          variant === "sidebar"
+          railCollapsed
             ? cn(
-                "sidebar-user-block px-3 py-2",
+                "sidebar-user-block mx-auto justify-center p-1.5",
                 "hover:bg-sidebar-active",
                 open && "bg-sidebar-active",
               )
-            : cn(
-                "px-1 py-1.5 -mx-1 touch-manipulation",
-                "hover:bg-bg-subtle",
-                open && "bg-bg-subtle",
-              ),
+            : variant === "sidebar"
+              ? cn(
+                  "sidebar-user-block w-full gap-3 px-3 py-2",
+                  "hover:bg-sidebar-active",
+                  open && "bg-sidebar-active",
+                )
+              : cn(
+                  "w-full gap-3 px-1 py-1.5 -mx-1 touch-manipulation",
+                  "hover:bg-bg-subtle",
+                  open && "bg-bg-subtle",
+                ),
         )}
         aria-expanded={open}
         aria-haspopup="menu"
@@ -430,14 +448,22 @@ export function SidebarAccountMenu({
               alt=""
               className={cn(
                 "rounded-full object-cover",
-                variant === "sidebar" ? "h-9 w-9" : "h-10 w-10",
+                railCollapsed
+                  ? "h-9 w-9"
+                  : variant === "sidebar"
+                    ? "h-9 w-9"
+                    : "h-10 w-10",
               )}
             />
           ) : (
             <div
               className={cn(
                 "flex items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent",
-                variant === "sidebar" ? "h-9 w-9" : "h-10 w-10",
+                railCollapsed
+                  ? "h-9 w-9"
+                  : variant === "sidebar"
+                    ? "h-9 w-9"
+                    : "h-10 w-10",
               )}
             >
               {displayName.charAt(0).toUpperCase()}
@@ -449,32 +475,40 @@ export function SidebarAccountMenu({
             </span>
           ) : null}
         </div>
-        <div className="min-w-0 flex-1">
-          <p
-            className={cn(
-              "truncate text-sm font-medium",
-              variant === "sidebar" ? "text-sidebar-text" : "text-foreground",
-            )}
-          >
-            {displayName}
-          </p>
-          <p
-            className={cn(
-              "truncate text-xs",
-              variant === "sidebar" ? "text-sidebar-text" : "text-text-muted",
-            )}
-          >
-            {planLabel}
-          </p>
-        </div>
-        <IconChevronDown
-          className={cn(
-            "h-4 w-4 shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
-            variant === "sidebar" ? "text-sidebar-text" : "text-foreground",
-            open && "rotate-180",
-          )}
-          size={16}
-        />
+        {!railCollapsed ? (
+          <>
+            <div className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  "truncate text-sm font-medium",
+                  variant === "sidebar"
+                    ? "text-sidebar-text"
+                    : "text-foreground",
+                )}
+              >
+                {displayName}
+              </p>
+              <p
+                className={cn(
+                  "truncate text-xs",
+                  variant === "sidebar"
+                    ? "text-sidebar-text"
+                    : "text-text-muted",
+                )}
+              >
+                {planLabel}
+              </p>
+            </div>
+            <IconChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
+                variant === "sidebar" ? "text-sidebar-text" : "text-foreground",
+                open && "rotate-180",
+              )}
+              size={16}
+            />
+          </>
+        ) : null}
       </button>
     </div>
   );

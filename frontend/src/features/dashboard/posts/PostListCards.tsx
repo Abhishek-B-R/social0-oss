@@ -270,48 +270,40 @@ function getTimestampParts(
   };
 }
 
-/** Status pill: label + optional prefix character. */
+/** Status pill: text label only. */
 function getStatusBadge(status: string | null): {
   label: string;
   className: string;
-  prefix: string;
 } {
   switch (status) {
     case "published":
       return {
         label: "Posted",
-        prefix: "●",
         className: "bg-accent text-accent-foreground",
       };
     case "partial":
       return {
         label: "Partial",
-        prefix: "◐",
         className: "bg-purple-600 text-white",
       };
     case "publishing":
       return {
         label: "Publishing",
-        prefix: "◌",
         className: "bg-amber-400 text-amber-950",
       };
     case "scheduled":
       return {
         label: "Scheduled",
-        prefix: "◷",
         className: "bg-blue-600 text-white",
       };
     case "failed":
       return {
         label: "Failed",
-        prefix: "✕",
-        className:
-          "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800",
+        className: "bg-red-600 text-white",
       };
     default:
       return {
         label: "Draft",
-        prefix: "○",
         className: "bg-yellow-400 text-yellow-950 dark:bg-yellow-500 dark:text-yellow-950",
       };
   }
@@ -630,7 +622,6 @@ export function PostListCards({
         const statusBadge = isQueued
           ? {
               label: "Queued",
-              prefix: "▸",
               className: "bg-orange-600 text-white",
             }
           : getStatusBadge(uiStatus);
@@ -676,7 +667,7 @@ export function PostListCards({
                   <span
                     className={`rounded-md px-2 py-0.5 text-[11px] font-mono font-medium ${statusBadge.className}`}
                   >
-                    {statusBadge.prefix} {statusBadge.label}
+                    {statusBadge.label}
                   </span>
                 </div>
                 {/* MIDDLE: caption/title - larger, bolder, 2 lines */}
@@ -712,33 +703,36 @@ export function PostListCards({
 
               {/* Fixed footer — same place with or without attachments */}
               <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/60 bg-muted/50 px-3 py-2">
-                <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
-                  {showIcons.map((pub, i) => (
-                    <span
-                      key={`${post.id}-${i}-${pub.connectedAccountId ?? pub.platform}`}
-                      className="relative inline-flex shrink-0"
-                      title={
-                        pub.platformUsername
-                          ? `@${pub.platformUsername}`
-                          : pub.platform
-                      }
-                    >
-                      <AccountAvatar
-                        accountId={pub.connectedAccountId ?? undefined}
-                        profileImageUrl={pub.profileImageUrl}
-                        username={pub.platformUsername}
-                        platform={pub.platform}
-                        isTwitterPremium={pub.isTwitterPremium ?? false}
-                        size="sm"
-                        className="ring-2 ring-muted"
-                      />
-                      <span className="absolute -left-0.5 -top-0.5 z-10 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-muted bg-card">
-                        <PlatformIcon platform={pub.platform} size={10} />
+                <div className="flex min-w-0 flex-1 items-center overflow-hidden pl-0.5 pt-0.5">
+                  <div className="flex items-center -space-x-2.5">
+                    {showIcons.map((pub, i) => (
+                      <span
+                        key={`${post.id}-${i}-${pub.connectedAccountId ?? pub.platform}`}
+                        className="relative inline-flex shrink-0"
+                        style={{ zIndex: i + 1 }}
+                        title={
+                          pub.platformUsername
+                            ? `@${pub.platformUsername}`
+                            : pub.platform
+                        }
+                      >
+                        <AccountAvatar
+                          accountId={pub.connectedAccountId ?? undefined}
+                          profileImageUrl={pub.profileImageUrl}
+                          username={pub.platformUsername}
+                          platform={pub.platform}
+                          isTwitterPremium={pub.isTwitterPremium ?? false}
+                          size="sm"
+                          className="ring-2 ring-muted"
+                        />
+                        <span className="absolute -left-0.5 -top-0.5 z-10 flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 border-muted bg-card">
+                          <PlatformIcon platform={pub.platform} size={10} />
+                        </span>
                       </span>
-                    </span>
-                  ))}
+                    ))}
+                  </div>
                   {extraCount > 0 && (
-                    <span className="shrink-0 whitespace-nowrap text-[10px] font-medium text-muted-foreground">
+                    <span className="ml-1.5 shrink-0 whitespace-nowrap text-[10px] font-medium text-muted-foreground">
                       +{extraCount} more
                     </span>
                   )}
