@@ -7,13 +7,11 @@ import Link from "@/components/AppLink";
 import { IconLoader2 } from "@tabler/icons-react";
 import { getPlanLimits, type BillingInterval } from "@/lib/plans";
 import {
-  billedAsYearlyLabel,
   formatEffectiveMonthly,
-  formatListMonthly,
   getPlanPrice,
-  TAX_NOTE,
 } from "@/lib/plan-pricing";
 import { BillingIntervalToggle } from "@/components/billing/BillingIntervalToggle";
+import { PlanDiscountPrice } from "@/components/billing/PlanDiscountPrice";
 import { setOnboardingCompleted } from "@/api/onboarding";
 import { DOCS_ONBOARDING_URL } from "@/lib/docs-url";
 import { toast } from "sonner";
@@ -333,36 +331,24 @@ function OnboardingWelcomeContent() {
               <h3 className="pr-16 text-lg font-semibold text-foreground">
                 {plan.name}
               </h3>
-              <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                {interval === "yearly"
-                  ? formatListMonthly(plan.id) != null && (
-                      <span className="text-sm text-muted-foreground line-through decoration-red-500 decoration-2">
-                        ${formatListMonthly(plan.id)}
+              <div className="mt-2">
+                <PlanDiscountPrice
+                  amount={pricing.price}
+                  listAmount={pricing.listPrice}
+                  period={interval === "yearly" ? "/year" : "/month"}
+                  size="md"
+                  badge={
+                    pricing.savePercent != null ? (
+                      <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-emerald-700 dark:text-emerald-300">
+                        Save {pricing.savePercent}%
                       </span>
-                    )
-                  : pricing.listPrice != null && (
-                      <span className="text-sm text-muted-foreground line-through decoration-red-500 decoration-2">
-                        ${pricing.listPrice}
-                      </span>
-                    )}
-                <span className="font-serif text-3xl font-semibold tracking-tight text-foreground">
-                  $
-                  {interval === "yearly"
-                    ? formatEffectiveMonthly(plan.id)
-                    : pricing.price}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  /mo{interval === "monthly" ? ` ${TAX_NOTE}` : ""}
-                </span>
-                {interval === "yearly" && pricing.savePercent != null ? (
-                  <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-emerald-700 dark:text-emerald-300">
-                    Save {pricing.savePercent}%
-                  </span>
-                ) : null}
+                    ) : null
+                  }
+                />
               </div>
               {interval === "yearly" ? (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {billedAsYearlyLabel(plan.id)}
+                  ≈ ${formatEffectiveMonthly(plan.id)}/month
                 </p>
               ) : null}
               <p className="mt-2 text-sm text-muted-foreground">{plan.tagline}</p>

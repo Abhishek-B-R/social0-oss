@@ -1,13 +1,11 @@
 import { useState } from "react";
 import Link from "@/components/AppLink";
 import { BillingIntervalToggle } from "@/components/billing/BillingIntervalToggle";
+import { PlanDiscountPrice } from "@/components/billing/PlanDiscountPrice";
 import { getPlanLimits, type BillingInterval } from "@/lib/plans";
 import {
-  billedAsYearlyLabel,
-  getEffectiveMonthlyParts,
-  getListMonthlyParts,
+  formatEffectiveMonthly,
   getPlanPrice,
-  TAX_NOTE,
 } from "@/lib/plan-pricing";
 
 const freeFeatures = [
@@ -85,11 +83,12 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
   const starter = getPlanPrice("starter", interval);
   const growth = getPlanPrice("growth", interval);
   const pro = getPlanPrice("pro", interval);
-  const starterMonthly = getEffectiveMonthlyParts("starter");
-  const growthMonthly = getEffectiveMonthlyParts("growth");
-  const growthListMonthly = getListMonthlyParts("growth");
-  const proMonthly = getEffectiveMonthlyParts("pro");
-  const proListMonthly = getListMonthlyParts("pro");
+  const saveBadge = (pct: number | undefined) =>
+    pct != null ? (
+      <span className="rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+        Save {pct}%
+      </span>
+    ) : null;
 
   return (
     <section id="pricing" className="px-6 py-24 lg:px-8">
@@ -168,33 +167,17 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
 
             <div className={`relative z-10 ${basePlanLabel}`}>Starter</div>
 
-            <div className="relative z-10 mt-6 mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              {interval === "yearly" ? (
-                <>
-                  <div className={`${basePlanPrice} flex items-start`}>
-                    <span>${starterMonthly.dollars}</span>
-                    {starterMonthly.cents != null ? (
-                      <span className="mt-2 font-serif text-[28px] leading-none tracking-tight">
-                        .{starterMonthly.cents}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="text-[13px] text-muted-foreground">
-                    /month
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className={basePlanPrice}>${starter.price}</div>
-                  <div className="text-[13px] text-muted-foreground">
-                    /month {TAX_NOTE}
-                  </div>
-                </>
-              )}
+            <div className="relative z-10 mt-6 mb-2">
+              <PlanDiscountPrice
+                amount={starter.price}
+                listAmount={starter.listPrice}
+                period={interval === "yearly" ? "/year" : "/month"}
+                size="hero"
+              />
             </div>
             {interval === "yearly" ? (
               <p className="relative z-10 mb-2 text-[13px] text-muted-foreground">
-                {billedAsYearlyLabel("starter")}
+                ≈ ${formatEffectiveMonthly("starter")}/month
               </p>
             ) : null}
 
@@ -253,64 +236,18 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
               </p>
             </div>
 
-            <div className="relative z-10 mt-6 mb-2 flex flex-col gap-2">
-              {interval === "yearly" ? (
-                <>
-                  <div className="flex flex-nowrap items-baseline gap-x-2.5">
-                    <div className="flex shrink-0 items-start font-serif text-[clamp(40px,7vw,56px)] leading-none tracking-tight text-foreground">
-                      <span>${growthMonthly.dollars}</span>
-                      {growthMonthly.cents != null ? (
-                        <span className="mt-1.5 text-[clamp(18px,3vw,24px)] leading-none tracking-tight">
-                          .{growthMonthly.cents}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 items-baseline gap-1.5 whitespace-nowrap">
-                      {growthListMonthly ? (
-                        <span className="text-[15px] font-medium text-muted-foreground line-through decoration-red-500 decoration-2">
-                          ${growthListMonthly.dollars}.{growthListMonthly.cents}
-                        </span>
-                      ) : null}
-                      <span className="text-[12px] text-muted-foreground">
-                        /month
-                      </span>
-                    </div>
-                  </div>
-                  {growth.savePercent != null ? (
-                    <span className="w-fit rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-                      Save {growth.savePercent}%
-                    </span>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <div className="flex flex-nowrap items-baseline gap-x-2.5">
-                    <div className={`${basePlanPrice} shrink-0`}>
-                      ${growth.price}
-                    </div>
-                    <div className="flex shrink-0 items-baseline gap-1.5 whitespace-nowrap">
-                      {growth.listPrice != null ? (
-                        <span className="text-[15px] font-medium text-muted-foreground line-through decoration-red-500 decoration-2">
-                          ${growth.listPrice}
-                        </span>
-                      ) : null}
-                      <span className="text-[12px] text-muted-foreground">
-                        /month
-                        {interval === "monthly" ? ` ${TAX_NOTE}` : ""}
-                      </span>
-                    </div>
-                  </div>
-                  {growth.savePercent != null ? (
-                    <span className="w-fit rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-                      Save {growth.savePercent}%
-                    </span>
-                  ) : null}
-                </>
-              )}
+            <div className="relative z-10 mt-6 mb-2">
+              <PlanDiscountPrice
+                amount={growth.price}
+                listAmount={growth.listPrice}
+                period={interval === "yearly" ? "/year" : "/month"}
+                size="hero"
+                badge={saveBadge(growth.savePercent)}
+              />
             </div>
             {interval === "yearly" ? (
               <p className="relative z-10 mb-2 text-[13px] text-muted-foreground">
-                {billedAsYearlyLabel("growth")}
+                ≈ ${formatEffectiveMonthly("growth")}/month
               </p>
             ) : null}
 
@@ -369,63 +306,18 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                 Lock this pricing forever
               </p>
             </div>
-            <div className="relative z-10 mt-6 mb-2 flex flex-col gap-2">
-              {interval === "yearly" ? (
-                <>
-                  <div className="flex flex-nowrap items-baseline gap-x-2.5">
-                    <div className="flex shrink-0 items-start font-serif text-[clamp(40px,7vw,56px)] leading-none tracking-tight text-foreground">
-                      <span>${proMonthly.dollars}</span>
-                      {proMonthly.cents != null ? (
-                        <span className="mt-1.5 text-[clamp(18px,3vw,24px)] leading-none tracking-tight">
-                          .{proMonthly.cents}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 items-baseline gap-1.5 whitespace-nowrap">
-                      {proListMonthly ? (
-                        <span className="text-[15px] font-medium text-muted-foreground line-through decoration-red-500 decoration-2">
-                          ${proListMonthly.dollars}.{proListMonthly.cents}
-                        </span>
-                      ) : null}
-                      <span className="text-[12px] text-muted-foreground">
-                        /month
-                      </span>
-                    </div>
-                  </div>
-                  {pro.savePercent != null ? (
-                    <span className="w-fit rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-                      Save {pro.savePercent}%
-                    </span>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <div className="flex flex-nowrap items-baseline gap-x-2.5">
-                    <div className={`${basePlanPrice} shrink-0`}>
-                      ${pro.price}
-                    </div>
-                    <div className="flex shrink-0 items-baseline gap-1.5 whitespace-nowrap">
-                      {pro.listPrice != null ? (
-                        <span className="text-[15px] font-medium text-muted-foreground line-through decoration-red-500 decoration-2">
-                          ${pro.listPrice}
-                        </span>
-                      ) : null}
-                      <span className="text-[12px] text-muted-foreground">
-                        /month {TAX_NOTE}
-                      </span>
-                    </div>
-                  </div>
-                  {pro.savePercent != null ? (
-                    <span className="w-fit rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-                      Save {pro.savePercent}%
-                    </span>
-                  ) : null}
-                </>
-              )}
+            <div className="relative z-10 mt-6 mb-2">
+              <PlanDiscountPrice
+                amount={pro.price}
+                listAmount={pro.listPrice}
+                period={interval === "yearly" ? "/year" : "/month"}
+                size="hero"
+                badge={saveBadge(pro.savePercent)}
+              />
             </div>
             {interval === "yearly" ? (
               <p className="relative z-10 mb-2 text-[13px] text-muted-foreground">
-                {billedAsYearlyLabel("pro")}
+                ≈ ${formatEffectiveMonthly("pro")}/month
               </p>
             ) : null}
 

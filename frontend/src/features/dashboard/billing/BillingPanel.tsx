@@ -12,6 +12,7 @@ import { formatDate } from "@/lib/date-format";
 import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 import { Button } from "@/components/ui/button";
 import { BillingIntervalToggle } from "@/components/billing/BillingIntervalToggle";
+import { PlanDiscountPrice } from "@/components/billing/PlanDiscountPrice";
 import {
   Dialog,
   DialogContent,
@@ -22,12 +23,9 @@ import {
 } from "@/components/ui/dialog";
 import type { BillingInterval } from "@/lib/plans";
 import {
-  billedAsYearlyLabel,
   formatEffectiveMonthly,
-  formatListMonthly,
   formatPlanPriceLabel,
   getPlanPrice,
-  TAX_NOTE,
 } from "@/lib/plan-pricing";
 const POLL_INTERVAL_MS = 2000;
 const PAYMENT_DECLINED_MESSAGE =
@@ -963,10 +961,6 @@ export function BillingPanel({
             size="sm"
           />
         </div>
-        <p className="mb-4 text-xs text-muted-foreground">
-          Prices are tax-exclusive. Applicable GST (or other taxes) is added at
-          checkout and shown on invoices from our payment processor.
-        </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {/* Starter card */}
           <div
@@ -979,21 +973,17 @@ export function BillingPanel({
             <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               Starter
             </div>
-            <div className="mb-2 flex flex-wrap items-baseline gap-2">
-              <span className="font-serif text-2xl font-bold text-foreground">
-                $
-                {billingInterval === "yearly"
-                  ? formatEffectiveMonthly("starter")
-                  : starterPrice.price}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                /month
-                {` ${TAX_NOTE}`}
-              </span>
+            <div className="mb-2">
+              <PlanDiscountPrice
+                amount={starterPrice.price}
+                listAmount={starterPrice.listPrice}
+                period={billingInterval === "yearly" ? "/year" : "/month"}
+                size="sm"
+              />
             </div>
             {billingInterval === "yearly" ? (
               <p className="mb-2 text-xs text-muted-foreground">
-                {billedAsYearlyLabel("starter")}
+                ≈ ${formatEffectiveMonthly("starter")}/month
               </p>
             ) : null}
             <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
@@ -1074,37 +1064,24 @@ export function BillingPanel({
             <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               Growth
             </div>
-            <div className="mb-2 flex flex-wrap items-baseline gap-2">
-              {billingInterval === "yearly" &&
-              formatListMonthly("growth") != null ? (
-                <span className="text-sm text-muted-foreground line-through decoration-red-500 decoration-2">
-                  ${formatListMonthly("growth")}
-                </span>
-              ) : billingInterval === "monthly" &&
-                growthPrice.listPrice != null ? (
-                <span className="text-sm text-muted-foreground line-through decoration-red-500 decoration-2">
-                  ${growthPrice.listPrice}
-                </span>
-              ) : null}
-              <span className="font-serif text-2xl font-bold text-foreground">
-                $
-                {billingInterval === "yearly"
-                  ? formatEffectiveMonthly("growth")
-                  : growthPrice.price}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                /month
-                {` ${TAX_NOTE}`}
-              </span>
-              {billingInterval === "yearly" && growthPrice.savePercent != null ? (
-                <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
-                  Save {growthPrice.savePercent}%
-                </span>
-              ) : null}
+            <div className="mb-2">
+              <PlanDiscountPrice
+                amount={growthPrice.price}
+                listAmount={growthPrice.listPrice}
+                period={billingInterval === "yearly" ? "/year" : "/month"}
+                size="sm"
+                badge={
+                  growthPrice.savePercent != null ? (
+                    <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
+                      Save {growthPrice.savePercent}%
+                    </span>
+                  ) : null
+                }
+              />
             </div>
             {billingInterval === "yearly" ? (
               <p className="mb-2 text-xs text-muted-foreground">
-                {billedAsYearlyLabel("growth")}
+                ≈ ${formatEffectiveMonthly("growth")}/month
               </p>
             ) : null}
             <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
@@ -1191,37 +1168,24 @@ export function BillingPanel({
             <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               Pro
             </div>
-            <div className="mb-2 flex flex-wrap items-baseline gap-2">
-              {billingInterval === "yearly" &&
-              formatListMonthly("pro") != null ? (
-                <span className="text-sm text-muted-foreground line-through decoration-red-500 decoration-2">
-                  ${formatListMonthly("pro")}
-                </span>
-              ) : billingInterval === "monthly" &&
-                proPrice.listPrice != null ? (
-                <span className="text-sm text-muted-foreground line-through decoration-red-500 decoration-2">
-                  ${proPrice.listPrice}
-                </span>
-              ) : null}
-              <span className="font-serif text-2xl font-bold text-foreground">
-                $
-                {billingInterval === "yearly"
-                  ? formatEffectiveMonthly("pro")
-                  : proPrice.price}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                /month
-                {` ${TAX_NOTE}`}
-              </span>
-              {billingInterval === "yearly" && proPrice.savePercent != null ? (
-                <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
-                  Save {proPrice.savePercent}%
-                </span>
-              ) : null}
+            <div className="mb-2">
+              <PlanDiscountPrice
+                amount={proPrice.price}
+                listAmount={proPrice.listPrice}
+                period={billingInterval === "yearly" ? "/year" : "/month"}
+                size="sm"
+                badge={
+                  proPrice.savePercent != null ? (
+                    <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
+                      Save {proPrice.savePercent}%
+                    </span>
+                  ) : null
+                }
+              />
             </div>
             {billingInterval === "yearly" ? (
               <p className="mb-2 text-xs text-muted-foreground">
-                {billedAsYearlyLabel("pro")}
+                ≈ ${formatEffectiveMonthly("pro")}/month
               </p>
             ) : null}
             <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">

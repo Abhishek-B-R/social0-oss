@@ -4,9 +4,8 @@
  * Yearly (early adopter): Starter $99, Growth $199 (list $299, ~33% off),
  *   Pro $349 (list $499, ~30% off).
  *
- * Yearly UI leads with effective monthly ($/mo), with list monthly struck when
- * applicable, plus "Billed as $X/year" secondary copy.
- * All paid prices are tax-exclusive; UI shows "+ GST" where relevant.
+ * Discount UI (PlanDiscountPrice): list amount first with same-color slash,
+ * then sale amount, then /month or /year. Yearly cards also show ≈ $/month.
  */
 
 import type { BillingInterval, PaidPlanTier } from "@/lib/plans";
@@ -124,17 +123,12 @@ export function formatListMonthly(tier: PaidPlanTier): string | null {
   return list == null ? null : formatMoney(list);
 }
 
-/** Prices are tax-exclusive; GST is charged on top at checkout. */
-export const TAX_NOTE = "+ GST";
-
 export function formatPlanPriceLabel(
   tier: PaidPlanTier,
   interval: BillingInterval,
 ): string {
   const { price } = getPlanPrice(tier, interval);
-  return interval === "yearly"
-    ? `$${price}/year ${TAX_NOTE}`
-    : `$${price}/month ${TAX_NOTE}`;
+  return interval === "yearly" ? `$${price}/year` : `$${price}/month`;
 }
 
 /** Hero price unit — yearly toggle still leads with /month (effective rate). */
@@ -143,5 +137,5 @@ export function periodSuffix(): string {
 }
 
 export function billedAsYearlyLabel(tier: PaidPlanTier): string {
-  return `Billed as $${YEARLY[tier].price}/year ${TAX_NOTE}`;
+  return `Billed as $${YEARLY[tier].price}/year`;
 }
