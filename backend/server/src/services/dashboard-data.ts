@@ -29,14 +29,25 @@ import type {
   AccountLimitResult,
 } from "@/lib/plan-limits";
 import { db } from "@/db";
-import { posts, postPublications, connectedAccounts, userSettings } from "@/db/schema";
+import {
+  posts,
+  postPublications,
+  connectedAccounts,
+  userSettings,
+  user,
+} from "@/db/schema";
 import { eq, inArray, and, or } from "drizzle-orm";
 import { format } from "date-fns";
 import { syncConnectedAccountsToLimit } from "@/lib/plan-limits";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
 import { isActiveTier } from "@social0/shared";
-import { user } from "@/db/schema";
 import type { SubscriptionTier } from "@social0/shared";
+import {
+  loadPublishTimelineForPost,
+  type PublishTimelineEvent,
+} from "@/lib/publish-timeline";
+
+export type { PublishTimelineEvent };
 
 /** Dashboard layout bootstrap (subscription, profile, free-tier banner). */
 export async function loadDashboardLayoutData(): Promise<{
@@ -644,6 +655,7 @@ export type LoadPostDetailCoreDataResult =
         queuedSlot: SerializedQueuedSlot;
         autoPlug: SerializedAutoPlug;
         resurface: SerializedResurface;
+        publishTimeline: PublishTimelineEvent[];
         showPaymentFailedBanner: boolean;
         use24HourTimeFormat: boolean;
         dateFormat: string | null;
@@ -662,12 +674,13 @@ export async function loadPostDetailCoreData(
   const ctx = await resolveWorkspaceContext(session.user.id);
   const userId = ctx.resourceUserId;
 
-  const [detail, settings, showPaymentFailedBanner, subscription] =
+  const [detail, settings, showPaymentFailedBanner, subscription, publishTimeline] =
     await Promise.all([
       getPostDetail(postId, userId),
       getUserSettingsSnapshot(),
       hasPaymentFailedPosts(userId),
       getSubscriptionForUser(userId),
+      loadPublishTimelineForPost(postId, userId),
     ]);
 
   if (!detail) return { ok: false, error: "NotFound" };
@@ -697,6 +710,7 @@ export async function loadPostDetailCoreData(
         : null,
       autoPlug: detail.autoPlug,
       resurface: detail.resurface,
+      publishTimeline,
       showPaymentFailedBanner,
       use24HourTimeFormat: settings.use24HourTimeFormat,
       dateFormat: settings.dateFormat,

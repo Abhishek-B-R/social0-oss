@@ -188,7 +188,7 @@ export async function prepareAndEnqueuePublish(
     };
 
     if (backend === "cloudflare" && SERVER_SIDE_PUBLISH_PLATFORMS.has(t.platform)) {
-      // Same path as dashboard RPC publish — keeps X on Node for immediate enqueue.
+      // Kill switch TWITTER_PUBLISH_ON_API=1 — otherwise X goes to CF like other platforms.
       void runPlatformJobOnServer(app, platformJob).catch((err) => {
         console.error("[publish] server-side platform job failed", err);
       });

@@ -1,5 +1,6 @@
 import { bootstrapWorkerRuntime } from "./runtime/bootstrap";
 import { recordPlatformResult, trackPlatformPhase } from "./job-progress-db";
+import { acquirePlatformPublishSlot } from "./publish-concurrency";
 import type { PublishPlatformJob, PublishResult } from "./types";
 
 type ExecutorModule = {
@@ -51,33 +52,42 @@ export async function processPlatformJob(
     );
   }
 
-  const { executor, finalize } = await loadWorkerModules();
-  const result = await executor.executePublish(
-    job.postId,
-    job.userId,
+  const slot = await acquirePlatformPublishSlot(
+    job.platform,
     job.publicationId,
   );
 
-  const pubResult = result.results.find(
-    (r) =>
-      r.connectedAccountId === job.connectedAccountId ||
-      r.platform === job.platform,
-  );
-  const success = pubResult?.status === "published";
-  const failureMessage =
-    pubResult?.error ??
-    result.error ??
-    (pubResult ? "Platform publish failed" : "No publish result for platform");
-
-  if (job.trackingId) {
-    await recordPlatformResult(
-      env,
-      job,
-      success,
-      success ? `Published to ${job.platform}` : failureMessage,
-      { skipAuth: true },
+  try {
+    const { executor, finalize } = await loadWorkerModules();
+    const result = await executor.executePublish(
+      job.postId,
+      job.userId,
+      job.publicationId,
     );
-  }
 
-  await finalize.maybeFinalizePostPublish(job.postId, job.userId);
+    const pubResult = result.results.find(
+      (r) =>
+        r.connectedAccountId === job.connectedAccountId ||
+        r.platform === job.platform,
+    );
+    const success = pubResult?.status === "published";
+    const failureMessage =
+      pubResult?.error ??
+      result.error ??
+      (pubResult ? "Platform publish failed" : "No publish result for platform");
+
+    if (job.trackingId) {
+      await recordPlatformResult(
+        env,
+        job,
+        success,
+        success ? `Published to ${job.platform}` : failureMessage,
+        { skipAuth: true },
+      );
+    }
+
+    await finalize.maybeFinalizePostPublish(job.postId, job.userId);
+  } finally {
+    if (slot) await slot.release();
+  }
 }

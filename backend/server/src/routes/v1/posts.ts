@@ -20,6 +20,7 @@ import {
   v1SchedulePost,
   v1UpdateDraft,
 } from "../../services/v1-posts.js";
+import { loadPublishTimelineForOwnedPost } from "../../lib/publish-timeline.js";
 
 const createPostBodySchema = z.object({
   content: z.string(),
@@ -131,6 +132,25 @@ export async function registerPostsRoutes(app: FastifyInstance) {
       return reply.status(404).send(apiError("not_found", "Post not found."));
     }
     return post;
+  });
+
+  app.get("/posts/:id/events", async (request, reply) => {
+    const userId = v1UserId(request);
+    const { id } = request.params as { id: string };
+    const events = await loadPublishTimelineForOwnedPost(id, userId);
+    if (events === null) {
+      return reply.status(404).send(apiError("not_found", "Post not found."));
+    }
+    return {
+      postId: id,
+      events: events.map((e) => ({
+        id: e.id,
+        phase: e.phase,
+        platform: e.platform,
+        message: e.message,
+        created_at: e.createdAt,
+      })),
+    };
   });
 
   app.patch("/posts/:id", async (request, reply) => {

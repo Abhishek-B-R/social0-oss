@@ -36,6 +36,7 @@ import {
   loadPostDetailMediaData,
 } from "@/api/dashboard-data";
 import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
+import { PublishStatusSection } from "./PublishStatusSection";
 
 const TYPE_ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
   Thread: Layers,
@@ -567,7 +568,17 @@ export function PostDetailView({ postId }: { postId: string }) {
                   })}
                 </p>
               )}
-              {post.status === "scheduled" && post.scheduledAt && (
+              {queuedSlot?.scheduledFor && (
+                <p>
+                  <span className="font-medium text-text">Queued for:</span>{" "}
+                  {formatDateTime(new Date(queuedSlot.scheduledFor), {
+                    timezone: core.timezone,
+                    dateFormat: core.dateFormat,
+                    use24HourTimeFormat: core.use24HourTimeFormat,
+                  })}
+                </p>
+              )}
+              {!queuedSlot && post.scheduledAt && (
                 <p>
                   <span className="font-medium text-text">Scheduled for:</span>{" "}
                   {formatDateTime(new Date(post.scheduledAt), {
@@ -595,6 +606,17 @@ export function PostDetailView({ postId }: { postId: string }) {
               </div>
             )}
           </div>
+
+          <PublishStatusSection
+            postStatus={post.status}
+            isQueued={Boolean(queuedSlot)}
+            publications={publicationsSorted}
+            events={core.publishTimeline ?? []}
+            timezone={core.timezone}
+            dateFormat={core.dateFormat}
+            use24HourTimeFormat={core.use24HourTimeFormat}
+            formatDateTime={formatDateTime}
+          />
 
           <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
             <h2 className="text-base font-semibold text-text">Platforms</h2>

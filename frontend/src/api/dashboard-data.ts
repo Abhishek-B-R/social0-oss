@@ -159,6 +159,13 @@ export type LoadPostDetailCoreDataResult =
           intervalHours: number;
           plugComment: string | null;
         } | null;
+        publishTimeline: Array<{
+          id: string;
+          phase: string;
+          platform: string | null;
+          message: string | null;
+          createdAt: string;
+        }>;
         showPaymentFailedBanner: boolean;
         use24HourTimeFormat: boolean;
         dateFormat: string | null;
