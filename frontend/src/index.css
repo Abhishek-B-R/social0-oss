@@ -29,6 +29,9 @@
   --sidebar-muted: #6b7280;
   --sidebar-border: #e5e7eb;
   --sidebar-active: #e5e7eb;
+  /* Account popup surface — slightly warm so it lifts off the sidebar */
+  --sidebar-menu-bg: #f7f5f1;
+  --sidebar-menu-border: #e5e1da;
 
   --warm-bg: #fafaf8;
   --radius: 0.625rem;
@@ -137,6 +140,8 @@
   --color-sidebar-muted: var(--sidebar-muted);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-menu-bg: var(--sidebar-menu-bg);
+  --color-sidebar-menu-border: var(--sidebar-menu-border);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -244,6 +249,9 @@ html {
   --sidebar-muted: #737373;
   --sidebar-border: #0a0a0a;
   --sidebar-active: #111111;
+  /* Warm charcoal — lifts off pure black without copying SuperX #1B1917 */
+  --sidebar-menu-bg: #161412;
+  --sidebar-menu-border: #2a2723;
 }
 
 @layer base {
@@ -325,6 +333,11 @@ html {
 .dashboard-sidebar[data-sidebar="dashboard"] .sidebar-user-block svg {
   color: var(--sidebar-text) !important;
   stroke: var(--sidebar-text);
+}
+
+/* Account menu panel must paint above scrolling nav */
+.dashboard-sidebar[data-sidebar="dashboard"] {
+  --ease-out-ui: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 @layer utilities {

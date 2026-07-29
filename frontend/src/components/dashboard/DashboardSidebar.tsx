@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useLocation } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Image from "@/components/AppImage";
 import Link from "@/components/AppLink";
 import { useTheme } from "next-themes";
@@ -16,7 +16,6 @@ import {
   IconSettings,
   IconWallet,
   IconMessageCircle,
-  IconChevronDown,
   IconTool,
   IconList,
   IconCircleCheck,
@@ -25,8 +24,8 @@ import {
   IconHome,
   IconKey,
 } from "@tabler/icons-react";
-import { SignOutButton } from "@/components/SignOutButton";
 import { signInUrl } from "@/lib/sign-in-url";
+import { SidebarAccountMenu } from "@/components/dashboard/SidebarAccountMenu";
 import { WorkspaceSwitcher } from "@/components/dashboard/WorkspaceSwitcher";
 import { switchWorkspace } from "@/api/team";
 import {
@@ -125,8 +124,6 @@ export function DashboardSidebar({
     !!teamId && pathname.includes(`/teams/${teamId}/settings`);
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
   const [logoPending, setLogoPending] = useState(false);
   const [composerCtaPending, setComposerCtaPending] = useState(false);
   const [landingPending, setLandingPending] = useState(false);
@@ -141,26 +138,12 @@ export function DashboardSidebar({
     setLandingPending(false);
   }, [pathname]);
 
-  useEffect(() => {
-    if (!userMenuOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        userMenuRef.current &&
-        !userMenuRef.current.contains(e.target as Node)
-      ) {
-        setUserMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [userMenuOpen]);
-
   const logoSrc =
     mounted && resolvedTheme === "dark" ? "/logo-dark.png" : "/logo.png";
 
   return (
     <aside
-      className="dashboard-sidebar hidden h-full w-60 shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar-bg lg:flex"
+      className="dashboard-sidebar relative z-10 hidden h-full w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar-bg lg:flex"
       data-sidebar="dashboard"
     >
       <div className="flex shrink-0 flex-col gap-4 p-4">
@@ -377,10 +360,7 @@ export function DashboardSidebar({
         </nav>
       </div>
 
-      <div
-        ref={userMenuRef}
-        className="shrink-0 border-t border-sidebar-border bg-sidebar-bg p-4"
-      >
+      <div className="relative z-20 shrink-0 border-t border-sidebar-border bg-sidebar-bg p-4">
         {isGuest ? (
           <Link
             href={signInUrl(pathname)}
@@ -400,47 +380,7 @@ export function DashboardSidebar({
             </div>
           </div>
         ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => setUserMenuOpen((o) => !o)}
-              className="sidebar-user-block flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-sidebar-active"
-              aria-expanded={userMenuOpen}
-              aria-haspopup="true"
-              aria-label={
-                userMenuOpen ? "Close account menu" : "Open account menu"
-              }
-            >
-              {user.image ? (
-                <img
-                  src={user.image}
-                  alt={user.name || "User"}
-                  className="h-9 w-9 rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent">
-                  {(user.name || user.email || "U").charAt(0).toUpperCase()}
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-sidebar-text">
-                  {user.name || user.email || "User"}
-                </p>
-                <p className="truncate text-xs text-sidebar-text">
-                  {planLabel}
-                </p>
-              </div>
-              <IconChevronDown
-                className={`h-4 w-4 shrink-0 text-sidebar-text transition-transform ${userMenuOpen ? "rotate-180" : ""}`}
-                size={16}
-              />
-            </button>
-            {userMenuOpen && (
-              <div className="mt-2">
-                <SignOutButton />
-              </div>
-            )}
-          </>
+          <SidebarAccountMenu user={user} planLabel={planLabel} />
         )}
       </div>
     </aside>
