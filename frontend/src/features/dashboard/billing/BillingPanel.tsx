@@ -834,7 +834,7 @@ export function BillingPanel({
 
   return (
     <div className="space-y-5">
-      <div className="border border-border rounded-xl p-6">
+      <div className="rounded-xl border border-border bg-white p-6 dark:bg-bg-elevated">
         <p className="text-sm text-muted-foreground">Current plan</p>
         <h2 className="text-2xl font-serif text-foreground">{tierLabel}</h2>
         {showRenewedTodayBanner && renewedOnDate && (
@@ -1015,17 +1015,9 @@ export function BillingPanel({
                 )
               ) : subscription.tier === "growth" ||
                 subscription.tier === "pro" ? (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  disabled={loadingChangePlan !== null}
-                  onClick={() => {
-                    setTargetDowngradePlan("starter");
-                    setDowngradeReason("");
-                    setDowngradeStep(1);
-                  }}
-                >
-                  Downgrade to Starter
+                <Button disabled className="w-full" variant="outline">
+                  Included in{" "}
+                  {subscription.tier === "pro" ? "Pro" : "Growth"}
                 </Button>
               ) : (
                 <>
@@ -1112,17 +1104,8 @@ export function BillingPanel({
                   </Button>
                 )
               ) : subscription.tier === "pro" ? (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  disabled={loadingChangePlan !== null}
-                  onClick={() => {
-                    setTargetDowngradePlan("growth");
-                    setDowngradeReason("");
-                    setDowngradeStep(1);
-                  }}
-                >
-                  Downgrade to Growth
+                <Button disabled className="w-full" variant="outline">
+                  Included in Pro
                 </Button>
               ) : subscription.tier === "starter" ? (
                 <Button

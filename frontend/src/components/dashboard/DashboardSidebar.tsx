@@ -10,7 +10,6 @@ import {
   Clock,
   NoteBlank,
   Pencil,
-  Plus,
   PlugsConnected,
   Rows,
   SidebarSimple,
@@ -24,6 +23,7 @@ import { signInUrl } from "@/lib/sign-in-url";
 import { SidebarAccountMenu } from "@/components/dashboard/SidebarAccountMenu";
 import { SidebarHoverTip } from "@/components/dashboard/SidebarHoverTip";
 import { WorkspaceSwitcher } from "@/components/dashboard/WorkspaceSwitcher";
+import { WritingIcon } from "@/components/dashboard/WritingIcon";
 import { switchWorkspace } from "@/api/team";
 import {
   getDashboardRelativePath,
@@ -111,10 +111,7 @@ function Section({
           {title}
         </p>
       ) : (
-        <div
-          className="mx-auto my-1 h-px w-6 bg-sidebar-border"
-          aria-hidden
-        />
+        <div className="mx-auto my-1 h-px w-6 bg-sidebar-border" aria-hidden />
       )}
       {children}
     </div>
@@ -198,7 +195,7 @@ export function DashboardSidebar({
       className={cn(
         "dashboard-sidebar relative z-10 hidden h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar-bg lg:flex",
         "transition-[width] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
-        collapsed ? "w-[4.25rem]" : "w-60",
+        collapsed ? "w-[4.25rem]" : "w-56",
       )}
       data-sidebar="dashboard"
       data-collapsed={collapsed ? "true" : "false"}
@@ -323,12 +320,10 @@ export function DashboardSidebar({
             className={cn(
               "sidebar-create-post-cta flex items-center justify-center rounded-xl bg-accent font-semibold text-accent-foreground shadow-sm transition-[background-color,opacity,transform] duration-150 hover:bg-accent-hover active:scale-[0.98]",
               composerCtaPending && "opacity-80",
-              collapsed
-                ? "h-9 w-9"
-                : "w-full gap-2 px-4 py-2.5 text-sm",
+              collapsed ? "h-9 w-9" : "w-full gap-2 px-4 py-2.5 text-sm",
             )}
           >
-            <Plus className="h-4 w-4 shrink-0" size={16} />
+            <WritingIcon className="text-accent-foreground" size={16} />
             {!collapsed ? <span>Create post</span> : null}
           </Link>
         </SidebarHoverTip>
@@ -458,7 +453,9 @@ export function DashboardSidebar({
           <div
             className={cn(
               "sidebar-user-block flex items-center",
-              collapsed ? "justify-center p-1" : "w-full gap-3 rounded-lg px-3 py-2",
+              collapsed
+                ? "justify-center p-1"
+                : "w-full gap-3 rounded-lg px-3 py-2",
             )}
             aria-hidden
           >

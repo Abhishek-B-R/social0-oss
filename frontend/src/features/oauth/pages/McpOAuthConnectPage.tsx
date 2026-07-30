@@ -177,8 +177,8 @@ export default function McpOAuthConnectPage() {
               API Keys.
             </p>
             <p>
-              Connecting again replaces any previous Claude MCP Connector key — existing Claude
-              sessions will need to reconnect.
+              Connecting again replaces any previous MCP Connector key — existing
+              sessions on that host will need to reconnect.
             </p>
             <p>
               By connecting, you agree to our{" "}

@@ -2,6 +2,7 @@
  * Tree-shakeable Phosphor icons (CSR).
  * Import from here — never from `@phosphor-icons/react` barrel (Vite 504s on the mega bundle).
  */
+export { ArrowClockwise } from "@phosphor-icons/react/dist/csr/ArrowClockwise";
 export { ArrowLeft } from "@phosphor-icons/react/dist/csr/ArrowLeft";
 export { ArrowSquareOut } from "@phosphor-icons/react/dist/csr/ArrowSquareOut";
 export { BookOpen } from "@phosphor-icons/react/dist/csr/BookOpen";
@@ -18,6 +19,7 @@ export { CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
 export { CircleNotch } from "@phosphor-icons/react/dist/csr/CircleNotch";
 export { Clock } from "@phosphor-icons/react/dist/csr/Clock";
 export { Code } from "@phosphor-icons/react/dist/csr/Code";
+export { Copy } from "@phosphor-icons/react/dist/csr/Copy";
 export { CreditCard } from "@phosphor-icons/react/dist/csr/CreditCard";
 export { Crown } from "@phosphor-icons/react/dist/csr/Crown";
 export { DotsThree } from "@phosphor-icons/react/dist/csr/DotsThree";
@@ -26,6 +28,7 @@ export { EyeSlash } from "@phosphor-icons/react/dist/csr/EyeSlash";
 export { Faders } from "@phosphor-icons/react/dist/csr/Faders";
 export { GearSix } from "@phosphor-icons/react/dist/csr/GearSix";
 export { House } from "@phosphor-icons/react/dist/csr/House";
+export { Key } from "@phosphor-icons/react/dist/csr/Key";
 export { Megaphone } from "@phosphor-icons/react/dist/csr/Megaphone";
 export { Monitor } from "@phosphor-icons/react/dist/csr/Monitor";
 export { Moon } from "@phosphor-icons/react/dist/csr/Moon";
@@ -44,9 +47,11 @@ export { Sliders } from "@phosphor-icons/react/dist/csr/Sliders";
 export { SquaresFour } from "@phosphor-icons/react/dist/csr/SquaresFour";
 export { Stack } from "@phosphor-icons/react/dist/csr/Stack";
 export { Sun } from "@phosphor-icons/react/dist/csr/Sun";
+export { Terminal } from "@phosphor-icons/react/dist/csr/Terminal";
 export { Trash } from "@phosphor-icons/react/dist/csr/Trash";
 export { User } from "@phosphor-icons/react/dist/csr/User";
 export { Users } from "@phosphor-icons/react/dist/csr/Users";
 export { UsersThree } from "@phosphor-icons/react/dist/csr/UsersThree";
+export { WebhooksLogo } from "@phosphor-icons/react/dist/csr/WebhooksLogo";
 export { X } from "@phosphor-icons/react/dist/csr/X";
 export { XLogo } from "@phosphor-icons/react/dist/csr/XLogo";

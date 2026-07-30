@@ -5,7 +5,7 @@ import { apiKeys } from "../db/schema.js";
 import { generateApiKey, isApiKeyFormat, resolveRawApiKey } from "./api-keys.js";
 import { redis } from "./redis.js";
 
-const MCP_CONNECTOR_KEY_NAME = "Claude MCP Connector";
+const MCP_CONNECTOR_KEY_NAME = "MCP Connector";
 const AUTH_CODE_TTL_SECONDS = 300;
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
 const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 90;
@@ -226,6 +226,7 @@ async function consumeMcpConsentToken(
 }
 
 async function createConnectorApiKey(userId: string): Promise<string> {
+  // Also revoke the legacy Claude-branded name from earlier builds.
   await db
     .update(apiKeys)
     .set({ revokedAt: new Date() })
@@ -233,6 +234,16 @@ async function createConnectorApiKey(userId: string): Promise<string> {
       and(
         eq(apiKeys.userId, userId),
         eq(apiKeys.name, MCP_CONNECTOR_KEY_NAME),
+        isNull(apiKeys.revokedAt),
+      ),
+    );
+  await db
+    .update(apiKeys)
+    .set({ revokedAt: new Date() })
+    .where(
+      and(
+        eq(apiKeys.userId, userId),
+        eq(apiKeys.name, "Claude MCP Connector"),
         isNull(apiKeys.revokedAt),
       ),
     );
@@ -254,7 +265,7 @@ async function createConnectorApiKey(userId: string): Promise<string> {
 }
 
 /**
- * Re-auth rotates the connector API key but Claude may still present an older
+ * Re-auth rotates the connector API key but a host may still present an older
  * access/refresh token that embeds the revoked raw key. Prefer the latest
  * connector raw from Redis; mint only if that is also gone.
  */
@@ -323,8 +334,8 @@ export async function approveMcpOAuthSession(
     throw new Error("Invalid redirect URI");
   }
 
-  // Re-approving replaces the previous Claude MCP Connector key so only one
-  // active connector credential exists per user (existing Claude sessions must reconnect).
+  // Re-approving replaces the previous MCP Connector key so only one
+  // active connector credential exists per user (existing host sessions must reconnect).
   const apiKeyRaw = await createConnectorApiKey(userId);
   const code = randomBytes(24).toString("base64url");
   const payload: StoredAuthCode = {

@@ -83,7 +83,7 @@ export function ConnectPlatformButton({
         onClick={handleConnect}
         disabled={isNativeDisabled}
         aria-label={`Connect ${platform.name}`}
-        className={`shrink-0 rounded-lg border border-border bg-bg font-semibold text-text shadow-sm transition-colors ${
+        className={`shrink-0 rounded-lg border border-border bg-white font-semibold text-text shadow-sm transition-colors dark:bg-bg-elevated ${
           disabled
             ? "cursor-not-allowed opacity-50"
             : isLoading

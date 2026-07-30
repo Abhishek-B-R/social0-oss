@@ -109,8 +109,8 @@ export function Composer() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const threadTextareaRefs = useRef<Record<string, HTMLTextAreaElement>>({});
 
-  const MAX_TEXTAREA_HEIGHT_PX = 750;
-  const MAX_THREAD_TEXTAREA_HEIGHT_PX = 250;
+  const MAX_TEXTAREA_HEIGHT_PX = 600;
+  const MAX_THREAD_TEXTAREA_HEIGHT_PX = 200;
 
   const autoResizeTextarea = useCallback(() => {
     const el = textareaRef.current;
@@ -661,8 +661,8 @@ export function Composer() {
         "mx-auto w-full max-w-200 px-1 pb-20 sm:px-0 sm:pb-24",
         "transition-[padding] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
         isThread
-          ? "pt-[clamp(0.75rem,3vh,1.5rem)] sm:pt-[clamp(1rem,4vh,2rem)]"
-          : "pt-[clamp(1.25rem,6.5vh,3.25rem)] sm:pt-[clamp(2rem,8.5vh,4.75rem)]",
+          ? "pt-[clamp(0.35rem,1.5vh,0.75rem)] sm:pt-[clamp(0.5rem,2vh,1rem)]"
+          : "pt-[clamp(0.75rem,3.5vh,1.75rem)] sm:pt-[clamp(1rem,4.5vh,2.5rem)]",
       )}
     >
       <div className="space-y-5 sm:space-y-6">
@@ -701,7 +701,7 @@ export function Composer() {
         >
           <textarea
             ref={textareaRef}
-            className="min-h-26 max-h-100 w-full resize-none overflow-y-auto border-none bg-transparent px-1 py-1 text-[15px] leading-relaxed text-text outline-none placeholder:text-text-muted/80 sm:min-h-28 sm:text-base"
+            className="min-h-21 max-h-80 w-full resize-none overflow-y-auto border-none bg-transparent px-1 py-1 text-[15px] leading-relaxed text-text outline-none placeholder:text-text-muted/80 sm:min-h-23 sm:text-base"
             placeholder="Share what's on your mind..."
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -977,7 +977,7 @@ export function Composer() {
                     ref={(el) => {
                       if (el) threadTextareaRefs.current[slot.id] = el;
                     }}
-                    className="min-h-30 max-h-62.5 w-full resize-none overflow-y-auto rounded-xl border border-composer-card-border bg-bg px-4 py-3 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+                    className="min-h-24 max-h-50 w-full resize-none overflow-y-auto rounded-xl border border-composer-card-border bg-bg px-4 py-3 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
                     placeholder="What's in this post?"
                     value={slot.text}
                     onChange={(e) => {
