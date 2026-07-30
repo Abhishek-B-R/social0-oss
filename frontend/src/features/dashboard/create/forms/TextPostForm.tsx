@@ -1088,7 +1088,7 @@ export function TextPostForm({
               <p className="mb-3 text-xs text-text-muted">
                 Post configurations & tools
               </p>
-              <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1 min-h-[44px] sm:min-h-0 -mx-1 px-1 scrollbar-thin">
+              <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1 min-h-11 sm:min-h-0 -mx-1 px-1 scrollbar-thin">
                 {showCustomCaptionsSection && (
                   <button
                     type="button"
@@ -1369,7 +1369,7 @@ export function TextPostForm({
                     className="h-10! w-10!"
                   />
                 </div>
-                <div className="min-w-0 flex-1 max-h-[320px] overflow-y-auto">
+                <div className="min-w-0 flex-1 max-h-80 overflow-y-auto">
                   <p className="text-sm font-semibold text-text shrink-0 inline-flex items-center gap-0.5 flex-wrap">
                     {previewAccount?.platformUsername
                       ? `@${previewAccount.platformUsername}`
