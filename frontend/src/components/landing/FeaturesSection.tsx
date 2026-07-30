@@ -69,7 +69,6 @@ const features: Feature[] = [
     icon: RefreshCw,
     title: "Auto-plug & repost",
     tag: "Growth",
-    visual: "growth",
     desc: (
       <>
         Automatically repost evergreen content to extend its reach.
@@ -77,6 +76,7 @@ const features: Feature[] = [
         Add a call-to-action to top-performing posts to capture leads.
       </>
     ),
+    visual: "growth",
   },
 ];
 
@@ -164,7 +164,6 @@ function FeatureIsoVisual({ kind }: { kind: Feature["visual"] }) {
       </svg>
     );
   }
-  // default / caption / rich / growth — stacked tiles
   return (
     <svg viewBox="0 0 160 100" className="h-full w-full" aria-hidden>
       {[0, 1, 2].map((i) => (
@@ -189,14 +188,14 @@ export function FeaturesSection() {
     <section id="features" className="px-6 py-20 lg:px-8 lg:py-28">
       <div className="mx-auto max-w-[1180px]">
         <div className="mb-14">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/5 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-emerald-400">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/5 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400">
             Features
           </div>
-          <h2 className="max-w-[520px] font-serif text-[clamp(28px,4vw,44px)] leading-tight tracking-tight text-white">
+          <h2 className="max-w-[520px] font-serif text-[clamp(28px,4vw,44px)] leading-tight tracking-tight text-foreground">
             Built for people who{" "}
-            <em className="italic text-[#7D7D87]">actually post.</em>
+            <em className="italic text-muted-foreground">actually post.</em>
           </h2>
-          <p className="mt-3 max-w-md text-[15px] text-[#A1A1AA]">
+          <p className="mt-3 max-w-md text-[15px] text-muted-foreground">
             Tools that save time, reduce tab switching, and help your content
             reach more people.
           </p>
@@ -206,27 +205,27 @@ export function FeaturesSection() {
           {features.map((f) => (
             <div
               key={f.title}
-              className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-[#1A1A1A] p-1.5 transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-1.5"
+              className="group relative overflow-hidden rounded-[22px] border border-border bg-muted/40 p-1.5 transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-1.5 dark:border-white/10 dark:bg-[#1A1A1A]"
             >
-              <div className="flex h-full flex-col rounded-[18px] border border-white/5 bg-[#111111] p-5 md:p-6">
-                <div className="mb-5 h-24 w-full opacity-90 transition-opacity group-hover:opacity-100">
+              <div className="flex h-full flex-col rounded-[18px] border border-border/60 bg-background p-5 dark:border-white/5 dark:bg-[#111111] md:p-6">
+                <div className="mb-5 h-24 w-full overflow-hidden rounded-xl bg-[#151515] opacity-90 transition-opacity group-hover:opacity-100">
                   <FeatureIsoVisual kind={f.visual} />
                 </div>
                 <div className="mb-3 flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-500/25 bg-emerald-500/10">
                     <f.icon
-                      className="h-4 w-4 text-emerald-400"
+                      className="h-4 w-4 text-emerald-700 dark:text-emerald-400"
                       strokeWidth={1.5}
                     />
                   </div>
-                  <span className="rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-emerald-400/90">
+                  <span className="rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-emerald-700 dark:text-emerald-400/90">
                     {f.tag}
                   </span>
                 </div>
-                <h3 className="mb-2 text-[17px] font-semibold tracking-tight text-white">
+                <h3 className="mb-2 text-[17px] font-semibold tracking-tight text-foreground">
                   {f.title}
                 </h3>
-                <p className="text-[14px] leading-relaxed text-[#A1A1AA]">
+                <p className="text-[14px] leading-relaxed text-muted-foreground">
                   {f.desc}
                 </p>
               </div>

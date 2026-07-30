@@ -37,56 +37,58 @@ export function LandingHeader() {
   const user = session?.user;
 
   useEffect(() => {
-    // Check for saved preference or system preference
     const savedTheme = localStorage.getItem("theme");
     const systemDark = window.matchMedia(
       "(prefers-color-scheme: dark)",
     ).matches;
 
-    if (savedTheme === "dark" || (!savedTheme && systemDark)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setDarkMode(true);
-      document.documentElement.classList.add("dark");
-    }
+    const preferDark =
+      savedTheme === "dark" || (!savedTheme && systemDark);
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDarkMode(preferDark);
+    document.documentElement.classList.toggle("dark", preferDark);
   }, []);
 
   const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    if (darkMode) {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    } else {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    }
+    const next = !darkMode;
+    setDarkMode(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
   };
 
   return (
-    <header className="landing sticky top-0 z-50 w-full border-b border-white/5 bg-[#151515]/85 backdrop-blur-md">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-[1180px] items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
-        {/* Logo */}
         <div className="flex gap-2">
           <span className="relative block h-9 w-9">
+            <Image
+              src="/logo-circular.webp"
+              alt="Social0"
+              width={36}
+              height={36}
+              priority
+              className="rounded-lg dark:hidden"
+            />
             <Image
               src="/logo-dark.webp"
               alt="Social0"
               width={36}
               height={36}
               priority
-              className="absolute inset-0 rounded-full border border-white/20"
+              className="absolute inset-0 hidden rounded-full border border-white/20 dark:block"
             />
           </span>
           <Link
             href={pathname === "/home" ? "/home" : "/"}
             className="flex items-center gap-2"
           >
-            <span className="font-serif text-[22px] tracking-tight text-white">
+            <span className="font-serif text-[22px] tracking-tight text-foreground">
               Social0
             </span>
           </Link>
         </div>
 
-        {/* Desktop Nav */}
         <nav className="hidden items-center gap-8 md:flex">
           {navLinks.map((link) => (
             <Link
@@ -99,7 +101,6 @@ export function LandingHeader() {
           ))}
         </nav>
 
-        {/* Desktop CTA + Theme Toggle */}
         <div className="hidden items-center gap-3 md:flex">
           <button
             type="button"
@@ -118,7 +119,7 @@ export function LandingHeader() {
           {user ? (
             <Link
               href="/dashboard"
-              className="inline-flex rounded-full items-center gap-2.5 border border-border bg-background px-4 py-2 text-[14px] font-semibold text-foreground transition-colors hover:bg-muted"
+              className="inline-flex items-center gap-2.5 rounded-full border border-border bg-background px-4 py-2 text-[14px] font-semibold text-foreground transition-colors hover:bg-muted"
             >
               {user.image ? (
                 <img
@@ -132,7 +133,7 @@ export function LandingHeader() {
                   {(user.name || user.email || "U").charAt(0).toUpperCase()}
                 </span>
               )}
-              <span className="truncate max-w-[140px]">
+              <span className="max-w-[140px] truncate">
                 {user.name || user.email || "Account"}
               </span>
             </Link>
@@ -147,7 +148,6 @@ export function LandingHeader() {
           )}
         </div>
 
-        {/* Mobile Menu Button */}
         <div className="flex items-center gap-2 md:hidden">
           <button
             type="button"
@@ -178,7 +178,6 @@ export function LandingHeader() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="border-t border-border bg-background px-6 py-4 md:hidden">
           <nav className="flex flex-col gap-4">

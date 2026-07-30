@@ -520,11 +520,38 @@ html {
   --font-mono: "Geist Mono", "Geist Mono Fallback", monospace;
 }
 
-/* Conversion isometric marketing surface — always charcoal + emerald */
+/* Isometric marketing surface — respects theme toggle */
 .landing-page,
-.landing-page.landing,
+.landing-page.landing {
+  --background: #fafaf8;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #0a0a0a;
+  --primary-foreground: #fafaf8;
+  --secondary: #f0eee9;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f0eee9;
+  --muted-foreground: #5c5750;
+  --accent: #10b981;
+  --accent-light: #34d399;
+  --accent-hover: #059669;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #fef2f2;
+  --border: #e2ded6;
+  --input: #e2ded6;
+  --ring: #10b981;
+  --hero-everywhere: #10b981;
+  --iso-stage: #151515;
+  color-scheme: light;
+}
+
 .dark .landing-page,
-.dark .landing-page.landing {
+.dark .landing-page.landing,
+.landing-page.dark {
   --background: #151515;
   --foreground: #ffffff;
   --card: #1a1a1a;
@@ -547,5 +574,6 @@ html {
   --input: #262626;
   --ring: #10b981;
   --hero-everywhere: #34d399;
+  --iso-stage: #111111;
   color-scheme: dark;
 }

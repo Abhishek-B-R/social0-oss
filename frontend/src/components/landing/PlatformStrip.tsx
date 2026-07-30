@@ -24,16 +24,16 @@ const PLATFORMS = [
 
 export function PlatformStrip() {
   return (
-    <div className="border-y border-white/5 bg-[#111111]/80 px-4 py-6 sm:px-6 sm:py-7 lg:px-8">
+    <div className="border-y border-border bg-muted/50 px-4 py-6 dark:bg-[#111111]/80 sm:px-6 sm:py-7 lg:px-8">
       <div className="mx-auto max-w-[1180px]">
-        <div className="mb-4 text-center text-[11px] font-medium uppercase tracking-[0.2em] text-[#7D7D87]">
+        <div className="mb-4 text-center text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
           Publishes to
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 opacity-70 sm:gap-x-10">
+        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 opacity-80 sm:gap-x-10">
           {PLATFORMS.map((p) => (
             <div
               key={p.name}
-              className="inline-flex items-center gap-2 text-[13px] font-medium text-[#A1A1AA] transition-colors hover:text-white"
+              className="inline-flex items-center gap-2 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
               title={p.name}
             >
               <p.icon className="h-4 w-4" />

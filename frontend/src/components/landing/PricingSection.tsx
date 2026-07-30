@@ -19,29 +19,29 @@ const freeFeatures = [
   "Activated instantly when you sign up",
 ];
 
-/* Dark charcoal plan cards for the isometric landing. */
+/* Plan cards follow landing theme tokens. */
 const basePlanCard =
-  "flex h-full flex-col rounded-2xl border border-white/10 bg-[#1A1A1A] p-8 md:p-10";
+  "flex h-full flex-col rounded-2xl border border-border bg-card p-8 md:p-10 dark:border-white/10 dark:bg-[#1A1A1A]";
 
 const basePlanLabel =
-  "text-[11px] font-medium uppercase tracking-widest text-[#7D7D87]";
+  "text-[11px] font-medium uppercase tracking-widest text-muted-foreground";
 
 const basePlanPrice =
-  "font-serif text-[64px] leading-none tracking-tight text-white";
+  "font-serif text-[64px] leading-none tracking-tight text-foreground";
 
-const basePlanDesc = "text-[14px] leading-relaxed text-[#A1A1AA]";
+const basePlanDesc = "text-[14px] leading-relaxed text-muted-foreground";
 
-const basePlanFeature = "text-[14px] leading-snug text-[#A1A1AA]";
+const basePlanFeature = "text-[14px] leading-snug text-muted-foreground";
 
 const basePlanCheck =
-  "mt-0.5 shrink-0 text-[14px] text-emerald-400";
+  "mt-0.5 shrink-0 text-[14px] text-emerald-600 dark:text-emerald-400";
 
-const basePlanFooter = "mt-3 text-center text-[12px] text-[#7D7D87]";
+const basePlanFooter = "mt-3 text-center text-[12px] text-muted-foreground";
 
 const ctaBase =
   "block w-full rounded-[10px] py-3.5 text-center text-[14px] font-medium transition-all";
 
-const ctaNeutral = `${ctaBase} border border-white/10 bg-[#111111] text-white hover:border-white/25 hover:bg-white/5`;
+const ctaNeutral = `${ctaBase} border border-border bg-background text-foreground hover:border-foreground/25 hover:bg-muted dark:border-white/10 dark:bg-[#111111] dark:hover:border-white/25 dark:hover:bg-white/5`;
 
 const ctaPrimary = `${ctaBase} bg-emerald-500 font-semibold text-[#04140c] hover:-translate-y-px hover:bg-emerald-400 hover:shadow-[0_6px_24px_rgba(16,185,129,0.35)]`;
 
@@ -99,10 +99,10 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
             <div className="mb-3 text-[11px] uppercase tracking-widest text-emerald-400">
               Pricing
             </div>
-            <h2 className="font-serif text-[clamp(32px,4vw,48px)] leading-tight tracking-tight text-white">
+            <h2 className="font-serif text-[clamp(32px,4vw,48px)] leading-tight tracking-tight text-foreground">
               Simple pricing.
               <br />
-              <em className="italic text-[#7D7D87]">No gotchas.</em>
+              <em className="italic text-muted-foreground">No gotchas.</em>
             </h2>
           </div>
           <BillingIntervalToggle
@@ -156,11 +156,11 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
           </div>
 
           {/* STARTER */}
-          <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#1A1A1A] p-8 md:p-10">
+          <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-8 dark:border-white/10 dark:bg-[#1A1A1A] md:p-10">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(16,185,129,0.12),transparent_55%)]" />
 
             <div className="relative z-10 mb-6 min-h-[30px]">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-[#A1A1AA]">
+              <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground dark:border-white/10">
                 For solo creators
               </span>
             </div>
@@ -219,7 +219,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
           </div>
 
           {/* GROWTH */}
-          <div className="relative flex h-full scale-[1.02] flex-col overflow-hidden rounded-2xl border-2 border-emerald-500/50 bg-[#1A1A1A] p-8 shadow-[0_0_40px_rgba(16,185,129,0.12)] md:p-10">
+          <div className="relative flex h-full scale-[1.02] flex-col overflow-hidden rounded-2xl border-2 border-emerald-500/50 bg-card p-8 shadow-[0_0_40px_rgba(16,185,129,0.12)] dark:bg-[#1A1A1A] md:p-10">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(16,185,129,0.15),transparent_55%)]" />
 
             <div className="relative z-10 mb-6 min-h-[30px]">
@@ -267,7 +267,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                     ✓
                   </span>
                   <span
-                    className={`text-[14px] leading-snug ${item.highlight ? "font-medium text-white" : "text-[#A1A1AA]"}`}
+                    className={`text-[14px] leading-snug ${item.highlight ? "font-medium text-foreground" : "text-muted-foreground"}`}
                   >
                     {item.text}
                   </span>
@@ -337,7 +337,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                     ✓
                   </span>
                   <span
-                    className={`text-[14px] leading-snug ${item.highlight ? "font-medium text-white" : "text-[#A1A1AA]"}`}
+                    className={`text-[14px] leading-snug ${item.highlight ? "font-medium text-foreground" : "text-muted-foreground"}`}
                   >
                     {item.text}
                   </span>
