@@ -30,7 +30,7 @@ import {
   type WorkspaceRole,
 } from "@/api/team";
 import { Button } from "@/components/ui/button";
-import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
+import { TeamDetailPageSkeleton } from "@/components/ui/page-skeletons";
 import {
   Dialog,
   DialogContent,
@@ -254,7 +254,7 @@ export function TeamDetailPage() {
   };
 
   if (teamQuery.isLoading) {
-    return <DashboardPageSkeleton message="Loading team settings..." />;
+    return <TeamDetailPageSkeleton />;
   }
 
   if (teamQuery.isError || !teamQuery.data?.team) {

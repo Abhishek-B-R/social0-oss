@@ -7,7 +7,7 @@ import {
 import { listWorkspaces, type TeamListItem } from "@/api/team";
 import DocsInfoIcon from "@/components/info-icon";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
+import { TeamsPageSkeleton } from "@/components/ui/page-skeletons";
 import { cn } from "@/lib/utils";
 import { DOCS_TEAMS_URL } from "@/lib/docs-url";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
@@ -26,7 +26,7 @@ export function TeamsPanel() {
   const maxOwnedTeams = workspacesQuery.data?.maxOwnedTeams ?? 5;
 
   if (workspacesQuery.isLoading) {
-    return <DashboardPageSkeleton message="Loading teams..." />;
+    return <TeamsPageSkeleton />;
   }
 
   if (workspacesQuery.isError) {

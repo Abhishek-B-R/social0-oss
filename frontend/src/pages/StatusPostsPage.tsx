@@ -5,7 +5,7 @@ import { loadPostsPageData } from "@/api/dashboard-data";
 import { AllPostsFilters } from "@/features/dashboard/posts/AllPostsFilters";
 import { PostListCards } from "@/features/dashboard/posts/PostListCards";
 import { Pagination } from "@/components/ui/Pagination";
-import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
+import { PostsPageSkeleton } from "@/components/ui/page-skeletons";
 import { DOCS_POSTS_DRAFTS_URL } from "@/lib/docs-url";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 import { POSTS_PAGE_SIZE } from "@/features/dashboard/posts/posts-constants";
@@ -54,7 +54,13 @@ export function StatusPostsPage({ config }: { config: StatusPostsConfig }) {
   });
 
   if (sessionPending) {
-    return <DashboardPageSkeleton message={`Loading ${config.title.toLowerCase()}...`} />;
+    return (
+      <PostsPageSkeleton
+        title={config.title}
+        description={config.description}
+        action="view-all"
+      />
+    );
   }
 
   if (!session) {
@@ -69,7 +75,13 @@ export function StatusPostsPage({ config }: { config: StatusPostsConfig }) {
   }
 
   if (isLoading && !result) {
-    return <DashboardPageSkeleton message={`Loading ${config.title.toLowerCase()}...`} />;
+    return (
+      <PostsPageSkeleton
+        title={config.title}
+        description={config.description}
+        action="view-all"
+      />
+    );
   }
 
   if (isError || !result?.ok) {

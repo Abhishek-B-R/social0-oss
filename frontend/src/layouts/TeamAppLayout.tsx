@@ -10,7 +10,10 @@ import {
   readTeamWorkspaceId,
   writeTeamWorkspaceId,
 } from "@/lib/dashboard-base-path";
-import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
+import {
+  TeamDetailPageSkeleton,
+  TeamsPageSkeleton,
+} from "@/components/ui/page-skeletons";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 import {
   hasTeamBootstrap,
@@ -150,9 +153,7 @@ export function TeamAppLayout() {
 
   // Only block the first entry into a team — never on in-team page changes.
   if (!ready && (isLoading || (!error && !isError))) {
-    return (
-      <DashboardPageSkeleton message="Opening team workspace..." />
-    );
+    return <TeamsPageSkeleton />;
   }
 
   if (isError || error) {
@@ -175,7 +176,7 @@ export function TeamAppLayout() {
   }
 
   return (
-    <Suspense fallback={<DashboardPageSkeleton message="Loading..." />}>
+    <Suspense fallback={<TeamDetailPageSkeleton />}>
       <Outlet />
     </Suspense>
   );

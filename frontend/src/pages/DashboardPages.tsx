@@ -9,11 +9,20 @@ import { TeamsPage as TeamsPageView } from "@/features/dashboard/teams/TeamsPage
 import { TeamDetailPage as TeamDetailPageView } from "@/features/dashboard/teams/TeamDetailPage";
 import { CreateTeamPage as CreateTeamPageView } from "@/features/dashboard/teams/CreateTeamPage";
 import { WorkspacesPage as WorkspacesPageView } from "@/features/dashboard/workspaces/WorkspacesPage";
-import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
+import {
+  BillingPageSkeleton,
+  CreateTeamPageSkeleton,
+  FeedbackPageSkeleton,
+  PostsPageSkeleton,
+  SettingsPageSkeleton,
+  TeamDetailPageSkeleton,
+  TeamsPageSkeleton,
+  WorkspacesPageSkeleton,
+} from "@/components/ui/page-skeletons";
 
 export function PostsPage() {
   return (
-    <Suspense fallback={<DashboardPageSkeleton message="Loading posts..." />}>
+    <Suspense fallback={<PostsPageSkeleton />}>
       <PostsPageView />
     </Suspense>
   );
@@ -21,7 +30,7 @@ export function PostsPage() {
 
 export function BillingPage() {
   return (
-    <Suspense fallback={<DashboardPageSkeleton message="Loading billing..." />}>
+    <Suspense fallback={<BillingPageSkeleton />}>
       <BillingPageView />
     </Suspense>
   );
@@ -37,7 +46,7 @@ export function ConnectionsPage() {
 
 export function SettingsPage() {
   return (
-    <Suspense fallback={<DashboardPageSkeleton message="Loading settings..." />}>
+    <Suspense fallback={<SettingsPageSkeleton />}>
       <SettingsPageView />
     </Suspense>
   );
@@ -45,7 +54,7 @@ export function SettingsPage() {
 
 export function FeedbackPageRoute() {
   return (
-    <Suspense fallback={<DashboardPageSkeleton message="Loading feedback..." />}>
+    <Suspense fallback={<FeedbackPageSkeleton />}>
       <FeedbackPageView />
     </Suspense>
   );
@@ -53,7 +62,7 @@ export function FeedbackPageRoute() {
 
 export function TeamsPage() {
   return (
-    <Suspense fallback={<DashboardPageSkeleton message="Loading teams..." />}>
+    <Suspense fallback={<TeamsPageSkeleton />}>
       <TeamsPageView />
     </Suspense>
   );
@@ -61,9 +70,7 @@ export function TeamsPage() {
 
 export function WorkspacesPage() {
   return (
-    <Suspense
-      fallback={<DashboardPageSkeleton message="Loading workspaces..." />}
-    >
+    <Suspense fallback={<WorkspacesPageSkeleton />}>
       <WorkspacesPageView />
     </Suspense>
   );
@@ -71,7 +78,7 @@ export function WorkspacesPage() {
 
 export function CreateTeamPage() {
   return (
-    <Suspense fallback={<DashboardPageSkeleton message="Loading..." />}>
+    <Suspense fallback={<CreateTeamPageSkeleton />}>
       <CreateTeamPageView />
     </Suspense>
   );
@@ -79,9 +86,7 @@ export function CreateTeamPage() {
 
 export function TeamDetailPage() {
   return (
-    <Suspense
-      fallback={<DashboardPageSkeleton message="Loading team settings..." />}
-    >
+    <Suspense fallback={<TeamDetailPageSkeleton />}>
       <TeamDetailPageView />
     </Suspense>
   );

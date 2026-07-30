@@ -6,7 +6,7 @@ import type { SubscriptionState } from "@/lib/subscription";
 import { BillingPanel } from "./BillingPanel";
 import { DOCS_BILLING_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
-import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
+import { BillingPageSkeleton } from "@/components/ui/page-skeletons";
 
 export function BillingPage() {
   const navigate = useNavigate();
@@ -58,7 +58,7 @@ export function BillingPage() {
   }, [raw]);
 
   if (loading) {
-    return <DashboardPageSkeleton message="Loading billing..." />;
+    return <BillingPageSkeleton />;
   }
 
   if (error || !raw || !subscription) {

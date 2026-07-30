@@ -35,7 +35,7 @@ import {
   loadPostDetailCoreData,
   loadPostDetailMediaData,
 } from "@/api/dashboard-data";
-import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
+import { PostDetailPageSkeleton } from "@/components/ui/page-skeletons";
 import { PublishStatusSection } from "./PublishStatusSection";
 
 const TYPE_ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
@@ -244,7 +244,7 @@ export function PostDetailView({ postId }: { postId: string }) {
   }, [core, mediaLoading, postId, navigate, slug]);
 
   if (coreLoading) {
-    return <DashboardPageSkeleton message="Loading post details..." />;
+    return <PostDetailPageSkeleton />;
   }
   if (coreError || !core) {
     return (

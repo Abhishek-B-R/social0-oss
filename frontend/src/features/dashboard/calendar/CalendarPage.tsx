@@ -1,11 +1,10 @@
-
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useEffect, useState } from "react";
+import { format } from "date-fns";
 import { loadCalendarPageData } from "@/api/dashboard-data";
 import { CalendarGrid, type PostForCalendar } from "./CalendarGrid";
 import { DOCS_CALENDAR_URL } from "@/lib/docs-url";
 import DocsInfoIcon from "@/components/info-icon";
-import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 
 export function CalendarPage() {
@@ -44,10 +43,6 @@ export function CalendarPage() {
     };
   }, [invalidateQueries]);
 
-  if (loading && !isGuest) {
-    return <DashboardPageSkeleton message="Loading calendar..." />;
-  }
-
   if (isGuest) {
     return (
       <GuestPostsPageView
@@ -59,16 +54,22 @@ export function CalendarPage() {
     );
   }
 
-  if (error || !data) {
+  if (error) {
     return (
       <div className="rounded-xl border border-border bg-card p-6 text-sm text-foreground">
-        {error ?? "Could not load calendar."}
+        {error}
       </div>
     );
   }
 
+  const postsLoading = loading || !data;
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div
+      className="flex min-h-0 flex-1 flex-col"
+      aria-busy={postsLoading}
+      aria-label={postsLoading ? "Loading calendar" : undefined}
+    >
       <div className="shrink-0">
         <div className="flex items-center gap-2">
           <h1 className="mb-2 font-serif text-2xl font-semibold tracking-tight text-foreground landing flex items-center gap-2 sm:text-3xl">
@@ -82,11 +83,12 @@ export function CalendarPage() {
       </div>
       <div className="mt-4 flex min-h-0 flex-1 flex-col sm:mt-6">
         <CalendarGrid
-          posts={data.posts}
-          initialMonth={data.initialMonth}
-          use24HourTimeFormat={data.use24HourTimeFormat}
-          dateFormat={data.dateFormat}
-          timezone={data.timezone}
+          posts={data?.posts ?? []}
+          initialMonth={data?.initialMonth ?? format(new Date(), "yyyy-MM")}
+          use24HourTimeFormat={data?.use24HourTimeFormat ?? false}
+          dateFormat={data?.dateFormat ?? null}
+          timezone={data?.timezone ?? null}
+          loading={postsLoading}
         />
       </div>
     </div>

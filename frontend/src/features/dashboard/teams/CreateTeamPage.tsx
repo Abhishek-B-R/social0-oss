@@ -8,7 +8,7 @@ import {
 import { toast } from "sonner";
 import { createTeam, listWorkspaces } from "@/api/team";
 import { Button } from "@/components/ui/button";
-import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
+import { CreateTeamPageSkeleton } from "@/components/ui/page-skeletons";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
@@ -58,7 +58,7 @@ export function CreateTeamPage() {
   };
 
   if (workspacesQuery.isLoading) {
-    return <DashboardPageSkeleton message="Loading..." />;
+    return <CreateTeamPageSkeleton />;
   }
 
   if (workspacesQuery.isError) {

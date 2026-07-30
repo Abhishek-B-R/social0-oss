@@ -1,10 +1,8 @@
-
 import { useSearchParams } from "react-router-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { loadConnectionsPageData } from "@/api/dashboard-data";
 import { OAuthErrorHandler } from "@/components/OAuthErrorHandler";
 import { ConnectionsList } from "@/components/dashboard/ConnectionsList";
-import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
 
 export function ConnectionsPage() {
   const [searchParams] = useSearchParams();
@@ -98,10 +96,6 @@ export function ConnectionsPage() {
     };
   }, [refetch]);
 
-  if (loading) {
-    return <DashboardPageSkeleton message="Loading connections..." />;
-  }
-
   if (error) {
     return (
       <div className="rounded-xl border border-border bg-card p-6 text-sm text-foreground">
@@ -110,20 +104,23 @@ export function ConnectionsPage() {
     );
   }
 
-  if (isGuest || !data) {
+  if (isGuest) {
     return (
       <ConnectionsList accounts={[]} accountLimit={undefined} requireAuth />
     );
   }
 
+  const accountsLoading = loading || !data;
+
   return (
     <>
-      <OAuthErrorHandler hasUsedTrial={data.hasUsedTrial} />
+      {data ? <OAuthErrorHandler hasUsedTrial={data.hasUsedTrial} /> : null}
       <ConnectionsList
-        accounts={data.accounts}
-        accountLimit={data.accountLimit}
-        canManageConnections={data.canManageConnections !== false}
-        canAccessBilling={data.canAccessBilling !== false}
+        accounts={data?.accounts ?? []}
+        accountLimit={data?.accountLimit}
+        canManageConnections={data?.canManageConnections !== false}
+        canAccessBilling={data?.canAccessBilling !== false}
+        accountsLoading={accountsLoading}
         onAccountDisconnected={handleAccountDisconnected}
         onAccountsChanged={refetch}
       />

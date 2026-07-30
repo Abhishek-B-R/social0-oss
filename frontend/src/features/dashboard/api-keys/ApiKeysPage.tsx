@@ -29,13 +29,13 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   ArrowClockwise,
-  CircleNotch,
   Copy,
   Key,
   Plus,
   Trash,
   WebhooksLogo,
 } from "@/icons/phosphor";
+import { ApiKeysTableSkeleton } from "@/components/ui/page-skeletons";
 
 type ApiKeyRow = {
   id: string;
@@ -456,12 +456,7 @@ export default function ApiKeysPage() {
 
             <div className="overflow-hidden rounded-xl border border-border bg-bg-muted/40">
               {keysQuery.isLoading ? (
-                <div className="flex justify-center p-12">
-                  <CircleNotch
-                    className="h-6 w-6 animate-spin text-text-muted"
-                    size={24}
-                  />
-                </div>
+                <ApiKeysTableSkeleton />
               ) : keysQuery.data?.length === 0 ? (
                 <div className="flex flex-col items-center px-6 py-8 text-center">
                   <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-bg-muted text-text-muted">
@@ -578,12 +573,7 @@ export default function ApiKeysPage() {
 
             <div className="overflow-hidden rounded-xl border border-border bg-bg-muted/40">
               {webhooksQuery.isLoading ? (
-                <div className="flex justify-center p-12">
-                  <CircleNotch
-                    className="h-6 w-6 animate-spin text-text-muted"
-                    size={24}
-                  />
-                </div>
+                <ApiKeysTableSkeleton />
               ) : webhooksQuery.data?.length === 0 ? (
                 <div className="flex flex-col items-center px-6 py-8 text-center">
                   <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-bg-muted text-text-muted">

@@ -29,7 +29,7 @@ import { WorkspaceIcon } from "@/lib/workspace-icons";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import DocsInfoIcon from "@/components/info-icon";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
+import { WorkspacesPageSkeleton } from "@/components/ui/page-skeletons";
 import {
   Dialog,
   DialogContent,
@@ -306,7 +306,7 @@ export function WorkspacesPage() {
   };
 
   if (boardQuery.isLoading) {
-    return <DashboardPageSkeleton message="Loading workspaces..." />;
+    return <WorkspacesPageSkeleton />;
   }
 
   if (boardQuery.isError) {

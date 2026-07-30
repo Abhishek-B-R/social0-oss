@@ -11,7 +11,7 @@ import { AllPostsFilters } from "./AllPostsFilters";
 import { PostListCards } from "./PostListCards";
 import { Pagination } from "@/components/ui/Pagination";
 import { DOCS_POSTS_URL } from "@/lib/docs-url";
-import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
+import { PostsPageSkeleton } from "@/components/ui/page-skeletons";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 import { useSession } from "@/lib/auth-client";
 
@@ -139,7 +139,7 @@ export function PostsPage() {
   const hasActiveFilters = !!(platform || time || account);
 
   if (sessionPending) {
-    return <DashboardPageSkeleton message="Loading posts..." />;
+    return <PostsPageSkeleton />;
   }
 
   if (!session) {
@@ -152,7 +152,7 @@ export function PostsPage() {
   }
 
   if (isLoading && !result) {
-    return <DashboardPageSkeleton message="Loading posts..." />;
+    return <PostsPageSkeleton />;
   }
 
   if (isError || !result?.ok || !hydrated) {

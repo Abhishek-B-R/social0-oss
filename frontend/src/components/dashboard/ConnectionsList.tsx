@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import DocsInfoIcon from "../info-icon";
 import { DOCS_CONNECTIONS_URL } from "@/lib/docs-url";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
+import { SkeletonBone } from "@/components/ui/skeleton-bone";
 
 const PLATFORM_UI: Record<string, { name: string; color: string }> = {
   linkedin: { name: "LinkedIn", color: "bg-[#0A66C2]" },
@@ -73,6 +74,7 @@ export function ConnectionsList({
   requireAuth = false,
   canManageConnections = true,
   canAccessBilling = true,
+  accountsLoading = false,
   onAccountDisconnected,
   onAccountsChanged,
 }: {
@@ -83,6 +85,8 @@ export function ConnectionsList({
   canManageConnections?: boolean;
   /** Non-owners should not be sent to billing for plan upgrades. */
   canAccessBilling?: boolean;
+  /** Platforms/Connect render immediately; one account badge skeleton per row. */
+  accountsLoading?: boolean;
   /** Optimistic UI update after disconnect — avoids full-page refresh. */
   onAccountDisconnected?: (accountId: string) => void;
   /** Background refetch after token/premium changes. */
@@ -213,6 +217,7 @@ export function ConnectionsList({
             : "View the workspace’s connected accounts. Only workspace Admins can connect or disconnect accounts."}
         </p>
         {canManageConnections &&
+          !accountsLoading &&
           accountLimit &&
           accountLimit.limitTotal > 0 && (
           <p className="text-sm text-text-muted">
@@ -234,7 +239,10 @@ export function ConnectionsList({
             )}
           </p>
         )}
-        {canManageConnections && atLimit && (
+        {accountsLoading && canManageConnections ? (
+          <SkeletonBone className="h-4 w-40" />
+        ) : null}
+        {canManageConnections && !accountsLoading && atLimit && (
           <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
             You&apos;ve reached your {accountLimit!.limitTotal} account limit.{" "}
             {canAccessBilling ? (
@@ -301,7 +309,29 @@ export function ConnectionsList({
                       canManageConnections && "flex-1",
                     )}
                   >
-                    {platformAccounts.map((account) => {
+                    {accountsLoading ? (
+                      <>
+                        <div
+                          className="flex items-center gap-1 rounded-md border border-border bg-bg-elevated px-1.5 py-0.5"
+                          aria-hidden
+                        >
+                          <SkeletonBone className="h-7 w-7 shrink-0 rounded-full" />
+                          <SkeletonBone className="h-3 w-28 sm:w-36" />
+                          <SkeletonBone className="h-3.5 w-3.5 shrink-0 rounded" />
+                          <SkeletonBone className="h-3.5 w-3.5 shrink-0 rounded" />
+                        </div>
+                        <div
+                          className="flex items-center gap-1 rounded-md border border-border bg-bg-elevated px-1.5 py-0.5"
+                          aria-hidden
+                        >
+                          <SkeletonBone className="h-7 w-7 shrink-0 rounded-full" />
+                          <SkeletonBone className="h-3 w-24 sm:w-32" />
+                          <SkeletonBone className="h-3.5 w-3.5 shrink-0 rounded" />
+                          <SkeletonBone className="h-3.5 w-3.5 shrink-0 rounded" />
+                        </div>
+                      </>
+                    ) : (
+                      platformAccounts.map((account) => {
                       const isInactive = account.isActive === false;
                       const isExpired = account.tokenStatus === "expired";
                       const isExpiringSoon =
@@ -472,7 +502,8 @@ export function ConnectionsList({
                           )}
                         </div>
                       );
-                    })}
+                    })
+                    )}
                   </div>
                 </div>
               );
@@ -482,6 +513,7 @@ export function ConnectionsList({
 
         {/* Twitter Premium status refresh — admins only */}
         {canManageConnections &&
+          !accountsLoading &&
           accounts.some((a) => a.platform === "twitter_x") && (
           <div className="rounded-2xl border border-border bg-bg-elevated p-3">
             <p className="mb-2 text-xs font-medium text-text-muted">

@@ -26,6 +26,7 @@ import {
   LayoutGrid,
   CalendarDays,
 } from "lucide-react";
+import { SkeletonBone } from "@/components/ui/skeleton-bone";
 
 export type PostForCalendar = {
   id: string;
@@ -71,6 +72,21 @@ function sortPostsByTime(posts: PostForCalendar[]) {
       (a, b) =>
         new Date(a.displayDate).getTime() - new Date(b.displayDate).getTime(),
     );
+}
+
+/** Matches desktop month-cell post cards (snippet + time + avatar). */
+function CalendarPostCardSkeleton() {
+  return (
+    <div className="block rounded border border-border-subtle bg-bg-elevated p-1.5 shadow-sm">
+      <div className="flex items-start gap-1.5">
+        <div className="min-w-0 flex-1 space-y-1">
+          <SkeletonBone className="h-3 w-[92%]" />
+          <SkeletonBone className="h-2.5 w-10" />
+        </div>
+        <SkeletonBone className="h-7 w-7 shrink-0 rounded-full" />
+      </div>
+    </div>
+  );
 }
 
 function CalendarPostListItem({
@@ -127,6 +143,7 @@ function DayCell({
   fillHeight,
   use24HourTimeFormat = false,
   isMobile = false,
+  loading = false,
 }: {
   date: Date;
   posts: PostForCalendar[];
@@ -137,6 +154,7 @@ function DayCell({
   fillHeight?: boolean;
   use24HourTimeFormat?: boolean;
   isMobile?: boolean;
+  loading?: boolean;
 }) {
   const dateKey = format(date, "yyyy-MM-dd");
   const isExpanded = expandedDay === dateKey;
@@ -191,7 +209,13 @@ function DayCell({
               {format(date, "d")}
             </span>
           )}
-          {hasAnyDots && (
+          {loading ? (
+            <div className="flex items-center justify-center gap-0.5" aria-hidden>
+              <SkeletonBone className="h-2 w-2 rounded-full" />
+              <SkeletonBone className="h-2 w-2 rounded-full" />
+            </div>
+          ) : null}
+          {!loading && hasAnyDots && (
             <div
               className="flex flex-wrap items-center justify-center gap-0.5 max-w-full"
               aria-hidden
@@ -255,10 +279,16 @@ function DayCell({
       <div
         className={`mt-1 space-y-1 ${fillHeight ? "min-h-0 flex-1 overflow-auto" : ""}`}
       >
-        {visible.length === 0 && (
+        {loading ? (
+          <>
+            <CalendarPostCardSkeleton />
+            <CalendarPostCardSkeleton />
+          </>
+        ) : null}
+        {!loading && visible.length === 0 && (
           <p className="text-xs text-text-muted">No posts</p>
         )}
-        {isMobile && posts.length > 0 ? (
+        {!loading && isMobile && posts.length > 0 ? (
           <>
             {!isExpanded && (
               <Link
@@ -387,12 +417,15 @@ export function CalendarGrid({
   use24HourTimeFormat = false,
   dateFormat = "dd/MM/yyyy",
   timezone,
+  loading = false,
 }: {
   posts: PostForCalendar[];
   initialMonth: string;
   use24HourTimeFormat?: boolean;
   dateFormat?: string | null;
   timezone?: string | null;
+  /** Show two post-card skeletons in every day while posts fetch. */
+  loading?: boolean;
 }) {
   const isMobile = useIsMobile();
   const today = startOfDay(new Date());
@@ -611,6 +644,7 @@ export function CalendarGrid({
                 onDayClick={selectDay}
                 use24HourTimeFormat={use24HourTimeFormat}
                 isMobile={isMobile}
+                loading={loading}
               />
             ))}
           </div>
@@ -660,7 +694,16 @@ export function CalendarGrid({
                         </span>
                       )}
                     </button>
-                    {dayPosts.length === 0 ? (
+                    {loading ? (
+                      <ul className="space-y-2">
+                        <li>
+                          <CalendarPostCardSkeleton />
+                        </li>
+                        <li>
+                          <CalendarPostCardSkeleton />
+                        </li>
+                      </ul>
+                    ) : dayPosts.length === 0 ? (
                       <p className="text-xs text-text-muted">No posts</p>
                     ) : (
                       <ul className="space-y-2">
@@ -711,6 +754,7 @@ export function CalendarGrid({
                       fillHeight
                       use24HourTimeFormat={use24HourTimeFormat}
                       isMobile={false}
+                      loading={loading}
                     />
                   </div>
                 ))}
@@ -746,6 +790,18 @@ export function CalendarGrid({
             {(() => {
               const dateKey = format(selectedDate, "yyyy-MM-dd");
               const dayPosts = sortPostsByTime(postsByDate[dateKey] ?? []);
+              if (loading) {
+                return (
+                  <ul className="space-y-3">
+                    <li>
+                      <CalendarPostCardSkeleton />
+                    </li>
+                    <li>
+                      <CalendarPostCardSkeleton />
+                    </li>
+                  </ul>
+                );
+              }
               if (dayPosts.length === 0) {
                 return (
                   <p className="py-8 text-center text-text-muted">

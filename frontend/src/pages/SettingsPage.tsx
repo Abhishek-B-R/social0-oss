@@ -5,7 +5,7 @@ import { loadSettingsPageData } from "@/api/settings";
 import { SettingsPanel } from "@/features/dashboard/settings/SettingsPanel";
 import { useSession } from "@/lib/auth-client";
 import { signInUrl } from "@/lib/sign-in-url";
-import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
+import { SettingsPageSkeleton } from "@/components/ui/page-skeletons";
 
 function getTimezoneOffsetMinutes(tz: string): number {
   try {
@@ -76,7 +76,7 @@ export function SettingsPage() {
   }, [sessionPending, session, navigate]);
 
   if (sessionPending || (session && isLoading && !data)) {
-    return <DashboardPageSkeleton message="Loading settings..." />;
+    return <SettingsPageSkeleton />;
   }
 
   if (!session) {

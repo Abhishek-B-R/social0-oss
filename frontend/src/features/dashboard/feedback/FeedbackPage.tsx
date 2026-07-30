@@ -1,13 +1,13 @@
 import { useSession } from "@/lib/auth-client";
 import { GuestSignInPrompt } from "@/components/dashboard/GuestSignInPrompt";
-import { DashboardPageSkeleton } from "@/components/ui/dashboard-page-skeleton";
+import { FeedbackPageSkeleton } from "@/components/ui/page-skeletons";
 import { FeedbackBoard, FeedbackHeader } from "./FeedbackBoard";
 
 export function FeedbackPage() {
   const { data: session, isPending } = useSession();
 
   if (isPending) {
-    return <DashboardPageSkeleton message="Loading feedback..." />;
+    return <FeedbackPageSkeleton />;
   }
 
   if (!session) {
