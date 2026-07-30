@@ -10,29 +10,58 @@ type Pad = {
   x: number;
   y: number;
   logo: keyof typeof LOGO_PATHS;
-  accent?: boolean;
-  size?: number;
+  /** Tall solid pedestal under the tile (TikTok / Facebook). */
+  pedestal?: boolean;
 };
 
-/** Middle layer — isometric hub with all 9 platform logos. */
+function Pedestal({ x, y }: { x: number; y: number }) {
+  const s = 40;
+  const halfW = s * 0.866;
+  const halfH = s * 0.5;
+  const depth = 16;
+  return (
+    <g>
+      <path
+        d={`M${x} ${y - halfH}
+           L${x + halfW} ${y}
+           L${x} ${y + halfH}
+           L${x - halfW} ${y} Z`}
+        fill={C.elevated}
+        stroke={C.ink}
+        strokeWidth="1.15"
+      />
+      <path
+        d={`M${x + halfW} ${y} L${x + halfW} ${y + depth} L${x} ${y + halfH + depth} L${x} ${y + halfH} Z`}
+        fill={C.muted}
+        stroke={C.stroke}
+        strokeWidth="1"
+      />
+      <path
+        d={`M${x - halfW} ${y} L${x - halfW} ${y + depth} L${x} ${y + halfH + depth} L${x} ${y + halfH} Z`}
+        fill={C.bg}
+        stroke={C.stroke}
+        strokeWidth="1"
+      />
+    </g>
+  );
+}
+
+/** Middle layer — isometric hub with square dashed pads + white platform logos. */
 export function HeroMiddleIllustration({
   width = 540,
   height = 380,
   className,
 }: Props) {
-  // Hub center glow at (270, 155). TT bottom-left, FB bottom-right;
-  // Threads opposite TT (right), Bluesky opposite FB (left),
-  // Pinterest between TT and FB at bottom-center.
   const pads: Pad[] = [
     { x: 270, y: 52, logo: "x" },
     { x: 155, y: 100, logo: "ig" },
-    { x: 385, y: 100, logo: "li", accent: true },
-    { x: 140, y: 165, logo: "bluesky" }, // opposite Facebook
-    { x: 400, y: 165, logo: "threads" }, // opposite TikTok
+    { x: 385, y: 100, logo: "li" },
+    { x: 140, y: 165, logo: "bluesky" },
+    { x: 400, y: 165, logo: "threads" },
     { x: 270, y: 195, logo: "yt" },
-    { x: 120, y: 220, logo: "tt" },
-    { x: 420, y: 220, logo: "fb" },
-    { x: 270, y: 265, logo: "pin" }, // between TT and FB
+    { x: 120, y: 220, logo: "tt", pedestal: true },
+    { x: 420, y: 220, logo: "fb", pedestal: true },
+    { x: 270, y: 265, logo: "pin" },
   ];
 
   return (
@@ -45,6 +74,7 @@ export function HeroMiddleIllustration({
       className={className}
       aria-hidden
     >
+      {/* Hub top face only — no side extrusions */}
       <rect
         width="280"
         height="260"
@@ -53,81 +83,92 @@ export function HeroMiddleIllustration({
         fill={C.surface}
         stroke={C.stroke}
       />
-      <rect
-        width="280"
-        height="36"
-        rx="2"
-        transform={ISO.right(260 + 280 * 0.86603, 18 + 280 * 0.5)}
-        fill={C.panel}
-        stroke={C.ink}
-      />
-      <path
-        d="M2 140c0-1.1.78-1.55 1.73-1L246 280c.96.55 1.73 1.89 1.73 3v42c0 1.1-.78 1.55-1.73 1L3.73 185c-.96-.55-1.73-1.89-1.73-3z"
-        fill={C.panel}
-        stroke={C.strokeSoft}
-        transform="translate(18 12)"
-      />
 
       {pads.map((p) => {
-        const s = p.size ?? 34;
+        const s = 36;
         const halfW = s * 0.866;
         const halfH = s * 0.5;
         return (
           <g key={p.logo}>
-            <path
-              d={`M${p.x} ${p.y - halfH}
-                 L${p.x + halfW} ${p.y}
-                 L${p.x} ${p.y + halfH}
-                 L${p.x - halfW} ${p.y} Z`}
-              fill={p.accent ? C.accent : C.mid}
-              stroke={p.accent ? C.accentHot : C.ink}
-              strokeDasharray={p.accent ? undefined : "2 2"}
-              strokeWidth={p.accent ? 1.5 : 1}
-              opacity={0.95}
-            />
-            {p.accent && (
+            {p.pedestal ? <Pedestal x={p.x} y={p.y} /> : null}
+            {!p.pedestal ? (
               <>
                 <path
-                  d={`M${p.x + halfW} ${p.y} L${p.x + halfW} ${p.y + 8} L${p.x} ${p.y + halfH + 8} L${p.x} ${p.y + halfH} Z`}
-                  fill={C.accentDim}
-                  stroke={C.accent}
+                  d={`M${p.x} ${p.y - halfH}
+                     L${p.x + halfW} ${p.y}
+                     L${p.x} ${p.y + halfH}
+                     L${p.x - halfW} ${p.y} Z`}
+                  fill={C.elevated}
+                  stroke={C.ink}
+                  strokeDasharray="2.5 2.5"
+                  strokeWidth="1.15"
+                  opacity="0.98"
                 />
                 <path
-                  d={`M${p.x - halfW} ${p.y} L${p.x - halfW} ${p.y + 8} L${p.x} ${p.y + halfH + 8} L${p.x} ${p.y + halfH} Z`}
-                  fill={C.accentDeep}
-                  stroke={C.accent}
+                  d={`M${p.x + halfW} ${p.y} L${p.x + halfW} ${p.y + 5} L${p.x} ${p.y + halfH + 5} L${p.x} ${p.y + halfH} Z`}
+                  fill={C.muted}
+                  stroke={C.strokeSoft}
+                  strokeWidth="0.75"
+                  opacity="0.85"
+                />
+                <path
+                  d={`M${p.x - halfW} ${p.y} L${p.x - halfW} ${p.y + 5} L${p.x} ${p.y + halfH + 5} L${p.x} ${p.y + halfH} Z`}
+                  fill={C.bg}
+                  stroke={C.strokeSoft}
+                  strokeWidth="0.75"
+                  opacity="0.9"
                 />
               </>
+            ) : (
+              /* Logo sits on pedestal top — dashed rim */
+              <path
+                d={`M${p.x} ${p.y - halfH}
+                   L${p.x + halfW} ${p.y}
+                   L${p.x} ${p.y + halfH}
+                   L${p.x - halfW} ${p.y} Z`}
+                fill="none"
+                stroke={C.ink}
+                strokeDasharray="2.5 2.5"
+                strokeWidth="1.15"
+              />
             )}
-            <g transform={`translate(${p.x - 7} ${p.y - 7})`}>
+            <g transform={`translate(${p.x - 7} ${p.y - 8})`}>
               <svg width="14" height="14" viewBox="0 0 24 24">
-                <path
-                  d={LOGO_PATHS[p.logo]}
-                  fill={p.accent ? C.inkInverse : C.ink}
-                />
+                <path d={LOGO_PATHS[p.logo]} fill={C.ink} />
               </svg>
             </g>
           </g>
         );
       })}
 
+      {/* Hub pulse */}
       <ellipse
         cx="270"
         cy="155"
-        rx="26"
-        ry="15"
+        rx="30"
+        ry="17"
         fill="none"
         stroke={C.accent}
-        strokeWidth="1.5"
-        opacity="0.7"
+        strokeWidth="1.25"
+        opacity="0.45"
       />
       <ellipse
         cx="270"
         cy="155"
-        rx="11"
-        ry="6.5"
-        fill={C.accent}
-        opacity="0.85"
+        rx="18"
+        ry="10"
+        fill="none"
+        stroke={C.accent}
+        strokeWidth="1.5"
+        opacity="0.75"
+      />
+      <ellipse
+        cx="270"
+        cy="155"
+        rx="8"
+        ry="4.5"
+        fill={C.accentHot}
+        opacity="0.95"
       />
 
       {[
@@ -150,7 +191,7 @@ export function HeroMiddleIllustration({
           stroke={C.strokeBright}
           strokeWidth="1"
           strokeDasharray="3 3"
-          opacity="0.35"
+          opacity="0.4"
         />
       ))}
     </svg>

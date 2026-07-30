@@ -61,24 +61,8 @@ export function HeroTopIllustration({
         opacity="0.65"
       />
 
-      {/* Back slab */}
-      <rect
-        width="300"
-        height="210"
-        rx="4"
-        transform={ISO.top(270, 28)}
-        fill={C.surface}
-        stroke={C.strokeSoft}
-      />
-      <rect
-        width="300"
-        height="30"
-        rx="2"
-        transform={ISO.right(270 + 300 * 0.86603, 28 + 300 * 0.5)}
-        fill={C.bg}
-        stroke={C.strokeSoft}
-      />
-
+      {/* Shift so composer window centers on the stack axis (middle hub) */}
+      <g transform="translate(40 0)">
       {/* Main app window */}
       <g transform={ISO.top(290, 55)}>
         <rect
@@ -258,56 +242,35 @@ export function HeroTopIllustration({
         ))}
       </g>
 
-      {/* Floating scheduled card */}
-      <g>
+      {/* Floating scheduled card — left of brand mark */}
+      <g transform={ISO.top(470, 70)}>
         <rect
           width="72"
           height="48"
           rx="4"
-          transform={ISO.top(545, 70)}
           fill={C.elevated}
           stroke={C.accent}
           strokeWidth="1.5"
         />
-        <rect
-          width="72"
-          height="16"
-          rx="2"
-          transform={ISO.right(545 + 72 * 0.86603, 70 + 72 * 0.5)}
-          fill={C.accentDim}
-          stroke={C.accent}
-        />
-        <g transform={ISO.top(555, 82)}>
-          <rect width="36" height="5" rx="1.5" fill={C.accentHot} />
-          <rect y="10" width="48" height="3.5" rx="1" fill={C.strokeBright} opacity="0.45" />
-          <rect y="18" width="40" height="3.5" rx="1" fill={C.strokeSoft} />
-          <rect y="28" width="28" height="8" rx="3" fill={C.accent} />
-        </g>
+        <rect x="10" y="12" width="36" height="5" rx="1.5" fill={C.accentHot} />
+        <rect x="10" y="22" width="48" height="3.5" rx="1" fill={C.strokeBright} opacity="0.45" />
+        <rect x="10" y="30" width="40" height="3.5" rx="1" fill={C.strokeSoft} />
+        <rect x="10" y="38" width="28" height="8" rx="3" fill={C.accent} />
       </g>
 
-      {/* Floating account chip */}
-      <g>
+      {/* Floating account chip — flat, no side extrusion */}
+      <g transform={ISO.top(150, 120)}>
         <rect
           width="56"
           height="40"
           rx="4"
-          transform={ISO.top(150, 120)}
           fill={C.panel}
           stroke={C.strokeBright}
         />
-        <rect
-          width="56"
-          height="12"
-          rx="2"
-          transform={ISO.right(150 + 56 * 0.86603, 120 + 56 * 0.5)}
-          fill={C.muted}
-          stroke={C.stroke}
-        />
-        <g transform={ISO.top(158, 130)}>
-          <circle cx="10" cy="10" r="7" fill={C.accent} opacity="0.9" />
-          <rect x="22" y="6" width="24" height="3.5" rx="1" fill={C.strokeBright} opacity="0.5" />
-          <rect x="22" y="13" width="16" height="3" rx="1" fill={C.strokeSoft} />
-        </g>
+        <circle cx="18" cy="20" r="7" fill={C.accent} opacity="0.9" />
+        <rect x="30" y="16" width="24" height="3.5" rx="1" fill={C.strokeBright} opacity="0.5" />
+        <rect x="30" y="23" width="16" height="3" rx="1" fill={C.strokeSoft} />
+      </g>
       </g>
     </svg>
   );

@@ -561,6 +561,7 @@ html {
   --iso-accent-hot: #059669;
   --iso-accent-dim: #047857;
   --iso-accent-deep: #065f46;
+  --iso-tile: #d4d4d8;
   color-scheme: light;
 }
 
@@ -605,5 +606,6 @@ html {
   --iso-accent-hot: #34d399;
   --iso-accent-dim: #059669;
   --iso-accent-deep: #047857;
+  --iso-tile: #3f3f46;
   color-scheme: dark;
 }

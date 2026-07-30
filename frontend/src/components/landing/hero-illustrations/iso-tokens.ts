@@ -31,6 +31,7 @@ export const C = {
   accentHot: "var(--iso-accent-hot)",
   accentDim: "var(--iso-accent-dim)",
   accentDeep: "var(--iso-accent-deep)",
+  tile: "var(--iso-tile)",
 } as const;
 
 /** Official platform logo paths (viewBox 0 0 24 24) for embedding in isometric pads. */

@@ -1,12 +1,21 @@
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { HeroTopIllustration } from "./HeroIsoTop";
+import { HeroTopAgentIllustration } from "./HeroIsoTopAgent";
 import { HeroMiddleIllustration } from "./HeroIsoMiddle";
 import { HeroBottomIllustration } from "./HeroIsoBottom";
+import type { LandingMode } from "../landing-mode";
 
 const EXPLOSION = {
-  duration: 0.85,
-  stagger: 0.12,
-  initialDelay: 0.4,
+  duration: 1.05,
+  stagger: 0.08,
+  initialDelay: 0.25,
+} as const;
+
+/** Fully stacked on the middle layer before exploding out. */
+const INITIAL_Y = {
+  top: 120,
+  middle: 0,
+  bottom: -100,
 } as const;
 
 const FINAL_Y = {
@@ -19,12 +28,12 @@ const EASE_OUT: [number, number, number, number] = [0.23, 1, 0.32, 1];
 
 const CORNERS = {
   topToMiddle: [
-    { x: 260, y: 140 },
-    { x: -130, y: 140 },
+    { x: 170, y: 140 },
+    { x: -170, y: 140 },
   ],
   middleToBottom: [
-    { x: 270, y: 260 },
-    { x: -120, y: 260 },
+    { x: 170, y: 260 },
+    { x: -170, y: 260 },
   ],
 } as const;
 
@@ -78,23 +87,44 @@ function ConnectingLine({
   );
 }
 
-export function HeroIsoAnimation({ className = "" }: { className?: string }) {
+export function HeroIsoAnimation({
+  className = "",
+  mode = "normal",
+}: {
+  className?: string;
+  mode?: LandingMode;
+}) {
   const lineHeight = Math.abs(FINAL_Y.top);
 
   return (
     <div className={`relative pb-14 sm:pb-16 ${className}`}>
       <div className="mt-8 flex flex-col items-center sm:mt-12 md:mt-14">
         <motion.div
-          className="relative z-30 flex justify-center"
-          initial={{ y: 0, opacity: 0.6 }}
-          animate={{ y: FINAL_Y.top, opacity: 1 }}
+          className="relative z-30 flex w-full justify-center"
+          initial={{ y: INITIAL_Y.top, opacity: 0.75, scale: 0.96 }}
+          animate={{ y: FINAL_Y.top, opacity: 1, scale: 1 }}
           transition={{
             duration: EXPLOSION.duration,
             ease: EASE_OUT,
             delay: EXPLOSION.initialDelay,
           }}
         >
-          <HeroTopIllustration className="h-auto w-[min(720px,92vw)]" />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={mode}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.28, ease: EASE_OUT }}
+              className="flex w-full justify-center"
+            >
+              {mode === "agent" ? (
+                <HeroTopAgentIllustration className="h-auto w-[min(860px,100vw)] origin-bottom scale-110 sm:scale-[1.12] md:scale-[1.15]" />
+              ) : (
+                <HeroTopIllustration className="h-auto w-[min(860px,100vw)] origin-bottom scale-110 sm:scale-[1.12] md:scale-[1.15]" />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </motion.div>
 
         <div className="pointer-events-none absolute inset-0 z-25">
@@ -111,10 +141,14 @@ export function HeroIsoAnimation({ className = "" }: { className?: string }) {
         </div>
 
         <motion.div
-          className="relative z-20 -mt-48 ml-6 flex justify-center sm:-mt-56 md:-mt-60 md:ml-12"
-          initial={{ opacity: 0.5 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: EXPLOSION.initialDelay + 0.1, duration: 0.55 }}
+          className="relative z-20 -mt-48 flex w-full justify-center sm:-mt-56 md:-mt-60"
+          initial={{ opacity: 0.65, scale: 0.94 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{
+            delay: EXPLOSION.initialDelay,
+            duration: EXPLOSION.duration,
+            ease: EASE_OUT,
+          }}
         >
           <HeroMiddleIllustration className="h-auto w-[min(540px,82vw)]" />
         </motion.div>
@@ -133,13 +167,13 @@ export function HeroIsoAnimation({ className = "" }: { className?: string }) {
         </div>
 
         <motion.div
-          className="relative z-10 -mt-44 ml-1 flex justify-center sm:-mt-52 md:-mt-56"
-          initial={{ y: 0, opacity: 0.5 }}
-          animate={{ y: FINAL_Y.bottom, opacity: 1 }}
+          className="relative z-10 -mt-44 flex w-full justify-center sm:-mt-52 md:-mt-56"
+          initial={{ y: INITIAL_Y.bottom, opacity: 0.75, scale: 0.96 }}
+          animate={{ y: FINAL_Y.bottom, opacity: 1, scale: 1 }}
           transition={{
             duration: EXPLOSION.duration,
             ease: EASE_OUT,
-            delay: EXPLOSION.initialDelay,
+            delay: EXPLOSION.initialDelay + EXPLOSION.stagger,
           }}
         >
           <HeroBottomIllustration className="h-auto w-[min(660px,90vw)]" />

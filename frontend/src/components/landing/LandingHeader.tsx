@@ -6,6 +6,7 @@ import { Menu, X, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSession } from "@/lib/auth-client";
 import Image from "@/components/AppImage";
+import { LandingModeToggle } from "@/components/landing/landing-mode";
 
 type NavLink = { href: string; label: string };
 
@@ -44,6 +45,7 @@ export function LandingHeader() {
   }, []);
 
   const darkMode = mounted && resolvedTheme === "dark";
+  const showModeToggle = pathname === "/" || pathname === "/home";
 
   const toggleDarkMode = () => {
     setTheme(darkMode ? "light" : "dark");
@@ -94,6 +96,7 @@ export function LandingHeader() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
+          {showModeToggle ? <LandingModeToggle /> : null}
           <button
             type="button"
             onClick={toggleDarkMode}
@@ -141,6 +144,7 @@ export function LandingHeader() {
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
+          {showModeToggle ? <LandingModeToggle /> : null}
           <button
             type="button"
             onClick={toggleDarkMode}
@@ -173,6 +177,12 @@ export function LandingHeader() {
       {mobileMenuOpen && (
         <div className="border-t border-border bg-background px-6 py-4 md:hidden">
           <nav className="flex flex-col gap-4">
+            {showModeToggle ? (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[13px] text-muted-foreground">Mode</span>
+                <LandingModeToggle />
+              </div>
+            ) : null}
             {navLinks.map((link) => (
               <Link
                 key={link.href}

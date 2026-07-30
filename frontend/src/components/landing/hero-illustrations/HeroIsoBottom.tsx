@@ -6,7 +6,9 @@ interface Props {
   className?: string;
 }
 
-/** Bottom layer — isometric diamond base + four logo tiles (one accent-stroked). */
+/** Bottom layer — isometric diamond base + cube tiles.
+ *  Artwork authored around x≈414; translate centers that on the viewBox mid (~330).
+ */
 export function HeroBottomIllustration({
   width = 661,
   height = 366,
@@ -22,6 +24,7 @@ export function HeroBottomIllustration({
       className={className}
       aria-hidden
     >
+      <g transform="translate(-84 0)">
       <g opacity=".6">
         <path
           d="M657.475 174.002c1.333.77 1.333 2.694 0 3.464L414.63 317.672a2 2 0 0 1-2 0L169.785 177.466c-1.333-.77-1.333-2.694 0-3.464L412.63 33.795a2 2 0 0 1 2 0z"
@@ -44,7 +47,7 @@ export function HeroBottomIllustration({
       {/* White tile (top-left cluster) */}
       <path
         d="M470.178 105.499v28.892l-18.924-10.921v-7.05l-13.045-7.526-6.096-3.525V83.527l5.981 3.452 19.039 10.994zm-76.014-22.045v21.973l-5.996 3.467-12.799 7.382v6.919l-19.025 10.994v-28.892l12.799-7.397 18.91-10.92z"
-        fill="#ffffff"
+        fill={C.tile}
         stroke={C.ink}
         strokeWidth="1.4"
         strokeLinecap="round"
@@ -52,7 +55,7 @@ export function HeroBottomIllustration({
       />
       <path
         d="m507.998 83.657-25.021 14.446-12.799 7.396-13.045-7.526-19.039-10.994-5.981-3.452 12.814-7.397 5.98-3.452 19.025-10.994zM450.909 50.69l-25.021 14.447-12.813 7.396-13.045-7.526-25.02-14.446 37.834-21.842zm-56.745 32.764-6.111 3.525L369.144 97.9l-12.8 7.397-13.044-7.541-25.021-14.446 37.82-21.828 18.91 10.921 6.11 3.525z"
-        fill="#ffffff"
+        fill={C.tile}
         stroke={C.ink}
         strokeWidth="1.4"
         strokeLinecap="round"
@@ -60,7 +63,7 @@ export function HeroBottomIllustration({
       />
       <path
         d="M507.997 83.657v28.891l-37.819 21.843v-28.892l12.799-7.396zm-56.742 32.763v28.892l-37.819 21.842v-28.892l12.799-7.396 18.924-10.921z"
-        fill="#ffffff"
+        fill={C.tile}
         stroke={C.ink}
         strokeWidth="1.4"
         strokeLinecap="round"
@@ -68,7 +71,7 @@ export function HeroBottomIllustration({
       />
       <path
         d="m451.256 116.42-6.096 3.525-18.925 10.921-12.799 7.396-13.044-7.54-19.026-10.979-5.995-3.467 12.799-7.382 5.995-3.467 12.929-7.454 5.981-3.453.115-.072 5.981 3.452 12.944 7.469 6.096 3.525z"
-        fill="#ffffff"
+        fill={C.tile}
         stroke={C.ink}
         strokeWidth="1.4"
         strokeLinecap="round"
@@ -76,7 +79,7 @@ export function HeroBottomIllustration({
       />
       <path
         d="M413.436 138.262v28.892l-38.065-21.986v-28.892l5.995 3.467 19.026 10.979zm-57.092-32.965v28.891l-38.065-21.986V83.31L343.3 97.756zm94.564-54.607v21.988l-5.98 3.452-12.814 7.397v6.905L419.171 97.9l-5.981-3.452-.116.072V72.533l12.814-7.396z"
-        fill="#ffffff"
+        fill={C.tile}
         stroke={C.ink}
         strokeWidth="1.4"
         strokeLinecap="round"
@@ -84,7 +87,7 @@ export function HeroBottomIllustration({
       />
       <path
         d="M413.075 72.533V94.52l-5.981 3.452-12.929-7.468v-7.05l-13.045-7.526-6.11-3.525V50.561l25.02 14.446z"
-        fill="#ffffff"
+        fill={C.tile}
         stroke={C.ink}
         strokeWidth="1.4"
         strokeLinecap="round"
@@ -237,6 +240,7 @@ export function HeroBottomIllustration({
         stroke={C.strokeSoft}
         d="m412.753 326.565 247-140M165.5 182.5l247.127 143.524M166.251 188.568l247.127 143.523M166.251 194.568l247.127 143.523M166.251 201.568l247.127 143.523M166.251 208.568l247.127 143.523M166.251 215.568l247.127 143.523m.375-26.526 246-140m-246 146 246-140m-246 147 246-140m-246 147 246-140m-246 147 246-140"
       />
+      </g>
     </svg>
   );
 }
