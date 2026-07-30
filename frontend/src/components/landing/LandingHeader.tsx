@@ -62,33 +62,25 @@ export function LandingHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md landing">
-      <div className="mx-auto flex h-14 max-w-[1100px] items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
+    <header className="landing sticky top-0 z-50 w-full border-b border-white/5 bg-[#151515]/85 backdrop-blur-md">
+      <div className="mx-auto flex h-14 max-w-[1180px] items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
         {/* Logo */}
         <div className="flex gap-2">
-          <span className="relative h-9 w-9 block">
-            <Image
-              src="/logo-circular.webp"
-              alt="Social0"
-              width={36}
-              height={36}
-              priority
-              className="rounded-lg dark:hidden"
-            />
+          <span className="relative block h-9 w-9">
             <Image
               src="/logo-dark.webp"
               alt="Social0"
               width={36}
               height={36}
               priority
-              className="rounded-full hidden dark:block absolute inset-0 border border-white"
+              className="absolute inset-0 rounded-full border border-white/20"
             />
           </span>
           <Link
             href={pathname === "/home" ? "/home" : "/"}
             className="flex items-center gap-2"
           >
-            <span className="font-serif text-[22px] tracking-tight text-foreground">
+            <span className="font-serif text-[22px] tracking-tight text-white">
               Social0
             </span>
           </Link>
@@ -147,7 +139,7 @@ export function LandingHeader() {
           ) : (
             <Link
               href="/auth"
-              className="inline-flex items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-[14px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-emerald-500 px-5 py-2.5 text-[14px] font-semibold text-[#04140c] transition-all hover:scale-[1.02] hover:bg-emerald-400"
             >
               Get started
               <span aria-hidden="true">→</span>
@@ -225,7 +217,7 @@ export function LandingHeader() {
             ) : (
               <Link
                 href="/auth"
-                className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-[14px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
+                className="mt-2 inline-flex items-center justify-center gap-2 rounded-[10px] bg-emerald-500 px-5 py-2.5 text-[14px] font-semibold text-[#04140c] transition-all hover:scale-[1.02] hover:bg-emerald-400"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Get started

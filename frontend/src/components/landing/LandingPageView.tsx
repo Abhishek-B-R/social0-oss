@@ -5,6 +5,7 @@ import { Hero } from "@/components/landing/Hero";
 import { PlatformStrip } from "@/components/landing/PlatformStrip";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { DeferredSection } from "@/components/landing/DeferredSection";
+import { SectionSeparator } from "@/components/landing/SectionSeparator";
 
 const DemoVideoSection = lazy(() =>
   import("@/components/landing/DemoVideoSection").then((m) => ({
@@ -57,11 +58,12 @@ export function LandingPageView({ signedIn }: { signedIn: boolean }) {
   useLandingHashScroll();
 
   return (
-    <div className="min-h-screen bg-background landing">
+    <div className="landing landing-page min-h-screen bg-background text-foreground">
       <LandingHeader />
       <main>
         <Hero signedIn={signedIn} />
         <PlatformStrip />
+        <SectionSeparator className="my-2" />
         <DeferredSection minHeight="20rem">
           <DemoVideoSection />
         </DeferredSection>
@@ -71,6 +73,7 @@ export function LandingPageView({ signedIn }: { signedIn: boolean }) {
         <DeferredSection>
           <HowItWorks />
         </DeferredSection>
+        <SectionSeparator />
         <DeferredSection>
           <FeaturesSection />
         </DeferredSection>
@@ -83,6 +86,7 @@ export function LandingPageView({ signedIn }: { signedIn: boolean }) {
         <DeferredSection>
           <FounderSection />
         </DeferredSection>
+        <SectionSeparator />
         <DeferredSection minHeight="28rem">
           <PricingSection signedIn={signedIn} />
         </DeferredSection>

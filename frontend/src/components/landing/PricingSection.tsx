@@ -19,31 +19,31 @@ const freeFeatures = [
   "Activated instantly when you sign up",
 ];
 
-/* All plan cards follow the page theme (bg-background / text-foreground). */
+/* Dark charcoal plan cards for the isometric landing. */
 const basePlanCard =
-  "flex h-full flex-col rounded-2xl border border-border bg-background p-8 shadow-sm md:p-10";
+  "flex h-full flex-col rounded-2xl border border-white/10 bg-[#1A1A1A] p-8 md:p-10";
 
 const basePlanLabel =
-  "text-[11px] font-medium uppercase tracking-widest text-muted-foreground";
+  "text-[11px] font-medium uppercase tracking-widest text-[#7D7D87]";
 
 const basePlanPrice =
-  "font-serif text-[64px] leading-none tracking-tight text-foreground";
+  "font-serif text-[64px] leading-none tracking-tight text-white";
 
-const basePlanDesc = "text-[14px] leading-relaxed text-muted-foreground";
+const basePlanDesc = "text-[14px] leading-relaxed text-[#A1A1AA]";
 
-const basePlanFeature = "text-[14px] leading-snug text-muted-foreground";
+const basePlanFeature = "text-[14px] leading-snug text-[#A1A1AA]";
 
 const basePlanCheck =
-  "mt-0.5 shrink-0 text-[14px] text-emerald-600 dark:text-emerald-400";
+  "mt-0.5 shrink-0 text-[14px] text-emerald-400";
 
-const basePlanFooter = "mt-3 text-center text-[12px] text-muted-foreground";
+const basePlanFooter = "mt-3 text-center text-[12px] text-[#7D7D87]";
 
 const ctaBase =
   "block w-full rounded-[10px] py-3.5 text-center text-[14px] font-medium transition-all";
 
-const ctaNeutral = `${ctaBase} border-2 border-foreground/10 bg-background text-foreground hover:border-foreground/25 hover:bg-muted dark:border-white/10 dark:hover:border-white/20 dark:hover:bg-muted/50`;
+const ctaNeutral = `${ctaBase} border border-white/10 bg-[#111111] text-white hover:border-white/25 hover:bg-white/5`;
 
-const ctaPrimary = `${ctaBase} bg-emerald-600 font-semibold text-white hover:-translate-y-px hover:bg-emerald-500 hover:shadow-[0_6px_20px_rgba(34,145,79,0.35)]`;
+const ctaPrimary = `${ctaBase} bg-emerald-500 font-semibold text-[#04140c] hover:-translate-y-px hover:bg-emerald-400 hover:shadow-[0_6px_24px_rgba(16,185,129,0.35)]`;
 
 const starterFeatures = [
   "Everything in Free",
@@ -85,7 +85,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
   const pro = getPlanPrice("pro", interval);
   const saveBadge = (pct: number | undefined) =>
     pct != null ? (
-      <span className="rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+      <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-400">
         Save {pct}%
       </span>
     ) : null;
@@ -96,13 +96,13 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
         {/* Section header */}
         <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="mb-3 text-[11px] uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+            <div className="mb-3 text-[11px] uppercase tracking-widest text-emerald-400">
               Pricing
             </div>
-            <h2 className="font-serif text-[clamp(32px,4vw,48px)] leading-tight tracking-tight text-foreground">
+            <h2 className="font-serif text-[clamp(32px,4vw,48px)] leading-tight tracking-tight text-white">
               Simple pricing.
               <br />
-              No gotchas.
+              <em className="italic text-[#7D7D87]">No gotchas.</em>
             </h2>
           </div>
           <BillingIntervalToggle
@@ -156,11 +156,11 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
           </div>
 
           {/* STARTER */}
-          <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-foreground/15 bg-linear-to-b from-muted/60 to-background p-8 shadow-md md:p-10">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(26,107,74,0.07),transparent_55%)]" />
+          <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#1A1A1A] p-8 md:p-10">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(16,185,129,0.12),transparent_55%)]" />
 
             <div className="relative z-10 mb-6 min-h-[30px]">
-              <span className="inline-flex items-center gap-2 rounded-full border border-foreground/15 px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-[#A1A1AA]">
                 For solo creators
               </span>
             </div>
@@ -208,7 +208,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
             <div className="relative z-10 mt-auto pt-8">
               <Link
                 href={signedIn ? "/dashboard" : "/auth"}
-                className={`${ctaBase} border-2 border-emerald-600/50 text-emerald-700 hover:border-emerald-500 hover:bg-emerald-600/10 dark:text-emerald-400`}
+                className={`${ctaBase} border border-emerald-500/40 text-emerald-400 hover:border-emerald-400 hover:bg-emerald-500/10`}
               >
                 {signedIn ? "Go to dashboard →" : "Start your 3-day free trial"}
               </Link>
@@ -219,19 +219,19 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
           </div>
 
           {/* GROWTH */}
-          <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border-2 border-emerald-600/40 bg-background p-8 shadow-md md:p-10">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(26,107,74,0.1),transparent_55%)]" />
+          <div className="relative flex h-full scale-[1.02] flex-col overflow-hidden rounded-2xl border-2 border-emerald-500/50 bg-[#1A1A1A] p-8 shadow-[0_0_40px_rgba(16,185,129,0.12)] md:p-10">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(16,185,129,0.15),transparent_55%)]" />
 
             <div className="relative z-10 mb-6 min-h-[30px]">
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-600/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-emerald-400">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
                 Most popular
               </span>
             </div>
 
             <div className="relative z-10 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <div className={basePlanLabel}>Growth</div>
-              <p className="text-[12px] font-medium text-red-500">
+              <p className="text-[12px] font-medium text-red-400">
                 Lock this pricing forever
               </p>
             </div>
@@ -262,12 +262,12 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
               {growthFeatures.map((item) => (
                 <li key={item.text} className="flex items-start gap-3">
                   <span
-                    className={`mt-0.5 shrink-0 text-[14px] ${item.highlight ? "font-semibold text-emerald-600 dark:text-emerald-400" : "text-emerald-600/70 dark:text-emerald-400/70"}`}
+                    className={`mt-0.5 shrink-0 text-[14px] ${item.highlight ? "font-semibold text-emerald-400" : "text-emerald-400/70"}`}
                   >
                     ✓
                   </span>
                   <span
-                    className={`text-[14px] leading-snug ${item.highlight ? "font-medium text-foreground" : "text-muted-foreground"}`}
+                    className={`text-[14px] leading-snug ${item.highlight ? "font-medium text-white" : "text-[#A1A1AA]"}`}
                   >
                     {item.text}
                   </span>
@@ -290,19 +290,19 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
 
           {/* PRO */}
           <div
-            className={`${basePlanCard} relative overflow-hidden border-emerald-600/25`}
+            className={`${basePlanCard} relative overflow-hidden border-emerald-500/25`}
           >
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(26,107,74,0.07),transparent_55%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(16,185,129,0.1),transparent_55%)]" />
 
             <div className="relative z-10 mb-6 min-h-[30px]">
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-600/25 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-emerald-400">
                 For teams & agencies
               </span>
             </div>
 
             <div className="relative z-10 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <div className={basePlanLabel}>Pro</div>
-              <p className="text-[12px] font-medium text-red-500">
+              <p className="text-[12px] font-medium text-red-400">
                 Lock this pricing forever
               </p>
             </div>
@@ -332,12 +332,12 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
               {proFeatures.map((item) => (
                 <li key={item.text} className="flex items-start gap-3">
                   <span
-                    className={`mt-0.5 shrink-0 text-[14px] ${item.highlight ? "font-semibold text-emerald-600 dark:text-emerald-400" : "text-emerald-600/70 dark:text-emerald-400/70"}`}
+                    className={`mt-0.5 shrink-0 text-[14px] ${item.highlight ? "font-semibold text-emerald-400" : "text-emerald-400/70"}`}
                   >
                     ✓
                   </span>
                   <span
-                    className={`text-[14px] leading-snug ${item.highlight ? "font-medium text-foreground" : "text-muted-foreground"}`}
+                    className={`text-[14px] leading-snug ${item.highlight ? "font-medium text-white" : "text-[#A1A1AA]"}`}
                   >
                     {item.text}
                   </span>

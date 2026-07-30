@@ -1,11 +1,20 @@
 import { lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
-import { CheckCircle } from "lucide-react";
+import { motion } from "framer-motion";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { GridBackground } from "./GridBackground";
 
-const FlowAnimation = lazy(() =>
-  import("./FlowAnimation").then((m) => ({ default: m.FlowAnimation })),
+const HeroIsoAnimation = lazy(() =>
+  import("./hero-illustrations/HeroIsoAnimation").then((m) => ({
+    default: m.HeroIsoAnimation,
+  })),
+);
+
+const HeroFloatingBrand = lazy(() =>
+  import("./hero-illustrations/HeroFloatingBrand").then((m) => ({
+    default: m.HeroFloatingBrand,
+  })),
 );
 
 function developersHref(pathname: string) {
@@ -14,85 +23,108 @@ function developersHref(pathname: string) {
 
 export function Hero({ signedIn = false }: { signedIn?: boolean }) {
   const { pathname } = useLocation();
-  // FlowAnimation is CSS-hidden on small screens; skip mount so mobile never
-  // downloads framer-motion or hub logo images.
-  const showFlow = useMediaQuery("(min-width: 1024px)");
+  // Skip heavy framer iso stack on very small screens for LCP; show scaled peek from md.
+  const showIso = useMediaQuery("(min-width: 640px)");
+
   return (
-    <section className="px-4 pb-8 pt-12 sm:px-6 sm:pt-16 lg:px-8 lg:pt-28">
-      <div className="mx-auto max-w-[1180px]">
-        {/* Two-column layout */}
-        <div className="grid items-start gap-12 lg:grid-cols-[1fr_420px] lg:gap-16">
-          {/* Left column - Copy */}
-          <div>
-            {/* Headline: only "all your socials" in serif italic emerald (1–2 words) */}
-            <h1 className="mb-6 mt-0 text-[clamp(36px,8vw,72px)] leading-[1.08] tracking-tight text-foreground sm:mt-4 lg:mt-10">
-              <span className="font-serif text-[clamp(36px,8vw,72px)] leading-[1.08] tracking-tight text-foreground">
-                Post and schedule to{" "}
-              </span>
-              <em className="font-serif italic text-[#1a6b4a] dark:text-[#00ff77]">
-                all your socials
-              </em>
-              <span className="font-serif text-[clamp(36px,8vw,72px)] leading-[1.08] tracking-tight text-foreground">
-                {" "}
-                from one place.
-              </span>
-            </h1>
+    <section className="relative overflow-hidden px-4 pb-6 pt-14 sm:px-6 sm:pt-20 lg:px-8 lg:pt-28">
+      <GridBackground />
 
-            {/* Subtitle - benefit first, no feature names */}
-            <p className="mb-8 max-w-[480px] text-base leading-relaxed text-muted-foreground sm:mb-10 sm:text-[17px]">
-              Simple to use, with built-in tools that keep your content working
-              even after you publish.
-            </p>
+      <div className="relative z-10 mx-auto w-full max-w-[1400px]">
+        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-6 xl:gap-10">
+          <div className="relative z-20 max-w-[560px]">
+            <motion.p
+              className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/5 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-emerald-400"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+              Write once · Publish everywhere
+            </motion.p>
 
-            {/* CTA */}
-            <div className="flex flex-col gap-4">
+            <motion.h1
+              className="mb-6 font-serif text-[clamp(40px,7vw,72px)] leading-[1.05] tracking-tight text-white"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.6,
+                delay: 0.08,
+                ease: [0.23, 1, 0.32, 1],
+              }}
+            >
+              Grow and manage your{" "}
+              <em className="italic text-emerald-400">socials</em>, smarter.
+            </motion.h1>
+
+            <motion.p
+              className="mb-9 max-w-[440px] text-[16px] leading-relaxed text-[#A1A1AA] sm:text-[17px]"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.55,
+                delay: 0.16,
+                ease: [0.23, 1, 0.32, 1],
+              }}
+            >
+              Schedule and publish to 9 platforms from one place — with tools
+              that keep working after you hit post.
+            </motion.p>
+
+            <motion.div
+              className="flex flex-col gap-4"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.55,
+                delay: 0.24,
+                ease: [0.23, 1, 0.32, 1],
+              }}
+            >
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
                 <Link
                   href={signedIn ? "/dashboard" : "/auth"}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-foreground px-7 py-3.5 text-[15px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900 sm:w-auto"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-[11px] bg-emerald-500 px-7 py-3.5 text-[15px] font-semibold text-[#04140c] shadow-[0_0_32px_rgba(16,185,129,0.35)] transition-all hover:scale-[1.02] hover:bg-emerald-400 sm:w-auto"
                 >
-                  {signedIn ? "Go to dashboard" : "Start posting"}
+                  {signedIn ? "Go to dashboard" : "Start posting free"}
                   <span aria-hidden="true">→</span>
                 </Link>
-                <span className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground sm:justify-start">
-                  <CheckCircle className="h-3.5 w-3.5 shrink-0" /> Start free · No
-                  credit card required
-                </span>
-              </div>
-              {/* Social proof - under CTA to reinforce action */}
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="h-1.5 w-1.5 ml-2 shrink-0 rounded-full bg-emerald-500/80" />
-                Be among the first to try Social0
-              </p>
-              <p className="text-[13px] text-muted-foreground">
                 <Link
                   href={developersHref(pathname)}
-                  className="underline decoration-muted-foreground/50 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground"
+                  className="inline-flex items-center justify-center gap-2 text-[14px] text-[#A1A1AA] transition-colors hover:text-white"
                 >
                   REST API, MCP & CLI
+                  <span aria-hidden className="text-emerald-400">
+                    ↗
+                  </span>
                 </Link>
-                {" · "}for builders and AI workflows
+              </div>
+              <p className="text-[13px] text-[#7D7D87]">
+                Start free · No credit card · Cancel anytime
               </p>
-            </div>
+            </motion.div>
           </div>
 
-          {/* Right column - Animated beam: you → Social0 → every platform */}
-          {/* Inverted vs page theme: dark card on light theme, light card on dark */}
-          <div className="hidden self-center lg:block">
-            {showFlow ? (
+          <div className="relative mx-auto w-full max-w-[720px] lg:mx-0 lg:justify-self-end">
+            {showIso ? (
               <Suspense
                 fallback={
                   <div
-                    className="aspect-[4/5] w-full max-w-[420px] rounded-2xl border border-border bg-muted/40"
+                    className="aspect-[5/4] w-full rounded-2xl border border-white/5 bg-white/[0.02]"
                     aria-hidden
                   />
                 }
               >
-                <FlowAnimation className="shadow-[0_40px_80px_rgba(0,0,0,0.18)] dark:shadow-[0_40px_80px_rgba(0,0,0,0.12)]" />
+                <div className="relative origin-top scale-[0.72] sm:scale-[0.8] md:scale-[0.85] lg:origin-top-right lg:scale-[0.78] xl:scale-[0.92] 2xl:scale-100">
+                  <Suspense fallback={null}>
+                    <HeroFloatingBrand className="absolute -right-2 top-8 z-40 drop-shadow-[0_8px_24px_rgba(16,185,129,0.35)] sm:right-8 sm:top-4" />
+                  </Suspense>
+                  <HeroIsoAnimation />
+                </div>
               </Suspense>
             ) : (
               <div
-                className="aspect-[4/5] w-full max-w-[420px] rounded-2xl border border-border bg-muted/40"
+                className="mx-auto h-40 w-full max-w-sm rounded-xl border border-emerald-500/20 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.15),transparent_70%)]"
                 aria-hidden
               />
             )}

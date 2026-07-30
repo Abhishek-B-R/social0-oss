@@ -36,7 +36,7 @@ export function HowItWorks() {
         <div className="grid gap-px overflow-hidden rounded-2xl bg-border md:grid-cols-3">
           {steps.map((step, i) => (
             <div key={step.title} className="bg-background p-3 md:p-4">
-              <div className="group flex h-full flex-col rounded-2xl p-5 transition-colors duration-300 ease-out hover:bg-[#EBE6DE] md:p-6 dark:hover:bg-white/[0.06]">
+              <div className="group flex h-full flex-col rounded-2xl p-5 transition-colors duration-300 ease-out hover:bg-white/[0.04] md:p-6">
                 <div className="mb-6 flex items-center gap-3 font-mono text-[11px] tracking-widest text-muted-foreground">
                   0{i + 1}
                   <div className="h-px flex-1 bg-border transition-colors duration-300 group-hover:bg-foreground/10" />

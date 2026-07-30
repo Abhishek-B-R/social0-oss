@@ -17,7 +17,7 @@ const linkClass =
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground landing">
+    <div className="landing landing-page min-h-screen flex flex-col bg-background text-foreground">
       <LandingHeader />
       <main className="flex-1 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <a

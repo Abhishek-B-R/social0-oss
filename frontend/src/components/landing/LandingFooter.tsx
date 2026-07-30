@@ -22,12 +22,12 @@ export function LandingFooter() {
   const homeHref = pathname === "/home" ? "/home" : "/";
 
   return (
-    <footer className="border-t border-border bg-background py-12 dark:bg-background/50">
-      <div className="mx-auto flex max-w-275 flex-col gap-6 px-6 lg:px-8">
+    <footer className="border-t border-white/5 bg-[#111111] py-12">
+      <div className="mx-auto flex max-w-[1180px] flex-col gap-6 px-6 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-6">
           <Link
             href={homeHref}
-            className="font-serif text-xl tracking-tight text-foreground"
+            className="font-serif text-xl tracking-tight text-white"
           >
             Social0
           </Link>

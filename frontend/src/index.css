@@ -202,6 +202,10 @@ html {
   overflow-x: clip;
 }
 
+.landing-page #features,
+.landing-page #platforms,
+.landing-page #pricing,
+.landing-page #faq,
 .landing #features,
 .landing #platforms,
 .landing #pricing,
@@ -455,6 +459,9 @@ html {
    Does NOT affect dashboard or any other page
    ============================================ */
 
+/* Landing font + theme tokens.
+   Note: `landing` is also applied to some dashboard headings for Instrument Serif —
+   keep dual light/dark here so those pages are not forced charcoal. */
 .landing {
   --background: #fafaf8;
   --foreground: #0a0a0a;
@@ -511,4 +518,34 @@ html {
   --font-sans: "Geist", "Geist Fallback", system-ui, sans-serif;
   --font-serif: "Instrument Serif", Georgia, serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", monospace;
+}
+
+/* Conversion isometric marketing surface — always charcoal + emerald */
+.landing-page,
+.landing-page.landing,
+.dark .landing-page,
+.dark .landing-page.landing {
+  --background: #151515;
+  --foreground: #ffffff;
+  --card: #1a1a1a;
+  --card-foreground: #fafaf8;
+  --popover: #1a1a1a;
+  --popover-foreground: #fafaf8;
+  --primary: #10b981;
+  --primary-foreground: #04140c;
+  --secondary: #1e1e1e;
+  --secondary-foreground: #fafaf8;
+  --muted: #1e1e1e;
+  --muted-foreground: #a1a1aa;
+  --accent: #10b981;
+  --accent-light: #34d399;
+  --accent-hover: #059669;
+  --accent-foreground: #04140c;
+  --destructive: #dc2626;
+  --destructive-foreground: #fef2f2;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: #262626;
+  --ring: #10b981;
+  --hero-everywhere: #34d399;
+  color-scheme: dark;
 }
