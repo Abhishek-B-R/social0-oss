@@ -1053,69 +1053,93 @@ export function WfSecure({ className = "" }: { className?: string }) {
   );
 }
 
-/** Indie builder: terminal shipping to socials */
+/** Indie builder: Social0 composer → X / Bluesky / Threads */
 export function WfBuilder({ className = "" }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 260 140"
+      viewBox="0 0 280 160"
       className={className || "h-full w-full"}
       aria-hidden
     >
+      <rect width="280" height="160" rx="14" fill={C.bg} stroke={C.stroke} />
+      <WinChrome w={280} title="Ship in public" />
       <rect
-        width="140"
-        height="120"
-        rx="12"
-        x="8"
-        y="10"
+        x="12"
+        y="32"
+        width="130"
+        height="116"
+        rx="10"
         fill={C.elevated}
-        stroke={C.stroke}
+        stroke={C.strokeSoft}
       />
-      <circle cx="22" cy="26" r="3" fill="#ff5f57" />
-      <circle cx="34" cy="26" r="3" fill="#febc2e" />
-      <circle cx="46" cy="26" r="3" fill="#28c840" />
+      <circle cx="26" cy="46" r="3" fill="#ff5f57" />
+      <circle cx="38" cy="46" r="3" fill="#febc2e" />
+      <circle cx="50" cy="46" r="3" fill="#28c840" />
       <text
-        x="20"
-        y="48"
+        x="22"
+        y="68"
         fill={C.accentHot}
         fontSize="9"
         fontFamily="ui-monospace, Menlo, monospace"
       >
-        $ ship --public
+        $ social0 post
       </text>
-      <rect x="20" y="58" width="90" height="4" rx="1" fill={C.strokeSoft} />
-      <rect x="20" y="68" width="70" height="4" rx="1" fill={C.strokeSoft} />
-      <rect x="20" y="88" width="56" height="18" rx="6" fill={C.accent} />
+      <rect x="22" y="78" width="96" height="4" rx="1" fill={C.strokeSoft} />
+      <rect x="22" y="88" width="78" height="4" rx="1" fill={C.strokeSoft} />
+      <rect x="22" y="98" width="88" height="4" rx="1" fill={C.strokeSoft} />
+      <rect x="22" y="116" width="64" height="20" rx="8" fill={C.accent} />
       <text
-        x="48"
-        y="100"
+        x="54"
+        y="129"
         textAnchor="middle"
         fill={C.inkInverse}
-        fontSize="8"
+        fontSize="9"
         fontFamily="ui-sans-serif, system-ui, sans-serif"
         fontWeight="700"
       >
-        Post
+        Publish
       </text>
       {(["x", "bluesky", "threads"] as const).map((logo, i) => {
-        const y = 28 + i * 36;
+        const y = 48 + i * 34;
+        const labels = { x: "X", bluesky: "Bluesky", threads: "Threads" };
         return (
           <g key={logo}>
             <path
-              d={`M148 70 C170 ${70 + (y - 70) * 0.3}, 190 ${y}, 208 ${y}`}
+              d={`M142 90 C168 ${90 + (y - 90) * 0.35}, 190 ${y}, 200 ${y}`}
               fill="none"
               stroke={C.accent}
-              strokeWidth="1.2"
+              strokeWidth="1.3"
               strokeDasharray="3 3"
+              opacity="0.8"
+            />
+            <rect
+              x="202"
+              y={y - 14}
+              width="66"
+              height="28"
+              rx="8"
+              fill={C.panel}
+              stroke={C.strokeSoft}
             />
             <circle
-              cx="224"
+              cx="218"
               cy={y}
-              r="14"
-              fill={C.bg}
+              r="9"
+              fill={C.elevated}
               stroke={C.accent}
-              strokeWidth="1.5"
+              strokeWidth="1.3"
             />
-            <LogoMark logo={logo} x={218} y={y - 6} size={12} fill={C.accent} />
+            <LogoMark logo={logo} x={213} y={y - 5} size={10} fill={C.accent} />
+            <text
+              x="232"
+              y={y + 3}
+              fill={C.ink}
+              fontSize="8"
+              fontFamily="ui-sans-serif, system-ui, sans-serif"
+              fontWeight="500"
+            >
+              {labels[logo]}
+            </text>
           </g>
         );
       })}
@@ -1123,77 +1147,82 @@ export function WfBuilder({ className = "" }: { className?: string }) {
   );
 }
 
-/** Creator: media frame fanning to IG/YT/TT */
+/** Creator: media post fanning to IG / YT / TikTok */
 export function WfCreator({ className = "" }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 260 140"
+      viewBox="0 0 280 160"
       className={className || "h-full w-full"}
       aria-hidden
     >
+      <rect width="280" height="160" rx="14" fill={C.bg} stroke={C.stroke} />
+      <WinChrome w={280} title="Media post" />
       <rect
-        x="16"
-        y="20"
-        width="100"
-        height="100"
+        x="14"
+        y="34"
+        width="108"
+        height="112"
         rx="12"
         fill={C.panel}
         stroke={C.stroke}
       />
       <rect
-        x="28"
-        y="36"
-        width="76"
-        height="52"
-        rx="6"
+        x="24"
+        y="46"
+        width="88"
+        height="58"
+        rx="8"
         fill={C.elevated}
         stroke={C.strokeSoft}
       />
-      <polygon
-        points="58,48 78,62 58,76"
-        fill={C.accent}
-        opacity="0.9"
-      />
-      <rect x="28" y="96" width="48" height="6" rx="2" fill={C.strokeSoft} />
-      <rect x="28" y="108" width="64" height="4" rx="1" fill={C.strokeSoft} />
+      <circle cx="68" cy="75" r="16" fill={C.accent} opacity="0.9" />
+      <polygon points="62,66 78,75 62,84" fill={C.inkInverse} />
+      <rect x="24" y="114" width="56" height="5" rx="2" fill={C.strokeSoft} />
+      <rect x="24" y="124" width="72" height="4" rx="1" fill={C.strokeSoft} />
+      <rect x="24" y="132" width="40" height="4" rx="1" fill={C.strokeSoft} />
       {(["ig", "yt", "tt"] as const).map((logo, i) => {
-        const y = 30 + i * 36;
+        const y = 48 + i * 34;
+        const labels = { ig: "Instagram", yt: "YouTube", tt: "TikTok" };
         return (
           <g key={logo}>
             <line
-              x1="116"
-              y1="70"
-              x2="168"
-              y2={y + 14}
+              x1="122"
+              y1="90"
+              x2="158"
+              y2={y}
               stroke={C.accent}
-              strokeWidth="1.2"
+              strokeWidth="1.3"
               strokeDasharray="3 3"
+              opacity="0.8"
             />
             <rect
-              x="170"
-              y={y}
-              width="72"
+              x="160"
+              y={y - 14}
+              width="106"
               height="28"
               rx="8"
-              fill={C.bg}
-              stroke={C.strokeSoft}
+              fill={C.panel}
+              stroke={i === 0 ? C.accent : C.strokeSoft}
+              strokeWidth={i === 0 ? 1.4 : 1}
             />
             <circle
-              cx="186"
-              cy={y + 14}
+              cx="176"
+              cy={y}
               r="9"
               fill={C.elevated}
               stroke={C.accent}
             />
-            <LogoMark logo={logo} x={181} y={y + 9} size={10} fill={C.accent} />
-            <rect
-              x="200"
-              y={y + 10}
-              width="32"
-              height="4"
-              rx="1"
-              fill={C.strokeSoft}
-            />
+            <LogoMark logo={logo} x={171} y={y - 5} size={10} fill={C.accent} />
+            <text
+              x="192"
+              y={y + 3}
+              fill={C.ink}
+              fontSize="8"
+              fontFamily="ui-sans-serif, system-ui, sans-serif"
+              fontWeight="500"
+            >
+              {labels[logo]}
+            </text>
           </g>
         );
       })}
@@ -1201,89 +1230,117 @@ export function WfCreator({ className = "" }: { className?: string }) {
   );
 }
 
-/** Marketer: schedule sidebar + growth bars */
+/** Marketer: schedule queue + reach chart */
 export function WfMarketer({ className = "" }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 260 140"
+      viewBox="0 0 280 160"
       className={className || "h-full w-full"}
       aria-hidden
     >
+      <rect width="280" height="160" rx="14" fill={C.bg} stroke={C.stroke} />
+      <WinChrome w={280} title="Campaign queue" />
       <rect
         x="12"
-        y="16"
-        width="120"
-        height="108"
-        rx="12"
+        y="32"
+        width="132"
+        height="116"
+        rx="10"
         fill={C.panel}
-        stroke={C.stroke}
+        stroke={C.strokeSoft}
       />
       <text
         x="24"
-        y="38"
+        y="52"
         fill={C.ink}
-        fontSize="9"
+        fontSize="10"
         fontFamily="ui-sans-serif, system-ui, sans-serif"
         fontWeight="600"
       >
         Schedule post
       </text>
-      <rect x="24" y="48" width="32" height="14" rx="7" fill={C.accent} />
-      <circle cx="46" cy="55" r="5" fill={C.inkInverse} />
+      <rect x="24" y="62" width="36" height="16" rx="8" fill={C.accent} />
+      <circle cx="50" cy="70" r="5.5" fill={C.inkInverse} />
+      <text
+        x="70"
+        y="73"
+        fill={C.strokeBright}
+        fontSize="8"
+        fontFamily="ui-sans-serif, system-ui, sans-serif"
+      >
+        On
+      </text>
       <rect
         x="24"
-        y="74"
-        width="96"
-        height="18"
-        rx="6"
+        y="90"
+        width="108"
+        height="22"
+        rx="7"
         fill={C.elevated}
         stroke={C.strokeSoft}
       />
       <text
-        x="72"
-        y="86"
+        x="78"
+        y="104"
         textAnchor="middle"
         fill={C.strokeBright}
         fontSize="8"
         fontFamily="ui-sans-serif, system-ui, sans-serif"
       >
-        Mon–Fri · 9am
+        Mon–Fri · 9:00 AM
       </text>
-      <rect x="24" y="100" width="96" height="16" rx="8" fill={C.accent} />
+      <rect x="24" y="122" width="108" height="18" rx="8" fill={C.accent} />
       <text
-        x="72"
-        y="111"
+        x="78"
+        y="134"
         textAnchor="middle"
         fill={C.inkInverse}
-        fontSize="8"
+        fontSize="9"
         fontFamily="ui-sans-serif, system-ui, sans-serif"
         fontWeight="700"
       >
-        Queue
+        Add to queue
       </text>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <rect
-          key={i}
-          x={152 + i * 18}
-          y={108 - (i + 1) * 14}
-          width="12"
-          height={(i + 1) * 14}
-          rx="2"
-          fill={i === 4 ? C.accentHot : C.muted}
-          stroke={C.strokeSoft}
-        />
-      ))}
+      <rect
+        x="156"
+        y="32"
+        width="112"
+        height="116"
+        rx="10"
+        fill={C.elevated}
+        stroke={C.strokeSoft}
+      />
       <text
-        x="196"
-        y="128"
-        textAnchor="middle"
-        fill={C.strokeBright}
-        fontSize="8"
+        x="168"
+        y="52"
+        fill={C.ink}
+        fontSize="9"
         fontFamily="ui-sans-serif, system-ui, sans-serif"
-        opacity="0.6"
+        fontWeight="600"
       >
         Reach
       </text>
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <rect
+          key={i}
+          x={168 + i * 14}
+          y={128 - (8 + i * 10)}
+          width="10"
+          height={8 + i * 10}
+          rx="2"
+          fill={i === 5 ? C.accentHot : i > 2 ? C.accent : C.muted}
+          opacity={i === 5 ? 1 : 0.85}
+        />
+      ))}
+      <path
+        d="M168 70 C190 68, 210 50, 248 42"
+        fill="none"
+        stroke={C.accent}
+        strokeWidth="1.5"
+        opacity="0.7"
+      />
+      <circle cx="248" cy="42" r="4" fill={C.accentHot} />
     </svg>
   );
 }
+

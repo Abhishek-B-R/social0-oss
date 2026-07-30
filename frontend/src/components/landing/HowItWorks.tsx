@@ -4,6 +4,7 @@ import {
   WfComposer,
   WfScheduleCreate,
 } from "./wireframes/ProductWireframes";
+import { WireframeStage } from "./wireframes/WireframeStage";
 
 const steps = [
   {
@@ -31,19 +32,16 @@ const steps = [
 
 function StepVisual({ kind }: { kind: "connect" | "write" | "publish" }) {
   if (kind === "connect")
-    return <WfConnections className="h-[148px] w-full" />;
-  if (kind === "write") return <WfComposer className="h-[148px] w-full" />;
-  return <WfScheduleCreate className="h-[148px] w-full" />;
+    return <WfConnections className="h-[168px] w-full" />;
+  if (kind === "write") return <WfComposer className="h-[168px] w-full" />;
+  return <WfScheduleCreate className="h-[168px] w-full" />;
 }
 
 export function HowItWorks() {
   return (
     <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
-      <div className="mx-auto max-w-[1080px]">
+      <div className="mx-auto max-w-[1120px]">
         <div className="mb-10 flex flex-col items-center gap-3 text-center">
-          <div className="flex h-8 items-center gap-2 rounded-[11px] border border-emerald-500/50 bg-emerald-500/5 px-2.5 text-xs font-medium text-emerald-800 dark:text-emerald-400/90">
-            How it works
-          </div>
           <h2 className="max-w-md font-serif text-[clamp(28px,4vw,40px)] italic leading-tight text-muted-foreground">
             Three steps. Then you’re posting.
           </h2>
@@ -67,9 +65,9 @@ export function HowItWorks() {
                     />
                   </div>
                 </div>
-                <div className="mb-5 overflow-hidden rounded-2xl border border-border/50 bg-[var(--iso-bg)] p-2 dark:border-white/5">
+                <WireframeStage className="mb-5" tall>
                   <StepVisual kind={step.visual} />
-                </div>
+                </WireframeStage>
                 <h3 className="mb-2 font-serif text-xl tracking-tight text-foreground">
                   {step.title}
                 </h3>
