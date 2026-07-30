@@ -24,12 +24,12 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
   const { pathname } = useLocation();
 
   return (
-    <section className="relative overflow-hidden px-4 pb-6 pt-14 sm:px-6 sm:pt-20 lg:px-8 lg:pt-28">
+    <section className="relative overflow-x-hidden px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-20 lg:px-8 lg:pb-24 lg:pt-24">
       <GridBackground />
 
-      <div className="relative z-10 mx-auto w-full max-w-[1400px]">
-        <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-6 xl:gap-10">
-          <div className="relative z-20 max-w-[560px]">
+      <div className="relative z-10 mx-auto w-full max-w-[1100px]">
+        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-6 xl:gap-8">
+          <div className="relative z-20 mx-auto max-w-[440px] text-center lg:mx-0 lg:text-left">
             <motion.p
               className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/5 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400"
               initial={{ opacity: 0, y: 8 }}
@@ -41,7 +41,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
             </motion.p>
 
             <motion.h1
-              className="mb-6 font-serif text-[clamp(40px,7vw,72px)] leading-[1.05] tracking-tight text-foreground"
+              className="mb-5 font-serif text-[clamp(36px,6vw,60px)] leading-[1.06] tracking-tight text-foreground"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
@@ -58,7 +58,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
             </motion.h1>
 
             <motion.p
-              className="mb-9 max-w-[440px] text-[16px] leading-relaxed text-muted-foreground sm:text-[17px]"
+              className="mb-8 text-[15px] leading-relaxed text-muted-foreground sm:text-[16px]"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
@@ -72,7 +72,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
             </motion.p>
 
             <motion.div
-              className="flex flex-col gap-4"
+              className="flex flex-col items-center gap-4 lg:items-start"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
@@ -81,7 +81,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
                 ease: [0.23, 1, 0.32, 1],
               }}
             >
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-4 lg:justify-start">
                 <Link
                   href={signedIn ? "/dashboard" : "/auth"}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-[11px] bg-emerald-500 px-7 py-3.5 text-[15px] font-semibold text-[#04140c] shadow-[0_0_32px_rgba(16,185,129,0.25)] transition-all hover:scale-[1.02] hover:bg-emerald-400 dark:shadow-[0_0_32px_rgba(16,185,129,0.35)] sm:w-auto"
@@ -94,7 +94,10 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
                   className="inline-flex items-center justify-center gap-2 text-[14px] text-muted-foreground transition-colors hover:text-foreground"
                 >
                   REST API, MCP & CLI
-                  <span aria-hidden className="text-emerald-600 dark:text-emerald-400">
+                  <span
+                    aria-hidden
+                    className="text-emerald-600 dark:text-emerald-400"
+                  >
                     ↗
                   </span>
                 </Link>
@@ -105,8 +108,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
             </motion.div>
           </div>
 
-          {/* Iso art — theme-aware wireframes via --iso-* CSS vars */}
-          <div className="relative mx-auto w-full max-w-[720px] lg:mx-0 lg:justify-self-end">
+          <div className="relative mx-auto w-full max-w-[640px] overflow-visible lg:mx-0 lg:justify-self-end">
             <Suspense
               fallback={
                 <div
@@ -115,9 +117,9 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
                 />
               }
             >
-              <div className="relative origin-top scale-[0.58] sm:scale-[0.72] md:scale-[0.85] lg:origin-top-right lg:scale-[0.78] xl:scale-[0.92] 2xl:scale-100 -mb-24 sm:-mb-16 md:-mb-8 lg:mb-0">
+              <div className="relative origin-top scale-[0.62] sm:scale-[0.75] md:scale-[0.85] lg:origin-top-right lg:scale-[0.82] xl:scale-[0.92]">
                 <Suspense fallback={null}>
-                  <HeroFloatingBrand className="absolute -right-2 top-8 z-40 drop-shadow-[0_8px_24px_rgba(16,185,129,0.35)] sm:right-8 sm:top-4" />
+                  <HeroFloatingBrand className="absolute -right-2 top-6 z-40 drop-shadow-[0_8px_24px_rgba(16,185,129,0.35)] sm:right-6 sm:top-2" />
                 </Suspense>
                 <HeroIsoAnimation />
               </div>

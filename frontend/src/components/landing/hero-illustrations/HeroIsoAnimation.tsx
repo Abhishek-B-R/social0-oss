@@ -10,21 +10,21 @@ const EXPLOSION = {
 } as const;
 
 const FINAL_Y = {
-  top: -96,
+  top: -72,
   middle: 0,
-  bottom: 96,
+  bottom: 56,
 } as const;
 
 const EASE_OUT: [number, number, number, number] = [0.23, 1, 0.32, 1];
 
 const CORNERS = {
   topToMiddle: [
-    { x: 280, y: 170 },
-    { x: -140, y: 170 },
+    { x: 260, y: 155 },
+    { x: -130, y: 155 },
   ],
   middleToBottom: [
-    { x: 290, y: 310 },
-    { x: -130, y: 310 },
+    { x: 270, y: 290 },
+    { x: -120, y: 290 },
   ],
 } as const;
 
@@ -82,8 +82,8 @@ export function HeroIsoAnimation({ className = "" }: { className?: string }) {
   const lineHeight = Math.abs(FINAL_Y.top);
 
   return (
-    <div className={`relative ${className}`}>
-      <div className="mt-8 flex flex-col items-center sm:mt-12 md:mt-16">
+    <div className={`relative pb-20 sm:pb-24 md:pb-28 ${className}`}>
+      <div className="mt-6 flex flex-col items-center sm:mt-10 md:mt-12">
         <motion.div
           className="relative z-30 flex justify-center"
           initial={{ y: 0, opacity: 0.6 }}
@@ -111,12 +111,12 @@ export function HeroIsoAnimation({ className = "" }: { className?: string }) {
         </div>
 
         <motion.div
-          className="relative z-20 -mt-56 ml-8 flex justify-center sm:-mt-64 md:-mt-72 md:ml-16"
+          className="relative z-20 -mt-48 ml-6 flex justify-center sm:-mt-56 md:-mt-60 md:ml-12"
           initial={{ opacity: 0.5 }}
           animate={{ opacity: 1 }}
           transition={{ delay: EXPLOSION.initialDelay + 0.1, duration: 0.6 }}
         >
-          <HeroMiddleIllustration className="h-auto w-[min(520px,78vw)]" />
+          <HeroMiddleIllustration className="h-auto w-[min(540px,82vw)]" />
         </motion.div>
 
         <div className="pointer-events-none absolute inset-0 z-15">
@@ -125,7 +125,7 @@ export function HeroIsoAnimation({ className = "" }: { className?: string }) {
               key={`mb-${index}`}
               x={corner.x}
               topOffset={corner.y}
-              height={lineHeight}
+              height={Math.abs(FINAL_Y.bottom)}
               delay={EXPLOSION.initialDelay}
               direction="down"
             />
@@ -133,7 +133,7 @@ export function HeroIsoAnimation({ className = "" }: { className?: string }) {
         </div>
 
         <motion.div
-          className="relative z-10 -mt-52 ml-1 flex justify-center sm:-mt-60 md:-mt-68"
+          className="relative z-10 -mt-44 ml-1 flex justify-center sm:-mt-52 md:-mt-56"
           initial={{ y: 0, opacity: 0.5 }}
           animate={{ y: FINAL_Y.bottom, opacity: 1 }}
           transition={{
