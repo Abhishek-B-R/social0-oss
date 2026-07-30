@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { useState, useEffect } from "react";
 import { Menu, X, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useSession } from "@/lib/auth-client";
 import Image from "@/components/AppImage";
 
@@ -32,29 +33,20 @@ export function LandingHeader() {
   const pathname = useLocation().pathname;
   const navLinks = navLinksForPath();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
   const { data: session } = useSession();
   const user = session?.user;
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    const systemDark = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
-
-    const preferDark =
-      savedTheme === "dark" || (!savedTheme && systemDark);
-
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDarkMode(preferDark);
-    document.documentElement.classList.toggle("dark", preferDark);
+    setMounted(true);
   }, []);
 
+  const darkMode = mounted && resolvedTheme === "dark";
+
   const toggleDarkMode = () => {
-    const next = !darkMode;
-    setDarkMode(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("theme", next ? "dark" : "light");
+    setTheme(darkMode ? "light" : "dark");
   };
 
   return (
