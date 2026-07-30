@@ -15,6 +15,7 @@ import {
   CreditCard,
   GearSix,
   House,
+  Megaphone,
   Monitor,
   Moon,
   PlugsConnected,
@@ -251,6 +252,12 @@ function AccountMenuPanel({
           label="Docs"
           href={DOCS_DASHBOARD_URL}
           external
+          onClick={onClose}
+        />
+        <MenuRow
+          icon={Megaphone}
+          label="Feedback & Feature Request"
+          href="/dashboard/feedback"
           onClick={onClose}
         />
         <MenuRow

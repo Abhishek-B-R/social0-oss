@@ -684,7 +684,7 @@ export function Composer() {
             "rounded-[1.35rem] border bg-composer-card sm:rounded-[1.5rem]",
             "border-composer-card-border/90",
             "shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_10px_36px_-18px_rgba(0,0,0,0.45)]",
-            "p-4 sm:p-5",
+            "p-5 sm:p-6",
             "transition-[border-color,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
             "focus-within:border-accent/40 focus-within:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent),0_10px_36px_-18px_rgba(0,0,0,0.45)]",
             isFileDragOver &&
@@ -701,7 +701,7 @@ export function Composer() {
         >
           <textarea
             ref={textareaRef}
-            className="min-h-21 max-h-80 w-full resize-none overflow-y-auto border-none bg-transparent px-1 py-1 text-[15px] leading-relaxed text-text outline-none placeholder:text-text-muted/80 sm:min-h-23 sm:text-base"
+            className="min-h-21 max-h-80 w-full resize-none overflow-y-auto border-none bg-transparent px-2 py-1.5 text-[15px] leading-relaxed text-text outline-none placeholder:text-text-muted/80 sm:min-h-23 sm:text-base"
             placeholder="Share what's on your mind..."
             value={text}
             onChange={(e) => setText(e.target.value)}
