@@ -5,7 +5,7 @@ import {
   CalendarDots,
   DotsThree,
   PlugsConnected,
-  Rows,
+  List,
 } from "@/icons/phosphor";
 import { TiktokCreateButton } from "./TiktokCreateButton";
 import {
@@ -38,7 +38,7 @@ export function DashboardBottomNav() {
     icon?: NavItemIcon;
     key: string;
   }> = [
-    { key: "posts", href: dash("posts"), label: "Posts", icon: Rows },
+    { key: "posts", href: dash("posts"), label: "Posts", icon: List },
     {
       key: "calendar",
       href: dash("calendar"),

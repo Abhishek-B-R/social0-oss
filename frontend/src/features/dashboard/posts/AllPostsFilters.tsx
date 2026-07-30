@@ -41,7 +41,7 @@ export function AllPostsFilters({
   };
 
   const selectClass =
-    "min-h-[44px] rounded-lg border border-input bg-bg px-3 py-2.5 text-sm text-text shadow-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 touch-manipulation sm:min-h-0 sm:py-2";
+    "min-h-[44px] rounded-lg border border-input bg-white px-3 py-2.5 text-sm text-text shadow-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 touch-manipulation sm:min-h-0 sm:py-2 dark:bg-bg-elevated";
 
   return (
     <div className="flex flex-wrap items-center gap-2">

@@ -8,10 +8,10 @@ import {
   CalendarDots,
   CheckCircle,
   Clock,
+  List,
   NoteBlank,
   Pencil,
   PlugsConnected,
-  Rows,
   SidebarSimple,
   SignIn,
   Sliders,
@@ -364,7 +364,7 @@ export function DashboardSidebar({
             <NavLink
               href={dash("posts")}
               label="All"
-              icon={Rows}
+              icon={List}
               collapsed={collapsed}
               isActive={relative === "posts"}
             />

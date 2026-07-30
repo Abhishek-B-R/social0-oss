@@ -6,7 +6,7 @@ import {
   CreditCard,
   GearSix,
   NoteBlank,
-  Rows,
+  List,
   Sliders,
   SquaresFour,
   Stack,
@@ -32,7 +32,7 @@ const MANUAL_POSTING_LINKS = [
 ] as const;
 
 const MORE_LINKS = [
-  { href: "/dashboard/posts", label: "All posts", icon: Rows },
+  { href: "/dashboard/posts", label: "All posts", icon: List },
   { href: "/dashboard/posts/scheduled", label: "Scheduled", icon: Clock },
   { href: "/dashboard/posts/posted", label: "Posted", icon: CheckCircle },
   { href: "/dashboard/posts/drafts", label: "Drafts", icon: NoteBlank },

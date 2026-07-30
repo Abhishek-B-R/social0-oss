@@ -127,8 +127,13 @@ export function PublishStatusSection({
   }
 
   const durationLabel = useMemo(() => {
-    if (events.length < 2) return null;
-    const times = events.map((e) => new Date(e.createdAt).getTime());
+    // Publish duration only — ignore later auto-repost / auto-plug follow-ups.
+    const publishEvents = events.filter(
+      (e) =>
+        !e.phase.startsWith("resurface_") && !e.phase.startsWith("autoplug_"),
+    );
+    if (publishEvents.length < 2) return null;
+    const times = publishEvents.map((e) => new Date(e.createdAt).getTime());
     const ms = Math.max(...times) - Math.min(...times);
     if (ms < 0) return null;
     return formatDuration(ms);
