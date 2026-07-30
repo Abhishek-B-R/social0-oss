@@ -22,14 +22,28 @@ const PLATFORMS = [
   { name: "Pinterest", icon: PinterestIcon },
 ];
 
-export function PlatformStrip() {
+export function PlatformStrip({ compact = false }: { compact?: boolean }) {
   return (
-    <div className="border-y border-border bg-muted/50 px-4 py-6 dark:bg-[#111111]/80 sm:px-6 sm:py-7 lg:px-8">
-      <div className="mx-auto max-w-[1180px]">
-        <div className="mb-4 text-center text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+    <div
+      className={`border-y border-border bg-muted/50 px-4 dark:bg-[#111111]/80 sm:px-6 lg:px-8 ${
+        compact ? "py-4 sm:py-5" : "py-6 sm:py-7"
+      }`}
+    >
+      <div className="mx-auto max-w-[1100px]">
+        <div
+          className={`text-center text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground ${
+            compact ? "mb-3" : "mb-4"
+          }`}
+        >
           Publishes to
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 opacity-80 sm:gap-x-10">
+        <div
+          className={`flex flex-wrap items-center justify-center opacity-85 ${
+            compact
+              ? "gap-x-5 gap-y-3 sm:gap-x-7"
+              : "gap-x-8 gap-y-4 sm:gap-x-10"
+          }`}
+        >
           {PLATFORMS.map((p) => (
             <div
               key={p.name}

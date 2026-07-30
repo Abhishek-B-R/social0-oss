@@ -4,27 +4,28 @@ import { HeroMiddleIllustration } from "./HeroIsoMiddle";
 import { HeroBottomIllustration } from "./HeroIsoBottom";
 
 const EXPLOSION = {
-  duration: 0.85,
-  stagger: 0.12,
-  initialDelay: 0.45,
+  duration: 0.7,
+  stagger: 0.1,
+  initialDelay: 0.35,
 } as const;
 
+/** Compact stack so hero + Publishes-to fit in first viewport */
 const FINAL_Y = {
-  top: -72,
+  top: -36,
   middle: 0,
-  bottom: 56,
+  bottom: 28,
 } as const;
 
 const EASE_OUT: [number, number, number, number] = [0.23, 1, 0.32, 1];
 
 const CORNERS = {
   topToMiddle: [
-    { x: 260, y: 155 },
-    { x: -130, y: 155 },
+    { x: 200, y: 110 },
+    { x: -100, y: 110 },
   ],
   middleToBottom: [
-    { x: 270, y: 290 },
-    { x: -120, y: 290 },
+    { x: 210, y: 200 },
+    { x: -95, y: 200 },
   ],
 } as const;
 
@@ -50,7 +51,7 @@ function ConnectingLine({
         transformOrigin: direction === "up" ? "bottom center" : "top center",
       }}
       initial={{ scaleY: 0, opacity: 0 }}
-      animate={{ scaleY: 1, opacity: 0.55 }}
+      animate={{ scaleY: 1, opacity: 0.45 }}
       transition={{
         duration: EXPLOSION.duration,
         ease: EASE_OUT,
@@ -70,7 +71,7 @@ function ConnectingLine({
           x2="1"
           y2={height}
           stroke="#34d399"
-          strokeDasharray="6 6"
+          strokeDasharray="5 5"
           strokeWidth="1.5"
         />
       </svg>
@@ -82,8 +83,8 @@ export function HeroIsoAnimation({ className = "" }: { className?: string }) {
   const lineHeight = Math.abs(FINAL_Y.top);
 
   return (
-    <div className={`relative pb-20 sm:pb-24 md:pb-28 ${className}`}>
-      <div className="mt-6 flex flex-col items-center sm:mt-10 md:mt-12">
+    <div className={`relative pb-6 sm:pb-8 ${className}`}>
+      <div className="mt-2 flex flex-col items-center sm:mt-4">
         <motion.div
           className="relative z-30 flex justify-center"
           initial={{ y: 0, opacity: 0.6 }}
@@ -94,7 +95,7 @@ export function HeroIsoAnimation({ className = "" }: { className?: string }) {
             delay: EXPLOSION.initialDelay,
           }}
         >
-          <HeroTopIllustration className="h-auto w-[min(720px,92vw)]" />
+          <HeroTopIllustration className="h-auto w-[min(560px,88vw)]" />
         </motion.div>
 
         <div className="pointer-events-none absolute inset-0 z-25">
@@ -111,12 +112,12 @@ export function HeroIsoAnimation({ className = "" }: { className?: string }) {
         </div>
 
         <motion.div
-          className="relative z-20 -mt-48 ml-6 flex justify-center sm:-mt-56 md:-mt-60 md:ml-12"
+          className="relative z-20 -mt-36 ml-4 flex justify-center sm:-mt-40 md:-mt-44 md:ml-8"
           initial={{ opacity: 0.5 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: EXPLOSION.initialDelay + 0.1, duration: 0.6 }}
+          transition={{ delay: EXPLOSION.initialDelay + 0.08, duration: 0.5 }}
         >
-          <HeroMiddleIllustration className="h-auto w-[min(540px,82vw)]" />
+          <HeroMiddleIllustration className="h-auto w-[min(420px,72vw)]" />
         </motion.div>
 
         <div className="pointer-events-none absolute inset-0 z-15">
@@ -133,7 +134,7 @@ export function HeroIsoAnimation({ className = "" }: { className?: string }) {
         </div>
 
         <motion.div
-          className="relative z-10 -mt-44 ml-1 flex justify-center sm:-mt-52 md:-mt-56"
+          className="relative z-10 -mt-32 ml-0.5 flex justify-center sm:-mt-36 md:-mt-40"
           initial={{ y: 0, opacity: 0.5 }}
           animate={{ y: FINAL_Y.bottom, opacity: 1 }}
           transition={{
@@ -142,7 +143,7 @@ export function HeroIsoAnimation({ className = "" }: { className?: string }) {
             delay: EXPLOSION.initialDelay,
           }}
         >
-          <HeroBottomIllustration className="h-auto w-[min(660px,90vw)]" />
+          <HeroBottomIllustration className="h-auto w-[min(500px,80vw)]" />
         </motion.div>
       </div>
     </div>

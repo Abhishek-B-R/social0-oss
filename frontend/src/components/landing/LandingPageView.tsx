@@ -2,7 +2,6 @@ import { lazy } from "react";
 import { useLandingHashScroll } from "@/lib/scroll-to-hash";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Hero } from "@/components/landing/Hero";
-import { PlatformStrip } from "@/components/landing/PlatformStrip";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { DeferredSection } from "@/components/landing/DeferredSection";
 import { SectionSeparator } from "@/components/landing/SectionSeparator";
@@ -62,7 +61,6 @@ export function LandingPageView({ signedIn }: { signedIn: boolean }) {
       <LandingHeader />
       <main>
         <Hero signedIn={signedIn} />
-        <PlatformStrip />
         <SectionSeparator className="my-2" />
         <DeferredSection minHeight="20rem">
           <DemoVideoSection />
