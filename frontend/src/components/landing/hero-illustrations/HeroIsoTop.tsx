@@ -189,7 +189,7 @@ export function HeroTopIllustration({
         height="16"
         rx="1"
         transform={ISO.left(400 - 36 * 0.86603, 250 + 36 * 0.5)}
-        fill="#047857"
+        fill={C.accentDeep}
         stroke={C.accent}
       />
     </svg>

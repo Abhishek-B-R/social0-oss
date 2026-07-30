@@ -105,23 +105,21 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
             </motion.div>
           </div>
 
-          {/* Iso art stays on a dark stage in both themes */}
+          {/* Iso art — theme-aware wireframes via --iso-* CSS vars */}
           <div className="relative mx-auto w-full max-w-[720px] lg:mx-0 lg:justify-self-end">
             <Suspense
               fallback={
                 <div
-                  className="aspect-[5/4] w-full rounded-2xl border border-border bg-muted/40 dark:border-white/5 dark:bg-white/[0.02]"
+                  className="aspect-[5/4] w-full rounded-2xl border border-border bg-muted/40"
                   aria-hidden
                 />
               }
             >
-              <div className="overflow-hidden rounded-[22px] border border-border bg-[#151515] shadow-[0_24px_60px_rgba(0,0,0,0.12)] dark:border-white/10 dark:bg-transparent dark:shadow-none">
-                <div className="relative origin-top scale-[0.58] sm:scale-[0.72] md:scale-[0.85] lg:origin-top-right lg:scale-[0.78] xl:scale-[0.92] 2xl:scale-100 -mb-24 sm:-mb-16 md:-mb-8 lg:mb-0">
-                  <Suspense fallback={null}>
-                    <HeroFloatingBrand className="absolute -right-2 top-8 z-40 drop-shadow-[0_8px_24px_rgba(16,185,129,0.35)] sm:right-8 sm:top-4" />
-                  </Suspense>
-                  <HeroIsoAnimation />
-                </div>
+              <div className="relative origin-top scale-[0.58] sm:scale-[0.72] md:scale-[0.85] lg:origin-top-right lg:scale-[0.78] xl:scale-[0.92] 2xl:scale-100 -mb-24 sm:-mb-16 md:-mb-8 lg:mb-0">
+                <Suspense fallback={null}>
+                  <HeroFloatingBrand className="absolute -right-2 top-8 z-40 drop-shadow-[0_8px_24px_rgba(16,185,129,0.35)] sm:right-8 sm:top-4" />
+                </Suspense>
+                <HeroIsoAnimation />
               </div>
             </Suspense>
           </div>

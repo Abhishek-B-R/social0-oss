@@ -44,48 +44,48 @@ export function HeroBottomIllustration({
       {/* White tile (top-left cluster) */}
       <path
         d="M470.178 105.499v28.892l-18.924-10.921v-7.05l-13.045-7.526-6.096-3.525V83.527l5.981 3.452 19.039 10.994zm-76.014-22.045v21.973l-5.996 3.467-12.799 7.382v6.919l-19.025 10.994v-28.892l12.799-7.397 18.91-10.92z"
-        fill="#fff"
-        stroke="#000"
+        fill="#ffffff"
+        stroke={C.ink}
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
         d="m507.998 83.657-25.021 14.446-12.799 7.396-13.045-7.526-19.039-10.994-5.981-3.452 12.814-7.397 5.98-3.452 19.025-10.994zM450.909 50.69l-25.021 14.447-12.813 7.396-13.045-7.526-25.02-14.446 37.834-21.842zm-56.745 32.764-6.111 3.525L369.144 97.9l-12.8 7.397-13.044-7.541-25.021-14.446 37.82-21.828 18.91 10.921 6.11 3.525z"
-        fill="#fff"
-        stroke="#000"
+        fill="#ffffff"
+        stroke={C.ink}
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
         d="M507.997 83.657v28.891l-37.819 21.843v-28.892l12.799-7.396zm-56.742 32.763v28.892l-37.819 21.842v-28.892l12.799-7.396 18.924-10.921z"
-        fill="#fff"
-        stroke="#000"
+        fill="#ffffff"
+        stroke={C.ink}
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
         d="m451.256 116.42-6.096 3.525-18.925 10.921-12.799 7.396-13.044-7.54-19.026-10.979-5.995-3.467 12.799-7.382 5.995-3.467 12.929-7.454 5.981-3.453.115-.072 5.981 3.452 12.944 7.469 6.096 3.525z"
-        fill="#fff"
-        stroke="#000"
+        fill="#ffffff"
+        stroke={C.ink}
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
         d="M413.436 138.262v28.892l-38.065-21.986v-28.892l5.995 3.467 19.026 10.979zm-57.092-32.965v28.891l-38.065-21.986V83.31L343.3 97.756zm94.564-54.607v21.988l-5.98 3.452-12.814 7.397v6.905L419.171 97.9l-5.981-3.452-.116.072V72.533l12.814-7.396z"
-        fill="#fff"
-        stroke="#000"
+        fill="#ffffff"
+        stroke={C.ink}
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
         d="M413.075 72.533V94.52l-5.981 3.452-12.929-7.468v-7.05l-13.045-7.526-6.11-3.525V50.561l25.02 14.446z"
-        fill="#fff"
-        stroke="#000"
+        fill="#ffffff"
+        stroke={C.ink}
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -145,7 +145,7 @@ export function HeroBottomIllustration({
       <path
         d="m588.753 173.209-.508 28.888-18.729-11.252.124-7.049-12.91-7.754-6.034-3.632.384-21.838 5.919 3.557 18.844 11.326zm-75.617-23.377-.386 21.969-6.055 3.362-12.927 7.155-.121 6.919-19.216 10.657.507-28.887 12.928-7.17 19.099-10.588z"
         fill={C.surface}
-        stroke="#968f8f"
+        stroke={C.strokeSoft}
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -153,7 +153,7 @@ export function HeroBottomIllustration({
       <path
         d="m626.949 152.035-25.27 14.004-12.927 7.17-12.91-7.754-18.844-11.327-5.919-3.557 12.942-7.17 6.04-3.347 19.215-10.657zm-56.5-33.964-25.271 14.004-12.941 7.17-12.911-7.754-24.763-14.884 38.212-21.174zm-57.312 31.761-6.171 3.417-19.099 10.588-12.927 7.17-12.91-7.769-24.763-14.883 38.197-21.16 18.715 11.251 6.048 3.632z"
         fill={C.surface}
-        stroke="#968f8f"
+        stroke={C.strokeSoft}
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -161,7 +161,7 @@ export function HeroBottomIllustration({
       <path
         d="m626.95 152.035-.507 28.887-38.198 21.175.508-28.888 12.927-7.17zm-57.31 31.761-.507 28.888-38.198 21.174.507-28.887 12.928-7.171 19.113-10.587z"
         fill={C.surface}
-        stroke="#968f8f"
+        stroke={C.strokeSoft}
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -169,7 +169,7 @@ export function HeroBottomIllustration({
       <path
         d="m569.641 183.796-6.157 3.417-19.113 10.587-12.927 7.171-12.91-7.769-18.83-11.312-5.933-3.572 12.926-7.155 6.056-3.362 13.058-7.225 6.04-3.347.117-.071 5.919 3.558 12.81 7.694 6.034 3.632z"
         fill={C.surface}
-        stroke="#968f8f"
+        stroke={C.strokeSoft}
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -177,7 +177,7 @@ export function HeroBottomIllustration({
       <path
         d="m531.442 204.971-.507 28.887-37.673-22.652.508-28.888 5.933 3.572 18.829 11.312zm-56.502-33.964-.507 28.887-37.673-22.652.508-28.887 24.762 14.883zm95.508-52.936-.387 21.983-6.04 3.347-12.942 7.17-.121 6.904-13.073 7.24-5.919-3.557-.117.071.386-21.984 12.942-7.17z"
         fill={C.surface}
-        stroke="#968f8f"
+        stroke={C.strokeSoft}
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -185,7 +185,7 @@ export function HeroBottomIllustration({
       <path
         d="m532.237 139.245-.386 21.984-6.04 3.346-12.796-7.694.124-7.049-12.911-7.754-6.047-3.632.383-21.839 24.763 14.884z"
         fill={C.surface}
-        stroke="#968f8f"
+        stroke={C.strokeSoft}
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"

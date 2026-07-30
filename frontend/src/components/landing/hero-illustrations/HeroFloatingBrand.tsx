@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { C, ISO } from "./iso-tokens";
 
-/** Floating brand cube that gently bobs above the hero stack. */
+/** Floating brand cube that gently bobs — clearly reads as S0 (zero). */
 export function HeroFloatingBrand({ className }: { className?: string }) {
   return (
     <motion.svg
@@ -47,21 +47,23 @@ export function HeroFloatingBrand({ className }: { className?: string }) {
         height="22"
         rx="2"
         transform={ISO.left(40 - 64 * 0.86603, 8 + 64 * 0.5)}
-        fill="#047857"
+        fill={C.accentDeep}
         stroke={C.accent}
       />
-      <text
-        x="56"
-        y="48"
-        textAnchor="middle"
-        fill="#04140c"
-        fontSize="18"
-        fontWeight="700"
-        fontFamily="Georgia, serif"
-        transform="skewX(-12)"
-      >
-        S0
-      </text>
+      {/* Hand-drawn S0 so the zero never reads as "o" */}
+      <g transform="translate(42 28)" fill="#04140c">
+        <text
+          x="18"
+          y="26"
+          textAnchor="middle"
+          fontSize="22"
+          fontWeight="800"
+          fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+          letterSpacing="-0.04em"
+        >
+          S0
+        </text>
+      </g>
     </motion.svg>
   );
 }

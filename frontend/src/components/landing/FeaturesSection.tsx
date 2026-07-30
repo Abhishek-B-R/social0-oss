@@ -1,237 +1,268 @@
-import type React from "react";
-import {
-  GitBranch,
-  PenLine,
-  CalendarDays,
-  ShieldCheck,
-  Layers,
-  RefreshCw,
-} from "lucide-react";
-import { C, ISO } from "./hero-illustrations/iso-tokens";
+import type { ReactNode } from "react";
+import { C, ISO, LOGO_PATHS } from "./hero-illustrations/iso-tokens";
 
-type Feature = {
-  icon: typeof GitBranch;
-  title: string;
-  tag: string;
-  desc: React.ReactNode;
-  visual: "publish" | "caption" | "schedule" | "secure" | "rich" | "growth";
-};
-
-const features: Feature[] = [
-  {
-    icon: GitBranch,
-    title: "Parallel publishing",
-    tag: "Fast",
-    visual: "publish",
-    desc: "All platforms receive your post at the same time. If one fails, the others still go through — and you'll see exactly which.",
-  },
-  {
-    icon: PenLine,
-    title: "Per-platform captions",
-    tag: "Flexible",
-    visual: "caption",
-    desc: (
-      <>
-        Write one base caption and customize it per platform.
-        <br />
-        Twitter needs a hook. LinkedIn likes context.
-      </>
-    ),
-  },
-  {
-    icon: CalendarDays,
-    title: "Smart scheduling",
-    tag: "Organised",
-    visual: "schedule",
-    desc: "Pick a date and time. View everything in a calendar. Reschedule if needed.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Encrypted token storage",
-    tag: "Secure",
-    visual: "secure",
-    desc: "Your accounts stay secure. OAuth tokens are encrypted and we never store passwords.",
-  },
-  {
-    icon: Layers,
-    title: "Threads & carousels",
-    tag: "Rich content",
-    visual: "rich",
-    desc: (
-      <>
-        Create multi-part threads for Twitter and Bluesky.
-        <br />
-        Post image carousels to Instagram and TikTok.
-      </>
-    ),
-  },
-  {
-    icon: RefreshCw,
-    title: "Auto-plug & repost",
-    tag: "Growth",
-    desc: (
-      <>
-        Automatically repost evergreen content to extend its reach.
-        <br />
-        Add a call-to-action to top-performing posts to capture leads.
-      </>
-    ),
-    visual: "growth",
-  },
-];
-
-function FeatureIsoVisual({ kind }: { kind: Feature["visual"] }) {
-  if (kind === "publish") {
-    return (
-      <svg viewBox="0 0 160 100" className="h-full w-full" aria-hidden>
-        <rect
-          width="70"
-          height="50"
-          rx="3"
-          transform={ISO.top(50, 10)}
-          fill={C.elevated}
-          stroke={C.accent}
-        />
-        <rect
-          width="70"
-          height="14"
-          rx="1"
-          transform={ISO.right(50 + 70 * 0.866, 10 + 70 * 0.5)}
-          fill={C.accentDim}
-          stroke={C.accent}
-        />
-        {[0, 1, 2].map((i) => (
-          <rect
-            key={i}
-            width="22"
-            height="16"
-            rx="2"
-            transform={ISO.top(20 + i * 42, 58)}
-            fill={C.panel}
-            stroke={i === 1 ? C.accentHot : C.strokeSoft}
-          />
-        ))}
-      </svg>
-    );
-  }
-  if (kind === "schedule") {
-    return (
-      <svg viewBox="0 0 160 100" className="h-full w-full" aria-hidden>
-        <rect
-          width="90"
-          height="70"
-          rx="3"
-          transform={ISO.top(40, 8)}
-          fill={C.panel}
-          stroke={C.stroke}
-        />
-        {[0, 1, 2, 3].map((r) =>
-          [0, 1, 2, 3].map((c) => (
-            <rect
-              key={`${r}-${c}`}
-              width="14"
-              height="10"
-              rx="1"
-              transform={ISO.top(52 + c * 18, 22 + r * 14)}
-              fill={r === 1 && c === 2 ? C.accent : C.muted}
-              stroke={C.strokeSoft}
-            />
-          )),
-        )}
-      </svg>
-    );
-  }
-  if (kind === "secure") {
-    return (
-      <svg viewBox="0 0 160 100" className="h-full w-full" aria-hidden>
-        <rect
-          width="50"
-          height="50"
-          rx="4"
-          transform={ISO.top(55, 15)}
-          fill={C.elevated}
-          stroke={C.accent}
-          strokeWidth="1.5"
-        />
-        <path
-          d="M78 42 v-8 a10 6 0 0 1 20 0 v8"
-          fill="none"
-          stroke={C.accentHot}
-          strokeWidth="2"
-          transform="translate(-8 0)"
-        />
-        <circle cx="80" cy="52" r="5" fill={C.accent} />
-      </svg>
-    );
-  }
+function BentoShell({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <svg viewBox="0 0 160 100" className="h-full w-full" aria-hidden>
-      {[0, 1, 2].map((i) => (
-        <path
-          key={i}
-          d={`M${80 + i * 8} ${28 + i * 14}
-             L${110 + i * 8} ${46 + i * 14}
-             L${80 + i * 8} ${64 + i * 14}
-             L${50 + i * 8} ${46 + i * 14} Z`}
-          fill={i === 2 ? C.accent : C.mid}
-          stroke={i === 2 ? C.accentHot : C.strokeBright}
-          strokeDasharray={i < 2 ? "2 2" : undefined}
-          opacity={0.9 - i * 0.05}
+    <div
+      className={`rounded-[28px] bg-muted/60 p-[5px] dark:bg-[#1A1A1A] sm:rounded-[32px] lg:rounded-[42px] ${className}`}
+    >
+      <div className="rounded-[24px] border border-border p-[2px] dark:border-white/10 sm:rounded-[28px] lg:rounded-[38px]">
+        <div className="overflow-hidden rounded-[20px] border border-border/60 bg-background dark:border-white/5 dark:bg-[#111111] sm:rounded-[24px] lg:rounded-[34px]">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function IsoConnectVisual() {
+  return (
+    <svg viewBox="0 0 240 220" className="mx-auto h-[200px] w-full max-w-[280px]" aria-hidden>
+      <path
+        transform={ISO.top(40, 40)}
+        fill={C.elevated}
+        stroke={C.ink}
+        strokeDasharray="5 5"
+        d="M0 0h120 v120 H0z"
+      />
+      {[
+        [90, 70],
+        [130, 90],
+        [90, 110],
+        [50, 90],
+      ].map(([x, y], i) => (
+        <g key={i}>
+          <path
+            transform={ISO.top(x, y)}
+            fill={C.mid}
+            stroke={C.stroke}
+            strokeDasharray="4 4"
+            d="M0 0h28 v28 H0z"
+          />
+        </g>
+      ))}
+      {[
+        { cx: 155, cy: 175, logo: "x" as const },
+        { cx: 175, cy: 165, logo: "ig" as const },
+        { cx: 195, cy: 175, logo: "li" as const },
+        { cx: 175, cy: 185, logo: "yt" as const },
+      ].map((n) => (
+        <g key={n.logo}>
+          <circle
+            cx={n.cx}
+            cy={n.cy}
+            r="10"
+            fill={C.bg}
+            stroke={C.accent}
+            strokeWidth="1.5"
+          />
+          <g transform={`translate(${n.cx - 5} ${n.cy - 5})`}>
+            <svg width="10" height="10" viewBox="0 0 24 24">
+              <path d={LOGO_PATHS[n.logo]} fill={C.accent} />
+            </svg>
+          </g>
+        </g>
+      ))}
+      <path
+        d="M140 150 L155 170"
+        stroke={C.accent}
+        strokeWidth="1.5"
+        strokeDasharray="3 3"
+      />
+    </svg>
+  );
+}
+
+function IsoScheduleVisual() {
+  return (
+    <div className="relative mx-auto w-full max-w-[280px] space-y-2 px-4 py-2">
+      {["Draft queue", "2 posts running", "Scheduled · Fri 9am"].map((label, i) => (
+        <div
+          key={label}
+          className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-[12px] ${
+            i === 1
+              ? "border-emerald-500/50 bg-emerald-500/10 text-foreground"
+              : "border-border bg-muted/40 text-muted-foreground"
+          }`}
+        >
+          <span className="font-medium">{label}</span>
+          {i === 1 ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+          ) : (
+            <span className="grid grid-cols-2 gap-0.5 opacity-40">
+              {Array.from({ length: 6 }).map((_, d) => (
+                <span key={d} className="h-1 w-1 rounded-full bg-foreground" />
+              ))}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function IsoCaptionVisual() {
+  return (
+    <svg viewBox="0 0 200 120" className="mx-auto h-[110px] w-full max-w-[240px]" aria-hidden>
+      {[0, 1].map((r) =>
+        [0, 1].map((c) => (
+          <g key={`${r}-${c}`}>
+            <path
+              transform={ISO.top(50 + c * 55, 20 + r * 40)}
+              fill={r === 0 && c === 1 ? C.accent : C.mid}
+              stroke={r === 0 && c === 1 ? C.accentHot : C.stroke}
+              d="M0 0h40 v40 H0z"
+            />
+            <g transform={`translate(${62 + c * 48} ${38 + r * 36})`}>
+              <svg width="14" height="14" viewBox="0 0 24 24">
+                <path
+                  d={
+                    [LOGO_PATHS.x, LOGO_PATHS.li, LOGO_PATHS.ig, LOGO_PATHS.yt][
+                      r * 2 + c
+                    ]
+                  }
+                  fill={r === 0 && c === 1 ? C.inkInverse : C.ink}
+                />
+              </svg>
+            </g>
+          </g>
+        )),
+      )}
+    </svg>
+  );
+}
+
+function IsoGrowthVisual() {
+  return (
+    <svg viewBox="0 0 220 200" className="mx-auto h-[180px] w-full max-w-[260px]" aria-hidden>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <line
+          key={`h${i}`}
+          x1="30"
+          y1={40 + i * 28}
+          x2="190"
+          y2={40 + i * 28}
+          stroke={C.strokeSoft}
+          strokeWidth="1"
         />
       ))}
+      {[0, 1, 2].map((i) => (
+        <line
+          key={`v${i}`}
+          x1={70 + i * 40}
+          y1="30"
+          x2={70 + i * 40}
+          y2="170"
+          stroke={C.accent}
+          strokeWidth="1.5"
+          opacity={0.7}
+        />
+      ))}
+      <circle cx="110" cy="96" r="8" fill={C.bg} stroke={C.accent} strokeWidth="2" />
+      <circle cx="150" cy="68" r="5" fill={C.accent} />
+      <path
+        d="M70 140 L110 96 L150 68"
+        fill="none"
+        stroke={C.accentHot}
+        strokeWidth="1.5"
+        strokeDasharray="4 4"
+      />
     </svg>
   );
 }
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="px-6 py-20 lg:px-8 lg:py-28">
-      <div className="mx-auto max-w-[1180px]">
-        <div className="mb-14">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/5 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400">
-            Features
-          </div>
-          <h2 className="max-w-[520px] font-serif text-[clamp(28px,4vw,44px)] leading-tight tracking-tight text-foreground">
-            Built for people who{" "}
-            <em className="italic text-muted-foreground">actually post.</em>
-          </h2>
-          <p className="mt-3 max-w-md text-[15px] text-muted-foreground">
-            Tools that save time, reduce tab switching, and help your content
-            reach more people.
-          </p>
+    <section id="features" className="relative px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+      <div className="mx-auto mb-10 flex w-full max-w-[1200px] flex-col items-center gap-4 sm:mb-12">
+        <div className="flex h-8 items-center gap-2 rounded-[11px] border border-emerald-500/60 bg-emerald-500/5 px-2.5 text-xs font-medium text-emerald-800 shadow-sm dark:border-emerald-500 dark:text-white/75">
+          <span aria-hidden>✦</span>
+          <span>Features</span>
         </div>
+        <h2 className="max-w-xl text-center font-serif text-[clamp(22px,3.5vw,32px)] italic leading-tight text-muted-foreground">
+          Everything you need to post everywhere, smarter
+        </h2>
+      </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f) => (
-            <div
-              key={f.title}
-              className="group relative overflow-hidden rounded-[22px] border border-border bg-muted/40 p-1.5 transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-1.5 dark:border-white/10 dark:bg-[#1A1A1A]"
-            >
-              <div className="flex h-full flex-col rounded-[18px] border border-border/60 bg-background p-5 dark:border-white/5 dark:bg-[#111111] md:p-6">
-                <div className="mb-5 h-24 w-full overflow-hidden rounded-xl bg-[#151515] opacity-90 transition-opacity group-hover:opacity-100">
-                  <FeatureIsoVisual kind={f.visual} />
-                </div>
-                <div className="mb-3 flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-500/25 bg-emerald-500/10">
-                    <f.icon
-                      className="h-4 w-4 text-emerald-700 dark:text-emerald-400"
-                      strokeWidth={1.5}
-                    />
-                  </div>
-                  <span className="rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-emerald-700 dark:text-emerald-400/90">
-                    {f.tag}
-                  </span>
-                </div>
-                <h3 className="mb-2 text-[17px] font-semibold tracking-tight text-foreground">
-                  {f.title}
+      <div className="mx-auto grid w-full max-w-[1200px] grid-cols-1 items-start gap-4 lg:grid-cols-[1.12fr_1fr_1.12fr] lg:gap-3 xl:gap-4">
+        {/* Left tall */}
+        <BentoShell>
+          <div className="flex min-h-[420px] flex-col lg:min-h-[560px]">
+            <div className="flex flex-1 items-center justify-center px-4 pt-8">
+              <IsoConnectVisual />
+            </div>
+            <div className="space-y-2 px-6 pb-8 pt-4 sm:px-8">
+              <h3 className="text-[18px] font-semibold tracking-tight text-foreground sm:text-[20px]">
+                Connect everything you already use
+              </h3>
+              <p className="text-[14px] leading-relaxed text-muted-foreground">
+                Bring X, Instagram, LinkedIn, YouTube, TikTok, and more into one
+                publish pipeline — with encrypted tokens.
+              </p>
+            </div>
+          </div>
+        </BentoShell>
+
+        {/* Middle stack */}
+        <div className="flex flex-col gap-4 lg:gap-3 xl:gap-4">
+          <BentoShell>
+            <div className="flex min-h-[240px] flex-col lg:min-h-[260px]">
+              <div className="flex flex-1 items-center px-2 pt-6">
+                <IsoScheduleVisual />
+              </div>
+              <div className="space-y-2 px-6 pb-6 pt-3 sm:px-7">
+                <h3 className="text-[17px] font-semibold tracking-tight text-foreground">
+                  Scheduling & workflows
                 </h3>
-                <p className="text-[14px] leading-relaxed text-muted-foreground">
-                  {f.desc}
+                <p className="text-[13px] leading-relaxed text-muted-foreground">
+                  Schedule posts, view them in a calendar, and reschedule when
+                  plans change.
                 </p>
               </div>
             </div>
-          ))}
+          </BentoShell>
+
+          <BentoShell>
+            <div className="flex min-h-[260px] flex-col lg:min-h-[280px]">
+              <div className="flex flex-1 items-center justify-center px-4 pt-6">
+                <IsoCaptionVisual />
+              </div>
+              <div className="space-y-2 px-6 pb-6 pt-3 sm:px-7">
+                <h3 className="text-[17px] font-semibold tracking-tight text-foreground">
+                  Per-platform captions
+                </h3>
+                <p className="text-[13px] leading-relaxed text-muted-foreground">
+                  Write once, then tune the hook for X and the context for
+                  LinkedIn — without leaving the composer.
+                </p>
+              </div>
+            </div>
+          </BentoShell>
         </div>
+
+        {/* Right tall */}
+        <BentoShell>
+          <div className="flex min-h-[420px] flex-col lg:min-h-[560px]">
+            <div className="flex flex-1 items-center justify-center px-4 pt-8">
+              <IsoGrowthVisual />
+            </div>
+            <div className="space-y-2 px-6 pb-8 pt-4 sm:px-8">
+              <h3 className="text-[18px] font-semibold tracking-tight text-foreground sm:text-[20px]">
+                Grow on autopilot
+              </h3>
+              <p className="text-[14px] leading-relaxed text-muted-foreground">
+                Auto-plug winning posts, repost evergreen content, and ship
+                threads & carousels without the busywork.
+              </p>
+            </div>
+          </div>
+        </BentoShell>
       </div>
     </section>
   );

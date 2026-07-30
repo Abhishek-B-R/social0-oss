@@ -1,4 +1,4 @@
-import { C, ISO } from "./iso-tokens";
+import { C, ISO, LOGO_PATHS } from "./iso-tokens";
 
 interface Props {
   width?: number;
@@ -6,19 +6,26 @@ interface Props {
   className?: string;
 }
 
-/** Middle layer — isometric platform hub / connection tray. */
+type Pad = {
+  x: number;
+  y: number;
+  logo: keyof typeof LOGO_PATHS;
+  accent?: boolean;
+};
+
+/** Middle layer — isometric platform hub with official logos. */
 export function HeroMiddleIllustration({
   width = 520,
   height = 340,
   className,
 }: Props) {
-  const pads: { x: number; y: number; label: string; accent?: boolean }[] = [
-    { x: 260, y: 70, label: "X" },
-    { x: 160, y: 130, label: "IG" },
-    { x: 360, y: 130, label: "LI", accent: true },
-    { x: 260, y: 190, label: "YT" },
-    { x: 120, y: 210, label: "TT" },
-    { x: 400, y: 210, label: "FB" },
+  const pads: Pad[] = [
+    { x: 260, y: 70, logo: "x" },
+    { x: 160, y: 130, logo: "ig" },
+    { x: 360, y: 130, logo: "li", accent: true },
+    { x: 260, y: 190, logo: "yt" },
+    { x: 120, y: 210, logo: "tt" },
+    { x: 400, y: 210, logo: "fb" },
   ];
 
   return (
@@ -31,7 +38,6 @@ export function HeroMiddleIllustration({
       className={className}
       aria-hidden
     >
-      {/* Large isometric tray */}
       <rect
         width="260"
         height="240"
@@ -46,7 +52,7 @@ export function HeroMiddleIllustration({
         rx="2"
         transform={ISO.right(250 + 260 * 0.86603, 20 + 260 * 0.5)}
         fill={C.panel}
-        stroke={C.white}
+        stroke={C.ink}
       />
       <path
         d="M2 140c0-1.1.78-1.55 1.73-1L246 280c.96.55 1.73 1.89 1.73 3v42c0 1.1-.78 1.55-1.73 1L3.73 185c-.96-.55-1.73-1.89-1.73-3z"
@@ -55,21 +61,19 @@ export function HeroMiddleIllustration({
         transform="translate(8 8)"
       />
 
-      {/* Dashed diamond pads + labels */}
       {pads.map((p) => (
-        <g key={p.label}>
+        <g key={p.logo + p.x}>
           <path
             d={`M${p.x} ${p.y - 22}
                L${p.x + 38} ${p.y}
                L${p.x} ${p.y + 22}
                L${p.x - 38} ${p.y} Z`}
             fill={p.accent ? C.accent : C.mid}
-            stroke={p.accent ? C.accentHot : C.white}
+            stroke={p.accent ? C.accentHot : C.ink}
             strokeDasharray={p.accent ? undefined : "2 2"}
             strokeWidth={p.accent ? 1.5 : 1}
             opacity={0.95}
           />
-          {/* Tiny extruded side for accent pad */}
           {p.accent && (
             <>
               <path
@@ -79,26 +83,23 @@ export function HeroMiddleIllustration({
               />
               <path
                 d={`M${p.x - 38} ${p.y} L${p.x - 38} ${p.y + 10} L${p.x} ${p.y + 32} L${p.x} ${p.y + 22} Z`}
-                fill="#047857"
+                fill={C.accentDeep}
                 stroke={C.accent}
               />
             </>
           )}
-          <text
-            x={p.x}
-            y={p.y + 4}
-            textAnchor="middle"
-            fill={p.accent ? C.bg : C.strokeBright}
-            fontSize="11"
-            fontFamily="system-ui, sans-serif"
-            fontWeight="600"
-          >
-            {p.label}
-          </text>
+          {/* Official logo, centered on pad */}
+          <g transform={`translate(${p.x - 8} ${p.y - 8})`}>
+            <svg width="16" height="16" viewBox="0 0 24 24">
+              <path
+                d={LOGO_PATHS[p.logo]}
+                fill={p.accent ? C.inkInverse : C.ink}
+              />
+            </svg>
+          </g>
         </g>
       ))}
 
-      {/* Center hub ring */}
       <ellipse
         cx="260"
         cy="155"
@@ -118,7 +119,6 @@ export function HeroMiddleIllustration({
         opacity="0.85"
       />
 
-      {/* Connector dashes from hub to pads */}
       {[
         [260, 140, 260, 92],
         [245, 160, 190, 140],
@@ -134,7 +134,7 @@ export function HeroMiddleIllustration({
           stroke={C.strokeBright}
           strokeWidth="1"
           strokeDasharray="3 3"
-          opacity="0.35"
+          opacity="0.45"
         />
       ))}
     </svg>

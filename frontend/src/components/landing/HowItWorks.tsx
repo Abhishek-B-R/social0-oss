@@ -1,49 +1,80 @@
 import { Link2, PenLine, Send } from "lucide-react";
+import { C, ISO } from "./hero-illustrations/iso-tokens";
 
 const steps = [
   {
     icon: Link2,
     title: "Connect your accounts",
-    desc: "Connect your social accounts in seconds with secure authentication for every platform.",
+    desc: "Secure OAuth for every platform in seconds — tokens stay encrypted.",
+    n: "01",
   },
   {
     icon: PenLine,
     title: "Write your post",
-    desc: "Write your post once. Customize captions for each platform if needed.",
+    desc: "One composer. Customize captions per platform when you need to.",
+    n: "02",
   },
   {
     icon: Send,
     title: "Publish or schedule",
-    desc: "Publish instantly or schedule it for later. Your post goes live across all platforms at once.",
+    desc: "Go live everywhere at once, or pick the perfect time on the calendar.",
+    n: "03",
   },
 ];
 
+function StepIso({ index }: { index: number }) {
+  return (
+    <svg viewBox="0 0 100 70" className="h-14 w-20" aria-hidden>
+      <rect
+        width="44"
+        height="32"
+        rx="2"
+        transform={ISO.top(28, 10)}
+        fill={index === 1 ? C.accent : C.elevated}
+        stroke={index === 1 ? C.accentHot : C.stroke}
+      />
+      <rect
+        width="44"
+        height="10"
+        transform={ISO.right(28 + 44 * 0.866, 10 + 44 * 0.5)}
+        fill={index === 1 ? C.accentDim : C.muted}
+        stroke={index === 1 ? C.accent : C.strokeSoft}
+      />
+    </svg>
+  );
+}
+
 export function HowItWorks() {
   return (
-    <section className="px-6 py-24 lg:px-8">
-      <div className="mx-auto max-w-[1100px]">
-        {/* Section header */}
-        <div className="mb-14">
-          <div className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
+    <section className="px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+      <div className="mx-auto max-w-[1180px]">
+        <div className="mb-12 flex flex-col items-center gap-3 text-center">
+          <div className="flex h-8 items-center gap-2 rounded-[11px] border border-emerald-500/50 bg-emerald-500/5 px-2.5 text-xs font-medium text-emerald-800 dark:text-emerald-400/90">
             How it works
           </div>
-          <h2 className="max-w-md font-serif text-[clamp(28px,4vw,44px)] leading-tight tracking-tight text-foreground">
-            How it works
+          <h2 className="max-w-md font-serif text-[clamp(28px,4vw,40px)] italic leading-tight text-muted-foreground">
+            Three steps. Then you’re posting.
           </h2>
         </div>
 
-        {/* 3-column bordered grid */}
-        <div className="grid gap-px overflow-hidden rounded-2xl bg-border md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-3">
           {steps.map((step, i) => (
-            <div key={step.title} className="bg-background p-3 md:p-4">
-              <div className="group flex h-full flex-col rounded-2xl p-5 transition-colors duration-300 ease-out hover:bg-muted/60 dark:hover:bg-white/[0.04] md:p-6">
-                <div className="mb-6 flex items-center gap-3 font-mono text-[11px] tracking-widest text-muted-foreground">
-                  0{i + 1}
-                  <div className="h-px flex-1 bg-border transition-colors duration-300 group-hover:bg-foreground/10" />
+            <div
+              key={step.title}
+              className="group relative overflow-hidden rounded-[28px] border border-border bg-muted/40 p-1.5 transition-transform duration-300 hover:-translate-y-1 dark:border-white/10 dark:bg-[#1A1A1A]"
+            >
+              <div className="flex h-full flex-col rounded-[22px] border border-border/60 bg-background p-6 dark:border-white/5 dark:bg-[#111111] sm:p-8">
+                <div className="mb-6 flex items-center justify-between">
+                  <span className="font-mono text-[12px] tracking-[0.2em] text-muted-foreground">
+                    {step.n}
+                  </span>
+                  <div className="rounded-xl bg-[var(--iso-bg)] px-2 py-1">
+                    <StepIso index={i} />
+                  </div>
                 </div>
-                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/50 transition-colors duration-300 group-hover:border-foreground/15 group-hover:bg-background/80 dark:bg-muted/30 dark:group-hover:bg-background/40">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-500/25 bg-emerald-500/10 transition-colors group-hover:border-emerald-500/40">
                   <step.icon
-                    className="h-5 w-5 text-foreground"
+                    className="h-5 w-5 text-emerald-700 dark:text-emerald-400"
                     strokeWidth={1.5}
                   />
                 </div>

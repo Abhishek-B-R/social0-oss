@@ -545,7 +545,22 @@ html {
   --input: #e2ded6;
   --ring: #10b981;
   --hero-everywhere: #10b981;
-  --iso-stage: #151515;
+  --iso-stage: #f4f4f5;
+  --iso-bg: #f4f4f5;
+  --iso-surface: #ffffff;
+  --iso-elevated: #fafafa;
+  --iso-panel: #f0f0f0;
+  --iso-muted: #e4e4e7;
+  --iso-mid: #d4d4d8;
+  --iso-stroke: #71717a;
+  --iso-stroke-soft: #a1a1aa;
+  --iso-stroke-bright: #3f3f46;
+  --iso-ink: #18181b;
+  --iso-ink-inverse: #ffffff;
+  --iso-accent: #10b981;
+  --iso-accent-hot: #059669;
+  --iso-accent-dim: #047857;
+  --iso-accent-deep: #065f46;
   color-scheme: light;
 }
 
@@ -574,6 +589,21 @@ html {
   --input: #262626;
   --ring: #10b981;
   --hero-everywhere: #34d399;
-  --iso-stage: #111111;
+  --iso-stage: transparent;
+  --iso-bg: #0c0c0c;
+  --iso-surface: #151515;
+  --iso-elevated: #1a1a1a;
+  --iso-panel: #1e1e1e;
+  --iso-muted: #262626;
+  --iso-mid: #303030;
+  --iso-stroke: #a5a5a5;
+  --iso-stroke-soft: #555555;
+  --iso-stroke-bright: #e0e0e0;
+  --iso-ink: #ffffff;
+  --iso-ink-inverse: #04140c;
+  --iso-accent: #10b981;
+  --iso-accent-hot: #34d399;
+  --iso-accent-dim: #059669;
+  --iso-accent-deep: #047857;
   color-scheme: dark;
 }
