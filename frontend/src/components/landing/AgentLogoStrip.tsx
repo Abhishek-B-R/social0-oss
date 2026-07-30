@@ -104,7 +104,7 @@ const AGENTS = [
 export function AgentLogoStrip({ className = "" }: { className?: string }) {
   return (
     <div
-      className={`flex flex-wrap items-center justify-center gap-2 lg:justify-end ${className}`}
+      className={`flex flex-wrap items-center justify-center gap-2 lg:justify-end ${className} ml-18`}
       aria-label="Compatible agents"
     >
       {AGENTS.map((agent) => (

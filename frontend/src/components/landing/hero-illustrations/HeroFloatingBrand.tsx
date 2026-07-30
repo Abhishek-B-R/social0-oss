@@ -1,14 +1,17 @@
 import { motion } from "framer-motion";
 import Image from "@/components/AppImage";
 
-/** Floating official Social0 mark — circular (light) / dark logo by theme. */
+/**
+ * Floating official Social0 mark — circular (light) / dark logo by theme.
+ * Sized to match prior in-scale appearance (~40–44px); stays outside iso remount.
+ */
 export function HeroFloatingBrand({ className }: { className?: string }) {
   return (
     <motion.div
-      className={`flex flex-col items-center gap-2 ${className ?? ""}`}
+      className={`flex items-center ${className ?? ""}`}
       aria-hidden
       initial={{ y: 0 }}
-      animate={{ y: -10 }}
+      animate={{ y: -8 }}
       transition={{
         duration: 2.2,
         repeat: Infinity,
@@ -16,24 +19,21 @@ export function HeroFloatingBrand({ className }: { className?: string }) {
         ease: "easeInOut",
       }}
     >
-      <span className="relative block h-16 w-16 drop-shadow-[0_0_20px_rgba(16,185,129,0.45)] sm:h-[72px] sm:w-[72px]">
+      <span className="relative block h-10 w-10 drop-shadow-[0_0_16px_rgba(16,185,129,0.4)] sm:h-11 sm:w-11">
         <Image
           src="/logo-circular.png"
           alt=""
-          width={72}
-          height={72}
+          width={44}
+          height={44}
           className="h-full w-full rounded-full dark:hidden"
         />
         <Image
           src="/logo-dark.png"
           alt=""
-          width={72}
-          height={72}
+          width={44}
+          height={44}
           className="absolute inset-0 hidden h-full w-full rounded-full border border-white/15 dark:block"
         />
-      </span>
-      <span className="text-[13px] font-semibold tracking-[0.06em] text-foreground">
-        Social0
       </span>
     </motion.div>
   );

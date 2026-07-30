@@ -62,7 +62,7 @@ export function HeroTopIllustration({
       />
 
       {/* Shift so composer window centers on the stack axis (middle hub) */}
-      <g transform="translate(40 0)">
+      <g transform="translate(68 0)">
       {/* Main app window */}
       <g transform={ISO.top(290, 55)}>
         <rect

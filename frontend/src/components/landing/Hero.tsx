@@ -125,25 +125,19 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
             {/* Right: large iso — absolute so unscaled box doesn't blow the row */}
             <div className="relative mx-auto hidden h-[280px] w-full max-w-[640px] sm:block sm:h-[340px] md:h-[400px] lg:mx-0 lg:h-full lg:min-h-[520px] lg:max-w-none xl:min-h-[580px]">
               {mode === "agent" ? (
-                <AgentLogoStrip className="absolute left-0 right-0 top-0 z-50 px-1" />
+                <AgentLogoStrip className="absolute -mt-10 left-0 right-20 top-0 z-50 px-1" />
               ) : null}
-              <Suspense
-                fallback={
-                  <div
-                    className="absolute inset-0 rounded-2xl border border-border bg-muted/30"
-                    aria-hidden
-                  />
-                }
-              >
+              {/* Fixed brand — outside scaled/remounting iso so it stays put across modes */}
+              <Suspense fallback={null}>
+                <HeroFloatingBrand className="absolute right-2 top-8 z-50 drop-shadow-[0_8px_24px_rgba(16,185,129,0.35)] sm:right-3 sm:top-9 lg:right-4" />
+              </Suspense>
+              <Suspense fallback={null}>
                 <div
                   className={`absolute inset-0 overflow-visible ${
                     mode === "agent" ? "pt-10 sm:pt-11" : ""
                   }`}
                 >
                   <div className="origin-top scale-[0.55] sm:scale-[0.62] md:scale-[0.7] lg:origin-top-right lg:scale-[0.72] xl:scale-[0.82] 2xl:scale-[0.88]">
-                    <Suspense fallback={null}>
-                      <HeroFloatingBrand className="absolute right-2 top-2 z-40 drop-shadow-[0_8px_24px_rgba(16,185,129,0.35)] sm:right-8 sm:top-0 lg:right-4" />
-                    </Suspense>
                     <HeroIsoAnimation mode={mode} />
                   </div>
                 </div>
@@ -157,8 +151,10 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
               ) : null}
               <div className="relative h-[240px] w-full">
                 <Suspense fallback={null}>
+                  <HeroFloatingBrand className="absolute right-1 top-2 z-50" />
+                </Suspense>
+                <Suspense fallback={null}>
                   <div className="absolute left-1/2 top-0 origin-top -translate-x-1/2 scale-[0.42]">
-                    <HeroFloatingBrand className="absolute -right-2 top-0 z-40" />
                     <HeroIsoAnimation mode={mode} />
                   </div>
                 </Suspense>

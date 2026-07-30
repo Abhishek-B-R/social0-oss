@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { HeroTopIllustration } from "./HeroIsoTop";
 import { HeroTopAgentIllustration } from "./HeroIsoTopAgent";
 import { HeroMiddleIllustration } from "./HeroIsoMiddle";
@@ -8,7 +8,7 @@ import type { LandingMode } from "../landing-mode";
 const EXPLOSION = {
   duration: 1.05,
   stagger: 0.08,
-  initialDelay: 0.25,
+  initialDelay: 0.15,
 } as const;
 
 /** Fully stacked on the middle layer before exploding out. */
@@ -96,8 +96,9 @@ export function HeroIsoAnimation({
 }) {
   const lineHeight = Math.abs(FINAL_Y.top);
 
+  // Remount on mode change so Normal ↔ Agent replays the full collapse → explode.
   return (
-    <div className={`relative pb-14 sm:pb-16 ${className}`}>
+    <div key={mode} className={`relative pb-14 sm:pb-16 ${className}`}>
       <div className="mt-8 flex flex-col items-center sm:mt-12 md:mt-14">
         <motion.div
           className="relative z-30 flex w-full justify-center"
@@ -109,22 +110,11 @@ export function HeroIsoAnimation({
             delay: EXPLOSION.initialDelay,
           }}
         >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={mode}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.28, ease: EASE_OUT }}
-              className="flex w-full justify-center"
-            >
-              {mode === "agent" ? (
-                <HeroTopAgentIllustration className="h-auto w-[min(860px,100vw)] origin-bottom scale-110 sm:scale-[1.12] md:scale-[1.15]" />
-              ) : (
-                <HeroTopIllustration className="h-auto w-[min(860px,100vw)] origin-bottom scale-110 sm:scale-[1.12] md:scale-[1.15]" />
-              )}
-            </motion.div>
-          </AnimatePresence>
+          {mode === "agent" ? (
+            <HeroTopAgentIllustration className="h-auto w-[min(860px,100vw)] origin-bottom scale-110 sm:scale-[1.12] md:scale-[1.15]" />
+          ) : (
+            <HeroTopIllustration className="h-auto w-[min(860px,100vw)] origin-bottom scale-110 sm:scale-[1.12] md:scale-[1.15]" />
+          )}
         </motion.div>
 
         <div className="pointer-events-none absolute inset-0 z-25">

@@ -12,13 +12,18 @@ type Pad = {
   logo: keyof typeof LOGO_PATHS;
   /** Tall solid pedestal under the tile (TikTok / Facebook). */
   pedestal?: boolean;
+  /** Tile diamond size (default 36). */
+  size?: number;
 };
 
+const HUB = { x: 270, y: 155 } as const;
+
 function Pedestal({ x, y }: { x: number; y: number }) {
-  const s = 40;
+  // Match the thin depth of the flat platform tiles (~5), not a tall block.
+  const s = 36;
   const halfW = s * 0.866;
   const halfH = s * 0.5;
-  const depth = 16;
+  const depth = 5;
   return (
     <g>
       <path
@@ -28,22 +33,40 @@ function Pedestal({ x, y }: { x: number; y: number }) {
            L${x - halfW} ${y} Z`}
         fill={C.elevated}
         stroke={C.ink}
+        strokeDasharray="2.5 2.5"
         strokeWidth="1.15"
       />
       <path
         d={`M${x + halfW} ${y} L${x + halfW} ${y + depth} L${x} ${y + halfH + depth} L${x} ${y + halfH} Z`}
         fill={C.muted}
-        stroke={C.stroke}
-        strokeWidth="1"
+        stroke={C.strokeSoft}
+        strokeWidth="0.75"
+        opacity="0.85"
       />
       <path
         d={`M${x - halfW} ${y} L${x - halfW} ${y + depth} L${x} ${y + halfH + depth} L${x} ${y + halfH} Z`}
         fill={C.bg}
-        stroke={C.stroke}
-        strokeWidth="1"
+        stroke={C.strokeSoft}
+        strokeWidth="0.75"
+        opacity="0.9"
       />
     </g>
   );
+}
+
+/** Spoke from hub ring out toward a pad (stops short of the tile). */
+function spokeTo(pad: Pad, hubClear = 24, padClear = 22) {
+  const dx = pad.x - HUB.x;
+  const dy = pad.y - HUB.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const t0 = hubClear / len;
+  const t1 = 1 - padClear / len;
+  return {
+    x1: HUB.x + dx * t0,
+    y1: HUB.y + dy * t0,
+    x2: HUB.x + dx * t1,
+    y2: HUB.y + dy * t1,
+  };
 }
 
 /** Middle layer — isometric hub with square dashed pads + white platform logos. */
@@ -52,16 +75,18 @@ export function HeroMiddleIllustration({
   height = 380,
   className,
 }: Props) {
+  // YouTube (bottom-left) + Pinterest (bottom-right) on separate radial spokes —
+  // not stacked on the same vertical path.
   const pads: Pad[] = [
     { x: 270, y: 52, logo: "x" },
     { x: 155, y: 100, logo: "ig" },
     { x: 385, y: 100, logo: "li" },
     { x: 140, y: 165, logo: "bluesky" },
     { x: 400, y: 165, logo: "threads" },
-    { x: 270, y: 195, logo: "yt" },
     { x: 120, y: 220, logo: "tt", pedestal: true },
     { x: 420, y: 220, logo: "fb", pedestal: true },
-    { x: 270, y: 265, logo: "pin" },
+    { x: 195, y: 250, logo: "yt", size: 42 },
+    { x: 345, y: 250, logo: "pin", size: 42 },
   ];
 
   return (
@@ -84,14 +109,35 @@ export function HeroMiddleIllustration({
         stroke={C.stroke}
       />
 
+      {/* One dashed spoke per platform (drawn under pads) */}
       {pads.map((p) => {
-        const s = 36;
+        const s = spokeTo(p);
+        return (
+          <line
+            key={`spoke-${p.logo}`}
+            x1={s.x1}
+            y1={s.y1}
+            x2={s.x2}
+            y2={s.y2}
+            stroke={C.strokeBright}
+            strokeWidth="1"
+            strokeDasharray="3 3"
+            opacity="0.4"
+          />
+        );
+      })}
+
+      {pads.map((p) => {
+        const s = p.size ?? 36;
         const halfW = s * 0.866;
         const halfH = s * 0.5;
+        const logoOffset = s >= 40 ? 8 : 7;
+        const logoPx = s >= 40 ? 15 : 14;
         return (
           <g key={p.logo}>
-            {p.pedestal ? <Pedestal x={p.x} y={p.y} /> : null}
-            {!p.pedestal ? (
+            {p.pedestal ? (
+              <Pedestal x={p.x} y={p.y} />
+            ) : (
               <>
                 <path
                   d={`M${p.x} ${p.y - halfH}
@@ -119,21 +165,9 @@ export function HeroMiddleIllustration({
                   opacity="0.9"
                 />
               </>
-            ) : (
-              /* Logo sits on pedestal top — dashed rim */
-              <path
-                d={`M${p.x} ${p.y - halfH}
-                   L${p.x + halfW} ${p.y}
-                   L${p.x} ${p.y + halfH}
-                   L${p.x - halfW} ${p.y} Z`}
-                fill="none"
-                stroke={C.ink}
-                strokeDasharray="2.5 2.5"
-                strokeWidth="1.15"
-              />
             )}
-            <g transform={`translate(${p.x - 7} ${p.y - 8})`}>
-              <svg width="14" height="14" viewBox="0 0 24 24">
+            <g transform={`translate(${p.x - logoOffset} ${p.y - logoOffset - 1})`}>
+              <svg width={logoPx} height={logoPx} viewBox="0 0 24 24">
                 <path d={LOGO_PATHS[p.logo]} fill={C.ink} />
               </svg>
             </g>
@@ -143,8 +177,8 @@ export function HeroMiddleIllustration({
 
       {/* Hub pulse */}
       <ellipse
-        cx="270"
-        cy="155"
+        cx={HUB.x}
+        cy={HUB.y}
         rx="30"
         ry="17"
         fill="none"
@@ -153,8 +187,8 @@ export function HeroMiddleIllustration({
         opacity="0.45"
       />
       <ellipse
-        cx="270"
-        cy="155"
+        cx={HUB.x}
+        cy={HUB.y}
         rx="18"
         ry="10"
         fill="none"
@@ -163,37 +197,13 @@ export function HeroMiddleIllustration({
         opacity="0.75"
       />
       <ellipse
-        cx="270"
-        cy="155"
+        cx={HUB.x}
+        cy={HUB.y}
         rx="8"
         ry="4.5"
         fill={C.accentHot}
         opacity="0.95"
       />
-
-      {[
-        [270, 140, 270, 72],
-        [250, 148, 175, 110],
-        [290, 148, 365, 110],
-        [250, 155, 160, 165],
-        [290, 155, 380, 165],
-        [270, 170, 270, 185],
-        [245, 175, 140, 210],
-        [295, 175, 400, 210],
-        [270, 175, 270, 250],
-      ].map(([x1, y1, x2, y2], i) => (
-        <line
-          key={i}
-          x1={x1}
-          y1={y1}
-          x2={x2}
-          y2={y2}
-          stroke={C.strokeBright}
-          strokeWidth="1"
-          strokeDasharray="3 3"
-          opacity="0.4"
-        />
-      ))}
     </svg>
   );
 }

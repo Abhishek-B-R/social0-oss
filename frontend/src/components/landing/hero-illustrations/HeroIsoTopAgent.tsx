@@ -43,7 +43,7 @@ export function HeroTopAgentIllustration({
       />
 
       {/* Shift so agent window centers on the stack axis (middle hub) */}
-      <g transform="translate(55 0)">
+      <g transform="translate(78 0)">
         {/* Main MCP Agent window */}
         <g transform={ISO.top(270, 58)}>
           <rect
