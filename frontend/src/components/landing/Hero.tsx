@@ -36,13 +36,15 @@ const copy = {
     titleBefore: "Run your socials on autopilot with",
     titleEm: "AI agents",
     titleAfter: ".",
-    sub: "Point Cursor, Claude, or your stack at Social0 — agents draft, schedule, and publish for you.",
+    sub: "Point ChatGPT, Claude, or your stack at Social0 — agents draft, schedule, and publish for you.",
   },
 } as const;
 
 /**
- * First screen = ~90% hero + ~10% Publishes-to.
- * Header sits sticky above; section fills remaining viewport.
+ * First viewport below sticky header:
+ *   ~90% hero (copy + iso), vertically centered
+ *   ~10% Publishes-to strip, pinned to bottom
+ * Iso is clipped inside a flex child so it cannot paint over the strip.
  */
 export function Hero({ signedIn = false }: { signedIn?: boolean }) {
   const { pathname } = useLocation();
@@ -50,14 +52,14 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
   const c = copy[mode];
 
   return (
-    <section className="relative flex min-h-[calc(100dvh-3.5rem)] flex-col overflow-x-hidden sm:min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] lg:overflow-y-hidden">
+    <section className="relative flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden sm:h-[calc(100dvh-4rem)]">
       <GridBackground />
 
-      {/* ~90% — value prop + iso art */}
-      <div className="relative z-10 flex min-h-0 flex-[9] flex-col justify-center">
-        <div className="relative mx-auto w-full max-w-[1440px] px-4 sm:w-[92%] sm:px-6 lg:w-[90%] lg:px-8 xl:px-10">
-          <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-10 xl:gap-14 lg:min-h-[min(620px,calc(90dvh-7rem))]">
-            <div className="relative z-20 mx-auto max-w-[540px] text-center lg:mx-0 lg:max-w-none lg:text-left">
+      {/* ~90% — value prop + iso, fills leftover height above strip */}
+      <div className="relative z-10 flex min-h-0 flex-[1_1_0%] overflow-x-hidden overflow-y-auto lg:overflow-hidden">
+        <div className="mx-auto flex h-full w-full max-w-[1440px] items-stretch px-4 py-5 sm:w-[92%] sm:px-6 sm:py-6 lg:w-[90%] lg:px-8 lg:py-5 xl:px-10">
+          <div className="grid w-full gap-6 lg:h-full lg:grid-cols-2 lg:items-stretch lg:gap-10 xl:gap-14">
+            <div className="relative z-20 mx-auto flex max-w-[540px] flex-col justify-center text-center lg:mx-0 lg:max-w-none lg:text-left">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={mode}
@@ -66,12 +68,12 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.28, ease: [0.23, 1, 0.32, 1] }}
                 >
-                  <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/5 px-3.5 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400 sm:mb-5">
+                  <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/5 px-3.5 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400 sm:mb-4">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#34d399] dark:bg-emerald-400" />
                     {c.eyebrow}
                   </p>
 
-                  <h1 className="mb-4 font-serif text-[clamp(36px,5.5vw,64px)] leading-[1.05] tracking-tight text-foreground sm:mb-5">
+                  <h1 className="mb-3 font-serif text-[clamp(34px,5.2vw,64px)] leading-[1.05] tracking-tight text-foreground sm:mb-4">
                     {c.titleBefore}{" "}
                     <em className="italic text-emerald-700 dark:text-emerald-400">
                       {c.titleEm}
@@ -79,14 +81,14 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
                     {c.titleAfter}
                   </h1>
 
-                  <p className="mb-7 max-w-lg text-[15px] leading-relaxed text-muted-foreground sm:mb-8 sm:text-[17px] lg:mx-0">
+                  <p className="mb-6 max-w-lg text-[15px] leading-relaxed text-muted-foreground sm:mb-7 sm:text-[17px] lg:mx-0">
                     {c.sub}
                   </p>
                 </motion.div>
               </AnimatePresence>
 
               <motion.div
-                className="flex flex-col items-center gap-3.5 lg:items-start"
+                className="flex flex-col items-center gap-3 lg:items-start"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
@@ -122,39 +124,36 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
               </motion.div>
             </div>
 
-            {/* Right: large iso — absolute so unscaled box doesn't blow the row */}
-            <div className="relative mx-auto hidden h-[280px] w-full max-w-[640px] sm:block sm:h-[340px] md:h-[400px] lg:mx-0 lg:h-full lg:min-h-[520px] lg:max-w-none xl:min-h-[580px]">
+            {/* Desktop/tablet iso — stretches full column height, clipped above strip */}
+            <div className="relative mx-auto hidden h-full min-h-0 w-full max-w-[640px] flex-col overflow-hidden sm:flex lg:mx-0 lg:max-w-none">
               {mode === "agent" ? (
-                <AgentLogoStrip className="absolute -mt-10 left-0 right-20 top-0 z-50 px-1" />
+                <AgentLogoStrip className="mb-2 shrink-0 px-1" />
               ) : null}
-              {/* Fixed brand — outside scaled/remounting iso so it stays put across modes */}
-              <Suspense fallback={null}>
-                <HeroFloatingBrand className="absolute right-2 top-8 z-50 drop-shadow-[0_8px_24px_rgba(16,185,129,0.35)] sm:right-3 sm:top-9 lg:right-4" />
-              </Suspense>
-              <Suspense fallback={null}>
-                <div
-                  className={`absolute inset-0 overflow-visible ${
-                    mode === "agent" ? "pt-10 sm:pt-11" : ""
-                  }`}
-                >
-                  <div className="origin-top scale-[0.55] sm:scale-[0.62] md:scale-[0.7] lg:origin-top-right lg:scale-[0.72] xl:scale-[0.82] 2xl:scale-[0.88]">
-                    <HeroIsoAnimation mode={mode} />
-                  </div>
-                </div>
-              </Suspense>
-            </div>
-
-            {/* Mobile iso — visible under copy */}
-            <div className="relative mx-auto w-full max-w-[420px] overflow-visible sm:hidden">
-              {mode === "agent" ? (
-                <AgentLogoStrip className="mb-3 px-1" />
-              ) : null}
-              <div className="relative h-[240px] w-full">
+              <div className="relative isolate min-h-0 w-full flex-1 overflow-hidden">
                 <Suspense fallback={null}>
-                  <HeroFloatingBrand className="absolute right-1 top-2 z-50" />
+                  <HeroFloatingBrand className="absolute right-2 top-2 z-20 drop-shadow-[0_8px_24px_rgba(16,185,129,0.35)] sm:right-3 sm:top-3 lg:right-4" />
                 </Suspense>
                 <Suspense fallback={null}>
-                  <div className="absolute left-1/2 top-0 origin-top -translate-x-1/2 scale-[0.42]">
+                  <div className="absolute inset-0 overflow-hidden">
+                    <div className="origin-top scale-[0.58] sm:scale-[0.66] md:scale-[0.72] lg:origin-top-right lg:scale-[0.76] xl:scale-[0.84] 2xl:scale-[0.9]">
+                      <HeroIsoAnimation mode={mode} />
+                    </div>
+                  </div>
+                </Suspense>
+              </div>
+            </div>
+
+            {/* Mobile iso */}
+            <div className="relative mx-auto w-full max-w-[420px] sm:hidden">
+              {mode === "agent" ? (
+                <AgentLogoStrip className="mb-2 px-1" />
+              ) : null}
+              <div className="relative isolate h-[220px] w-full overflow-hidden">
+                <Suspense fallback={null}>
+                  <HeroFloatingBrand className="absolute right-1 top-2 z-20" />
+                </Suspense>
+                <Suspense fallback={null}>
+                  <div className="absolute left-1/2 top-0 origin-top -translate-x-1/2 scale-[0.4]">
                     <HeroIsoAnimation mode={mode} />
                   </div>
                 </Suspense>
@@ -164,8 +163,8 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
         </div>
       </div>
 
-      {/* ~10% — Publishes to */}
-      <div className="relative z-10 flex-[1] shrink-0">
+      {/* ~10% — pinned to bottom of first viewport */}
+      <div className="relative z-20 shrink-0">
         <PlatformStrip compact />
       </div>
     </section>

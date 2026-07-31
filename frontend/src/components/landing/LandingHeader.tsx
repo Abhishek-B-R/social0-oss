@@ -144,7 +144,6 @@ export function LandingHeader() {
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
-          {showModeToggle ? <LandingModeToggle /> : null}
           <button
             type="button"
             onClick={toggleDarkMode}

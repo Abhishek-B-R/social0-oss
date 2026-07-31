@@ -1,4 +1,29 @@
-export const landingFaqs = [
+export type LandingFaq = {
+  question: string;
+  answer: string;
+  /** Prefer in Agents mode — still shown in Schedule mode further down */
+  agent?: boolean;
+};
+
+export const landingFaqs: LandingFaq[] = [
+  {
+    question: "Does Social0 work with AI agents?",
+    answer:
+      "Yes. Connect via the MCP server at mcp.social0.app/mcp (ChatGPT, Claude, OpenClaw, and other MCP clients), use the REST API at api.social0.app/v1, or the official CLI (`npm install -g social0`). Agents draft, schedule, and publish through the same pipeline as the dashboard.",
+    agent: true,
+  },
+  {
+    question: "How do I connect ChatGPT or Claude via MCP?",
+    answer:
+      "Add Social0 as a remote MCP server (mcp.social0.app/mcp) with an API key from Dashboard → Developer. Once connected, ask your agent to draft, schedule, or publish — posts show up in Social0 like any other.",
+    agent: true,
+  },
+  {
+    question: "Does Social0 have an API and CLI?",
+    answer:
+      "Yes. REST API at api.social0.app/v1 (works great from Postman), MCP at mcp.social0.app/mcp, and `npm install -g social0` for the CLI. Create API keys in Dashboard → Developer.",
+    agent: true,
+  },
   {
     question: "What platforms does Social0 support?",
     answer:
@@ -24,11 +49,6 @@ export const landingFaqs = [
       "Yes. You can connect multiple accounts from the same platform and choose which ones to publish to for each post.",
   },
   {
-    question: "Does Social0 have an API?",
-    answer:
-      "Yes. Social0 has a REST API at api.social0.app/v1, an MCP server at mcp.social0.app/mcp for AI apps, and an official CLI (`npm install -g social0`). Create API keys in Dashboard → Developer.",
-  },
-  {
     question: "How does parallel publishing work?",
     answer:
       "When you hit publish, Social0 sends your post to all selected platforms simultaneously. If one platform fails (API error, rate limit), the others still go through. You'll see exactly which succeeded and which failed.",
@@ -49,3 +69,15 @@ export const landingFaqs = [
       "Social0 is built by Abhishek (@abhitwt on X), an independent developer who posts online and wanted a faster way to publish across multiple platforms. The product is being continuously improved based on user feedback.",
   },
 ];
+
+/** Schedule: general FAQs first, agent ones later. Agents: agent FAQs first. */
+export function faqsForMode(mode: "normal" | "agent"): LandingFaq[] {
+  if (mode === "agent") {
+    const agent = landingFaqs.filter((f) => f.agent);
+    const rest = landingFaqs.filter((f) => !f.agent);
+    return [...agent, ...rest];
+  }
+  const general = landingFaqs.filter((f) => !f.agent);
+  const agent = landingFaqs.filter((f) => f.agent);
+  return [...general, ...agent];
+}

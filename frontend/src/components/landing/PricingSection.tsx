@@ -219,7 +219,7 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
           </div>
 
           {/* GROWTH */}
-          <div className="relative flex h-full scale-[1.02] flex-col overflow-hidden rounded-2xl border-2 border-emerald-500/50 bg-card p-8 shadow-[0_0_40px_rgba(16,185,129,0.12)] dark:bg-[#1A1A1A] md:p-10">
+          <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border-2 border-emerald-500/50 bg-card p-8 shadow-[0_0_40px_rgba(16,185,129,0.12)] dark:bg-[#1A1A1A] md:p-10">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(16,185,129,0.15),transparent_55%)]" />
 
             <div className="relative z-10 mb-6 min-h-[30px]">

@@ -1,14 +1,19 @@
-
-import { useState } from "react";
-import { landingFaqs } from "./landing-faqs";
+import { useEffect, useState } from "react";
+import { faqsForMode } from "./landing-faqs";
+import { useLandingMode } from "./landing-mode";
 
 export function FAQ() {
+  const { mode } = useLandingMode();
+  const faqs = faqsForMode(mode);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    setOpenIndex(null);
+  }, [mode]);
 
   return (
     <section id="faq" className="px-6 py-24 lg:px-8">
       <div className="mx-auto max-w-[1100px]">
-        {/* Section header */}
         <div className="mb-14">
           <div className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
             FAQ
@@ -18,9 +23,8 @@ export function FAQ() {
           </h2>
         </div>
 
-        {/* FAQ accordion */}
         <div className="divide-y divide-border rounded-2xl border border-border bg-background dark:bg-background/50">
-          {landingFaqs.map((faq, i) => (
+          {faqs.map((faq, i) => (
             <div key={faq.question} className="px-6 py-5 md:px-8">
               <button
                 type="button"

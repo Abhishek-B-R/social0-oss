@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   WfConnections,
   WfScheduleCreate,
@@ -12,6 +13,7 @@ import {
   WfApiCli,
 } from "./wireframes/ProductWireframes";
 import { WireframeStage } from "./wireframes/WireframeStage";
+import { useLandingMode, type LandingMode } from "./landing-mode";
 
 function BentoShell({
   children,
@@ -33,55 +35,159 @@ function BentoShell({
   );
 }
 
-const moreFeatures = [
+const headlines: Record<LandingMode, string> = {
+  normal: "Everything you need to post everywhere, smarter",
+  agent: "Everything agents need to post everywhere, reliably",
+};
+
+const midFeaturesByMode: Record<
+  LandingMode,
   {
-    title: "Content calendar",
-    desc: "Month and week views of drafts, scheduled, and published posts across every account.",
-    visual: <WfCalendar className="h-[130px] w-full" />,
-    tint: "from-emerald-500/10 to-transparent",
+    top: { title: string; desc: string };
+    bottom: { title: string; desc: string };
+    right: { title: string; desc: string };
+  }
+> = {
+  normal: {
+    top: {
+      title: "Scheduling & workflows",
+      desc: "Schedule posts, queue slots, drafts — reschedule when plans change.",
+    },
+    bottom: {
+      title: "Per-platform captions",
+      desc: "Write once, then tune the hook for X and the context for LinkedIn — without leaving the composer.",
+    },
+    right: {
+      title: "Grow on autopilot",
+      desc: "Auto-plug winning posts, repost evergreen content, and ship threads & carousels without the busywork.",
+    },
   },
+  agent: {
+    top: {
+      title: "MCP for ChatGPT & Claude",
+      desc: "Connect via MCP — ChatGPT, Claude, or OpenClaw draft, schedule, and publish through Social0.",
+    },
+    bottom: {
+      title: "REST API & Postman",
+      desc: "Same publish engine from Postman or your code — API keys in Dashboard → Developer.",
+    },
+    right: {
+      title: "Agents on autopilot",
+      desc: "Queue, schedule, and ship from your agent — every action shows up in the Social0 dashboard.",
+    },
+  },
+};
+
+const moreFeaturesByMode: Record<
+  LandingMode,
   {
-    title: "Parallel publishing",
-    desc: "All platforms fire at once. One failure never blocks the rest — you’ll see exactly which.",
-    visual: <WfPublishStatus className="h-[130px] w-full" />,
-    tint: "from-sky-500/10 to-transparent",
-  },
-  {
-    title: "Encrypted tokens",
-    desc: "Official OAuth for every network. Tokens encrypted at rest — we never store passwords.",
-    visual: <WfSecure className="h-[130px] w-full" />,
-    tint: "from-amber-500/10 to-transparent",
-  },
-  {
-    title: "Threads & carousels",
-    desc: "Multi-part threads for X, Threads, and Bluesky. Image carousels for Instagram and more.",
-    visual: <WfThreads className="h-[130px] w-full" />,
-    tint: "from-violet-500/10 to-transparent",
-  },
-  {
-    title: "Bulk scheduling",
-    desc: "Drop in a folder of images or videos and schedule them across days in one pass.",
-    visual: <WfBulk className="h-[130px] w-full" />,
-    tint: "from-emerald-500/10 to-transparent",
-  },
-  {
-    title: "API, MCP & CLI",
-    desc: "Same publish pipeline from your stack — REST, remote MCP, or npm install -g social0.",
-    visual: <WfApiCli className="h-[130px] w-full" />,
-    tint: "from-teal-500/10 to-transparent",
-  },
-];
+    title: string;
+    desc: string;
+    visual: ReactNode;
+    tint: string;
+  }[]
+> = {
+  normal: [
+    {
+      title: "Content calendar",
+      desc: "Month and week views of drafts, scheduled, and published posts across every account.",
+      visual: <WfCalendar className="h-[130px] w-full" />,
+      tint: "from-emerald-500/10 to-transparent",
+    },
+    {
+      title: "Parallel publishing",
+      desc: "All platforms fire at once. One failure never blocks the rest — you’ll see exactly which.",
+      visual: <WfPublishStatus className="h-[130px] w-full" />,
+      tint: "from-sky-500/10 to-transparent",
+    },
+    {
+      title: "Encrypted tokens",
+      desc: "Official OAuth for every network. Tokens encrypted at rest — we never store passwords.",
+      visual: <WfSecure className="h-[130px] w-full" />,
+      tint: "from-amber-500/10 to-transparent",
+    },
+    {
+      title: "Threads & carousels",
+      desc: "Multi-part threads for X, Threads, and Bluesky. Image carousels for Instagram and more.",
+      visual: <WfThreads className="h-[130px] w-full" />,
+      tint: "from-violet-500/10 to-transparent",
+    },
+    {
+      title: "Bulk scheduling",
+      desc: "Drop in a folder of images or videos and schedule them across days in one pass.",
+      visual: <WfBulk className="h-[130px] w-full" />,
+      tint: "from-emerald-500/10 to-transparent",
+    },
+    {
+      title: "API, MCP & CLI",
+      desc: "Same publish pipeline from your stack — REST, remote MCP, or npm install -g social0.",
+      visual: <WfApiCli className="h-[130px] w-full" />,
+      tint: "from-teal-500/10 to-transparent",
+    },
+  ],
+  agent: [
+    {
+      title: "MCP for agents",
+      desc: "Remote MCP at mcp.social0.app — ChatGPT, Claude, and OpenClaw publish through Social0.",
+      visual: <WfApiCli className="h-[130px] w-full" />,
+      tint: "from-teal-500/10 to-transparent",
+    },
+    {
+      title: "REST API & Postman",
+      desc: "Create, schedule, and check posts with an API key — works from Postman or your own code.",
+      visual: <WfPublishStatus className="h-[130px] w-full" />,
+      tint: "from-sky-500/10 to-transparent",
+    },
+    {
+      title: "Encrypted tokens",
+      desc: "Official OAuth for every network. Agents never see passwords — tokens stay encrypted at rest.",
+      visual: <WfSecure className="h-[130px] w-full" />,
+      tint: "from-amber-500/10 to-transparent",
+    },
+    {
+      title: "Content calendar",
+      desc: "Every agent-scheduled post lands on the same calendar your dashboard uses.",
+      visual: <WfCalendar className="h-[130px] w-full" />,
+      tint: "from-emerald-500/10 to-transparent",
+    },
+    {
+      title: "Parallel publishing",
+      desc: "One agent call, nine platforms. Failures don’t block the rest — status is always visible.",
+      visual: <WfPublishStatus className="h-[130px] w-full" />,
+      tint: "from-sky-500/10 to-transparent",
+    },
+    {
+      title: "Threads & carousels",
+      desc: "Agents can ship multi-part threads and image carousels — same formats as the composer.",
+      visual: <WfThreads className="h-[130px] w-full" />,
+      tint: "from-violet-500/10 to-transparent",
+    },
+  ],
+};
 
 export function FeaturesSection() {
+  const { mode } = useLandingMode();
+  const mid = midFeaturesByMode[mode];
+  const moreFeatures = moreFeaturesByMode[mode];
+
   return (
     <section
       id="features"
       className="relative px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
     >
       <div className="mx-auto mb-10 flex w-full max-w-[1120px] flex-col items-center gap-4">
-        <h2 className="max-w-xl text-center font-serif text-[clamp(22px,3.5vw,34px)] italic leading-tight text-muted-foreground">
-          Everything you need to post everywhere, smarter
-        </h2>
+        <AnimatePresence mode="wait">
+          <motion.h2
+            key={mode}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.22 }}
+            className="max-w-xl text-center font-serif text-[clamp(22px,3.5vw,34px)] italic leading-tight text-muted-foreground"
+          >
+            {headlines[mode]}
+          </motion.h2>
+        </AnimatePresence>
       </div>
 
       <div className="mx-auto grid w-full max-w-[1120px] grid-cols-1 items-start gap-4 lg:grid-cols-[1.12fr_1fr_1.12fr] lg:gap-3 xl:gap-4">
@@ -110,11 +216,10 @@ export function FeaturesSection() {
               </WireframeStage>
               <div className="space-y-2 px-6 pb-5 pt-3 text-center sm:px-7 sm:text-left">
                 <h3 className="text-[17px] font-semibold tracking-tight text-foreground">
-                  Scheduling & workflows
+                  {mid.top.title}
                 </h3>
                 <p className="text-[13px] leading-relaxed text-muted-foreground">
-                  Schedule posts, queue slots, drafts — reschedule when plans
-                  change.
+                  {mid.top.desc}
                 </p>
               </div>
             </div>
@@ -127,11 +232,10 @@ export function FeaturesSection() {
               </WireframeStage>
               <div className="space-y-2 px-6 pb-5 pt-3 text-center sm:px-7 sm:text-left">
                 <h3 className="text-[17px] font-semibold tracking-tight text-foreground">
-                  Per-platform captions
+                  {mid.bottom.title}
                 </h3>
                 <p className="text-[13px] leading-relaxed text-muted-foreground">
-                  Write once, then tune the hook for X and the context for
-                  LinkedIn — without leaving the composer.
+                  {mid.bottom.desc}
                 </p>
               </div>
             </div>
@@ -145,11 +249,10 @@ export function FeaturesSection() {
             </WireframeStage>
             <div className="space-y-2 px-6 pb-7 pt-4 text-center sm:px-8 sm:text-left">
               <h3 className="text-[18px] font-semibold tracking-tight text-foreground sm:text-[20px]">
-                Grow on autopilot
+                {mid.right.title}
               </h3>
               <p className="text-[14px] leading-relaxed text-muted-foreground">
-                Auto-plug winning posts, repost evergreen content, and ship
-                threads & carousels without the busywork.
+                {mid.right.desc}
               </p>
             </div>
           </div>

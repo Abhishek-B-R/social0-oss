@@ -1,65 +1,77 @@
-import { useState } from "react";
-import { Bot, Code2, Terminal, Webhook } from "lucide-react";
+import { useState, type ComponentType } from "react";
+import { ArrowUpRight } from "lucide-react";
+import Link from "@/components/AppLink";
+import { DOCS_API_URL, DOCS_MCP_URL } from "@/lib/docs-url";
+import {
+  ChatGptIcon,
+  ClaudeIcon,
+  OpenClawIcon,
+  PostmanIcon,
+} from "./agent-brand-icons";
 
 /**
  * Drop muted demo clips into frontend/public/videos/:
- *   agent-mcp.mp4 | agent-claude.mp4 | agent-cli.mp4 | agent-api.mp4
+ *   agent-chatgpt.mp4 | agent-claude.mp4 | agent-openclaw.mp4 | agent-postman.mp4
  */
-const demos = [
+const capabilities: {
+  title: string;
+  description: string;
+  icon: ComponentType<{ className?: string }>;
+  href: string;
+  cta: string;
+  video: string;
+  external?: boolean;
+}[] = [
   {
-    title: "Via Cursor / MCP",
+    title: "Via ChatGPT / MCP",
     description:
-      "Connect Social0 as an MCP server and let Cursor draft, schedule, and publish for you.",
-    icon: Bot,
-    src: "/videos/agent-mcp.mp4",
-    label: "MCP",
+      "Connect Social0 as an MCP server and let ChatGPT draft, schedule, and publish for you.",
+    icon: ChatGptIcon,
+    href: "/mcp",
+    cta: "Set up MCP",
+    video: "/videos/agent-chatgpt.mp4",
   },
   {
     title: "Via Claude",
     description:
       "Point Claude at Social0 — ask it to post updates, queue threads, or check status.",
-    icon: Bot,
-    src: "/videos/agent-claude.mp4",
-    label: "Claude",
+    icon: ClaudeIcon,
+    href: DOCS_MCP_URL,
+    cta: "MCP docs",
+    video: "/videos/agent-claude.mp4",
+    external: true,
   },
   {
-    title: "Via CLI",
+    title: "Via OpenClaw",
     description:
-      "Ship from the terminal with the official social0 CLI — same publish pipeline as the app.",
-    icon: Terminal,
-    src: "/videos/agent-cli.mp4",
-    label: "CLI",
+      "Run OpenClaw against Social0’s MCP — same publish pipeline, agent-driven posts across your accounts.",
+    icon: OpenClawIcon,
+    href: "/mcp",
+    cta: "MCP setup",
+    video: "/videos/agent-openclaw.mp4",
   },
   {
-    title: "Via API / Zapier / n8n",
+    title: "Via Postman / API",
     description:
-      "Automate with the REST API, webhooks, or your favorite no-code stack.",
-    icon: Webhook,
-    src: "/videos/agent-api.mp4",
-    label: "API",
+      "Call the REST API from Postman or your code — create posts, schedule, and check status with an API key.",
+    icon: PostmanIcon,
+    href: DOCS_API_URL,
+    cta: "API docs",
+    video: "/videos/agent-postman.mp4",
+    external: true,
   },
-] as const;
+];
 
-function DemoVideo({
-  src,
-  label,
-}: {
-  src: string;
-  label: string;
-}) {
+/** Reserved 16:9 slot — plays when file exists, keeps layout when it doesn't. */
+function DemoVideoSlot({ src }: { src: string }) {
   const [failed, setFailed] = useState(false);
 
   if (failed) {
     return (
       <div
-        className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/40 dark:border-white/10 dark:bg-[#0d0d0d]"
+        className="aspect-video w-full rounded-2xl border border-border/60 bg-muted/30 dark:border-white/5 dark:bg-[#0d0d0d]"
         aria-hidden
-      >
-        <Code2 className="h-5 w-5 text-muted-foreground/50" strokeWidth={1.5} />
-        <p className="text-[11px] text-muted-foreground/70">
-          Add <span className="font-mono">{label}</span> video
-        </p>
-      </div>
+      />
     );
   }
 
@@ -92,31 +104,51 @@ export function AgentDemosSection() {
             Power your content with AI agents
           </h2>
           <p className="max-w-md text-[14px] leading-relaxed text-muted-foreground">
-            Watch muted demos of agents posting through MCP, Claude, CLI, and
-            API — same pipeline as the dashboard.
+            ChatGPT, Claude, OpenClaw, and the REST API — same encrypted publish
+            pipeline as the dashboard.
           </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          {demos.map((demo) => (
+          {capabilities.map((cap) => (
             <div
-              key={demo.src}
+              key={cap.title}
               className="group relative overflow-hidden rounded-[28px] border border-border bg-muted/40 p-1.5 transition-transform duration-300 hover:-translate-y-1 dark:border-white/10 dark:bg-[#1A1A1A]"
             >
               <div className="flex h-full flex-col rounded-[22px] border border-border/60 bg-background p-5 dark:border-white/5 dark:bg-[#111111] sm:p-6">
-                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-500/25 bg-emerald-500/10">
-                  <demo.icon
-                    className="h-4 w-4 text-emerald-700 dark:text-emerald-400"
-                    strokeWidth={1.5}
-                  />
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-background dark:border-white/10 dark:bg-[#151515]">
+                    <cap.icon className="h-5 w-5" />
+                  </span>
+                  <h3 className="font-serif text-xl tracking-tight text-foreground">
+                    {cap.title}
+                  </h3>
                 </div>
-                <h3 className="mb-2 font-serif text-xl tracking-tight text-foreground">
-                  {demo.title}
-                </h3>
-                <p className="mb-5 text-[14px] leading-relaxed text-muted-foreground">
-                  {demo.description}
+                <p className="mb-4 text-[14px] leading-relaxed text-muted-foreground">
+                  {cap.description}
                 </p>
-                <DemoVideo src={demo.src} label={demo.label} />
+                <DemoVideoSlot src={cap.video} />
+                <div className="mt-4">
+                  {cap.external ? (
+                    <a
+                      href={cap.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[13px] font-medium text-emerald-700 transition-colors hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
+                    >
+                      {cap.cta}
+                      <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+                    </a>
+                  ) : (
+                    <Link
+                      href={cap.href}
+                      className="inline-flex items-center gap-1.5 text-[13px] font-medium text-emerald-700 transition-colors hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
+                    >
+                      {cap.cta}
+                      <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
           ))}

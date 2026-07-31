@@ -1,5 +1,12 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Bot, Code, Megaphone, Terminal, Video, Zap } from "lucide-react";
+import {
+  Bot,
+  Building2,
+  Code2,
+  Megaphone,
+  Sparkles,
+  Video,
+} from "lucide-react";
 import {
   WfBuilder,
   WfCreator,
@@ -13,18 +20,18 @@ const personasByMode = {
     headline: "Built for people who actually post",
     personas: [
       {
-        title: "Indie Builders",
-        description:
-          "Building in public? Ship updates to X, Bluesky, and Threads without the tab dance.",
-        icon: Code,
-        visual: "builder" as const,
-      },
-      {
         title: "Content Creators",
         description:
           "One post, nine platforms. Share images and videos without copying between apps all day.",
         icon: Video,
         visual: "creator" as const,
+      },
+      {
+        title: "Agencies",
+        description:
+          "Marketing agencies managing multiple client accounts — schedule, approve, and publish from one place without tab chaos.",
+        icon: Building2,
+        visual: "builder" as const,
       },
       {
         title: "Solo Marketers",
@@ -39,24 +46,24 @@ const personasByMode = {
     headline: "Built for agents that actually ship",
     personas: [
       {
-        title: "AI builders & agents",
+        title: "AI Agents",
         description:
-          "Wire Social0 into Cursor or Claude via MCP — agents draft, schedule, and publish without a dashboard tab.",
+          "Connect ChatGPT or Claude via MCP — ask an agent to draft, schedule, or publish and it hits the same pipeline as the dashboard.",
         icon: Bot,
         visual: "builder" as const,
       },
       {
-        title: "Automation teams",
+        title: "AI-native founders",
         description:
-          "Hook Zapier, Make, or n8n into the same publish pipeline your humans use — reliable, logged, multi-platform.",
-        icon: Zap,
+          "You already live in ChatGPT and Claude. Let those agents ship your product updates to social without opening a scheduling tool.",
+        icon: Sparkles,
         visual: "creator" as const,
       },
       {
-        title: "CLI & API power users",
+        title: "Developers",
         description:
-          "Script posts from the terminal or your stack. Official CLI and REST API, same engines as the app.",
-        icon: Terminal,
+          "Wire Social0 into your app with the REST API, MCP, or CLI — same encrypted publish engine, fully scriptable.",
+        icon: Code2,
         visual: "marketer" as const,
       },
     ],
@@ -68,7 +75,7 @@ const personasByMode = {
     personas: {
       title: string;
       description: string;
-      icon: typeof Code;
+      icon: typeof Video;
       visual: "builder" | "creator" | "marketer";
     }[];
   }

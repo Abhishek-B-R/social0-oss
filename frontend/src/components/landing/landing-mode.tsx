@@ -31,14 +31,8 @@ function readStoredMode(): LandingMode {
 }
 
 export function LandingModeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<LandingMode>("normal");
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setModeState(readStoredMode());
-    setHydrated(true);
-  }, []);
+  // ponytail: client-only lazy init; SSR/first paint still "normal" until hydrate if SSR ever lands
+  const [mode, setModeState] = useState<LandingMode>(() => readStoredMode());
 
   const setMode = useCallback((next: LandingMode) => {
     setModeState(next);
@@ -49,10 +43,19 @@ export function LandingModeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const value = useMemo(
-    () => ({ mode: hydrated ? mode : "normal", setMode }),
-    [hydrated, mode, setMode],
-  );
+  // Re-sync if another tab changes mode
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY) return;
+      if (e.newValue === "agent" || e.newValue === "normal") {
+        setModeState(e.newValue);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  const value = useMemo(() => ({ mode, setMode }), [mode, setMode]);
 
   return (
     <LandingModeContext.Provider value={value}>
@@ -78,7 +81,7 @@ export function LandingModeToggle({ className = "" }: { className?: string }) {
   return (
     <div
       role="group"
-      aria-label="Landing mode"
+      aria-label="Landing audience"
       className={`inline-flex items-center rounded-lg border border-border bg-background p-0.5 ${className}`}
     >
       <button
@@ -91,7 +94,7 @@ export function LandingModeToggle({ className = "" }: { className?: string }) {
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        Normal
+        Schedule
       </button>
       <button
         type="button"
@@ -103,7 +106,7 @@ export function LandingModeToggle({ className = "" }: { className?: string }) {
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        Agent
+        Agents
       </button>
     </div>
   );

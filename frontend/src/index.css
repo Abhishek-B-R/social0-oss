@@ -125,6 +125,27 @@
   }
 }
 
+/* Hero floating brand — CSS only so Framer doesn't rewrite transform every frame */
+@keyframes landingBrandFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.landing-brand-float {
+  animation: landingBrandFloat 4.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-brand-float {
+    animation: none;
+  }
+}
+
 /* Gradient utilities */
 .bg-gradient-radial {
   background-image: radial-gradient(circle, var(--tw-gradient-stops));
@@ -204,12 +225,16 @@ html {
 
 .landing-page #features,
 .landing-page #platforms,
+.landing-page #developers,
 .landing-page #pricing,
 .landing-page #faq,
+.landing-page #agent-demos,
 .landing #features,
 .landing #platforms,
+.landing #developers,
 .landing #pricing,
-.landing #faq {
+.landing #faq,
+.landing #agent-demos {
   scroll-margin-top: 4.5rem;
 }
 

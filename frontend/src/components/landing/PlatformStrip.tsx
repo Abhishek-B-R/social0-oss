@@ -25,7 +25,7 @@ const PLATFORMS = [
 export function PlatformStrip({ compact = false }: { compact?: boolean }) {
   return (
     <div
-      className={`flex h-full items-center border-y border-border bg-muted/50 px-4 dark:bg-[#111111]/80 sm:px-6 lg:px-8 ${
+      className={`flex items-center border-y border-border bg-muted px-4 dark:bg-[#111111] sm:px-6 lg:px-8 ${
         compact ? "py-3 sm:py-3.5" : "py-6 sm:py-7"
       }`}
     >
