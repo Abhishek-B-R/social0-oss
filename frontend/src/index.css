@@ -125,6 +125,48 @@
   }
 }
 
+/* Hero: desktop fill when comfortable; phones/tablets natural height (no iso fight) */
+.landing-hero {
+  min-height: 0;
+}
+.landing-hero-main {
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+@media (min-width: 1024px) {
+  .landing-hero {
+    min-height: calc(100dvh - 4rem);
+  }
+  .landing-hero-main {
+    overflow-y: auto;
+  }
+}
+@media (min-width: 1024px) and (min-height: 640px) {
+  .landing-hero {
+    height: calc(100dvh - 4rem);
+    max-height: calc(100dvh - 4rem);
+  }
+  .landing-hero-main {
+    overflow: hidden;
+  }
+}
+/* Desktop iso — scale set by ResizeObserver on --iso-scale (width + visible height) */
+.landing-hero-iso {
+  position: relative;
+  min-height: 12rem;
+  overflow: hidden;
+}
+.landing-hero-iso-scale {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 860px;
+  /* Anchor top-right so bottom cubes clip inside the stage, above Supported by */
+  transform: scale(var(--iso-scale, 0.65));
+  transform-origin: top right;
+  will-change: transform;
+  pointer-events: none;
+}
 /* Hero floating brand — CSS only so Framer doesn't rewrite transform every frame */
 @keyframes landingBrandFloat {
   0%,

@@ -25,7 +25,12 @@ export default defineConfig([
         'warn',
         {
           allowConstantExport: true,
-          allowExportNames: ['metadata', 'buttonVariants'],
+          allowExportNames: [
+            'metadata',
+            'buttonVariants',
+            'useLandingMode',
+            'LandingMode',
+          ],
         },
       ],
     },

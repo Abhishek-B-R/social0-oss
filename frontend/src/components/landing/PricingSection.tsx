@@ -27,7 +27,7 @@ const basePlanLabel =
   "text-[11px] font-medium uppercase tracking-widest text-muted-foreground";
 
 const basePlanPrice =
-  "font-serif text-[64px] leading-none tracking-tight text-foreground";
+  "font-serif text-[clamp(40px,6vw,64px)] leading-none tracking-tight text-foreground";
 
 const basePlanDesc = "text-[14px] leading-relaxed text-muted-foreground";
 

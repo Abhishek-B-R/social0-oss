@@ -1,15 +1,15 @@
-import { useEffect, useState } from "react";
-import { faqsForMode } from "./landing-faqs";
+import { useState } from "react";
+import { faqsForMode, type LandingFaq } from "./landing-faqs";
 import { useLandingMode } from "./landing-mode";
 
 export function FAQ() {
   const { mode } = useLandingMode();
-  const faqs = faqsForMode(mode);
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  // Remount on mode change so open accordion resets without an effect
+  return <FAQList key={mode} faqs={faqsForMode(mode)} />;
+}
 
-  useEffect(() => {
-    setOpenIndex(null);
-  }, [mode]);
+function FAQList({ faqs }: { faqs: LandingFaq[] }) {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
     <section id="faq" className="px-6 py-24 lg:px-8">

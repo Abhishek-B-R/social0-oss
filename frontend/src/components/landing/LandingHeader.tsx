@@ -83,7 +83,7 @@ export function LandingHeader() {
           </Link>
         </div>
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-8 lg:flex">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -95,7 +95,7 @@ export function LandingHeader() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-3 lg:flex">
           {showModeToggle ? <LandingModeToggle /> : null}
           <button
             type="button"
@@ -143,7 +143,7 @@ export function LandingHeader() {
           )}
         </div>
 
-        <div className="flex items-center gap-2 md:hidden">
+        <div className="flex items-center gap-2 lg:hidden">
           <button
             type="button"
             onClick={toggleDarkMode}
@@ -174,7 +174,7 @@ export function LandingHeader() {
       </div>
 
       {mobileMenuOpen && (
-        <div className="border-t border-border bg-background px-6 py-4 md:hidden">
+        <div className="border-t border-border bg-background px-6 py-4 lg:hidden">
           <nav className="flex flex-col gap-4">
             {showModeToggle ? (
               <div className="flex items-center justify-between gap-3">

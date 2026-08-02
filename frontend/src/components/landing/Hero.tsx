@@ -1,21 +1,15 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useLayoutEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { AnimatePresence, motion } from "framer-motion";
 import { GridBackground } from "./GridBackground";
 import { PlatformStrip } from "./PlatformStrip";
 import { AgentLogoStrip } from "./AgentLogoStrip";
-import { useLandingMode } from "./landing-mode";
+import { useLandingMode, type LandingMode } from "./landing-mode";
 
 const HeroIsoAnimation = lazy(() =>
   import("./hero-illustrations/HeroIsoAnimation").then((m) => ({
     default: m.HeroIsoAnimation,
-  })),
-);
-
-const HeroFloatingBrand = lazy(() =>
-  import("./hero-illustrations/HeroFloatingBrand").then((m) => ({
-    default: m.HeroFloatingBrand,
   })),
 );
 
@@ -40,11 +34,58 @@ const copy = {
   },
 } as const;
 
+/** Fit iso to the visible stage — width + height (cqh alone fails on short flex rows). */
+function HeroIsoStage({ mode }: { mode: LandingMode }) {
+  const stageRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+
+    const fit = () => {
+      const rect = el.getBoundingClientRect();
+      const w = Math.max(
+        0,
+        Math.min(rect.width, window.innerWidth - rect.left),
+      );
+      const h = Math.max(
+        0,
+        Math.min(rect.height, window.innerHeight - rect.top - 12),
+      );
+      if (w < 8 || h < 8) return;
+
+      // Leave bottom air so cubes never collide with Supported by under the stage
+      const scale = Math.min((w * 0.92) / 860, (h * 0.68) / 720, 0.92);
+      el.style.setProperty("--iso-scale", String(Math.max(0.26, scale)));
+    };
+
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    window.addEventListener("resize", fit);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", fit);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={stageRef}
+      className="landing-hero-iso relative isolate min-h-0 w-full flex-1 overflow-hidden bg-transparent contain-[paint]"
+    >
+      <Suspense fallback={null}>
+        <div className="landing-hero-iso-scale" aria-hidden>
+          <HeroIsoAnimation mode={mode} />
+        </div>
+      </Suspense>
+    </div>
+  );
+}
+
 /**
- * First viewport below sticky header:
- *   ~90% hero (copy + iso), vertically centered
- *   ~10% Publishes-to strip, pinned to bottom
- * Iso is clipped inside a flex child so it cannot paint over the strip.
+ * Desktop (lg+): 2-col + iso. Phone/tablet: copy + CTA only — no iso
+ * (the stacked SVG can't be cropped reliably and was stretching the page).
  */
 export function Hero({ signedIn = false }: { signedIn?: boolean }) {
   const { pathname } = useLocation();
@@ -52,14 +93,13 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
   const c = copy[mode];
 
   return (
-    <section className="relative flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden sm:h-[calc(100dvh-4rem)]">
+    <section className="landing-hero relative flex flex-col overflow-x-hidden">
       <GridBackground />
 
-      {/* ~90% — value prop + iso, fills leftover height above strip */}
-      <div className="relative z-10 flex min-h-0 flex-[1_1_0%] overflow-x-hidden overflow-y-auto lg:overflow-hidden">
-        <div className="mx-auto flex h-full w-full max-w-[1440px] items-stretch px-4 py-5 sm:w-[92%] sm:px-6 sm:py-6 lg:w-[90%] lg:px-8 lg:py-5 xl:px-10">
-          <div className="grid w-full gap-6 lg:h-full lg:grid-cols-2 lg:items-stretch lg:gap-10 xl:gap-14">
-            <div className="relative z-20 mx-auto flex max-w-[540px] flex-col justify-center text-center lg:mx-0 lg:max-w-none lg:text-left">
+      <div className="landing-hero-main relative z-10 flex flex-col lg:min-h-0 lg:flex-1">
+        <div className="mx-auto flex w-full max-w-360 flex-1 flex-col justify-center px-5 py-8 sm:w-[92%] sm:px-6 sm:py-10 lg:w-[90%] lg:px-8 lg:py-4 xl:px-10">
+          <div className="grid w-full min-w-0 items-center gap-8 lg:h-full lg:min-h-0 lg:grid-cols-2 lg:items-stretch lg:gap-8 xl:gap-12">
+            <div className="relative z-20 mx-auto flex w-full min-w-0 max-w-135 flex-col justify-center text-center lg:mx-0 lg:max-w-none lg:text-left">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={mode}
@@ -73,7 +113,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
                     {c.eyebrow}
                   </p>
 
-                  <h1 className="mb-3 font-serif text-[clamp(34px,5.2vw,64px)] leading-[1.05] tracking-tight text-foreground sm:mb-4">
+                  <h1 className="mb-3 max-w-full text-balance font-serif text-[clamp(32px,8vw,56px)] leading-[1.1] tracking-tight text-foreground sm:text-[clamp(36px,5vw,64px)] sm:leading-[1.05] lg:text-[clamp(40px,4.5vw,64px)]">
                     {c.titleBefore}{" "}
                     <em className="italic text-emerald-700 dark:text-emerald-400">
                       {c.titleEm}
@@ -81,7 +121,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
                     {c.titleAfter}
                   </h1>
 
-                  <p className="mb-6 max-w-lg text-[15px] leading-relaxed text-muted-foreground sm:mb-7 sm:text-[17px] lg:mx-0">
+                  <p className="mx-auto mb-6 max-w-lg text-[15px] leading-relaxed text-muted-foreground sm:mb-7 sm:text-[17px] lg:mx-0">
                     {c.sub}
                   </p>
                 </motion.div>
@@ -97,10 +137,10 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
                   ease: [0.23, 1, 0.32, 1],
                 }}
               >
-                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-4 lg:justify-start">
+                <div className="flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4 lg:justify-start">
                   <Link
                     href={signedIn ? "/dashboard" : "/auth"}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-[12px] bg-emerald-500 px-7 py-3.5 text-[15px] font-semibold text-[#04140c] shadow-[0_0_32px_rgba(16,185,129,0.28)] transition-transform duration-150 hover:bg-emerald-400 active:scale-[0.97] dark:shadow-[0_0_32px_rgba(16,185,129,0.38)] sm:w-auto sm:text-[16px]"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-7 py-3.5 text-[15px] font-semibold text-[#04140c] shadow-[0_0_32px_rgba(16,185,129,0.28)] transition-transform duration-150 hover:bg-emerald-400 active:scale-[0.97] dark:shadow-[0_0_32px_rgba(16,185,129,0.38)] sm:w-auto sm:text-[16px]"
                   >
                     {signedIn ? "Go to dashboard" : "Start posting free"}
                     <span aria-hidden="true">→</span>
@@ -124,46 +164,17 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
               </motion.div>
             </div>
 
-            {/* Desktop/tablet iso — stretches full column height, clipped above strip */}
-            <div className="relative mx-auto hidden h-full min-h-0 w-full max-w-[640px] flex-col overflow-hidden sm:flex lg:mx-0 lg:max-w-none">
+            {/* Desktop iso + Supported by — hidden on phone/tablet */}
+            <div className="landing-hero-iso-col relative mx-auto hidden min-h-0 min-w-0 w-full flex-col overflow-hidden bg-transparent lg:flex lg:h-full">
+              <HeroIsoStage mode={mode} />
               {mode === "agent" ? (
-                <AgentLogoStrip className="mb-2 shrink-0 px-1" />
+                <AgentLogoStrip className="relative z-10 mt-3 shrink-0" />
               ) : null}
-              <div className="relative isolate min-h-0 w-full flex-1 overflow-hidden">
-                <Suspense fallback={null}>
-                  <HeroFloatingBrand className="absolute right-2 top-2 z-20 drop-shadow-[0_8px_24px_rgba(16,185,129,0.35)] sm:right-3 sm:top-3 lg:right-4" />
-                </Suspense>
-                <Suspense fallback={null}>
-                  <div className="absolute inset-0 overflow-hidden">
-                    <div className="origin-top scale-[0.58] sm:scale-[0.66] md:scale-[0.72] lg:origin-top-right lg:scale-[0.76] xl:scale-[0.84] 2xl:scale-[0.9]">
-                      <HeroIsoAnimation mode={mode} />
-                    </div>
-                  </div>
-                </Suspense>
-              </div>
-            </div>
-
-            {/* Mobile iso */}
-            <div className="relative mx-auto w-full max-w-[420px] sm:hidden">
-              {mode === "agent" ? (
-                <AgentLogoStrip className="mb-2 px-1" />
-              ) : null}
-              <div className="relative isolate h-[220px] w-full overflow-hidden">
-                <Suspense fallback={null}>
-                  <HeroFloatingBrand className="absolute right-1 top-2 z-20" />
-                </Suspense>
-                <Suspense fallback={null}>
-                  <div className="absolute left-1/2 top-0 origin-top -translate-x-1/2 scale-[0.4]">
-                    <HeroIsoAnimation mode={mode} />
-                  </div>
-                </Suspense>
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ~10% — pinned to bottom of first viewport */}
       <div className="relative z-20 shrink-0">
         <PlatformStrip compact />
       </div>

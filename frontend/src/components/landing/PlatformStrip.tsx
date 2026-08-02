@@ -29,7 +29,7 @@ export function PlatformStrip({ compact = false }: { compact?: boolean }) {
         compact ? "py-3 sm:py-3.5" : "py-6 sm:py-7"
       }`}
     >
-      <div className="mx-auto w-full max-w-[1440px] sm:w-[92%] lg:w-[90%]">
+      <div className="mx-auto w-full min-w-0 max-w-[1440px] sm:w-[92%] lg:w-[90%]">
         <div
           className={`text-center text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground sm:text-[11px] ${
             compact ? "mb-2.5" : "mb-4"
@@ -37,21 +37,22 @@ export function PlatformStrip({ compact = false }: { compact?: boolean }) {
         >
           Publishes to
         </div>
+        {/*
+          ponytail: justify-start below lg — centered nowrap rows clip both edges when wider than the viewport
+        */}
         <div
-          className={`flex flex-wrap items-center justify-center opacity-90 ${
-            compact
-              ? "gap-x-5 gap-y-2.5 sm:gap-x-8"
-              : "gap-x-8 gap-y-4 sm:gap-x-10"
+          className={`flex min-w-0 flex-nowrap items-center justify-center gap-x-5 overflow-x-auto opacity-90 [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-x-6 lg:gap-x-8 [&::-webkit-scrollbar]:hidden ${
+            compact ? "" : "gap-x-6 sm:gap-x-8 lg:gap-x-10"
           }`}
         >
           {PLATFORMS.map((p) => (
             <div
               key={p.name}
-              className="inline-flex items-center gap-2 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="inline-flex shrink-0 items-center gap-2 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
               title={p.name}
             >
-              <p.icon className={compact ? "h-3.5 w-3.5 sm:h-4 sm:w-4" : "h-4 w-4"} />
-              <span className="hidden sm:inline">{p.name}</span>
+              <p.icon className="h-4 w-4" />
+              <span className="hidden lg:inline">{p.name}</span>
             </div>
           ))}
         </div>

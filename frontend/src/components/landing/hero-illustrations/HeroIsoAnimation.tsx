@@ -6,22 +6,22 @@ import { HeroBottomIllustration } from "./HeroIsoBottom";
 import type { LandingMode } from "../landing-mode";
 
 const EXPLOSION = {
-  duration: 1.05,
+  duration: 1.55,
   stagger: 0.08,
   initialDelay: 0.15,
 } as const;
 
 /** Fully stacked on the middle layer before exploding out. */
 const INITIAL_Y = {
-  top: 120,
+  top: 200,
   middle: 0,
   bottom: -100,
 } as const;
 
 const FINAL_Y = {
-  top: -64,
+  top: 30,
   middle: 0,
-  bottom: 48,
+  bottom: 50,
 } as const;
 
 const EASE_OUT: [number, number, number, number] = [0.23, 1, 0.32, 1];
@@ -111,9 +111,9 @@ export function HeroIsoAnimation({
           }}
         >
           {mode === "agent" ? (
-            <HeroTopAgentIllustration className="h-auto w-[min(860px,100vw)] origin-bottom scale-110 sm:scale-[1.12] md:scale-[1.15]" />
+            <HeroTopAgentIllustration className="h-auto w-250 -ml-14 origin-bottom scale-110 sm:scale-[1.12] md:scale-[1.15]" />
           ) : (
-            <HeroTopIllustration className="h-auto w-[min(860px,100vw)] origin-bottom scale-110 sm:scale-[1.12] md:scale-[1.15]" />
+            <HeroTopIllustration className="h-auto w-250 origin-bottom scale-110 sm:scale-[1.12] md:scale-[1.15]" />
           )}
         </motion.div>
 
@@ -140,7 +140,7 @@ export function HeroIsoAnimation({
             ease: EASE_OUT,
           }}
         >
-          <HeroMiddleIllustration className="h-auto w-[min(540px,82vw)]" />
+          <HeroMiddleIllustration className="h-auto w-150" />
         </motion.div>
 
         <div className="pointer-events-none absolute inset-0 z-15">
@@ -166,7 +166,7 @@ export function HeroIsoAnimation({
             delay: EXPLOSION.initialDelay + EXPLOSION.stagger,
           }}
         >
-          <HeroBottomIllustration className="h-auto w-[min(660px,90vw)]" />
+          <HeroBottomIllustration className="h-auto w-175" />
         </motion.div>
       </div>
     </div>
