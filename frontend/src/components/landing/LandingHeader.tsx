@@ -10,12 +10,11 @@ import { LandingModeToggle } from "@/components/landing/landing-mode";
 
 type NavLink = { href: string; label: string };
 
+// Keep nav short — one job: stay on-page and convert
 const landingNavLinks: NavLink[] = [
   { href: "/#features", label: "Product" },
-  { href: "/#platforms", label: "Platforms" },
-  { href: "/#developers", label: "Developers" },
+  { href: "/#stories", label: "Stories" },
   { href: "/#pricing", label: "Pricing" },
-  { href: "/#faq", label: "FAQ" },
 ];
 
 /** On /home, same-page anchors must use /home#… so they don't hit / and redirect logged-in users. */
@@ -54,11 +53,14 @@ export function LandingHeader() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-[1180px] items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
-        <div className="flex gap-2">
-          <span className="relative block h-9 w-9">
+        <Link
+          href={pathname === "/home" ? "/home" : "/"}
+          className="flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <span className="relative block h-9 w-9 shrink-0">
             <Image
               src="/logo-circular.webp"
-              alt="Social0"
+              alt=""
               width={36}
               height={36}
               priority
@@ -66,22 +68,17 @@ export function LandingHeader() {
             />
             <Image
               src="/logo-dark.webp"
-              alt="Social0"
+              alt=""
               width={36}
               height={36}
               priority
               className="absolute inset-0 hidden rounded-full border border-white/20 dark:block"
             />
           </span>
-          <Link
-            href={pathname === "/home" ? "/home" : "/"}
-            className="flex items-center gap-2"
-          >
-            <span className="font-serif text-[22px] tracking-tight text-foreground">
-              Social0
-            </span>
-          </Link>
-        </div>
+          <span className="font-serif text-[22px] tracking-tight text-foreground">
+            Social0
+          </span>
+        </Link>
 
         <nav className="hidden items-center gap-8 lg:flex">
           {navLinks.map((link) => (
@@ -100,7 +97,7 @@ export function LandingHeader() {
           <button
             type="button"
             onClick={toggleDarkMode}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
             aria-label={
               darkMode ? "Switch to light mode" : "Switch to dark mode"
             }
@@ -135,9 +132,9 @@ export function LandingHeader() {
           ) : (
             <Link
               href="/auth"
-              className="inline-flex items-center gap-2 rounded-[10px] bg-emerald-500 px-5 py-2.5 text-[14px] font-semibold text-[#04140c] transition-all hover:scale-[1.02] hover:bg-emerald-400"
+              className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-emerald-500 px-5 py-2.5 text-[14px] font-semibold text-[#04140c] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97]"
             >
-              Get started
+              Start free
               <span aria-hidden="true">→</span>
             </Link>
           )}
@@ -147,7 +144,7 @@ export function LandingHeader() {
           <button
             type="button"
             onClick={toggleDarkMode}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground"
+            className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
             aria-label={
               darkMode ? "Switch to light mode" : "Switch to dark mode"
             }
@@ -160,7 +157,7 @@ export function LandingHeader() {
           </button>
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
           >
@@ -217,10 +214,10 @@ export function LandingHeader() {
             ) : (
               <Link
                 href="/auth"
-                className="mt-2 inline-flex items-center justify-center gap-2 rounded-[10px] bg-emerald-500 px-5 py-2.5 text-[14px] font-semibold text-[#04140c] transition-all hover:scale-[1.02] hover:bg-emerald-400"
+                className="mt-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-emerald-500 px-5 py-3 text-[14px] font-semibold text-[#04140c] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97]"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Get started
+                Start free
                 <span aria-hidden="true">→</span>
               </Link>
             )}

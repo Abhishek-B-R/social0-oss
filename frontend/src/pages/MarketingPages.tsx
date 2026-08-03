@@ -7,6 +7,7 @@ import { FeatureDetailPage } from "@/pages/FeatureDetailPage";
 import { AlternativeDetailPage } from "@/pages/AlternativeDetailPage";
 import { HomeMarketingPage } from "@/pages/HomeMarketingPage";
 import McpPage from "@/features/marketing/pages/McpPage";
+import PricingPage from "@/features/marketing/pages/PricingPage";
 
 export const MarketingPages = {
   Terms: TermsPage,
@@ -18,4 +19,5 @@ export const MarketingPages = {
   AlternativeDetail: AlternativeDetailPage,
   Home: HomeMarketingPage,
   Mcp: McpPage,
+  Pricing: PricingPage,
 };

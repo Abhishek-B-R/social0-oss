@@ -1,7 +1,7 @@
 import { lazy, Suspense, useLayoutEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { GridBackground } from "./GridBackground";
 import { PlatformStrip } from "./PlatformStrip";
 import { AgentLogoStrip } from "./AgentLogoStrip";
@@ -20,17 +20,33 @@ function developersHref(pathname: string) {
 const copy = {
   normal: {
     eyebrow: "Write once · Publish everywhere",
-    titleBefore: "Grow and manage your",
-    titleEm: "socials",
-    titleAfter: " efficiently.",
-    sub: "Schedule and publish to 9 platforms from one place — with tools that keep working after you hit post.",
+    titleBefore: "Post everywhere in",
+    titleEm: "seconds",
+    titleAfter: ", not hours.",
+    clarifier:
+      "Create once. Publish or schedule across X, Instagram, LinkedIn, YouTube, TikTok, and more — from one place.",
+    // Framework: hero bullets (outcomes, not feature dump)
+    bullets: [
+      "Publish to 9 platforms in one click",
+      "Schedule once — go live everywhere",
+      "10 free posts · no credit card",
+    ],
+    // PLACEHOLDER count — replace before shipping
+    proof: "Trusted by 2,400+ creators",
   },
   agent: {
     eyebrow: "Agents on autopilot",
-    titleBefore: "Run your socials on autopilot with",
+    titleBefore: "Run your social accounts on autopilot with",
     titleEm: "AI agents",
     titleAfter: ".",
-    sub: "Point ChatGPT, Claude, or your stack at Social0 — agents draft, schedule, and publish for you.",
+    clarifier:
+      "Point ChatGPT or Claude at Social0 — agents draft, schedule, and publish through the same pipeline as your dashboard.",
+    bullets: [
+      "MCP for ChatGPT, Claude & OpenClaw",
+      "Same dashboard your team already uses",
+      "REST, MCP & CLI included free",
+    ],
+    proof: "Works with ChatGPT, Claude & OpenClaw",
   },
 } as const;
 
@@ -91,6 +107,10 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
   const { pathname } = useLocation();
   const { mode } = useLandingMode();
   const c = copy[mode];
+  const reduceMotion = useReducedMotion();
+  const fade = reduceMotion
+    ? { duration: 0 }
+    : { duration: 0.28, ease: [0.23, 1, 0.32, 1] as const };
 
   return (
     <section className="landing-hero relative flex flex-col overflow-x-hidden">
@@ -103,10 +123,10 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
               <AnimatePresence mode="wait">
                 <motion.div
                   key={mode}
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.28, ease: [0.23, 1, 0.32, 1] }}
+                  exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+                  transition={fade}
                 >
                   <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/5 px-3.5 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400 sm:mb-4">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#34d399] dark:bg-emerald-400" />
@@ -121,54 +141,71 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
                     {c.titleAfter}
                   </h1>
 
-                  <p className="mx-auto mb-6 max-w-lg text-[15px] leading-relaxed text-muted-foreground sm:mb-7 sm:text-[17px] lg:mx-0">
-                    {c.sub}
+                  <p className="mx-auto mb-5 max-w-lg text-[15px] leading-relaxed text-muted-foreground sm:mb-6 sm:text-[17px] lg:mx-0">
+                    {c.clarifier}
                   </p>
+
+                  <ul className="mx-auto mb-6 flex max-w-lg flex-col gap-2 text-left sm:mb-7 lg:mx-0">
+                    {c.bullets.map((b) => (
+                      <li
+                        key={b}
+                        className="flex items-start gap-2.5 text-[13px] leading-snug text-muted-foreground sm:text-[14px]"
+                      >
+                        <span
+                          className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"
+                          aria-hidden
+                        />
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
                 </motion.div>
               </AnimatePresence>
 
               <motion.div
                 className="flex flex-col items-center gap-3 lg:items-start"
-                initial={{ opacity: 0, y: 12 }}
+                initial={reduceMotion ? false : { opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.5,
-                  delay: 0.18,
-                  ease: [0.23, 1, 0.32, 1],
-                }}
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : {
+                        duration: 0.4,
+                        delay: 0.12,
+                        ease: [0.23, 1, 0.32, 1],
+                      }
+                }
               >
-                <div className="flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4 lg:justify-start">
-                  <Link
-                    href={signedIn ? "/dashboard" : "/auth"}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-7 py-3.5 text-[15px] font-semibold text-[#04140c] shadow-[0_0_32px_rgba(16,185,129,0.28)] transition-transform duration-150 hover:bg-emerald-400 active:scale-[0.97] dark:shadow-[0_0_32px_rgba(16,185,129,0.38)] sm:w-auto sm:text-[16px]"
-                  >
-                    {signedIn ? "Go to dashboard" : "Start posting free"}
-                    <span aria-hidden="true">→</span>
-                  </Link>
+                {/* One primary CTA — secondary is text-only so attention stays on Start free */}
+                <Link
+                  href={signedIn ? "/dashboard" : "/auth"}
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-7 py-3.5 text-[15px] font-semibold text-[#04140c] shadow-[0_0_32px_rgba(16,185,129,0.28)] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97] dark:shadow-[0_0_32px_rgba(16,185,129,0.38)] sm:w-auto sm:text-[16px]"
+                >
+                  {signedIn ? "Go to dashboard" : "Start free"}
+                  <span aria-hidden="true">→</span>
+                </Link>
+                <p className="text-[12px] text-muted-foreground sm:text-[13px]">
+                  {c.proof} · 10 free posts · No credit card
+                </p>
+                {mode === "agent" ? (
                   <Link
                     href={developersHref(pathname)}
-                    className="inline-flex items-center justify-center gap-2 text-[14px] text-muted-foreground transition-colors hover:text-foreground sm:text-[15px]"
+                    className="text-[13px] text-muted-foreground/80 underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
                   >
-                    REST API, MCP & CLI
-                    <span
-                      aria-hidden
-                      className="text-emerald-600 dark:text-emerald-400"
-                    >
-                      ↗
-                    </span>
+                    See API, MCP &amp; CLI
                   </Link>
-                </div>
-                <p className="text-[12px] text-muted-foreground sm:text-[13px]">
-                  Start free · No credit card · Cancel anytime
-                </p>
+                ) : null}
+                {mode === "agent" ? (
+                  <AgentLogoStrip className="mt-4 w-full items-center lg:hidden" />
+                ) : null}
               </motion.div>
             </div>
 
-            {/* Desktop iso + Supported by — hidden on phone/tablet */}
+            {/* Desktop iso — do not touch iso internals */}
             <div className="landing-hero-iso-col relative mx-auto hidden min-h-0 min-w-0 w-full flex-col overflow-hidden bg-transparent lg:flex lg:h-full">
               <HeroIsoStage mode={mode} />
               {mode === "agent" ? (
-                <AgentLogoStrip className="relative z-10 mt-3 shrink-0" />
+                <AgentLogoStrip className="relative z-10 mt-3 shrink-0 items-end" />
               ) : null}
             </div>
           </div>

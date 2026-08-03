@@ -72,6 +72,12 @@ export function useLandingMode() {
   return ctx;
 }
 
+/** Defaults to Schedule mode when rendered outside the provider (e.g. stray mounts). */
+export function useLandingModeOrDefault(): LandingModeContextValue {
+  const ctx = useContext(LandingModeContext);
+  return ctx ?? { mode: "normal", setMode: () => {} };
+}
+
 export function LandingModeToggle({ className = "" }: { className?: string }) {
   const ctx = useContext(LandingModeContext);
   if (!ctx) return null;

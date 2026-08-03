@@ -230,6 +230,16 @@ export function staticRouteSeo(pathname: string): PageSeoConfig | null {
         }) as Record<string, unknown>,
         "/mcp",
       );
+    case "/pricing":
+      return metadataToSeoConfig(
+        buildPageMetadata({
+          title: "Pricing — Social0",
+          description:
+            "Simple Social0 pricing. Start free, then upgrade to Starter, Growth, or Pro. Every plan includes REST API, MCP, and CLI.",
+          path: "/pricing",
+        }) as Record<string, unknown>,
+        "/pricing",
+      );
     default:
       if (pathname.startsWith("/onboarding")) {
         return {

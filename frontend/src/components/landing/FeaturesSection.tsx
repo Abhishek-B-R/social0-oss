@@ -9,7 +9,6 @@ import {
   WfPublishStatus,
   WfSecure,
   WfThreads,
-  WfBulk,
   WfApiCli,
 } from "./wireframes/ProductWireframes";
 import { WireframeStage } from "./wireframes/WireframeStage";
@@ -101,48 +100,48 @@ const moreFeaturesByMode: Record<
       tint: "from-sky-500/10 to-transparent",
     },
     {
-      title: "Encrypted tokens",
-      desc: "Official OAuth for every network. Tokens encrypted at rest — we never store passwords.",
-      visual: <WfSecure className="h-[130px] w-full" />,
-      tint: "from-amber-500/10 to-transparent",
-    },
-    {
       title: "Threads & carousels",
       desc: "Multi-part threads for X, Threads, and Bluesky. Image carousels for Instagram and more.",
       visual: <WfThreads className="h-[130px] w-full" />,
       tint: "from-violet-500/10 to-transparent",
     },
     {
-      title: "Bulk scheduling",
-      desc: "Drop in a folder of images or videos and schedule them across days in one pass.",
-      visual: <WfBulk className="h-[130px] w-full" />,
-      tint: "from-emerald-500/10 to-transparent",
-    },
-    {
-      title: "API, MCP & CLI",
-      desc: "Same publish pipeline from your stack — REST, remote MCP, or npm install -g social0.",
+      title: "REST API",
+      desc: "Create, schedule, and publish from your code or Postman — same engine as the dashboard.",
       visual: <WfApiCli className="h-[130px] w-full" />,
       tint: "from-teal-500/10 to-transparent",
+    },
+    {
+      title: "MCP",
+      desc: "Point ChatGPT or Claude at Social0 — agents draft and publish through your accounts.",
+      visual: <WfApiCli className="h-[130px] w-full" />,
+      tint: "from-teal-500/10 to-transparent",
+    },
+    {
+      title: "CLI",
+      desc: "npm install -g social0 — ship posts from the terminal or CI.",
+      visual: <WfApiCli className="h-[130px] w-full" />,
+      tint: "from-emerald-500/10 to-transparent",
     },
   ],
   agent: [
     {
-      title: "MCP for agents",
+      title: "MCP",
       desc: "Remote MCP at mcp.social0.app — ChatGPT, Claude, and OpenClaw publish through Social0.",
       visual: <WfApiCli className="h-[130px] w-full" />,
       tint: "from-teal-500/10 to-transparent",
     },
     {
-      title: "REST API & Postman",
+      title: "REST API",
       desc: "Create, schedule, and check posts with an API key — works from Postman or your own code.",
-      visual: <WfPublishStatus className="h-[130px] w-full" />,
+      visual: <WfApiCli className="h-[130px] w-full" />,
       tint: "from-sky-500/10 to-transparent",
     },
     {
-      title: "Encrypted tokens",
-      desc: "Official OAuth for every network. Agents never see passwords — tokens stay encrypted at rest.",
-      visual: <WfSecure className="h-[130px] w-full" />,
-      tint: "from-amber-500/10 to-transparent",
+      title: "CLI",
+      desc: "npm install -g social0 — agents and scripts ship through the same publish pipeline.",
+      visual: <WfApiCli className="h-[130px] w-full" />,
+      tint: "from-emerald-500/10 to-transparent",
     },
     {
       title: "Content calendar",
@@ -151,16 +150,16 @@ const moreFeaturesByMode: Record<
       tint: "from-emerald-500/10 to-transparent",
     },
     {
+      title: "Encrypted tokens",
+      desc: "Official OAuth for every network. Agents never see passwords — tokens stay encrypted at rest.",
+      visual: <WfSecure className="h-[130px] w-full" />,
+      tint: "from-amber-500/10 to-transparent",
+    },
+    {
       title: "Parallel publishing",
       desc: "One agent call, nine platforms. Failures don’t block the rest — status is always visible.",
       visual: <WfPublishStatus className="h-[130px] w-full" />,
       tint: "from-sky-500/10 to-transparent",
-    },
-    {
-      title: "Threads & carousels",
-      desc: "Agents can ship multi-part threads and image carousels — same formats as the composer.",
-      visual: <WfThreads className="h-[130px] w-full" />,
-      tint: "from-violet-500/10 to-transparent",
     },
   ],
 };

@@ -84,7 +84,7 @@ export function AlternativeDetailPage() {
               <span aria-hidden="true">→</span>
             </Link>
             <Link
-              href="/#pricing"
+              href="/pricing"
               className="inline-flex items-center rounded-[10px] border border-border px-6 py-3 text-[15px] font-medium text-foreground transition-colors hover:bg-muted"
             >
               View pricing

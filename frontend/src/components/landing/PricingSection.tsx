@@ -8,18 +8,20 @@ import {
   getPlanPrice,
 } from "@/lib/plan-pricing";
 
-const freeFeatures = [
-  "Connect up to 3 accounts",
-  `${getPlanLimits("free").maxFreePosts} posts to try it out before you commit`,
-  "Schedule posts across your channels",
-  "All 9 platforms - one dashboard",
-  "REST API, MCP & CLI included",
-  "No credit card required",
-  "No trial that auto-charges you",
-  "Activated instantly when you sign up",
+const freeFeatures: { text: string; highlight?: boolean }[] = [
+  { text: "No credit card required", highlight: true },
+  { text: "Connect up to 3 accounts" },
+  {
+    text: `${getPlanLimits("free").maxFreePosts} posts to try it out before you commit`,
+    highlight: true,
+  },
+  { text: "Schedule posts across your channels" },
+  { text: "All 9 platforms - one dashboard" },
+  { text: "REST API, MCP & CLI included" },
+  { text: "No trial that auto-charges you" },
+  { text: "Activated instantly when you sign up" },
 ];
 
-/* Plan cards follow landing theme tokens. */
 const basePlanCard =
   "flex h-full flex-col rounded-2xl border border-border bg-card p-8 md:p-10 dark:border-white/10 dark:bg-[#1A1A1A]";
 
@@ -78,96 +80,116 @@ const proFeatures = [
   { text: "Early access to new features", highlight: false },
 ];
 
-export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
-  const [interval, setInterval] = useState<BillingInterval>("monthly");
+type PricingCardsProps = {
+  signedIn?: boolean;
+  interval: BillingInterval;
+  onIntervalChange: (interval: BillingInterval) => void;
+  /** Page hero uses h1; section uses h2 */
+  headingAs?: "h1" | "h2";
+};
+
+export function PricingCards({
+  signedIn = false,
+  interval,
+  onIntervalChange,
+  headingAs = "h2",
+}: PricingCardsProps) {
   const starter = getPlanPrice("starter", interval);
   const growth = getPlanPrice("growth", interval);
   const pro = getPlanPrice("pro", interval);
+  const Heading = headingAs;
   const saveBadge = (pct: number | undefined) =>
     pct != null ? (
-      <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-400">
+      <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700 dark:text-emerald-400">
         Save {pct}%
       </span>
     ) : null;
 
   return (
-    <section id="pricing" className="px-6 py-24 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Section header */}
+    <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+      <div className="mx-auto max-w-[1120px]">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="mb-3 text-[11px] uppercase tracking-widest text-emerald-400">
+            <div className="mb-3 text-[11px] uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
               Pricing
             </div>
-            <h2 className="font-serif text-[clamp(32px,4vw,48px)] leading-tight tracking-tight text-foreground">
-              Simple pricing.
+            <Heading className="font-serif text-[clamp(32px,4vw,48px)] leading-tight tracking-tight text-foreground">
+              Find the right plan
               <br />
-              <em className="italic text-muted-foreground">No gotchas.</em>
-            </h2>
+              <em className="italic text-muted-foreground">for how you post.</em>
+            </Heading>
           </div>
           <BillingIntervalToggle
             value={interval}
-            onChange={setInterval}
+            onChange={onIntervalChange}
             className="mt-10 sm:mt-12"
           />
         </div>
         <p className="mb-3 text-[15px] text-muted-foreground">
-          Start free today. Upgrade when you&apos;re ready — every plan includes
-          REST API, MCP &amp; CLI. Paid plans include a 3-day trial.
+          Start free today. Most creators pick{" "}
+          <span className="font-medium text-foreground">Growth</span> when
+          they&apos;re ready to automate — every plan includes REST API, MCP
+          &amp; CLI.
+        </p>
+        <p className="mb-10 text-[13px] text-muted-foreground">
+          No credit card on Free · Cancel anytime · Questions?{" "}
+          <a
+            href="mailto:support@social0.app"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            Email us
+          </a>{" "}
+          — we&apos;ll make it right.
         </p>
 
         <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-4">
-          {/* FREE */}
           <div className={basePlanCard}>
             <div className="mb-6 min-h-[30px]" aria-hidden />
-
             <div className={basePlanLabel}>Free</div>
-
             <div className="mt-6 mb-2 flex items-baseline gap-2">
               <div className={basePlanPrice}>$0</div>
               <div className="text-[13px] text-muted-foreground">forever</div>
             </div>
-
             <p className={`mb-8 ${basePlanDesc}`}>
-              Publish across every platform and see why creators switch - before
+              Publish across every platform and see why creators switch — before
               you spend a dollar.
             </p>
-
             <hr className="mb-8 border-border" />
-
             <ul className="flex-1 space-y-3.5">
-              {freeFeatures.map((text) => (
-                <li key={text} className="flex items-start gap-3">
+              {freeFeatures.map((item) => (
+                <li key={item.text} className="flex items-start gap-3">
                   <span className={basePlanCheck}>✓</span>
-                  <span className={basePlanFeature}>{text}</span>
+                  <span
+                    className={
+                      item.highlight
+                        ? "text-[14px] font-semibold leading-snug text-foreground"
+                        : basePlanFeature
+                    }
+                  >
+                    {item.text}
+                  </span>
                 </li>
               ))}
             </ul>
-
             <div className="mt-auto pt-8">
               <Link
                 href={signedIn ? "/dashboard" : "/auth"}
                 className={ctaNeutral}
               >
-                {signedIn ? "Go to dashboard →" : "Get started free"}
+                {signedIn ? "Go to dashboard →" : "Start free"}
               </Link>
               <p className={basePlanFooter}>No card required</p>
             </div>
           </div>
 
-          {/* STARTER */}
-          <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-8 dark:border-white/10 dark:bg-[#1A1A1A] md:p-10">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(16,185,129,0.12),transparent_55%)]" />
-
-            <div className="relative z-10 mb-6 min-h-[30px]">
+          <div className={basePlanCard}>
+            <div className="mb-6 min-h-[30px]">
               <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground dark:border-white/10">
                 For solo creators
               </span>
             </div>
-
-            <div className={`relative z-10 ${basePlanLabel}`}>Starter</div>
-
-            <div className="relative z-10 mt-6 mb-2">
+            <div className={basePlanLabel}>Starter</div>
+            <div className="mt-6 mb-2">
               <PlanDiscountPrice
                 amount={starter.price}
                 listAmount={starter.listPrice}
@@ -176,19 +198,16 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
               />
             </div>
             {interval === "yearly" ? (
-              <p className="relative z-10 mb-2 text-[13px] text-muted-foreground">
+              <p className="mb-2 text-[13px] text-muted-foreground">
                 ≈ ${formatEffectiveMonthly("starter")}/month
               </p>
             ) : null}
-
-            <p className={`relative z-10 mb-8 ${basePlanDesc}`}>
+            <p className={`mb-8 ${basePlanDesc}`}>
               For creators ready to post everywhere without the copy-paste
               marathon.
             </p>
-
-            <hr className="relative z-10 mb-8 border-foreground/10" />
-
-            <ul className="relative z-10 flex-1 space-y-3.5">
+            <hr className="mb-8 border-border" />
+            <ul className="flex-1 space-y-3.5">
               {starterFeatures.map((text, i) => (
                 <li key={text} className="flex items-start gap-3">
                   <span
@@ -204,38 +223,31 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                 </li>
               ))}
             </ul>
-
-            <div className="relative z-10 mt-auto pt-8">
+            <div className="mt-auto pt-8">
               <Link
                 href={signedIn ? "/dashboard" : "/auth"}
-                className={`${ctaBase} border border-emerald-500/40 text-emerald-400 hover:border-emerald-400 hover:bg-emerald-500/10`}
+                className={ctaNeutral}
               >
-                {signedIn ? "Go to dashboard →" : "Start your 3-day free trial"}
+                {signedIn ? "Go to dashboard →" : "Start free"}
               </Link>
-              <p className={basePlanFooter}>
-                3-day free trial · Cancel anytime
-              </p>
+              <p className={basePlanFooter}>Cancel anytime</p>
             </div>
           </div>
 
-          {/* GROWTH */}
-          <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border-2 border-emerald-500/50 bg-card p-8 shadow-[0_0_40px_rgba(16,185,129,0.12)] dark:bg-[#1A1A1A] md:p-10">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(16,185,129,0.15),transparent_55%)]" />
-
+          <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border-2 border-emerald-500/55 bg-card p-8 shadow-[0_0_48px_rgba(16,185,129,0.14)] dark:bg-[#1A1A1A] md:p-10 lg:z-10 lg:scale-[1.02]">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(16,185,129,0.18),transparent_55%)]" />
             <div className="relative z-10 mb-6 min-h-[30px]">
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-emerald-400">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                Most popular
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600 dark:bg-emerald-400" />
+                Recommended
               </span>
             </div>
-
             <div className="relative z-10 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <div className={basePlanLabel}>Growth</div>
-              <p className="text-[12px] font-medium text-red-400">
-                Lock this pricing forever
+              <p className="text-[12px] font-medium text-amber-800 dark:text-amber-400/90">
+                Early adopter pricing
               </p>
             </div>
-
             <div className="relative z-10 mt-6 mb-2">
               <PlanDiscountPrice
                 amount={growth.price}
@@ -250,19 +262,16 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                 ≈ ${formatEffectiveMonthly("growth")}/month
               </p>
             ) : null}
-
             <p className={`relative z-10 mb-8 ${basePlanDesc}`}>
               Scale your reach with automation, reposting, and bulk scheduling
               built for serious creators.
             </p>
-
             <hr className="relative z-10 mb-8 border-border" />
-
             <ul className="relative z-10 flex-1 space-y-3.5">
               {growthFeatures.map((item) => (
                 <li key={item.text} className="flex items-start gap-3">
                   <span
-                    className={`mt-0.5 shrink-0 text-[14px] ${item.highlight ? "font-semibold text-emerald-400" : "text-emerald-400/70"}`}
+                    className={`mt-0.5 shrink-0 text-[14px] ${item.highlight ? "font-semibold text-emerald-700 dark:text-emerald-400" : "text-emerald-700/70 dark:text-emerald-400/70"}`}
                   >
                     ✓
                   </span>
@@ -274,36 +283,28 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                 </li>
               ))}
             </ul>
-
             <div className="relative z-10 mt-auto pt-8">
               <Link
                 href={signedIn ? "/dashboard" : "/auth"}
                 className={ctaPrimary}
               >
-                {signedIn ? "Go to dashboard →" : "Start your 3-day free trial"}
+                {signedIn ? "Go to dashboard →" : "Choose Growth"}
               </Link>
-              <p className={basePlanFooter}>
-                3-day free trial · Cancel anytime
-              </p>
+              <p className={basePlanFooter}>Best value for most creators</p>
             </div>
           </div>
 
-          {/* PRO */}
-          <div
-            className={`${basePlanCard} relative overflow-hidden border-emerald-500/25`}
-          >
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(16,185,129,0.1),transparent_55%)]" />
-
+          <div className={`${basePlanCard} relative overflow-hidden`}>
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_0%,rgba(16,185,129,0.06),transparent_55%)]" />
             <div className="relative z-10 mb-6 min-h-[30px]">
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-emerald-400">
+              <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground dark:border-white/10">
                 For teams & agencies
               </span>
             </div>
-
             <div className="relative z-10 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <div className={basePlanLabel}>Pro</div>
-              <p className="text-[12px] font-medium text-red-400">
-                Lock this pricing forever
+              <p className="text-[12px] font-medium text-amber-800 dark:text-amber-400/90">
+                Early adopter pricing
               </p>
             </div>
             <div className="relative z-10 mt-6 mb-2">
@@ -320,19 +321,16 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                 ≈ ${formatEffectiveMonthly("pro")}/month
               </p>
             ) : null}
-
             <p className={`relative z-10 mb-8 ${basePlanDesc}`}>
               For power users and agencies who need more accounts and team
               collaboration.
             </p>
-
             <hr className="relative z-10 mb-8 border-border" />
-
             <ul className="relative z-10 flex-1 space-y-3.5">
               {proFeatures.map((item) => (
                 <li key={item.text} className="flex items-start gap-3">
                   <span
-                    className={`mt-0.5 shrink-0 text-[14px] ${item.highlight ? "font-semibold text-emerald-400" : "text-emerald-400/70"}`}
+                    className={`mt-0.5 shrink-0 text-[14px] ${item.highlight ? "font-semibold text-emerald-700 dark:text-emerald-400" : "text-emerald-700/70 dark:text-emerald-400/70"}`}
                   >
                     ✓
                   </span>
@@ -344,21 +342,39 @@ export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
                 </li>
               ))}
             </ul>
-
             <div className="relative z-10 mt-auto pt-8">
               <Link
                 href={signedIn ? "/dashboard" : "/auth"}
-                className={ctaPrimary}
+                className={ctaNeutral}
               >
-                {signedIn ? "Go to dashboard →" : "Start your 3-day free trial"}
+                {signedIn ? "Go to dashboard →" : "Start free"}
               </Link>
-              <p className={basePlanFooter}>
-                3-day free trial · Cancel anytime
-              </p>
+              <p className={basePlanFooter}>Cancel anytime</p>
             </div>
           </div>
         </div>
+
+        <p className="mt-8 text-center text-[13px] text-muted-foreground">
+          <a
+            href="#compare"
+            className="font-medium text-foreground underline underline-offset-4 hover:text-emerald-700 dark:hover:text-emerald-400"
+          >
+            Compare every feature →
+          </a>
+        </p>
       </div>
     </section>
+  );
+}
+
+/** Standalone wrapper if needed elsewhere */
+export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
+  const [interval, setInterval] = useState<BillingInterval>("monthly");
+  return (
+    <PricingCards
+      signedIn={signedIn}
+      interval={interval}
+      onIntervalChange={setInterval}
+    />
   );
 }

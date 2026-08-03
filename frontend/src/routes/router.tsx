@@ -145,6 +145,7 @@ const HomeMarketingPage = lazy(() =>
   })),
 );
 const McpPage = lazy(() => import("@/features/marketing/pages/McpPage"));
+const PricingPage = lazy(() => import("@/features/marketing/pages/PricingPage"));
 
 const OnboardingPage = lazy(
   () => import("@/features/onboarding/pages/OnboardingStep2Page"),
@@ -310,6 +311,14 @@ export function AppRouter() {
             element={
               <Lazy>
                 <McpPage />
+              </Lazy>
+            }
+          />
+          <Route
+            path="pricing"
+            element={
+              <Lazy>
+                <PricingPage />
               </Lazy>
             }
           />

@@ -30,6 +30,9 @@ export function HeroTopAgentIllustration({
         <filter id="s0-agent-soft" x="-30%" y="-30%" width="160%" height="160%">
           <feGaussianBlur stdDeviation="12" />
         </filter>
+        <clipPath id="s0-agent-me-avatar">
+          <circle cx="28" cy="48" r="11" />
+        </clipPath>
       </defs>
 
       <ellipse
@@ -73,19 +76,17 @@ export function HeroTopAgentIllustration({
             Social0 - MCP Agent
           </text>
 
-          {/* User row */}
+          {/* User row — same pfp as Founder section */}
           <circle cx="28" cy="48" r="11" fill="#f0a070" />
-          <text
-            x="28"
-            y="51"
-            textAnchor="middle"
-            fill="#1a120c"
-            fontSize="6"
-            fontFamily="ui-sans-serif, system-ui, sans-serif"
-            fontWeight="700"
-          >
-            ME
-          </text>
+          <image
+            href="/pfp.webp"
+            x="17"
+            y="37"
+            width="22"
+            height="22"
+            clipPath="url(#s0-agent-me-avatar)"
+            preserveAspectRatio="xMidYMid slice"
+          />
           <rect
             x="46"
             y="36"

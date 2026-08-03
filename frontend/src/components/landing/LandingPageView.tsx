@@ -15,6 +15,11 @@ const DemoVideoSection = lazy(() =>
     default: m.DemoVideoSection,
   })),
 );
+const ProblemSolution = lazy(() =>
+  import("@/components/landing/ProblemSolution").then((m) => ({
+    default: m.ProblemSolution,
+  })),
+);
 const WhoIsItFor = lazy(() =>
   import("@/components/landing/WhoIsItFor").then((m) => ({
     default: m.WhoIsItFor,
@@ -35,14 +40,14 @@ const FeaturesSection = lazy(() =>
     default: m.FeaturesSection,
   })),
 );
-const SupportedPlatforms = lazy(() =>
-  import("@/components/landing/SupportedPlatforms").then((m) => ({
-    default: m.SupportedPlatforms,
-  })),
-);
 const DevelopersSection = lazy(() =>
   import("@/components/landing/DevelopersSection").then((m) => ({
     default: m.DevelopersSection,
+  })),
+);
+const SupportedPlatforms = lazy(() =>
+  import("@/components/landing/SupportedPlatforms").then((m) => ({
+    default: m.SupportedPlatforms,
   })),
 );
 const FounderSection = lazy(() =>
@@ -50,9 +55,14 @@ const FounderSection = lazy(() =>
     default: m.FounderSection,
   })),
 );
-const PricingSection = lazy(() =>
-  import("@/components/landing/PricingSection").then((m) => ({
-    default: m.PricingSection,
+const SocialProofSection = lazy(() =>
+  import("@/components/landing/SocialProofSection").then((m) => ({
+    default: m.SocialProofSection,
+  })),
+);
+const PricingTeaser = lazy(() =>
+  import("@/components/landing/PricingTeaser").then((m) => ({
+    default: m.PricingTeaser,
   })),
 );
 const FAQ = lazy(() =>
@@ -62,6 +72,11 @@ const FinalCTA = lazy(() =>
   import("@/components/landing/FinalCTA").then((m) => ({ default: m.FinalCTA })),
 );
 
+/**
+ * saas-landing-pages homepage framework:
+ * Hero → Problem → Features → Integrations → How it works → FAQ → Final CTA → Founder
+ * Social0 extras: demo visual, social proof, pricing tease, persona, agent demos
+ */
 function LandingMain({ signedIn }: { signedIn: boolean }) {
   const { mode } = useLandingMode();
 
@@ -73,15 +88,10 @@ function LandingMain({ signedIn }: { signedIn: boolean }) {
         <DemoVideoSection />
       </DeferredSection>
       <DeferredSection>
-        <WhoIsItFor />
+        <ProblemSolution />
       </DeferredSection>
-      {mode === "agent" ? (
-        <DeferredSection minHeight="28rem">
-          <AgentDemosSection />
-        </DeferredSection>
-      ) : null}
       <DeferredSection>
-        <HowItWorks />
+        <SocialProofSection />
       </DeferredSection>
       <SectionSeparator />
       <DeferredSection>
@@ -94,17 +104,28 @@ function LandingMain({ signedIn }: { signedIn: boolean }) {
         <DevelopersSection />
       </DeferredSection>
       <DeferredSection>
-        <FounderSection />
+        <HowItWorks />
+      </DeferredSection>
+      {mode === "agent" ? (
+        <DeferredSection minHeight="28rem">
+          <AgentDemosSection />
+        </DeferredSection>
+      ) : null}
+      <DeferredSection>
+        <WhoIsItFor />
       </DeferredSection>
       <SectionSeparator />
-      <DeferredSection minHeight="28rem">
-        <PricingSection signedIn={signedIn} />
+      <DeferredSection>
+        <PricingTeaser />
       </DeferredSection>
       <DeferredSection>
         <FAQ />
       </DeferredSection>
       <DeferredSection>
         <FinalCTA signedIn={signedIn} />
+      </DeferredSection>
+      <DeferredSection>
+        <FounderSection />
       </DeferredSection>
     </main>
   );
