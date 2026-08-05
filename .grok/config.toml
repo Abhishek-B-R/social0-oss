@@ -1,0 +1,7 @@
+[mcp_servers.october-bus]
+url = "http://127.0.0.1:${OCTOBER_BUS_PORT}/mcp"
+enabled = true
+headers = { "X-October-Canvas" = "${OCTOBER_BUS_CANVAS}", "X-October-Node" = "${OCTOBER_BUS_NODE}" }
+
+[permission]
+allow = ["MCPTool(october-bus__*)"]

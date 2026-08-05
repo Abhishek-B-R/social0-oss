@@ -39,3 +39,15 @@ coverage
 .env
 .env.*
 !.env.example
+
+# October (generated — context bus / browser MCP)
+.claude/settings.local.json
+.mcp.json
+.codex/config.toml
+.codex/hooks.json
+.opencode/plugins/october-bus.js
+opencode.json
+.cursor/mcp.json
+.cursor/cli.json
+.gemini/settings.json
+.qwen/settings.json
