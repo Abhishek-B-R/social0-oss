@@ -79,7 +79,7 @@ function LandingMain({ signedIn }: { signedIn: boolean }) {
         <SocialProofSection />
       </DeferredSection>
       <DeferredSection>
-        <FounderSection />
+        <FounderSection signedIn={signedIn} />
       </DeferredSection>
       <DeferredSection>
         <SupportedPlatforms />

@@ -1,36 +1,40 @@
-import { XIcon } from "./PlatformIcons";
+import Link from "@/components/AppLink";
 
-export function FounderSection() {
+export function FounderSection({ signedIn = false }: { signedIn?: boolean }) {
   return (
     <section className="border-y border-border bg-muted/30 px-6 py-20 dark:bg-muted/10 lg:px-8">
-      <div className="mx-auto max-w-[1100px]">
-        <div className="flex flex-col items-center gap-10">
-          {/* Photo — on top */}
-          <div className="relative shrink-0">
-            <div
-              className="h-32 w-32 cursor-pointer overflow-hidden rounded-full bg-muted dark:bg-muted/60"
-              onClick={() => window.open("https://x.com/abhitwt", "_blank")}
-            >
-              <img
-                src="/pfp.jpg"
-                alt="Abhishek, founder of Social0"
-                className="h-full w-full object-cover"
-              />
-            </div>
-            <div className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-background bg-foreground dark:border-[#0A0A0A] dark:bg-white">
-              <XIcon className="h-4 w-4 text-background dark:text-[#0A0A0A]" />
-            </div>
+      <div className="mx-auto max-w-[720px]">
+        <div className="flex flex-col items-center text-center">
+          {/* Photo */}
+          <div
+            className="mb-6 h-32 w-32 cursor-pointer overflow-hidden rounded-full border-2 border-emerald-500/40 bg-muted dark:bg-muted/60"
+            onClick={() => window.open("https://x.com/abhitwt", "_blank")}
+          >
+            <img
+              src="/pfp.jpg"
+              alt="Abhishek, founder of Social0"
+              className="h-full w-full object-cover"
+            />
           </div>
 
-          {/* Content */}
-          <div className="w-full max-w-[720px] text-center md:text-left">
+          <h2 className="font-sans text-[clamp(26px,4vw,34px)] font-bold tracking-tight text-foreground">
+            hello..!! it&apos;s{" "}
+            <span className="text-emerald-600 dark:text-emerald-400">
+              Abhishek
+            </span>
+          </h2>
+          <p className="mt-1.5 text-[15px] text-muted-foreground">
+            (the guy who built Social0)
+          </p>
+
+          <div className="mt-8 w-full text-left">
             <p className="mb-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               The Story Behind Social0
             </p>
-            <h2 className="mb-6 font-serif text-[clamp(24px,3vw,32px)] tracking-tight text-foreground">
+            <h3 className="mb-6 font-serif text-[clamp(22px,3vw,28px)] tracking-tight text-foreground">
               I don&apos;t think posting on social media should require project
               management skills.
-            </h2>
+            </h3>
 
             <div className="mb-6 space-y-5 text-[16px] leading-relaxed text-muted-foreground">
               <p>
@@ -45,9 +49,10 @@ export function FounderSection() {
                 intern for my own social media accounts.
               </p>
               <p>
-                The good scheduling tools were too expensive. The cheap ones
-                tested my patience. The rest had 147 bloated features but still
-                couldn&apos;t do the one thing I actually wanted.
+                The good scheduling tools were too expensive ($150–$500/month).
+                The cheap ones tested my patience. The rest had 147 bloated
+                features but still couldn&apos;t do the one thing I actually
+                wanted.
               </p>
 
               <p className="font-semibold text-foreground">
@@ -90,27 +95,25 @@ export function FounderSection() {
                 >
                   DM on X
                 </a>
-                . I read every message and promise to fix any breaking issues
-                within 48 hours.
+                . I read every message and try my best to fix any breaking
+                issues within 48 hours.
               </p>
 
               <p>Thanks for being here; it means a lot!</p>
-            </div>
 
-            <div className="flex items-center gap-2">
-              <div className="text-[16px] font-semibold text-foreground">
-                Abhishek
-              </div>
-              <a
-                href="https://x.com/abhitwt"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[14px] text-[#2B7EFF] transition-opacity hover:opacity-80"
-              >
-                @abhitwt
-              </a>
+              <p>
+                If you want to try it yourself and save hours this week, start
+                free below — no credit card required.
+              </p>
             </div>
           </div>
+
+          <Link
+            href={signedIn ? "/dashboard" : "/auth"}
+            className="mt-2 inline-flex min-h-12 w-full max-w-sm items-center justify-center rounded-full bg-emerald-500 px-8 py-3.5 text-[15px] font-semibold text-[#04140c] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98]"
+          >
+            {signedIn ? "Go to dashboard" : "Try it out for free"}
+          </Link>
         </div>
       </div>
     </section>
