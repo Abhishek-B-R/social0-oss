@@ -18,6 +18,21 @@ function LogoMark({
   size?: number;
   fill?: string;
 }) {
+  // Twitter / X — same tile construction as SupportedPlatforms (black rounded + white X)
+  if (logo === "x") {
+    const pad = size * 0.2;
+    const glyph = size * 0.6;
+    const gs = glyph / 24;
+    return (
+      <g transform={`translate(${x} ${y})`}>
+        <rect width={size} height={size} rx={size * 0.22} fill="#0E0E0E" />
+        <g transform={`translate(${pad} ${pad}) scale(${gs})`}>
+          <path d={LOGO_PATHS.x} fill="#ffffff" />
+        </g>
+      </g>
+    );
+  }
+
   const s = size / 24;
   return (
     <g transform={`translate(${x} ${y}) scale(${s})`}>
@@ -186,7 +201,7 @@ export function WfConnections({ className = "" }: { className?: string }) {
     name: string;
     connected?: boolean;
   }[] = [
-    { logo: "x", name: "X", connected: true },
+    { logo: "x", name: "Twitter / X", connected: true },
     { logo: "ig", name: "Instagram", connected: true },
     { logo: "li", name: "LinkedIn" },
     { logo: "threads", name: "Threads" },
@@ -587,7 +602,7 @@ export function WfScheduleCreate({ className = "" }: { className?: string }) {
 /** Per-platform captions panel */
 export function WfCaptions({ className = "" }: { className?: string }) {
   const platforms = [
-    { logo: "x" as const, label: "X", active: false },
+    { logo: "x" as const, label: "Twitter / X", active: false },
     { logo: "li" as const, label: "LinkedIn", active: true },
     { logo: "ig" as const, label: "IG", active: false },
   ];
@@ -1101,7 +1116,11 @@ export function WfBuilder({ className = "" }: { className?: string }) {
       </text>
       {(["x", "bluesky", "threads"] as const).map((logo, i) => {
         const y = 48 + i * 34;
-        const labels = { x: "X", bluesky: "Bluesky", threads: "Threads" };
+        const labels = {
+          x: "Twitter / X",
+          bluesky: "Bluesky",
+          threads: "Threads",
+        };
         return (
           <g key={logo}>
             <path

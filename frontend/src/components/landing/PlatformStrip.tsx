@@ -1,6 +1,8 @@
+import { XIcon } from "./PlatformIcons";
+
 /** Official brand marks — served locally under /icons. */
 const PLATFORMS = [
-  { name: "X", src: "/icons/x.svg" },
+  { name: "Twitter / X", src: "/icons/x.svg" },
   { name: "Instagram", src: "/icons/instagram.svg" },
   { name: "LinkedIn", src: "/icons/linkedin.svg" },
   { name: "YouTube", src: "/icons/youtube.svg" },
@@ -26,6 +28,52 @@ const PLATFORMS = [
   },
 ] as const;
 
+function isTwitterMark(name: string, src?: string) {
+  const n = name.toLowerCase();
+  return n === "x" || n.includes("twitter") || Boolean(src?.includes("/icons/x."));
+}
+
+/**
+ * Platforms-section Twitter mark: black X on white tile in light,
+ * white X on black tile in dark.
+ */
+export function TwitterXBrandIcon({
+  size = 22,
+  responsive = false,
+  className = "",
+}: {
+  size?: number;
+  responsive?: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      className={
+        responsive
+          ? `inline-flex size-7 shrink-0 items-center justify-center rounded-[22%] bg-white sm:size-9 md:size-10 dark:bg-black ${className}`
+          : `inline-flex shrink-0 items-center justify-center rounded-[22%] bg-white dark:bg-black ${className}`
+      }
+      style={responsive ? undefined : { width: size, height: size }}
+      title="Twitter / X"
+    >
+      <XIcon
+        aria-hidden
+        className={
+          responsive
+            ? "size-[55%] text-black dark:text-white"
+            : "text-black dark:text-white"
+        }
+        style={
+          responsive
+            ? undefined
+            : { width: Math.round(size * 0.55), height: Math.round(size * 0.55) }
+        }
+      />
+      <span className="sr-only">Twitter / X</span>
+    </span>
+  );
+}
+
 export function PlatformBrandIcon({
   name,
   src,
@@ -42,6 +90,10 @@ export function PlatformBrandIcon({
   /** Hero: size-7 → sm:size-9 → md:size-10 so 9 icons fit one mobile row */
   responsive?: boolean;
 }) {
+  if (isTwitterMark(name, src)) {
+    return <TwitterXBrandIcon size={size} responsive={responsive} />;
+  }
+
   const lightPct = `${Math.round(srcScale * 100)}%`;
 
   return (

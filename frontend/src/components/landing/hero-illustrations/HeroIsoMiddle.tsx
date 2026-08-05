@@ -169,9 +169,25 @@ export function HeroMiddleIllustration({
             <g
               transform={`translate(${p.x - logoOffset} ${p.y - logoOffset - 1})`}
             >
-              <svg width={logoPx} height={logoPx} viewBox="0 0 24 24">
-                <path d={LOGO_PATHS[p.logo]} fill={C.ink} />
-              </svg>
+              {p.logo === "x" ? (
+                <svg width={logoPx} height={logoPx} viewBox={`0 0 ${logoPx} ${logoPx}`}>
+                  <rect
+                    width={logoPx}
+                    height={logoPx}
+                    rx={logoPx * 0.22}
+                    fill="#0E0E0E"
+                  />
+                  <g
+                    transform={`translate(${logoPx * 0.2} ${logoPx * 0.2}) scale(${(logoPx * 0.6) / 24})`}
+                  >
+                    <path d={LOGO_PATHS.x} fill="#ffffff" />
+                  </g>
+                </svg>
+              ) : (
+                <svg width={logoPx} height={logoPx} viewBox="0 0 24 24">
+                  <path d={LOGO_PATHS[p.logo]} fill={C.ink} />
+                </svg>
+              )}
             </g>
           </g>
         );

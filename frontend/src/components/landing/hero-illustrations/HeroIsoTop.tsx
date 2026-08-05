@@ -17,6 +17,20 @@ function Logo({
   y: number;
   size?: number;
 }) {
+  if (logo === "x") {
+    const pad = size * 0.2;
+    const glyph = size * 0.6;
+    const gs = glyph / 24;
+    return (
+      <g transform={`translate(${x} ${y})`}>
+        <rect width={size} height={size} rx={size * 0.22} fill="#0E0E0E" />
+        <g transform={`translate(${pad} ${pad}) scale(${gs})`}>
+          <path d={LOGO_PATHS.x} fill="#ffffff" />
+        </g>
+      </g>
+    );
+  }
+
   const s = size / 24;
   return (
     <g transform={`translate(${x} ${y}) scale(${s})`}>

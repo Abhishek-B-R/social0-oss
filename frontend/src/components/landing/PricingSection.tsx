@@ -4,7 +4,8 @@ import { BillingIntervalToggle } from "@/components/billing/BillingIntervalToggl
 import { PlanDiscountPrice } from "@/components/billing/PlanDiscountPrice";
 import { getPlanLimits, type BillingInterval } from "@/lib/plans";
 import {
-  formatEffectiveMonthly,
+  billedAsYearlyLabel,
+  getEffectiveMonthly,
   getPlanPrice,
 } from "@/lib/plan-pricing";
 
@@ -86,6 +87,10 @@ type PricingCardsProps = {
   onIntervalChange: (interval: BillingInterval) => void;
   /** Page hero uses h1; section uses h2 */
   headingAs?: "h1" | "h2";
+  /** Anchor for the compare-plans link (landing → /pricing#compare) */
+  compareHref?: string;
+  /** Section element id (landing uses #pricing) */
+  id?: string;
 };
 
 export function PricingCards({
@@ -93,6 +98,8 @@ export function PricingCards({
   interval,
   onIntervalChange,
   headingAs = "h2",
+  compareHref = "#compare",
+  id,
 }: PricingCardsProps) {
   const starter = getPlanPrice("starter", interval);
   const growth = getPlanPrice("growth", interval);
@@ -106,7 +113,7 @@ export function PricingCards({
     ) : null;
 
   return (
-    <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+    <section id={id} className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
       <div className="mx-auto max-w-[1120px]">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -191,15 +198,21 @@ export function PricingCards({
             <div className={basePlanLabel}>Starter</div>
             <div className="mt-6 mb-2">
               <PlanDiscountPrice
-                amount={starter.price}
-                listAmount={starter.listPrice}
-                period={interval === "yearly" ? "/year" : "/month"}
+                amount={
+                  interval === "yearly"
+                    ? getEffectiveMonthly("starter")
+                    : starter.price
+                }
+                listAmount={
+                  interval === "yearly" ? undefined : starter.listPrice
+                }
+                period="/month"
                 size="hero"
               />
             </div>
             {interval === "yearly" ? (
               <p className="mb-2 text-[13px] text-muted-foreground">
-                ≈ ${formatEffectiveMonthly("starter")}/month
+                {billedAsYearlyLabel("starter")}
               </p>
             ) : null}
             <p className={`mb-8 ${basePlanDesc}`}>
@@ -250,16 +263,22 @@ export function PricingCards({
             </div>
             <div className="relative z-10 mt-6 mb-2">
               <PlanDiscountPrice
-                amount={growth.price}
-                listAmount={growth.listPrice}
-                period={interval === "yearly" ? "/year" : "/month"}
+                amount={
+                  interval === "yearly"
+                    ? getEffectiveMonthly("growth")
+                    : growth.price
+                }
+                listAmount={
+                  interval === "yearly" ? undefined : growth.listPrice
+                }
+                period="/month"
                 size="hero"
                 badge={saveBadge(growth.savePercent)}
               />
             </div>
             {interval === "yearly" ? (
               <p className="relative z-10 mb-2 text-[13px] text-muted-foreground">
-                ≈ ${formatEffectiveMonthly("growth")}/month
+                {billedAsYearlyLabel("growth")}
               </p>
             ) : null}
             <p className={`relative z-10 mb-8 ${basePlanDesc}`}>
@@ -309,16 +328,20 @@ export function PricingCards({
             </div>
             <div className="relative z-10 mt-6 mb-2">
               <PlanDiscountPrice
-                amount={pro.price}
-                listAmount={pro.listPrice}
-                period={interval === "yearly" ? "/year" : "/month"}
+                amount={
+                  interval === "yearly"
+                    ? getEffectiveMonthly("pro")
+                    : pro.price
+                }
+                listAmount={interval === "yearly" ? undefined : pro.listPrice}
+                period="/month"
                 size="hero"
                 badge={saveBadge(pro.savePercent)}
               />
             </div>
             {interval === "yearly" ? (
               <p className="relative z-10 mb-2 text-[13px] text-muted-foreground">
-                ≈ ${formatEffectiveMonthly("pro")}/month
+                {billedAsYearlyLabel("pro")}
               </p>
             ) : null}
             <p className={`relative z-10 mb-8 ${basePlanDesc}`}>
@@ -355,12 +378,12 @@ export function PricingCards({
         </div>
 
         <p className="mt-8 text-center text-[13px] text-muted-foreground">
-          <a
-            href="#compare"
+          <Link
+            href={compareHref}
             className="font-medium text-foreground underline underline-offset-4 hover:text-emerald-700 dark:hover:text-emerald-400"
           >
-            Compare every feature →
-          </a>
+            Compare plans →
+          </Link>
         </p>
       </div>
     </section>

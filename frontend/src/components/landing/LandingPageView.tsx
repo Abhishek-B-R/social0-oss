@@ -11,24 +11,9 @@ import {
   useLandingMode,
 } from "@/components/landing/landing-mode";
 
-const ProblemSolution = lazy(() =>
-  import("@/components/landing/ProblemSolution").then((m) => ({
-    default: m.ProblemSolution,
-  })),
-);
-const WhoIsItFor = lazy(() =>
-  import("@/components/landing/WhoIsItFor").then((m) => ({
-    default: m.WhoIsItFor,
-  })),
-);
 const AgentDemosSection = lazy(() =>
   import("@/components/landing/AgentDemosSection").then((m) => ({
     default: m.AgentDemosSection,
-  })),
-);
-const HowItWorks = lazy(() =>
-  import("@/components/landing/HowItWorks").then((m) => ({
-    default: m.HowItWorks,
   })),
 );
 const DevelopersSection = lazy(() =>
@@ -69,8 +54,8 @@ const FinalCTA = lazy(() =>
 );
 
 /**
- * Hero → demo → (agent: AI agents demos) → product moments → platforms → stories
- * → developers → how it works → problem/solution → persona → pricing → FAQ → CTA → founder
+ * Hero → demo → (agent: AI agents demos) → product moments → developers
+ * → stories → founder → platforms → pricing → FAQ → CTA
  */
 function LandingMain({ signedIn }: { signedIn: boolean }) {
   const { mode } = useLandingMode();
@@ -88,36 +73,26 @@ function LandingMain({ signedIn }: { signedIn: boolean }) {
         <ProductMomentsSection signedIn={signedIn} />
       </DeferredSection>
       <DeferredSection>
-        <SupportedPlatforms />
+        <DevelopersSection />
       </DeferredSection>
       <DeferredSection>
         <SocialProofSection />
       </DeferredSection>
-      <SectionSeparator />
       <DeferredSection>
-        <DevelopersSection />
+        <FounderSection />
       </DeferredSection>
       <DeferredSection>
-        <HowItWorks />
-      </DeferredSection>
-      <DeferredSection>
-        <ProblemSolution />
-      </DeferredSection>
-      <DeferredSection>
-        <WhoIsItFor />
+        <SupportedPlatforms />
       </DeferredSection>
       <SectionSeparator />
       <DeferredSection>
-        <PricingTeaser />
+        <PricingTeaser signedIn={signedIn} />
       </DeferredSection>
       <DeferredSection>
         <FAQ />
       </DeferredSection>
       <DeferredSection>
         <FinalCTA signedIn={signedIn} />
-      </DeferredSection>
-      <DeferredSection>
-        <FounderSection />
       </DeferredSection>
     </main>
   );

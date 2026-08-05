@@ -1,9 +1,8 @@
 
 import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
-import { useState, useEffect } from "react";
-import { Menu, X, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useState } from "react";
+import { Menu, X } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
 import Image from "@/components/AppImage";
 
@@ -32,21 +31,8 @@ export function LandingHeader() {
   const pathname = useLocation().pathname;
   const navLinks = navLinksForPath();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const { resolvedTheme, setTheme } = useTheme();
   const { data: session } = useSession();
   const user = session?.user;
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(true);
-  }, []);
-
-  const darkMode = mounted && resolvedTheme === "dark";
-
-  const toggleDarkMode = () => {
-    setTheme(darkMode ? "light" : "dark");
-  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/85 backdrop-blur-md">
@@ -91,20 +77,6 @@ export function LandingHeader() {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <button
-            type="button"
-            onClick={toggleDarkMode}
-            className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
-            aria-label={
-              darkMode ? "Switch to light mode" : "Switch to dark mode"
-            }
-          >
-            {darkMode ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
-          </button>
           {user ? (
             <Link
               href="/dashboard"
@@ -138,20 +110,6 @@ export function LandingHeader() {
         </div>
 
         <div className="flex items-center gap-2 lg:hidden">
-          <button
-            type="button"
-            onClick={toggleDarkMode}
-            className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
-            aria-label={
-              darkMode ? "Switch to light mode" : "Switch to dark mode"
-            }
-          >
-            {darkMode ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
-          </button>
           <button
             type="button"
             className="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"

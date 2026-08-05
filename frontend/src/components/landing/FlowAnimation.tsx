@@ -46,7 +46,7 @@ const PLATFORM_GLOW_TIMES = [
 
 /** Same brand assets as the hero PlatformStrip (subset that fits the vertical column). */
 const FLOW_PLATFORMS = [
-  { name: "X", src: "/icons/x.svg" },
+  { name: "Twitter / X", src: "/icons/x.svg" },
   { name: "Instagram", src: "/icons/instagram.svg" },
   {
     name: "TikTok",

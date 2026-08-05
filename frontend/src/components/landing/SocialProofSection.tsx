@@ -13,24 +13,23 @@ type Testimonial = {
   initials: string;
 };
 
+const metrics: Metric[] = [
+  { value: "2,400+", label: "creators posting" },
+  { value: "18 min", label: "avg. time saved / day" },
+  { value: "9", label: "platforms, one click" },
+];
+
 const byMode: Record<
   LandingMode,
   {
     eyebrow: string;
     headline: string;
-    metrics: Metric[];
     testimonials: Testimonial[];
   }
 > = {
   normal: {
     eyebrow: "Trusted by people who ship",
     headline: "Less tab-switching. More posting.",
-    metrics: [
-      { value: "2,400+", label: "creators posting" },
-      { value: "18 min", label: "avg. time saved / day" },
-      { value: "9", label: "platforms, one click" },
-      { value: "4.9/5", label: "from early users" },
-    ],
     testimonials: [
       {
         quote:
@@ -58,12 +57,6 @@ const byMode: Record<
   agent: {
     eyebrow: "Trusted by people who ship with agents",
     headline: "Less dashboards. More shipping.",
-    metrics: [
-      { value: "MCP", label: "ChatGPT · Claude · OpenClaw" },
-      { value: "REST", label: "API + Postman ready" },
-      { value: "CLI", label: "npm install -g social0" },
-      { value: "9", label: "platforms per agent call" },
-    ],
     testimonials: [
       {
         quote:
@@ -92,7 +85,7 @@ const byMode: Record<
 
 export function SocialProofSection() {
   const { mode } = useLandingMode();
-  const { eyebrow, headline, metrics, testimonials } = byMode[mode];
+  const { eyebrow, headline, testimonials } = byMode[mode];
 
   return (
     <section
@@ -121,15 +114,7 @@ export function SocialProofSection() {
           </AnimatePresence>
         </div>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`metrics-${mode}`}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.25 }}
-            className="mb-10 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-4 dark:border-white/10"
-          >
+        <div className="mb-10 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-border bg-border dark:border-white/10">
             {metrics.map((m) => (
               <div
                 key={m.label}
@@ -143,8 +128,7 @@ export function SocialProofSection() {
                 </div>
               </div>
             ))}
-          </motion.div>
-        </AnimatePresence>
+        </div>
 
         <AnimatePresence mode="wait">
           <motion.div
