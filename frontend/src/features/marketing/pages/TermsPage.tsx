@@ -215,10 +215,9 @@ export default function TermsPage() {
             <p className="mb-3">
               You may cancel your subscription at any time from Billing. After
               cancellation, paid features remain available until the end of the
-              current billing period (unless we state otherwise at checkout, or
-              your trial ends immediately under our trial rules). Cancellation
-              stops future renewals; it does not by itself entitle you to a
-              refund of amounts already paid.
+              current billing period (unless we state otherwise at checkout).
+              Cancellation stops future renewals; it does not by itself entitle
+              you to a refund of amounts already paid.
             </p>
             <p>
               We may change subscription prices or plans. If a price change

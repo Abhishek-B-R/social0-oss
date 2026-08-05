@@ -38,7 +38,7 @@ export default function RefundPage() {
               </Link>
               . There are no cancellation fees. After you cancel, you keep
               access to paid features until the end of the current billing
-              period (unless your plan or trial states otherwise). Cancellation
+              period (unless your plan states otherwise). Cancellation
               stops future renewals.
             </p>
           </section>
@@ -64,10 +64,6 @@ export default function RefundPage() {
               We do <strong>not</strong> offer a standing “refund within X hours”
               window. Where applicable law requires a refund or cooling-off
               right, we will honor that legal requirement.
-            </p>
-            <p>
-              Free trials (if offered) may end without charge if you cancel
-              before the trial converts, as shown at checkout and in Billing.
             </p>
           </section>
 

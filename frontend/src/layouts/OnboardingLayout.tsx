@@ -58,7 +58,7 @@ export function OnboardingLayout() {
                 className="absolute inset-0 hidden rounded-full border border-white dark:block"
               />
             </span>
-            <span className="font-serif text-[22px] font-semibold tracking-tight text-foreground">
+            <span className="font-logo text-[22px] font-normal tracking-tight text-foreground">
               Social0
             </span>
           </Link>

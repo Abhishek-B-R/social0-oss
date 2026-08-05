@@ -233,8 +233,6 @@ export function BillingPanel({
   const [waitingForWebhook, setWaitingForWebhook] = useState(
     Boolean(justSubscribed && subscription.tier === "free"),
   );
-  // FREE TRIAL DISABLED — was: subscription.tier === "free" && !accountLimit.hasUsedTrial
-  const showTrialInfo = false;
 
   // After return from checkout (?success=1): verify plan actually changed by polling sync; stop after 3 attempts and clear URL
   useEffect(() => {
@@ -1027,17 +1025,9 @@ export function BillingPanel({
                     onClick={() => handleUpgradeFromFree("starter")}
                   >
                     <PlanButtonLabel loading={loadingChangePlan === "starter"}>
-                      {showTrialInfo
-                        ? "Start 3-day free trial"
-                        : "Upgrade to Starter"}
+                      Upgrade to Starter
                     </PlanButtonLabel>
                   </Button>
-                  {showTrialInfo && (
-                    <p className="mt-2 text-center text-xs text-muted-foreground">
-                      3-day free trial included - you won&apos;t be charged
-                      today.
-                    </p>
-                  )}
                 </>
               )}
             </div>
@@ -1125,17 +1115,9 @@ export function BillingPanel({
                     onClick={() => handleUpgradeFromFree("growth")}
                   >
                     <PlanButtonLabel loading={loadingChangePlan === "growth"}>
-                      {showTrialInfo
-                        ? "Start 3-day free trial"
-                        : "Upgrade to Growth"}
+                      Upgrade to Growth
                     </PlanButtonLabel>
                   </Button>
-                  {showTrialInfo && (
-                    <p className="mt-2 text-center text-xs text-muted-foreground">
-                      3-day free trial included - you won&apos;t be charged
-                      today.
-                    </p>
-                  )}
                 </>
               )}
             </div>
@@ -1217,17 +1199,9 @@ export function BillingPanel({
                     onClick={() => handleUpgradeFromFree("pro")}
                   >
                     <PlanButtonLabel loading={loadingChangePlan === "pro"}>
-                      {showTrialInfo
-                        ? "Start 3-day free trial"
-                        : "Upgrade to Pro"}
+                      Upgrade to Pro
                     </PlanButtonLabel>
                   </Button>
-                  {showTrialInfo && (
-                    <p className="mt-2 text-center text-xs text-muted-foreground">
-                      3-day free trial included - you won&apos;t be charged
-                      today.
-                    </p>
-                  )}
                 </>
               )}
             </div>

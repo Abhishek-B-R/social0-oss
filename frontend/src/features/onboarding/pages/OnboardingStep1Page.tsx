@@ -294,7 +294,6 @@ function OnboardingWelcomeContent() {
               Need more? Upgrade anytime
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {/* FREE TRIAL DISABLED — was: 3-day free trial · cancel anytime · lock in early-adopter pricing */}
               Cancel anytime · lock in early-adopter pricing
             </p>
           </div>
@@ -373,9 +372,7 @@ function OnboardingWelcomeContent() {
                     : "border-2 border-emerald-500 font-medium text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400"
                 }`}
               >
-                {loadingPlan === plan.id
-                  ? "Redirecting…"
-                  : /* FREE TRIAL DISABLED — was: "Start free trial" */ "Subscribe"}
+                {loadingPlan === plan.id ? "Redirecting…" : "Subscribe"}
               </button>
             </div>
             );

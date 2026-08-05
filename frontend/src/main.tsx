@@ -4,9 +4,6 @@ import { HelmetProvider } from "react-helmet-async";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppRouter } from "@/routes/router";
 import { syncAppBuild, registerStaleAssetRecovery } from "@/lib/app-build-sync";
-import "@fontsource/geist-sans/400.css";
-import "@fontsource/geist-sans/500.css";
-import "@fontsource/geist-sans/600.css";
 import "@/index.css";
 
 registerStaleAssetRecovery();

@@ -69,10 +69,12 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-ring: oklch(0.708 0 0);
   --font-geist-sans:
-    "Geist Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   --font-geist-mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
-  --font-serif: "Instrument Serif", Georgia, serif;
+  /* ponytail: font-serif token = heading face (Plus Jakarta), not a real serif */
+  --font-serif: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-logo: "Instrument Serif", Georgia, serif;
 }
 
 /* Brand-colored text selection (replaces default blue).
@@ -125,7 +127,7 @@
   }
 }
 
-/* Hero: desktop fill when comfortable; phones/tablets natural height (no iso fight) */
+/* Hero: desktop ~90dvh including bottom pills + publishes-to */
 .landing-hero {
   min-height: 0;
 }
@@ -135,18 +137,22 @@
 }
 @media (min-width: 1024px) {
   .landing-hero {
-    min-height: calc(100dvh - 4rem);
+    min-height: calc(90dvh + 25px);
   }
   .landing-hero-main {
+    min-height: 0;
     overflow-y: auto;
   }
 }
 @media (min-width: 1024px) and (min-height: 640px) {
   .landing-hero {
-    height: calc(100dvh - 4rem);
-    max-height: calc(100dvh - 4rem);
+    height: calc(90dvh + 10px);
+    max-height: calc(90dvh + 10px);
   }
   .landing-hero-main {
+    height: auto;
+    max-height: none;
+    min-height: 0;
     overflow: hidden;
   }
 }
@@ -250,7 +256,8 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --font-serif: "Instrument Serif", Georgia, serif;
+  --font-serif: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-logo: "Instrument Serif", Georgia, serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -371,7 +378,8 @@ html {
 /* Slim dashboard scrollbars (default OS thumbs look huge next to the sidebar) */
 .dashboard-shell {
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in oklab, var(--border) 80%, transparent) transparent;
+  scrollbar-color: color-mix(in oklab, var(--border) 80%, transparent)
+    transparent;
 }
 .dashboard-shell::-webkit-scrollbar,
 .dashboard-shell *::-webkit-scrollbar {
@@ -535,7 +543,7 @@ html {
    ============================================ */
 
 /* Landing font + theme tokens.
-   Note: `landing` is also applied to some dashboard headings for Instrument Serif —
+   Note: `landing` is also applied to some dashboard headings for Plus Jakarta Sans —
    keep dual light/dark here so those pages are not forced charcoal. */
 .landing {
   --background: #fafaf8;
@@ -560,9 +568,10 @@ html {
   --input: #e2ded6;
   --ring: #10b981;
   --radius: 0.625rem;
-  --font-sans: "Geist", "Geist Fallback", system-ui, sans-serif;
-  --font-serif: "Instrument Serif", Georgia, serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", monospace;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-serif: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-logo: "Instrument Serif", Georgia, serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
   --hero-everywhere: #10b981;
 }
 
@@ -590,9 +599,10 @@ html {
   --border: #262626;
   --input: #262626;
   --ring: #1a6b4a;
-  --font-sans: "Geist", "Geist Fallback", system-ui, sans-serif;
-  --font-serif: "Instrument Serif", Georgia, serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", monospace;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-serif: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-logo: "Instrument Serif", Georgia, serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
 }
 
 /* Isometric marketing surface — respects theme toggle */

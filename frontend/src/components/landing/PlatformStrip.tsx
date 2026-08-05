@@ -22,12 +22,18 @@ const PLATFORMS = [
   { name: "Pinterest", icon: PinterestIcon },
 ];
 
-export function PlatformStrip({ compact = false }: { compact?: boolean }) {
+export function PlatformStrip({
+  compact = false,
+  className = "",
+}: {
+  compact?: boolean;
+  className?: string;
+}) {
   return (
     <div
       className={`flex items-center border-y border-border bg-muted px-4 dark:bg-[#111111] sm:px-6 lg:px-8 ${
         compact ? "py-3 sm:py-3.5" : "py-6 sm:py-7"
-      }`}
+      } ${className}`}
     >
       <div className="mx-auto w-full min-w-0 max-w-[1440px] sm:w-[92%] lg:w-[90%]">
         <div

@@ -339,7 +339,7 @@ export function PostDetailView({ postId }: { postId: string }) {
       {core.showPaymentFailedBanner && (
         <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
           <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-          <span>Some posts failed to publish because your trial ended.</span>
+          <span>Some posts failed to publish because your plan is inactive.</span>
           <Link
             href="/dashboard/billing"
             className="ml-auto font-medium underline underline-offset-2"

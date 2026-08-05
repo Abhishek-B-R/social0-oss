@@ -75,7 +75,7 @@ export function LandingHeader() {
               className="absolute inset-0 hidden rounded-full border border-white/20 dark:block"
             />
           </span>
-          <span className="font-serif text-[22px] tracking-tight text-foreground">
+          <span className="font-logo text-[22px] font-normal tracking-tight text-foreground">
             Social0
           </span>
         </Link>

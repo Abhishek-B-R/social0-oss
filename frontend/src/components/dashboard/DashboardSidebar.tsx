@@ -259,7 +259,7 @@ export function DashboardSidebar({
                 )}
               />
               {!collapsed ? (
-                <span className="font-serif text-[22px] tracking-tight text-foreground landing">
+                <span className="font-logo text-[22px] font-normal tracking-tight text-foreground landing">
                   Social0
                 </span>
               ) : null}

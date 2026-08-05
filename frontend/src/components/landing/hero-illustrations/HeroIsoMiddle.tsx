@@ -166,7 +166,9 @@ export function HeroMiddleIllustration({
                 />
               </>
             )}
-            <g transform={`translate(${p.x - logoOffset} ${p.y - logoOffset - 1})`}>
+            <g
+              transform={`translate(${p.x - logoOffset} ${p.y - logoOffset - 1})`}
+            >
               <svg width={logoPx} height={logoPx} viewBox="0 0 24 24">
                 <path d={LOGO_PATHS[p.logo]} fill={C.ink} />
               </svg>

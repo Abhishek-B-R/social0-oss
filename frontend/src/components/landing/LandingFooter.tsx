@@ -36,7 +36,7 @@ export function LandingFooter() {
         <div className="flex flex-wrap items-center justify-between gap-6">
           <Link
             href={homeHref}
-            className="font-serif text-xl tracking-tight text-foreground"
+            className="font-logo text-xl font-normal tracking-tight text-foreground"
           >
             Social0
           </Link>
@@ -84,7 +84,7 @@ export function LandingFooter() {
         className="pointer-events-none select-none overflow-hidden px-2 pb-2 pt-4 sm:pb-3 sm:pt-6"
         aria-hidden
       >
-        <p className="mx-auto max-w-[100vw] truncate text-center font-serif text-[clamp(4.5rem,18vw,14rem)] font-medium leading-none tracking-[-0.04em] text-foreground/[0.06] dark:text-white/[0.055]">
+        <p className="mx-auto max-w-[100vw] truncate text-center font-logo text-[clamp(4.5rem,18vw,14rem)] font-normal leading-none tracking-[-0.04em] text-foreground/[0.06] dark:text-white/[0.055]">
           Social0
         </p>
       </div>
