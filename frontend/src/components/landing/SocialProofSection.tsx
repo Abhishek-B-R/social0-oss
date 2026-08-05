@@ -114,7 +114,7 @@ export function SocialProofSection() {
               <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
                 {eyebrow}
               </p>
-              <h2 className="max-w-md font-serif text-[clamp(28px,4vw,40px)] italic leading-tight text-muted-foreground">
+              <h2 className="max-w-md font-sans text-[clamp(28px,4vw,40px)] font-bold leading-tight text-foreground dark:text-white">
                 {headline}
               </h2>
             </motion.div>

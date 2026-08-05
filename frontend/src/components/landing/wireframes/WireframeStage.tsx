@@ -5,20 +5,23 @@ export function WireframeStage({
   children,
   className = "",
   tall = false,
+  wide = false,
 }: {
   children: ReactNode;
   className?: string;
   tall?: boolean;
+  /** Larger frame for product-moment rows */
+  wide?: boolean;
 }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-border/60 bg-[var(--iso-bg)] dark:border-white/8 ${
+      className={`relative overflow-hidden rounded-2xl border border-zinc-200/90 bg-[#f7f7f8] dark:border-white/8 dark:bg-[var(--iso-bg)] ${
         tall ? "min-h-[220px]" : "min-h-[160px]"
       } ${className}`}
     >
-      {/* faint grid */}
+      {/* faint grid — stronger in light so it reads on pale cards */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.35]"
+        className="pointer-events-none absolute inset-0 opacity-[0.55] dark:opacity-[0.35]"
         style={{
           backgroundImage:
             "linear-gradient(var(--iso-stroke-soft) 1px, transparent 1px), linear-gradient(90deg, var(--iso-stroke-soft) 1px, transparent 1px)",
@@ -30,7 +33,7 @@ export function WireframeStage({
       />
       {/* emerald ambient */}
       <div
-        className="pointer-events-none absolute -bottom-8 left-1/2 h-24 w-48 -translate-x-1/2 rounded-full bg-emerald-500/15 blur-2xl dark:bg-emerald-400/20"
+        className="pointer-events-none absolute -bottom-8 left-1/2 h-24 w-48 -translate-x-1/2 rounded-full bg-emerald-500/20 blur-2xl dark:bg-emerald-400/20"
         aria-hidden
       />
       <div
@@ -40,13 +43,15 @@ export function WireframeStage({
         }}
       >
         <div
-          className="w-full max-w-[320px] transition-transform duration-300 ease-out will-change-transform group-hover:[transform:rotateX(2deg)_rotateY(-6deg)_translateY(-2px)]"
+          className={`w-full transition-transform duration-300 ease-out will-change-transform group-hover:[transform:rotateX(2deg)_rotateY(-6deg)_translateY(-2px)] ${
+            wide ? "max-w-[400px]" : "max-w-[320px]"
+          }`}
           style={{
             transform: "rotateX(4deg) rotateY(-8deg)",
             transformStyle: "preserve-3d",
           }}
         >
-          <div className="rounded-[14px] shadow-[0_20px_40px_-12px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,255,255,0.04)]">
+          <div className="rounded-[14px] shadow-[0_18px_40px_-14px_rgba(15,23,42,0.18),0_0_0_1px_rgba(15,23,42,0.08)] dark:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,255,255,0.04)]">
             {children}
           </div>
         </div>

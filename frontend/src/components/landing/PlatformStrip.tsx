@@ -26,7 +26,7 @@ const PLATFORMS = [
   },
 ] as const;
 
-function PlatformBrandIcon({
+export function PlatformBrandIcon({
   name,
   src,
   darkSrc,

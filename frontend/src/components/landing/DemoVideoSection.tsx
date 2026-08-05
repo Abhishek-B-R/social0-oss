@@ -8,6 +8,7 @@ export function DemoVideoSection() {
     <section
       className="px-4 pb-16 pt-2 sm:px-6 sm:pb-20 sm:pt-4 lg:px-8"
       aria-label="Social0 product demo video"
+      id="demo"
     >
       <div className="mx-auto max-w-[1120px]">
         <div className="overflow-hidden rounded-[28px] border border-border bg-muted/40 p-1.5 shadow-[0_40px_80px_rgba(0,0,0,0.08)] dark:border-white/10 dark:bg-[#1A1A1A] dark:shadow-[0_40px_80px_rgba(0,0,0,0.4)]">

@@ -31,11 +31,6 @@ const HowItWorks = lazy(() =>
     default: m.HowItWorks,
   })),
 );
-const FeaturesSection = lazy(() =>
-  import("@/components/landing/FeaturesSection").then((m) => ({
-    default: m.FeaturesSection,
-  })),
-);
 const DevelopersSection = lazy(() =>
   import("@/components/landing/DevelopersSection").then((m) => ({
     default: m.DevelopersSection,
@@ -56,6 +51,11 @@ const SocialProofSection = lazy(() =>
     default: m.SocialProofSection,
   })),
 );
+const ProductMomentsSection = lazy(() =>
+  import("@/components/landing/ProductMomentsSection").then((m) => ({
+    default: m.ProductMomentsSection,
+  })),
+);
 const PricingTeaser = lazy(() =>
   import("@/components/landing/PricingTeaser").then((m) => ({
     default: m.PricingTeaser,
@@ -69,7 +69,7 @@ const FinalCTA = lazy(() =>
 );
 
 /**
- * Hero → demo → (agent: AI agents demos) → stories → features → platforms
+ * Hero → demo → (agent: AI agents demos) → product moments → platforms → stories
  * → developers → how it works → problem/solution → persona → pricing → FAQ → CTA → founder
  */
 function LandingMain({ signedIn }: { signedIn: boolean }) {
@@ -80,20 +80,20 @@ function LandingMain({ signedIn }: { signedIn: boolean }) {
       <Hero signedIn={signedIn} />
       <DemoVideoSection />
       {mode === "agent" ? (
-        <DeferredSection minHeight="28rem">
+        <DeferredSection minHeight="40rem">
           <AgentDemosSection />
         </DeferredSection>
       ) : null}
-      <DeferredSection>
-        <SocialProofSection />
-      </DeferredSection>
-      <SectionSeparator />
-      <DeferredSection>
-        <FeaturesSection />
+      <DeferredSection minHeight="48rem">
+        <ProductMomentsSection signedIn={signedIn} />
       </DeferredSection>
       <DeferredSection>
         <SupportedPlatforms />
       </DeferredSection>
+      <DeferredSection>
+        <SocialProofSection />
+      </DeferredSection>
+      <SectionSeparator />
       <DeferredSection>
         <DevelopersSection />
       </DeferredSection>
