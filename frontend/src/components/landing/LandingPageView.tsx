@@ -2,6 +2,7 @@ import { lazy } from "react";
 import { useLandingHashScroll } from "@/lib/scroll-to-hash";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Hero } from "@/components/landing/Hero";
+import { DemoVideoSection } from "@/components/landing/DemoVideoSection";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { DeferredSection } from "@/components/landing/DeferredSection";
 import { SectionSeparator } from "@/components/landing/SectionSeparator";
@@ -10,11 +11,6 @@ import {
   useLandingMode,
 } from "@/components/landing/landing-mode";
 
-const DemoVideoSection = lazy(() =>
-  import("@/components/landing/DemoVideoSection").then((m) => ({
-    default: m.DemoVideoSection,
-  })),
-);
 const ProblemSolution = lazy(() =>
   import("@/components/landing/ProblemSolution").then((m) => ({
     default: m.ProblemSolution,
@@ -73,9 +69,8 @@ const FinalCTA = lazy(() =>
 );
 
 /**
- * saas-landing-pages homepage framework:
- * Hero → Problem → Features → Integrations → How it works → FAQ → Final CTA → Founder
- * Social0 extras: demo visual, social proof, pricing tease, persona, agent demos
+ * Hero → demo → (agent: AI agents demos) → stories → features → platforms
+ * → developers → how it works → problem/solution → persona → pricing → FAQ → CTA → founder
  */
 function LandingMain({ signedIn }: { signedIn: boolean }) {
   const { mode } = useLandingMode();
@@ -83,13 +78,12 @@ function LandingMain({ signedIn }: { signedIn: boolean }) {
   return (
     <main>
       <Hero signedIn={signedIn} />
-      <SectionSeparator className="my-2" />
-      <DeferredSection minHeight="20rem">
-        <DemoVideoSection />
-      </DeferredSection>
-      <DeferredSection>
-        <ProblemSolution />
-      </DeferredSection>
+      <DemoVideoSection />
+      {mode === "agent" ? (
+        <DeferredSection minHeight="28rem">
+          <AgentDemosSection />
+        </DeferredSection>
+      ) : null}
       <DeferredSection>
         <SocialProofSection />
       </DeferredSection>
@@ -106,11 +100,9 @@ function LandingMain({ signedIn }: { signedIn: boolean }) {
       <DeferredSection>
         <HowItWorks />
       </DeferredSection>
-      {mode === "agent" ? (
-        <DeferredSection minHeight="28rem">
-          <AgentDemosSection />
-        </DeferredSection>
-      ) : null}
+      <DeferredSection>
+        <ProblemSolution />
+      </DeferredSection>
       <DeferredSection>
         <WhoIsItFor />
       </DeferredSection>

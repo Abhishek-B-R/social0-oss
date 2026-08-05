@@ -7,10 +7,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useSearchParams } from "react-router-dom";
 
 export type LandingMode = "normal" | "agent";
-
-const STORAGE_KEY = "landing-mode";
 
 type LandingModeContextValue = {
   mode: LandingMode;
@@ -19,41 +18,54 @@ type LandingModeContextValue = {
 
 const LandingModeContext = createContext<LandingModeContextValue | null>(null);
 
-function readStoredMode(): LandingMode {
-  if (typeof window === "undefined") return "normal";
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored === "agent" || stored === "normal") return stored;
-  } catch {
-    /* ignore */
-  }
-  return "normal";
+/** URL: `normal` | `agentic` (also accepts `agent`). Missing/invalid → agent. */
+function parseModeParam(raw: string | null): LandingMode | null {
+  if (raw === "normal") return "normal";
+  if (raw === "agentic" || raw === "agent") return "agent";
+  return null;
+}
+
+function modeToParam(mode: LandingMode): "normal" | "agentic" {
+  return mode === "agent" ? "agentic" : "normal";
+}
+
+function readModeFromLocation(): LandingMode {
+  if (typeof window === "undefined") return "agent";
+  return (
+    parseModeParam(new URLSearchParams(window.location.search).get("mode")) ??
+    "agent"
+  );
 }
 
 export function LandingModeProvider({ children }: { children: ReactNode }) {
-  // ponytail: client-only lazy init; SSR/first paint still "normal" until hydrate if SSR ever lands
-  const [mode, setModeState] = useState<LandingMode>(() => readStoredMode());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [mode, setModeState] = useState<LandingMode>(() =>
+    readModeFromLocation(),
+  );
 
-  const setMode = useCallback((next: LandingMode) => {
-    setModeState(next);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      /* ignore */
-    }
-  }, []);
+  const modeFromUrl =
+    parseModeParam(searchParams.get("mode")) ?? ("agent" as const);
 
-  // Re-sync if another tab changes mode
+  // Back/forward + external ?mode= changes
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key !== STORAGE_KEY) return;
-      if (e.newValue === "agent" || e.newValue === "normal") {
-        setModeState(e.newValue);
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setModeState(modeFromUrl);
+  }, [modeFromUrl]);
+
+  const setMode = useCallback(
+    (next: LandingMode) => {
+      setModeState(next);
+      setSearchParams(
+        (prev) => {
+          const nextParams = new URLSearchParams(prev);
+          nextParams.set("mode", modeToParam(next));
+          return nextParams;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   const value = useMemo(() => ({ mode, setMode }), [mode, setMode]);
 
@@ -72,10 +84,10 @@ export function useLandingMode() {
   return ctx;
 }
 
-/** Defaults to Schedule mode when rendered outside the provider (e.g. stray mounts). */
+/** Defaults to Agents mode when rendered outside the provider (e.g. stray mounts). */
 export function useLandingModeOrDefault(): LandingModeContextValue {
   const ctx = useContext(LandingModeContext);
-  return ctx ?? { mode: "normal", setMode: () => {} };
+  return ctx ?? { mode: "agent", setMode: () => {} };
 }
 
 export function LandingModeToggle({ className = "" }: { className?: string }) {
@@ -83,36 +95,56 @@ export function LandingModeToggle({ className = "" }: { className?: string }) {
   if (!ctx) return null;
 
   const { mode, setMode } = ctx;
+  const isAgent = mode === "agent";
 
   return (
     <div
       role="group"
-      aria-label="Landing audience"
-      className={`inline-flex items-center rounded-lg border border-border bg-background p-0.5 ${className}`}
+      aria-label="Scheduling mode"
+      className={`flex w-full flex-wrap items-center justify-center gap-x-2.5 gap-y-1.5 sm:gap-x-3 ${className}`}
     >
       <button
         type="button"
         onClick={() => setMode("normal")}
-        aria-pressed={mode === "normal"}
-        className={`rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors sm:px-3 ${
-          mode === "normal"
-            ? "bg-emerald-500/15 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300"
+        className={`text-[12px] transition-colors sm:text-[13px] ${
+          !isAgent
+            ? "font-medium text-foreground"
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        Schedule
+        I need normal scheduling
       </button>
+
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isAgent}
+        aria-label={
+          isAgent
+            ? "Agentic scheduling on. Switch to normal scheduling."
+            : "Normal scheduling on. Switch to agentic scheduling."
+        }
+        onClick={() => setMode(isAgent ? "normal" : "agent")}
+        className="relative h-5 w-9 shrink-0 rounded-full bg-emerald-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
+        <span
+          aria-hidden
+          className={`absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${
+            isAgent ? "translate-x-4" : "translate-x-0"
+          }`}
+        />
+      </button>
+
       <button
         type="button"
         onClick={() => setMode("agent")}
-        aria-pressed={mode === "agent"}
-        className={`rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors sm:px-3 ${
-          mode === "agent"
-            ? "bg-emerald-500/15 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300"
+        className={`text-[12px] transition-colors sm:text-[13px] ${
+          isAgent
+            ? "font-medium text-foreground"
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        Agents
+        I need agentic scheduling
       </button>
     </div>
   );
