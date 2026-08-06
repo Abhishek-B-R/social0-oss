@@ -305,7 +305,7 @@ export function SocialProofSection({
       className="px-4 py-20 sm:px-6 sm:py-24 lg:px-8"
       aria-label="What people are saying"
     >
-      <div className="mx-auto max-w-[1180px]">
+      <div className="mx-auto max-w-295">
         <h2 className="mx-auto mb-12 max-w-2xl text-center font-sans text-[clamp(28px,4.2vw,42px)] font-bold leading-[1.15] tracking-tight text-foreground dark:text-white sm:mb-14">
           Social0 is loved by early users.{" "}
           <span className="text-muted-foreground">

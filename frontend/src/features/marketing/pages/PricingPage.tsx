@@ -5,7 +5,6 @@ import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { PricingCards } from "@/components/landing/PricingSection";
 import { PricingComparisonTable } from "@/components/landing/PricingComparisonTable";
 import { PricingFaq } from "@/components/landing/PricingFaq";
-import { SectionSeparator } from "@/components/landing/SectionSeparator";
 import { SeoHead } from "@/components/seo/SeoHead";
 import type { BillingInterval } from "@/lib/plans";
 import { scrollToHash } from "@/lib/scroll-to-hash";
@@ -45,7 +44,6 @@ export default function PricingPage() {
         onIntervalChange={setInterval}
         headingAs="h1"
       />
-      <SectionSeparator />
       <PricingComparisonTable interval={interval} signedIn={signedIn} />
       <PricingFaq />
     </MarketingPageLayout>

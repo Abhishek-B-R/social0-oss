@@ -5,7 +5,6 @@ import { Hero } from "@/components/landing/Hero";
 import { DemoVideoSection } from "@/components/landing/DemoVideoSection";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { DeferredSection } from "@/components/landing/DeferredSection";
-import { SectionSeparator } from "@/components/landing/SectionSeparator";
 import {
   LandingModeProvider,
   useLandingMode,
@@ -84,7 +83,6 @@ function LandingMain({ signedIn }: { signedIn: boolean }) {
       <DeferredSection>
         <SupportedPlatforms />
       </DeferredSection>
-      <SectionSeparator />
       <DeferredSection>
         <PricingTeaser signedIn={signedIn} />
       </DeferredSection>

@@ -100,8 +100,8 @@ const FACES = [
   { src: "/customers/c2.jpg", alt: "" },
   { src: "/customers/c3.png", alt: "" },
   { src: "/customers/c4.png", alt: "" },
-  { src: "/customers/c5.jpg", alt: "" },
-  { src: "/customers/c6.jpg", alt: "" },
+  { src: "/customers/c5.png", alt: "" },
+  { src: "/customers/c6.png", alt: "" },
 ] as const;
 
 /** Happy customers — under CTA + capability pills in the centered hero. */
