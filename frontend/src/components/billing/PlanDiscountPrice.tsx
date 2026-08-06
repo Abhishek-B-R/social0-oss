@@ -41,17 +41,17 @@ export function PlanDiscountPrice({
 
   const priceClass =
     size === "hero"
-      ? "font-serif text-[clamp(40px,7vw,56px)] leading-none tracking-tight text-foreground"
+      ? "font-sans text-[clamp(40px,7vw,56px)] font-bold leading-none tracking-tight tabular-nums text-foreground"
       : size === "sm"
-        ? "font-serif text-2xl font-bold leading-none tracking-tight text-foreground"
-        : "font-serif text-3xl font-semibold leading-none tracking-tight text-foreground";
+        ? "font-sans text-2xl font-bold leading-none tracking-tight tabular-nums text-foreground"
+        : "font-sans text-3xl font-bold leading-none tracking-tight tabular-nums text-foreground";
 
   const listClass =
     size === "hero"
-      ? "font-serif text-[clamp(28px,5vw,36px)] leading-none tracking-tight text-foreground/55"
+      ? "font-sans text-[clamp(28px,5vw,36px)] font-semibold leading-none tracking-tight tabular-nums text-foreground/55"
       : size === "sm"
-        ? "font-serif text-xl leading-none tracking-tight text-foreground/55"
-        : "font-serif text-2xl leading-none tracking-tight text-foreground/55";
+        ? "font-sans text-xl font-semibold leading-none tracking-tight tabular-nums text-foreground/55"
+        : "font-sans text-2xl font-semibold leading-none tracking-tight tabular-nums text-foreground/55";
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>

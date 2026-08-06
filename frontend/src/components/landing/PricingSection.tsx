@@ -30,7 +30,7 @@ const basePlanLabel =
   "text-[11px] font-medium uppercase tracking-widest text-muted-foreground";
 
 const basePlanPrice =
-  "font-serif text-[clamp(40px,6vw,64px)] leading-none tracking-tight text-foreground";
+  "font-sans text-[clamp(40px,6vw,64px)] font-bold leading-none tracking-tight tabular-nums text-foreground";
 
 const basePlanDesc = "text-[14px] leading-relaxed text-muted-foreground";
 
@@ -117,13 +117,13 @@ export function PricingCards({
       <div className="mx-auto max-w-[1120px]">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="mb-3 text-[11px] uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+            <div className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
               Pricing
             </div>
-            <Heading className="font-serif text-[clamp(32px,4vw,48px)] leading-tight tracking-tight text-foreground">
+            <Heading className="font-sans text-[clamp(32px,4.5vw,48px)] font-bold leading-tight tracking-tight text-foreground dark:text-white">
               Find the right plan
               <br />
-              <em className="italic text-muted-foreground">for how you post.</em>
+              <span className="text-muted-foreground">for how you post.</span>
             </Heading>
           </div>
           <BillingIntervalToggle
@@ -154,7 +154,12 @@ export function PricingCards({
             <div className="mb-6 min-h-[30px]" aria-hidden />
             <div className={basePlanLabel}>Free</div>
             <div className="mt-6 mb-2 flex items-baseline gap-2">
-              <div className={basePlanPrice}>$0</div>
+              <div className={basePlanPrice}>
+                <sup className="mr-0.5 text-[0.55em] font-medium top-[-0.35em]">
+                  $
+                </sup>
+                0
+              </div>
               <div className="text-[13px] text-muted-foreground">forever</div>
             </div>
             <p className={`mb-8 ${basePlanDesc}`}>

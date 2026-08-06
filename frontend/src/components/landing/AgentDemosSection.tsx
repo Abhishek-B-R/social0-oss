@@ -11,6 +11,7 @@ import {
 /**
  * Drop muted demo clips into frontend/public/videos/:
  *   agent-chatgpt.mp4 | agent-claude.mp4 | agent-openclaw.mp4 | agent-api.mp4
+ * Optional stills in frontend/public/demos/ (used when video is missing).
  */
 const capabilities: {
   title: string;
@@ -19,6 +20,8 @@ const capabilities: {
   href: string;
   cta: string;
   video: string;
+  /** Still frame / screenshot when video isn't ready yet */
+  poster?: string;
   external?: boolean;
   /** Staggered layout: video at top or bottom of the card */
   media: "top" | "bottom";
@@ -31,6 +34,7 @@ const capabilities: {
     href: "/mcp",
     cta: "Set up MCP",
     video: "/videos/agent-chatgpt.mp4",
+    poster: "/demos/chatgpt-mcp-post.png",
     media: "bottom",
   },
   {
@@ -41,7 +45,7 @@ const capabilities: {
     href: DOCS_MCP_URL,
     cta: "MCP docs",
     video: "/videos/agent-claude.mp4",
-    external: true,
+    poster: "/demos/claude-mcp-accounts.png",
     media: "top",
   },
   {
@@ -68,12 +72,14 @@ const capabilities: {
   },
 ];
 
-/** 16:9 demo slot — sized by aspect ratio, not stretched to fill the card. */
+/** 16:9 demo slot — video when present, else poster still. */
 function DemoVideoSlot({
   src,
+  poster,
   flush,
 }: {
   src: string;
+  poster?: string;
   flush: "top" | "bottom";
 }) {
   const [failed, setFailed] = useState(false);
@@ -83,6 +89,17 @@ function DemoVideoSlot({
       : "rounded-b-[20px] sm:rounded-b-[24px] lg:rounded-b-[30px]";
 
   if (failed) {
+    if (poster) {
+      return (
+        <img
+          src={poster}
+          alt=""
+          className={`aspect-video w-full shrink-0 object-cover object-top dark:bg-[#0d0d0d] ${round}`}
+          loading="lazy"
+          decoding="async"
+        />
+      );
+    }
     return (
       <div
         className={`aspect-video w-full shrink-0 bg-muted/40 dark:bg-[#0d0d0d] ${round}`}
@@ -95,6 +112,7 @@ function DemoVideoSlot({
     <video
       className={`aspect-video w-full shrink-0 bg-muted/40 object-cover dark:bg-[#0d0d0d] ${round}`}
       src={src}
+      poster={poster}
       muted
       playsInline
       loop
@@ -179,13 +197,21 @@ export function AgentDemosSection() {
                 <div className="flex flex-col overflow-hidden rounded-[20px] border border-border/60 bg-background dark:border-white/5 dark:bg-[#111111] sm:rounded-[24px] lg:rounded-[30px]">
                   {cap.media === "top" ? (
                     <>
-                      <DemoVideoSlot src={cap.video} flush="top" />
+                      <DemoVideoSlot
+                        src={cap.video}
+                        poster={cap.poster}
+                        flush="top"
+                      />
                       <CapCopy cap={cap} />
                     </>
                   ) : (
                     <>
                       <CapCopy cap={cap} />
-                      <DemoVideoSlot src={cap.video} flush="bottom" />
+                      <DemoVideoSlot
+                        src={cap.video}
+                        poster={cap.poster}
+                        flush="bottom"
+                      />
                     </>
                   )}
                 </div>

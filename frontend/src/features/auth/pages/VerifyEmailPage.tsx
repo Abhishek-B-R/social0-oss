@@ -149,62 +149,63 @@ function VerifyEmailContent() {
   ));
 
   return (
-    <div className="landing flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
+    <div className="landing landing-page flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
       <AuthBrandHeader />
 
-      <main className="relative flex flex-1 items-center justify-center px-4 py-12">
-        <div className="absolute inset-0 bg-gradient-radial from-emerald-100/50 via-emerald-50/30 to-transparent pointer-events-none dark:from-emerald-950/30 dark:via-emerald-950/15" />
+      <main className="relative flex flex-1 items-center justify-center px-4 py-12 sm:py-16">
         <div className="relative z-10 w-full max-w-md">
-          <div className="rounded-2xl border border-border bg-card shadow-xl p-8 sm:p-10">
-            <div className="mb-6 text-center">
-              <h1 className="mb-2 font-serif text-[clamp(24px,3vw,32px)] leading-tight tracking-tight text-foreground">
-                Verify your email
-              </h1>
-              <p className="text-[15px] leading-relaxed text-muted-foreground">
-                We sent a 6-digit code to{" "}
-                <strong className="text-foreground">{email}</strong>
-              </p>
-            </div>
-
-            <form onSubmit={handleVerify} className="space-y-6">
-              <div
-                className="flex justify-center gap-2"
-                role="group"
-                aria-label="Verification code"
-              >
-                {inputs}
+          <div className="rounded-[28px] border border-border bg-muted/40 p-1.5 dark:border-white/10 dark:bg-[#1A1A1A]">
+            <div className="rounded-[22px] border border-border/60 bg-background p-7 dark:border-white/5 dark:bg-[#111111] sm:p-9">
+              <div className="mb-6 text-center">
+                <h1 className="mb-2 font-sans text-[clamp(24px,3.5vw,32px)] font-bold leading-tight tracking-tight text-foreground dark:text-white">
+                  Verify your email
+                </h1>
+                <p className="text-[15px] leading-relaxed text-muted-foreground">
+                  We sent a 6-digit code to{" "}
+                  <strong className="text-foreground">{email}</strong>
+                </p>
               </div>
-              <button
-                type="submit"
-                disabled={
-                  verifying || resending || otpString.length !== OTP_LENGTH
-                }
-                className="w-full rounded-[10px] bg-foreground text-background hover:opacity-90 disabled:opacity-50 font-medium py-3 px-4 transition-opacity"
-              >
-                {verifying ? "Verifying…" : "Verify"}
-              </button>
-            </form>
 
-            <div className="mt-6 text-center">
-              <button
-                type="button"
-                onClick={handleResend}
-                disabled={resendCooldown > 0 || resending}
-                className="text-sm font-medium text-accent hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {resendCooldown > 0
-                  ? `Resend code in ${resendCooldown}s`
-                  : resending
-                    ? "Sending…"
-                    : "Resend code"}
-              </button>
+              <form onSubmit={handleVerify} className="space-y-6">
+                <div
+                  className="flex justify-center gap-2"
+                  role="group"
+                  aria-label="Verification code"
+                >
+                  {inputs}
+                </div>
+                <button
+                  type="submit"
+                  disabled={
+                    verifying || resending || otpString.length !== OTP_LENGTH
+                  }
+                  className="inline-flex w-full items-center justify-center rounded-[10px] bg-emerald-500 px-4 py-3 font-semibold text-[#04140c] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 disabled:opacity-50 active:scale-[0.98]"
+                >
+                  {verifying ? "Verifying…" : "Verify"}
+                </button>
+              </form>
+
+              <div className="mt-6 text-center">
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resendCooldown > 0 || resending}
+                  className="text-sm font-medium text-emerald-700 transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50 dark:text-emerald-400"
+                >
+                  {resendCooldown > 0
+                    ? `Resend code in ${resendCooldown}s`
+                    : resending
+                      ? "Sending…"
+                      : "Resend code"}
+                </button>
+              </div>
             </div>
           </div>
 
-          <p className="mt-8 text-center text-sm text-muted-foreground">
+          <p className="mt-6 text-center text-sm text-muted-foreground">
             <Link
               href="/auth"
-              className="underline hover:text-foreground transition-colors"
+              className="underline underline-offset-2 transition-colors hover:text-foreground"
             >
               Back to sign in
             </Link>

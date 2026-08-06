@@ -185,12 +185,12 @@ export function PricingComparisonTable({
           <p className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
             Compare
           </p>
-          <h2 className="font-serif text-[clamp(28px,4vw,40px)] italic leading-tight text-muted-foreground">
-            See what’s in each plan.
+          <h2 className="font-sans text-[clamp(28px,4vw,40px)] font-bold leading-tight tracking-tight text-foreground dark:text-white">
+            See what&apos;s in each plan
           </h2>
-          <p className="mx-auto mt-3 max-w-lg text-[15px] text-muted-foreground">
+          <p className="mx-auto mt-3 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
             Every limit and feature side by side — so you know exactly what
-            you’re getting.
+            you&apos;re getting.
           </p>
         </div>
 

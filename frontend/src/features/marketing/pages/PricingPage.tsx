@@ -29,7 +29,7 @@ export default function PricingPage() {
   }, [hash]);
 
   return (
-    <MarketingPageLayout>
+    <MarketingPageLayout signedIn={signedIn}>
       <SeoHead
         title="Pricing — Social0"
         description="Simple Social0 pricing. Start free, then upgrade to Starter, Growth, or Pro. Every plan includes REST API, MCP, and CLI. Compare every feature side by side."
