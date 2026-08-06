@@ -23,7 +23,7 @@ const copy = {
     titleEm: "AI agents",
     titleAfter: ".",
     clarifier:
-      "Plan, generate, and schedule posts to 9+ platforms. Then review, edit and manage everything from the dashboard when you need to.",
+      "Plan, generate, and schedule posts to 9+ platforms. Then review, edit and manage everything from the dashboard whenever you need to.",
   },
 } as const;
 

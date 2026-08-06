@@ -93,13 +93,13 @@ export function AgentLogoStrip({ className = "" }: { className?: string }) {
 }
 
 /** PLACEHOLDER count — edit when you have the real number */
-const CUSTOMER_COUNT = "1120+";
+const CUSTOMER_COUNT = "212+";
 
 const FACES = [
-  { src: "/customers/c1.jpg", alt: "" },
+  { src: "/customers/c1.png", alt: "" },
   { src: "/customers/c2.jpg", alt: "" },
-  { src: "/customers/c3.jpg", alt: "" },
-  { src: "/customers/c4.jpg", alt: "" },
+  { src: "/customers/c3.png", alt: "" },
+  { src: "/customers/c4.png", alt: "" },
   { src: "/customers/c5.jpg", alt: "" },
   { src: "/customers/c6.jpg", alt: "" },
 ] as const;

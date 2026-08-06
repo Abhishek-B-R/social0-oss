@@ -82,7 +82,7 @@ function MomentRow({
       </div>
 
       <motion.div
-        className={flip ? "lg:order-1" : "lg:order-2"}
+        className={`flex items-center ${flip ? "lg:order-1" : "lg:order-2"}`}
         initial={reduceMotion ? false : { opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.2 }}
@@ -116,7 +116,7 @@ export function ProductMomentsSection({
       className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8"
       aria-label="How Social0 helps you ship"
     >
-      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-12 sm:gap-14 lg:gap-16">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-12 sm:gap-14 lg:gap-16">
         <div className="mx-auto mb-0 max-w-3xl text-center">
           <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-600 dark:text-emerald-400">
             Everything in one place
@@ -151,8 +151,8 @@ export function ProductMomentsSection({
             href: hashHref(pathname, "#platforms"),
           }}
           visual={
-            <div className="mx-auto w-full max-w-[520px] lg:ml-auto lg:mr-0 lg:max-w-none">
-              <FlowAnimation className="min-h-[280px] sm:min-h-[320px]" />
+            <div className="mx-auto w-full max-w-140 lg:ml-auto lg:mr-0 lg:max-w-none">
+              <FlowAnimation className="h-full min-h-95 w-full sm:min-h-110 lg:min-h-120" />
             </div>
           }
         />
@@ -181,11 +181,11 @@ export function ProductMomentsSection({
           visual={
             <VisualShell>
               <WireframeStage
-                className="min-h-[340px] border-0 sm:min-h-[400px] lg:min-h-[440px]"
+                className="min-h-85 border-0 sm:min-h-100 lg:min-h-110"
                 tall
                 wide
               >
-                <WfScheduleCreate className="h-[300px] w-full sm:h-[360px] lg:h-[400px]" />
+                <WfScheduleCreate className="h-75 w-full sm:h-90 lg:h-100" />
               </WireframeStage>
             </VisualShell>
           }
@@ -214,11 +214,11 @@ export function ProductMomentsSection({
           visual={
             <VisualShell>
               <WireframeStage
-                className="min-h-[340px] border-0 sm:min-h-[400px] lg:min-h-[440px]"
+                className="min-h-85 border-0 sm:min-h-100 lg:min-h-110"
                 tall
                 wide
               >
-                <WfCalendar className="h-[300px] w-full sm:h-[360px] lg:h-[400px]" />
+                <WfCalendar className="h-75 w-full sm:h-90 lg:h-100" />
               </WireframeStage>
             </VisualShell>
           }

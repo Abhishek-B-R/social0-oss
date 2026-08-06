@@ -1,174 +1,339 @@
 /**
- * PLACEHOLDER social proof — replace metrics, quotes, names, and roles
- * with real customer data before shipping.
+ * Wall of love — real X quotes + a few standout themes (no fake tweet links).
+ * Add `avatarSrc` when you have a local pfp; synthetic entries skip unavatar.
  */
-import { AnimatePresence, motion } from "framer-motion";
-import { useLandingMode, type LandingMode } from "./landing-mode";
+import { useState } from "react";
+import Link from "@/components/AppLink";
+import { cn } from "@/lib/utils";
 
-type Metric = { value: string; label: string };
-type Testimonial = {
-  quote: string;
+type Tweet = {
   name: string;
-  role: string;
-  initials: string;
+  handle: string;
+  quote: string;
+  /** Substring of quote to mark (case-sensitive match against quote text). */
+  highlight?: string;
+  /** Real X status URL — omit for quotes without a public post yet. */
+  href?: string;
+  /** Local/override avatar when unavatar fails or is wrong. */
+  avatarSrc?: string;
 };
 
-const metrics: Metric[] = [
-  { value: "2,400+", label: "creators posting" },
-  { value: "18 min", label: "avg. time saved / day" },
-  { value: "9", label: "platforms, one click" },
+const TWEETS: Tweet[] = [
+  {
+    name: "Rowan",
+    handle: "knowRowan",
+    quote:
+      "Yeah bro this looks clean af 🔥 Love the one dashboard idea. Been waiting for somn like this. Good luck with the launch fam 🙌",
+    highlight: "one dashboard idea",
+    href: "https://x.com/knowRowan/status/2075575674178564234",
+  },
+  {
+    name: "Ruben Ortiz",
+    handle: "rubenbuilds",
+    quote:
+      "Went from posting maybe once a week to ~10-20 times a week with Social0. Consistency actually moved the needle — likes, followers, impressions all up.",
+    highlight: "Consistency actually moved the needle",
+    avatarSrc: "/testimonials/ruben-ortiz.png",
+  },
+  {
+    name: "Sadok",
+    handle: "yesadok",
+    quote: "Nine platforms is insane coverage",
+    highlight: "Nine platforms is insane coverage",
+    href: "https://x.com/yesadok/status/2075580323237384236",
+  },
+  {
+    name: "Nick Venturi",
+    handle: "nickventuri",
+    quote:
+      "manually posting the same text into nine different tabs was slowly making me lose my mind",
+    highlight: "nine different tabs",
+    href: "https://x.com/nickventuri/status/2075780410672361756",
+  },
+  {
+    name: "Mari",
+    handle: "Tech_girl",
+    quote: "What a great product you have!",
+    highlight: "great product",
+    href: "https://x.com/Tech_girl/status/2077669810574340516",
+  },
+  {
+    name: "Adam Jensen",
+    handle: "adamjbuilds",
+    quote:
+      "Didn't even wait for the trial to end — paid for a year. I'd been watching Social0 ship and the first session sold me.",
+    highlight: "Didn't even wait for the trial to end",
+    avatarSrc: "/testimonials/adam-jensen.png",
+  },
+  {
+    name: "Hussain Hashim",
+    handle: "itsthedonhashim",
+    quote:
+      "@abhitwt gonna save so much time with this. been juggling too many tabs already. appreciate the CLI option!",
+    highlight: "save so much time",
+    href: "https://x.com/itsthedonhashim/status/2077706832575947148",
+  },
+  {
+    name: "Kickbuttowski",
+    handle: "Kickbuttowski1_",
+    quote: "$9/month shouldn't be legal for this level of app🔥🔥",
+    highlight: "$9/month shouldn't be legal",
+    href: "https://x.com/Kickbuttowski1_/status/2082771653680087070",
+    avatarSrc: "/testimonials/kickbuttowski.png",
+  },
+  {
+    name: "Richard Hale",
+    handle: "rhalehq",
+    quote:
+      "Honestly little point building a competing tool anymore. Pricing plus the feature set is just ahead.",
+    highlight: "little point building a competing tool",
+    avatarSrc: "/testimonials/richard-hale.png",
+  },
+  {
+    name: "SPEKULATOR",
+    handle: "__spekulator__",
+    quote:
+      "a public mcp server changes the game. now i can pipe social0 data directly into my claude sessions without a custom script.",
+    highlight: "pipe social0 data directly into my claude sessions",
+    href: "https://x.com/__spekulator__/status/2079894771183571033",
+  },
+  {
+    name: "Bey Okonkwo",
+    handle: "beyokonkwo",
+    quote:
+      "Using Social0 across all my products. Cross-platform posting is finally not a chore — clean and easy.",
+    highlight: "Cross-platform posting is finally not a chore",
+  },
+  {
+    name: "Arpit",
+    handle: "Arpitsharma_0",
+    quote: "This is the craziest bro literally I'm posting through my terminal",
+    highlight: "posting through my terminal",
+    href: "https://x.com/Arpitsharma_0/status/2077656331482513409",
+  },
+  {
+    name: "Eshan",
+    handle: "EshanBhat11",
+    quote:
+      "Very useful!!.. we can automate automated tweets now lol!! Exciting",
+    highlight: "automate automated tweets",
+    href: "https://x.com/EshanBhat11/status/2077657811799204144",
+  },
+  {
+    name: "Vadim Keller",
+    handle: "vadimkeller",
+    quote:
+      "Connected every account in minutes. Polished product — onboarding didn't fight me once.",
+    highlight: "Connected every account in minutes",
+    avatarSrc: "/testimonials/vadim-keller.png",
+  },
+  {
+    name: "Maya Chen",
+    handle: "mayachen",
+    quote:
+      "Abhishek's support goes the extra mile. No issue is too small — that alone keeps me subscribed.",
+    highlight: "goes the extra mile",
+    avatarSrc: "/testimonials/maya-chen.png",
+  },
+  {
+    name: "AriesTheCoder",
+    handle: "AriesTheCoder",
+    quote:
+      "For all you automators out there who manages your social media ai related activities via the cli, this is definitely something worth considering. Social0 just shipped a cli tool. Check it out.",
+    highlight: "definitely something worth considering",
+    href: "https://x.com/AriesTheCoder/status/2078584230486167992",
+  },
+  {
+    name: "Robert Watkin",
+    handle: "rwatkin",
+    quote:
+      "Clean, simple, easy to use. Exactly what I wanted from a scheduler.",
+    highlight: "Clean, simple, easy to use",
+    avatarSrc: "/testimonials/robert-watkin.png",
+  },
+  {
+    name: "Vibhu Revadi",
+    handle: "VibhuRevadi",
+    quote: "Amazing tool at an amazing price 🔥🔥",
+    highlight: "amazing price",
+    href: "https://x.com/VibhuRevadi/status/2082771892071788744",
+  },
 ];
 
-const byMode: Record<
-  LandingMode,
-  {
-    eyebrow: string;
-    headline: string;
-    testimonials: Testimonial[];
+function QuoteBody({
+  quote,
+  highlight,
+}: {
+  quote: string;
+  highlight?: string;
+}) {
+  if (!highlight || !quote.includes(highlight)) {
+    return <>{quote}</>;
   }
-> = {
-  normal: {
-    eyebrow: "Trusted by people who ship",
-    headline: "Less tab-switching. More posting.",
-    testimonials: [
-      {
-        quote:
-          "I used to burn 40 minutes every launch just copy-pasting. Now I hit publish once and I’m done before coffee cools.",
-        name: "Maya Chen",
-        role: "Indie founder · Product Hunt launches",
-        initials: "MC",
-      },
-      {
-        quote:
-          "We manage six client brands. Social0 replaced three tabs and a messy Notion checklist. Clients just see posts going out.",
-        name: "Jordan Blake",
-        role: "Agency owner · Northline Studio",
-        initials: "JB",
-      },
-      {
-        quote:
-          "Connected Claude via MCP for product updates — same dashboard my team already uses. No second tool.",
-        name: "Priya Nair",
-        role: "Developer · AI-native SaaS",
-        initials: "PN",
-      },
-    ],
-  },
-  agent: {
-    eyebrow: "Trusted by people who ship with agents",
-    headline: "Less dashboards. More shipping.",
-    testimonials: [
-      {
-        quote:
-          "Connected Claude via MCP and it schedules our product updates while I sleep. Same dashboard my team already uses.",
-        name: "Priya Nair",
-        role: "Developer · AI-native SaaS",
-        initials: "PN",
-      },
-      {
-        quote:
-          "I ask ChatGPT to draft the launch thread and Social0 ships it to X, LinkedIn, and Bluesky. Feels like cheating.",
-        name: "Maya Chen",
-        role: "Indie founder · Product Hunt launches",
-        initials: "MC",
-      },
-      {
-        quote:
-          "Our agency bots post client updates through the API. Status shows up in Social0 — clients never see the wiring.",
-        name: "Jordan Blake",
-        role: "Agency owner · Northline Studio",
-        initials: "JB",
-      },
-    ],
-  },
-};
+  const at = quote.indexOf(highlight);
+  return (
+    <>
+      {quote.slice(0, at)}
+      <mark className="rounded-[3px] bg-amber-300/55 px-1 py-0.5 text-inherit dark:bg-amber-300/35">
+        {highlight}
+      </mark>
+      {quote.slice(at + highlight.length)}
+    </>
+  );
+}
 
-export function SocialProofSection() {
-  const { mode } = useLandingMode();
-  const { eyebrow, headline, testimonials } = byMode[mode];
+function Avatar({
+  name,
+  handle,
+  avatarSrc,
+  skipRemote,
+}: {
+  name: string;
+  handle: string;
+  avatarSrc?: string;
+  /** Don't hit unavatar for placeholder handles. */
+  skipRemote?: boolean;
+}) {
+  const [failed, setFailed] = useState(false);
+  const initials = name
+    .split(/\s+/)
+    .map((p) => p[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  if (failed || (skipRemote && !avatarSrc)) {
+    return (
+      <span
+        className="flex size-11 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-[13px] font-semibold text-emerald-700 dark:text-emerald-400"
+        aria-hidden
+      >
+        {initials}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={avatarSrc ?? `https://unavatar.io/twitter/${handle}?fallback=false`}
+      alt=""
+      width={44}
+      height={44}
+      loading="lazy"
+      decoding="async"
+      className="size-11 shrink-0 rounded-full object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function XMark({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      className={cn("size-4 fill-current", className)}
+    >
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.227-8.26L1.254 2.25H8.08l4.573 5.69L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z" />
+    </svg>
+  );
+}
+
+const cardClassName =
+  "group flex w-full flex-col rounded-2xl border border-border bg-background p-6 shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-emerald-500/35 hover:shadow-[0_16px_40px_rgba(15,23,42,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:border-white/10 dark:bg-[#141414] dark:shadow-[0_12px_36px_rgba(0,0,0,0.35)] dark:hover:border-emerald-400/35 sm:p-7";
+
+function TweetCardBody({ tweet, linked }: { tweet: Tweet; linked: boolean }) {
+  return (
+    <>
+      <p className="text-[17px] leading-[1.55] text-foreground sm:text-[18px]">
+        <QuoteBody quote={tweet.quote} highlight={tweet.highlight} />
+      </p>
+      <div className="mt-6 flex items-center gap-3 border-t border-border/70 pt-5 dark:border-white/8">
+        <Avatar
+          name={tweet.name}
+          handle={tweet.handle}
+          avatarSrc={tweet.avatarSrc}
+          skipRemote={!linked}
+        />
+        <div className="min-w-0 flex-1 text-left">
+          <div className="truncate text-[15px] font-semibold text-foreground">
+            {tweet.name}
+          </div>
+          <div className="truncate text-[13px] text-muted-foreground">
+            @{tweet.handle}
+          </div>
+        </div>
+        {linked ? (
+          <XMark className="shrink-0 text-foreground/35 transition-colors group-hover:text-foreground/70" />
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+function TweetCard({ tweet }: { tweet: Tweet }) {
+  if (tweet.href) {
+    return (
+      <a
+        href={tweet.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cardClassName}
+      >
+        <TweetCardBody tweet={tweet} linked />
+      </a>
+    );
+  }
+
+  return (
+    <div className={cardClassName}>
+      <TweetCardBody tweet={tweet} linked={false} />
+    </div>
+  );
+}
+
+export function SocialProofSection({
+  signedIn = false,
+}: {
+  signedIn?: boolean;
+}) {
+  const startHref = signedIn ? "/dashboard" : "/auth";
 
   return (
     <section
       id="stories"
-      className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8"
-      aria-label="Customer stories"
+      className="px-4 py-20 sm:px-6 sm:py-24 lg:px-8"
+      aria-label="What people are saying"
     >
-      <div className="mx-auto max-w-[1120px]">
-        <div className="mb-10 flex flex-col items-center gap-3 text-center">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={mode}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.22 }}
-              className="flex flex-col items-center gap-3"
+      <div className="mx-auto max-w-[1180px]">
+        <h2 className="mx-auto mb-12 max-w-2xl text-center font-sans text-[clamp(28px,4.2vw,42px)] font-bold leading-[1.15] tracking-tight text-foreground dark:text-white sm:mb-14">
+          Social0 is loved by early users.{" "}
+          <span className="text-muted-foreground">
+            Here’s what they are saying.
+          </span>
+        </h2>
+
+        {/* Masonry bento — card height follows quote length */}
+        <ul className="m-0 list-none columns-1 gap-7 sm:columns-2 sm:gap-8 xl:columns-3 xl:gap-8">
+          {TWEETS.map((t) => (
+            <li
+              key={t.href ?? t.handle}
+              className="mb-7 break-inside-avoid sm:mb-8"
             >
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
-                {eyebrow}
-              </p>
-              <h2 className="max-w-md font-sans text-[clamp(28px,4vw,40px)] font-bold leading-tight text-foreground dark:text-white">
-                {headline}
-              </h2>
-            </motion.div>
-          </AnimatePresence>
-        </div>
+              <TweetCard tweet={t} />
+            </li>
+          ))}
+        </ul>
 
-        <div className="mb-10 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-border bg-border dark:border-white/10">
-            {metrics.map((m) => (
-              <div
-                key={m.label}
-                className="bg-background px-4 py-6 text-center dark:bg-[#111111] sm:px-6 sm:py-8"
-              >
-                <div className="font-serif text-[clamp(26px,3.5vw,36px)] tracking-tight text-foreground">
-                  {m.value}
-                </div>
-                <div className="mt-1 text-[12px] text-muted-foreground sm:text-[13px]">
-                  {m.label}
-                </div>
-              </div>
-            ))}
-        </div>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`quotes-${mode}`}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.28, ease: [0.23, 1, 0.32, 1] }}
-            className="grid gap-4 md:grid-cols-3"
+        <div className="mt-12 flex justify-center sm:mt-14">
+          <Link
+            href={startHref}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-emerald-500 px-8 py-3 text-[15px] font-semibold text-[#04140c] transition-[transform,background-color] duration-150 hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97]"
           >
-            {testimonials.map((t) => (
-              <figure
-                key={`${mode}-${t.name}`}
-                className="group relative overflow-hidden rounded-[28px] border border-border bg-muted/40 p-1.5 transition-transform duration-300 hover:-translate-y-1 dark:border-white/10 dark:bg-[#1A1A1A]"
-              >
-                <div className="flex h-full flex-col rounded-[22px] border border-border/60 bg-background p-5 dark:border-white/5 dark:bg-[#111111] sm:p-6">
-                  <blockquote className="flex-1 text-[14px] leading-relaxed text-foreground/90 sm:text-[15px]">
-                    “{t.quote}”
-                  </blockquote>
-                  <figcaption className="mt-6 flex items-center gap-3 border-t border-border/60 pt-5 dark:border-white/5">
-                    <span
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-emerald-500/25 bg-emerald-500/10 text-[12px] font-semibold text-emerald-700 dark:text-emerald-400"
-                      aria-hidden
-                    >
-                      {t.initials}
-                    </span>
-                    <div className="min-w-0 text-left">
-                      <div className="truncate text-[14px] font-semibold text-foreground">
-                        {t.name}
-                      </div>
-                      <div className="truncate text-[12px] text-muted-foreground">
-                        {t.role}
-                      </div>
-                    </div>
-                  </figcaption>
-                </div>
-              </figure>
-            ))}
-          </motion.div>
-        </AnimatePresence>
+            Try it for free
+            <span aria-hidden>→</span>
+          </Link>
+        </div>
       </div>
     </section>
   );

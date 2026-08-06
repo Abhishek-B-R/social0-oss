@@ -73,16 +73,15 @@ const Circle = forwardRef<
       className={cn(
         "flex flex-col items-center gap-1.5 transition-[opacity,transform] duration-300 ease-out",
         dimmed && "opacity-30",
-        active && "opacity-100",
       )}
     >
       <div
         ref={ref}
         className={cn(
           // Match page theme: light nodes on light, dark nodes on dark
-          "z-10 flex size-11 items-center justify-center rounded-full border border-neutral-200 bg-white p-2.5 shadow-sm transition-[box-shadow,border-color,transform] duration-300 dark:border-white/15 dark:bg-[#141414] dark:shadow-[0_0_20px_-12px_rgba(52,211,153,0.8)]",
+          "z-10 flex size-14 items-center justify-center rounded-full border border-neutral-200 bg-white p-2.5 shadow-sm transition-[box-shadow,border-color] duration-300 dark:border-white/15 dark:bg-[#141414] dark:shadow-[0_0_20px_-12px_rgba(52,211,153,0.8)]",
           active &&
-            "scale-105 border-emerald-500/70 shadow-[0_0_24px_rgba(16,185,129,0.35)] dark:border-emerald-400/70 dark:shadow-[0_0_28px_rgba(16,185,129,0.45)]",
+            "border-emerald-500/70 shadow-[0_0_24px_rgba(16,185,129,0.35)] dark:border-emerald-400/70 dark:shadow-[0_0_28px_rgba(16,185,129,0.45)]",
           className,
         )}
       >
@@ -91,8 +90,7 @@ const Circle = forwardRef<
       {label && (
         <span
           className={cn(
-            "max-w-[4.5rem] text-center text-[11px] leading-tight text-black/45 transition-colors duration-300 dark:text-white/45",
-            active && "font-medium text-black/80 dark:text-white/90",
+            "max-w-[5.5rem] text-center text-[12px] font-medium leading-tight text-black/80 transition-colors duration-300 dark:text-white/90",
             dimmed && "text-black/30 dark:text-white/25",
           )}
         >
@@ -158,18 +156,15 @@ export function FlowAnimation({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-border bg-[#FAFAF8] dark:border-white/10 dark:bg-[#0A0A0A]",
+        "relative flex flex-col overflow-hidden rounded-2xl border border-border bg-[#FAFAF8] dark:border-white/10 dark:bg-[#0A0A0A]",
         className,
       )}
     >
-      <div className="flex items-center gap-2 border-b border-border bg-[#F0EEE9] px-3 py-2.5 dark:border-white/6 dark:bg-[#141414]">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border bg-[#F0EEE9] px-3 py-2.5 dark:border-white/6 dark:bg-[#141414]">
         <div className="flex gap-1.5">
           <div className="h-2 w-2 rounded-full bg-[#FF5F57]" />
           <div className="h-2 w-2 rounded-full bg-[#FFBD2E]" />
           <div className="h-2 w-2 rounded-full bg-[#28CA41]" />
-        </div>
-        <div className="ml-2 rounded bg-black/4 px-2.5 py-0.5 font-mono text-[10px] text-black/30 dark:bg-white/5 dark:text-white/25">
-          social0.app/publish
         </div>
       </div>
 
@@ -177,24 +172,23 @@ export function FlowAnimation({ className }: { className?: string }) {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(26,107,74,0.08),transparent_60%)] dark:bg-[radial-gradient(circle_at_50%_0%,rgba(26,107,74,0.14),transparent_60%)]" />
 
       <div
-        className="relative flex w-full items-center justify-center overflow-hidden p-4 sm:p-5"
+        className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden p-5 sm:p-7"
         ref={containerRef}
       >
-        <div className="flex size-full max-w-md flex-row items-stretch justify-between gap-5 sm:gap-6">
+        <div className="flex h-full min-h-[280px] w-full max-w-lg flex-row items-stretch justify-between gap-6 sm:min-h-[320px] sm:gap-8">
           <div
             className={cn(
               "flex flex-col justify-center",
-              showAgent ? "gap-5" : "",
+              showAgent ? "gap-6" : "",
             )}
           >
             <Circle
               ref={userRef}
               label="You"
               active={youActive}
-              dimmed={showAgent && !youActive}
             >
               <User
-                className="h-5 w-5 text-neutral-800 dark:text-white/80"
+                className="h-6 w-6 text-neutral-800 dark:text-white/80"
                 strokeWidth={1.8}
               />
             </Circle>
@@ -203,10 +197,9 @@ export function FlowAnimation({ className }: { className?: string }) {
                 ref={agentRef}
                 label="Your agents"
                 active={agentActive}
-                dimmed={!agentActive}
               >
                 <Bot
-                  className="h-5 w-5 text-neutral-800 dark:text-white/80"
+                  className="h-6 w-6 text-neutral-800 dark:text-white/80"
                   strokeWidth={1.8}
                 />
               </Circle>
@@ -225,7 +218,7 @@ export function FlowAnimation({ className }: { className?: string }) {
             >
               <Circle
                 ref={hubRef}
-                className="size-[4.25rem] border-emerald-600/50 bg-white p-1 shadow-[0_0_28px_rgba(16,185,129,0.14)] dark:border-emerald-500/40 dark:bg-[#0A0A0A] dark:shadow-[0_0_28px_rgba(16,185,129,0.18)]"
+                className="size-[4.75rem] border-emerald-600/50 bg-white p-1 shadow-[0_0_28px_rgba(16,185,129,0.14)] dark:border-emerald-500/40 dark:bg-[#0A0A0A] dark:shadow-[0_0_28px_rgba(16,185,129,0.18)] sm:size-[5.25rem]"
               >
                 {/* Match header: circular mark on light, dark mark on dark */}
                 <img
@@ -247,7 +240,7 @@ export function FlowAnimation({ className }: { className?: string }) {
               </Circle>
             </motion.div>
           </div>
-          <div className="flex flex-col justify-center gap-2.5">
+          <div className="flex flex-col justify-center gap-3.5 sm:gap-4">
             {platforms.map((p) => (
               <div key={p.name} className="relative">
                 <motion.div
@@ -261,13 +254,13 @@ export function FlowAnimation({ className }: { className?: string }) {
                     ease: "easeInOut",
                   }}
                 />
-                <Circle ref={p.ref} className="p-1.5">
+                <Circle ref={p.ref} className="size-[3.5rem] p-2 sm:size-16 sm:p-2.5">
                   <PlatformBrandIcon
                     name={p.name}
                     src={p.src}
                     darkSrc={"darkSrc" in p ? p.darkSrc : undefined}
                     srcScale={"srcScale" in p ? p.srcScale : 1}
-                    size={22}
+                    size={28}
                   />
                 </Circle>
               </div>
