@@ -44,13 +44,13 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
     <section className="landing-hero relative overflow-x-hidden">
       <GridBackground />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-[1080px] flex-col items-center px-5 pb-10 pt-12 text-center sm:w-[92%] sm:px-6 sm:pb-12 sm:pt-14 lg:w-[88%] lg:max-w-[1120px] lg:px-8 lg:pb-14 lg:pt-16">
+      <div className="relative z-10 mx-auto flex w-full max-w-270 flex-col items-center px-5 pb-10 pt-12 text-center sm:w-[92%] sm:px-6 sm:pb-12 sm:pt-14 lg:w-[88%] lg:max-w-280 lg:px-8 lg:pb-14 lg:pt-16">
         <PlatformStrip variant="hero" className="mb-9 w-full sm:mb-10" />
 
         <AnimatePresence mode="wait">
           <motion.div
             key={mode}
-            className="w-full max-w-[920px]"
+            className="w-full max-w-230"
             initial={reduceMotion ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
@@ -86,7 +86,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
         >
           <Link
             href={signedIn ? "/dashboard" : "/auth"}
-            className="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-emerald-500 px-9 py-3.5 text-[15px] font-semibold text-[#04140c] shadow-[0_0_32px_rgba(16,185,129,0.28)] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97] dark:shadow-[0_0_32px_rgba(16,185,129,0.38)] sm:w-auto sm:text-[16px]"
+            className="inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-full bg-emerald-500 px-9 py-3.5 text-[15px] font-semibold text-[#04140c] shadow-[0_0_32px_rgba(16,185,129,0.28)] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97] dark:shadow-[0_0_32px_rgba(16,185,129,0.38)] sm:w-auto sm:text-[16px]"
           >
             {signedIn ? "Go to dashboard" : "Get started for free"}
             <span aria-hidden="true">→</span>

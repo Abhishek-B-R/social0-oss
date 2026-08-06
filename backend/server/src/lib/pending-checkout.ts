@@ -3,12 +3,13 @@ import { verification } from "../db/schema.js";
 import { and, eq, gt } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { redis } from "./redis.js";
+import type { PaidPlanTier } from "@social0/shared";
 
 const PENDING_CHECKOUT_TTL_SEC = 3600;
 const CHECKOUT_LOCK_TTL_SEC = 30;
 
 export type PendingCheckout = {
-  plan: "starter" | "growth" | "pro";
+  plan: PaidPlanTier;
   interval?: "monthly" | "yearly";
   sessionId: string;
   url: string;
@@ -116,7 +117,7 @@ async function releaseCheckoutLock(userId: string): Promise<void> {
 
 function pendingMatches(
   pending: PendingCheckout,
-  plan: "starter" | "growth" | "pro",
+  plan: PaidPlanTier,
   interval: "monthly" | "yearly",
 ): boolean {
   const pendingInterval = pending.interval ?? "monthly";
@@ -139,7 +140,7 @@ export type ResolveCheckoutResult =
  */
 export async function resolveCheckoutSession(params: {
   userId: string;
-  plan: "starter" | "growth" | "pro";
+  plan: PaidPlanTier;
   interval?: "monthly" | "yearly";
   trialPeriodDays: number;
   createSession: () => Promise<{ sessionId: string; url: string }>;

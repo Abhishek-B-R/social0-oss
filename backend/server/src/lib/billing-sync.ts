@@ -17,7 +17,7 @@ const environment =
 
 export type SyncSubscriptionResult = {
   ok: boolean;
-  tier?: "starter" | "growth" | "pro";
+  tier?: "starter" | "growth" | "pro" | "max";
 };
 
 /**

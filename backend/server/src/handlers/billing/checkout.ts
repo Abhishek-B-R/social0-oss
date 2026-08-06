@@ -5,6 +5,7 @@ import DodoPayments from "dodopayments";
 import {
   getProductId,
   parseBillingInterval,
+  parsePaidPlanTier,
   sanitizeReturnToPath,
 } from "@social0/shared";
 import { resolveAppUrlFromRequest } from "../../lib/app-url.js";
@@ -33,18 +34,16 @@ export async function createCheckout(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const plan = body.plan as string | undefined;
+  const planTier = parsePaidPlanTier(body.plan);
   const interval = parseBillingInterval(body.interval);
   const successUrl =
     typeof body.successUrl === "string" ? body.successUrl.trim() : null;
-  if (!plan || (plan !== "starter" && plan !== "growth" && plan !== "pro")) {
+  if (!planTier) {
     return RouteResponse.json(
-      { error: "Invalid plan. Use 'starter', 'growth', or 'pro'." },
+      { error: "Invalid plan. Use 'starter', 'growth', 'pro', or 'max'." },
       { status: 400 },
     );
   }
-
-  const planTier = plan as "starter" | "growth" | "pro";
 
   const productId = getProductId(planTier, interval);
   if (!productId) {

@@ -79,8 +79,6 @@ const PAID_PLANS: Array<{
     id: "growth",
     name: "Growth",
     tagline: "Early adopter pricing",
-    badge: "Popular",
-    emphasized: true,
     features: [
       "Everything in Starter",
       "Up to 15 connected accounts",

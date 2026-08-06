@@ -20,6 +20,7 @@ import { rpc } from "@/lib/rpc";
 import { getOnboardingStatus, type OnboardingStatus } from "@/api/onboarding";
 
 function getPlanLabel(tier: string): string {
+  if (tier === "max") return "Max plan";
   if (tier === "pro") return "Pro plan";
   if (tier === "growth") return "Growth plan";
   if (tier === "starter") return "Starter (Lite) plan";

@@ -6,6 +6,8 @@ import { enforceRateLimit } from "./ratelimit.js";
 /** Public API requests per hour by subscription tier. */
 export function apiRequestsPerHour(tier: SubscriptionTier): number {
   switch (tier) {
+    case "max":
+      return 10000;
     case "pro":
       return 5000;
     case "growth":

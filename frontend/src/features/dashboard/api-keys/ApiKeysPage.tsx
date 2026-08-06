@@ -85,6 +85,8 @@ function formatDate(iso: string | null): string {
 
 function apiRequestsPerHour(tier: SubscriptionTier): number {
   switch (tier) {
+    case "max":
+      return 10000;
     case "pro":
       return 5000;
     case "growth":
@@ -98,6 +100,8 @@ function apiRequestsPerHour(tier: SubscriptionTier): number {
 
 function planShortLabel(tier: SubscriptionTier): string {
   switch (tier) {
+    case "max":
+      return "Max";
     case "pro":
       return "Pro";
     case "growth":
@@ -110,7 +114,14 @@ function planShortLabel(tier: SubscriptionTier): string {
 }
 
 function normalizeTier(raw: string | undefined): SubscriptionTier {
-  if (raw === "starter" || raw === "growth" || raw === "pro") return raw;
+  if (
+    raw === "starter" ||
+    raw === "growth" ||
+    raw === "pro" ||
+    raw === "max"
+  ) {
+    return raw;
+  }
   return "free";
 }
 

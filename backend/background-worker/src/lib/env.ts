@@ -25,10 +25,12 @@ const envSchema = z.object({
   DODO_PAYMENTS_STARTER_PRODUCT_ID: z.string().optional(),
   DODO_PAYMENTS_GROWTH_PRODUCT_ID: z.string().optional(),
   DODO_PAYMENTS_PRO_PRODUCT_ID: z.string().optional(),
+    DODO_PAYMENTS_MAX_PRODUCT_ID: z.string().optional(),
   DODO_PAYMENTS_STARTER_YEARLY_PRODUCT_ID: z.string().optional(),
   DODO_PAYMENTS_LITE_YEARLY_PRODUCT_ID: z.string().optional(),
   DODO_PAYMENTS_GROWTH_YEARLY_PRODUCT_ID: z.string().optional(),
   DODO_PAYMENTS_PRO_YEARLY_PRODUCT_ID: z.string().optional(),
+    DODO_PAYMENTS_MAX_YEARLY_PRODUCT_ID: z.string().optional(),
   DODO_ZOMBIE_SUBSCRIPTION_GRACE_DAYS: z.coerce.number().optional(),
   CRON_SECRET: z.string().optional(),
 });

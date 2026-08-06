@@ -30,7 +30,9 @@ const PLATFORMS = [
 
 function isTwitterMark(name: string, src?: string) {
   const n = name.toLowerCase();
-  return n === "x" || n.includes("twitter") || Boolean(src?.includes("/icons/x."));
+  return (
+    n === "x" || n.includes("twitter") || Boolean(src?.includes("/icons/x."))
+  );
 }
 
 /**
@@ -66,7 +68,10 @@ export function TwitterXBrandIcon({
         style={
           responsive
             ? undefined
-            : { width: Math.round(size * 0.55), height: Math.round(size * 0.55) }
+            : {
+                width: Math.round(size * 0.55),
+                height: Math.round(size * 0.55),
+              }
         }
       />
       <span className="sr-only">Twitter / X</span>
@@ -180,7 +185,7 @@ export function PlatformStrip({
         compact ? "py-3 sm:py-3.5" : "py-6 sm:py-7"
       } ${className}`}
     >
-      <div className="mx-auto w-full min-w-0 max-w-[1440px] sm:w-[92%] lg:w-[90%]">
+      <div className="mx-auto w-full min-w-0 max-w-360 sm:w-[92%] lg:w-[90%]">
         <div
           className={`text-center text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground sm:text-[11px] ${
             compact ? "mb-2.5" : "mb-4"
@@ -189,7 +194,7 @@ export function PlatformStrip({
           Publishes to
         </div>
         <div
-          className={`flex min-w-0 flex-nowrap items-center justify-center gap-x-5 overflow-x-auto opacity-90 [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-x-6 lg:gap-x-8 [&::-webkit-scrollbar]:hidden ${
+          className={`flex min-w-0 flex-nowrap items-center justify-center gap-x-5 overflow-x-auto opacity-90 [-ms-overflow-style:none] scrollbar-none sm:gap-x-6 lg:gap-x-8 [&::-webkit-scrollbar]:hidden ${
             compact ? "" : "gap-x-6 sm:gap-x-8 lg:gap-x-10"
           }`}
         >

@@ -23,12 +23,12 @@ export function FinalCTA({ signedIn = false }: { signedIn?: boolean }) {
 
   return (
     <section className="relative overflow-hidden px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-28">
-      <div className="relative mx-auto max-w-[1120px] overflow-hidden rounded-[28px] border border-emerald-600/25 bg-gradient-to-br from-emerald-700 via-emerald-600 to-[#047857]">
+      <div className="relative mx-auto max-w-[1120px] overflow-hidden rounded-[28px] border border-emerald-500/20 bg-gradient-to-br from-emerald-600 via-emerald-500 to-[#059669]">
         <div
-          className="pointer-events-none absolute inset-0 opacity-25"
+          className="pointer-events-none absolute inset-0 opacity-20"
           style={{
             backgroundImage:
-              "repeating-linear-gradient(45deg, transparent, transparent 12px, rgba(0,0,0,0.14) 12px, rgba(0,0,0,0.14) 24px)",
+              "repeating-linear-gradient(45deg, transparent, transparent 12px, rgba(0,0,0,0.12) 12px, rgba(0,0,0,0.12) 24px)",
           }}
           aria-hidden
         />
@@ -57,7 +57,7 @@ export function FinalCTA({ signedIn = false }: { signedIn?: boolean }) {
               <h2 className="mb-4 font-serif text-[clamp(32px,5vw,52px)] leading-tight tracking-tight text-white">
                 {c.title}
               </h2>
-              <p className="mx-auto mb-8 max-w-md text-[16px] leading-relaxed text-white/85">
+              <p className="mx-auto mb-8 max-w-md text-[16px] leading-relaxed text-white/80">
                 {c.body}
               </p>
             </motion.div>
@@ -69,7 +69,7 @@ export function FinalCTA({ signedIn = false }: { signedIn?: boolean }) {
             {signedIn ? "Go to dashboard" : "Start free"}
             <span aria-hidden="true">→</span>
           </Link>
-          <p className="mt-4 text-[12px] text-white/70">
+          <p className="mt-4 text-[12px] text-white/65">
             Free to start · Cancel anytime · Not happy? Email us — we&apos;ll
             make it right
           </p>

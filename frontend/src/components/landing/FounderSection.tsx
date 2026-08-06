@@ -2,9 +2,9 @@ import Link from "@/components/AppLink";
 
 export function FounderSection({ signedIn = false }: { signedIn?: boolean }) {
   return (
-    <section className="border-y border-border bg-muted/30 px-6 py-20 dark:bg-muted/10 lg:px-8">
-      <div className="mx-auto max-w-[720px]">
-        <div className="flex flex-col items-center text-center">
+    <section className="border-y border-border bg-muted/30 px-4 py-16 dark:bg-muted/10 sm:px-6 sm:py-20 lg:px-8">
+      <div className="mx-auto max-w-[1120px]">
+        <div className="mx-auto flex max-w-[640px] flex-col items-center text-center">
           {/* Photo */}
           <div
             className="mb-6 h-32 w-32 cursor-pointer overflow-hidden rounded-full border-2 border-emerald-500/40 bg-muted dark:bg-muted/60"

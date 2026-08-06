@@ -5,7 +5,7 @@ import DodoPayments from "dodopayments";
 import { db } from "../../db/index.js";
 import { userSettings } from "../../db/schema.js";
 import { eq } from "drizzle-orm";
-import { getProductId, parseBillingInterval } from "@social0/shared";
+import { getProductId, parseBillingInterval, parsePaidPlanTier, planDisplayName, type PaidPlanTier } from "@social0/shared";
 import { env } from "../../lib/env.js";
 import {
   listOpenDodoSubscriptions,
@@ -15,8 +15,6 @@ const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
 const environment = env.DODO_PAYMENTS_ENVIRONMENT ?? "test_mode";
 const client = new DodoPayments({ bearerToken: apiKey, environment });
 
-type PaidPlan = "starter" | "growth" | "pro";
-
 function tierRank(tier: string): number {
   switch (tier) {
     case "starter":
@@ -25,15 +23,15 @@ function tierRank(tier: string): number {
       return 2;
     case "pro":
       return 3;
+    case "max":
+      return 4;
     default:
       return 0;
   }
 }
 
-function planLabel(plan: PaidPlan): string {
-  if (plan === "pro") return "Pro";
-  if (plan === "growth") return "Growth";
-  return "Starter";
+function planLabel(plan: PaidPlanTier): string {
+  return planDisplayName(plan);
 }
 
 /** Best-effort: drop any Dodo-scheduled plan change (404 = nothing pending). */
@@ -65,10 +63,7 @@ export async function changePlan(request: Request) {
   const body = await request.json().catch(() => ({}));
   const scheduleAtPeriodEnd = Boolean(body.scheduleAtPeriodEnd);
   const interval = parseBillingInterval(body.interval);
-  const plan: PaidPlan | null =
-    body.plan === "starter" || body.plan === "growth" || body.plan === "pro"
-      ? body.plan
-      : null;
+  const plan = parsePaidPlanTier(body.plan);
   const reason =
     typeof body.reason === "string" ? body.reason.trim().slice(0, 5000) : "";
   if (!plan) {

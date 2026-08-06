@@ -139,7 +139,9 @@ function buildMcpConfig(host: HostId, apiKey: string) {
     return [OPENCLAW_SKILL_INSTALL, "social0 login"].join("\n");
   }
   if (host === "hermes") {
-    return [SKILLS_CLI_INSTALL, "npm install -g social0", "social0 login"].join("\n");
+    return [SKILLS_CLI_INSTALL, "npm install -g social0", "social0 login"].join(
+      "\n",
+    );
   }
 
   const key = apiKey.trim() || "sk_live_your_key_here";
@@ -307,7 +309,9 @@ function McpConfigPanel() {
                   npm install -g social0 && social0 login
                 </code>
               </li>
-              <li>Use the skill in Hermes (or any host that loads Agent Skills)</li>
+              <li>
+                Use the skill in Hermes (or any host that loads Agent Skills)
+              </li>
             </>
           )}
         </ol>
@@ -329,7 +333,7 @@ function McpConfigPanel() {
       )}
 
       <div className="relative">
-        <pre className="max-h-[280px] overflow-auto rounded-xl border border-border bg-[#0d1117] p-4 text-[12px] leading-relaxed text-[#e6edf3] dark:border-white/10 sm:text-[13px]">
+        <pre className="max-h-70 overflow-auto rounded-xl border border-border bg-[#0d1117] p-4 text-[12px] leading-relaxed text-[#e6edf3] dark:border-white/10 sm:text-[13px]">
           {config}
         </pre>
         <Button
@@ -364,13 +368,13 @@ function McpConfigPanel() {
               <code className="rounded bg-muted px-1 dark:bg-[#151515]">
                 @abhishek-b-r/social0
               </code>
-              . Prefer the CLI skill over wiring MCP by hand when your agent has a
-              shell.
+              . Prefer the CLI skill over wiring MCP by hand when your agent has
+              a shell.
             </>
           ) : (
             <>
-              Works anywhere Agent Skills are supported — Hermes and similar hosts.
-              Same skill lives in{" "}
+              Works anywhere Agent Skills are supported — Hermes and similar
+              hosts. Same skill lives in{" "}
               <a
                 href="https://github.com/Abhishek-B-R/social0-cli"
                 target="_blank"
@@ -427,7 +431,7 @@ export default function McpPage() {
 
       {/* Hero */}
       <section className="px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-16 lg:px-8 lg:pt-20">
-        <div className="mx-auto max-w-[1120px] text-center">
+        <div className="mx-auto max-w-280 text-center">
           <PlatformStrip variant="hero" className="mb-8" />
 
           <p className="mb-4 inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
@@ -483,7 +487,7 @@ export default function McpPage() {
 
       {/* Real captures — add more srcs as you send them */}
       <section className="border-y border-border px-4 py-16 sm:px-6 sm:py-20 lg:px-8 dark:border-white/8">
-        <div className="mx-auto max-w-[1120px]">
+        <div className="mx-auto max-w-280">
           <div className="mb-10 text-center">
             <p className={`${sectionEyebrow} inline-flex items-center gap-2`}>
               <MessageSquare className="h-3.5 w-3.5" />
@@ -521,7 +525,7 @@ export default function McpPage() {
 
       {/* 3 steps */}
       <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
-        <div className="mx-auto max-w-[1120px]">
+        <div className="mx-auto max-w-280">
           <div className="mb-12 text-center">
             <p className={sectionEyebrow}>Get started</p>
             <h2 className={sectionTitle}>Setup in 3 steps</h2>
@@ -577,7 +581,7 @@ export default function McpPage() {
 
       {/* Config */}
       <section className="border-y border-border bg-muted/30 px-4 py-16 sm:px-6 sm:py-20 dark:border-white/8 dark:bg-muted/10 lg:px-8">
-        <div className="mx-auto max-w-[1120px]">
+        <div className="mx-auto max-w-280">
           <div className="mb-10 text-center">
             <p className={sectionEyebrow}>Connect in under a minute</p>
             <h2 className={sectionTitle}>One URL for remote AIs</h2>
@@ -588,7 +592,7 @@ export default function McpPage() {
 
       {/* Features */}
       <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
-        <div className="mx-auto max-w-[1120px]">
+        <div className="mx-auto max-w-280">
           <div className="mb-12 text-center">
             <p className={sectionEyebrow}>Capabilities</p>
             <h2 className={sectionTitle}>
@@ -628,7 +632,7 @@ export default function McpPage() {
 
       {/* Architecture note */}
       <section className="border-y border-border px-4 py-12 sm:px-6 dark:border-white/8 lg:px-8">
-        <div className="mx-auto max-w-[1120px]">
+        <div className="mx-auto max-w-280">
           <div
             className={`${cardShell} flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center`}
           >
@@ -688,7 +692,7 @@ export default function McpPage() {
 
       {/* FAQ */}
       <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
-        <div className="mx-auto max-w-[800px]">
+        <div className="mx-auto max-w-200">
           <div className="mb-10 text-center">
             <p className={sectionEyebrow}>FAQ</p>
             <h2 className={sectionTitle}>Frequently asked questions</h2>
@@ -727,14 +731,14 @@ export default function McpPage() {
         </div>
       </section>
 
-      {/* Final CTA — matches landing FinalCTA emerald panel */}
+      {/* Final CTA — compact emerald panel (same width as other sections) */}
       <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
-        <div className="relative mx-auto max-w-[1120px] overflow-hidden rounded-[28px] border border-emerald-600/25 bg-gradient-to-br from-emerald-700 via-emerald-600 to-[#047857]">
+        <div className="relative mx-auto max-w-[1120px] overflow-hidden rounded-[28px] border border-emerald-500/20 bg-gradient-to-br from-emerald-600 via-emerald-500 to-[#059669]">
           <div
-            className="pointer-events-none absolute inset-0 opacity-25"
+            className="pointer-events-none absolute inset-0 opacity-20"
             style={{
               backgroundImage:
-                "repeating-linear-gradient(45deg, transparent, transparent 12px, rgba(0,0,0,0.14) 12px, rgba(0,0,0,0.14) 24px)",
+                "repeating-linear-gradient(45deg, transparent, transparent 12px, rgba(0,0,0,0.12) 12px, rgba(0,0,0,0.12) 24px)",
             }}
             aria-hidden
           />
@@ -742,7 +746,7 @@ export default function McpPage() {
             <h2 className="mb-4 font-sans text-[clamp(28px,4vw,44px)] font-bold leading-tight tracking-tight text-white">
               Ready to post from AI?
             </h2>
-            <p className="mx-auto mb-8 max-w-md text-[16px] leading-relaxed text-white/85">
+            <p className="mx-auto mb-8 max-w-md text-[16px] leading-relaxed text-white/80">
               Connect once, then manage every platform from natural language.
             </p>
             <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -750,7 +754,7 @@ export default function McpPage() {
                 href={DOCS_MCP_QUICKSTART_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[11px] bg-white px-8 py-3.5 text-[15px] font-semibold text-emerald-700 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-px hover:shadow-[0_8px_32px_rgba(0,0,0,0.25)] sm:w-auto active:scale-[0.97]"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[11px] bg-[#0a0a0a] px-8 py-3.5 text-[15px] font-semibold text-white transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-px hover:bg-black hover:shadow-[0_8px_32px_rgba(0,0,0,0.25)] sm:w-auto active:scale-[0.97]"
               >
                 View setup docs
                 <span aria-hidden>→</span>
@@ -762,7 +766,7 @@ export default function McpPage() {
                 Try it out for free
               </Link>
             </div>
-            <p className="mt-4 text-[12px] text-white/70">
+            <p className="mt-4 text-[12px] text-white/65">
               Free to start · 10 posts · No credit card
             </p>
           </div>

@@ -57,16 +57,14 @@ export function PlanDiscountPrice({
     <div className={cn("flex flex-col gap-1.5", className)}>
       <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
         {hasList ? (
-          <span
-            className={cn(
-              listClass,
-              "line-through decoration-foreground/45 decoration-[1.5px]",
-            )}
-          >
+          <span className={listClass}>
+            {/* Strike digits only — raised $ sits above the line and looked underlined */}
             <sup className="mr-0.5 text-[0.55em] font-medium top-[-0.35em]">
               $
             </sup>
-            {formatAmount(listAmount!)}
+            <span className="line-through decoration-foreground/45 decoration-[1.5px]">
+              {formatAmount(listAmount!)}
+            </span>
           </span>
         ) : null}
         <span className={priceClass}>
