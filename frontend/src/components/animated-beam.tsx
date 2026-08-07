@@ -69,8 +69,9 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
         y2: ["0%", "0%"],
       }
     : {
+        // Wider gap = longer traveling blob
         x1: ["10%", "110%"],
-        x2: ["0%", "100%"],
+        x2: ["-15%", "85%"],
         y1: ["0%", "0%"],
         y2: ["0%", "0%"],
       };

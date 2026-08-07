@@ -62,15 +62,15 @@ export function TwitterXBrandIcon({
         aria-hidden
         className={
           responsive
-            ? "size-[55%] text-black dark:text-white"
+            ? "size-[72%] text-black dark:text-white"
             : "text-black dark:text-white"
         }
         style={
           responsive
             ? undefined
             : {
-                width: Math.round(size * 0.55),
-                height: Math.round(size * 0.55),
+                width: Math.round(size * 0.72),
+                height: Math.round(size * 0.72),
               }
         }
       />

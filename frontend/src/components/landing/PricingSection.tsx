@@ -175,7 +175,7 @@ export function PricingCards({
 
   return (
     <section id={id} className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-      <div className="mx-auto max-w-[1120px]">
+      <div className="mx-auto max-w-280">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
@@ -210,7 +210,7 @@ export function PricingCards({
 
         <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-4">
           <div className={basePlanCard}>
-            <div className="mb-6 min-h-[30px]" aria-hidden />
+            <div className="mb-6 min-h-7.5" aria-hidden />
             <div className={basePlanLabel}>Free</div>
             <div className="mt-6 mb-2 flex items-baseline gap-2">
               <div className={basePlanPrice}>
@@ -254,7 +254,7 @@ export function PricingCards({
           </div>
 
           <div className={basePlanCard}>
-            <div className="mb-6 min-h-[30px]">
+            <div className="mb-6 min-h-7.5">
               <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground dark:border-white/10">
                 For solo creators
               </span>
@@ -314,7 +314,7 @@ export function PricingCards({
           </div>
 
           <div className={basePlanCard}>
-            <div className="mb-6 min-h-[30px]">
+            <div className="mb-6 min-h-7.5">
               <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground dark:border-white/10">
                 Automation &amp; scale
               </span>
@@ -380,7 +380,7 @@ export function PricingCards({
           </div>
 
           <div className={basePlanCard}>
-            <div className="mb-6 min-h-[30px]">
+            <div className="mb-6 min-h-7.5">
               <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground dark:border-white/10">
                 For teams &amp; agencies
               </span>
@@ -394,9 +394,7 @@ export function PricingCards({
             <div className="mt-6 mb-2">
               <PlanDiscountPrice
                 amount={
-                  interval === "yearly"
-                    ? getEffectiveMonthly("pro")
-                    : pro.price
+                  interval === "yearly" ? getEffectiveMonthly("pro") : pro.price
                 }
                 listAmount={
                   interval === "yearly"
@@ -458,7 +456,7 @@ export function PricingCards({
           ) : (
             <div className="w-full max-w-md">
               <div className={`${basePlanCard} relative overflow-hidden`}>
-                <div className="mb-6 min-h-[30px]">
+                <div className="mb-6 min-h-7.5">
                   <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground dark:border-white/10">
                     Unlimited connections
                   </span>

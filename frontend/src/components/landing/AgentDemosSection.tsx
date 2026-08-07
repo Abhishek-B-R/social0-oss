@@ -1,12 +1,12 @@
 import { useState, type ComponentType } from "react";
 import { ArrowUpRight, CodeXml } from "lucide-react";
 import Link from "@/components/AppLink";
-import { DOCS_API_URL, DOCS_CLI_QUICKSTART_URL, DOCS_MCP_URL } from "@/lib/docs-url";
 import {
-  ChatGptIcon,
-  ClaudeIcon,
-  OpenClawIcon,
-} from "./agent-brand-icons";
+  DOCS_API_URL,
+  DOCS_CLI_QUICKSTART_URL,
+  DOCS_MCP_URL,
+} from "@/lib/docs-url";
+import { ChatGptIcon, ClaudeIcon, OpenClawIcon } from "./agent-brand-icons";
 
 /**
  * Drop muted demo clips into frontend/public/videos/:
@@ -20,38 +20,36 @@ const capabilities: {
   href: string;
   cta: string;
   video: string;
-  /** Still frame / screenshot when video isn't ready yet */
   poster?: string;
   external?: boolean;
-  /** Staggered layout: video at top or bottom of the card */
   media: "top" | "bottom";
 }[] = [
   {
-    title: "Via ChatGPT / MCP",
+    title: "Via ChatGPT / any chat interface",
     description:
-      "Connect Social0 as an MCP server and let ChatGPT draft, schedule, and publish for you.",
+      "Connect Social0 as an MCP server and let ChatGPT or any LLM draft, schedule, and publish for you.",
     icon: ChatGptIcon,
     href: "/mcp",
     cta: "Set up MCP",
     video: "/videos/agent-chatgpt.mp4",
-    poster: "/demos/chatgpt-mcp-post.png",
+    poster: "/demos/chatgpt-mcp-accounts.png",
     media: "bottom",
   },
   {
-    title: "Via Claude",
+    title: "Via Claude Code",
     description:
       "Point Claude at Social0 — ask it to post updates, queue threads, or check status.",
     icon: ClaudeIcon,
     href: DOCS_MCP_URL,
     cta: "MCP docs",
     video: "/videos/agent-claude.mp4",
-    poster: "/demos/claude-mcp-accounts.png",
+    poster: "/demos/claude-code-preview.png",
     media: "top",
   },
   {
-    title: "Via OpenClaw",
+    title: "Via OpenClaw / Hermes agents",
     description:
-      "Wire OpenClaw to the Social0 CLI — agent-driven posts across your accounts, same publish pipeline as the dashboard.",
+      "Wire OpenClaw / Hermes agents to the Social0 CLI — agent-driven posts across your accounts, same publish pipeline as the dashboard.",
     icon: OpenClawIcon,
     href: DOCS_CLI_QUICKSTART_URL,
     cta: "CLI quickstart",
@@ -123,11 +121,7 @@ function DemoVideoSlot({
   );
 }
 
-function CapCopy({
-  cap,
-}: {
-  cap: (typeof capabilities)[number];
-}) {
+function CapCopy({ cap }: { cap: (typeof capabilities)[number] }) {
   return (
     <div className="flex flex-col gap-4 px-6 py-7 sm:gap-5 sm:px-8 sm:py-9 lg:px-10 lg:py-10">
       <span className="flex size-14 items-center justify-center overflow-hidden rounded-2xl border border-border bg-background p-2.5 dark:border-white/10 dark:bg-[#151515] sm:size-16 sm:p-3">
@@ -172,7 +166,7 @@ export function AgentDemosSection() {
       id="agent-demos"
       className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24"
     >
-      <div className="mx-auto w-full max-w-[1400px]">
+      <div className="mx-auto w-full max-w-350">
         <div className="mb-10 flex flex-col items-center gap-3 text-center sm:mb-12 lg:mb-14">
           <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
             Agent mode
@@ -191,10 +185,10 @@ export function AgentDemosSection() {
           {capabilities.map((cap) => (
             <article
               key={cap.title}
-              className="rounded-[28px] bg-muted/60 p-[5px] dark:bg-[#1A1A1A] sm:rounded-[32px] lg:rounded-[38px]"
+              className="rounded-[28px] bg-muted/60 p-1.25 dark:bg-[#1A1A1A] sm:rounded-[32px] lg:rounded-[38px]"
             >
-              <div className="rounded-[24px] border border-border p-[2px] dark:border-white/10 sm:rounded-[28px] lg:rounded-[34px]">
-                <div className="flex flex-col overflow-hidden rounded-[20px] border border-border/60 bg-background dark:border-white/5 dark:bg-[#111111] sm:rounded-[24px] lg:rounded-[30px]">
+              <div className="rounded-[24px] border border-border p-0.5 dark:border-white/10 sm:rounded-[28px] lg:rounded-[34px]">
+                <div className="flex flex-col overflow-hidden rounded-4xl border border-border/60 bg-background dark:border-white/5 dark:bg-[#111111] sm:rounded-[24px] lg:rounded-[30px]">
                   {cap.media === "top" ? (
                     <>
                       <DemoVideoSlot

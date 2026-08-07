@@ -16,31 +16,31 @@ import { useLandingMode } from "./landing-mode";
 
 /**
  * Storytelling loop (seconds), per sender:
- *   0.0        brighten active sender (other stays dim)
- *   0.75       green signal on that cord only
- *   ~2.0–2.6   Social0 pulses as the post arrives
- *   ~3.0       Social0 → all platforms
- *   then idle; agent mode flips You ↔ Your agents for the next loop
+ *   0.0        brighten active sender
+ *   0.35       green signal on that cord
+ *   ~1.2–1.6   Social0 pulses as the post arrives
+ *   ~1.5       Social0 → all platforms
+ *   short idle; agent mode flips You ↔ Your agents for the next loop
  */
-const CYCLE = 9;
-const BRIGHTEN_BEFORE_SIGNAL = 0.75;
-const LEG_DURATION = 3.1;
-const DISPATCH_AFTER_SIGNAL_START = 2.2;
+const CYCLE = 4.5;
+const BRIGHTEN_BEFORE_SIGNAL = 0.35;
+const LEG_DURATION = 1.85;
+const DISPATCH_AFTER_SIGNAL_START = 1.15;
 const PLATFORM_DELAY = BRIGHTEN_BEFORE_SIGNAL + DISPATCH_AFTER_SIGNAL_START;
-const REPEAT_DELAY = Math.max(0.4, CYCLE - LEG_DURATION - BRIGHTEN_BEFORE_SIGNAL);
+const REPEAT_DELAY = Math.max(0.25, CYCLE - LEG_DURATION - BRIGHTEN_BEFORE_SIGNAL);
 
 const HUB_PULSE_TIMES = [
   0,
-  (BRIGHTEN_BEFORE_SIGNAL + 1.0) / CYCLE,
-  (BRIGHTEN_BEFORE_SIGNAL + 1.5) / CYCLE,
-  (BRIGHTEN_BEFORE_SIGNAL + 2.0) / CYCLE,
+  (BRIGHTEN_BEFORE_SIGNAL + 0.55) / CYCLE,
+  (BRIGHTEN_BEFORE_SIGNAL + 0.85) / CYCLE,
+  (BRIGHTEN_BEFORE_SIGNAL + 1.15) / CYCLE,
   1,
 ];
 const PLATFORM_GLOW_TIMES = [
   0,
-  (PLATFORM_DELAY + 0.5) / CYCLE,
-  (PLATFORM_DELAY + 1.1) / CYCLE,
-  (PLATFORM_DELAY + 1.7) / CYCLE,
+  (PLATFORM_DELAY + 0.25) / CYCLE,
+  (PLATFORM_DELAY + 0.55) / CYCLE,
+  (PLATFORM_DELAY + 0.9) / CYCLE,
   1,
 ];
 
@@ -107,13 +107,13 @@ const BEAM_PROPS = {
   duration: LEG_DURATION,
   repeatDelay: REPEAT_DELAY,
   pathOpacity: 1,
-  pathWidth: 1.75,
+  pathWidth: 4,
   gradientStartColor: "#34d399",
   gradientStopColor: "#6ee7b7",
   pathColor: "transparent",
   edgeAttach: true as const,
   className:
-    "[&>path:first-of-type]:stroke-black/15 [&>path:nth-of-type(2)]:stroke-[2px] [&_stop]:[stop-color:#047857] dark:[&>path:first-of-type]:stroke-white/25 dark:[&_stop]:[stop-color:#34d399]",
+    "[&>path:first-of-type]:stroke-black/15 [&>path:nth-of-type(2)]:stroke-[4px] [&_stop]:[stop-color:#047857] dark:[&>path:first-of-type]:stroke-white/25 dark:[&_stop]:[stop-color:#34d399]",
 };
 
 /**

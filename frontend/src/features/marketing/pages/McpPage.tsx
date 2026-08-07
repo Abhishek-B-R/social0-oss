@@ -31,7 +31,6 @@ type HostId =
   | "chatgpt"
   | "claude"
   | "cursor"
-  | "claude-desktop"
   | "vscode"
   | "openclaw"
   | "hermes";
@@ -102,7 +101,7 @@ const FAQ = [
   },
   {
     q: "Do I need an API key?",
-    a: "Not for ChatGPT / Claude.ai remote connectors — use https://mcp.social0.app/mcp and sign in with Social0 OAuth. OpenClaw / Hermes: install the skill, then social0 login. Cursor / Claude Desktop / VS Code still use npx with a sk_live_ API key.",
+    a: "Not for ChatGPT, Claude, or Cursor remote MCP — use https://mcp.social0.app/mcp and sign in with Social0 OAuth. OpenClaw / Hermes: install the skill, then social0 login. VS Code local stdio still uses npx with a sk_live_ API key.",
   },
   {
     q: "Do I need a separate Social0 plan?",
@@ -118,7 +117,7 @@ const FAQ = [
   },
   {
     q: "What if one platform fails?",
-    a: "Multi-platform jobs can finish as partial — some platforms succeed, others fail. Check get_publish_status errors and retry from the dashboard if needed.",
+    a: "The rest still go out. Social0 fans out in parallel, so one network error doesn’t stall the others — you’ll see exactly which platforms succeeded, and you can retry the failed ones from the dashboard.",
   },
 ] as const;
 
@@ -135,6 +134,20 @@ const ctaSecondary =
 
 function buildMcpConfig(host: HostId, apiKey: string) {
   if (host === "chatgpt" || host === "claude") return HOSTED_MCP_URL;
+  if (host === "cursor") {
+    return JSON.stringify(
+      {
+        mcpServers: {
+          social0: {
+            type: "http",
+            url: HOSTED_MCP_URL,
+          },
+        },
+      },
+      null,
+      2,
+    );
+  }
   if (host === "openclaw") {
     return [OPENCLAW_SKILL_INSTALL, "social0 login"].join("\n");
   }
@@ -147,27 +160,11 @@ function buildMcpConfig(host: HostId, apiKey: string) {
   const key = apiKey.trim() || "sk_live_your_key_here";
   const env = { SOCIAL0_API_KEY: key };
 
-  if (host === "vscode") {
-    return JSON.stringify(
-      {
-        servers: {
-          social0: {
-            type: "stdio",
-            command: "npx",
-            args: ["-y", "@social0/mcp"],
-            env,
-          },
-        },
-      },
-      null,
-      2,
-    );
-  }
-
   return JSON.stringify(
     {
-      mcpServers: {
+      servers: {
         social0: {
+          type: "stdio",
           command: "npx",
           args: ["-y", "@social0/mcp"],
           env,
@@ -185,7 +182,7 @@ function McpConfigPanel() {
   const [copied, setCopied] = useState(false);
 
   const config = useMemo(() => buildMcpConfig(host, apiKey), [host, apiKey]);
-  const isRemote = host === "chatgpt" || host === "claude";
+  const isRemote = host === "chatgpt" || host === "claude" || host === "cursor";
   const isSkill = host === "openclaw" || host === "hermes";
   const needsApiKey = !isRemote && !isSkill;
 
@@ -198,28 +195,13 @@ function McpConfigPanel() {
   const hosts: { id: HostId; label: string; hint: string }[] = [
     {
       id: "chatgpt",
-      label: "ChatGPT (web)",
+      label: "ChatGPT",
       hint: "Paste the remote MCP URL in ChatGPT connectors and authorize with Social0. No API key.",
     },
     {
       id: "claude",
-      label: "Claude (web)",
+      label: "Claude",
       hint: "Paste the remote MCP URL in Claude.ai connectors and authorize with Social0. No API key.",
-    },
-    {
-      id: "cursor",
-      label: "Cursor",
-      hint: "Settings → MCP, or project .cursor/mcp.json (needs Node.js + API key)",
-    },
-    {
-      id: "claude-desktop",
-      label: "Claude Desktop",
-      hint: "macOS: ~/Library/Application Support/Claude/claude_desktop_config.json",
-    },
-    {
-      id: "vscode",
-      label: "VS Code",
-      hint: "Copilot / MCP settings (stdio server)",
     },
     {
       id: "openclaw",
@@ -230,6 +212,16 @@ function McpConfigPanel() {
       id: "hermes",
       label: "Hermes",
       hint: "Add the Social0 CLI skill with npx skills, then social0 login.",
+    },
+    {
+      id: "cursor",
+      label: "Cursor",
+      hint: "Add this to Settings → MCP or project .cursor/mcp.json, then authorize with Social0. No API key.",
+    },
+    {
+      id: "vscode",
+      label: "VS Code",
+      hint: "Copilot / MCP settings (stdio server)",
     },
   ];
 
@@ -259,19 +251,35 @@ function McpConfigPanel() {
 
       {isRemote ? (
         <ol className="mb-6 list-decimal space-y-2 pl-5 text-[14px] leading-relaxed text-muted-foreground">
-          <li>
-            {host === "chatgpt"
-              ? "Open ChatGPT → Settings → Connectors / MCP"
-              : "Open Claude.ai → Settings → Connectors"}
-          </li>
-          <li>
-            Add a remote server with URL{" "}
-            <code className="rounded bg-muted px-1 text-[13px] text-foreground dark:bg-[#151515]">
-              {HOSTED_MCP_URL}
-            </code>
-          </li>
-          <li>Connect and approve Social0 in your browser (OAuth)</li>
-          <li>Ask: “Show my connected Social0 accounts”</li>
+          {host === "cursor" ? (
+            <>
+              <li>
+                Open Cursor → Settings → MCP, or edit{" "}
+                <code className="rounded bg-muted px-1 text-[13px] text-foreground dark:bg-[#151515]">
+                  .cursor/mcp.json
+                </code>
+              </li>
+              <li>Paste the JSON config below and save</li>
+              <li>Connect and approve Social0 in your browser (OAuth)</li>
+              <li>Ask: “Show my connected Social0 accounts”</li>
+            </>
+          ) : (
+            <>
+              <li>
+                {host === "chatgpt"
+                  ? "Open ChatGPT → Settings → Connectors / MCP"
+                  : "Open Claude.ai → Settings → Connectors"}
+              </li>
+              <li>
+                Add a remote server with URL{" "}
+                <code className="rounded bg-muted px-1 text-[13px] text-foreground dark:bg-[#151515]">
+                  {HOSTED_MCP_URL}
+                </code>
+              </li>
+              <li>Connect and approve Social0 in your browser (OAuth)</li>
+              <li>Ask: “Show my connected Social0 accounts”</li>
+            </>
+          )}
         </ol>
       ) : isSkill ? (
         <ol className="mb-6 list-decimal space-y-2 pl-5 text-[14px] leading-relaxed text-muted-foreground">
@@ -354,13 +362,23 @@ function McpConfigPanel() {
 
       <p className="mt-4 text-[12px] leading-relaxed text-muted-foreground">
         {isRemote ? (
-          <>
-            Same remote URL for ChatGPT (web) and Claude (web):{" "}
-            <code className="rounded bg-muted px-1 dark:bg-[#151515]">
-              {HOSTED_MCP_URL}
-            </code>{" "}
-            — OAuth only, no npx.
-          </>
+          host === "cursor" ? (
+            <>
+              Remote HTTP MCP — OAuth only, no API key or{" "}
+              <code className="rounded bg-muted px-1 dark:bg-[#151515]">
+                npx
+              </code>
+              .
+            </>
+          ) : (
+            <>
+              Same remote URL for ChatGPT and Claude:{" "}
+              <code className="rounded bg-muted px-1 dark:bg-[#151515]">
+                {HOSTED_MCP_URL}
+              </code>{" "}
+              — OAuth only, no npx.
+            </>
+          )
         ) : isSkill ? (
           host === "openclaw" ? (
             <>
@@ -416,7 +434,7 @@ export default function McpPage() {
     <MarketingPageLayout showCta={false}>
       <SeoHead
         title="Social0 MCP Server — Manage social media accounts from your AI"
-        description="Connect ChatGPT, Claude, Cursor, VS Code, OpenClaw, or Hermes to Social0. Remote OAuth, ClawHub skill, or local npx — create posts, publish, and schedule from natural language."
+        description="Connect ChatGPT, Claude, Cursor, VS Code, OpenClaw, or Hermes to Social0. Remote OAuth for ChatGPT, Claude, and Cursor — or local npx / CLI skills. Create posts, publish, and schedule from natural language."
         path="/mcp"
         keywords={[
           "Social0 MCP",
@@ -450,13 +468,9 @@ export default function McpPage() {
             <code className="rounded bg-muted px-1.5 py-0.5 text-[14px] dark:bg-[#151515]">
               https://mcp.social0.app/mcp
             </code>{" "}
-            in any AI that supports remote MCP, then authorize with Social0. Or
-            use{" "}
-            <code className="rounded bg-muted px-1.5 py-0.5 text-[14px] dark:bg-[#151515]">
-              npx @social0/mcp
-            </code>{" "}
-            locally in Cursor and Desktop. Draft, publish, and schedule across
-            every connected platform from chat.
+            in ChatGPT, Claude, Cursor, or any AI that supports remote MCP, then
+            authorize with Social0. Draft, publish, and schedule across every
+            connected platform from chat.
           </p>
 
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -503,8 +517,8 @@ export default function McpPage() {
           <div className="grid gap-5 lg:grid-cols-2">
             <div className={`${cardShell} overflow-hidden p-1.5 sm:p-2`}>
               <img
-                src="/demos/chatgpt-mcp-post.png"
-                alt="ChatGPT using Social0 MCP to publish a post to X"
+                src="/demos/claude-mcp.png"
+                alt="Claude using Social0 MCP to draft and publish"
                 className="w-full rounded-[14px] object-cover object-top"
                 loading="lazy"
                 decoding="async"
@@ -512,8 +526,8 @@ export default function McpPage() {
             </div>
             <div className={`${cardShell} overflow-hidden p-1.5 sm:p-2`}>
               <img
-                src="/demos/claude-mcp-accounts.png"
-                alt="Claude using Social0 MCP to list connected social accounts"
+                src="/demos/chatgpt-mcp-accounts.png"
+                alt="ChatGPT using Social0 MCP to list connected accounts"
                 className="w-full rounded-[14px] object-cover object-top"
                 loading="lazy"
                 decoding="async"
@@ -542,7 +556,7 @@ export default function McpPage() {
               {
                 step: "02",
                 title: "Add Social0 to your AI",
-                body: "ChatGPT: paste https://mcp.social0.app/mcp and authorize. OpenClaw: openclaw skills install @abhishek-b-r/social0. Hermes / others: npx skills add abhishek-b-r/social0-cli. Cursor / Desktop: npx config + API key below.",
+                body: "ChatGPT / Claude: paste https://mcp.social0.app/mcp and authorize. Cursor: add type http MCP config below. OpenClaw: openclaw skills install @abhishek-b-r/social0. Hermes: npx skills add abhishek-b-r/social0-cli.",
                 href: DOCS_MCP_QUICKSTART_URL,
                 link: "Setup guide",
               },
@@ -646,7 +660,8 @@ export default function McpPage() {
                   <strong className="font-medium text-foreground">
                     Remote MCP:
                   </strong>{" "}
-                  Any host that accepts a remote MCP URL uses{" "}
+                  ChatGPT, Claude, Cursor, and any host that accepts a remote
+                  MCP URL use{" "}
                   <code className="rounded bg-muted px-1 text-[13px] dark:bg-[#151515]">
                     https://mcp.social0.app/mcp
                   </code>{" "}
@@ -656,7 +671,7 @@ export default function McpPage() {
                   <strong className="font-medium text-foreground">
                     Local MCP:
                   </strong>{" "}
-                  Cursor and Desktop can run{" "}
+                  VS Code can run{" "}
                   <code className="rounded bg-muted px-1 text-[13px] dark:bg-[#151515]">
                     npx @social0/mcp
                   </code>{" "}
