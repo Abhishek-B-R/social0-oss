@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { ArrowUpRight, CodeXml } from "lucide-react";
 import Link from "@/components/AppLink";
 import {
@@ -23,11 +23,13 @@ const capabilities: {
   poster?: string;
   external?: boolean;
   media: "top" | "bottom";
+  /** Where object-cover anchors — OpenClaw keeps the UI chrome at the bottom. */
+  object?: "top" | "bottom";
 }[] = [
   {
     title: "Via ChatGPT / any chat interface",
     description:
-      "Connect Social0 as an MCP server and let ChatGPT or any LLM draft, schedule, and publish for you.",
+      "Connect Social0 as an MCP server and ask ChatGPT to draft, schedule, and publish posts for you.",
     icon: ChatGptIcon,
     href: "/mcp",
     cta: "Set up MCP",
@@ -38,7 +40,7 @@ const capabilities: {
   {
     title: "Via Claude Code",
     description:
-      "Point Claude at Social0 — ask it to post updates, queue threads, or check status.",
+      "Give Claude a task and let it create, schedule, and manage your social posts directly.",
     icon: ClaudeIcon,
     href: DOCS_MCP_URL,
     cta: "MCP docs",
@@ -49,13 +51,15 @@ const capabilities: {
   {
     title: "Via OpenClaw / Hermes agents",
     description:
-      "Wire OpenClaw / Hermes agents to the Social0 CLI — agent-driven posts across your accounts, same publish pipeline as the dashboard.",
+      "Tell your agent what you want to publish, or give it a workflow to handle recurring social tasks through Social0.",
     icon: OpenClawIcon,
     href: DOCS_CLI_QUICKSTART_URL,
     cta: "CLI quickstart",
     video: "/videos/agent-openclaw.mp4",
+    poster: "/demos/openclaw-preview.png",
     external: true,
     media: "bottom",
+    object: "bottom",
   },
   {
     title: "Via Public API",
@@ -65,83 +69,121 @@ const capabilities: {
     href: DOCS_API_URL,
     cta: "API docs",
     video: "/videos/agent-api.mp4",
+    poster: "/demos/api-postman-preview.png",
     external: true,
     media: "top",
   },
 ];
 
-/** 16:9 demo slot — video when present, else poster still. */
+/** 16:9 demo slot — inset from card edges so media doesn't kiss the border. */
 function DemoVideoSlot({
   src,
   poster,
-  flush,
+  flush = "bottom",
+  object = "top",
 }: {
   src: string;
   poster?: string;
-  flush: "top" | "bottom";
+  flush?: "top" | "bottom";
+  object?: "top" | "bottom";
 }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
-  const round =
+  const pad =
     flush === "top"
-      ? "rounded-t-[20px] sm:rounded-t-[24px] lg:rounded-t-[30px]"
-      : "rounded-b-[20px] sm:rounded-b-[24px] lg:rounded-b-[30px]";
+      ? "px-3 pt-3 pb-1 sm:px-4 sm:pt-4 sm:pb-1.5"
+      : "px-3 pt-1 pb-3 sm:px-4 sm:pt-1.5 sm:pb-4";
+  const fit =
+    object === "bottom"
+      ? "aspect-video w-full object-cover object-bottom"
+      : "aspect-video w-full object-cover object-top";
 
-  if (failed) {
-    if (poster) {
-      return (
-        <img
-          src={poster}
-          alt=""
-          className={`aspect-video w-full shrink-0 object-cover object-top dark:bg-[#0d0d0d] ${round}`}
-          loading="lazy"
-          decoding="async"
-        />
-      );
-    }
-    return (
+  // ponytail: pause off-screen / hidden tab so decode doesn't burn CPU
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || failed) return;
+
+    let inView = false;
+    const sync = () => {
+      if (inView && !document.hidden) void el.play().catch(() => {});
+      else el.pause();
+    };
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        inView = entry.isIntersecting;
+        sync();
+      },
+      { threshold: 0.25 },
+    );
+    io.observe(el);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      io.disconnect();
+      document.removeEventListener("visibilitychange", sync);
+      el.pause();
+    };
+  }, [failed, src]);
+
+  const media = failed ? (
+    poster ? (
+      <img
+        src={poster}
+        alt=""
+        className={`${fit} dark:bg-[#0d0d0d]`}
+        loading="lazy"
+        decoding="async"
+      />
+    ) : (
       <div
-        className={`aspect-video w-full shrink-0 bg-muted/40 dark:bg-[#0d0d0d] ${round}`}
+        className="aspect-video w-full bg-muted/40 dark:bg-[#0d0d0d]"
         aria-hidden
       />
-    );
-  }
-
-  return (
+    )
+  ) : (
     <video
-      className={`aspect-video w-full shrink-0 bg-muted/40 object-cover dark:bg-[#0d0d0d] ${round}`}
+      ref={videoRef}
+      className={`${fit} bg-muted/40 dark:bg-[#0d0d0d]`}
       src={src}
       poster={poster}
       muted
       playsInline
       loop
-      autoPlay
       preload="metadata"
       onError={() => setFailed(true)}
     />
+  );
+
+  return (
+    <div className={`shrink-0 ${pad}`}>
+      <div className="overflow-hidden rounded-xl border border-border/50 dark:border-white/8 sm:rounded-2xl">
+        {media}
+      </div>
+    </div>
   );
 }
 
 function CapCopy({ cap }: { cap: (typeof capabilities)[number] }) {
   return (
-    <div className="flex flex-col gap-4 px-6 py-7 sm:gap-5 sm:px-8 sm:py-9 lg:px-10 lg:py-10">
-      <span className="flex size-14 items-center justify-center overflow-hidden rounded-2xl border border-border bg-background p-2.5 dark:border-white/10 dark:bg-[#151515] sm:size-16 sm:p-3">
+    <div className="flex h-full flex-col gap-3 px-5 py-5 sm:gap-3.5 sm:px-6 sm:py-6 lg:px-7 lg:py-7">
+      <span className="flex size-12 items-center justify-center overflow-hidden rounded-xl border border-border bg-background p-2 dark:border-white/10 dark:bg-[#151515] sm:size-14 sm:rounded-2xl sm:p-2.5">
         <cap.icon className="size-full" />
       </span>
-      <div className="space-y-3">
-        <h3 className="font-sans text-[clamp(26px,3vw,36px)] font-bold tracking-tight text-foreground dark:text-white">
+      <div className="space-y-2">
+        <h3 className="font-sans text-[clamp(22px,2.6vw,30px)] font-bold tracking-tight text-foreground dark:text-white">
           {cap.title}
         </h3>
-        <p className="max-w-lg text-[15px] leading-relaxed text-muted-foreground sm:text-[17px] sm:leading-[1.55]">
+        <p className="max-w-lg text-[14px] leading-relaxed text-muted-foreground sm:text-[15px] sm:leading-[1.5]">
           {cap.description}
         </p>
       </div>
-      <div className="pt-1">
+      <div className="mt-auto pt-0.5">
         {cap.external ? (
           <a
             href={cap.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-emerald-700 transition-colors hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
+            className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-emerald-700 transition-colors hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
           >
             {cap.cta}
             <ArrowUpRight className="size-4" aria-hidden />
@@ -149,7 +191,7 @@ function CapCopy({ cap }: { cap: (typeof capabilities)[number] }) {
         ) : (
           <Link
             href={cap.href}
-            className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-emerald-700 transition-colors hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
+            className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-emerald-700 transition-colors hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
           >
             {cap.cta}
             <ArrowUpRight className="size-4" aria-hidden />
@@ -181,30 +223,36 @@ export function AgentDemosSection() {
         </div>
 
         {/* Staggered pairs: text↑/video↓ then video↑/text↓ — muted shells, large demos */}
-        <div className="grid grid-cols-1 gap-5 sm:gap-6 lg:grid-cols-2 lg:gap-7">
+        <div className="grid grid-cols-1 items-stretch gap-5 sm:gap-6 lg:grid-cols-2 lg:gap-7">
           {capabilities.map((cap) => (
             <article
               key={cap.title}
-              className="rounded-[28px] bg-muted/60 p-1.25 dark:bg-[#1A1A1A] sm:rounded-[32px] lg:rounded-[38px]"
+              className="flex h-full flex-col rounded-[28px] bg-muted/60 p-1.25 dark:bg-[#1A1A1A] sm:rounded-[32px] lg:rounded-[38px]"
             >
-              <div className="rounded-[24px] border border-border p-0.5 dark:border-white/10 sm:rounded-[28px] lg:rounded-[34px]">
-                <div className="flex flex-col overflow-hidden rounded-4xl border border-border/60 bg-background dark:border-white/5 dark:bg-[#111111] sm:rounded-[24px] lg:rounded-[30px]">
+              <div className="flex min-h-0 flex-1 flex-col rounded-[24px] border border-border p-0.5 dark:border-white/10 sm:rounded-[28px] lg:rounded-[34px]">
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] border border-border/60 bg-background dark:border-white/5 dark:bg-[#111111] sm:rounded-[24px] lg:rounded-[30px]">
                   {cap.media === "top" ? (
                     <>
                       <DemoVideoSlot
                         src={cap.video}
                         poster={cap.poster}
                         flush="top"
+                        object={cap.object}
                       />
-                      <CapCopy cap={cap} />
+                      <div className="flex min-h-0 flex-1 flex-col">
+                        <CapCopy cap={cap} />
+                      </div>
                     </>
                   ) : (
                     <>
-                      <CapCopy cap={cap} />
+                      <div className="flex min-h-0 flex-1 flex-col">
+                        <CapCopy cap={cap} />
+                      </div>
                       <DemoVideoSlot
                         src={cap.video}
                         poster={cap.poster}
                         flush="bottom"
+                        object={cap.object}
                       />
                     </>
                   )}

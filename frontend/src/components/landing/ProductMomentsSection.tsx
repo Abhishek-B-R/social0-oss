@@ -1,10 +1,11 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
+import { useTheme } from "next-themes";
 import Link from "@/components/AppLink";
 import { motion, useReducedMotion } from "framer-motion";
 import { CalendarDays, LayoutGrid, Zap } from "lucide-react";
 import { FlowAnimation } from "./FlowAnimation";
-import { WfCalendar, WfScheduleCreate } from "./wireframes/ProductWireframes";
+import { WfCalendar } from "./wireframes/ProductWireframes";
 import { WireframeStage } from "./wireframes/WireframeStage";
 
 function hashHref(pathname: string, hash: string) {
@@ -16,6 +17,70 @@ function VisualShell({ children }: { children: ReactNode }) {
     <div className="overflow-hidden rounded-[24px] border border-zinc-200 bg-white p-2 shadow-[0_22px_50px_rgba(15,23,42,0.1)] dark:border-white/10 dark:bg-[#1A1A1A] dark:shadow-[0_24px_60px_rgba(0,0,0,0.35)] sm:rounded-[28px] sm:p-2.5">
       {children}
     </div>
+  );
+}
+
+/** Muted loop — pauses when off-screen / tab hidden. Theme-aware src when darkSrc set. */
+function MomentDemoVideo({
+  src,
+  darkSrc,
+  poster,
+  darkPoster,
+  className = "",
+}: {
+  src: string;
+  darkSrc?: string;
+  poster?: string;
+  darkPoster?: string;
+  className?: string;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const isDark = mounted && resolvedTheme === "dark";
+  const activeSrc = isDark && darkSrc ? darkSrc : src;
+  const activePoster = isDark && darkPoster ? darkPoster : poster;
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+
+    let inView = false;
+    const sync = () => {
+      if (inView && !document.hidden) void el.play().catch(() => {});
+      else el.pause();
+    };
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        inView = entry.isIntersecting;
+        sync();
+      },
+      { threshold: 0.25 },
+    );
+    io.observe(el);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      io.disconnect();
+      document.removeEventListener("visibilitychange", sync);
+      el.pause();
+    };
+  }, [activeSrc]);
+
+  return (
+    <video
+      key={activeSrc}
+      ref={videoRef}
+      className={`w-full rounded-[16px] bg-zinc-100 object-cover object-bottom dark:bg-[#0d0d0d] sm:rounded-[20px] ${className}`}
+      src={activeSrc}
+      poster={activePoster}
+      muted
+      playsInline
+      loop
+      preload="metadata"
+    />
   );
 }
 
@@ -179,15 +244,16 @@ export function ProductMomentsSection({
             href: hashHref(pathname, "#demo"),
           }}
           visual={
-            <VisualShell>
-              <WireframeStage
-                className="min-h-85 border-0 sm:min-h-100 lg:min-h-110"
-                tall
-                wide
-              >
-                <WfScheduleCreate className="h-75 w-full sm:h-90 lg:h-100" />
-              </WireframeStage>
-            </VisualShell>
+            <div className="mx-auto w-full max-w-140 lg:ml-0 lg:mr-auto lg:max-w-none">
+              <VisualShell>
+                <MomentDemoVideo
+                  src="/videos/schedule-effortlessly-light.mp4"
+                  darkSrc="/videos/schedule-effortlessly-dark.mp4"
+                  poster="/demos/schedule-effortlessly-light-preview.png"
+                  darkPoster="/demos/schedule-effortlessly-dark-preview.png"
+                />
+              </VisualShell>
+            </div>
           }
         />
 

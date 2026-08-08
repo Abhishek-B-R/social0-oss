@@ -245,7 +245,7 @@ export function PricingCards({
             <div className="mt-auto pt-8">
               <Link
                 href={signedIn ? "/dashboard" : "/auth"}
-                className={ctaNeutral}
+                className={ctaPrimary}
               >
                 {signedIn ? "Go to dashboard →" : "Start free"}
               </Link>
@@ -305,7 +305,7 @@ export function PricingCards({
             <div className="mt-auto pt-8">
               <Link
                 href={signedIn ? "/dashboard" : "/auth"}
-                className={ctaNeutral}
+                className={ctaPrimary}
               >
                 {paidCta}
               </Link>
@@ -371,7 +371,7 @@ export function PricingCards({
             <div className="mt-auto pt-8">
               <Link
                 href={signedIn ? "/dashboard" : "/auth"}
-                className={ctaNeutral}
+                className={ctaPrimary}
               >
                 {paidCta}
               </Link>
@@ -435,7 +435,7 @@ export function PricingCards({
             <div className="mt-auto pt-8">
               <Link
                 href={signedIn ? "/dashboard" : "/auth"}
-                className={ctaNeutral}
+                className={ctaPrimary}
               >
                 {paidCta}
               </Link>

@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { PlatformStrip } from "@/components/landing/PlatformStrip";
@@ -10,6 +11,7 @@ import {
   DOCS_MCP_QUICKSTART_URL,
   DOCS_MCP_URL,
 } from "@/lib/docs-url";
+import { scrollToHash } from "@/lib/scroll-to-hash";
 import { absoluteUrl } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import {
@@ -429,6 +431,13 @@ function McpConfigPanel() {
 
 export default function McpPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const { hash } = useLocation();
+
+  useEffect(() => {
+    if (!hash) return;
+    const t = window.setTimeout(() => scrollToHash(hash), 50);
+    return () => window.clearTimeout(t);
+  }, [hash]);
 
   return (
     <MarketingPageLayout showCta={false}>
@@ -594,7 +603,10 @@ export default function McpPage() {
       </section>
 
       {/* Config */}
-      <section className="border-y border-border bg-muted/30 px-4 py-16 sm:px-6 sm:py-20 dark:border-white/8 dark:bg-muted/10 lg:px-8">
+      <section
+        id="connect"
+        className="border-y border-border bg-muted/30 px-4 py-16 sm:px-6 sm:py-20 dark:border-white/8 dark:bg-muted/10 lg:px-8"
+      >
         <div className="mx-auto max-w-280">
           <div className="mb-10 text-center">
             <p className={sectionEyebrow}>Connect in under a minute</p>
