@@ -252,8 +252,8 @@ export const COMPARE_ROWS: CompareRow[] = [
   ),
   f(
     "Human support",
-    "Email support from the Social0 team for paid plans.",
-    STARTER_UP,
+    "Email support from the Social0 team on Growth and above.",
+    GROWTH_UP,
   ),
   f(
     "Priority support",
@@ -328,8 +328,8 @@ export function PricingComparisonTable({
   interval: BillingInterval;
   signedIn?: boolean;
 }) {
-  const ctaHref = signedIn ? "/dashboard" : "/auth";
-  const maxBuyHref = signedIn ? "/dashboard/billing" : "/auth";
+  const ctaHref = signedIn ? "/dashboard" : "/auth?mode=signup";
+  const maxBuyHref = signedIn ? "/dashboard/billing" : "/auth?mode=signup";
   const maxWalkthroughHref = "https://cal.com/abhishekbr/30min";
 
   const priceLabel = (tier: CompareCol) => {

@@ -91,7 +91,7 @@ Plan gates reflect `react-frontend/src/lib/plans.ts` and the pricing page.
 - **Marketing site** — landing, pricing, FAQ, features/alternatives SEO pages (`/`, `/features`, `/alternatives`)
 - **Auth** — email sign-up/sign-in, Google OAuth, email verification, forgot/reset password
 - **Guest dashboard** — browse dashboard UI without signing in (test mode; cannot post)
-- **Onboarding** — guided setup after sign-up (goal, connect accounts, plan selection)
+- **Onboarding** — guided setup after sign-up (goal → connect → optional plan → first post)
 - **Billing** — Stripe/Dodo checkout, plan change, cancel, portal
 - **Settings** — display name, avatar, timezone, platform preferences, automation emails, post-failure emails, sign out all devices
 - **Feedback** — embedded Canny board (`/dashboard/feedback`)

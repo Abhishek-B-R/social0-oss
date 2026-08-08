@@ -154,7 +154,6 @@ const STARTER_BILLING_FEATURES = [
   "CLI",
   "API keys",
   "Outbound webhooks",
-  "Human support",
 ];
 
 const GROWTH_BILLING_FEATURES = [

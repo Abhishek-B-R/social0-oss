@@ -1,7 +1,8 @@
 import { getAppUrl } from "./env";
 import { sanitizeReturnToPath } from "./safe-return-to";
 
-const DEFAULT_CALLBACK = "/dashboard/composer";
+/** New sessions land in onboarding; completed users bounce to dashboard via gate. */
+const DEFAULT_CALLBACK = "/onboarding";
 
 /** Build a sign-in URL that returns the user to `callbackPath` after auth. */
 export function signInUrl(callbackPath?: string): string {

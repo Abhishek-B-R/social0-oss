@@ -2,115 +2,20 @@ import { useState } from "react";
 import Link from "@/components/AppLink";
 import { BillingIntervalToggle } from "@/components/billing/BillingIntervalToggle";
 import { PlanDiscountPrice } from "@/components/billing/PlanDiscountPrice";
-import { getPlanLimits, type BillingInterval } from "@/lib/plans";
+import type { BillingInterval } from "@/lib/plans";
 import {
   billedAsYearlyLabel,
   getEffectiveMonthly,
   getPlanPrice,
   getYearlySlashMonthly,
 } from "@/lib/plan-pricing";
-
-const freePosts = getPlanLimits("free").maxFreePosts;
-
-/** Shared milk lines — repeated per card (not one bundled “API, MCP & CLI” row). */
-const CORE_PUBLISH = [
-  "All 9 platforms",
-  "Text, image & video posts",
-  "Threads (multi-post)",
-  "Collections & carousels",
-  "Per-platform captions",
-  "Drag-and-drop media",
-  "Drafts",
-  "Publish now",
-  "Parallel multi-platform publish",
-  "Live publish progress",
-  "Schedule posts",
-  "Content calendar",
-  "Posting queue",
-  "Timezone-aware scheduling",
-  "Edit scheduled posts",
-  "Post again / retry",
-  "Official OAuth connections",
-  "Token health & reconnect",
-] as const;
-
-const CORE_DEV = [
-  "REST API",
-  "MCP server",
-  "CLI",
-  "API keys",
-  "Outbound webhooks",
-] as const;
-
-const CORE_EXTRAS = ["Email on post failure", "Dark / light mode"] as const;
-
-const freeFeatures: { text: string; highlight?: boolean }[] = [
-  { text: "No credit card required", highlight: true },
-  { text: "Up to 3 connected accounts", highlight: true },
-  { text: `${freePosts} posts to try before you upgrade`, highlight: true },
-  ...CORE_PUBLISH.map((text) => ({ text })),
-  ...CORE_DEV.map((text) => ({ text })),
-  ...CORE_EXTRAS.map((text) => ({ text })),
-  { text: "Activated instantly — no trial that auto-charges" },
-];
-
-const starterFeatures = [
-  "Up to 5 connected accounts",
-  "Unlimited posts",
-  "Multiple accounts per platform",
-  "Workspaces (multi-brand)",
-  ...CORE_PUBLISH,
-  ...CORE_DEV,
-  ...CORE_EXTRAS,
-  "Human support",
-];
-
-const growthFeatures = [
-  { text: "Up to 15 connected accounts", highlight: true },
-  { text: "Unlimited posts", highlight: true },
-  { text: "Multiple accounts per platform" },
-  { text: "Workspaces (multi-brand)" },
-  { text: "Bulk image & video scheduling", highlight: true },
-  { text: "Auto-plug (performance CTA replies)", highlight: true },
-  { text: "Auto-repost / resurface", highlight: true },
-  ...CORE_PUBLISH.map((text) => ({ text })),
-  ...CORE_DEV.map((text) => ({ text })),
-  ...CORE_EXTRAS.map((text) => ({ text })),
-  { text: "Human support" },
-];
-
-const proFeatures = [
-  { text: "Up to 50 connected accounts", highlight: true },
-  { text: "Unlimited posts", highlight: true },
-  { text: "Team collaboration / invite teammates", highlight: true },
-  { text: "Multiple accounts per platform" },
-  { text: "Workspaces (multi-brand)" },
-  { text: "Bulk image & video scheduling" },
-  { text: "Auto-plug (performance CTA replies)" },
-  { text: "Auto-repost / resurface" },
-  ...CORE_PUBLISH.map((text) => ({ text })),
-  ...CORE_DEV.map((text) => ({ text })),
-  ...CORE_EXTRAS.map((text) => ({ text })),
-  { text: "Priority support", highlight: true },
-  { text: "Early access to new features" },
-];
-
-const maxFeatures = [
-  { text: "Unlimited connected accounts", highlight: true },
-  { text: "Unlimited posts", highlight: true },
-  { text: "Team collaboration / invite teammates", highlight: true },
-  { text: "Multiple accounts per platform" },
-  { text: "Workspaces (multi-brand)" },
-  { text: "Bulk image & video scheduling" },
-  { text: "Auto-plug (performance CTA replies)" },
-  { text: "Auto-repost / resurface" },
-  ...CORE_PUBLISH.map((text) => ({ text })),
-  ...CORE_DEV.map((text) => ({ text })),
-  ...CORE_EXTRAS.map((text) => ({ text })),
-  { text: "Priority support", highlight: true },
-  { text: "Early access to new features" },
-  { text: "10,000 API requests / hour" },
-];
+import {
+  freeFeatures,
+  growthFeatures,
+  maxFeatures,
+  proFeatures,
+  starterFeatures,
+} from "@/lib/plan-features";
 
 const basePlanCard =
   "flex h-full flex-col rounded-2xl border border-border bg-card p-8 md:p-10 dark:border-white/10 dark:bg-[#1A1A1A]";
@@ -164,7 +69,8 @@ export function PricingCards({
   const max = getPlanPrice("max", interval);
   const Heading = headingAs;
   const paidCta = signedIn ? "Go to dashboard →" : "Get started";
-  const maxBuyHref = signedIn ? "/dashboard/billing" : "/auth";
+  const maxBuyHref = signedIn ? "/dashboard/billing" : "/auth?mode=signup";
+  const authStartHref = signedIn ? "/dashboard" : "/auth?mode=signup";
   const maxWalkthroughHref = "https://cal.com/abhishekbr/30min";
   const saveBadge = (pct: number | undefined) =>
     pct != null ? (
@@ -244,7 +150,7 @@ export function PricingCards({
             </ul>
             <div className="mt-auto pt-8">
               <Link
-                href={signedIn ? "/dashboard" : "/auth"}
+                href={authStartHref}
                 className={ctaPrimary}
               >
                 {signedIn ? "Go to dashboard →" : "Start free"}
@@ -304,7 +210,7 @@ export function PricingCards({
             </ul>
             <div className="mt-auto pt-8">
               <Link
-                href={signedIn ? "/dashboard" : "/auth"}
+                href={authStartHref}
                 className={ctaPrimary}
               >
                 {paidCta}
@@ -370,7 +276,7 @@ export function PricingCards({
             </ul>
             <div className="mt-auto pt-8">
               <Link
-                href={signedIn ? "/dashboard" : "/auth"}
+                href={authStartHref}
                 className={ctaPrimary}
               >
                 {paidCta}
@@ -434,7 +340,7 @@ export function PricingCards({
             </ul>
             <div className="mt-auto pt-8">
               <Link
-                href={signedIn ? "/dashboard" : "/auth"}
+                href={authStartHref}
                 className={ctaPrimary}
               >
                 {paidCta}

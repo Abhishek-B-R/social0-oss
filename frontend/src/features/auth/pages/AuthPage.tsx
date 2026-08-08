@@ -59,7 +59,9 @@ function AuthPageContent() {
   const posthog = usePostHog();
   const callbackUrl = resolveCallbackUrl(searchParams.get("callbackUrl"));
   const authCallbackUrl = absoluteCallbackUrl(callbackUrl);
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup">(() =>
+    searchParams.get("mode") === "signup" ? "signup" : "signin",
+  );
   const resetSuccess = searchParams.get("reset") === "success";
   const sessionExpired = searchParams.get("session") === "expired";
   useEffect(() => {
@@ -216,7 +218,7 @@ function AuthPageContent() {
                 <p className="text-[15px] leading-relaxed text-muted-foreground">
                   {mode === "signin"
                     ? "Plan, schedule, and publish to all your social accounts from one place."
-                    : "Get started with email or continue with Google."}
+                    : "Free to start — no credit card. Connect an account and schedule your first post in minutes."}
                 </p>
               </div>
 

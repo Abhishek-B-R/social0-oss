@@ -147,17 +147,17 @@ const HomeMarketingPage = lazy(() =>
 const McpPage = lazy(() => import("@/features/marketing/pages/McpPage"));
 const PricingPage = lazy(() => import("@/features/marketing/pages/PricingPage"));
 
-const OnboardingPage = lazy(
-  () => import("@/features/onboarding/pages/OnboardingStep2Page"),
+const OnboardingWelcomePage = lazy(
+  () => import("@/features/onboarding/pages/OnboardingWelcomePage"),
 );
-const OnboardingStep2Page = lazy(
-  () => import("@/features/onboarding/pages/OnboardingStep1Page"),
+const OnboardingConnectPage = lazy(
+  () => import("@/features/onboarding/pages/OnboardingConnectPage"),
 );
-const OnboardingStep3Page = lazy(
-  () => import("@/features/onboarding/pages/OnboardingStep3Page"),
+const OnboardingPlanPage = lazy(
+  () => import("@/features/onboarding/pages/OnboardingPlanPage"),
 );
-const OnboardingStep4Page = lazy(
-  () => import("@/features/onboarding/pages/OnboardingStep4Page"),
+const OnboardingReadyPage = lazy(
+  () => import("@/features/onboarding/pages/OnboardingReadyPage"),
 );
 const FacebookSelectPage = lazy(
   () => import("@/features/dashboard/connections/pages/FacebookSelectPage"),
@@ -347,10 +347,10 @@ export function AppRouter() {
               </Lazy>
             }
           >
-            <Route index element={<OnboardingPage />} />
-            <Route path="step2" element={<OnboardingStep2Page />} />
-            <Route path="step3" element={<OnboardingStep3Page />} />
-            <Route path="step4" element={<OnboardingStep4Page />} />
+            <Route index element={<OnboardingWelcomePage />} />
+            <Route path="step2" element={<OnboardingConnectPage />} />
+            <Route path="step3" element={<OnboardingPlanPage />} />
+            <Route path="step4" element={<OnboardingReadyPage />} />
           </Route>
 
           <Route

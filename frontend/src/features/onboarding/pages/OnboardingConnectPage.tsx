@@ -6,19 +6,21 @@ import { fetchApi } from "@/lib/fetch-api";
 import { useSession } from "@/lib/auth-client";
 import { loadConnectionsPageData } from "@/api/dashboard-data";
 import { ConnectStep } from "@/features/onboarding/components/ConnectStep";
-import { DOCS_ONBOARDING_CONNECT_URL } from "@/lib/docs-url";
-import {
-  CircleNotch,
-} from "@/icons/phosphor";
+import { CircleNotch } from "@/icons/phosphor";
 import confetti from "canvas-confetti";
+import {
+  ONBOARDING_PATHS,
+  ONBOARDING_PAYMENT_FAILED,
+} from "@/features/onboarding/lib/paths";
 
-export default function OnboardingStep3Page() {
+/** Step 2 — connect accounts (primary activation). */
+export default function OnboardingConnectPage() {
   const { data: session, isPending } = useSession();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const invalidateQueries = useInvalidateQueries();
   const paid = searchParams.get("paid") === "1";
-  const [verifying, setVerifying] = useState(paid);
+  const [verifying, setVerifying] = useState(false);
   const syncAttempted = useRef(false);
 
   const { data: connections } = useQuery({
@@ -31,7 +33,7 @@ export default function OnboardingStep3Page() {
     if (!isPending && !session) navigate("/", { replace: true });
   }, [isPending, session, navigate]);
 
-  // After checkout return: sync subscription, celebrate, then show connect.
+  // Legacy checkout return (?paid=1) may still land here from old emails/bookmarks.
   useEffect(() => {
     if (!paid || syncAttempted.current) return;
     syncAttempted.current = true;
@@ -64,24 +66,22 @@ export default function OnboardingStep3Page() {
           };
           frame();
           setVerifying(false);
-          navigate("/onboarding/step3", { replace: true });
+          navigate(ONBOARDING_PATHS.connect, { replace: true });
         } else {
           setVerifying(false);
-          navigate("/onboarding/step2?payment_failed=1", { replace: true });
+          navigate(ONBOARDING_PAYMENT_FAILED, { replace: true });
         }
       })
       .catch(() => {
         setVerifying(false);
-        navigate("/onboarding/step2?payment_failed=1", { replace: true });
+        navigate(ONBOARDING_PAYMENT_FAILED, { replace: true });
       });
   }, [paid, navigate, invalidateQueries]);
 
   if (verifying) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-24">
-        <CircleNotch
-          className="h-8 w-8 shrink-0 animate-spin text-accent"
-        />
+        <CircleNotch className="h-8 w-8 shrink-0 animate-spin text-emerald-500" />
         <p className="text-sm text-muted-foreground">
           Confirming your subscription…
         </p>
@@ -94,40 +94,16 @@ export default function OnboardingStep3Page() {
   const { accounts, accountLimit } = connections.data;
 
   return (
-    <>
-      <a
-        href={DOCS_ONBOARDING_CONNECT_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute top-5 right-4 z-10 flex items-center gap-2 rounded-full p-1.5 text-text-muted transition-colors hover:bg-muted hover:text-text sm:right-6 lg:right-10"
-        title="Documentation for this page"
-        aria-label="Documentation for this page"
-      >
-        <svg
-          className="h-4 w-4"
-          fill="currentColor"
-          viewBox="0 0 20 20"
-          aria-hidden
-        >
-          <path
-            fillRule="evenodd"
-            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-            clipRule="evenodd"
-          />
-        </svg>
-      </a>
-      <ConnectStep
-        initialAccounts={accounts.map((a) => ({
-          id: a.id,
-          platform: a.platform,
-          platformUsername: a.platformUsername,
-          profileImageUrl: a.profileImageUrl,
-          isActive: a.isActive,
-          isTwitterPremium: a.isTwitterPremium ?? false,
-        }))}
-        limitTotal={accountLimit?.limitTotal ?? 0}
-        hasUsedTrial={accountLimit?.hasUsedTrial ?? false}
-      />
-    </>
+    <ConnectStep
+      initialAccounts={accounts.map((a) => ({
+        id: a.id,
+        platform: a.platform,
+        platformUsername: a.platformUsername,
+        profileImageUrl: a.profileImageUrl,
+        isActive: a.isActive,
+      }))}
+      limitTotal={accountLimit?.limitTotal ?? 0}
+      hasUsedTrial={accountLimit?.hasUsedTrial ?? false}
+    />
   );
 }

@@ -55,7 +55,7 @@ function VerifyEmailContent() {
         toast.error(friendlyAuthError(err));
         return;
       }
-      window.location.href = "/dashboard";
+      window.location.href = "/onboarding";
     } catch (err) {
       toast.error(friendlyAuthError(err));
     } finally {

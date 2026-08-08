@@ -173,7 +173,7 @@ export function ProductMomentsSection({
   signedIn?: boolean;
 }) {
   const { pathname } = useLocation();
-  const startHref = signedIn ? "/dashboard" : "/auth";
+  const startHref = signedIn ? "/dashboard" : "/auth?mode=signup";
 
   return (
     <section
@@ -237,7 +237,7 @@ export function ProductMomentsSection({
           body="Choose accounts, tune captions per platform, set the slot. Queue evergreen reposts and auto-plug winners — edit or move anything before it goes live."
           primary={{
             label: signedIn ? "Open calendar" : "Try scheduling free",
-            href: signedIn ? "/dashboard/calendar" : "/auth",
+            href: signedIn ? "/dashboard/calendar" : "/auth?mode=signup",
           }}
           secondary={{
             label: "Watch the demo",
@@ -271,7 +271,7 @@ export function ProductMomentsSection({
           body="Drafts, queued, and live posts across all accounts in a single view. See what landed where — fix a caption or cancel a slot without bouncing between apps."
           primary={{
             label: signedIn ? "Go to posts" : "Start free",
-            href: signedIn ? "/dashboard/posts" : "/auth",
+            href: signedIn ? "/dashboard/posts" : "/auth?mode=signup",
           }}
           secondary={{
             label: "Compare plans",

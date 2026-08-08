@@ -297,7 +297,7 @@ export function SocialProofSection({
 }: {
   signedIn?: boolean;
 }) {
-  const startHref = signedIn ? "/dashboard" : "/auth";
+  const startHref = signedIn ? "/dashboard" : "/auth?mode=signup";
 
   return (
     <section

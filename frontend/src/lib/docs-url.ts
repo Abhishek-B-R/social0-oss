@@ -156,13 +156,13 @@ export const DOCS_THREADS_POST_TYPE_URL = `${DOCS_BASE_URL}/docs/post-types/thre
 
 // ─── Onboarding ──────────────────────────────────────────────────────────────
 
-/** Onboarding. */
+/** Onboarding overview. */
 export const DOCS_ONBOARDING_URL = `${DOCS_BASE_URL}/docs/onboarding`;
 
-/** Onboarding goal. */
+/** Onboarding welcome / goal. */
 export const DOCS_ONBOARDING_GOAL_URL = `${DOCS_BASE_URL}/docs/onboarding/step2`;
 
-/** Onboarding connect. */
+/** Onboarding connect accounts. */
 export const DOCS_ONBOARDING_CONNECT_URL = `${DOCS_BASE_URL}/docs/onboarding/step3`;
 
 /** Onboarding complete. */

@@ -85,7 +85,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
           }
         >
           <Link
-            href={signedIn ? "/dashboard" : "/auth"}
+            href={signedIn ? "/dashboard" : "/auth?mode=signup"}
             className="inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-full bg-emerald-500 px-9 py-3.5 text-[15px] font-semibold text-[#04140c] shadow-[0_0_32px_rgba(16,185,129,0.28)] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97] dark:shadow-[0_0_32px_rgba(16,185,129,0.38)] sm:w-auto sm:text-[16px]"
           >
             {signedIn ? "Go to dashboard" : "Get started for free"}

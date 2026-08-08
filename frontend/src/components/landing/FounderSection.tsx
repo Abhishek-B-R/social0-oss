@@ -109,7 +109,7 @@ export function FounderSection({ signedIn = false }: { signedIn?: boolean }) {
           </div>
 
           <Link
-            href={signedIn ? "/dashboard" : "/auth"}
+            href={signedIn ? "/dashboard" : "/auth?mode=signup"}
             className="mt-2 inline-flex min-h-12 w-full max-w-sm items-center justify-center rounded-full bg-emerald-500 px-8 py-3.5 text-[15px] font-semibold text-[#04140c] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98]"
           >
             {signedIn ? "Go to dashboard" : "Try it out for free"}
