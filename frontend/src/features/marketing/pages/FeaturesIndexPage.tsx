@@ -54,7 +54,7 @@ export default function FeaturesIndexPage() {
           <p className="mb-3 text-[11px] uppercase tracking-widest text-emerald-700">
             Features
           </p>
-          <h1 className="max-w-2xl font-serif text-[clamp(32px,5vw,48px)] leading-tight tracking-tight text-foreground">
+          <h1 className="max-w-2xl font-serif text-[clamp(32px,5vw,48px)] leading-tight tracking-tight text-[#333C4D] dark:text-white">
             Scheduling for every platform you use
           </h1>
           <p className="mt-5 max-w-2xl text-[16px] leading-relaxed text-muted-foreground">
@@ -68,7 +68,7 @@ export default function FeaturesIndexPage() {
                   href={`/features/${feature.slug}`}
                   className="block rounded-2xl border border-border bg-background p-6 transition-colors hover:border-emerald-600/30 dark:bg-background/50"
                 >
-                  <h2 className="font-serif text-xl text-foreground">
+                  <h2 className="font-serif text-xl text-[#333C4D] dark:text-white">
                     {feature.platformLabel
                       ? `${feature.platformLabel} scheduler`
                       : feature.heroHeadline.split("-")[0].trim()}

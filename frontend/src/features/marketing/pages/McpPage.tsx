@@ -126,7 +126,7 @@ const FAQ = [
 const sectionEyebrow =
   "mb-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground";
 const sectionTitle =
-  "font-sans text-[clamp(28px,4vw,40px)] font-bold leading-tight tracking-tight text-foreground dark:text-white";
+  "font-sans text-[clamp(28px,4vw,40px)] font-bold leading-tight tracking-tight text-[#333C4D] dark:text-white";
 const cardShell =
   "rounded-2xl border border-border bg-card dark:border-white/10 dark:bg-[#1A1A1A]";
 const ctaPrimary =
@@ -466,7 +466,7 @@ export default function McpPage() {
             Official Model Context Protocol server
           </p>
 
-          <h1 className="mx-auto max-w-3xl font-sans text-[clamp(36px,5.5vw,56px)] font-bold leading-[1.08] tracking-tight text-foreground dark:text-white">
+          <h1 className="mx-auto max-w-3xl font-sans text-[clamp(36px,5.5vw,56px)] font-bold leading-[1.08] tracking-tight text-[#333C4D] dark:text-white">
             Manage social media accounts{" "}
             <span className="text-emerald-600 dark:text-emerald-400">
               from your AI
@@ -581,7 +581,7 @@ export default function McpPage() {
                 <span className="text-[12px] font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
                   {item.step}
                 </span>
-                <h3 className="mt-3 font-sans text-[18px] font-bold tracking-tight text-foreground">
+                <h3 className="mt-3 font-sans text-[18px] font-bold tracking-tight text-[#333C4D] dark:text-white">
                   {item.title}
                 </h3>
                 <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
@@ -633,7 +633,7 @@ export default function McpPage() {
             {FEATURES.map((f) => (
               <div key={f.title} className={`${cardShell} p-6`}>
                 <f.icon className="mb-4 h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                <h3 className="font-sans text-[16px] font-bold text-foreground">
+                <h3 className="font-sans text-[16px] font-bold text-[#333C4D] dark:text-white">
                   {f.title}
                 </h3>
                 <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
@@ -664,7 +664,7 @@ export default function McpPage() {
           >
             <Terminal className="h-8 w-8 shrink-0 text-emerald-600 dark:text-emerald-400" />
             <div>
-              <h3 className="font-sans text-[16px] font-bold text-foreground">
+              <h3 className="font-sans text-[16px] font-bold text-[#333C4D] dark:text-white">
                 Three ways to connect
               </h3>
               <ul className="mt-3 list-disc space-y-2 pl-5 text-[14px] leading-relaxed text-muted-foreground">

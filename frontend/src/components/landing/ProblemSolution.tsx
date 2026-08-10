@@ -49,7 +49,7 @@ const byMode: Record<
       "Point ChatGPT or Claude at Social0 via MCP",
       "Agents draft, schedule, and publish for you",
       "Every action lands in the same dashboard",
-      "REST, MCP, and CLI — one encrypted pipeline",
+      "REST, MCP, and CLI — one publishing pipeline",
     ],
   },
 };
@@ -142,7 +142,7 @@ export function ProblemSolution() {
               transition={{ duration: 0.22 }}
               className="flex max-w-xl flex-col items-center gap-3"
             >
-              <h2 className="font-serif text-[clamp(28px,4vw,40px)] italic leading-tight text-muted-foreground">
+              <h2 className="font-serif text-[clamp(28px,4vw,40px)] italic leading-tight text-[#333C4D] dark:text-muted-foreground">
                 {c.headline}
               </h2>
               <p className="text-[15px] leading-relaxed text-muted-foreground/90">

@@ -16,14 +16,14 @@ const copy = {
     titleEm: "one dashboard",
     titleAfter: ".",
     clarifier:
-      "easy to use, fairly priced — create once, publish or schedule across X, Instagram, LinkedIn, YouTube, TikTok, and more.",
+      "simple on purpose, fair and transparent pricing, start free, no card needed, with\u00A0human\u00A0support",
   },
   agent: {
     titleBefore: "Run your social media accounts on autopilot with",
     titleEm: "AI agents",
     titleAfter: ".",
     clarifier:
-      "Plan, generate, and schedule posts to 9+ platforms. Then review, edit and manage everything from the dashboard whenever you need to.",
+      "Plan, generate, review, and schedule with your AI agents. Simple by design, fair pricing, and human support when you need it.",
   },
 } as const;
 
@@ -85,7 +85,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
           }
         >
           <Link
-            href={signedIn ? "/dashboard" : "/auth?mode=signup"}
+            href={signedIn ? "/dashboard" : "/auth?mode=signin"}
             className="inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-full bg-emerald-500 px-9 py-3.5 text-[15px] font-semibold text-[#04140c] shadow-[0_0_32px_rgba(16,185,129,0.28)] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97] dark:shadow-[0_0_32px_rgba(16,185,129,0.38)] sm:w-auto sm:text-[16px]"
           >
             {signedIn ? "Go to dashboard" : "Get started for free"}

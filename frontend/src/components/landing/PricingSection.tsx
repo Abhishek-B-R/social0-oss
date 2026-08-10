@@ -69,8 +69,8 @@ export function PricingCards({
   const max = getPlanPrice("max", interval);
   const Heading = headingAs;
   const paidCta = signedIn ? "Go to dashboard →" : "Get started";
-  const maxBuyHref = signedIn ? "/dashboard/billing" : "/auth?mode=signup";
-  const authStartHref = signedIn ? "/dashboard" : "/auth?mode=signup";
+  const maxBuyHref = signedIn ? "/dashboard/billing" : "/auth?mode=signin";
+  const authStartHref = signedIn ? "/dashboard" : "/auth?mode=signin";
   const maxWalkthroughHref = "https://cal.com/abhishekbr/30min";
   const saveBadge = (pct: number | undefined) =>
     pct != null ? (
@@ -87,7 +87,7 @@ export function PricingCards({
             <div className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
               Pricing
             </div>
-            <Heading className="font-sans text-[clamp(32px,4.5vw,48px)] font-bold leading-tight tracking-tight text-foreground dark:text-white">
+            <Heading className="font-sans text-[clamp(32px,4.5vw,48px)] font-bold leading-tight tracking-tight text-[#333C4D] dark:text-white">
               Find the right plan
               <br />
               <span className="text-muted-foreground">for how you post.</span>

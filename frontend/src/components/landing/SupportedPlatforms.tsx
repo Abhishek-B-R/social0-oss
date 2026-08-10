@@ -64,7 +64,7 @@ export function SupportedPlatforms() {
           <div className="mb-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
             Supported platforms
           </div>
-          <h2 className="font-sans text-[clamp(28px,4vw,44px)] font-bold leading-tight tracking-tight text-foreground dark:text-white">
+          <h2 className="font-sans text-[clamp(28px,4vw,44px)] font-bold leading-tight tracking-tight text-[#333C4D] dark:text-white">
             9 platforms.
             <br />
             More coming.

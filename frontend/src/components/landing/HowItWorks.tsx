@@ -97,7 +97,7 @@ export function HowItWorks() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.22 }}
-              className="max-w-md font-serif text-[clamp(28px,4vw,40px)] italic leading-tight text-muted-foreground"
+              className="max-w-md font-serif text-[clamp(28px,4vw,40px)] italic leading-tight text-[#333C4D] dark:text-muted-foreground"
             >
               {headline}
             </motion.h2>
@@ -125,7 +125,7 @@ export function HowItWorks() {
                 <WireframeStage className="mb-5" tall>
                   <StepVisual kind={step.visual} />
                 </WireframeStage>
-                <h3 className="mb-2 font-serif text-xl tracking-tight text-foreground">
+                <h3 className="mb-2 font-serif text-xl tracking-tight text-[#333C4D] dark:text-white">
                   {step.title}
                 </h3>
                 <p className="text-[14px] leading-relaxed text-muted-foreground">

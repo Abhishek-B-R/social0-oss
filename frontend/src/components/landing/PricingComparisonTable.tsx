@@ -328,8 +328,8 @@ export function PricingComparisonTable({
   interval: BillingInterval;
   signedIn?: boolean;
 }) {
-  const ctaHref = signedIn ? "/dashboard" : "/auth?mode=signup";
-  const maxBuyHref = signedIn ? "/dashboard/billing" : "/auth?mode=signup";
+  const ctaHref = signedIn ? "/dashboard" : "/auth?mode=signin";
+  const maxBuyHref = signedIn ? "/dashboard/billing" : "/auth?mode=signin";
   const maxWalkthroughHref = "https://cal.com/abhishekbr/30min";
 
   const priceLabel = (tier: CompareCol) => {
@@ -354,7 +354,7 @@ export function PricingComparisonTable({
           <p className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
             Compare
           </p>
-          <h2 className="font-sans text-[clamp(28px,4vw,40px)] font-bold leading-tight tracking-tight text-foreground dark:text-white">
+          <h2 className="font-sans text-[clamp(28px,4vw,40px)] font-bold leading-tight tracking-tight text-[#333C4D] dark:text-white">
             Compare and explore every feature
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-[15px] leading-relaxed text-muted-foreground">

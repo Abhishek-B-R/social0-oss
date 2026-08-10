@@ -1,10 +1,13 @@
 /**
  * Wall of love — real X quotes + a few standout themes (no fake tweet links).
+ * Separate pools per landing mode so social proof matches the buying decision.
  * Add `avatarSrc` when you have a local pfp; synthetic entries skip unavatar.
  */
 import { useState } from "react";
 import Link from "@/components/AppLink";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useLandingMode, type LandingMode } from "./landing-mode";
 
 type Tweet = {
   name: string;
@@ -18,147 +21,208 @@ type Tweet = {
   avatarSrc?: string;
 };
 
-const TWEETS: Tweet[] = [
-  {
-    name: "Rowan",
-    handle: "knowRowan",
-    quote:
-      "Yeah bro this looks clean af 🔥 Love the one dashboard idea. Been waiting for somn like this. Good luck with the launch fam 🙌",
-    highlight: "one dashboard idea",
-    href: "https://x.com/knowRowan/status/2075575674178564234",
-  },
-  {
-    name: "Ruben Ortiz",
-    handle: "rubenbuilds",
-    quote:
-      "Went from posting maybe once a week to ~10-20 times a week with Social0. Consistency actually moved the needle — likes, followers, impressions all up.",
-    highlight: "Consistency actually moved the needle",
-    avatarSrc: "/testimonials/ruben-ortiz.png",
-  },
-  {
-    name: "Sadok",
-    handle: "yesadok",
-    quote: "Nine platforms is insane coverage",
-    highlight: "Nine platforms is insane coverage",
-    href: "https://x.com/yesadok/status/2075580323237384236",
-  },
-  {
-    name: "Nick Venturi",
-    handle: "nickventuri",
-    quote:
-      "manually posting the same text into nine different tabs was slowly making me lose my mind",
-    highlight: "nine different tabs",
-    href: "https://x.com/nickventuri/status/2075780410672361756",
-  },
-  {
-    name: "Mari",
-    handle: "Tech_girl",
-    quote: "What a great product you have!",
-    highlight: "great product",
-    href: "https://x.com/Tech_girl/status/2077669810574340516",
-  },
-  {
-    name: "Adam Jensen",
-    handle: "adamjbuilds",
-    quote:
-      "Didn't even wait for the trial to end — paid for a year. I'd been watching Social0 ship and the first session sold me.",
-    highlight: "Didn't even wait for the trial to end",
-    avatarSrc: "/testimonials/adam-jensen.png",
-  },
-  {
-    name: "Hussain Hashim",
-    handle: "itsthedonhashim",
-    quote:
-      "@abhitwt gonna save so much time with this. been juggling too many tabs already. appreciate the CLI option!",
-    highlight: "save so much time",
-    href: "https://x.com/itsthedonhashim/status/2077706832575947148",
-  },
-  {
-    name: "Kickbuttowski",
-    handle: "Kickbuttowski1_",
-    quote: "$9/month shouldn't be legal for this level of app🔥🔥",
-    highlight: "$9/month shouldn't be legal",
-    href: "https://x.com/Kickbuttowski1_/status/2082771653680087070",
-    avatarSrc: "/testimonials/kickbuttowski.png",
-  },
-  {
-    name: "Richard Hale",
-    handle: "rhalehq",
-    quote:
-      "Honestly little point building a competing tool anymore. Pricing plus the feature set is just ahead.",
-    highlight: "little point building a competing tool",
-    avatarSrc: "/testimonials/richard-hale.png",
-  },
-  {
-    name: "SPEKULATOR",
-    handle: "__spekulator__",
-    quote:
-      "a public mcp server changes the game. now i can pipe social0 data directly into my claude sessions without a custom script.",
-    highlight: "pipe social0 data directly into my claude sessions",
-    href: "https://x.com/__spekulator__/status/2079894771183571033",
-  },
-  {
-    name: "Bey Okonkwo",
-    handle: "beyokonkwo",
-    quote:
-      "Using Social0 across all my products. Cross-platform posting is finally not a chore — clean and easy.",
-    highlight: "Cross-platform posting is finally not a chore",
-  },
-  {
-    name: "Arpit",
-    handle: "Arpitsharma_0",
-    quote: "This is the craziest bro literally I'm posting through my terminal",
-    highlight: "posting through my terminal",
-    href: "https://x.com/Arpitsharma_0/status/2077656331482513409",
-  },
-  {
-    name: "Eshan",
-    handle: "EshanBhat11",
-    quote:
-      "Very useful!!.. we can automate automated tweets now lol!! Exciting",
-    highlight: "automate automated tweets",
-    href: "https://x.com/EshanBhat11/status/2077657811799204144",
-  },
-  {
-    name: "Vadim Keller",
-    handle: "vadimkeller",
-    quote:
-      "Connected every account in minutes. Polished product — onboarding didn't fight me once.",
-    highlight: "Connected every account in minutes",
-    avatarSrc: "/testimonials/vadim-keller.png",
-  },
-  {
-    name: "Maya Chen",
-    handle: "mayachen",
-    quote:
-      "Abhishek's support goes the extra mile. No issue is too small — that alone keeps me subscribed.",
-    highlight: "goes the extra mile",
-    avatarSrc: "/testimonials/maya-chen.png",
-  },
-  {
-    name: "AriesTheCoder",
-    handle: "AriesTheCoder",
-    quote:
-      "For all you automators out there who manages your social media ai related activities via the cli, this is definitely something worth considering. Social0 just shipped a cli tool. Check it out.",
-    highlight: "definitely something worth considering",
-    href: "https://x.com/AriesTheCoder/status/2078584230486167992",
-  },
-  {
-    name: "Robert Watkin",
-    handle: "rwatkin",
-    quote:
-      "Clean, simple, easy to use. Exactly what I wanted from a scheduler.",
-    highlight: "Clean, simple, easy to use",
-    avatarSrc: "/testimonials/robert-watkin.png",
-  },
-  {
-    name: "Vibhu Revadi",
-    handle: "VibhuRevadi",
-    quote: "Amazing tool at an amazing price 🔥🔥",
-    highlight: "amazing price",
-    href: "https://x.com/VibhuRevadi/status/2082771892071788744",
-  },
+const rowan: Tweet = {
+  name: "Rowan",
+  handle: "knowRowan",
+  quote:
+    "Yeah bro this looks clean af 🔥 Love the one dashboard idea. Been waiting for somn like this. Good luck with the launch fam 🙌",
+  highlight: "one dashboard idea",
+  href: "https://x.com/knowRowan/status/2075575674178564234",
+};
+
+const ruben: Tweet = {
+  name: "Ruben Ortiz",
+  handle: "rubenbuilds",
+  quote:
+    "Went from posting maybe once a week to ~10-20 times a week with Social0. Consistency actually moved the needle — likes, followers, impressions all up.",
+  highlight: "Consistency actually moved the needle",
+  avatarSrc: "/testimonials/ruben-ortiz.png",
+};
+
+const sadok: Tweet = {
+  name: "Sadok",
+  handle: "yesadok",
+  quote: "Nine platforms is insane coverage",
+  highlight: "Nine platforms is insane coverage",
+  href: "https://x.com/yesadok/status/2075580323237384236",
+};
+
+const nick: Tweet = {
+  name: "Nick Venturi",
+  handle: "nickventuri",
+  quote:
+    "manually posting the same text into nine different tabs was slowly making me lose my mind",
+  highlight: "nine different tabs",
+  href: "https://x.com/nickventuri/status/2075780410672361756",
+  avatarSrc: "/testimonials/nick-venturi.png",
+};
+
+const mari: Tweet = {
+  name: "Mari",
+  handle: "Tech_girl",
+  quote: "What a great product you have!",
+  highlight: "great product",
+  href: "https://x.com/Tech_girl/status/2077669810574340516",
+  avatarSrc: "/testimonials/mari.png",
+};
+
+const adam: Tweet = {
+  name: "Adam Jensen",
+  handle: "adamjbuilds",
+  quote:
+    "Didn't even wait for the trial to end — paid for a year. I'd been watching Social0 ship and the first session sold me.",
+  highlight: "Didn't even wait for the trial to end",
+  avatarSrc: "/testimonials/adam-jensen.png",
+};
+
+const hussain: Tweet = {
+  name: "Hussain Hashim",
+  handle: "itsthedonhashim",
+  quote:
+    "@abhitwt gonna save so much time with this. been juggling too many tabs already. appreciate the CLI option!",
+  highlight: "save so much time",
+  href: "https://x.com/itsthedonhashim/status/2077706832575947148",
+  avatarSrc: "/testimonials/hussain.png",
+};
+
+const kickbuttowski: Tweet = {
+  name: "Kickbuttowski",
+  handle: "Kickbuttowski1_",
+  quote: "$9/month shouldn't be legal for this level of app🔥🔥",
+  highlight: "$9/month shouldn't be legal",
+  href: "https://x.com/Kickbuttowski1_/status/2082771653680087070",
+  avatarSrc: "/testimonials/kickbuttowski.png",
+};
+
+const richard: Tweet = {
+  name: "Richard Hale",
+  handle: "rhalehq",
+  quote:
+    "Honestly little point building a competing tool anymore. Pricing plus the feature set is just ahead.",
+  highlight: "little point building a competing tool",
+  avatarSrc: "/testimonials/richard-hale.png",
+};
+
+const spekulator: Tweet = {
+  name: "SPEKULATOR",
+  handle: "__spekulator__",
+  quote:
+    "a public mcp server changes the game. now i can pipe social0 data directly into my claude sessions without a custom script.",
+  highlight: "pipe social0 data directly into my claude sessions",
+  href: "https://x.com/__spekulator__/status/2079894771183571033",
+};
+
+const bey: Tweet = {
+  name: "Bey Okonkwo",
+  handle: "beyokonkwo",
+  quote:
+    "Using Social0 across all my products. Cross-platform posting is finally not a chore — clean and easy.",
+  highlight: "Cross-platform posting is finally not a chore",
+};
+
+const arpit: Tweet = {
+  name: "Arpit",
+  handle: "Arpitsharma_0",
+  quote: "This is the craziest bro literally I'm posting through my terminal",
+  highlight: "posting through my terminal",
+  href: "https://x.com/Arpitsharma_0/status/2077656331482513409",
+};
+
+const eshan: Tweet = {
+  name: "Eshan",
+  handle: "EshanBhat11",
+  quote: "Very useful!!.. we can automate automated tweets now lol!! Exciting",
+  highlight: "automate automated tweets",
+  href: "https://x.com/EshanBhat11/status/2077657811799204144",
+};
+
+const vadim: Tweet = {
+  name: "Vadim Keller",
+  handle: "vadimkeller",
+  quote:
+    "Connected every account in minutes. Polished product — onboarding didn't fight me once.",
+  highlight: "Connected every account in minutes",
+  avatarSrc: "/testimonials/vadim-keller.png",
+};
+
+const maya: Tweet = {
+  name: "Maya Chen",
+  handle: "mayachen",
+  quote:
+    "Abhishek's support goes the extra mile. No issue is too small — that alone keeps me subscribed.",
+  highlight: "goes the extra mile",
+  avatarSrc: "/testimonials/maya-chen.png",
+};
+
+const aries: Tweet = {
+  name: "AriesTheCoder",
+  handle: "AriesTheCoder",
+  quote:
+    "For all you automators out there who manages your social media ai related activities via the cli, this is definitely something worth considering. Social0 just shipped a cli tool. Check it out.",
+  highlight: "definitely something worth considering",
+  href: "https://x.com/AriesTheCoder/status/2078584230486167992",
+};
+
+const robert: Tweet = {
+  name: "Robert Watkin",
+  handle: "rwatkin",
+  quote: "Clean, simple, easy to use. Exactly what I wanted from a scheduler.",
+  highlight: "Clean, simple, easy to use",
+  avatarSrc: "/testimonials/robert-watkin.png",
+};
+
+const vibhu: Tweet = {
+  name: "Vibhu Revadi",
+  handle: "VibhuRevadi",
+  quote: "Amazing tool at an amazing price 🔥🔥",
+  highlight: "amazing price",
+  href: "https://x.com/VibhuRevadi/status/2082771892071788744",
+};
+
+/** Normal mode: scheduler pain, consistency, polish, price — no MCP/CLI focus. */
+const NORMAL_TWEETS: Tweet[] = [
+  nick,
+  ruben,
+  vadim,
+  robert,
+  bey,
+  rowan,
+  sadok,
+  adam,
+  kickbuttowski,
+  richard,
+  maya,
+  vibhu,
+  mari,
+  // ponytail: two medium cards pad the short left masonry column
+  hussain,
+  eshan,
 ];
+
+/** Agent mode: MCP/CLI/terminal/automation first, then shared conversion proof. */
+const AGENT_TWEETS: Tweet[] = [
+  spekulator,
+  arpit,
+  eshan,
+  aries,
+  hussain,
+  ruben,
+  adam,
+  kickbuttowski,
+  richard,
+  vadim,
+  maya,
+  rowan,
+  bey,
+  // ponytail: longer quote pads the short third masonry column in agent mode
+  nick,
+  sadok,
+];
+
+const TWEETS_BY_MODE: Record<LandingMode, Tweet[]> = {
+  normal: NORMAL_TWEETS,
+  agent: AGENT_TWEETS,
+};
 
 function QuoteBody({
   quote,
@@ -297,7 +361,13 @@ export function SocialProofSection({
 }: {
   signedIn?: boolean;
 }) {
-  const startHref = signedIn ? "/dashboard" : "/auth?mode=signup";
+  const { mode } = useLandingMode();
+  const tweets = TWEETS_BY_MODE[mode];
+  const reduceMotion = useReducedMotion();
+  const startHref = signedIn ? "/dashboard" : "/auth?mode=signin";
+  const fade = reduceMotion
+    ? { duration: 0 }
+    : { duration: 0.28, ease: [0.23, 1, 0.32, 1] as const };
 
   return (
     <section
@@ -306,24 +376,32 @@ export function SocialProofSection({
       aria-label="What people are saying"
     >
       <div className="mx-auto max-w-295">
-        <h2 className="mx-auto mb-12 max-w-2xl text-center font-sans text-[clamp(28px,4.2vw,42px)] font-bold leading-[1.15] tracking-tight text-foreground dark:text-white sm:mb-14">
+        <h2 className="mx-auto mb-12 max-w-2xl text-center font-sans text-[clamp(28px,4.2vw,42px)] font-bold leading-[1.15] tracking-tight text-[#333C4D] dark:text-white sm:mb-14">
           Social0 is loved by early users.{" "}
           <span className="text-muted-foreground">
             Here’s what they are saying.
           </span>
         </h2>
 
-        {/* Masonry bento — card height follows quote length */}
-        <ul className="m-0 list-none columns-1 gap-7 sm:columns-2 sm:gap-8 xl:columns-3 xl:gap-8">
-          {TWEETS.map((t) => (
-            <li
-              key={t.href ?? t.handle}
-              className="mb-7 break-inside-avoid sm:mb-8"
-            >
-              <TweetCard tweet={t} />
-            </li>
-          ))}
-        </ul>
+        <AnimatePresence mode="wait">
+          <motion.ul
+            key={mode}
+            className="m-0 list-none columns-1 gap-7 sm:columns-2 sm:gap-8 xl:columns-3 xl:gap-8"
+            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+            transition={fade}
+          >
+            {tweets.map((t) => (
+              <li
+                key={`${mode}-${t.href ?? t.handle}`}
+                className="mb-7 break-inside-avoid sm:mb-8"
+              >
+                <TweetCard tweet={t} />
+              </li>
+            ))}
+          </motion.ul>
+        </AnimatePresence>
 
         <div className="mt-12 flex justify-center sm:mt-14">
           <Link

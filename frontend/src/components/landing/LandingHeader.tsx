@@ -100,7 +100,7 @@ export function LandingHeader() {
             </Link>
           ) : (
             <Link
-              href="/auth?mode=signup"
+              href="/auth?mode=signin"
               className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-emerald-500 px-5 py-2.5 text-[14px] font-semibold text-[#04140c] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97]"
             >
               Start free
@@ -162,7 +162,7 @@ export function LandingHeader() {
               </Link>
             ) : (
               <Link
-                href="/auth?mode=signup"
+                href="/auth?mode=signin"
                 className="mt-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-emerald-500 px-5 py-3 text-[14px] font-semibold text-[#04140c] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97]"
                 onClick={() => setMobileMenuOpen(false)}
               >

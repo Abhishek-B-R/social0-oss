@@ -17,21 +17,13 @@ export function DevelopersSection() {
                 <p className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
                   Developers
                 </p>
-                <h2 className="font-serif text-[clamp(24px,3vw,36px)] leading-tight tracking-tight text-foreground">
+                <h2 className="font-serif text-[clamp(24px,3vw,36px)] leading-tight tracking-tight text-[#333C4D] dark:text-white">
                   Build your own social publishing workflows on top of Social0.
                 </h2>
                 <p className="mt-3 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-                  REST API with webhooks, MCP for AI apps, and an official CLI.
-                  Install with{" "}
-                  <code className="rounded bg-muted px-1 text-[12px] dark:bg-muted/60">
-                    npm install -g social0
-                  </code>
-                  , or point any remote MCP client at{" "}
-                  <code className="rounded bg-muted px-1 text-[12px] dark:bg-muted/60">
-                    mcp.social0.app/mcp
-                  </code>
-                  . Dashboard, API, CLI, MCP, and webhooks — same publishing
-                  engine.
+                  REST API with webhooks, MCP for AI agents, and an official CLI.
+                  Build your own social publishing workflows while Social0
+                  handles the platform integrations.
                 </p>
                 <p className="mt-5 flex flex-wrap gap-2">
                   <code className="inline-block rounded-md border border-border bg-muted/40 px-2.5 py-1 font-mono text-[12px] text-muted-foreground dark:border-white/10 dark:bg-[#151515]">

@@ -51,7 +51,7 @@ export default function AlternativesIndexPage() {
           <p className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
             Alternatives
           </p>
-          <h1 className="max-w-2xl font-serif text-[clamp(32px,5vw,48px)] leading-tight tracking-tight text-foreground">
+          <h1 className="max-w-2xl font-serif text-[clamp(32px,5vw,48px)] leading-tight tracking-tight text-[#333C4D] dark:text-white">
             Social0 vs popular schedulers
           </h1>
           <p className="mt-5 max-w-xl text-[16px] leading-relaxed text-muted-foreground">
@@ -67,7 +67,7 @@ export default function AlternativesIndexPage() {
                   className="group flex flex-col gap-1 py-6 transition-colors sm:flex-row sm:items-baseline sm:justify-between sm:gap-8"
                 >
                   <div className="min-w-0">
-                    <h2 className="font-serif text-xl tracking-tight text-foreground group-hover:text-foreground/80">
+                    <h2 className="font-serif text-xl tracking-tight text-[#333C4D] group-hover:text-[#333C4D]/80 dark:text-white dark:group-hover:text-white/80">
                       {alt.competitorName} alternative
                     </h2>
                     <p className="mt-1.5 max-w-xl text-[14px] leading-relaxed text-muted-foreground">

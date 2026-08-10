@@ -62,7 +62,7 @@ const personasByMode = {
       {
         title: "Developers",
         description:
-          "Wire Social0 into your app with the REST API, MCP, or CLI — same encrypted publish engine, fully scriptable.",
+          "Wire Social0 into your app with the REST API, MCP, or CLI — same publishing pipeline as the dashboard, fully scriptable.",
         icon: Code2,
         visual: "marketer" as const,
       },
@@ -98,7 +98,7 @@ export function WhoIsItFor() {
           <AnimatePresence mode="wait">
             <motion.h2
               key={mode}
-              className="max-w-md font-serif text-[clamp(28px,4vw,40px)] italic leading-tight text-muted-foreground"
+              className="max-w-md font-serif text-[clamp(28px,4vw,40px)] italic leading-tight text-[#333C4D] dark:text-muted-foreground"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
@@ -133,7 +133,7 @@ export function WhoIsItFor() {
                       strokeWidth={1.5}
                     />
                   </div>
-                  <h3 className="mb-2 font-serif text-xl tracking-tight text-foreground">
+                  <h3 className="mb-2 font-serif text-xl tracking-tight text-[#333C4D] dark:text-white">
                     {persona.title}
                   </h3>
                   <p className="text-[14px] leading-relaxed text-muted-foreground">

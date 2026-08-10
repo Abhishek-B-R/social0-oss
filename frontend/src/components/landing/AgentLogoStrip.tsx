@@ -135,7 +135,7 @@ export function AgentHappyCustomers({
       <p className="text-[14px] text-muted-foreground">
         Used by{" "}
         <span className="font-semibold text-foreground">{CUSTOMER_COUNT}</span>{" "}
-        happy customers
+        happy creators
       </p>
     </div>
   );

@@ -1,12 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import { useTheme } from "next-themes";
 import Link from "@/components/AppLink";
 import { motion, useReducedMotion } from "framer-motion";
 import { CalendarDays, LayoutGrid, Zap } from "lucide-react";
 import { FlowAnimation } from "./FlowAnimation";
-import { WfCalendar } from "./wireframes/ProductWireframes";
-import { WireframeStage } from "./wireframes/WireframeStage";
 
 function hashHref(pathname: string, hash: string) {
   return pathname === "/home" ? `/home${hash}` : `/${hash}`;
@@ -20,28 +17,17 @@ function VisualShell({ children }: { children: ReactNode }) {
   );
 }
 
-/** Muted loop — pauses when off-screen / tab hidden. Theme-aware src when darkSrc set. */
-function MomentDemoVideo({
+/** Muted loop — pauses when off-screen / tab hidden. */
+function MomentDemoVideoClip({
   src,
-  darkSrc,
   poster,
-  darkPoster,
   className = "",
 }: {
   src: string;
-  darkSrc?: string;
   poster?: string;
-  darkPoster?: string;
   className?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  const isDark = mounted && resolvedTheme === "dark";
-  const activeSrc = isDark && darkSrc ? darkSrc : src;
-  const activePoster = isDark && darkPoster ? darkPoster : poster;
 
   useEffect(() => {
     const el = videoRef.current;
@@ -67,20 +53,55 @@ function MomentDemoVideo({
       document.removeEventListener("visibilitychange", sync);
       el.pause();
     };
-  }, [activeSrc]);
+  }, [src]);
 
   return (
     <video
-      key={activeSrc}
       ref={videoRef}
       className={`w-full rounded-[16px] bg-zinc-100 object-cover object-bottom dark:bg-[#0d0d0d] sm:rounded-[20px] ${className}`}
-      src={activeSrc}
-      poster={activePoster}
+      src={src}
+      poster={poster}
       muted
       playsInline
       loop
       preload="metadata"
     />
+  );
+}
+
+/** Theme via CSS — avoids next-themes mount flash + setState-in-effect lint. */
+function MomentDemoVideo({
+  src,
+  darkSrc,
+  poster,
+  darkPoster,
+  className = "",
+}: {
+  src: string;
+  darkSrc?: string;
+  poster?: string;
+  darkPoster?: string;
+  className?: string;
+}) {
+  if (!darkSrc) {
+    return (
+      <MomentDemoVideoClip src={src} poster={poster} className={className} />
+    );
+  }
+
+  return (
+    <>
+      <MomentDemoVideoClip
+        src={src}
+        poster={poster}
+        className={`dark:hidden ${className}`}
+      />
+      <MomentDemoVideoClip
+        src={darkSrc}
+        poster={darkPoster}
+        className={`hidden dark:block ${className}`}
+      />
+    </>
   );
 }
 
@@ -123,7 +144,7 @@ function MomentRow({
           <Icon className="size-3.5" strokeWidth={2.5} aria-hidden />
           {eyebrow}
         </p>
-        <h3 className="max-w-xl font-sans text-[clamp(36px,5vw,52px)] font-bold leading-[1.06] tracking-tight text-foreground dark:text-white">
+        <h3 className="max-w-xl font-sans text-[clamp(36px,5vw,52px)] font-bold leading-[1.06] tracking-tight text-[#333C4D] dark:text-white">
           {title}
         </h3>
         <p className="max-w-md text-[15px] leading-relaxed text-muted-foreground sm:text-[17px] sm:leading-[1.55]">
@@ -173,7 +194,7 @@ export function ProductMomentsSection({
   signedIn?: boolean;
 }) {
   const { pathname } = useLocation();
-  const startHref = signedIn ? "/dashboard" : "/auth?mode=signup";
+  const startHref = signedIn ? "/dashboard" : "/auth?mode=signin";
 
   return (
     <section
@@ -186,12 +207,12 @@ export function ProductMomentsSection({
           <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-600 dark:text-emerald-400">
             Everything in one place
           </p>
-          <h2 className="font-sans text-[clamp(36px,5.5vw,56px)] font-bold leading-[1.08] tracking-tight text-foreground dark:text-white">
-            Everything you need to grow on social medias effortlessly
+          <h2 className="font-sans text-[clamp(36px,5.5vw,56px)] font-bold leading-[1.08] tracking-tight text-[#333C4D] dark:text-white">
+            Everything you need to publish consistently
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-[15px] leading-relaxed text-muted-foreground sm:text-[16px]">
-            Publish, schedule, and stay on top of what shipped — dashboard,
-            agents, and API included.
+            Publish, schedule, and stay on top of everything you ship — from one
+            dashboard, your agents, or the API.
           </p>
         </div>
 
@@ -206,7 +227,7 @@ export function ProductMomentsSection({
               </span>
             </>
           }
-          body="Hit publish once — Social0 fans out in parallel. Threads, carousels, and single posts ship the same way. You or your agents, same encrypted pipeline — one network failing doesn’t stall the rest."
+          body="Create once, and Social0 publishes it across your connected platforms in parallel. No copy-pasting. No switching between tabs."
           primary={{
             label: signedIn ? "Go to dashboard" : "Publish for free",
             href: startHref,
@@ -237,7 +258,7 @@ export function ProductMomentsSection({
           body="Choose accounts, tune captions per platform, set the slot. Queue evergreen reposts and auto-plug winners — edit or move anything before it goes live."
           primary={{
             label: signedIn ? "Open calendar" : "Try scheduling free",
-            href: signedIn ? "/dashboard/calendar" : "/auth?mode=signup",
+            href: signedIn ? "/dashboard/calendar" : "/auth?mode=signin",
           }}
           secondary={{
             label: "Watch the demo",
@@ -271,22 +292,23 @@ export function ProductMomentsSection({
           body="Drafts, queued, and live posts across all accounts in a single view. See what landed where — fix a caption or cancel a slot without bouncing between apps."
           primary={{
             label: signedIn ? "Go to posts" : "Start free",
-            href: signedIn ? "/dashboard/posts" : "/auth?mode=signup",
+            href: signedIn ? "/dashboard/posts" : "/auth?mode=signin",
           }}
           secondary={{
             label: "Compare plans",
             href: "/pricing",
           }}
           visual={
-            <VisualShell>
-              <WireframeStage
-                className="min-h-85 border-0 sm:min-h-100 lg:min-h-110"
-                tall
-                wide
-              >
-                <WfCalendar className="h-75 w-full sm:h-90 lg:h-100" />
-              </WireframeStage>
-            </VisualShell>
+            <div className="mx-auto w-full max-w-140 lg:ml-auto lg:mr-0 lg:max-w-none">
+              <VisualShell>
+                <MomentDemoVideo
+                  src="/videos/calendar-control-light.mp4"
+                  darkSrc="/videos/calendar-control-dark.mp4"
+                  poster="/demos/calendar-control-light-preview.png"
+                  darkPoster="/demos/calendar-control-dark-preview.png"
+                />
+              </VisualShell>
+            </div>
           }
         />
       </div>

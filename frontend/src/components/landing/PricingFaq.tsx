@@ -42,7 +42,7 @@ export function PricingFaq() {
           <p className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
             FAQ
           </p>
-          <h2 className="font-sans text-[clamp(28px,4vw,40px)] font-bold leading-tight tracking-tight text-foreground dark:text-white">
+          <h2 className="font-sans text-[clamp(28px,4vw,40px)] font-bold leading-tight tracking-tight text-[#333C4D] dark:text-white">
             Pricing questions, answered
           </h2>
         </div>

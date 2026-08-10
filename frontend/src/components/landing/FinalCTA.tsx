@@ -63,7 +63,7 @@ export function FinalCTA({ signedIn = false }: { signedIn?: boolean }) {
             </motion.div>
           </AnimatePresence>
           <Link
-            href={signedIn ? "/dashboard" : "/auth?mode=signup"}
+            href={signedIn ? "/dashboard" : "/auth?mode=signin"}
             className="inline-flex min-h-12 items-center gap-2 rounded-[11px] bg-white px-8 py-3.5 text-[15px] font-semibold text-emerald-700 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-px hover:shadow-[0_8px_32px_rgba(0,0,0,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-600 active:scale-[0.97]"
           >
             {signedIn ? "Go to dashboard" : "Start free"}

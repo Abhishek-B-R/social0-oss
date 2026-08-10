@@ -138,11 +138,7 @@ export function FlowAnimation({ className }: { className?: string }) {
   );
 
   useEffect(() => {
-    if (!showAgent) {
-      setSender("you");
-      setCycleId(0);
-      return;
-    }
+    if (!showAgent) return;
     const id = window.setInterval(() => {
       setSender((s) => (s === "you" ? "agent" : "you"));
       setCycleId((c) => c + 1);
@@ -150,6 +146,7 @@ export function FlowAnimation({ className }: { className?: string }) {
     return () => window.clearInterval(id);
   }, [showAgent]);
 
+  // Derive active sender — don't reset state in an effect when leaving agent mode
   const youActive = !showAgent || sender === "you";
   const agentActive = showAgent && sender === "agent";
 

@@ -170,7 +170,7 @@ function CapCopy({ cap }: { cap: (typeof capabilities)[number] }) {
         <cap.icon className="size-full" />
       </span>
       <div className="space-y-2">
-        <h3 className="font-sans text-[clamp(22px,2.6vw,30px)] font-bold tracking-tight text-foreground dark:text-white">
+        <h3 className="font-sans text-[clamp(22px,2.6vw,30px)] font-bold tracking-tight text-[#333C4D] dark:text-white">
           {cap.title}
         </h3>
         <p className="max-w-lg text-[14px] leading-relaxed text-muted-foreground sm:text-[15px] sm:leading-[1.5]">
@@ -213,12 +213,12 @@ export function AgentDemosSection() {
           <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
             Agent mode
           </p>
-          <h2 className="max-w-3xl font-sans text-[clamp(36px,5.5vw,56px)] font-bold leading-[1.1] tracking-tight text-foreground dark:text-white">
+          <h2 className="max-w-3xl font-sans text-[clamp(36px,5.5vw,56px)] font-bold leading-[1.1] tracking-tight text-[#333C4D] dark:text-white">
             Power your content with AI agents
           </h2>
           <p className="max-w-xl text-[15px] leading-relaxed text-muted-foreground sm:text-[17px]">
-            ChatGPT, Claude, OpenClaw, and the REST API — same encrypted publish
-            pipeline as the dashboard.
+            ChatGPT, Claude, OpenClaw, REST API, and more — all connected to the
+            same Social0 publishing engine.
           </p>
         </div>
 

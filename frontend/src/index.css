@@ -652,3 +652,20 @@ html {
   --iso-tile: #3f3f46;
   color-scheme: dark;
 }
+
+/* Landing headings — charcoal in light (matches hero), white in dark.
+   In @layer base so utilities like text-white / text-emerald still win. */
+@layer base {
+  .landing-page {
+    --landing-heading: #333c4d;
+  }
+
+  .dark .landing-page,
+  .landing-page.dark {
+    --landing-heading: #ffffff;
+  }
+
+  .landing-page :is(h1, h2, h3) {
+    color: var(--landing-heading);
+  }
+}

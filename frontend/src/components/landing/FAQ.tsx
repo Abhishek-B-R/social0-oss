@@ -18,7 +18,7 @@ function FAQList({ faqs }: { faqs: LandingFaq[] }) {
           <div className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
             FAQ
           </div>
-          <h2 className="max-w-md font-serif text-[clamp(28px,4vw,44px)] leading-tight tracking-tight text-foreground">
+          <h2 className="max-w-md font-serif text-[clamp(28px,4vw,44px)] leading-tight tracking-tight text-[#333C4D] dark:text-white">
             Questions & answers.
           </h2>
         </div>

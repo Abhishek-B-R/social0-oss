@@ -17,7 +17,7 @@ export function FounderSection({ signedIn = false }: { signedIn?: boolean }) {
             />
           </div>
 
-          <h2 className="font-sans text-[clamp(26px,4vw,34px)] font-bold tracking-tight text-foreground">
+          <h2 className="font-sans text-[clamp(26px,4vw,34px)] font-bold tracking-tight text-[#333C4D] dark:text-white">
             hello..!! it&apos;s{" "}
             <span className="text-emerald-600 dark:text-emerald-400">
               Abhishek
@@ -31,7 +31,7 @@ export function FounderSection({ signedIn = false }: { signedIn?: boolean }) {
             <p className="mb-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               The Story Behind Social0
             </p>
-            <h3 className="mb-6 font-serif text-[clamp(22px,3vw,28px)] tracking-tight text-foreground">
+            <h3 className="mb-6 font-serif text-[clamp(22px,3vw,28px)] tracking-tight text-[#333C4D] dark:text-white">
               I don&apos;t think posting on social media should require project
               management skills.
             </h3>
@@ -49,7 +49,7 @@ export function FounderSection({ signedIn = false }: { signedIn?: boolean }) {
                 intern for my own social media accounts.
               </p>
               <p>
-                The good scheduling tools were too expensive ($150–$500/month).
+                The good scheduling tools were too expensive ($150–$400/month).
                 The cheap ones tested my patience. The rest had 147 bloated
                 features but still couldn&apos;t do the one thing I actually
                 wanted.
@@ -109,7 +109,7 @@ export function FounderSection({ signedIn = false }: { signedIn?: boolean }) {
           </div>
 
           <Link
-            href={signedIn ? "/dashboard" : "/auth?mode=signup"}
+            href={signedIn ? "/dashboard" : "/auth?mode=signin"}
             className="mt-2 inline-flex min-h-12 w-full max-w-sm items-center justify-center rounded-full bg-emerald-500 px-8 py-3.5 text-[15px] font-semibold text-[#04140c] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98]"
           >
             {signedIn ? "Go to dashboard" : "Try it out for free"}
