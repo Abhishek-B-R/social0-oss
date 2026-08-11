@@ -57,8 +57,41 @@ export function metadataToSeoConfig(
       : absoluteUrl(fallbackPath);
 
   const robotsRaw = metadata.robots as RobotsDirective | undefined;
-  const openGraph = metadata.openGraph as PageSeoConfig["openGraph"] | undefined;
-  const twitter = metadata.twitter as PageSeoConfig["twitter"] | undefined;
+  const openGraphRaw = metadata.openGraph as
+    | (PageSeoConfig["openGraph"] & {
+        images?: Array<{ url?: string } | string>;
+      })
+    | undefined;
+  const twitterRaw = metadata.twitter as
+    | (PageSeoConfig["twitter"] & { images?: string[] | string })
+    | undefined;
+
+  const ogImageFromArray = Array.isArray(openGraphRaw?.images)
+    ? typeof openGraphRaw.images[0] === "string"
+      ? openGraphRaw.images[0]
+      : openGraphRaw.images[0]?.url
+    : undefined;
+  const twitterImageFromArray = Array.isArray(twitterRaw?.images)
+    ? twitterRaw.images[0]
+    : typeof twitterRaw?.images === "string"
+      ? twitterRaw.images
+      : undefined;
+
+  const openGraph = openGraphRaw
+    ? {
+        title: openGraphRaw.title,
+        description: openGraphRaw.description,
+        type: openGraphRaw.type,
+        image: openGraphRaw.image ?? ogImageFromArray,
+      }
+    : undefined;
+  const twitter = twitterRaw
+    ? {
+        title: twitterRaw.title,
+        description: twitterRaw.description,
+        image: twitterRaw.image ?? twitterImageFromArray,
+      }
+    : undefined;
 
   return {
     title,
@@ -230,12 +263,30 @@ export function staticRouteSeo(pathname: string): PageSeoConfig | null {
         }) as Record<string, unknown>,
         "/mcp",
       );
+    case "/pricing":
+      return metadataToSeoConfig(
+        buildPageMetadata({
+          title: "Pricing — Social0",
+          description:
+            "Simple Social0 pricing. Start free, then upgrade to Starter, Growth, or Pro. Every plan includes REST API, MCP, and CLI.",
+          path: "/pricing",
+        }) as Record<string, unknown>,
+        "/pricing",
+      );
     default:
       if (pathname.startsWith("/onboarding")) {
         return {
           ...dashboardSeo,
           title: "Onboarding | Social0",
           path: pathname,
+        };
+      }
+      if (pathname.startsWith("/oauth") || pathname.startsWith("/invite")) {
+        return {
+          title: "Social0",
+          description: homePageDescription,
+          path: pathname,
+          robots: { index: false, follow: false },
         };
       }
       return null;

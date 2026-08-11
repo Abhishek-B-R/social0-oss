@@ -91,6 +91,7 @@ describe("plan allowTeams", () => {
     expect(getPlanLimits("starter").allowTeams).toBe(false);
     expect(getPlanLimits("growth").allowTeams).toBe(false);
     expect(getPlanLimits("pro").allowTeams).toBe(true);
+    expect(getPlanLimits("max").allowTeams).toBe(true);
   });
 });
 

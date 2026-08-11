@@ -69,10 +69,12 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-ring: oklch(0.708 0 0);
   --font-geist-sans:
-    "Geist Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   --font-geist-mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
-  --font-serif: "Instrument Serif", Georgia, serif;
+  /* ponytail: font-serif token = heading face (Plus Jakarta), not a real serif */
+  --font-serif: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-logo: "Instrument Serif", Georgia, serif;
 }
 
 /* Brand-colored text selection (replaces default blue).
@@ -122,6 +124,31 @@
   }
   100% {
     transform: translateX(400%);
+  }
+}
+
+/* Centered hero — natural height, no iso stage */
+.landing-hero {
+  min-height: 0;
+}
+/* Hero floating brand — CSS only so Framer doesn't rewrite transform every frame */
+@keyframes landingBrandFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.landing-brand-float {
+  animation: landingBrandFloat 4.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-brand-float {
+    animation: none;
   }
 }
 
@@ -187,7 +214,8 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --font-serif: "Instrument Serif", Georgia, serif;
+  --font-serif: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-logo: "Instrument Serif", Georgia, serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -202,10 +230,26 @@ html {
   overflow-x: clip;
 }
 
+.landing-page #features,
+.landing-page #platforms,
+.landing-page #developers,
+.landing-page #faq,
+.landing-page #stories,
+.landing-page #agent-demos,
+.landing-page #compare,
+.landing-page #problem,
+.landing-page #pricing,
+.landing-page #pricing-faq,
 .landing #features,
 .landing #platforms,
+.landing #developers,
+.landing #faq,
+.landing #stories,
+.landing #agent-demos,
+.landing #compare,
+.landing #problem,
 .landing #pricing,
-.landing #faq {
+.landing #pricing-faq {
   scroll-margin-top: 4.5rem;
 }
 
@@ -292,7 +336,8 @@ html {
 /* Slim dashboard scrollbars (default OS thumbs look huge next to the sidebar) */
 .dashboard-shell {
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in oklab, var(--border) 80%, transparent) transparent;
+  scrollbar-color: color-mix(in oklab, var(--border) 80%, transparent)
+    transparent;
 }
 .dashboard-shell::-webkit-scrollbar,
 .dashboard-shell *::-webkit-scrollbar {
@@ -455,6 +500,9 @@ html {
    Does NOT affect dashboard or any other page
    ============================================ */
 
+/* Landing font + theme tokens.
+   Note: `landing` is also applied to some dashboard headings for Plus Jakarta Sans —
+   keep dual light/dark here so those pages are not forced charcoal. */
 .landing {
   --background: #fafaf8;
   --foreground: #0a0a0a;
@@ -478,9 +526,10 @@ html {
   --input: #e2ded6;
   --ring: #10b981;
   --radius: 0.625rem;
-  --font-sans: "Geist", "Geist Fallback", system-ui, sans-serif;
-  --font-serif: "Instrument Serif", Georgia, serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", monospace;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-serif: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-logo: "Instrument Serif", Georgia, serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
   --hero-everywhere: #10b981;
 }
 
@@ -508,7 +557,115 @@ html {
   --border: #262626;
   --input: #262626;
   --ring: #1a6b4a;
-  --font-sans: "Geist", "Geist Fallback", system-ui, sans-serif;
-  --font-serif: "Instrument Serif", Georgia, serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", monospace;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-serif: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-logo: "Instrument Serif", Georgia, serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
+}
+
+/* Isometric marketing surface — respects theme toggle */
+.landing-page,
+.landing-page.landing {
+  --background: #fafaf8;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #0a0a0a;
+  --primary-foreground: #fafaf8;
+  --secondary: #f0eee9;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f0eee9;
+  --muted-foreground: #5c5750;
+  --accent: #10b981;
+  --accent-light: #34d399;
+  --accent-hover: #059669;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #fef2f2;
+  --border: #e2ded6;
+  --input: #e2ded6;
+  --ring: #10b981;
+  --hero-everywhere: #10b981;
+  --iso-stage: #eef0f3;
+  --iso-bg: #eef0f3;
+  --iso-surface: #ffffff;
+  --iso-elevated: #f8fafc;
+  --iso-panel: #e8eaee;
+  --iso-muted: #dfe3e8;
+  --iso-mid: #c4c9d1;
+  --iso-stroke: #52525b;
+  --iso-stroke-soft: #8b919a;
+  --iso-stroke-bright: #27272a;
+  --iso-ink: #18181b;
+  --iso-ink-inverse: #ffffff;
+  --iso-accent: #10b981;
+  --iso-accent-hot: #059669;
+  --iso-accent-dim: #047857;
+  --iso-accent-deep: #065f46;
+  --iso-tile: #d4d4d8;
+  color-scheme: light;
+}
+
+.dark .landing-page,
+.dark .landing-page.landing,
+.landing-page.dark {
+  --background: #151515;
+  --foreground: #ffffff;
+  --card: #1a1a1a;
+  --card-foreground: #fafaf8;
+  --popover: #1a1a1a;
+  --popover-foreground: #fafaf8;
+  --primary: #10b981;
+  --primary-foreground: #04140c;
+  --secondary: #1e1e1e;
+  --secondary-foreground: #fafaf8;
+  --muted: #1e1e1e;
+  --muted-foreground: #a1a1aa;
+  --accent: #10b981;
+  --accent-light: #34d399;
+  --accent-hover: #059669;
+  --accent-foreground: #04140c;
+  --destructive: #dc2626;
+  --destructive-foreground: #fef2f2;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: #262626;
+  --ring: #10b981;
+  --hero-everywhere: #34d399;
+  --iso-stage: transparent;
+  --iso-bg: #0c0c0c;
+  --iso-surface: #151515;
+  --iso-elevated: #1a1a1a;
+  --iso-panel: #1e1e1e;
+  --iso-muted: #262626;
+  --iso-mid: #303030;
+  --iso-stroke: #a5a5a5;
+  --iso-stroke-soft: #555555;
+  --iso-stroke-bright: #e0e0e0;
+  --iso-ink: #ffffff;
+  --iso-ink-inverse: #04140c;
+  --iso-accent: #10b981;
+  --iso-accent-hot: #34d399;
+  --iso-accent-dim: #059669;
+  --iso-accent-deep: #047857;
+  --iso-tile: #3f3f46;
+  color-scheme: dark;
+}
+
+/* Landing headings — charcoal in light (matches hero), white in dark.
+   In @layer base so utilities like text-white / text-emerald still win. */
+@layer base {
+  .landing-page {
+    --landing-heading: #333c4d;
+  }
+
+  .dark .landing-page,
+  .landing-page.dark {
+    --landing-heading: #ffffff;
+  }
+
+  .landing-page :is(h1, h2, h3) {
+    color: var(--landing-heading);
+  }
 }

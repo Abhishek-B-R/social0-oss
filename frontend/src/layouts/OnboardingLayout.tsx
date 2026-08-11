@@ -5,6 +5,7 @@ import Image from "@/components/AppImage";
 import { useSession } from "@/lib/auth-client";
 import { getOnboardingStatus, type OnboardingStatus } from "@/api/onboarding";
 import { OnboardingProgress } from "@/components/onboarding/OnboardingProgress";
+import { GridBackground } from "@/components/landing/GridBackground";
 import { useQuery } from "@tanstack/react-query";
 
 export function OnboardingLayout() {
@@ -37,11 +38,21 @@ export function OnboardingLayout() {
     }
   }, [status, navigate]);
 
+  const firstName =
+    session?.user?.name?.trim()?.split(/\s+/)[0] ||
+    session?.user?.email?.split("@")[0] ||
+    null;
+
   return (
-    <div className="landing flex min-h-screen flex-col bg-background">
-      <header className="sticky top-0 z-50 shrink-0 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="flex w-full items-center justify-between gap-4 px-5 py-4 sm:px-8 lg:px-12">
-          <Link href="/onboarding" className="flex items-center gap-2">
+    <div className="landing landing-page relative flex min-h-screen flex-col overflow-x-hidden bg-[#fafaf8] dark:bg-background">
+      <GridBackground className="fixed inset-0" />
+
+      <header className="sticky top-0 z-50 shrink-0 border-b border-border/60 bg-[#fafaf8]/80 backdrop-blur-md dark:bg-background/80">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
+          <Link
+            href="/onboarding"
+            className="flex shrink-0 items-center gap-2"
+          >
             <span className="relative block h-9 w-9">
               <Image
                 src="/logo-circular.webp"
@@ -58,14 +69,25 @@ export function OnboardingLayout() {
                 className="absolute inset-0 hidden rounded-full border border-white dark:block"
               />
             </span>
-            <span className="font-serif text-[22px] font-semibold tracking-tight text-foreground">
+            <span className="font-logo text-[22px] font-normal tracking-tight text-foreground">
               Social0
             </span>
           </Link>
+
+          <div className="hidden min-w-0 flex-1 justify-center px-4 sm:flex">
+            <OnboardingProgress />
+          </div>
+
+          <p className="hidden truncate text-right text-[13px] text-muted-foreground md:block md:max-w-[140px]">
+            {firstName ? `Hi, ${firstName}` : "Setup"}
+          </p>
+        </div>
+        <div className="border-t border-border/40 px-5 py-2.5 sm:hidden">
           <OnboardingProgress />
         </div>
       </header>
-      <main className="flex flex-1 flex-col w-full px-5 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12">
+
+      <main className="relative z-10 flex flex-1 flex-col px-5 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
         <Outlet />
       </main>
     </div>

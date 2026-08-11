@@ -87,6 +87,23 @@ export async function processPlatformJob(
     }
 
     await finalize.maybeFinalizePostPublish(job.postId, job.userId);
+  } catch (err) {
+    console.error("[processPlatformJob] failed", job.platform, err);
+    if (job.trackingId) {
+      const message =
+        err instanceof Error ? err.message : "Platform publish failed";
+      await recordPlatformResult(env, job, false, message, {
+        skipAuth: true,
+      }).catch(() => undefined);
+    }
+    // Still finalize so aggregate status + failure email can fire if this
+    // was the last platform (and pubs were marked failed before the throw).
+    try {
+      const { finalize } = await loadWorkerModules();
+      await finalize.maybeFinalizePostPublish(job.postId, job.userId);
+    } catch (finalizeErr) {
+      console.error("[processPlatformJob] finalize failed", finalizeErr);
+    }
   } finally {
     if (slot) await slot.release();
   }

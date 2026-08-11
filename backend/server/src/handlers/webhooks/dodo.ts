@@ -10,6 +10,7 @@ import {
   getTierFromProductId,
   PLAN_IDS,
   isActiveTier,
+  type SubscriptionTier,
 } from "@social0/shared";
 import { env } from "../../lib/env.js";
 import { claimWebhookDelivery } from "../../lib/webhook-idempotency.js";
@@ -41,6 +42,8 @@ function tierRank(tier: string | null | undefined): number {
       return 2;
     case "pro":
       return 3;
+    case "max":
+      return 4;
     default:
       return -1;
   }
@@ -138,7 +141,7 @@ async function handleSubscriptionActiveOrUpdated(payload: {
     incomingSubId &&
     canonicalSubId &&
     incomingSubId !== canonicalSubId &&
-    isActiveTier(currentTier as "starter" | "growth" | "pro")
+    isActiveTier(currentTier as SubscriptionTier)
   ) {
     console.warn("[dodo webhook] Ignoring duplicate subscription activation", {
       incomingSubId,

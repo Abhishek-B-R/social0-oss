@@ -1,4 +1,3 @@
-
 import { type RefObject, useEffect, useId, useState } from "react";
 import { motion } from "framer-motion";
 
@@ -24,6 +23,13 @@ export interface AnimatedBeamProps {
   startYOffset?: number;
   endXOffset?: number;
   endYOffset?: number;
+  /**
+   * Draw rim→rim (circle edge to circle edge) instead of center→center.
+   * Avoids beams looking like they share one exit point on the hub.
+   */
+  edgeAttach?: boolean;
+  /** When false, only the static track is drawn (no traveling green signal). */
+  animated?: boolean;
 }
 
 /** MagicUI Animated Beam - https://magicui.design/docs/components/animated-beam */
@@ -46,6 +52,8 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
   startYOffset = 0,
   endXOffset = 0,
   endYOffset = 0,
+  edgeAttach = false,
+  animated = true,
 }) => {
   const id = useId();
   const [pathD, setPathD] = useState("");
@@ -61,8 +69,9 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
         y2: ["0%", "0%"],
       }
     : {
+        // Wider gap = longer traveling blob
         x1: ["10%", "110%"],
-        x2: ["0%", "100%"],
+        x2: ["-15%", "85%"],
         y1: ["0%", "0%"],
         y2: ["0%", "0%"],
       };
@@ -78,19 +87,48 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
         const svgHeight = containerRect.height;
         setSvgDimensions({ width: svgWidth, height: svgHeight });
 
-        const startX =
+        const centerAX =
           rectA.left - containerRect.left + rectA.width / 2 + startXOffset;
-        const startY =
+        const centerAY =
           rectA.top - containerRect.top + rectA.height / 2 + startYOffset;
-        const endX =
+        const centerBX =
           rectB.left - containerRect.left + rectB.width / 2 + endXOffset;
-        const endY =
+        const centerBY =
           rectB.top - containerRect.top + rectB.height / 2 + endYOffset;
 
-        const controlY = startY - curvature;
-        const d = `M ${startX},${startY} Q ${
-          (startX + endX) / 2
-        },${controlY} ${endX},${endY}`;
+        let startX = centerAX;
+        let startY = centerAY;
+        let endX = centerBX;
+        let endY = centerBY;
+        let d: string;
+
+        if (edgeAttach) {
+          const dx = centerBX - centerAX;
+          const dy = centerBY - centerAY;
+          const dist = Math.hypot(dx, dy) || 1;
+          const ux = dx / dist;
+          const uy = dy / dist;
+          const rA = Math.min(rectA.width, rectA.height) / 2 - 1;
+          const rB = Math.min(rectB.width, rectB.height) / 2 - 1;
+          startX = centerAX + ux * rA;
+          startY = centerAY + uy * rA;
+          endX = centerBX - ux * rB;
+          endY = centerBY - uy * rB;
+
+          if (curvature === 0) {
+            d = `M ${startX},${startY} L ${endX},${endY}`;
+          } else {
+            const midX = (startX + endX) / 2;
+            const midY = (startY + endY) / 2;
+            const cx = midX - uy * curvature;
+            const cy = midY + ux * curvature;
+            d = `M ${startX},${startY} Q ${cx},${cy} ${endX},${endY}`;
+          }
+        } else {
+          const controlY = startY - curvature;
+          d = `M ${startX},${startY} Q ${(startX + endX) / 2},${controlY} ${endX},${endY}`;
+        }
+
         setPathD(d);
       }
     };
@@ -117,6 +155,7 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
     startYOffset,
     endXOffset,
     endYOffset,
+    edgeAttach,
   ]);
 
   return (
@@ -138,39 +177,47 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
         strokeOpacity={pathOpacity}
         strokeLinecap="round"
       />
-      <path
-        d={pathD}
-        strokeWidth={pathWidth}
-        stroke={`url(#${id})`}
-        strokeOpacity="1"
-        strokeLinecap="round"
-      />
-      <defs>
-        <motion.linearGradient
-          className="transform-gpu"
-          id={id}
-          gradientUnits="userSpaceOnUse"
-          initial={{ x1: "0%", x2: "0%", y1: "0%", y2: "0%" }}
-          animate={{
-            x1: gradientCoordinates.x1,
-            x2: gradientCoordinates.x2,
-            y1: gradientCoordinates.y1,
-            y2: gradientCoordinates.y2,
-          }}
-          transition={{
-            delay,
-            duration,
-            ease: [0.16, 1, 0.3, 1],
-            repeat: Infinity,
-            repeatDelay,
-          }}
-        >
-          <stop stopColor={gradientStartColor} stopOpacity="0" />
-          <stop stopColor={gradientStartColor} />
-          <stop offset="32.5%" stopColor={gradientStopColor} />
-          <stop offset="100%" stopColor={gradientStopColor} stopOpacity="0" />
-        </motion.linearGradient>
-      </defs>
+      {animated ? (
+        <>
+          <path
+            d={pathD}
+            strokeWidth={pathWidth}
+            stroke={`url(#${id})`}
+            strokeOpacity="1"
+            strokeLinecap="round"
+          />
+          <defs>
+            <motion.linearGradient
+              className="transform-gpu"
+              id={id}
+              gradientUnits="userSpaceOnUse"
+              initial={{ x1: "0%", x2: "0%", y1: "0%", y2: "0%" }}
+              animate={{
+                x1: gradientCoordinates.x1,
+                x2: gradientCoordinates.x2,
+                y1: gradientCoordinates.y1,
+                y2: gradientCoordinates.y2,
+              }}
+              transition={{
+                delay,
+                duration,
+                ease: [0.16, 1, 0.3, 1],
+                repeat: Infinity,
+                repeatDelay,
+              }}
+            >
+              <stop stopColor={gradientStartColor} stopOpacity="0" />
+              <stop stopColor={gradientStartColor} />
+              <stop offset="32.5%" stopColor={gradientStopColor} />
+              <stop
+                offset="100%"
+                stopColor={gradientStopColor}
+                stopOpacity="0"
+              />
+            </motion.linearGradient>
+          </defs>
+        </>
+      ) : null}
     </svg>
   );
 };

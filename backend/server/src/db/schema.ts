@@ -412,7 +412,7 @@ export const userSettings = pgTable("user_settings", {
   use24HourTimeFormat: boolean("use_24_hour_time_format").default(false),
   dateFormat: text("date_format").default("dd/MM/yyyy"), // dd/MM/yyyy | MM/dd/yyyy | yyyy-MM-dd
   weeklyPostingGoal: integer("weekly_posting_goal").default(3),
-  subscriptionTier: text("subscription_tier").default("free"), // free | starter | growth | pro
+  subscriptionTier: text("subscription_tier").default("free"), // free | starter | growth | pro | max
   subscriptionExpiresAt: timestamp("subscription_expires_at"),
   subscriptionId: text("subscription_id"), // Payment provider subscription ID (portal/cancel)
   customerId: text("customer_id"), // Payment provider customer ID

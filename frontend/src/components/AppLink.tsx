@@ -14,8 +14,20 @@ type AppLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
   state?: unknown;
 };
 
-function routerTo(href: string): RouterLinkProps["to"] {
+function routerTo(
+  href: string,
+  currentPathname: string,
+  currentSearch: string,
+): RouterLinkProps["to"] {
   if (!href.includes("#")) return href;
+  // Hash-only (#compare) must stay on the current route — URL(base) would make pathname "/".
+  if (href.startsWith("#")) {
+    return {
+      pathname: currentPathname || "/",
+      search: currentSearch,
+      hash: href,
+    };
+  }
   const url = new URL(href, "https://social0.app");
   return {
     pathname: url.pathname || "/",
@@ -48,10 +60,23 @@ export default function AppLink({
       </a>
     );
   }
-  const to = routerTo(href);
+  const to = routerTo(href, location.pathname, location.search);
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     onClick?.(event);
     if (event.defaultPrevented || !href.includes("#")) return;
+
+    if (href.startsWith("#")) {
+      event.preventDefault();
+      navigate(
+        {
+          pathname: location.pathname,
+          search: location.search,
+          hash: href,
+        },
+        state !== undefined ? { state } : undefined,
+      );
+      return;
+    }
 
     const url = new URL(href, "https://social0.app");
     const samePath =

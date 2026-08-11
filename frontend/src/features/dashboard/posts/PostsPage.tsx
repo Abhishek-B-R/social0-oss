@@ -191,7 +191,7 @@ export function PostsPage() {
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400 sm:mb-6">
           <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={1.5} />
           <span className="min-w-0 flex-1">
-            Some posts failed to publish because your trial ended.
+            Some posts failed to publish because your plan is inactive.
           </span>
           <Link
             href="/dashboard/billing"

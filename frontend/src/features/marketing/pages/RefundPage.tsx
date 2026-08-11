@@ -16,7 +16,7 @@ const linkClass =
 
 export default function RefundPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground landing">
+    <div className="landing landing-page min-h-screen flex flex-col bg-background text-foreground">
       <LandingHeader />
       <main className="flex-1 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 w-full">
         <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[22px] text-foreground landing mb-6">
@@ -38,7 +38,7 @@ export default function RefundPage() {
               </Link>
               . There are no cancellation fees. After you cancel, you keep
               access to paid features until the end of the current billing
-              period (unless your plan or trial states otherwise). Cancellation
+              period (unless your plan states otherwise). Cancellation
               stops future renewals.
             </p>
           </section>
@@ -64,10 +64,6 @@ export default function RefundPage() {
               We do <strong>not</strong> offer a standing “refund within X hours”
               window. Where applicable law requires a refund or cooling-off
               right, we will honor that legal requirement.
-            </p>
-            <p>
-              Free trials (if offered) may end without charge if you cancel
-              before the trial converts, as shown at checkout and in Billing.
             </p>
           </section>
 

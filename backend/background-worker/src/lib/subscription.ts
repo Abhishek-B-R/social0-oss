@@ -1,7 +1,11 @@
 import { db } from "../db/index.js";
 import { userSettings } from "../db/schema.js";
 import { eq, sql } from "drizzle-orm";
-import type { SubscriptionTier } from "@social0/shared";
+import {
+  isActiveTier,
+  type PaidPlanTier,
+  type SubscriptionTier,
+} from "@social0/shared";
 
 export type SubscriptionState = {
   tier: SubscriptionTier;
@@ -10,8 +14,8 @@ export type SubscriptionState = {
   customerId: string | null;
   /** True once user has ever had a paid plan (trial or paid). Used for trial vs upgrade messaging when limit is 0. */
   hasUsedTrial: boolean;
-  /** Scheduled downgrade target (starter | growth). Shown as banner until period end or cancel. */
-  pendingPlanTier: "starter" | "growth" | null;
+  /** Scheduled plan change target. Shown as banner until period end or cancel. */
+  pendingPlanTier: PaidPlanTier | null;
   /** True when user cancelled at period end; access until expiresAt. */
   cancelAtPeriodEnd: boolean;
 };
@@ -35,16 +39,17 @@ export async function getSubscriptionForUser(
   const tier = (row?.subscriptionTier as SubscriptionTier) ?? "free";
   const expiresAt = row?.subscriptionExpiresAt ?? null;
   const hasUsedTrial = row?.hasUsedTrial ?? false;
-  const rawPending =
-    row?.pendingPlanTier === "starter" || row?.pendingPlanTier === "growth"
-      ? row.pendingPlanTier
-      : null;
+  const rawPending = isActiveTier(
+    row?.pendingPlanTier as SubscriptionTier | null | undefined,
+  )
+    ? (row!.pendingPlanTier as PaidPlanTier)
+    : null;
   const pendingPlanTier = rawPending && rawPending !== tier ? rawPending : null;
   const cancelAtPeriodEnd = Boolean(row?.subscriptionCancelAtPeriodEnd);
 
   const now = new Date();
   const isExpired = expiresAt && new Date(expiresAt) < now;
-  const isPaidTier = tier === "starter" || tier === "growth" || tier === "pro";
+  const isPaidTier = isActiveTier(tier);
 
   if (isExpired && isPaidTier) {
     await setSubscription(userId, {
@@ -77,16 +82,13 @@ export async function getSubscriptionForUser(
   }
 
   return {
-    tier:
-      tier === "starter" || tier === "growth" || tier === "pro" ? tier : "free",
+    tier: isActiveTier(tier) ? tier : "free",
     expiresAt,
     subscriptionId: row?.subscriptionId ?? null,
     customerId: row?.customerId ?? null,
     hasUsedTrial,
     pendingPlanTier,
-    cancelAtPeriodEnd:
-      cancelAtPeriodEnd &&
-      (tier === "starter" || tier === "growth" || tier === "pro"),
+    cancelAtPeriodEnd: cancelAtPeriodEnd && isActiveTier(tier),
   };
 }
 
@@ -112,8 +114,7 @@ export async function setSubscription(
     customerId: string | null;
   },
 ): Promise<void> {
-  const isPaidTier =
-    data.tier === "starter" || data.tier === "growth" || data.tier === "pro";
+  const isPaidTier = isActiveTier(data.tier);
 
   // Single UPSERT - replaces a SELECT + conditional INSERT/UPDATE (was 2 queries)
   await db

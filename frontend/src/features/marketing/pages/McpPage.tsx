@@ -1,17 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
-import {
-  BlueskyIcon,
-  FacebookIcon,
-  InstagramIcon,
-  LinkedInIcon,
-  PinterestIcon,
-  ThreadsIcon,
-  TikTokIcon,
-  XIcon,
-  YouTubeIcon,
-} from "@/components/landing/PlatformIcons";
+import { PlatformStrip } from "@/components/landing/PlatformStrip";
 import { SeoHead } from "@/components/seo/SeoHead";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +11,7 @@ import {
   DOCS_MCP_QUICKSTART_URL,
   DOCS_MCP_URL,
 } from "@/lib/docs-url";
+import { scrollToHash } from "@/lib/scroll-to-hash";
 import { absoluteUrl } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import {
@@ -37,9 +29,17 @@ import {
   Zap,
 } from "lucide-react";
 
-type HostId = "remote" | "cursor" | "claude-desktop" | "vscode";
+type HostId =
+  | "chatgpt"
+  | "claude"
+  | "cursor"
+  | "vscode"
+  | "openclaw"
+  | "hermes";
 
 const HOSTED_MCP_URL = "https://mcp.social0.app/mcp";
+const OPENCLAW_SKILL_INSTALL = "openclaw skills install @abhishek-b-r/social0";
+const SKILLS_CLI_INSTALL = "npx skills add abhishek-b-r/social0-cli";
 
 const MCP_TOOLS = [
   "list_accounts",
@@ -96,24 +96,6 @@ const FEATURES = [
   },
 ] as const;
 
-const CHAT_EXAMPLES = [
-  {
-    user: "Show my connected Social0 accounts.",
-    assistant:
-      "You have 6 active accounts: LinkedIn, X, Instagram, YouTube, Threads, and Bluesky. All tokens are healthy.",
-  },
-  {
-    user: "Publish a launch update to LinkedIn and X with ./assets/hero.png",
-    assistant:
-      "Uploaded hero.png, created the post, and started publishing. Tracking ID: 8f2a… — X and LinkedIn are uploading now.",
-  },
-  {
-    user: "Schedule Friday's newsletter teaser for 9 AM UTC on all platforms.",
-    assistant:
-      "Scheduled for 2026-07-17T09:00:00.000Z across 6 platforms. I'll remind you when it's live.",
-  },
-] as const;
-
 const FAQ = [
   {
     q: "What is MCP?",
@@ -121,7 +103,7 @@ const FAQ = [
   },
   {
     q: "Do I need an API key?",
-    a: "Not for remote connectors — use https://mcp.social0.app/mcp and sign in with Social0 OAuth (Claude.ai, ChatGPT, and other hosts that accept a remote MCP URL). Cursor / Claude Desktop / VS Code local setups still use npx with a sk_live_ API key.",
+    a: "Not for ChatGPT, Claude, or Cursor remote MCP — use https://mcp.social0.app/mcp and sign in with Social0 OAuth. OpenClaw / Hermes: install the skill, then social0 login. VS Code local stdio still uses npx with a sk_live_ API key.",
   },
   {
     q: "Do I need a separate Social0 plan?",
@@ -137,39 +119,30 @@ const FAQ = [
   },
   {
     q: "What if one platform fails?",
-    a: "Multi-platform jobs can finish as partial — some platforms succeed, others fail. Check get_publish_status errors and retry from the dashboard if needed.",
+    a: "The rest still go out. Social0 fans out in parallel, so one network error doesn’t stall the others — you’ll see exactly which platforms succeeded, and you can retry the failed ones from the dashboard.",
   },
 ] as const;
 
-const PLATFORM_ICONS = [
-  { Icon: XIcon, label: "X" },
-  { Icon: LinkedInIcon, label: "LinkedIn" },
-  { Icon: InstagramIcon, label: "Instagram" },
-  { Icon: YouTubeIcon, label: "YouTube" },
-  { Icon: TikTokIcon, label: "TikTok" },
-  { Icon: FacebookIcon, label: "Facebook" },
-  { Icon: ThreadsIcon, label: "Threads" },
-  { Icon: BlueskyIcon, label: "Bluesky" },
-  { Icon: PinterestIcon, label: "Pinterest" },
-] as const;
+const sectionEyebrow =
+  "mb-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground";
+const sectionTitle =
+  "font-sans text-[clamp(28px,4vw,40px)] font-bold leading-tight tracking-tight text-[#333C4D] dark:text-white";
+const cardShell =
+  "rounded-2xl border border-border bg-card dark:border-white/10 dark:bg-[#1A1A1A]";
+const ctaPrimary =
+  "inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-emerald-500 px-6 py-3.5 text-[15px] font-semibold text-[#04140c] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 sm:w-auto active:scale-[0.98]";
+const ctaSecondary =
+  "inline-flex w-full items-center justify-center gap-2 rounded-[10px] border border-border bg-background px-6 py-3.5 text-[15px] font-medium text-foreground transition-colors hover:bg-muted sm:w-auto dark:border-white/10 dark:bg-[#151515] dark:hover:bg-white/5";
 
 function buildMcpConfig(host: HostId, apiKey: string) {
-  if (host === "remote") {
-    return HOSTED_MCP_URL;
-  }
-
-  const key = apiKey.trim() || "sk_live_your_key_here";
-  const env = { SOCIAL0_API_KEY: key };
-
-  if (host === "vscode") {
+  if (host === "chatgpt" || host === "claude") return HOSTED_MCP_URL;
+  if (host === "cursor") {
     return JSON.stringify(
       {
-        servers: {
+        mcpServers: {
           social0: {
-            type: "stdio",
-            command: "npx",
-            args: ["-y", "@social0/mcp"],
-            env,
+            type: "http",
+            url: HOSTED_MCP_URL,
           },
         },
       },
@@ -177,11 +150,23 @@ function buildMcpConfig(host: HostId, apiKey: string) {
       2,
     );
   }
+  if (host === "openclaw") {
+    return [OPENCLAW_SKILL_INSTALL, "social0 login"].join("\n");
+  }
+  if (host === "hermes") {
+    return [SKILLS_CLI_INSTALL, "npm install -g social0", "social0 login"].join(
+      "\n",
+    );
+  }
+
+  const key = apiKey.trim() || "sk_live_your_key_here";
+  const env = { SOCIAL0_API_KEY: key };
 
   return JSON.stringify(
     {
-      mcpServers: {
+      servers: {
         social0: {
+          type: "stdio",
           command: "npx",
           args: ["-y", "@social0/mcp"],
           env,
@@ -193,67 +178,15 @@ function buildMcpConfig(host: HostId, apiKey: string) {
   );
 }
 
-function TerminalWindow({
-  title,
-  children,
-  className,
-}: {
-  title: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-xl border border-border bg-[#0d1117] text-[#e6edf3] shadow-lg",
-        className,
-      )}
-    >
-      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
-        <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-        <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
-        <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
-        <span className="ml-2 text-[12px] text-white/50">{title}</span>
-      </div>
-      <div className="p-4 font-mono text-[12px] leading-relaxed sm:text-[13px]">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function ChatBubble({
-  role,
-  children,
-}: {
-  role: "user" | "assistant";
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className={cn("flex", role === "user" ? "justify-end" : "justify-start")}
-    >
-      <div
-        className={cn(
-          "max-w-[90%] rounded-2xl px-4 py-3 text-[14px] leading-relaxed",
-          role === "user"
-            ? "rounded-br-md bg-foreground text-background"
-            : "rounded-bl-md border border-border bg-muted/60 text-foreground",
-        )}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function McpConfigPanel() {
-  const [host, setHost] = useState<HostId>("remote");
+  const [host, setHost] = useState<HostId>("chatgpt");
   const [apiKey, setApiKey] = useState("");
   const [copied, setCopied] = useState(false);
 
   const config = useMemo(() => buildMcpConfig(host, apiKey), [host, apiKey]);
-  const isHosted = host === "remote";
+  const isRemote = host === "chatgpt" || host === "claude" || host === "cursor";
+  const isSkill = host === "openclaw" || host === "hermes";
+  const needsApiKey = !isRemote && !isSkill;
 
   const copyConfig = () => {
     void navigator.clipboard.writeText(config);
@@ -263,19 +196,29 @@ function McpConfigPanel() {
 
   const hosts: { id: HostId; label: string; hint: string }[] = [
     {
-      id: "remote",
-      label: "Remote URL",
-      hint: "Claude.ai, ChatGPT, and any host that accepts a remote MCP URL. Authorize with Social0 — no API key.",
+      id: "chatgpt",
+      label: "ChatGPT",
+      hint: "Paste the remote MCP URL in ChatGPT connectors and authorize with Social0. No API key.",
+    },
+    {
+      id: "claude",
+      label: "Claude",
+      hint: "Paste the remote MCP URL in Claude.ai connectors and authorize with Social0. No API key.",
+    },
+    {
+      id: "openclaw",
+      label: "OpenClaw",
+      hint: "Install the Social0 skill from ClawHub, then log in with the CLI.",
+    },
+    {
+      id: "hermes",
+      label: "Hermes",
+      hint: "Add the Social0 CLI skill with npx skills, then social0 login.",
     },
     {
       id: "cursor",
       label: "Cursor",
-      hint: "Settings → MCP, or project .cursor/mcp.json (needs Node.js + API key)",
-    },
-    {
-      id: "claude-desktop",
-      label: "Claude Desktop",
-      hint: "macOS: ~/Library/Application Support/Claude/claude_desktop_config.json",
+      hint: "Add this to Settings → MCP or project .cursor/mcp.json, then authorize with Social0. No API key.",
     },
     {
       id: "vscode",
@@ -285,7 +228,7 @@ function McpConfigPanel() {
   ];
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+    <div className={`${cardShell} p-6 sm:p-8`}>
       <div className="mb-6 flex flex-wrap gap-2">
         {hosts.map((h) => (
           <button
@@ -293,10 +236,10 @@ function McpConfigPanel() {
             type="button"
             onClick={() => setHost(h.id)}
             className={cn(
-              "rounded-full px-4 py-2 text-[13px] font-medium transition-colors",
+              "rounded-[10px] px-4 py-2 text-[13px] font-medium transition-colors",
               host === h.id
-                ? "bg-foreground text-background"
-                : "bg-muted text-muted-foreground hover:text-foreground",
+                ? "bg-emerald-500 text-[#04140c]"
+                : "bg-muted text-muted-foreground hover:text-foreground dark:bg-[#151515]",
             )}
           >
             {h.label}
@@ -304,21 +247,83 @@ function McpConfigPanel() {
         ))}
       </div>
 
-      <p className="mb-6 text-[13px] text-muted-foreground">
+      <p className="mb-6 text-[13px] leading-relaxed text-muted-foreground">
         {hosts.find((h) => h.id === host)?.hint}
       </p>
 
-      {isHosted ? (
+      {isRemote ? (
         <ol className="mb-6 list-decimal space-y-2 pl-5 text-[14px] leading-relaxed text-muted-foreground">
-          <li>Open your AI app’s MCP / Connectors settings</li>
-          <li>
-            Add a remote server with URL{" "}
-            <code className="rounded bg-muted px-1 text-[13px] text-foreground">
-              {HOSTED_MCP_URL}
-            </code>
-          </li>
-          <li>Connect and approve Social0 in your browser (OAuth)</li>
-          <li>Ask: “Show my connected Social0 accounts”</li>
+          {host === "cursor" ? (
+            <>
+              <li>
+                Open Cursor → Settings → MCP, or edit{" "}
+                <code className="rounded bg-muted px-1 text-[13px] text-foreground dark:bg-[#151515]">
+                  .cursor/mcp.json
+                </code>
+              </li>
+              <li>Paste the JSON config below and save</li>
+              <li>Connect and approve Social0 in your browser (OAuth)</li>
+              <li>Ask: “Show my connected Social0 accounts”</li>
+            </>
+          ) : (
+            <>
+              <li>
+                {host === "chatgpt"
+                  ? "Open ChatGPT → Settings → Connectors / MCP"
+                  : "Open Claude.ai → Settings → Connectors"}
+              </li>
+              <li>
+                Add a remote server with URL{" "}
+                <code className="rounded bg-muted px-1 text-[13px] text-foreground dark:bg-[#151515]">
+                  {HOSTED_MCP_URL}
+                </code>
+              </li>
+              <li>Connect and approve Social0 in your browser (OAuth)</li>
+              <li>Ask: “Show my connected Social0 accounts”</li>
+            </>
+          )}
+        </ol>
+      ) : isSkill ? (
+        <ol className="mb-6 list-decimal space-y-2 pl-5 text-[14px] leading-relaxed text-muted-foreground">
+          {host === "openclaw" ? (
+            <>
+              <li>
+                Run{" "}
+                <code className="rounded bg-muted px-1 text-[13px] text-foreground dark:bg-[#151515]">
+                  {OPENCLAW_SKILL_INSTALL}
+                </code>
+              </li>
+              <li>
+                Install the CLI if needed:{" "}
+                <code className="rounded bg-muted px-1 text-[13px] text-foreground dark:bg-[#151515]">
+                  npm install -g social0
+                </code>
+                , then{" "}
+                <code className="rounded bg-muted px-1 text-[13px] text-foreground dark:bg-[#151515]">
+                  social0 login
+                </code>
+              </li>
+              <li>Ask your agent to post or list Social0 accounts</li>
+            </>
+          ) : (
+            <>
+              <li>
+                Run{" "}
+                <code className="rounded bg-muted px-1 text-[13px] text-foreground dark:bg-[#151515]">
+                  {SKILLS_CLI_INSTALL}
+                </code>
+              </li>
+              <li>
+                Install + auth:{" "}
+                <code className="rounded bg-muted px-1 text-[13px] text-foreground dark:bg-[#151515]">
+                  npm install -g social0 && social0 login
+                </code>
+              </li>
+              <li>
+                Use the skill in Hermes (or any host that loads Agent Skills)
+              </li>
+            </>
+          )}
         </ol>
       ) : (
         <div className="mb-4">
@@ -331,14 +336,14 @@ function McpConfigPanel() {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="sk_live_…"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-[14px] outline-none ring-emerald-500/30 focus:ring-2"
+              className="w-full rounded-[10px] border border-border bg-background px-3 py-2.5 text-[14px] outline-none ring-emerald-500/30 focus:ring-2 dark:border-white/10 dark:bg-[#111111]"
             />
           </label>
         </div>
       )}
 
       <div className="relative">
-        <pre className="max-h-[280px] overflow-auto rounded-xl border border-border bg-[#0d1117] p-4 text-[12px] leading-relaxed text-[#e6edf3] sm:text-[13px]">
+        <pre className="max-h-70 overflow-auto rounded-xl border border-border bg-[#0d1117] p-4 text-[12px] leading-relaxed text-[#e6edf3] dark:border-white/10 sm:text-[13px]">
           {config}
         </pre>
         <Button
@@ -357,29 +362,68 @@ function McpConfigPanel() {
         </Button>
       </div>
 
-      <p className="mt-4 text-[12px] text-muted-foreground">
-        {isHosted ? (
-          <>
-            Same URL for every remote-capable host:{" "}
-            <code className="rounded bg-muted px-1">{HOSTED_MCP_URL}</code> —
-            OAuth only, no npx.
-          </>
-        ) : (
+      <p className="mt-4 text-[12px] leading-relaxed text-muted-foreground">
+        {isRemote ? (
+          host === "cursor" ? (
+            <>
+              Remote HTTP MCP — OAuth only, no API key or{" "}
+              <code className="rounded bg-muted px-1 dark:bg-[#151515]">
+                npx
+              </code>
+              .
+            </>
+          ) : (
+            <>
+              Same remote URL for ChatGPT and Claude:{" "}
+              <code className="rounded bg-muted px-1 dark:bg-[#151515]">
+                {HOSTED_MCP_URL}
+              </code>{" "}
+              — OAuth only, no npx.
+            </>
+          )
+        ) : isSkill ? (
+          host === "openclaw" ? (
+            <>
+              ClawHub package:{" "}
+              <code className="rounded bg-muted px-1 dark:bg-[#151515]">
+                @abhishek-b-r/social0
+              </code>
+              . Prefer the CLI skill over wiring MCP by hand when your agent has
+              a shell.
+            </>
+          ) : (
+            <>
+              Works anywhere Agent Skills are supported — Hermes and similar
+              hosts. Same skill lives in{" "}
+              <a
+                href="https://github.com/Abhishek-B-R/social0-cli"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
+              >
+                social0-cli
+              </a>
+              .
+            </>
+          )
+        ) : needsApiKey ? (
           <>
             Paste into your host, save, and restart if needed. Uses{" "}
-            <code className="rounded bg-muted px-1">npx -y @social0/mcp</code>{" "}
+            <code className="rounded bg-muted px-1 dark:bg-[#151515]">
+              npx -y @social0/mcp
+            </code>{" "}
             (Node.js 20+). Package:{" "}
             <a
               href="https://www.npmjs.com/package/@social0/mcp"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
+              className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
             >
               @social0/mcp
             </a>
             .
           </>
-        )}
+        ) : null}
       </p>
     </div>
   );
@@ -387,12 +431,19 @@ function McpConfigPanel() {
 
 export default function McpPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const { hash } = useLocation();
+
+  useEffect(() => {
+    if (!hash) return;
+    const t = window.setTimeout(() => scrollToHash(hash), 50);
+    return () => window.clearTimeout(t);
+  }, [hash]);
 
   return (
     <MarketingPageLayout showCta={false}>
       <SeoHead
-        title="Social0 MCP Server — Manage social media from your AI"
-        description="Connect Claude, ChatGPT, Cursor, or VS Code to Social0 with the official MCP server. Use https://mcp.social0.app/mcp for remote OAuth, or local npx — create posts, publish, and schedule from natural language."
+        title="Social0 MCP Server — Manage social media accounts from your AI"
+        description="Connect ChatGPT, Claude, Cursor, VS Code, OpenClaw, or Hermes to Social0. Remote OAuth for ChatGPT, Claude, and Cursor — or local npx / CLI skills. Create posts, publish, and schedule from natural language."
         path="/mcp"
         keywords={[
           "Social0 MCP",
@@ -406,42 +457,29 @@ export default function McpPage() {
       />
 
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-border px-6 pb-20 pt-14 lg:px-8 lg:pt-20">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(26,107,74,0.12),transparent)] dark:bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(0,255,119,0.08),transparent)]" />
-        <div className="relative mx-auto max-w-[1100px] text-center">
-          <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
-            {PLATFORM_ICONS.map(({ Icon, label }) => (
-              <span
-                key={label}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background/80 text-foreground shadow-sm"
-                title={label}
-              >
-                <Icon className="h-4 w-4" />
-              </span>
-            ))}
-          </div>
+      <section className="px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-16 lg:px-8 lg:pt-20">
+        <div className="mx-auto max-w-280 text-center">
+          <PlatformStrip variant="hero" className="mb-8" />
 
-          <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[12px] font-medium text-emerald-800 dark:text-emerald-300">
-            <Bot className="h-3.5 w-3.5" />
+          <p className="mb-4 inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+            <Bot className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
             Official Model Context Protocol server
           </p>
 
-          <h1 className="mx-auto max-w-3xl font-serif text-[clamp(36px,6vw,56px)] leading-[1.08] tracking-tight text-foreground">
-            Manage social media{" "}
-            <em className="text-[#1a6b4a] dark:text-[#00ff77]">from your AI</em>
+          <h1 className="mx-auto max-w-3xl font-sans text-[clamp(36px,5.5vw,56px)] font-bold leading-[1.08] tracking-tight text-[#333C4D] dark:text-white">
+            Manage social media accounts{" "}
+            <span className="text-emerald-600 dark:text-emerald-400">
+              from your AI
+            </span>
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-[17px] leading-relaxed text-muted-foreground">
+          <p className="mx-auto mt-5 max-w-2xl text-[16px] leading-relaxed text-muted-foreground sm:text-[17px]">
             Add{" "}
-            <code className="rounded bg-muted px-1.5 py-0.5 text-[14px]">
+            <code className="rounded bg-muted px-1.5 py-0.5 text-[14px] dark:bg-[#151515]">
               https://mcp.social0.app/mcp
             </code>{" "}
-            in any AI that supports remote MCP, then authorize with Social0. Or
-            use{" "}
-            <code className="rounded bg-muted px-1.5 py-0.5 text-[14px]">
-              npx @social0/mcp
-            </code>{" "}
-            locally in Cursor and Desktop. Draft, publish, and schedule across
-            every connected platform from chat.
+            in ChatGPT, Claude, Cursor, or any AI that supports remote MCP, then
+            authorize with Social0. Draft, publish, and schedule across every
+            connected platform from chat.
           </p>
 
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -449,22 +487,19 @@ export default function McpPage() {
               href={DOCS_MCP_QUICKSTART_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-foreground px-6 py-3.5 text-[15px] font-medium text-background transition-all hover:-translate-y-px hover:opacity-90 sm:w-auto dark:bg-[#ffffff] dark:text-[#0a0a0a]"
+              className={ctaPrimary}
             >
               View setup docs
               <ArrowRight className="h-4 w-4" />
             </a>
-            <Link
-              href="/dashboard/api-keys"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] border border-border bg-background px-6 py-3.5 text-[15px] font-medium text-foreground transition-all hover:bg-muted sm:w-auto"
-            >
+            <Link href="/dashboard/api-keys" className={ctaSecondary}>
               Get API keys
             </Link>
             <a
               href={DOCS_CLI_QUICKSTART_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] border border-border bg-background px-6 py-3.5 text-[15px] font-medium text-foreground transition-all hover:bg-muted sm:w-auto"
+              className={ctaSecondary}
             >
               Prefer the terminal? CLI docs
               <ArrowRight className="h-4 w-4" />
@@ -473,126 +508,94 @@ export default function McpPage() {
         </div>
       </section>
 
-      {/* Demo */}
-      <section className="border-b border-border px-6 py-16 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-[1100px]">
-          <p className="mb-2 text-center text-[11px] uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
-            Live workflow
-          </p>
-          <h2 className="mb-10 text-center font-serif text-[clamp(28px,4vw,40px)] tracking-tight text-foreground">
-            This is what it looks like
-          </h2>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            <TerminalWindow title="You → AI">
-              <p className="text-white/50">$</p>
-              <p className="mt-1 text-emerald-400">
-                Post our v2 launch to LinkedIn and X with ./assets/hero.png
-              </p>
-              <p className="mt-4 text-white/40">↓ social0.upload_media</p>
-              <p className="text-white/40">↓ social0.publish_now</p>
-            </TerminalWindow>
-
-            <TerminalWindow title="social0 → list_accounts">
-              <pre className="whitespace-pre-wrap text-[#8b949e]">
-                {`platform      username        status
-linkedin      acme-co         active
-twitter_x     acme            active
-instagram     acme.official   active
-youtube       AcmeChannel     active
-threads       acme            active
-bluesky       acme.bsky       active`}
-              </pre>
-            </TerminalWindow>
+      {/* Real captures — add more srcs as you send them */}
+      <section className="border-y border-border px-4 py-16 sm:px-6 sm:py-20 lg:px-8 dark:border-white/8">
+        <div className="mx-auto max-w-280">
+          <div className="mb-10 text-center">
+            <p className={`${sectionEyebrow} inline-flex items-center gap-2`}>
+              <MessageSquare className="h-3.5 w-3.5" />
+              Live example
+            </p>
+            <h2 className={sectionTitle}>Just tell your AI what to do</h2>
+            <p className="mx-auto mt-3 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
+              Real Claude/ChatGPT session with Social0 MCP — list accounts,
+              publish, same pipeline as the dashboard.
+            </p>
           </div>
-        </div>
-      </section>
 
-      {/* Chat examples */}
-      <section className="border-b border-border bg-muted/30 px-6 py-16 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-[720px]">
-          <div className="mb-8 flex items-center justify-center gap-2 text-muted-foreground">
-            <MessageSquare className="h-5 w-5" />
-            <h2 className="font-serif text-[clamp(24px,3vw,32px)] tracking-tight text-foreground">
-              Just tell your AI what to do
-            </h2>
-          </div>
-          <div className="space-y-4">
-            {CHAT_EXAMPLES.map((ex, i) => (
-              <div key={i} className="space-y-3">
-                <ChatBubble role="user">{ex.user}</ChatBubble>
-                <ChatBubble role="assistant">{ex.assistant}</ChatBubble>
-              </div>
-            ))}
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div className={`${cardShell} overflow-hidden p-1.5 sm:p-2`}>
+              <img
+                src="/demos/claude-mcp.png"
+                alt="Claude using Social0 MCP to draft and publish"
+                className="w-full rounded-[14px] object-cover object-top"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+            <div className={`${cardShell} overflow-hidden p-1.5 sm:p-2`}>
+              <img
+                src="/demos/chatgpt-mcp-accounts.png"
+                alt="ChatGPT using Social0 MCP to list connected accounts"
+                className="w-full rounded-[14px] object-cover object-top"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
           </div>
         </div>
       </section>
 
       {/* 3 steps */}
-      <section className="border-b border-border px-6 py-16 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-[1100px]">
-          <h2 className="mb-12 text-center font-serif text-[clamp(28px,4vw,40px)] tracking-tight text-foreground">
-            Setup in 3 steps
-          </h2>
-          <div className="grid gap-8 md:grid-cols-3">
+      <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+        <div className="mx-auto max-w-280">
+          <div className="mb-12 text-center">
+            <p className={sectionEyebrow}>Get started</p>
+            <h2 className={sectionTitle}>Setup in 3 steps</h2>
+          </div>
+          <div className="grid gap-5 md:grid-cols-3">
             {[
               {
-                step: "1",
+                step: "01",
                 title: "Connect your accounts",
                 body: "Link platforms in the Social0 dashboard. MCP publishes to accounts you've already connected.",
                 href: DOCS_CONNECTIONS_URL,
                 link: "Connections guide",
-                external: true,
               },
               {
-                step: "2",
+                step: "02",
                 title: "Add Social0 to your AI",
-                body: "Remote hosts: paste https://mcp.social0.app/mcp and authorize with Social0. Local Cursor / Desktop: use the npx config below with an API key.",
+                body: "ChatGPT / Claude: paste https://mcp.social0.app/mcp and authorize. Cursor: add type http MCP config below. OpenClaw: openclaw skills install @abhishek-b-r/social0. Hermes: npx skills add abhishek-b-r/social0-cli.",
                 href: DOCS_MCP_QUICKSTART_URL,
                 link: "Setup guide",
-                external: true,
               },
               {
-                step: "3",
+                step: "03",
                 title: "Ask in chat",
                 body: "Try “Show my connected Social0 accounts” or “Post this to LinkedIn and X.”",
                 href: DOCS_MCP_URL,
                 link: "Full MCP docs",
-                external: true,
               },
             ].map((item) => (
-              <div
-                key={item.step}
-                className="rounded-2xl border border-border bg-card p-6"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/15 font-serif text-lg text-emerald-800 dark:text-emerald-300">
+              <div key={item.step} className={`${cardShell} p-6`}>
+                <span className="text-[12px] font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
                   {item.step}
                 </span>
-                <h3 className="mt-4 font-serif text-xl text-foreground">
+                <h3 className="mt-3 font-sans text-[18px] font-bold tracking-tight text-[#333C4D] dark:text-white">
                   {item.title}
                 </h3>
                 <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
                   {item.body}
                 </p>
-                {item.external ? (
-                  <a
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-4 inline-flex items-center gap-1 text-[14px] font-medium text-emerald-700 hover:underline dark:text-emerald-400"
-                  >
-                    {item.link}
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </a>
-                ) : (
-                  <Link
-                    href={item.href}
-                    className="mt-4 inline-flex items-center gap-1 text-[14px] font-medium text-emerald-700 hover:underline dark:text-emerald-400"
-                  >
-                    {item.link}
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                )}
+                <a
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 inline-flex items-center gap-1 text-[14px] font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+                >
+                  {item.link}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </a>
               </div>
             ))}
           </div>
@@ -600,38 +603,39 @@ bluesky       acme.bsky       active`}
       </section>
 
       {/* Config */}
-      <section className="border-b border-border px-6 py-16 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-[1100px]">
+      <section
+        id="connect"
+        className="border-y border-border bg-muted/30 px-4 py-16 sm:px-6 sm:py-20 dark:border-white/8 dark:bg-muted/10 lg:px-8"
+      >
+        <div className="mx-auto max-w-280">
           <div className="mb-10 text-center">
-            <p className="mb-2 text-[11px] uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
-              Connect in under a minute
-            </p>
-            <h2 className="font-serif text-[clamp(28px,4vw,40px)] tracking-tight text-foreground">
-              One URL for remote AIs
-            </h2>
+            <p className={sectionEyebrow}>Connect in under a minute</p>
+            <h2 className={sectionTitle}>One URL for remote AIs</h2>
           </div>
           <McpConfigPanel />
         </div>
       </section>
 
       {/* Features */}
-      <section className="border-b border-border px-6 py-16 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-[1100px]">
-          <h2 className="mb-3 text-center font-serif text-[clamp(28px,4vw,40px)] tracking-tight text-foreground">
-            Everything you need. Zero extra UI.
-          </h2>
-          <p className="mx-auto mb-12 max-w-xl text-center text-muted-foreground">
-            13 tools covering accounts, posts, media, publish, schedule, and
-            status.
-          </p>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+        <div className="mx-auto max-w-280">
+          <div className="mb-12 text-center">
+            <p className={sectionEyebrow}>Capabilities</p>
+            <h2 className={sectionTitle}>
+              Everything you need. Zero extra UI.
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-[15px] leading-relaxed text-muted-foreground">
+              13 tools covering accounts, posts, media, publish, schedule, and
+              status.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => (
-              <div
-                key={f.title}
-                className="rounded-2xl border border-border bg-card p-6 transition-colors hover:border-emerald-500/30"
-              >
-                <f.icon className="mb-4 h-5 w-5 text-emerald-700 dark:text-emerald-400" />
-                <h3 className="font-medium text-foreground">{f.title}</h3>
+              <div key={f.title} className={`${cardShell} p-6`}>
+                <f.icon className="mb-4 h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="font-sans text-[16px] font-bold text-[#333C4D] dark:text-white">
+                  {f.title}
+                </h3>
                 <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
                   {f.description}
                 </p>
@@ -643,7 +647,7 @@ bluesky       acme.bsky       active`}
             {MCP_TOOLS.map((tool) => (
               <code
                 key={tool}
-                className="rounded-full border border-border bg-muted/50 px-3 py-1 font-mono text-[11px] text-muted-foreground"
+                className="rounded-md border border-border bg-muted/40 px-2.5 py-1 font-mono text-[11px] text-muted-foreground dark:border-white/10 dark:bg-[#151515]"
               >
                 {tool}
               </code>
@@ -653,100 +657,145 @@ bluesky       acme.bsky       active`}
       </section>
 
       {/* Architecture note */}
-      <section className="border-b border-border bg-muted/20 px-6 py-12 lg:px-8">
-        <div className="mx-auto flex max-w-[1100px] flex-col items-start gap-4 rounded-2xl border border-border bg-card p-6 sm:flex-row sm:items-center">
-          <Terminal className="h-8 w-8 shrink-0 text-emerald-700 dark:text-emerald-400" />
-          <div>
-            <h3 className="font-medium text-foreground">Three ways to connect</h3>
-            <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">
-              <strong className="font-medium text-foreground">Remote MCP:</strong>{" "}
-              Any host that accepts a remote MCP URL uses{" "}
-              <code className="rounded bg-muted px-1 text-[13px]">
-                https://mcp.social0.app/mcp
-              </code>{" "}
-              with Social0 OAuth (no API key in config).{" "}
-              <strong className="font-medium text-foreground">Local MCP:</strong>{" "}
-              Cursor and Desktop can run{" "}
-              <code className="rounded bg-muted px-1 text-[13px]">
-                npx @social0/mcp
-              </code>{" "}
-              with a{" "}
-              <code className="rounded bg-muted px-1 text-[13px]">sk_live_</code>{" "}
-              key.{" "}
-              <strong className="font-medium text-foreground">CLI:</strong>{" "}
-              <code className="rounded bg-muted px-1 text-[13px]">
-                npm install -g social0
-              </code>{" "}
-              then{" "}
-              <code className="rounded bg-muted px-1 text-[13px]">
-                social0 login
-              </code>
-              . All call the same Social0 REST API — poll{" "}
-              <code className="rounded bg-muted px-1 text-[13px]">
-                get_publish_status
-              </code>{" "}
-              after multi-platform publishes.
-            </p>
+      <section className="border-y border-border px-4 py-12 sm:px-6 dark:border-white/8 lg:px-8">
+        <div className="mx-auto max-w-280">
+          <div
+            className={`${cardShell} flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center`}
+          >
+            <Terminal className="h-8 w-8 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <div>
+              <h3 className="font-sans text-[16px] font-bold text-[#333C4D] dark:text-white">
+                Three ways to connect
+              </h3>
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-[14px] leading-relaxed text-muted-foreground">
+                <li>
+                  <strong className="font-medium text-foreground">
+                    Remote MCP:
+                  </strong>{" "}
+                  ChatGPT, Claude, Cursor, and any host that accepts a remote
+                  MCP URL use{" "}
+                  <code className="rounded bg-muted px-1 text-[13px] dark:bg-[#151515]">
+                    https://mcp.social0.app/mcp
+                  </code>{" "}
+                  with Social0 OAuth (no API key in config).
+                </li>
+                <li>
+                  <strong className="font-medium text-foreground">
+                    Local MCP:
+                  </strong>{" "}
+                  VS Code can run{" "}
+                  <code className="rounded bg-muted px-1 text-[13px] dark:bg-[#151515]">
+                    npx @social0/mcp
+                  </code>{" "}
+                  with a{" "}
+                  <code className="rounded bg-muted px-1 text-[13px] dark:bg-[#151515]">
+                    sk_live_
+                  </code>{" "}
+                  key.
+                </li>
+                <li>
+                  <strong className="font-medium text-foreground">CLI:</strong>{" "}
+                  <code className="rounded bg-muted px-1 text-[13px] dark:bg-[#151515]">
+                    npm install -g social0
+                  </code>{" "}
+                  then{" "}
+                  <code className="rounded bg-muted px-1 text-[13px] dark:bg-[#151515]">
+                    social0 login
+                  </code>
+                  .
+                </li>
+              </ul>
+              <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+                All call the same Social0 REST API — poll{" "}
+                <code className="rounded bg-muted px-1 text-[13px] dark:bg-[#151515]">
+                  get_publish_status
+                </code>{" "}
+                after multi-platform publishes.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* FAQ */}
-      <section className="px-6 py-16 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-[720px]">
-          <h2 className="mb-8 text-center font-serif text-[clamp(28px,4vw,36px)] tracking-tight text-foreground">
-            Frequently asked questions
-          </h2>
-          <div className="divide-y divide-border rounded-2xl border border-border bg-card">
-            {FAQ.map((item, i) => (
-              <div key={item.q}>
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-[15px] font-medium text-foreground"
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  aria-expanded={openFaq === i}
-                >
-                  {item.q}
-                  <span className="text-muted-foreground">
-                    {openFaq === i ? "−" : "+"}
-                  </span>
-                </button>
-                {openFaq === i ? (
-                  <p className="px-5 pb-4 text-[14px] leading-relaxed text-muted-foreground">
-                    {item.a}
-                  </p>
-                ) : null}
-              </div>
-            ))}
+      <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+        <div className="mx-auto max-w-200">
+          <div className="mb-10 text-center">
+            <p className={sectionEyebrow}>FAQ</p>
+            <h2 className={sectionTitle}>Frequently asked questions</h2>
+          </div>
+          <div className="overflow-hidden rounded-[28px] border border-border bg-muted/40 p-1.5 dark:border-white/10 dark:bg-[#1A1A1A]">
+            <div className="divide-y divide-border overflow-hidden rounded-[22px] border border-border/60 bg-background dark:border-white/5 dark:bg-[#111111]">
+              {FAQ.map((item, i) => {
+                const open = openFaq === i;
+                return (
+                  <div key={item.q}>
+                    <button
+                      type="button"
+                      className="flex w-full items-start justify-between gap-4 px-6 py-5 text-left md:px-8"
+                      onClick={() => setOpenFaq(open ? null : i)}
+                      aria-expanded={open}
+                    >
+                      <span className="text-[15px] font-medium text-foreground">
+                        {item.q}
+                      </span>
+                      <span
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-lg text-muted-foreground transition-transform duration-200 dark:bg-muted/60 ${open ? "rotate-45" : ""}`}
+                      >
+                        +
+                      </span>
+                    </button>
+                    {open ? (
+                      <p className="px-6 pb-5 pr-10 text-[14px] leading-relaxed text-muted-foreground md:px-8">
+                        {item.a}
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Final CTA — avoid bg-white (remapped to --card in dark mode) */}
-      <section className="border-t border-border bg-foreground px-6 py-16 text-center dark:bg-[#0A0A0A] lg:px-8">
-        <div className="mx-auto max-w-xl">
-          <h2 className="font-serif text-[clamp(28px,4vw,36px)] tracking-tight text-background dark:text-white">
-            Ready to post from AI?
-          </h2>
-          <p className="mt-3 text-[16px] text-background/70 dark:text-white/70">
-            Connect once, then manage every platform from natural language.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <a
-              href={DOCS_MCP_QUICKSTART_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-background px-6 py-3.5 text-[15px] font-medium text-foreground transition-all hover:-translate-y-px hover:opacity-90 sm:w-auto dark:bg-[#ffffff] dark:text-[#0a0a0a]"
-            >
-              View setup docs
-            </a>
-
-            <Link
-              href="/auth"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] border border-background/40 px-6 py-3.5 text-[15px] font-medium text-background transition-all hover:bg-background/10 sm:w-auto dark:border-white/40 dark:text-white dark:hover:bg-white/10"
-            >
-              Get started free
-            </Link>
+      {/* Final CTA — compact emerald panel (same width as other sections) */}
+      <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+        <div className="relative mx-auto max-w-[1120px] overflow-hidden rounded-[28px] border border-emerald-500/20 bg-gradient-to-br from-emerald-600 via-emerald-500 to-[#059669]">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-20"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(45deg, transparent, transparent 12px, rgba(0,0,0,0.12) 12px, rgba(0,0,0,0.12) 24px)",
+            }}
+            aria-hidden
+          />
+          <div className="relative z-10 px-8 py-16 text-center sm:px-12 sm:py-20">
+            <h2 className="mb-4 font-sans text-[clamp(28px,4vw,44px)] font-bold leading-tight tracking-tight text-white">
+              Ready to post from AI?
+            </h2>
+            <p className="mx-auto mb-8 max-w-md text-[16px] leading-relaxed text-white/80">
+              Connect once, then manage every platform from natural language.
+            </p>
+            <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <a
+                href={DOCS_MCP_QUICKSTART_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[11px] bg-[#0a0a0a] px-8 py-3.5 text-[15px] font-semibold text-white transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-px hover:bg-black hover:shadow-[0_8px_32px_rgba(0,0,0,0.25)] sm:w-auto active:scale-[0.97]"
+              >
+                View setup docs
+                <span aria-hidden>→</span>
+              </a>
+              <Link
+                href="/auth"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[11px] border border-white/40 px-8 py-3.5 text-[15px] font-medium text-white transition-colors hover:bg-white/10 sm:w-auto"
+              >
+                Try it out for free
+              </Link>
+            </div>
+            <p className="mt-4 text-[12px] text-white/65">
+              Free to start · 10 posts · No credit card
+            </p>
           </div>
         </div>
       </section>

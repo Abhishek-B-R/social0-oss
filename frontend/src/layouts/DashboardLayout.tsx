@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { usePostHog } from "@posthog/react";
 import { SeoHead } from "@/components/seo/SeoHead";
 import { dashboardSeo } from "@/lib/page-metadata";
-import { absoluteUrl } from "@/lib/seo";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
@@ -20,6 +19,7 @@ import { rpc } from "@/lib/rpc";
 import { getOnboardingStatus, type OnboardingStatus } from "@/api/onboarding";
 
 function getPlanLabel(tier: string): string {
+  if (tier === "max") return "Max plan";
   if (tier === "pro") return "Pro plan";
   if (tier === "growth") return "Growth plan";
   if (tier === "starter") return "Starter (Lite) plan";
@@ -106,7 +106,6 @@ export function DashboardLayout() {
       <SeoHead
         {...dashboardSeo}
         path={location.pathname}
-        canonical={absoluteUrl(location.pathname)}
       />
       {session && layoutData?.subscriptionTier && (
         <SubscriptionSync tier={layoutData.subscriptionTier} />

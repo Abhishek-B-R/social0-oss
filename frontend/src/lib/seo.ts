@@ -130,15 +130,16 @@ export function buildSoftwareApplicationJsonLd() {
     operatingSystem: "Web",
     url: siteUrl,
     description:
-      "Multi-platform social media scheduler. Compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest.",
+      "Multi-platform social media scheduler with AI agent support. Compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — via dashboard, MCP, API, or CLI.",
     offers: {
       "@type": "Offer",
       priceCurrency: "USD",
-      description: "Paid plans with a 3-day free trial",
+      description: "Free plan and paid tiers for creators and teams",
     },
     featureList: [
       "Multi-platform scheduling",
       "Compose once, publish everywhere",
+      "AI agents via MCP, API, and CLI",
       "Content calendar",
       "Drafts and bulk scheduling tools",
       "OAuth-secured account connections",
@@ -147,10 +148,10 @@ export function buildSoftwareApplicationJsonLd() {
 }
 
 export const homePageTitle =
-  "Social0 - Post and Schedule to All Your Socials from One Place";
+  "Social0 — AI Agents & Multi-Platform Social Scheduling";
 
 export const homePageDescription =
-  "Social0 lets you write once and publish everywhere. Schedule posts to Twitter, Instagram, LinkedIn, TikTok, YouTube, Pinterest, Bluesky, Threads, and Facebook from one dashboard. 3-day free trial.";
+  "Publish and schedule across 9 platforms from one dashboard — or let ChatGPT, Claude, and your agents ship via MCP, API, and CLI. Start free.";
 
 export function buildHomeMetadata(path: "/" | "/home" = "/"): PageMetadata {
   const url = absoluteUrl(path);
@@ -161,7 +162,10 @@ export function buildHomeMetadata(path: "/" | "/home" = "/"): PageMetadata {
     description: homePageDescription,
     keywords: [
       "social media scheduler",
-      "social media management",
+      "AI social media agent",
+      "MCP social media",
+      "ChatGPT social media",
+      "Claude social publishing",
       "schedule tweets",
       "instagram scheduler",
       "tiktok scheduler",
@@ -178,7 +182,7 @@ export function buildHomeMetadata(path: "/" | "/home" = "/"): PageMetadata {
     openGraph: {
       title: homePageTitle,
       description:
-        "Write once. Publish everywhere. Schedule posts to 9 platforms from one dashboard.",
+        "One dashboard for 9 platforms — plus MCP, API, and CLI so your AI agents can publish too.",
       url,
       siteName: "Social0",
       type: "website",
@@ -187,7 +191,7 @@ export function buildHomeMetadata(path: "/" | "/home" = "/"): PageMetadata {
           url: absoluteUrl("/og-image.jpg"),
           width: 1200,
           height: 630,
-          alt: "Social0 - Social Media Scheduling Dashboard",
+          alt: "Social0 — schedule everywhere or let AI agents publish",
         },
       ],
     },
@@ -195,7 +199,7 @@ export function buildHomeMetadata(path: "/" | "/home" = "/"): PageMetadata {
       card: "summary_large_image",
       title: homePageTitle,
       description:
-        "Write once. Publish everywhere. Schedule posts to 9 platforms from one dashboard.",
+        "One dashboard for 9 platforms — plus MCP, API, and CLI so your AI agents can publish too.",
       images: [absoluteUrl("/og-image.jpg")],
       creator: "@social0_app",
     },

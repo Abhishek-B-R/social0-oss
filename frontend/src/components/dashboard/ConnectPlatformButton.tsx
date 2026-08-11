@@ -33,7 +33,7 @@ export function ConnectPlatformButton({
   platform: Platform;
   size?: "default" | "sm";
   className?: string;
-  /** After OAuth success, redirect here instead of dashboard (e.g. /onboarding/step3) */
+  /** After OAuth success, redirect here instead of dashboard (e.g. /onboarding/step2) */
   returnTo?: string | null;
   /** When true, button is disabled (e.g. plan account limit reached) */
   disabled?: boolean;

@@ -91,8 +91,8 @@ Plan gates reflect `react-frontend/src/lib/plans.ts` and the pricing page.
 - **Marketing site** — landing, pricing, FAQ, features/alternatives SEO pages (`/`, `/features`, `/alternatives`)
 - **Auth** — email sign-up/sign-in, Google OAuth, email verification, forgot/reset password
 - **Guest dashboard** — browse dashboard UI without signing in (test mode; cannot post)
-- **Onboarding** — guided setup after sign-up (goal, connect accounts, plan selection)
-- **Billing** — Stripe/Dodo checkout, plan change, cancel, portal, 3-day trial on paid plans
+- **Onboarding** — guided setup after sign-up (goal → connect → optional plan → first post)
+- **Billing** — Stripe/Dodo checkout, plan change, cancel, portal
 - **Settings** — display name, avatar, timezone, platform preferences, automation emails, post-failure emails, sign out all devices
 - **Feedback** — embedded Canny board (`/dashboard/feedback`)
 - **Documentation links** — in-app links to [docs.social0.app](https://docs.social0.app)
@@ -106,7 +106,7 @@ Plan gates reflect `react-frontend/src/lib/plans.ts` and the pricing page.
 - **Per-platform publish status** — success/failure per account on each post
 - **Failure reasons** — stored and shown when a platform publish fails
 - **Email on post failure** — optional notification (Settings)
-- **Payment-failed banner** — prompt to upgrade when trial ends and publish is blocked
+- **Payment-failed banner** — prompt to update payment when billing fails and publish is blocked
 - **Free-tier post allowance** — limited lifetime posts on Free before upgrade required
 
 ---
@@ -126,7 +126,6 @@ Plan gates reflect `react-frontend/src/lib/plans.ts` and the pricing page.
 | Auto-plug | — | — | ✓ | ✓ |
 | Auto-repost / resurface | — | — | ✓ | ✓ |
 | Human support | — | ✓ | ✓ | Priority (Pro) |
-| 3-day free trial on paid plans | — | ✓ | ✓ | ✓ |
 
 *Pricing shown on the website; early adopters lock in launch pricing.*
 

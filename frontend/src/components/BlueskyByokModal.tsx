@@ -1,6 +1,6 @@
 import { fetchApi } from "@/lib/fetch-api";
-
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 
 type BlueskyByokModalProps = {
@@ -8,6 +8,9 @@ type BlueskyByokModalProps = {
   onClose: () => void;
   onSuccess: (username: string) => void;
 };
+
+const backdropClass =
+  "fixed inset-0 z-[100] flex items-center justify-center bg-black/45 backdrop-blur-md";
 
 export function BlueskyByokModal({
   isOpen,
@@ -62,19 +65,37 @@ export function BlueskyByokModal({
       setFormData((prev) => ({ ...prev, [field]: e.target.value }));
     };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 max-w-md w-full mx-4 shadow-xl">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Connect Bluesky</h2>
+  return createPortal(
+    <div
+      className={backdropClass}
+      role="presentation"
+      onClick={() => {
+        if (!isSubmitting) onClose();
+      }}
+    >
+      <div
+        className="mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-700 dark:bg-gray-900"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bluesky-connect-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2
+            id="bluesky-connect-title"
+            className="text-xl font-bold text-gray-900 dark:text-gray-100"
+          >
+            Connect Bluesky
+          </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 rounded-lg p-1"
+            className="rounded-lg p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             disabled={isSubmitting}
             aria-label="Close"
           >
             <svg
-              className="w-6 h-6"
+              className="h-6 w-6"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -89,7 +110,7 @@ export function BlueskyByokModal({
           </button>
         </div>
 
-        <p className="text-sm text-gray-600 mb-4">
+        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
           Requires your handle and an App Password. Do not use your main
           password. Generate an App Password in Bluesky Settings → App
           Passwords.
@@ -98,7 +119,7 @@ export function BlueskyByokModal({
           href="https://bsky.app/settings/app-passwords"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-emerald-600 hover:underline font-medium mb-4 inline-block"
+          className="mb-4 inline-block text-sm font-medium text-emerald-600 hover:underline"
         >
           bsky.app/settings/app-passwords →
         </a>
@@ -107,7 +128,7 @@ export function BlueskyByokModal({
           <div>
             <label
               htmlFor="handle"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
             >
               Bluesky Handle
             </label>
@@ -117,7 +138,7 @@ export function BlueskyByokModal({
               value={formData.handle}
               onChange={handleChange("handle")}
               required
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
               placeholder="@username.bsky.social"
             />
             <p className="mt-1 text-xs text-gray-500">
@@ -128,7 +149,7 @@ export function BlueskyByokModal({
           <div>
             <label
               htmlFor="appPassword"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
             >
               App Password
             </label>
@@ -138,7 +159,7 @@ export function BlueskyByokModal({
               value={formData.appPassword}
               onChange={handleChange("appPassword")}
               required
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
               placeholder="xxxx-xxxx-xxxx-xxxx"
             />
           </div>
@@ -148,20 +169,21 @@ export function BlueskyByokModal({
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+              className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-sm font-semibold shadow-md disabled:opacity-50"
+              className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-700 disabled:opacity-50"
             >
               {isSubmitting ? "Connecting..." : "Connect"}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

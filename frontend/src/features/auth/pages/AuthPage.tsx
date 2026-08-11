@@ -59,7 +59,9 @@ function AuthPageContent() {
   const posthog = usePostHog();
   const callbackUrl = resolveCallbackUrl(searchParams.get("callbackUrl"));
   const authCallbackUrl = absoluteCallbackUrl(callbackUrl);
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup">(() =>
+    searchParams.get("mode") === "signup" ? "signup" : "signin",
+  );
   const resetSuccess = searchParams.get("reset") === "success";
   const sessionExpired = searchParams.get("session") === "expired";
   useEffect(() => {
@@ -199,330 +201,315 @@ function AuthPageContent() {
   }
 
   return (
-    <div className="landing flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
+    <div className="landing landing-page flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
       <AuthBrandHeader showNav />
 
-      <main className="relative flex flex-1 items-center justify-center px-4 py-12">
+      <main className="relative flex flex-1 items-center justify-center px-4 py-12 sm:py-16">
         <h1 className="sr-only">Sign in to Social0</h1>
-        <div className="absolute inset-0 bg-gradient-radial from-emerald-100/50 via-emerald-50/30 to-transparent pointer-events-none dark:from-emerald-950/30 dark:via-emerald-950/15" />
         <div className="relative z-10 w-full max-w-md">
-          <div className="rounded-2xl border border-border bg-card shadow-xl p-8 sm:p-10">
-            <div className="mb-6 text-center">
-              <h2 className="mb-2 font-serif text-[clamp(24px,3vw,32px)] leading-tight tracking-tight text-foreground">
-                {mode === "signin" ? "Sign in to Social0" : "Create an account"}
-              </h2>
-              <p className="text-[15px] leading-relaxed text-muted-foreground">
-                {mode === "signin"
-                  ? "Plan, schedule, and publish to all your social accounts from one place."
-                  : "Get started with email or continue with Google."}
-              </p>
-            </div>
+          <div className="rounded-[28px] border border-border bg-muted/40 p-1.5 dark:border-white/10 dark:bg-[#1A1A1A]">
+            <div className="rounded-[22px] border border-border/60 bg-background p-7 dark:border-white/5 dark:bg-[#111111] sm:p-9">
+              <div className="mb-6 text-center">
+                <h2 className="mb-2 font-sans text-[clamp(24px,3.5vw,32px)] font-bold leading-tight tracking-tight text-foreground dark:text-white">
+                  {mode === "signin"
+                    ? "Sign in to Social0"
+                    : "Create an account"}
+                </h2>
+                <p className="text-[15px] leading-relaxed text-muted-foreground">
+                  {mode === "signin"
+                    ? "Plan, schedule, and publish to all your social accounts from one place."
+                    : "Free to start — no credit card. Connect an account and schedule your first post in minutes."}
+                </p>
+              </div>
 
-            <div className="flex rounded-lg border border-border bg-muted/30 p-1 mb-6">
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("signin");
-                  toast.dismiss();
-                }}
-                className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
-                  mode === "signin"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Sign in
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("signup");
-                  toast.dismiss();
-                  setLegalConsent(EMPTY_LEGAL_CONSENT);
-                }}
-                className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
-                  mode === "signup"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Sign up
-              </button>
-            </div>
+              <div className="mb-6 flex rounded-[10px] border border-border bg-muted/30 p-1 dark:border-white/10 dark:bg-[#151515]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("signin");
+                    toast.dismiss();
+                  }}
+                  className={`flex-1 rounded-[8px] py-2.5 text-sm font-medium transition-colors ${
+                    mode === "signin"
+                      ? "bg-background text-foreground shadow-sm dark:bg-[#1A1A1A]"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Sign in
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("signup");
+                    toast.dismiss();
+                    setLegalConsent(EMPTY_LEGAL_CONSENT);
+                  }}
+                  className={`flex-1 rounded-[8px] py-2.5 text-sm font-medium transition-colors ${
+                    mode === "signup"
+                      ? "bg-background text-foreground shadow-sm dark:bg-[#1A1A1A]"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Sign up
+                </button>
+              </div>
 
-            {resetSuccess && (
-              <p className="rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-sm py-2 px-3 mb-4">
-                Password reset successfully. You can sign in with your new
-                password.
-              </p>
-            )}
-
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              disabled={googleLoading || loading}
-              className="w-full inline-flex items-center justify-center gap-3 rounded-xl border border-border bg-background hover:bg-muted/50 disabled:opacity-60 text-foreground font-medium py-3 px-4 transition-colors"
-            >
-              {googleLoading ? (
-                <>
-                  <Spinner />
-                  <span>Redirecting…</span>
-                </>
-              ) : (
-                <>
-                  <FcGoogle className="h-5 w-5 shrink-0" aria-hidden="true" />
-                  <span>Continue with Google</span>
-                </>
+              {resetSuccess && (
+                <p className="mb-4 rounded-[10px] bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
+                  Password reset successfully. You can sign in with your new
+                  password.
+                </p>
               )}
-            </button>
 
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-[11px] uppercase tracking-widest">
-                <span className="bg-card px-2 text-muted-foreground">
-                  OR CONTINUE WITH EMAIL
-                </span>
-              </div>
-            </div>
-            {mode === "signin" ? (
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="signin-email"
-                    className="block text-sm font-medium text-foreground mb-1"
-                  >
-                    Email
-                  </label>
-                  <input
-                    id="signin-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    autoComplete="email"
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    placeholder="you@example.com"
-                  />
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={googleLoading || loading}
+                className="inline-flex w-full items-center justify-center gap-3 rounded-[10px] border border-border bg-background px-4 py-3 font-medium text-foreground transition-colors hover:bg-muted/50 disabled:opacity-60 dark:border-white/10 dark:bg-[#151515] dark:hover:bg-white/5"
+              >
+                {googleLoading ? (
+                  <>
+                    <Spinner />
+                    <span>Redirecting…</span>
+                  </>
+                ) : (
+                  <>
+                    <FcGoogle className="h-5 w-5 shrink-0" aria-hidden="true" />
+                    <span>Continue with Google</span>
+                  </>
+                )}
+              </button>
+
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border dark:border-white/10" />
                 </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
+                <div className="relative flex justify-center text-[11px] uppercase tracking-widest">
+                  <span className="bg-background px-2 text-muted-foreground dark:bg-[#111111]">
+                    Or continue with email
+                  </span>
+                </div>
+              </div>
+              {mode === "signin" ? (
+                <form onSubmit={handleSignIn} className="space-y-4">
+                  <div>
                     <label
-                      htmlFor="signin-password"
-                      className="block text-sm font-medium text-foreground"
+                      htmlFor="signin-email"
+                      className="mb-1.5 block text-sm font-medium text-foreground"
+                    >
+                      Email
+                    </label>
+                    <input
+                      id="signin-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      autoComplete="email"
+                      className="w-full rounded-[10px] border border-border bg-background px-3 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-white/10 dark:bg-[#0A0A0A]"
+                      placeholder="you@example.com"
+                    />
+                  </div>
+                  <div>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <label
+                        htmlFor="signin-password"
+                        className="block text-sm font-medium text-foreground"
+                      >
+                        Password
+                      </label>
+                      <Link
+                        href="/auth/forgot-password"
+                        className="text-sm font-medium text-emerald-700 transition-opacity hover:opacity-80 dark:text-emerald-400"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
+                    <div className="relative">
+                      <input
+                        id="signin-password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        autoComplete="current-password"
+                        placeholder="Enter a strong password"
+                        className="w-full rounded-[10px] border border-border bg-background px-3 py-2.5 pr-10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-white/10 dark:bg-[#0A0A0A]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((p) => !p)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                        aria-label={
+                          showPassword ? "Hide password" : "Show password"
+                        }
+                      >
+                        {showPassword ? (
+                          <EyeSlash className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading || googleLoading}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-emerald-500 px-4 py-3 font-semibold text-[#04140c] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-50 active:scale-[0.98]"
+                  >
+                    {loading ? (
+                      <>
+                        <Spinner />
+                        <span>Signing in…</span>
+                      </>
+                    ) : (
+                      "Sign in"
+                    )}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <div>
+                    <label
+                      htmlFor="signup-name"
+                      className="mb-1.5 block text-sm font-medium text-foreground"
+                    >
+                      Name
+                    </label>
+                    <input
+                      id="signup-name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      autoComplete="name"
+                      className="w-full rounded-[10px] border border-border bg-background px-3 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-white/10 dark:bg-[#0A0A0A]"
+                      placeholder="Your name"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="signup-email"
+                      className="mb-1.5 block text-sm font-medium text-foreground"
+                    >
+                      Email
+                    </label>
+                    <input
+                      id="signup-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      autoComplete="email"
+                      className="w-full rounded-[10px] border border-border bg-background px-3 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-white/10 dark:bg-[#0A0A0A]"
+                      placeholder="you@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="signup-password"
+                      className="mb-1.5 block text-sm font-medium text-foreground"
                     >
                       Password
                     </label>
-                    <Link
-                      href="/auth/forgot-password"
-                      className="text-sm text-[#1a6b4a] dark:text-[#00ff77] hover:opacity-80"
-                    >
-                      Forgot password?
-                    </Link>
+                    <div className="relative">
+                      <input
+                        id="signup-password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={8}
+                        autoComplete="new-password"
+                        placeholder="Enter a strong password"
+                        className="w-full rounded-[10px] border border-border bg-background px-3 py-2.5 pr-10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-white/10 dark:bg-[#0A0A0A]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((p) => !p)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                        aria-label={
+                          showPassword ? "Hide password" : "Show password"
+                        }
+                      >
+                        {showPassword ? (
+                          <EyeSlash className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                  <div className="relative">
-                    <input
-                      id="signin-password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      autoComplete="current-password"
-                      placeholder="Enter a strong password"
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((p) => !p)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                      aria-label={
-                        showPassword ? "Hide password" : "Show password"
-                      }
-                    >
-                      {showPassword ? (
-                        <EyeSlash className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  disabled={loading || googleLoading}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#0A0A0A] text-white hover:bg-neutral-800 disabled:opacity-50 font-medium py-3 px-4 transition-colors dark:bg-white dark:text-[#0A0A0A] dark:hover:bg-neutral-100"
-                >
-                  {loading ? (
-                    <>
-                      <Spinner />
-                      <span>Signing in…</span>
-                    </>
-                  ) : (
-                    "Sign in"
-                  )}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="signup-name"
-                    className="block text-sm font-medium text-foreground mb-1"
-                  >
-                    Name
-                  </label>
-                  <input
-                    id="signup-name"
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    autoComplete="name"
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    placeholder="Your name"
+                  <LegalConsentCheckboxes
+                    values={legalConsent}
+                    onChange={setLegalConsent}
+                    idPrefix="signup"
                   />
-                </div>
-                <div>
-                  <label
-                    htmlFor="signup-email"
-                    className="block text-sm font-medium text-foreground mb-1"
+                  <button
+                    type="submit"
+                    disabled={
+                      loading ||
+                      googleLoading ||
+                      !legalConsent.acceptTerms ||
+                      !legalConsent.acceptPrivacy
+                    }
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-emerald-500 px-4 py-3 font-semibold text-[#04140c] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-50 active:scale-[0.98]"
                   >
-                    Email
-                  </label>
-                  <input
-                    id="signup-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    autoComplete="email"
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    placeholder="you@example.com"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="signup-password"
-                    className="block text-sm font-medium text-foreground mb-1"
-                  >
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="signup-password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      minLength={8}
-                      autoComplete="new-password"
-                      placeholder="Enter a strong password"
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((p) => !p)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                      aria-label={
-                        showPassword ? "Hide password" : "Show password"
-                      }
-                    >
-                      {showPassword ? (
-                        <EyeSlash className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <LegalConsentCheckboxes
-                  values={legalConsent}
-                  onChange={setLegalConsent}
-                  idPrefix="signup"
-                />
-                <button
-                  type="submit"
-                  disabled={
-                    loading ||
-                    googleLoading ||
-                    !legalConsent.acceptTerms ||
-                    !legalConsent.acceptPrivacy
-                  }
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#0A0A0A] text-white hover:bg-neutral-800 disabled:opacity-50 font-medium py-3 px-4 transition-colors dark:bg-white dark:text-[#0A0A0A] dark:hover:bg-neutral-100"
-                >
-                  {loading ? (
-                    <>
-                      <Spinner />
-                      <span>Creating account…</span>
-                    </>
-                  ) : (
-                    "Create account"
-                  )}
-                </button>
-              </form>
-            )}
+                    {loading ? (
+                      <>
+                        <Spinner />
+                        <span>Creating account…</span>
+                      </>
+                    ) : (
+                      "Create account"
+                    )}
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Want to see how it works?{" "}
             <Link
               href="/dashboard"
-              className="font-medium text-[#1a6b4a] dark:text-[#00ff77] hover:text-[#059669] transition-colors"
+              className="font-medium text-emerald-700 transition-opacity hover:opacity-80 dark:text-emerald-400"
             >
               Explore the dashboard →
             </Link>
           </p>
 
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
             <Link
               href="/"
-              className="underline hover:text-foreground transition-colors"
+              className="underline underline-offset-2 transition-colors hover:text-foreground"
             >
               Back to homepage
             </Link>
             <span className="text-border">·</span>
             <Link
               href="/privacy"
-              className="underline hover:text-foreground transition-colors"
+              className="underline underline-offset-2 transition-colors hover:text-foreground"
             >
-              Privacy Policy
+              Privacy
             </Link>
             <span className="text-border">·</span>
             <Link
               href="/terms"
-              className="underline hover:text-foreground transition-colors"
+              className="underline underline-offset-2 transition-colors hover:text-foreground"
             >
-              Terms of Service
+              Terms
             </Link>
           </div>
         </div>
       </main>
-
-      <footer className="border-t border-border bg-muted/30 py-6">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-muted-foreground">
-          <Link
-            href="/terms"
-            className="hover:text-foreground transition-colors"
-          >
-            Terms of Service
-          </Link>
-          <span className="mx-2">·</span>
-          <Link
-            href="/privacy"
-            className="hover:text-foreground transition-colors"
-          >
-            Privacy Policy
-          </Link>
-        </div>
-      </footer>
     </div>
   );
 }
 
 function AuthPageFallback() {
   return (
-    <div className="landing flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
+    <div className="landing landing-page flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
       <main className="flex flex-1 items-center justify-center px-4 py-12">
         <p className="text-muted-foreground">Loading…</p>
       </main>

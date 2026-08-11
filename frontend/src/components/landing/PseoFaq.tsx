@@ -10,7 +10,7 @@ export function PseoFaq({
   return (
     <section className="px-6 py-16 lg:px-8">
       <div className="mx-auto max-w-[1100px]">
-        <h2 className="mb-8 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-foreground">
+        <h2 className="mb-8 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-[#333C4D] dark:text-white">
           {title}
         </h2>
         <div className="divide-y divide-border rounded-2xl border border-border bg-background dark:bg-background/50">

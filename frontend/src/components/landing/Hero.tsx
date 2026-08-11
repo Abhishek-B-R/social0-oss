@@ -1,103 +1,111 @@
-import { lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
-import { CheckCircle } from "lucide-react";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
-
-const FlowAnimation = lazy(() =>
-  import("./FlowAnimation").then((m) => ({ default: m.FlowAnimation })),
-);
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { GridBackground } from "./GridBackground";
+import { PlatformStrip } from "./PlatformStrip";
+import { AgentHappyCustomers, AgentLogoStrip } from "./AgentLogoStrip";
+import { LandingModeToggle, useLandingMode } from "./landing-mode";
 
 function developersHref(pathname: string) {
   return pathname === "/home" ? "/home#developers" : "/#developers";
 }
 
+const copy = {
+  normal: {
+    titleBefore: "Post to all your social media accounts from",
+    titleEm: "one dashboard",
+    titleAfter: ".",
+    clarifier:
+      "simple on purpose, fair and transparent pricing, start free, no card needed, with\u00A0human\u00A0support",
+  },
+  agent: {
+    titleBefore: "Run your social media accounts on autopilot with",
+    titleEm: "AI agents",
+    titleAfter: ".",
+    clarifier:
+      "Plan, generate, review, and schedule with your AI agents. Simple by design, fair pricing, and human support when you need it.",
+  },
+} as const;
+
+/**
+ * Centered hero layout:
+ * platforms → title → description → CTA → pills → customers → mode switch
+ */
 export function Hero({ signedIn = false }: { signedIn?: boolean }) {
   const { pathname } = useLocation();
-  // FlowAnimation is CSS-hidden on small screens; skip mount so mobile never
-  // downloads framer-motion or hub logo images.
-  const showFlow = useMediaQuery("(min-width: 1024px)");
+  const { mode } = useLandingMode();
+  const c = copy[mode];
+  const reduceMotion = useReducedMotion();
+  const fade = reduceMotion
+    ? { duration: 0 }
+    : { duration: 0.28, ease: [0.23, 1, 0.32, 1] as const };
+
   return (
-    <section className="px-4 pb-8 pt-12 sm:px-6 sm:pt-16 lg:px-8 lg:pt-28">
-      <div className="mx-auto max-w-[1180px]">
-        {/* Two-column layout */}
-        <div className="grid items-start gap-12 lg:grid-cols-[1fr_420px] lg:gap-16">
-          {/* Left column - Copy */}
-          <div>
-            {/* Headline: only "all your socials" in serif italic emerald (1–2 words) */}
-            <h1 className="mb-6 mt-0 text-[clamp(36px,8vw,72px)] leading-[1.08] tracking-tight text-foreground sm:mt-4 lg:mt-10">
-              <span className="font-serif text-[clamp(36px,8vw,72px)] leading-[1.08] tracking-tight text-foreground">
-                Post and schedule to{" "}
-              </span>
-              <em className="font-serif italic text-[#1a6b4a] dark:text-[#00ff77]">
-                all your socials
+    <section className="landing-hero relative overflow-x-hidden">
+      <GridBackground />
+
+      <div className="relative z-10 mx-auto flex w-full max-w-270 flex-col items-center px-5 pb-10 pt-12 text-center sm:w-[92%] sm:px-6 sm:pb-12 sm:pt-14 lg:w-[88%] lg:max-w-280 lg:px-8 lg:pb-14 lg:pt-16">
+        <PlatformStrip variant="hero" className="mb-9 w-full sm:mb-10" />
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={mode}
+            className="w-full max-w-230"
+            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+            transition={fade}
+          >
+            <h1 className="mx-auto mb-5 text-balance font-sans text-[clamp(40px,6.5vw,64px)] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#333C4D] sm:mb-6 sm:leading-[1.05] dark:text-foreground">
+              {c.titleBefore}{" "}
+              <em className="not-italic text-emerald-600 dark:text-emerald-400">
+                {c.titleEm}
               </em>
-              <span className="font-serif text-[clamp(36px,8vw,72px)] leading-[1.08] tracking-tight text-foreground">
-                {" "}
-                from one place.
-              </span>
+              {c.titleAfter}
             </h1>
 
-            {/* Subtitle - benefit first, no feature names */}
-            <p className="mb-8 max-w-[480px] text-base leading-relaxed text-muted-foreground sm:mb-10 sm:text-[17px]">
-              Simple to use, with built-in tools that keep your content working
-              even after you publish.
+            <p className="mx-auto mb-9 max-w-2xl text-[15px] leading-relaxed text-muted-foreground sm:mb-10 sm:text-[17px] sm:leading-[1.55]">
+              {c.clarifier}
             </p>
+          </motion.div>
+        </AnimatePresence>
 
-            {/* CTA */}
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-                <Link
-                  href={signedIn ? "/dashboard" : "/auth"}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-foreground px-7 py-3.5 text-[15px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900 sm:w-auto"
-                >
-                  {signedIn ? "Go to dashboard" : "Start posting"}
-                  <span aria-hidden="true">→</span>
-                </Link>
-                <span className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground sm:justify-start">
-                  <CheckCircle className="h-3.5 w-3.5 shrink-0" /> Start free · No
-                  credit card required
-                </span>
-              </div>
-              {/* Social proof - under CTA to reinforce action */}
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="h-1.5 w-1.5 ml-2 shrink-0 rounded-full bg-emerald-500/80" />
-                Be among the first to try Social0
-              </p>
-              <p className="text-[13px] text-muted-foreground">
-                <Link
-                  href={developersHref(pathname)}
-                  className="underline decoration-muted-foreground/50 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground"
-                >
-                  REST API, MCP & CLI
-                </Link>
-                {" · "}for builders and AI workflows
-              </p>
-            </div>
-          </div>
-
-          {/* Right column - Animated beam: you → Social0 → every platform */}
-          {/* Inverted vs page theme: dark card on light theme, light card on dark */}
-          <div className="hidden self-center lg:block">
-            {showFlow ? (
-              <Suspense
-                fallback={
-                  <div
-                    className="aspect-[4/5] w-full max-w-[420px] rounded-2xl border border-border bg-muted/40"
-                    aria-hidden
-                  />
+        <motion.div
+          className="flex w-full flex-col items-center gap-6 sm:gap-7"
+          initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={
+            reduceMotion
+              ? { duration: 0 }
+              : {
+                  duration: 0.4,
+                  delay: 0.1,
+                  ease: [0.23, 1, 0.32, 1],
                 }
-              >
-                <FlowAnimation className="shadow-[0_40px_80px_rgba(0,0,0,0.18)] dark:shadow-[0_40px_80px_rgba(0,0,0,0.12)]" />
-              </Suspense>
-            ) : (
-              <div
-                className="aspect-[4/5] w-full max-w-[420px] rounded-2xl border border-border bg-muted/40"
-                aria-hidden
-              />
-            )}
-          </div>
-        </div>
+          }
+        >
+          <Link
+            href={signedIn ? "/dashboard" : "/auth?mode=signin"}
+            className="inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-full bg-emerald-500 px-9 py-3.5 text-[15px] font-semibold text-[#04140c] shadow-[0_0_32px_rgba(16,185,129,0.28)] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97] dark:shadow-[0_0_32px_rgba(16,185,129,0.38)] sm:w-auto sm:text-[16px]"
+          >
+            {signedIn ? "Go to dashboard" : "Get started for free"}
+            <span aria-hidden="true">→</span>
+          </Link>
+
+          <AgentLogoStrip className="w-full px-0 py-0" />
+
+          <AgentHappyCustomers />
+
+          <LandingModeToggle />
+          {mode === "agent" ? (
+            <Link
+              href={developersHref(pathname)}
+              className="text-[13px] text-muted-foreground/80 underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+            >
+              See API, MCP &amp; CLI docs &#8599;
+            </Link>
+          ) : null}
+        </motion.div>
       </div>
     </section>
   );

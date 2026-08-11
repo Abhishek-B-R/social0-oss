@@ -136,44 +136,107 @@ function PlanButtonLabel({
 }
 
 const STARTER_BILLING_FEATURES = [
-  "Connect up to 5 accounts",
-  "Multiple accounts per platform",
+  "Up to 5 connected accounts",
   "Unlimited posts",
-  "Schedule posts across platforms",
-  "Carousel posts",
-  "Threads & Collections support",
-  "Human support",
+  "Multiple accounts per platform",
+  "Workspaces (multi-brand)",
+  "All 9 platforms",
+  "Text, image & video posts",
+  "Threads (multi-post)",
+  "Collections & carousels",
+  "Per-platform captions",
+  "Schedule & content calendar",
+  "Posting queue",
+  "Parallel multi-platform publish",
+  "Live publish progress",
+  "REST API",
+  "MCP server",
+  "CLI",
+  "API keys",
+  "Outbound webhooks",
 ];
 
 const GROWTH_BILLING_FEATURES = [
-  "Connect up to 15 accounts",
-  "Multiple accounts per platform",
+  "Up to 15 connected accounts",
   "Unlimited posts",
-  "Schedule posts across platforms",
-  "Carousel posts",
-  "Threads & Collections support",
-  "Auto-plug high performing tweets",
-  "Auto-repost on autopilot",
-  "Bulk scheduling tools",
+  "Multiple accounts per platform",
+  "Workspaces (multi-brand)",
+  "Bulk image & video scheduling",
+  "Auto-plug (performance CTA replies)",
+  "Auto-repost / resurface",
+  "All 9 platforms",
+  "Text, image & video posts",
+  "Threads (multi-post)",
+  "Collections & carousels",
+  "Per-platform captions",
+  "Schedule & content calendar",
+  "Posting queue",
+  "Parallel multi-platform publish",
+  "Live publish progress",
+  "REST API",
+  "MCP server",
+  "CLI",
+  "API keys",
+  "Outbound webhooks",
   "Human support",
 ];
 
 const PRO_BILLING_FEATURES = [
-  "Connect up to 50 accounts",
+  "Up to 50 connected accounts",
+  "Unlimited posts",
   "Team collaboration / invite teammates",
   "Multiple accounts per platform",
-  "Unlimited posts",
-  "Schedule posts across platforms",
-  "Carousel posts",
-  "Threads & Collections support",
-  "Auto-plug high performing tweets",
-  "Auto-repost on autopilot",
-  "Bulk scheduling tools",
+  "Workspaces (multi-brand)",
+  "Bulk image & video scheduling",
+  "Auto-plug (performance CTA replies)",
+  "Auto-repost / resurface",
+  "All 9 platforms",
+  "Text, image & video posts",
+  "Threads (multi-post)",
+  "Collections & carousels",
+  "Per-platform captions",
+  "Schedule & content calendar",
+  "Posting queue",
+  "Parallel multi-platform publish",
+  "Live publish progress",
+  "REST API",
+  "MCP server",
+  "CLI",
+  "API keys",
+  "Outbound webhooks",
   "Priority support",
   "Early access to new features",
 ];
 
-type PaidPlan = "starter" | "growth" | "pro";
+const MAX_BILLING_FEATURES = [
+  "Unlimited connected accounts",
+  "Unlimited posts",
+  "Team collaboration / invite teammates",
+  "Multiple accounts per platform",
+  "Workspaces (multi-brand)",
+  "Bulk image & video scheduling",
+  "Auto-plug (performance CTA replies)",
+  "Auto-repost / resurface",
+  "All 9 platforms",
+  "Text, image & video posts",
+  "Threads (multi-post)",
+  "Collections & carousels",
+  "Per-platform captions",
+  "Schedule & content calendar",
+  "Posting queue",
+  "Parallel multi-platform publish",
+  "Live publish progress",
+  "REST API",
+  "MCP server",
+  "CLI",
+  "API keys",
+  "Outbound webhooks",
+  "Priority support",
+  "Early access to new features",
+  "10,000 API requests / hour",
+];
+
+type PaidPlan = "starter" | "growth" | "pro" | "max";
 
 const POLL_MAX_ATTEMPTS = 45; // ~1.5 min
 
@@ -233,8 +296,6 @@ export function BillingPanel({
   const [waitingForWebhook, setWaitingForWebhook] = useState(
     Boolean(justSubscribed && subscription.tier === "free"),
   );
-  // FREE TRIAL DISABLED — was: subscription.tier === "free" && !accountLimit.hasUsedTrial
-  const showTrialInfo = false;
 
   // After return from checkout (?success=1): verify plan actually changed by polling sync; stop after 3 attempts and clear URL
   useEffect(() => {
@@ -328,13 +389,15 @@ export function BillingPanel({
   }, [waitingForWebhook]);
 
   const tierLabel =
-    subscription.tier === "pro"
-      ? "Pro"
-      : subscription.tier === "growth"
-        ? "Growth"
-        : subscription.tier === "starter"
-          ? "Starter (Lite)"
-          : "Free";
+    subscription.tier === "max"
+      ? "Max"
+      : subscription.tier === "pro"
+        ? "Pro"
+        : subscription.tier === "growth"
+          ? "Growth"
+          : subscription.tier === "starter"
+            ? "Starter (Lite)"
+            : "Free";
 
   const currentInterval: BillingInterval =
     subscription.interval === "yearly" || subscription.interval === "monthly"
@@ -344,13 +407,15 @@ export function BillingPanel({
   const priceLabel =
     subscription.tier === "starter" ||
     subscription.tier === "growth" ||
-    subscription.tier === "pro"
+    subscription.tier === "pro" ||
+    subscription.tier === "max"
       ? formatPlanPriceLabel(subscription.tier, currentInterval)
       : "$0/month";
 
   const starterPrice = getPlanPrice("starter", billingInterval);
   const growthPrice = getPlanPrice("growth", billingInterval);
   const proPrice = getPlanPrice("pro", billingInterval);
+  const maxPrice = getPlanPrice("max", billingInterval);
 
   const renewalDate =
     subscription.expiresAt && timezone
@@ -1014,10 +1079,15 @@ export function BillingPanel({
                   </Button>
                 )
               ) : subscription.tier === "growth" ||
-                subscription.tier === "pro" ? (
+                subscription.tier === "pro" ||
+                subscription.tier === "max" ? (
                 <Button disabled className="w-full" variant="outline">
                   Included in{" "}
-                  {subscription.tier === "pro" ? "Pro" : "Growth"}
+                  {subscription.tier === "max"
+                    ? "Max"
+                    : subscription.tier === "pro"
+                      ? "Pro"
+                      : "Growth"}
                 </Button>
               ) : (
                 <>
@@ -1027,17 +1097,9 @@ export function BillingPanel({
                     onClick={() => handleUpgradeFromFree("starter")}
                   >
                     <PlanButtonLabel loading={loadingChangePlan === "starter"}>
-                      {showTrialInfo
-                        ? "Start 3-day free trial"
-                        : "Upgrade to Starter"}
+                      Upgrade to Starter
                     </PlanButtonLabel>
                   </Button>
-                  {showTrialInfo && (
-                    <p className="mt-2 text-center text-xs text-muted-foreground">
-                      3-day free trial included - you won&apos;t be charged
-                      today.
-                    </p>
-                  )}
                 </>
               )}
             </div>
@@ -1045,15 +1107,12 @@ export function BillingPanel({
 
           {/* Growth card */}
           <div
-            className={`rounded-2xl border-2 p-6 flex flex-col relative ${
+            className={`rounded-2xl border p-6 flex flex-col relative ${
               subscription.tier === "growth"
                 ? "ring-1 ring-accent border-accent/30 bg-accent/5"
                 : "border-border bg-card"
             }`}
           >
-            <span className="absolute top-4 right-4 rounded bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
-              Most popular
-            </span>
             <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               Growth
             </div>
@@ -1103,9 +1162,9 @@ export function BillingPanel({
                     Current plan
                   </Button>
                 )
-              ) : subscription.tier === "pro" ? (
+              ) : subscription.tier === "pro" || subscription.tier === "max" ? (
                 <Button disabled className="w-full" variant="outline">
-                  Included in Pro
+                  Included in {subscription.tier === "max" ? "Max" : "Pro"}
                 </Button>
               ) : subscription.tier === "starter" ? (
                 <Button
@@ -1125,17 +1184,9 @@ export function BillingPanel({
                     onClick={() => handleUpgradeFromFree("growth")}
                   >
                     <PlanButtonLabel loading={loadingChangePlan === "growth"}>
-                      {showTrialInfo
-                        ? "Start 3-day free trial"
-                        : "Upgrade to Growth"}
+                      Upgrade to Growth
                     </PlanButtonLabel>
                   </Button>
-                  {showTrialInfo && (
-                    <p className="mt-2 text-center text-xs text-muted-foreground">
-                      3-day free trial included - you won&apos;t be charged
-                      today.
-                    </p>
-                  )}
                 </>
               )}
             </div>
@@ -1198,6 +1249,10 @@ export function BillingPanel({
                     Current plan
                   </Button>
                 )
+              ) : subscription.tier === "max" ? (
+                <Button disabled className="w-full" variant="outline">
+                  Included in Max
+                </Button>
               ) : subscription.tier === "starter" ||
                 subscription.tier === "growth" ? (
                 <Button
@@ -1217,19 +1272,104 @@ export function BillingPanel({
                     onClick={() => handleUpgradeFromFree("pro")}
                   >
                     <PlanButtonLabel loading={loadingChangePlan === "pro"}>
-                      {showTrialInfo
-                        ? "Start 3-day free trial"
-                        : "Upgrade to Pro"}
+                      Upgrade to Pro
                     </PlanButtonLabel>
                   </Button>
-                  {showTrialInfo && (
-                    <p className="mt-2 text-center text-xs text-muted-foreground">
-                      3-day free trial included - you won&apos;t be charged
-                      today.
-                    </p>
-                  )}
                 </>
               )}
+            </div>
+          </div>
+
+          {/* Max card — hidden reveal on marketing; always available in billing */}
+          <div
+            className={`rounded-2xl border p-6 flex flex-col ${
+              subscription.tier === "max"
+                ? "ring-1 ring-accent border-accent/30 bg-accent/5"
+                : "border-border bg-card"
+            }`}
+          >
+            <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              Max
+            </div>
+            <div className="mb-2">
+              <PlanDiscountPrice
+                amount={maxPrice.price}
+                listAmount={maxPrice.listPrice}
+                period={billingInterval === "yearly" ? "/year" : "/month"}
+                size="sm"
+                badge={
+                  maxPrice.savePercent != null ? (
+                    <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
+                      Save {maxPrice.savePercent}%
+                    </span>
+                  ) : null
+                }
+              />
+            </div>
+            {billingInterval === "yearly" ? (
+              <p className="mb-2 text-xs text-muted-foreground">
+                ≈ ${formatEffectiveMonthly("max")}/month
+              </p>
+            ) : null}
+            <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
+              {MAX_BILLING_FEATURES.map((f) => (
+                <li key={f} className="flex items-center gap-2">
+                  <span className="text-accent shrink-0">✓</span>
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6 space-y-2">
+              {subscription.tier === "max" ? (
+                currentInterval !== billingInterval ? (
+                  <Button
+                    className="w-full"
+                    disabled={loadingChangePlan !== null || upgradePending}
+                    onClick={() => void handleSwitchInterval("max")}
+                  >
+                    <PlanButtonLabel loading={loadingChangePlan === "max"}>
+                      Switch to{" "}
+                      {billingInterval === "yearly" ? "yearly" : "monthly"}
+                    </PlanButtonLabel>
+                  </Button>
+                ) : (
+                  <Button disabled className="w-full">
+                    Current plan
+                  </Button>
+                )
+              ) : subscription.tier === "starter" ||
+                subscription.tier === "growth" ||
+                subscription.tier === "pro" ? (
+                <Button
+                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                  disabled={loadingChangePlan !== null || upgradePending}
+                  onClick={() => handleUpgradePlan("max")}
+                >
+                  <PlanButtonLabel loading={loadingChangePlan === "max"}>
+                    Upgrade to Max
+                  </PlanButtonLabel>
+                </Button>
+              ) : (
+                <Button
+                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                  disabled={loadingChangePlan !== null}
+                  onClick={() => handleUpgradeFromFree("max")}
+                >
+                  <PlanButtonLabel loading={loadingChangePlan === "max"}>
+                    Upgrade to Max
+                  </PlanButtonLabel>
+                </Button>
+              )}
+              {subscription.tier !== "max" ? (
+                <a
+                  href="https://cal.com/abhishekbr/30min"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full rounded-xl border border-border px-3 py-2.5 text-center text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  Prefer a walkthrough?
+                </a>
+              ) : null}
             </div>
           </div>
         </div>
@@ -1250,11 +1390,13 @@ export function BillingPanel({
           <DialogHeader>
             <DialogTitle>
               Upgrade to{" "}
-              {upgradeConfirmPlan === "pro"
-                ? "Pro"
-                : upgradeConfirmPlan === "starter"
-                  ? "Starter"
-                  : "Growth"}
+              {upgradeConfirmPlan === "max"
+                ? "Max"
+                : upgradeConfirmPlan === "pro"
+                  ? "Pro"
+                  : upgradeConfirmPlan === "starter"
+                    ? "Starter"
+                    : "Growth"}
             </DialogTitle>
             <DialogDescription>
               Choose when you want the upgrade to take effect.

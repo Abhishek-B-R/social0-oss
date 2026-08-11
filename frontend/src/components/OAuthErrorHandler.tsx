@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 export function OAuthErrorHandler({
   hasUsedTrial = false,
 }: {
-  /** When true, show upgrade message; when false, show start-trial message. Used when error is limit_reached and no message in URL. */
+  /** Used when error is limit_reached and no message in URL. */
   hasUsedTrial?: boolean;
 } = {}) {
   const [searchParams] = useSearchParams();
@@ -25,9 +25,7 @@ export function OAuthErrorHandler({
         case "limit":
         case "limit_reached":
           setMessage(
-            hasUsedTrial
-              ? "You've reached your account limit. Upgrade to connect more accounts."
-              : "You've reached your account limit. Start a trial to connect more accounts.",
+            "You've reached your account limit. Upgrade to connect more accounts.",
           );
           break;
         case "oauth_failed":

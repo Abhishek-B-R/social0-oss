@@ -1,17 +1,20 @@
 /**
  * Subscription plan limits and feature flags.
- * Monthly (early adopter): Starter $9, Growth $19 (list $29), Pro $35 (list $49).
- * Yearly (early adopter): Starter $99, Growth $199 (list $299), Pro $349 (list $499).
+ * Monthly (early adopter): Starter $9, Growth $19 (list $29), Pro $35 (list $49),
+ *   Max $59 (list $99).
+ * Yearly (early adopter): Starter $99, Growth $199 (list $299), Pro $349 (list $499),
+ *   Max $599 (list $999).
  */
 
-export type SubscriptionTier = "free" | "starter" | "growth" | "pro";
+export type SubscriptionTier = "free" | "starter" | "growth" | "pro" | "max";
 export type BillingInterval = "monthly" | "yearly";
-export type PaidPlanTier = "starter" | "growth" | "pro";
+export type PaidPlanTier = "starter" | "growth" | "pro" | "max";
 
 const monthlyIds = {
   starter: process.env.DODO_PAYMENTS_STARTER_PRODUCT_ID ?? "",
   growth: process.env.DODO_PAYMENTS_GROWTH_PRODUCT_ID ?? "",
   pro: process.env.DODO_PAYMENTS_PRO_PRODUCT_ID ?? "",
+  max: process.env.DODO_PAYMENTS_MAX_PRODUCT_ID ?? "",
 } as const;
 
 const yearlyIds = {
@@ -21,6 +24,7 @@ const yearlyIds = {
     "",
   growth: process.env.DODO_PAYMENTS_GROWTH_YEARLY_PRODUCT_ID ?? "",
   pro: process.env.DODO_PAYMENTS_PRO_YEARLY_PRODUCT_ID ?? "",
+  max: process.env.DODO_PAYMENTS_MAX_YEARLY_PRODUCT_ID ?? "",
 } as const;
 
 /** Monthly product IDs (backward-compatible flat shape). */
@@ -28,6 +32,7 @@ export const PLAN_IDS = {
   starter: monthlyIds.starter,
   growth: monthlyIds.growth,
   pro: monthlyIds.pro,
+  max: monthlyIds.max,
   monthly: monthlyIds,
   yearly: yearlyIds,
 } as const;
@@ -45,9 +50,11 @@ export function allPlanProductIds(): string[] {
     monthlyIds.starter,
     monthlyIds.growth,
     monthlyIds.pro,
+    monthlyIds.max,
     yearlyIds.starter,
     yearlyIds.growth,
     yearlyIds.pro,
+    yearlyIds.max,
   ].filter(Boolean);
 }
 
@@ -62,14 +69,16 @@ export function getIntervalFromProductId(
   if (
     productId === yearlyIds.starter ||
     productId === yearlyIds.growth ||
-    productId === yearlyIds.pro
+    productId === yearlyIds.pro ||
+    productId === yearlyIds.max
   ) {
     return "yearly";
   }
   if (
     productId === monthlyIds.starter ||
     productId === monthlyIds.growth ||
-    productId === monthlyIds.pro
+    productId === monthlyIds.pro ||
+    productId === monthlyIds.max
   ) {
     return "monthly";
   }
@@ -83,7 +92,7 @@ export interface PlanLimits {
   allowBulkTools: boolean;
   allowAutoPlug: boolean;
   allowResurface: boolean;
-  /** Invite teammates into a shared workspace (Pro only). */
+  /** Invite teammates into a shared workspace (Pro / Max). */
   allowTeams: boolean;
   /** Create multiple owned workspaces (any paid plan). */
   allowMultiWorkspace: boolean;
@@ -129,11 +138,23 @@ const PRO_LIMITS: PlanLimits = {
   allowMultiWorkspace: true,
 };
 
+/** Soft ceiling — marketed as unlimited; avoid Infinity for slice/UI math. */
+const MAX_LIMITS: PlanLimits = {
+  maxConnectedAccounts: 9999,
+  maxFreePosts: 0,
+  allowBulkTools: true,
+  allowAutoPlug: true,
+  allowResurface: true,
+  allowTeams: true,
+  allowMultiWorkspace: true,
+};
+
 const LIMITS_BY_TIER: Record<SubscriptionTier, PlanLimits> = {
   free: FREE_LIMITS,
   starter: STARTER_LIMITS,
   growth: GROWTH_LIMITS,
   pro: PRO_LIMITS,
+  max: MAX_LIMITS,
 };
 
 export function getPlanLimits(
@@ -159,11 +180,46 @@ export function getTierFromProductId(productId: string): SubscriptionTier {
   if (productId === monthlyIds.pro || productId === yearlyIds.pro) {
     return "pro";
   }
+  if (productId === monthlyIds.max || productId === yearlyIds.max) {
+    return "max";
+  }
   return "free";
 }
 
 export function isActiveTier(
   tier: SubscriptionTier | null | undefined,
-): tier is "starter" | "growth" | "pro" {
-  return tier === "starter" || tier === "growth" || tier === "pro";
+): tier is PaidPlanTier {
+  return (
+    tier === "starter" ||
+    tier === "growth" ||
+    tier === "pro" ||
+    tier === "max"
+  );
+}
+
+export function parsePaidPlanTier(raw: unknown): PaidPlanTier | null {
+  if (
+    raw === "starter" ||
+    raw === "growth" ||
+    raw === "pro" ||
+    raw === "max"
+  ) {
+    return raw;
+  }
+  return null;
+}
+
+export function planDisplayName(tier: SubscriptionTier): string {
+  switch (tier) {
+    case "max":
+      return "Max";
+    case "pro":
+      return "Pro";
+    case "growth":
+      return "Growth";
+    case "starter":
+      return "Starter";
+    default:
+      return "Free";
+  }
 }

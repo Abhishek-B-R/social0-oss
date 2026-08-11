@@ -1,7 +1,17 @@
 User-agent: *
 Allow: /
+Disallow: /dashboard
 Disallow: /dashboard/
+Disallow: /auth
 Disallow: /auth/
+Disallow: /onboarding
 Disallow: /onboarding/
+Disallow: /oauth
+Disallow: /oauth/
+Disallow: /invite
+Disallow: /invite/
+Disallow: /api
 Disallow: /api/
+Disallow: /v1
+Disallow: /v1/
 Sitemap: https://social0.app/sitemap.xml

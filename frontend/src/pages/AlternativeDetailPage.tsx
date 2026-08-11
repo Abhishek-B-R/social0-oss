@@ -69,7 +69,7 @@ export function AlternativeDetailPage() {
             <span className="mx-2">/</span>
             <span className="text-foreground">{page.competitorName}</span>
           </nav>
-          <h1 className="max-w-3xl font-serif text-[clamp(32px,5vw,52px)] leading-tight tracking-tight text-foreground">
+          <h1 className="max-w-3xl font-serif text-[clamp(32px,5vw,52px)] leading-tight tracking-tight text-[#333C4D] dark:text-white">
             {page.heroHeadline}
           </h1>
           <p className="mt-5 max-w-2xl text-[17px] leading-relaxed text-muted-foreground">
@@ -84,7 +84,7 @@ export function AlternativeDetailPage() {
               <span aria-hidden="true">→</span>
             </Link>
             <Link
-              href="/#pricing"
+              href="/pricing"
               className="inline-flex items-center rounded-[10px] border border-border px-6 py-3 text-[15px] font-medium text-foreground transition-colors hover:bg-muted"
             >
               View pricing
@@ -99,7 +99,7 @@ export function AlternativeDetailPage() {
             {page.intro}
           </p>
 
-          <h2 className="mt-14 mb-6 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-foreground">
+          <h2 className="mt-14 mb-6 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-[#333C4D] dark:text-white">
             Why creators switch from {page.competitorName}
           </h2>
           <ul className="max-w-2xl space-y-3">
@@ -122,7 +122,7 @@ export function AlternativeDetailPage() {
       {page.comparisonRows.length > 0 && (
         <section className="border-y border-border px-6 py-16 lg:px-8">
           <div className="mx-auto max-w-[1100px]">
-            <h2 className="mb-8 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-foreground">
+            <h2 className="mb-8 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-[#333C4D] dark:text-white">
               Social0 vs {page.competitorName}
             </h2>
             <div className="overflow-x-auto">

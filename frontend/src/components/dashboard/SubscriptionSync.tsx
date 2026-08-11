@@ -38,7 +38,10 @@ export function SubscriptionSync({ tier }: SubscriptionSyncProps) {
         }
         if (
           data?.ok === true &&
-          (data.tier === "starter" || data.tier === "growth" || data.tier === "pro")
+          (data.tier === "starter" ||
+            data.tier === "growth" ||
+            data.tier === "pro" ||
+            data.tier === "max")
         ) {
           invalidateQueries();
         }

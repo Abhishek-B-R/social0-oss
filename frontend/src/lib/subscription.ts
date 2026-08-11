@@ -6,7 +6,7 @@ export type SubscriptionState = {
   subscriptionId: string | null;
   customerId: string | null;
   hasUsedTrial: boolean;
-  pendingPlanTier: "starter" | "growth" | "pro" | null;
+  pendingPlanTier: "starter" | "growth" | "pro" | "max" | null;
   cancelAtPeriodEnd: boolean;
   paused?: boolean;
   interval?: BillingInterval | null;

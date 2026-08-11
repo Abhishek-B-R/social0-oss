@@ -18,7 +18,7 @@ export default function DataDeletionPage() {
   const mailtoHref = `mailto:${REQUEST_EMAIL}?subject=${encodeURIComponent(REQUEST_SUBJECT)}`;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground landing">
+    <div className="landing landing-page min-h-screen flex flex-col bg-background text-foreground">
       <LandingHeader />
       <main className="flex-1 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 w-full">
         <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[22px] text-foreground landing mb-6">

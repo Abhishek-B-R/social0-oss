@@ -8,8 +8,9 @@ const footerLinks = [
   { href: DOCS_CLI_URL, label: "CLI", external: true },
   { href: "/mcp", label: "MCP" },
   { href: "/alternatives", label: "Alternatives" },
+  { href: "/#stories", label: "Stories" },
   { href: "/#platforms", label: "Platforms" },
-  { href: "/#pricing", label: "Pricing" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },
   { href: "/privacy", label: "Privacy" },
   { href: "/terms", label: "Terms" },
@@ -17,17 +18,25 @@ const footerLinks = [
   { href: "/data-deletion", label: "Data deletion" },
 ];
 
+/** On /home, same-page anchors must use /home#… so they don't hit / and redirect logged-in users. */
+function landingNavHref(href: string, pathname: string | null) {
+  if (pathname === "/home" && href.startsWith("/#")) {
+    return `/home${href.slice(1)}`;
+  }
+  return href;
+}
+
 export function LandingFooter() {
   const pathname = useLocation().pathname;
   const homeHref = pathname === "/home" ? "/home" : "/";
 
   return (
-    <footer className="border-t border-border bg-background py-12 dark:bg-background/50">
-      <div className="mx-auto flex max-w-275 flex-col gap-6 px-6 lg:px-8">
+    <footer className="relative overflow-hidden border-t border-border bg-muted/40 dark:bg-[#111111]">
+      <div className="mx-auto flex max-w-[1180px] flex-col gap-6 px-6 py-12 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-6">
           <Link
             href={homeHref}
-            className="font-serif text-xl tracking-tight text-foreground"
+            className="font-logo text-xl font-normal tracking-tight text-foreground"
           >
             Social0
           </Link>
@@ -47,7 +56,7 @@ export function LandingFooter() {
               ) : (
                 <Link
                   key={link.href}
-                  href={link.href}
+                  href={landingNavHref(link.href, pathname)}
                   className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {link.label}
@@ -67,6 +76,16 @@ export function LandingFooter() {
           >
             @abhitwt
           </a>
+        </p>
+      </div>
+
+      {/* Huge brand watermark — below footer links, site-style serif + emerald hush */}
+      <div
+        className="pointer-events-none select-none overflow-hidden px-2 pb-2 pt-4 sm:pb-3 sm:pt-6"
+        aria-hidden
+      >
+        <p className="mx-auto max-w-[100vw] truncate text-center font-logo text-[clamp(4.5rem,18vw,14rem)] font-normal leading-none tracking-[-0.04em] text-foreground/[0.06] dark:text-white/[0.055]">
+          Social0
         </p>
       </div>
     </footer>

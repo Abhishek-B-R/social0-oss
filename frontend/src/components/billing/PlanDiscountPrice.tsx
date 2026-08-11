@@ -41,32 +41,30 @@ export function PlanDiscountPrice({
 
   const priceClass =
     size === "hero"
-      ? "font-serif text-[clamp(40px,7vw,56px)] leading-none tracking-tight text-foreground"
+      ? "font-sans text-[clamp(40px,7vw,56px)] font-bold leading-none tracking-tight tabular-nums text-foreground"
       : size === "sm"
-        ? "font-serif text-2xl font-bold leading-none tracking-tight text-foreground"
-        : "font-serif text-3xl font-semibold leading-none tracking-tight text-foreground";
+        ? "font-sans text-2xl font-bold leading-none tracking-tight tabular-nums text-foreground"
+        : "font-sans text-3xl font-bold leading-none tracking-tight tabular-nums text-foreground";
 
   const listClass =
     size === "hero"
-      ? "font-serif text-[clamp(28px,5vw,36px)] leading-none tracking-tight text-foreground/55"
+      ? "font-sans text-[clamp(28px,5vw,36px)] font-semibold leading-none tracking-tight tabular-nums text-foreground/55"
       : size === "sm"
-        ? "font-serif text-xl leading-none tracking-tight text-foreground/55"
-        : "font-serif text-2xl leading-none tracking-tight text-foreground/55";
+        ? "font-sans text-xl font-semibold leading-none tracking-tight tabular-nums text-foreground/55"
+        : "font-sans text-2xl font-semibold leading-none tracking-tight tabular-nums text-foreground/55";
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
         {hasList ? (
-          <span
-            className={cn(
-              listClass,
-              "line-through decoration-foreground/45 decoration-[1.5px]",
-            )}
-          >
+          <span className={listClass}>
+            {/* Strike digits only — raised $ sits above the line and looked underlined */}
             <sup className="mr-0.5 text-[0.55em] font-medium top-[-0.35em]">
               $
             </sup>
-            {formatAmount(listAmount!)}
+            <span className="line-through decoration-foreground/45 decoration-[1.5px]">
+              {formatAmount(listAmount!)}
+            </span>
           </span>
         ) : null}
         <span className={priceClass}>

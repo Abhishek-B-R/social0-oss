@@ -75,7 +75,7 @@ export function FeatureDetailPage() {
               {page.platformLabel} scheduling
             </p>
           ) : null}
-          <h1 className="max-w-3xl font-serif text-[clamp(32px,5vw,52px)] leading-tight tracking-tight text-foreground">
+          <h1 className="max-w-3xl font-serif text-[clamp(32px,5vw,52px)] leading-tight tracking-tight text-[#333C4D] dark:text-white">
             {page.heroHeadline}
           </h1>
           <p className="mt-5 max-w-2xl text-[17px] leading-relaxed text-muted-foreground">
@@ -97,7 +97,7 @@ export function FeatureDetailPage() {
           <p className="max-w-3xl text-[16px] leading-relaxed text-muted-foreground">
             {page.intro}
           </p>
-          <h2 className="mt-12 mb-6 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-foreground">
+          <h2 className="mt-12 mb-6 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-[#333C4D] dark:text-white">
             What you get
           </h2>
           <div className="grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2">
@@ -106,7 +106,7 @@ export function FeatureDetailPage() {
                 key={benefit.title}
                 className="bg-background px-6 py-6 dark:bg-background/50"
               >
-                <h3 className="mb-2 text-[15px] font-semibold text-foreground">
+                <h3 className="mb-2 text-[15px] font-semibold text-[#333C4D] dark:text-white">
                   {benefit.title}
                 </h3>
                 <p className="text-[14px] leading-relaxed text-muted-foreground">
@@ -119,7 +119,7 @@ export function FeatureDetailPage() {
       </section>
       <section className="border-y border-border bg-muted/20 px-6 py-16 lg:px-8">
         <div className="mx-auto max-w-[1100px]">
-          <h2 className="mb-10 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-foreground">
+          <h2 className="mb-10 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-[#333C4D] dark:text-white">
             How it works
           </h2>
           <ol className="grid gap-6 md:grid-cols-3">
@@ -131,7 +131,7 @@ export function FeatureDetailPage() {
                 <span className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600/10 text-[13px] font-semibold text-emerald-700">
                   {step.step}
                 </span>
-                <h3 className="mb-2 text-[16px] font-semibold text-foreground">
+                <h3 className="mb-2 text-[16px] font-semibold text-[#333C4D] dark:text-white">
                   {step.title}
                 </h3>
                 <p className="text-[14px] leading-relaxed text-muted-foreground">

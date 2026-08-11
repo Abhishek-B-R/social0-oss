@@ -2,33 +2,17 @@ import { lazy } from "react";
 import { useLandingHashScroll } from "@/lib/scroll-to-hash";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Hero } from "@/components/landing/Hero";
-import { PlatformStrip } from "@/components/landing/PlatformStrip";
+import { DemoVideoSection } from "@/components/landing/DemoVideoSection";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { DeferredSection } from "@/components/landing/DeferredSection";
+import {
+  LandingModeProvider,
+  useLandingMode,
+} from "@/components/landing/landing-mode";
 
-const DemoVideoSection = lazy(() =>
-  import("@/components/landing/DemoVideoSection").then((m) => ({
-    default: m.DemoVideoSection,
-  })),
-);
-const WhoIsItFor = lazy(() =>
-  import("@/components/landing/WhoIsItFor").then((m) => ({
-    default: m.WhoIsItFor,
-  })),
-);
-const HowItWorks = lazy(() =>
-  import("@/components/landing/HowItWorks").then((m) => ({
-    default: m.HowItWorks,
-  })),
-);
-const FeaturesSection = lazy(() =>
-  import("@/components/landing/FeaturesSection").then((m) => ({
-    default: m.FeaturesSection,
-  })),
-);
-const SupportedPlatforms = lazy(() =>
-  import("@/components/landing/SupportedPlatforms").then((m) => ({
-    default: m.SupportedPlatforms,
+const AgentDemosSection = lazy(() =>
+  import("@/components/landing/AgentDemosSection").then((m) => ({
+    default: m.AgentDemosSection,
   })),
 );
 const DevelopersSection = lazy(() =>
@@ -36,14 +20,29 @@ const DevelopersSection = lazy(() =>
     default: m.DevelopersSection,
   })),
 );
+const SupportedPlatforms = lazy(() =>
+  import("@/components/landing/SupportedPlatforms").then((m) => ({
+    default: m.SupportedPlatforms,
+  })),
+);
 const FounderSection = lazy(() =>
   import("@/components/landing/FounderSection").then((m) => ({
     default: m.FounderSection,
   })),
 );
-const PricingSection = lazy(() =>
-  import("@/components/landing/PricingSection").then((m) => ({
-    default: m.PricingSection,
+const SocialProofSection = lazy(() =>
+  import("@/components/landing/SocialProofSection").then((m) => ({
+    default: m.SocialProofSection,
+  })),
+);
+const ProductMomentsSection = lazy(() =>
+  import("@/components/landing/ProductMomentsSection").then((m) => ({
+    default: m.ProductMomentsSection,
+  })),
+);
+const PricingTeaser = lazy(() =>
+  import("@/components/landing/PricingTeaser").then((m) => ({
+    default: m.PricingTeaser,
   })),
 );
 const FAQ = lazy(() =>
@@ -53,47 +52,60 @@ const FinalCTA = lazy(() =>
   import("@/components/landing/FinalCTA").then((m) => ({ default: m.FinalCTA })),
 );
 
+/**
+ * Hero → demo → (agent: AI agents demos) → product moments → developers
+ * → stories → founder → platforms → pricing → FAQ → CTA
+ */
+function LandingMain({ signedIn }: { signedIn: boolean }) {
+  const { mode } = useLandingMode();
+
+  return (
+    <main>
+      <Hero signedIn={signedIn} />
+      <DemoVideoSection />
+      {mode === "agent" ? (
+        <DeferredSection minHeight="40rem">
+          <AgentDemosSection />
+        </DeferredSection>
+      ) : null}
+      <DeferredSection minHeight="48rem">
+        <ProductMomentsSection signedIn={signedIn} />
+      </DeferredSection>
+      <DeferredSection>
+        <DevelopersSection />
+      </DeferredSection>
+      <DeferredSection>
+        <SocialProofSection signedIn={signedIn} />
+      </DeferredSection>
+      <DeferredSection>
+        <FounderSection signedIn={signedIn} />
+      </DeferredSection>
+      <DeferredSection>
+        <SupportedPlatforms />
+      </DeferredSection>
+      <DeferredSection>
+        <PricingTeaser signedIn={signedIn} />
+      </DeferredSection>
+      <DeferredSection>
+        <FAQ />
+      </DeferredSection>
+      <DeferredSection>
+        <FinalCTA signedIn={signedIn} />
+      </DeferredSection>
+    </main>
+  );
+}
+
 export function LandingPageView({ signedIn }: { signedIn: boolean }) {
   useLandingHashScroll();
 
   return (
-    <div className="min-h-screen bg-background landing">
-      <LandingHeader />
-      <main>
-        <Hero signedIn={signedIn} />
-        <PlatformStrip />
-        <DeferredSection minHeight="20rem">
-          <DemoVideoSection />
-        </DeferredSection>
-        <DeferredSection>
-          <WhoIsItFor />
-        </DeferredSection>
-        <DeferredSection>
-          <HowItWorks />
-        </DeferredSection>
-        <DeferredSection>
-          <FeaturesSection />
-        </DeferredSection>
-        <DeferredSection>
-          <SupportedPlatforms />
-        </DeferredSection>
-        <DeferredSection>
-          <DevelopersSection />
-        </DeferredSection>
-        <DeferredSection>
-          <FounderSection />
-        </DeferredSection>
-        <DeferredSection minHeight="28rem">
-          <PricingSection signedIn={signedIn} />
-        </DeferredSection>
-        <DeferredSection>
-          <FAQ />
-        </DeferredSection>
-        <DeferredSection>
-          <FinalCTA signedIn={signedIn} />
-        </DeferredSection>
-      </main>
-      <LandingFooter />
-    </div>
+    <LandingModeProvider>
+      <div className="landing landing-page min-h-screen bg-background text-foreground">
+        <LandingHeader />
+        <LandingMain signedIn={signedIn} />
+        <LandingFooter />
+      </div>
+    </LandingModeProvider>
   );
 }

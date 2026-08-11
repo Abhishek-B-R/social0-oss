@@ -1,19 +1,18 @@
 
 import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
-import { useState, useEffect } from "react";
-import { Menu, X, Moon, Sun } from "lucide-react";
+import { useState } from "react";
+import { Menu, X } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
 import Image from "@/components/AppImage";
 
 type NavLink = { href: string; label: string };
 
+// Keep nav short — one job: stay on-page and convert
 const landingNavLinks: NavLink[] = [
   { href: "/#features", label: "Product" },
-  { href: "/#platforms", label: "Platforms" },
-  { href: "/#developers", label: "Developers" },
+  { href: "/#stories", label: "Stories" },
   { href: "/#pricing", label: "Pricing" },
-  { href: "/#faq", label: "FAQ" },
 ];
 
 /** On /home, same-page anchors must use /home#… so they don't hit / and redirect logged-in users. */
@@ -32,44 +31,20 @@ export function LandingHeader() {
   const pathname = useLocation().pathname;
   const navLinks = navLinksForPath();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const { data: session } = useSession();
   const user = session?.user;
 
-  useEffect(() => {
-    // Check for saved preference or system preference
-    const savedTheme = localStorage.getItem("theme");
-    const systemDark = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
-
-    if (savedTheme === "dark" || (!savedTheme && systemDark)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setDarkMode(true);
-      document.documentElement.classList.add("dark");
-    }
-  }, []);
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    if (darkMode) {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    } else {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    }
-  };
-
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md landing">
-      <div className="mx-auto flex h-14 max-w-[1100px] items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
-        {/* Logo */}
-        <div className="flex gap-2">
-          <span className="relative h-9 w-9 block">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/85 backdrop-blur-md">
+      <div className="mx-auto flex h-14 max-w-[1180px] items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
+        <Link
+          href={pathname === "/home" ? "/home" : "/"}
+          className="flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <span className="relative block h-9 w-9 shrink-0">
             <Image
               src="/logo-circular.webp"
-              alt="Social0"
+              alt=""
               width={36}
               height={36}
               priority
@@ -77,25 +52,19 @@ export function LandingHeader() {
             />
             <Image
               src="/logo-dark.webp"
-              alt="Social0"
+              alt=""
               width={36}
               height={36}
               priority
-              className="rounded-full hidden dark:block absolute inset-0 border border-white"
+              className="absolute inset-0 hidden rounded-full border border-white/20 dark:block"
             />
           </span>
-          <Link
-            href={pathname === "/home" ? "/home" : "/"}
-            className="flex items-center gap-2"
-          >
-            <span className="font-serif text-[22px] tracking-tight text-foreground">
-              Social0
-            </span>
-          </Link>
-        </div>
+          <span className="font-logo text-[22px] font-normal tracking-tight text-foreground">
+            Social0
+          </span>
+        </Link>
 
-        {/* Desktop Nav */}
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-8 lg:flex">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -107,26 +76,11 @@ export function LandingHeader() {
           ))}
         </nav>
 
-        {/* Desktop CTA + Theme Toggle */}
-        <div className="hidden items-center gap-3 md:flex">
-          <button
-            type="button"
-            onClick={toggleDarkMode}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label={
-              darkMode ? "Switch to light mode" : "Switch to dark mode"
-            }
-          >
-            {darkMode ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
-          </button>
+        <div className="hidden items-center gap-3 lg:flex">
           {user ? (
             <Link
               href="/dashboard"
-              className="inline-flex rounded-full items-center gap-2.5 border border-border bg-background px-4 py-2 text-[14px] font-semibold text-foreground transition-colors hover:bg-muted"
+              className="inline-flex items-center gap-2.5 rounded-full border border-border bg-background px-4 py-2 text-[14px] font-semibold text-foreground transition-colors hover:bg-muted"
             >
               {user.image ? (
                 <img
@@ -140,40 +94,25 @@ export function LandingHeader() {
                   {(user.name || user.email || "U").charAt(0).toUpperCase()}
                 </span>
               )}
-              <span className="truncate max-w-[140px]">
+              <span className="max-w-[140px] truncate">
                 {user.name || user.email || "Account"}
               </span>
             </Link>
           ) : (
             <Link
-              href="/auth"
-              className="inline-flex items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-[14px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
+              href="/auth?mode=signin"
+              className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-emerald-500 px-5 py-2.5 text-[14px] font-semibold text-[#04140c] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97]"
             >
-              Get started
+              Start free
               <span aria-hidden="true">→</span>
             </Link>
           )}
         </div>
 
-        {/* Mobile Menu Button */}
-        <div className="flex items-center gap-2 md:hidden">
+        <div className="flex items-center gap-2 lg:hidden">
           <button
             type="button"
-            onClick={toggleDarkMode}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground"
-            aria-label={
-              darkMode ? "Switch to light mode" : "Switch to dark mode"
-            }
-          >
-            {darkMode ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
           >
@@ -186,9 +125,8 @@ export function LandingHeader() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="border-t border-border bg-background px-6 py-4 md:hidden">
+        <div className="border-t border-border bg-background px-6 py-4 lg:hidden">
           <nav className="flex flex-col gap-4">
             {navLinks.map((link) => (
               <Link
@@ -224,11 +162,11 @@ export function LandingHeader() {
               </Link>
             ) : (
               <Link
-                href="/auth"
-                className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-[14px] font-medium text-background transition-all hover:scale-[1.02] hover:bg-neutral-800 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
+                href="/auth?mode=signin"
+                className="mt-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-emerald-500 px-5 py-3 text-[14px] font-semibold text-[#04140c] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97]"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Get started
+                Start free
                 <span aria-hidden="true">→</span>
               </Link>
             )}

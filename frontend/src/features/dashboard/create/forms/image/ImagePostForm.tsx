@@ -12,6 +12,7 @@ import {
   getFreePostsRemaining,
   isFreePublishBlocked,
 } from "@/lib/free-tier-publish";
+import type { SubscriptionTier } from "@/lib/plans";
 import { signInUrl } from "@/lib/sign-in-url";
 import { createPost, type PublishMode } from "@/api/posts";
 import { SchedulePostSidebar } from "../../SchedulePostSidebar";
@@ -119,7 +120,7 @@ export function ImagePostForm({
   allowAutoRepost?: boolean;
   allowAutoPlug?: boolean;
   supportedPlatforms?: string[];
-  subscriptionTier?: "free" | "starter" | "growth" | "pro";
+  subscriptionTier?: SubscriptionTier;
   freePostsUsed?: number;
   isGuest?: boolean;
 }) {

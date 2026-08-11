@@ -1,53 +1,131 @@
-import { Link2, PenLine, Send } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Link2, PenLine, Send, Bot, Zap } from "lucide-react";
+import {
+  WfConnections,
+  WfComposer,
+  WfScheduleCreate,
+} from "./wireframes/ProductWireframes";
+import { WireframeStage } from "./wireframes/WireframeStage";
+import { useLandingMode, type LandingMode } from "./landing-mode";
 
-const steps = [
-  {
-    icon: Link2,
-    title: "Connect your accounts",
-    desc: "Connect your social accounts in seconds with secure authentication for every platform.",
+const stepsByMode = {
+  normal: {
+    headline: "Three steps. Then you’re posting.",
+    steps: [
+      {
+        icon: Link2,
+        title: "Connect your accounts",
+        desc: "Secure OAuth for every platform in seconds — tokens stay encrypted.",
+        n: "01",
+        visual: "connect" as const,
+      },
+      {
+        icon: PenLine,
+        title: "Write your post",
+        desc: "One composer. Customize captions per platform when you need to.",
+        n: "02",
+        visual: "write" as const,
+      },
+      {
+        icon: Send,
+        title: "Publish or schedule",
+        desc: "Go live everywhere at once, or pick the perfect time on the calendar.",
+        n: "03",
+        visual: "publish" as const,
+      },
+    ],
   },
-  {
-    icon: PenLine,
-    title: "Write your post",
-    desc: "Write your post once. Customize captions for each platform if needed.",
+  agent: {
+    headline: "Three steps. Then your agents post.",
+    steps: [
+      {
+        icon: Link2,
+        title: "Connect your accounts",
+        desc: "Same OAuth pipeline — agents publish to the accounts you already linked.",
+        n: "01",
+        visual: "connect" as const,
+      },
+      {
+        icon: Bot,
+        title: "Connect ChatGPT or Claude",
+        desc: "Add Social0 as an MCP server — or hit the REST API from Postman with an API key.",
+        n: "02",
+        visual: "write" as const,
+      },
+      {
+        icon: Zap,
+        title: "Let the agent publish",
+        desc: "Ask it to draft, schedule, or go live. Posts land in Social0 and ship to all connected platforms.",
+        n: "03",
+        visual: "publish" as const,
+      },
+    ],
   },
+} satisfies Record<
+  LandingMode,
   {
-    icon: Send,
-    title: "Publish or schedule",
-    desc: "Publish instantly or schedule it for later. Your post goes live across all platforms at once.",
-  },
-];
+    headline: string;
+    steps: {
+      icon: typeof Link2;
+      title: string;
+      desc: string;
+      n: string;
+      visual: "connect" | "write" | "publish";
+    }[];
+  }
+>;
+
+function StepVisual({ kind }: { kind: "connect" | "write" | "publish" }) {
+  if (kind === "connect")
+    return <WfConnections className="h-[168px] w-full" />;
+  if (kind === "write") return <WfComposer className="h-[168px] w-full" />;
+  return <WfScheduleCreate className="h-[168px] w-full" />;
+}
 
 export function HowItWorks() {
+  const { mode } = useLandingMode();
+  const { headline, steps } = stepsByMode[mode];
+
   return (
-    <section className="px-6 py-24 lg:px-8">
-      <div className="mx-auto max-w-[1100px]">
-        {/* Section header */}
-        <div className="mb-14">
-          <div className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
-            How it works
-          </div>
-          <h2 className="max-w-md font-serif text-[clamp(28px,4vw,44px)] leading-tight tracking-tight text-foreground">
-            How it works
-          </h2>
+    <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+      <div className="mx-auto max-w-[1120px]">
+        <div className="mb-10 flex flex-col items-center gap-3 text-center">
+          <AnimatePresence mode="wait">
+            <motion.h2
+              key={mode}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.22 }}
+              className="max-w-md font-serif text-[clamp(28px,4vw,40px)] italic leading-tight text-[#333C4D] dark:text-muted-foreground"
+            >
+              {headline}
+            </motion.h2>
+          </AnimatePresence>
         </div>
 
-        {/* 3-column bordered grid */}
-        <div className="grid gap-px overflow-hidden rounded-2xl bg-border md:grid-cols-3">
-          {steps.map((step, i) => (
-            <div key={step.title} className="bg-background p-3 md:p-4">
-              <div className="group flex h-full flex-col rounded-2xl p-5 transition-colors duration-300 ease-out hover:bg-[#EBE6DE] md:p-6 dark:hover:bg-white/[0.06]">
-                <div className="mb-6 flex items-center gap-3 font-mono text-[11px] tracking-widest text-muted-foreground">
-                  0{i + 1}
-                  <div className="h-px flex-1 bg-border transition-colors duration-300 group-hover:bg-foreground/10" />
+        <div className="grid gap-4 md:grid-cols-3">
+          {steps.map((step) => (
+            <div
+              key={`${mode}-${step.title}`}
+              className="group relative overflow-hidden rounded-[28px] border border-border bg-muted/40 p-1.5 transition-transform duration-300 hover:-translate-y-1 dark:border-white/10 dark:bg-[#1A1A1A]"
+            >
+              <div className="flex h-full flex-col rounded-[22px] border border-border/60 bg-background p-5 dark:border-white/5 dark:bg-[#111111] sm:p-6">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <span className="font-mono text-[12px] tracking-[0.2em] text-muted-foreground">
+                    {step.n}
+                  </span>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-500/25 bg-emerald-500/10 transition-colors group-hover:border-emerald-500/40">
+                    <step.icon
+                      className="h-4 w-4 text-emerald-700 dark:text-emerald-400"
+                      strokeWidth={1.5}
+                    />
+                  </div>
                 </div>
-                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/50 transition-colors duration-300 group-hover:border-foreground/15 group-hover:bg-background/80 dark:bg-muted/30 dark:group-hover:bg-background/40">
-                  <step.icon
-                    className="h-5 w-5 text-foreground"
-                    strokeWidth={1.5}
-                  />
-                </div>
-                <h3 className="mb-3 font-serif text-xl tracking-tight text-foreground">
+                <WireframeStage className="mb-5" tall>
+                  <StepVisual kind={step.visual} />
+                </WireframeStage>
+                <h3 className="mb-2 font-serif text-xl tracking-tight text-[#333C4D] dark:text-white">
                   {step.title}
                 </h3>
                 <p className="text-[14px] leading-relaxed text-muted-foreground">

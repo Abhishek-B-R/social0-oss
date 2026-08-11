@@ -1064,24 +1064,26 @@ export function SettingsPanel({
     setUse24HourTimeFormatValue(nextUse24);
   }
   const [preferencesPending, startPreferencesTransition] = useTransition();
+  // Match DB / API defaults (true). ?? false made toggles look off and saving
+  // prefs could persist false even when the user never meant to disable them.
   const [automationEmailsValue, setAutomationEmailsValue] = useState(
-    settings.automationEmails ?? false,
+    settings.automationEmails ?? true,
   );
   const [syncedAutomationEmails, setSyncedAutomationEmails] = useState(
-    settings.automationEmails ?? false,
+    settings.automationEmails ?? true,
   );
-  const nextAutomationEmails = settings.automationEmails ?? false;
+  const nextAutomationEmails = settings.automationEmails ?? true;
   if (syncedAutomationEmails !== nextAutomationEmails) {
     setSyncedAutomationEmails(nextAutomationEmails);
     setAutomationEmailsValue(nextAutomationEmails);
   }
   const [emailOnPostFailedValue, setEmailOnPostFailedValue] = useState(
-    settings.emailOnPostFailed ?? false,
+    settings.emailOnPostFailed ?? true,
   );
   const [syncedEmailOnPostFailed, setSyncedEmailOnPostFailed] = useState(
-    settings.emailOnPostFailed ?? false,
+    settings.emailOnPostFailed ?? true,
   );
-  const nextEmailOnPostFailed = settings.emailOnPostFailed ?? false;
+  const nextEmailOnPostFailed = settings.emailOnPostFailed ?? true;
   if (syncedEmailOnPostFailed !== nextEmailOnPostFailed) {
     setSyncedEmailOnPostFailed(nextEmailOnPostFailed);
     setEmailOnPostFailedValue(nextEmailOnPostFailed);

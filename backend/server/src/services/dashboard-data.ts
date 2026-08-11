@@ -80,13 +80,15 @@ export async function loadDashboardLayoutData(): Promise<{
   ]);
 
   const planLabel =
-    tier === "pro"
-      ? "Pro plan"
-      : tier === "growth"
-        ? "Growth plan"
-        : tier === "starter"
-          ? "Starter (Lite) plan"
-          : "Free plan";
+    tier === "max"
+      ? "Max plan"
+      : tier === "pro"
+        ? "Pro plan"
+        : tier === "growth"
+          ? "Growth plan"
+          : tier === "starter"
+            ? "Starter (Lite) plan"
+            : "Free plan";
 
   return {
     planLabel,

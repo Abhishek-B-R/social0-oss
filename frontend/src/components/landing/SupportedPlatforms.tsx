@@ -1,128 +1,98 @@
-import {
-  XIcon,
-  InstagramIcon,
-  LinkedInIcon,
-  YouTubeIcon,
-  TikTokIcon,
-  FacebookIcon,
-  ThreadsIcon,
-  BlueskyIcon,
-  PinterestIcon,
-} from "./PlatformIcons";
+import { PlatformBrandIcon } from "./PlatformStrip";
 
+/** Same /icons assets as the hero PlatformStrip. */
 const platforms = [
   {
     name: "Twitter / X",
     type: "Text · Images · Videos · Threads",
-    icon: XIcon,
-    iconBg: "#000000",
-    darkIconBg: "#ffffff",
+    src: "/icons/x.svg",
   },
   {
     name: "Instagram",
     type: "Images · Reels · Carousels",
-    icon: InstagramIcon,
-    iconBg: "#E1306C",
-    darkIconBg: "#E1306C",
+    src: "/icons/instagram.svg",
   },
   {
     name: "LinkedIn",
     type: "Text · Images · Videos",
-    icon: LinkedInIcon,
-    iconBg: "#0077B5",
-    darkIconBg: "#0077B5",
+    src: "/icons/linkedin.svg",
   },
   {
     name: "YouTube",
     type: "Videos · Shorts",
-    icon: YouTubeIcon,
-    iconBg: "#FF0000",
-    darkIconBg: "#FF0000",
+    src: "/icons/youtube.svg",
   },
   {
     name: "TikTok",
     type: "Short Videos · Photo posts",
-    icon: TikTokIcon,
-    iconBg: "#010101",
-    darkIconBg: "#ffffff",
+    src: "/icons/tiktok-black.png",
+    darkSrc: "/icons/tiktok.png",
+    srcScale: 0.7,
   },
   {
     name: "Facebook",
     type: "Text · Images · Videos",
-    icon: FacebookIcon,
-    iconBg: "#1877F2",
-    darkIconBg: "#1877F2",
+    src: "/icons/facebook.svg",
   },
   {
     name: "Threads",
     type: "Text · Images · Videos · Threads",
-    icon: ThreadsIcon,
-    iconBg: "#000000",
-    darkIconBg: "#ffffff",
+    src: "/icons/threads-black.png",
+    darkSrc: "/icons/threads-white.png",
   },
   {
     name: "Bluesky",
     type: "Text · Images · Videos · Threads",
-    icon: BlueskyIcon,
-    iconBg: "#0560FF",
-    darkIconBg: "#0560FF",
+    src: "/icons/bluesky.svg",
   },
   {
     name: "Pinterest",
     type: "Pins · Videos",
-    icon: PinterestIcon,
-    iconBg: "#E60023",
-    darkIconBg: "#E60023",
+    src: "/icons/pinterest.png",
+    srcScale: 1.2,
   },
-];
+] as const;
 
 export function SupportedPlatforms() {
   return (
     <section
       id="platforms"
-      className="bg-foreground py-24 text-background dark:bg-[#0A0A0A] dark:text-white"
+      className="border-y border-zinc-200/80 bg-[#f7f7f8] py-16 text-foreground sm:py-20 dark:border-white/8 dark:bg-[#0A0A0A] dark:text-white lg:py-24"
     >
-      <div className="mx-auto max-w-[1100px] px-6 lg:px-8">
-        {/* Header row */}
+      <div className="mx-auto max-w-[1120px] px-4 sm:px-6 lg:px-8">
         <div className="mb-14">
-          <div className="mb-3 text-[11px] font-medium uppercase tracking-widest text-background/55 dark:text-white/55">
+          <div className="mb-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
             Supported platforms
           </div>
-          <h2 className="font-serif text-[clamp(28px,4vw,44px)] leading-tight tracking-tight text-background dark:text-white">
+          <h2 className="font-sans text-[clamp(28px,4vw,44px)] font-bold leading-tight tracking-tight text-[#333C4D] dark:text-white">
             9 platforms.
             <br />
             More coming.
           </h2>
-          <p className="mt-2 max-w-[360px] text-[14px] leading-relaxed text-background/70 dark:text-white/70">
+          <p className="mt-2 max-w-[360px] text-[14px] leading-relaxed text-muted-foreground">
             Publish everywhere your audience already is.
           </p>
         </div>
 
-        {/* 3-column platform grid */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           {platforms.map((p) => (
             <div
               key={p.name}
-              className="group cursor-pointer rounded-xl border border-background/8 bg-background/4 p-6 transition-all duration-200 ease-out hover:-translate-y-1 hover:border-background/20 hover:shadow-lg hover:bg-background/[0.07] dark:border-white/8 dark:bg-white/4 dark:hover:border-white/20 dark:hover:bg-white/[0.07] dark:hover:shadow-lg dark:hover:shadow-black/20"
+              className="group cursor-default rounded-xl border border-zinc-200/90 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-200 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-[0_12px_28px_rgba(15,23,42,0.08)] dark:border-white/8 dark:bg-white/4 dark:shadow-none dark:hover:border-white/20 dark:hover:bg-white/[0.07]"
             >
-              <div
-                className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105 group-hover:brightness-110"
-                style={{ background: p.iconBg }}
-              >
-                <p.icon
-                  className="h-5 w-5 text-white"
-                  style={{
-                    color:
-                      p.iconBg === "#000000" || p.iconBg === "#010101"
-                        ? "#fff"
-                        : "#fff",
-                  }}
+              <div className="mb-3 flex size-9 items-center justify-center transition-transform duration-200 group-hover:scale-105">
+                <PlatformBrandIcon
+                  name={p.name}
+                  src={p.src}
+                  darkSrc={"darkSrc" in p ? p.darkSrc : undefined}
+                  srcScale={"srcScale" in p ? p.srcScale : 1}
+                  size={36}
                 />
               </div>
-              <div className="text-[14px] font-medium text-background/85 dark:text-white/85">
+              <div className="text-[14px] font-medium text-foreground dark:text-white/85">
                 {p.name}
               </div>
-              <div className="mt-0.5 text-[12px] text-background/55 transition-colors duration-200 group-hover:text-background/80 dark:text-white/55 dark:group-hover:text-white/80">
+              <div className="mt-0.5 text-[12px] text-muted-foreground transition-colors duration-200 group-hover:text-foreground/80 dark:text-white/55 dark:group-hover:text-white/80">
                 {p.type}
               </div>
             </div>
