@@ -141,6 +141,7 @@ export default function McpOAuthConnectPage() {
         title="Connect Social0 MCP"
         description="Authorize Claude or another AI assistant to manage your Social0 posts."
         path="/oauth/mcp/connect"
+        robots={{ index: false, follow: false }}
       />
 
       <div className="mx-auto flex min-h-[60vh] max-w-xl flex-col justify-center px-4 py-16">

@@ -1,11 +1,16 @@
 /**
- * Cloudflare Pages: inject path-specific title/OG for social scrapers.
- * Humans still get the SPA shell; bots get correct meta without waiting on JS.
+ * Cloudflare Pages middleware for crawlers:
+ * - 301 trailing slash → bare path
+ * - inject title / description / canonical / OG
+ * - hard 404 for unknown public paths (stops soft-200 SPA duplicates)
+ * Humans still get the SPA for known routes.
  */
 
 type RouteMeta = {
   title: string;
   description: string;
+  /** When set, emit noindex (app / utility URLs). */
+  noindex?: boolean;
 };
 
 type PagesContext = {
@@ -14,8 +19,100 @@ type PagesContext = {
 };
 
 const OG_IMAGE = "https://social0.app/og-image.jpg";
+const SITE = "https://social0.app";
 
-const ROUTE_META: Record<string, RouteMeta> = {
+const FEATURE_META: Record<string, RouteMeta> = {
+  "threads-scheduler": {
+    title: "Threads Scheduler - Schedule Meta Threads Posts | Social0",
+    description:
+      "Schedule Threads posts from one dashboard. Compose text, images, and videos, pick your Threads account, and publish or schedule with Social0.",
+  },
+  "bluesky-scheduling-tool": {
+    title: "Bluesky Scheduling Tool | Social0",
+    description:
+      "Schedule Bluesky posts from Social0. Connect with an app password and publish alongside your other networks.",
+  },
+  "tiktok-scheduler": {
+    title: "TikTok Scheduler | Social0",
+    description:
+      "Schedule TikTok posts from one dashboard with Social0 multi-platform publishing.",
+  },
+  "instagram-scheduler": {
+    title: "Instagram Scheduler | Social0",
+    description:
+      "Schedule Instagram posts from Social0. Compose once and publish across your connected accounts.",
+  },
+  "linkedin-scheduler": {
+    title: "LinkedIn Scheduler | Social0",
+    description:
+      "Schedule LinkedIn posts from Social0. Publish to profiles and pages from one composer.",
+  },
+  "twitter-scheduler": {
+    title: "X (Twitter) Scheduler | Social0",
+    description:
+      "Schedule posts to X from Social0. Compose once and publish across nine platforms.",
+  },
+  "multi-platform-scheduler": {
+    title: "Multi-Platform Social Scheduler | Social0",
+    description:
+      "One composer for X, Instagram, LinkedIn, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest.",
+  },
+  "social-media-calendar": {
+    title: "Social Media Calendar | Social0",
+    description:
+      "Plan drafts, queued, and live posts across all accounts in one calendar.",
+  },
+  "youtube-scheduler": {
+    title: "YouTube Scheduler | Social0",
+    description:
+      "Schedule YouTube uploads and posts from Social0 alongside your other networks.",
+  },
+  "pinterest-scheduler": {
+    title: "Pinterest Scheduler | Social0",
+    description:
+      "Schedule Pinterest pins from Social0 multi-platform publishing.",
+  },
+  "facebook-scheduler": {
+    title: "Facebook Scheduler | Social0",
+    description:
+      "Schedule Facebook Page posts from Social0 from one dashboard.",
+  },
+};
+
+const ALTERNATIVE_META: Record<string, RouteMeta> = {
+  buffer: {
+    title: "Buffer Alternative - Social0 | Multi-Platform Scheduler",
+    description:
+      "Looking for a Buffer alternative? Social0 lets you compose once and publish to nine platforms from one dashboard.",
+  },
+  hootsuite: {
+    title: "Hootsuite Alternative - Social0",
+    description:
+      "Looking for a Hootsuite alternative? Social0 is a simpler multi-platform scheduler with API, MCP, and CLI.",
+  },
+  later: {
+    title: "Later Alternative - Social0",
+    description:
+      "Looking for a Later alternative? Schedule and publish across nine platforms from Social0.",
+  },
+  metricool: {
+    title: "Metricool Alternative - Social0",
+    description:
+      "Looking for a Metricool alternative? Social0 focuses on clean multi-platform publishing.",
+  },
+  publer: {
+    title: "Publer Alternative - Social0",
+    description:
+      "Looking for a Publer alternative? Compose once and publish everywhere with Social0.",
+  },
+  "sprout-social": {
+    title: "Sprout Social Alternative - Social0",
+    description:
+      "Looking for a Sprout Social alternative? Social0 is built for creators who want simple multi-platform publishing.",
+  },
+};
+
+const STATIC_META: Record<string, RouteMeta> = {
   "/": {
     title: "Social0 — AI Agents & Multi-Platform Social Scheduling",
     description:
@@ -56,6 +153,21 @@ const ROUTE_META: Record<string, RouteMeta> = {
     description:
       "Read the Social0 terms of service. Understand your rights and responsibilities when using our social media scheduling and publishing platform.",
   },
+  "/data-deletion": {
+    title: "Data Deletion | Social0",
+    description:
+      "How to delete your Social0 account or request deletion of your account data.",
+  },
+  "/llms.txt": {
+    title: "Social0 llms.txt",
+    description: "Machine-readable product summary for AI systems.",
+  },
+  "/home": {
+    title: "Social0 — AI Agents & Multi-Platform Social Scheduling",
+    description:
+      "Publish and schedule across 9 platforms from one dashboard — or let ChatGPT, Claude, and your agents ship via MCP, API, and CLI. Start free.",
+    noindex: true,
+  },
 };
 
 const BOT_UA =
@@ -75,6 +187,39 @@ function escapeAttr(value: string): string {
     .replace(/</g, "&lt;");
 }
 
+function resolveMeta(path: string): RouteMeta | null {
+  if (STATIC_META[path]) return STATIC_META[path];
+
+  const featureMatch = path.match(/^\/features\/([^/]+)$/);
+  if (featureMatch) {
+    return FEATURE_META[featureMatch[1]] ?? null;
+  }
+
+  const altMatch = path.match(/^\/alternatives\/([^/]+)$/);
+  if (altMatch) {
+    return ALTERNATIVE_META[altMatch[1]] ?? null;
+  }
+
+  return null;
+}
+
+function isKnownPublicPath(path: string): boolean {
+  if (resolveMeta(path)) return true;
+  // App surfaces Google shouldn't index — still "known" so humans aren't 404'd
+  if (
+    path.startsWith("/auth") ||
+    path.startsWith("/dashboard") ||
+    path.startsWith("/onboarding") ||
+    path.startsWith("/oauth") ||
+    path.startsWith("/invite") ||
+    path.startsWith("/api") ||
+    path.startsWith("/v1")
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function upsertMeta(
   html: string,
   attr: "name" | "property",
@@ -91,7 +236,10 @@ function upsertMeta(
 }
 
 function applyRouteMeta(html: string, path: string, meta: RouteMeta): string {
-  const url = `https://social0.app${path === "/" ? "/" : path}`;
+  // Canonical always strips query (e.g. ?mode=agentic → /)
+  const canonicalPath = path === "/home" ? "/" : path;
+  const url = `${SITE}${canonicalPath === "/" ? "/" : canonicalPath}`;
+
   let out = html.replace(
     /<title>[^<]*<\/title>/i,
     `<title>${escapeAttr(meta.title)}</title>`,
@@ -105,6 +253,10 @@ function applyRouteMeta(html: string, path: string, meta: RouteMeta): string {
   out = upsertMeta(out, "name", "twitter:description", meta.description);
   out = upsertMeta(out, "name", "twitter:image", OG_IMAGE);
 
+  if (meta.noindex) {
+    out = upsertMeta(out, "name", "robots", "noindex, follow");
+  }
+
   const canonicalRe =
     /<link\s+rel=["']canonical["']\s+href=["'][^"']*["']\s*\/?>/i;
   const canonical = `<link rel="canonical" href="${escapeAttr(url)}" />`;
@@ -117,9 +269,9 @@ function applyRouteMeta(html: string, path: string, meta: RouteMeta): string {
 
 export async function onRequest(context: PagesContext) {
   const url = new URL(context.request.url);
-  const path = normalizePath(url.pathname);
+  let path = url.pathname || "/";
 
-  // Leave API proxies and static build assets alone
+  // Leave API proxies and hashed static assets alone
   if (
     path.startsWith("/api") ||
     path.startsWith("/v1") ||
@@ -128,12 +280,28 @@ export async function onRequest(context: PagesContext) {
     return context.next();
   }
 
-  const meta = ROUTE_META[path];
-  const ua = context.request.headers.get("user-agent") ?? "";
+  // Trailing slash → bare path (except "/")
+  if (path.length > 1 && path.endsWith("/")) {
+    const bare = path.slice(0, -1) + url.search;
+    return Response.redirect(new URL(bare, url.origin).toString(), 301);
+  }
 
+  path = normalizePath(path);
+  const ua = context.request.headers.get("user-agent") ?? "";
+  const isBot = BOT_UA.test(ua);
+
+  // Soft-404 killer for crawlers on junk URLs
+  if (isBot && !isKnownPublicPath(path)) {
+    return new Response("Not Found", {
+      status: 404,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    });
+  }
+
+  const meta = resolveMeta(path);
   const response = await context.next();
 
-  if (!meta || !BOT_UA.test(ua)) return response;
+  if (!meta || !isBot) return response;
 
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("text/html")) return response;

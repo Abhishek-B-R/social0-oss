@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { usePostHog } from "@posthog/react";
 import { SeoHead } from "@/components/seo/SeoHead";
 import { dashboardSeo } from "@/lib/page-metadata";
-import { absoluteUrl } from "@/lib/seo";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
@@ -107,7 +106,6 @@ export function DashboardLayout() {
       <SeoHead
         {...dashboardSeo}
         path={location.pathname}
-        canonical={absoluteUrl(location.pathname)}
       />
       {session && layoutData?.subscriptionTier && (
         <SubscriptionSync tier={layoutData.subscriptionTier} />

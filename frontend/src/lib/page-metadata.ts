@@ -281,6 +281,14 @@ export function staticRouteSeo(pathname: string): PageSeoConfig | null {
           path: pathname,
         };
       }
+      if (pathname.startsWith("/oauth") || pathname.startsWith("/invite")) {
+        return {
+          title: "Social0",
+          description: homePageDescription,
+          path: pathname,
+          robots: { index: false, follow: false },
+        };
+      }
       return null;
   }
 }
