@@ -92,7 +92,7 @@ export function AgentLogoStrip({ className = "" }: { className?: string }) {
   );
 }
 
-/** PLACEHOLDER count — edit when you have the real number */
+/** Happy-customer count shown under the hero CTA. */
 const CUSTOMER_COUNT = "400+";
 
 const FACES = [

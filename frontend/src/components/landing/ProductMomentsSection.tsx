@@ -44,6 +44,14 @@ function MomentDemoVideoClip({
     const el = videoRef.current;
     if (!el) return;
 
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (reduceMotion) {
+      el.pause();
+      return;
+    }
+
     let inView = false;
     const sync = () => {
       if (inView && !document.hidden) void el.play().catch(() => {});

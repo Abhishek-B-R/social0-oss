@@ -6,12 +6,10 @@ import { useLandingModeOrDefault } from "./landing-mode";
 const copy = {
   normal: {
     title: "Ready to post everywhere in seconds?",
-    // PLACEHOLDER metric — replace before shipping
-    body: "Join 2,400+ creators who stopped copy-pasting. Start free — no credit card.",
+    body: "Join 400+ creators who stopped copy-pasting. Start free — no credit card.",
   },
   agent: {
     title: "Ready to let agents post for you?",
-    // PLACEHOLDER metric — replace before shipping
     body: "Point ChatGPT or Claude at Social0. Start free — no credit card.",
   },
 } as const;

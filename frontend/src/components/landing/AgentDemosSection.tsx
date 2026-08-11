@@ -98,10 +98,18 @@ function DemoVideoSlot({
       ? "aspect-video w-full object-cover object-bottom"
       : "aspect-video w-full object-cover object-top";
 
-  // ponytail: pause off-screen / hidden tab so decode doesn't burn CPU
+  // ponytail: pause off-screen / hidden tab / reduced-motion so decode doesn't burn CPU
   useEffect(() => {
     const el = videoRef.current;
     if (!el || failed) return;
+
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (reduceMotion) {
+      el.pause();
+      return;
+    }
 
     let inView = false;
     const sync = () => {

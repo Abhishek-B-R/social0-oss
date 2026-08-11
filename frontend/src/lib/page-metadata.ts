@@ -57,8 +57,41 @@ export function metadataToSeoConfig(
       : absoluteUrl(fallbackPath);
 
   const robotsRaw = metadata.robots as RobotsDirective | undefined;
-  const openGraph = metadata.openGraph as PageSeoConfig["openGraph"] | undefined;
-  const twitter = metadata.twitter as PageSeoConfig["twitter"] | undefined;
+  const openGraphRaw = metadata.openGraph as
+    | (PageSeoConfig["openGraph"] & {
+        images?: Array<{ url?: string } | string>;
+      })
+    | undefined;
+  const twitterRaw = metadata.twitter as
+    | (PageSeoConfig["twitter"] & { images?: string[] | string })
+    | undefined;
+
+  const ogImageFromArray = Array.isArray(openGraphRaw?.images)
+    ? typeof openGraphRaw.images[0] === "string"
+      ? openGraphRaw.images[0]
+      : openGraphRaw.images[0]?.url
+    : undefined;
+  const twitterImageFromArray = Array.isArray(twitterRaw?.images)
+    ? twitterRaw.images[0]
+    : typeof twitterRaw?.images === "string"
+      ? twitterRaw.images
+      : undefined;
+
+  const openGraph = openGraphRaw
+    ? {
+        title: openGraphRaw.title,
+        description: openGraphRaw.description,
+        type: openGraphRaw.type,
+        image: openGraphRaw.image ?? ogImageFromArray,
+      }
+    : undefined;
+  const twitter = twitterRaw
+    ? {
+        title: twitterRaw.title,
+        description: twitterRaw.description,
+        image: twitterRaw.image ?? twitterImageFromArray,
+      }
+    : undefined;
 
   return {
     title,
