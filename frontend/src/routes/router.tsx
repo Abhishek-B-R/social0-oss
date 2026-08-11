@@ -24,6 +24,9 @@ const ResetPasswordPage = lazy(
 const VerifyEmailPage = lazy(
   () => import("@/features/auth/pages/VerifyEmailPage"),
 );
+const AuthContinuePage = lazy(
+  () => import("@/features/auth/pages/AuthContinuePage"),
+);
 
 const ComposerPage = lazy(() =>
   import("@/pages/ComposerPage").then((m) => ({ default: m.ComposerPage })),
@@ -231,6 +234,14 @@ export function AppRouter() {
             element={
               <Lazy>
                 <VerifyEmailPage />
+              </Lazy>
+            }
+          />
+          <Route
+            path="auth/continue"
+            element={
+              <Lazy>
+                <AuthContinuePage />
               </Lazy>
             }
           />

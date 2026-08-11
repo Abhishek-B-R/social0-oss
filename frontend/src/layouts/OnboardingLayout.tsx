@@ -8,15 +8,52 @@ import { OnboardingProgress } from "@/components/onboarding/OnboardingProgress";
 import { GridBackground } from "@/components/landing/GridBackground";
 import { useQuery } from "@tanstack/react-query";
 
+function OnboardingGateLoader() {
+  return (
+    <div
+      className="landing landing-page relative flex min-h-screen flex-col items-center justify-center gap-4 overflow-x-hidden bg-[#fafaf8] dark:bg-background"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <GridBackground className="fixed inset-0" />
+      <svg
+        className="relative z-10 h-8 w-8 animate-spin text-accent"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <circle
+          className="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          strokeWidth="4"
+        />
+        <path
+          className="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+        />
+      </svg>
+      <p className="relative z-10 text-sm text-muted-foreground">
+        Getting things ready…
+      </p>
+    </div>
+  );
+}
+
 export function OnboardingLayout() {
   const { data: session, isPending } = useSession();
   const navigate = useNavigate();
 
-  const { data: status } = useQuery<OnboardingStatus | null>({
-    queryKey: ["onboarding-status"],
-    queryFn: getOnboardingStatus,
-    enabled: !!session,
-  });
+  const { data: status, isPending: statusPending } =
+    useQuery<OnboardingStatus | null>({
+      queryKey: ["onboarding-status"],
+      queryFn: getOnboardingStatus,
+      enabled: !!session && session.user.emailVerified !== false,
+    });
 
   useEffect(() => {
     if (isPending) return;
@@ -33,7 +70,7 @@ export function OnboardingLayout() {
   }, [isPending, session, navigate]);
 
   useEffect(() => {
-    if (status?.onboardingCompleted) {
+    if (status?.onboardingCompleted || (status && !status.shouldOnboard)) {
       navigate("/dashboard", { replace: true });
     }
   }, [status, navigate]);
@@ -42,6 +79,14 @@ export function OnboardingLayout() {
     session?.user?.name?.trim()?.split(/\s+/)[0] ||
     session?.user?.email?.split("@")[0] ||
     null;
+
+  // Don't paint onboarding chrome until we know they still need it.
+  if (isPending || !session || statusPending || !status) {
+    return <OnboardingGateLoader />;
+  }
+  if (status.onboardingCompleted || !status.shouldOnboard) {
+    return <OnboardingGateLoader />;
+  }
 
   return (
     <div className="landing landing-page relative flex min-h-screen flex-col overflow-x-hidden bg-[#fafaf8] dark:bg-background">

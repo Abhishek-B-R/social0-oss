@@ -12,7 +12,7 @@ export function HomePage() {
 
   useEffect(() => {
     if (!isPending && session) {
-      navigate("/dashboard", { replace: true });
+      navigate("/auth/continue", { replace: true });
     }
   }, [isPending, session, navigate]);
 
