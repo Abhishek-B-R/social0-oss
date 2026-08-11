@@ -901,7 +901,7 @@ export function BillingPanel({
     <div className="space-y-5">
       <div className="rounded-xl border border-border bg-white p-6 dark:bg-bg-elevated">
         <p className="text-sm text-muted-foreground">Current plan</p>
-        <h2 className="text-2xl font-serif text-foreground">{tierLabel}</h2>
+        <h2 className="font-logo text-2xl font-normal tracking-tight text-foreground">{tierLabel}</h2>
         {showRenewedTodayBanner && renewedOnDate && (
           <p className="text-sm text-accent mt-1">
             Your plan renewed on{" "}

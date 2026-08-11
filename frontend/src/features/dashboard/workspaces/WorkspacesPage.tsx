@@ -27,7 +27,6 @@ import {
 } from "@/api/team";
 import { WorkspaceIcon } from "@/lib/workspace-icons";
 import { AccountAvatar } from "@/components/AccountAvatar";
-import DocsInfoIcon from "@/components/info-icon";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { WorkspacesPageSkeleton } from "@/components/ui/page-skeletons";
 import {
@@ -42,7 +41,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getPlatformIcon } from "@/lib/platform-icons";
 import { cn } from "@/lib/utils";
-import { DOCS_TEAMS_URL } from "@/lib/docs-url";
 import { CreateWorkspaceDialog } from "./CreateWorkspaceDialog";
 import {
   mapPathToBase,
@@ -328,12 +326,9 @@ export function WorkspacesPage() {
     <>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="mb-2 flex items-center gap-2 font-serif text-2xl font-semibold tracking-tight text-foreground landing sm:text-3xl">
-              Workspaces
-            </h1>
-            <DocsInfoIcon url={DOCS_TEAMS_URL} />
-          </div>
+          <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+            Workspaces
+          </h1>
           <p className="mt-1 max-w-2xl text-sm text-text-muted">
             Organize connections across workspaces. Use Move to transfer an
             account without reconnecting.

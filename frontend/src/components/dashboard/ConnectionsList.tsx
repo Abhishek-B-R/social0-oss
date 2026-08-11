@@ -16,8 +16,6 @@ import {
   Crown,
 } from "@/icons/phosphor";
 import { cn } from "@/lib/utils";
-import DocsInfoIcon from "../info-icon";
-import { DOCS_CONNECTIONS_URL } from "@/lib/docs-url";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { SkeletonBone } from "@/components/ui/skeleton-bone";
 
@@ -205,12 +203,9 @@ export function ConnectionsList({
             </button>
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <h2 className="text-2xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2 sm:text-3xl">
-            Connected Accounts
-          </h2>
-          <DocsInfoIcon url={DOCS_CONNECTIONS_URL} />
-        </div>
+        <h2 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+          Connected Accounts
+        </h2>
         <p className="text-sm leading-snug text-text-muted">
           {canManageConnections
             ? "Link your social accounts to publish from one place. You can connect multiple accounts per platform."

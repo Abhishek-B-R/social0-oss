@@ -70,7 +70,7 @@ function ContentTypeCard({
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-bg-muted text-text-muted group-hover:bg-accent/20 group-hover:text-accent">
         {Icon && <Icon className="h-6 w-6" />}
       </div>
-      <h3 className="text-xl font-semibold font-serif text-foreground mb-2 landing">
+      <h3 className="mb-2 font-logo text-xl font-normal tracking-tight text-foreground">
         {name}
       </h3>
       <div className="mt-auto flex flex-wrap gap-1.5">

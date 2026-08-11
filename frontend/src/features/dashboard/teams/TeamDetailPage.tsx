@@ -304,7 +304,7 @@ export function TeamDetailPage() {
   return (
     <>
       <BackLink />
-      <h1 className="mt-4 font-serif text-2xl font-semibold tracking-tight text-foreground landing sm:text-3xl">
+      <h1 className="mt-4 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
         Team settings
       </h1>
       <p className="mt-1 text-sm text-text-muted">

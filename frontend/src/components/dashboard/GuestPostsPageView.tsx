@@ -16,7 +16,7 @@ export function GuestPostsPageView({
 }: GuestPostsPageViewProps) {
   return (
     <div>
-      <h1 className="mb-2 font-serif text-2xl font-semibold tracking-tight text-foreground landing sm:text-3xl">
+      <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
         {pageTitle}
       </h1>
       <p className="mb-6 text-sm text-text-muted">{pageDescription}</p>

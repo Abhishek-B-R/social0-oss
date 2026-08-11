@@ -25,8 +25,6 @@ import {
   enrichTwitterErrorForDisplay,
   isTwitterPlatformId,
 } from "@/lib/twitter-errors";
-import { DOCS_POST_VIEW_URL } from "@/lib/docs-url";
-import DocsInfoIcon from "@/components/info-icon";
 import {
   resolvePostDetailBack,
   type PostDetailLocationState,
@@ -349,30 +347,27 @@ export function PostDetailView({ postId }: { postId: string }) {
         </div>
       )}
 
-      <div className="flex items-center gap-2 justify-between">
-        <button
-          type="button"
-          onClick={() => {
-            const from = (location.state as PostDetailLocationState | null)
-              ?.from;
-            const resolved = resolvePostDetailBack(from);
-            if (
-              typeof from === "string" &&
-              resolved.href === from
-            ) {
-              navigate(from);
-              return;
-            }
-            // Preserve calendar → post → back without a hardcoded posts list.
-            navigate(-1);
-          }}
-          className="inline-flex items-center gap-2 text-sm font-medium text-text-muted hover:text-text mb-6"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {back.label}
-        </button>
-        <DocsInfoIcon url={DOCS_POST_VIEW_URL} />
-      </div>
+      <button
+        type="button"
+        onClick={() => {
+          const from = (location.state as PostDetailLocationState | null)
+            ?.from;
+          const resolved = resolvePostDetailBack(from);
+          if (
+            typeof from === "string" &&
+            resolved.href === from
+          ) {
+            navigate(from);
+            return;
+          }
+          // Preserve calendar → post → back without a hardcoded posts list.
+          navigate(-1);
+        }}
+        className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-text-muted hover:text-text"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        {back.label}
+      </button>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <div className="space-y-6">

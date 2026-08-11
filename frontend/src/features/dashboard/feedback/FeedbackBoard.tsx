@@ -1,5 +1,3 @@
-import DocsInfoIcon from "@/components/info-icon";
-import { DOCS_FEEDBACK_URL } from "@/lib/docs-url";
 import { getCannyBoardToken } from "@/lib/env";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
@@ -261,12 +259,9 @@ export function FeedbackBoard() {
 export function FeedbackHeader() {
   return (
     <header className="shrink-0 border-b border-border bg-bg-elevated px-4 py-4 sm:px-6">
-      <div className="flex items-center gap-2">
-        <h1 className="mb-2 flex items-center gap-2 font-serif text-3xl font-semibold tracking-tight text-foreground landing">
-          Feedback or Feature Request
-        </h1>
-        <DocsInfoIcon url={DOCS_FEEDBACK_URL} />
-      </div>
+      <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+        Feedback or Feature Request
+      </h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Vote on features, report bugs, and suggest improvements. Or you can
         always email us at{" "}

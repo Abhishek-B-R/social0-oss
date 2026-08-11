@@ -2,8 +2,6 @@ import Link from "@/components/AppLink";
 import { Video, ImageIcon, Layers } from "lucide-react";
 import { getPlatformIcon } from "@/lib/platform-icons";
 import { CONTENT_TYPES } from "@/lib/content-types";
-import { DOCS_BULK_TOOLS_URL } from "@/lib/docs-url";
-import DocsInfoIcon from "@/components/info-icon";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 
 const VIDEO_PLATFORMS =
@@ -51,12 +49,9 @@ export default function BulkToolsPage() {
   const dash = useDashboardPath();
   return (
     <div>
-      <div className="flex items-center gap-2">
-        <h1 className="text-3xl font-bold font-serif tracking-tight text-foreground mb-2 landing">
-          Bulk tools
-        </h1>
-        <DocsInfoIcon url={DOCS_BULK_TOOLS_URL} />
-      </div>
+      <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+        Bulk tools
+      </h1>
       <p className="mt-2 text-text-muted">
         Upload and schedule multiple videos or images at once.
       </p>
@@ -71,7 +66,7 @@ export default function BulkToolsPage() {
             <Video className="h-8 w-8" />
           </div>
           <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-semibold font-serif tracking-tight text-foreground mb-2 landing">
+            <h2 className="mb-2 font-logo text-[1.75rem] font-normal tracking-tight text-foreground sm:text-[2.15rem] sm:leading-tight">
               Bulk Video Upload
             </h2>
             <span className="rounded-md bg-bg-muted px-2 py-0.5 text-xs font-medium text-text">
@@ -93,7 +88,7 @@ export default function BulkToolsPage() {
             <ImageIcon className="h-8 w-8" />
           </div>
           <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-semibold font-serif tracking-tight text-foreground mb-2 landing">
+            <h2 className="mb-2 font-logo text-[1.75rem] font-normal tracking-tight text-foreground sm:text-[2.15rem] sm:leading-tight">
               Bulk Image Upload
             </h2>
             <span className="rounded-md bg-bg-muted px-2 py-0.5 text-xs font-medium text-text">

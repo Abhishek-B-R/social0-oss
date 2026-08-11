@@ -10,7 +10,6 @@ import { POSTS_PAGE_SIZE } from "@/features/dashboard/posts/posts-constants";
 import { AllPostsFilters } from "./AllPostsFilters";
 import { PostListCards } from "./PostListCards";
 import { Pagination } from "@/components/ui/Pagination";
-import { DOCS_POSTS_URL } from "@/lib/docs-url";
 import { PostsPageSkeleton } from "@/components/ui/page-skeletons";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 import { useSession } from "@/lib/auth-client";
@@ -211,29 +210,8 @@ export function PostsPage() {
       )}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-6 sm:gap-4">
         <div className="min-w-0">
-          <h2 className="mb-1.5 flex items-center gap-2 font-serif text-2xl font-bold tracking-tight text-foreground landing sm:mb-2 sm:text-3xl">
+          <h2 className="mb-1.5 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight sm:mb-2">
             All Posts
-            <a
-              href={DOCS_POSTS_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-full p-1.5 text-text-muted transition-colors hover:bg-muted hover:text-text"
-              title="Documentation for this page"
-              aria-label="Documentation for this page"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-                aria-hidden
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </a>
           </h2>
           <p className="mt-1 text-sm font-medium text-text-muted sm:text-base">
             Your drafts, scheduled, and published posts

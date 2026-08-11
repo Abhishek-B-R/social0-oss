@@ -526,7 +526,7 @@ export function BulkToolsImage({
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+        <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
           Bulk Image Scheduling
         </h1>
         <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-foreground">

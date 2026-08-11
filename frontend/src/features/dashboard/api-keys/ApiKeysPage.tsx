@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import DocsInfoIcon from "@/components/info-icon";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,7 +14,6 @@ import { Label } from "@/components/ui/label";
 import { fetchApi } from "@/lib/fetch-api";
 import { rpc } from "@/lib/rpc";
 import {
-  DOCS_API_KEYS_URL,
   DOCS_API_QUICKSTART_URL,
   DOCS_API_URL,
   DOCS_API_WEBHOOKS_URL,
@@ -405,12 +403,9 @@ export default function ApiKeysPage() {
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 sm:pb-12">
       <header>
-        <div className="flex items-center gap-2">
-          <h1 className="font-serif text-3xl font-semibold tracking-tight text-foreground landing">
-            Developer
-          </h1>
-          <DocsInfoIcon url={DOCS_API_KEYS_URL} />
-        </div>
+        <h1 className="font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+          Developer
+        </h1>
         <p className="mt-1 max-w-2xl text-sm text-text-muted">
           API keys, webhooks, CLI, and MCP — same publish pipeline as the
           dashboard.{" "}

@@ -3,8 +3,6 @@ import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { loadCalendarPageData } from "@/api/dashboard-data";
 import { CalendarGrid, type PostForCalendar } from "./CalendarGrid";
-import { DOCS_CALENDAR_URL } from "@/lib/docs-url";
-import DocsInfoIcon from "@/components/info-icon";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 
 export function CalendarPage() {
@@ -71,12 +69,9 @@ export function CalendarPage() {
       aria-label={postsLoading ? "Loading calendar" : undefined}
     >
       <div className="shrink-0">
-        <div className="flex items-center gap-2">
-          <h1 className="mb-2 font-serif text-2xl font-semibold tracking-tight text-foreground landing flex items-center gap-2 sm:text-3xl">
-            Calendar
-          </h1>
-          <DocsInfoIcon url={DOCS_CALENDAR_URL} />
-        </div>
+        <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+          Calendar
+        </h1>
         <p className="mt-1.5 text-sm text-text-muted sm:mt-2">
           View your scheduled and published posts by month, week, or day.
         </p>

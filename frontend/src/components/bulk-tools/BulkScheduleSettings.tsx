@@ -99,7 +99,7 @@ export function BulkScheduleSettings({
   return (
     <div className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm -mt-14">
       <div className="flex items-center gap-2">
-        <h3 className="text-2xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
+        <h3 className="mb-0 font-logo text-[1.75rem] font-normal tracking-tight text-foreground sm:text-[2.15rem] sm:leading-tight">
           Bulk Schedule Settings
         </h3>
         <button

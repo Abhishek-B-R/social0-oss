@@ -47,8 +47,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import DocsInfoIcon from "@/components/info-icon";
-import { DOCS_SETTINGS_URL } from "@/lib/docs-url";
 import { toast } from "sonner";
 import { SignOutAllDevicesButton } from "@/components/SignOutAllDevicesButton";
 import { DeleteAccountSection } from "@/components/DeleteAccountSection";
@@ -1102,12 +1100,9 @@ export function SettingsPanel({
   return (
     <div>
       <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
-            Settings
-          </h1>
-          <DocsInfoIcon url={DOCS_SETTINGS_URL} />
-        </div>
+        <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+          Settings
+        </h1>
         <p className="mt-1 text-sm text-text-muted">
           Manage your account, security, and posting preferences.
         </p>

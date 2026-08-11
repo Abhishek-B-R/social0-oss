@@ -28,9 +28,7 @@ import {
   MAX_VIDEO_DURATION_SECONDS,
   VIDEO_DURATION_MESSAGE,
 } from "@/lib/video-duration";
-import { DOCS_COMPOSER_URL } from "@/lib/docs-url";
 import { cn } from "@/lib/utils";
-import DocsInfoIcon from "@/components/info-icon";
 import { AspectRatioGuidanceBanner } from "@/components/AspectRatioGuidanceBanner";
 import { toast } from "sonner";
 import {
@@ -667,12 +665,9 @@ export function Composer() {
     >
       <div className="space-y-5 sm:space-y-6">
         <div className="space-y-1.5 sm:space-y-2">
-          <div className="flex items-center gap-2">
-            <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground landing sm:mb-0.5 sm:text-[2rem] sm:leading-tight">
-              Composer
-            </h1>
-            <DocsInfoIcon url={DOCS_COMPOSER_URL} />
-          </div>
+          <h1 className="font-logo text-[2rem] font-normal tracking-tight text-foreground sm:mb-0.5 sm:text-[2.35rem] sm:leading-tight">
+            Composer
+          </h1>
           <p className="max-w-xl text-sm leading-snug text-text-muted sm:leading-normal">
             Type anything, paste, drag and drop, or upload images/videos —
             we&apos;ll route you to the right post flow.

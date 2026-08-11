@@ -12,8 +12,6 @@ import {
   Stack,
   Users,
 } from "@/icons/phosphor";
-import { DOCS_MORE_URL } from "@/lib/docs-url";
-import DocsInfoIcon from "@/components/info-icon";
 import { MorePageAccountCollapsible } from "@/components/dashboard/MorePageAccountCollapsible";
 import { useSession } from "@/lib/auth-client";
 import { useQuery } from "@tanstack/react-query";
@@ -57,12 +55,9 @@ export function MorePage() {
 
   return (
     <div>
-      <div className="flex items-center gap-2">
-        <h1 className="text-2xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2 sm:text-3xl">
-          More
-        </h1>
-        <DocsInfoIcon url={DOCS_MORE_URL} />
-      </div>
+      <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+        More
+      </h1>
       <p className="mt-1.5 text-sm text-text-muted sm:mt-2">
         Settings and the rest of the dashboard.
       </p>

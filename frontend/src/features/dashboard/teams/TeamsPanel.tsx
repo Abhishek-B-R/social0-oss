@@ -5,11 +5,9 @@ import {
   UsersThree,
 } from "@/icons/phosphor";
 import { listWorkspaces, type TeamListItem } from "@/api/team";
-import DocsInfoIcon from "@/components/info-icon";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { TeamsPageSkeleton } from "@/components/ui/page-skeletons";
 import { cn } from "@/lib/utils";
-import { DOCS_TEAMS_URL } from "@/lib/docs-url";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 
 export function TeamsPanel() {
@@ -148,12 +146,9 @@ function TeamRow({ team }: { team: TeamListItem }) {
 function TeamsHeader() {
   return (
     <div>
-      <div className="flex items-center gap-2">
-        <h1 className="mb-2 flex items-center gap-2 font-serif text-2xl font-semibold tracking-tight text-foreground landing sm:text-3xl">
-          Teams
-        </h1>
-        <DocsInfoIcon url={DOCS_TEAMS_URL} />
-      </div>
+      <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+        Teams
+      </h1>
       <p className="mt-1 text-sm text-text-muted">
         Teams you own or have joined.
       </p>

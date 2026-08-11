@@ -4,8 +4,6 @@ import { useEffect, useState, useMemo } from "react";
 import { loadBillingPageData } from "@/api/dashboard-data";
 import type { SubscriptionState } from "@/lib/subscription";
 import { BillingPanel } from "./BillingPanel";
-import { DOCS_BILLING_URL } from "@/lib/docs-url";
-import DocsInfoIcon from "@/components/info-icon";
 import { BillingPageSkeleton } from "@/components/ui/page-skeletons";
 
 export function BillingPage() {
@@ -71,12 +69,9 @@ export function BillingPage() {
 
   return (
     <div>
-      <div className="flex items-center gap-2">
-        <h1 className="mb-2 font-serif text-3xl font-semibold tracking-tight text-foreground landing flex items-center gap-2">
-          Billing
-        </h1>
-        <DocsInfoIcon url={DOCS_BILLING_URL} />
-      </div>
+      <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+        Billing
+      </h1>
       <p className="mt-1 text-text-muted">
         Manage your subscription and billing.
       </p>

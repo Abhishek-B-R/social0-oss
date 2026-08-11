@@ -61,7 +61,7 @@ export function PostsPageSkeleton({
     <div aria-busy="true" aria-label={`Loading ${title.toLowerCase()}`}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-6 sm:gap-4">
         <div className="min-w-0">
-          <h2 className="mb-1.5 font-serif text-2xl font-bold tracking-tight text-foreground landing sm:mb-2 sm:text-3xl">
+          <h2 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
             {title}
           </h2>
           <p className="mt-1 text-sm font-medium text-text-muted sm:text-base">
@@ -105,7 +105,7 @@ export function ConnectionsPageSkeleton() {
 export function BillingPageSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading billing">
-      <h1 className="mb-2 font-serif text-3xl font-semibold tracking-tight text-foreground landing">
+      <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
         Billing
       </h1>
       <p className="mt-1 text-text-muted">
@@ -165,7 +165,7 @@ export function CalendarPageSkeleton() {
       aria-label="Loading calendar"
     >
       <div className="shrink-0">
-        <h1 className="mb-2 font-serif text-2xl font-semibold tracking-tight text-foreground landing sm:text-3xl">
+        <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
           Calendar
         </h1>
         <p className="mt-1.5 text-sm text-text-muted sm:mt-2">
@@ -187,7 +187,7 @@ export function SettingsPageSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading settings">
       <div className="mb-6">
-        <h1 className="mb-2 font-serif text-3xl font-semibold tracking-tight text-foreground landing">
+        <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
           Settings
         </h1>
         <p className="mt-1 text-sm text-text-muted">
@@ -241,7 +241,7 @@ export function TeamsPageSkeleton() {
     <div aria-busy="true" aria-label="Loading teams">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="mb-2 font-serif text-2xl font-semibold tracking-tight text-foreground landing sm:text-3xl">
+          <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
             Teams
           </h1>
           <p className="mt-1 text-sm text-text-muted">
@@ -273,7 +273,7 @@ export function WorkspacesPageSkeleton() {
     <div aria-busy="true" aria-label="Loading workspaces">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="mb-2 font-serif text-2xl font-semibold tracking-tight text-foreground landing sm:text-3xl">
+          <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
             Workspaces
           </h1>
           <SkeletonBone className="mt-1 h-4 w-full max-w-md" />
@@ -317,7 +317,7 @@ export function FeedbackPageSkeleton() {
       aria-label="Loading feedback"
     >
       <header className="shrink-0 border-b border-border bg-bg-elevated px-4 py-4 sm:px-6">
-        <h1 className="mb-2 font-serif text-3xl font-semibold tracking-tight text-foreground landing">
+        <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
           Feedback or Feature Request
         </h1>
         <SkeletonBone className="mt-1 h-4 w-full max-w-xl" />
@@ -397,7 +397,7 @@ export function TeamDetailPageSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading team settings">
       <SkeletonBone className="h-5 w-28" />
-      <h1 className="mt-4 font-serif text-2xl font-semibold tracking-tight text-foreground landing sm:text-3xl">
+      <h1 className="mt-4 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
         Team settings
       </h1>
       <SkeletonBone className="mt-2 h-4 w-48" />

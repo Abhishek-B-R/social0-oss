@@ -4,15 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { getContentTypeBySlug } from "@/lib/content-types";
 import { getPlanLimits, type SubscriptionTier } from "@/lib/plans";
 import type { DateFormatKey } from "@/lib/date-format";
-import {
-  DOCS_COLLECTION_POST_TYPE_URL,
-  DOCS_CREATE_TYPE_URL,
-  DOCS_IMAGE_POST_TYPE_URL,
-  DOCS_TEXT_POST_TYPE_URL,
-  DOCS_THREADS_POST_TYPE_URL,
-  DOCS_VIDEO_POST_TYPE_URL,
-} from "@/lib/docs-url";
-import DocsInfoIcon from "@/components/info-icon";
 import { CreatePostWithAccounts } from "@/features/dashboard/create/CreatePostWithAccounts";
 import { useSession } from "@/lib/auth-client";
 import { useIsGuest } from "@/lib/use-is-guest";
@@ -58,35 +49,29 @@ export function CreateTypePage() {
   const effectiveTier: SubscriptionTier =
     subExpiresAt && new Date(subExpiresAt) < new Date()
       ? "free"
-      : rawTier === "starter" || rawTier === "growth" || rawTier === "pro"
+      : rawTier === "starter" ||
+          rawTier === "growth" ||
+          rawTier === "pro" ||
+          rawTier === "max"
         ? rawTier
         : "free";
   const planLimits = getPlanLimits(effectiveTier);
   const dateFormat = (settings?.dateFormat ?? "dd/MM/yyyy") as DateFormatKey;
 
-  const url =
-    contentType.slug === "collection"
-      ? DOCS_COLLECTION_POST_TYPE_URL
-      : contentType.slug === "video"
-        ? DOCS_VIDEO_POST_TYPE_URL
-        : contentType.slug === "text"
-          ? DOCS_TEXT_POST_TYPE_URL
-          : contentType.slug === "image"
-            ? DOCS_IMAGE_POST_TYPE_URL
-            : contentType.slug === "threads"
-              ? DOCS_THREADS_POST_TYPE_URL
-              : DOCS_CREATE_TYPE_URL;
-
   return (
     <div>
-      <div className="flex items-center gap-2 mb-16">
-        <h2 className="text-3xl font-semibold font-serif tracking-tight text-foreground mb-2 landing flex items-center gap-2">
-          {contentType.name}
-        </h2>
-        <DocsInfoIcon url={url} />
-      </div>
+      <h2 className="mb-16 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+        {contentType.name}
+      </h2>
       <CreatePostWithAccounts
-        contentTypeSlug={contentType.slug as "text" | "image" | "video" | "threads" | "collection"}
+        contentTypeSlug={
+          contentType.slug as
+            | "text"
+            | "image"
+            | "video"
+            | "threads"
+            | "collection"
+        }
         supportedPlatforms={[...contentType.platforms]}
         use24HourTimeFormat={settings?.use24HourTimeFormat ?? false}
         dateFormat={dateFormat}

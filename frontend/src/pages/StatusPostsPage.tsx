@@ -6,7 +6,6 @@ import { AllPostsFilters } from "@/features/dashboard/posts/AllPostsFilters";
 import { PostListCards } from "@/features/dashboard/posts/PostListCards";
 import { Pagination } from "@/components/ui/Pagination";
 import { PostsPageSkeleton } from "@/components/ui/page-skeletons";
-import { DOCS_POSTS_DRAFTS_URL } from "@/lib/docs-url";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 import { POSTS_PAGE_SIZE } from "@/features/dashboard/posts/posts-constants";
 import { useSession } from "@/lib/auth-client";
@@ -16,7 +15,6 @@ type StatusPostsConfig = {
   statusFilter: "draft" | "scheduled" | "posted";
   title: string;
   description: string;
-  docsUrl?: string;
   basePath: string;
   emptyMessage: string;
   guestTitle: string;
@@ -111,29 +109,9 @@ export function StatusPostsPage({ config }: { config: StatusPostsConfig }) {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <div className="flex gap-2">
-            <h2 className="text-3xl font-bold font-serif tracking-tight text-foreground mb-2 landing">
-              {config.title}
-            </h2>
-            {config.docsUrl && (
-              <a
-                href={config.docsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-full -mt-2 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
-                title="Documentation for this page"
-                aria-label="Documentation for this page"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
-                  <path
-                    fillRule="evenodd"
-                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </a>
-            )}
-          </div>
+          <h2 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+            {config.title}
+          </h2>
           <p className="text-text-muted mt-1 font-medium">{config.description}</p>
         </div>
         <Link
@@ -202,7 +180,6 @@ export function DraftsPostsPage() {
         statusFilter: "draft",
         title: "Drafts",
         description: "Saved drafts",
-        docsUrl: DOCS_POSTS_DRAFTS_URL,
         basePath: "/dashboard/posts/drafts",
         emptyMessage: "You have no drafts.",
         guestTitle: "Sign in to see your drafts",
