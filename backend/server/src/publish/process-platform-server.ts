@@ -59,5 +59,10 @@ export async function runPlatformJobOnServer(
     if (job.trackingId) {
       await recordPlatformResultServer(app, job, false, message);
     }
+    try {
+      await maybeFinalizePostPublish(job.postId, job.userId);
+    } catch (finalizeErr) {
+      console.error("[runPlatformJobOnServer] finalize failed", finalizeErr);
+    }
   }
 }

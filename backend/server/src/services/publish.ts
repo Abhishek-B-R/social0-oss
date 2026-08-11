@@ -6,7 +6,7 @@
 import { publishLimiter, enforceRateLimit } from "@/lib/ratelimit";
 import { requireWorkspaceSession } from "@/lib/workspace/session";
 import { isValidPostId } from "@/lib/publish-validation";
-import { emitPublishWebhooksForPost } from "../publish/finalize-post.js";
+import { maybeFinalizePostPublish } from "../publish/finalize-post.js";
 import {
   executePublish as executePublishCore,
   getPostPublicationList as getPostPublicationListCore,
@@ -37,8 +37,9 @@ export async function getPostPublicationList(postId: string): Promise<
 }
 
 /**
- * Session/dashboard publish: runs core executePublish then emits user webhooks.
- * Worker/CF paths should call `publish/execute-publish` directly (finalize handles webhooks).
+ * Session/dashboard publish: runs core executePublish then finalizes
+ * (aggregate status, failure email, user webhooks).
+ * Worker/CF paths call `publish/execute-publish` + `maybeFinalizePostPublish` directly.
  */
 export async function executePublish(
   postId: string,
@@ -53,9 +54,9 @@ export async function executePublish(
     options,
   );
 
-  // Dashboard composer uses inline executePublish (not the async worker finalize path).
+  // Dashboard composer uses inline executePublish — finalize owns webhooks + failure email.
   if (userId) {
-    await emitPublishWebhooksForPost(postId, userId);
+    await maybeFinalizePostPublish(postId, userId);
   }
 
   return result;

@@ -34,6 +34,11 @@ export function bootstrapWorkerRuntime(env: Env): void {
   process.env.RESEND_API_KEY = env.RESEND_API_KEY ?? "worker-unused";
   process.env.RESEND_FROM_EMAIL =
     env.RESEND_FROM_EMAIL ?? "abhishek from social0 <abhishek@social0.app>";
+  if (!env.RESEND_API_KEY || env.RESEND_API_KEY === "worker-unused") {
+    console.error(
+      "[publish-worker] RESEND_API_KEY missing — post-failure emails will fail until you set the secret",
+    );
+  }
 
   // Production schema refinements (unused on this Worker path).
   process.env.CRON_SECRET = env.CRON_SECRET ?? "worker-unused-cron-secret";

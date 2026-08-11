@@ -33,7 +33,6 @@ import {
 } from "../lib/twitter-media.js";
 import { getTwitterErrorMessage } from "../lib/twitter-errors.js";
 import { parseTikTokHandleFromProfileUrl } from "../lib/platform-view-url.js";
-import { maybeSendPostFailureEmail } from "../lib/post-failure-email.js";
 import {
   createTwitterTweetFetch,
   type CreateTwitterTweetPayload,
@@ -1601,24 +1600,6 @@ export async function executePublish(
         metadata: post.metadata,
       });
     }
-
-    if (failedList.length > 0) {
-      const failureItems = failedList.map((r) => {
-        const pub = publicationsWithAccounts.find(
-          (p) => p.connectedAccountId === r.connectedAccountId,
-        );
-        return {
-          platform: r.platform,
-          platformUsername: pub?.platformUsername ?? null,
-          error: r.error ?? null,
-        };
-      });
-      void maybeSendPostFailureEmail({
-        userId: post.userId,
-        postId,
-        failures: failureItems,
-      });
-    }
   } else {
     const allPubs = await db
       .select({
@@ -1655,21 +1636,6 @@ export async function executePublish(
           .update(posts)
           .set({ status: newPostStatus, updatedAt: new Date() })
           .where(eq(posts.id, postId));
-      }
-      // Per-platform CF/worker jobs use publicationIdFilter — still notify when
-      // every platform has finished and at least one failed.
-      if (pendingCount === 0 && failedCount > 0) {
-        void maybeSendPostFailureEmail({
-          userId: post.userId,
-          postId,
-          failures: allPubs
-            .filter((p) => p.status === "failed")
-            .map((f) => ({
-              platform: f.platform,
-              platformUsername: f.platformUsername,
-              error: f.lastError,
-            })),
-        });
       }
     }
   }

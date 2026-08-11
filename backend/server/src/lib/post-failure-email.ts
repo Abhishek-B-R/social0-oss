@@ -154,10 +154,16 @@ export async function maybeSendPostFailureEmail(input: {
         : `${input.failures.length} platforms failed to publish your post`;
 
     try {
-      await sendEmail({
+      const sent = await sendEmail({
         to: email,
         subject,
         html: buildPostFailureEmailHtml({ postUrl, failures: input.failures }),
+      });
+      console.info("[post-failure-email] sent", {
+        postId: input.postId,
+        to: email,
+        resendId: sent.id ?? null,
+        failures: input.failures.length,
       });
     } catch (sendErr) {
       await releasePostFailureEmailClaim(input.postId).catch((releaseErr) =>
