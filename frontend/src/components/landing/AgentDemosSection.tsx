@@ -181,7 +181,7 @@ function CapCopy({ cap }: { cap: (typeof capabilities)[number] }) {
         <h3 className="font-sans text-[clamp(22px,2.6vw,30px)] font-bold tracking-tight text-[#333C4D] dark:text-white">
           {cap.title}
         </h3>
-        <p className="max-w-lg text-[14px] leading-relaxed text-muted-foreground sm:text-[15px] sm:leading-[1.5]">
+        <p className="max-w-lg text-[14px] leading-relaxed text-muted-foreground sm:text-[15px] sm:leading-normal">
           {cap.description}
         </p>
       </div>
@@ -238,7 +238,7 @@ export function AgentDemosSection() {
               className="flex h-full flex-col rounded-[28px] bg-muted/60 p-1.25 dark:bg-[#1A1A1A] sm:rounded-[32px] lg:rounded-[38px]"
             >
               <div className="flex min-h-0 flex-1 flex-col rounded-[24px] border border-border p-0.5 dark:border-white/10 sm:rounded-[28px] lg:rounded-[34px]">
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] border border-border/60 bg-background dark:border-white/5 dark:bg-[#111111] sm:rounded-[24px] lg:rounded-[30px]">
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-4xl border border-border/60 bg-background dark:border-white/5 dark:bg-[#111111] sm:rounded-[24px] lg:rounded-[30px]">
                   {cap.media === "top" ? (
                     <>
                       <DemoVideoSlot

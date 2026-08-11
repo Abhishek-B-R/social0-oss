@@ -51,3 +51,4 @@ opencode.json
 .cursor/cli.json
 .gemini/settings.json
 .qwen/settings.json
+.grok/config.toml

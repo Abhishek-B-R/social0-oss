@@ -10,7 +10,7 @@ export function DemoVideoSection() {
       aria-label="Social0 product demo video"
       id="demo"
     >
-      <div className="mx-auto max-w-[1120px]">
+      <div className="mx-auto max-w-280">
         <div className="overflow-hidden rounded-[28px] border border-border bg-muted/40 p-1.5 shadow-[0_40px_80px_rgba(0,0,0,0.08)] dark:border-white/10 dark:bg-[#1A1A1A] dark:shadow-[0_40px_80px_rgba(0,0,0,0.4)]">
           <div className="overflow-hidden rounded-[22px] border border-border/60 bg-background dark:border-white/5 dark:bg-[#111111]">
             <div className="relative aspect-video w-full overflow-hidden">
@@ -21,7 +21,7 @@ export function DemoVideoSection() {
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 referrerPolicy="strict-origin-when-cross-origin"
                 allowFullScreen
-                className="absolute top-0 left-0 h-[calc(100%+60px)] w-full -translate-y-[60px] border-0"
+                className="absolute top-0 left-0 h-[calc(100%+60px)] w-full -translate-y-15 border-0"
               />
             </div>
           </div>
