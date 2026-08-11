@@ -30,7 +30,7 @@ export function DevelopersSection() {
                     npm install -g social0
                   </code>
                   <code className="inline-block rounded-md border border-border bg-muted/40 px-2.5 py-1 font-mono text-[12px] text-muted-foreground dark:border-white/10 dark:bg-[#151515]">
-                    api.social0.app/v1
+                    api.social0.app/docs
                   </code>
                 </p>
               </div>

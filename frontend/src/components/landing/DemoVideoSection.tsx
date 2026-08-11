@@ -1,4 +1,4 @@
-const YOUTUBE_DEMO_ID = "yGADZAGW7ls";
+const YOUTUBE_DEMO_ID = "fSTVYFd5DXU";
 
 /**
  * Product demo embed under the hero.

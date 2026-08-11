@@ -93,7 +93,7 @@ export function AgentLogoStrip({ className = "" }: { className?: string }) {
 }
 
 /** PLACEHOLDER count — edit when you have the real number */
-const CUSTOMER_COUNT = "212+";
+const CUSTOMER_COUNT = "400+";
 
 const FACES = [
   { src: "/customers/c1.png", alt: "" },
@@ -101,7 +101,6 @@ const FACES = [
   { src: "/customers/c3.png", alt: "" },
   { src: "/customers/c4.png", alt: "" },
   { src: "/customers/c5.png", alt: "" },
-  { src: "/customers/c6.png", alt: "" },
 ] as const;
 
 /** Happy customers — under CTA + capability pills in the centered hero. */

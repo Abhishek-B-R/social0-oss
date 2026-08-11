@@ -211,8 +211,8 @@ const AGENT_TWEETS: Tweet[] = [
   kickbuttowski,
   richard,
   vadim,
-  maya,
   rowan,
+  maya,
   bey,
   // ponytail: longer quote pads the short third masonry column in agent mode
   nick,
@@ -403,7 +403,7 @@ export function SocialProofSection({
           </motion.ul>
         </AnimatePresence>
 
-        <div className="mt-12 flex justify-center sm:mt-14">
+        <div className="mt-6 flex justify-center sm:mt-8">
           <Link
             href={startHref}
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-emerald-500 px-8 py-3 text-[15px] font-semibold text-[#04140c] transition-[transform,background-color] duration-150 hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97]"

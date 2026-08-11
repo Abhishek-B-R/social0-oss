@@ -206,7 +206,7 @@ export function AgentDemosSection() {
   return (
     <section
       id="agent-demos"
-      className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24"
+      className="px-4 pb-16 pt-8 sm:px-6 sm:pb-20 sm:pt-10 lg:px-8 lg:pb-24 lg:pt-6"
     >
       <div className="mx-auto w-full max-w-350">
         <div className="mb-10 flex flex-col items-center gap-3 text-center sm:mb-12 lg:mb-14">

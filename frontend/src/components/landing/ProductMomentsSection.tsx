@@ -9,9 +9,20 @@ function hashHref(pathname: string, hash: string) {
   return pathname === "/home" ? `/home${hash}` : `/${hash}`;
 }
 
-function VisualShell({ children }: { children: ReactNode }) {
+function VisualShell({
+  children,
+  flush = false,
+}: {
+  children: ReactNode;
+  /** Edge-to-edge media — no inset frame. */
+  flush?: boolean;
+}) {
   return (
-    <div className="overflow-hidden rounded-[24px] border border-zinc-200 bg-white p-2 shadow-[0_22px_50px_rgba(15,23,42,0.1)] dark:border-white/10 dark:bg-[#1A1A1A] dark:shadow-[0_24px_60px_rgba(0,0,0,0.35)] sm:rounded-[28px] sm:p-2.5">
+    <div
+      className={`overflow-hidden rounded-[24px] border border-zinc-200 bg-white shadow-[0_22px_50px_rgba(15,23,42,0.1)] dark:border-white/10 dark:bg-[#1A1A1A] dark:shadow-[0_24px_60px_rgba(0,0,0,0.35)] sm:rounded-[28px] ${
+        flush ? "p-0" : "p-2 sm:p-2.5"
+      }`}
+    >
       {children}
     </div>
   );
@@ -58,7 +69,11 @@ function MomentDemoVideoClip({
   return (
     <video
       ref={videoRef}
-      className={`w-full rounded-[16px] bg-zinc-100 object-cover object-bottom dark:bg-[#0d0d0d] sm:rounded-[20px] ${className}`}
+      className={`w-full bg-zinc-100 object-cover object-bottom dark:bg-[#0d0d0d] ${
+        /\brounded/.test(className)
+          ? className
+          : `rounded-[16px] sm:rounded-[20px] ${className}`
+      }`}
       src={src}
       poster={poster}
       muted
@@ -266,12 +281,13 @@ export function ProductMomentsSection({
           }}
           visual={
             <div className="mx-auto w-full max-w-140 lg:ml-0 lg:mr-auto lg:max-w-none">
-              <VisualShell>
+              <VisualShell flush>
                 <MomentDemoVideo
                   src="/videos/schedule-effortlessly-light.mp4"
                   darkSrc="/videos/schedule-effortlessly-dark.mp4"
                   poster="/demos/schedule-effortlessly-light-preview.png"
                   darkPoster="/demos/schedule-effortlessly-dark-preview.png"
+                  className="rounded-none"
                 />
               </VisualShell>
             </div>
@@ -300,12 +316,13 @@ export function ProductMomentsSection({
           }}
           visual={
             <div className="mx-auto w-full max-w-140 lg:ml-auto lg:mr-0 lg:max-w-none">
-              <VisualShell>
+              <VisualShell flush>
                 <MomentDemoVideo
                   src="/videos/calendar-control-light.mp4"
                   darkSrc="/videos/calendar-control-dark.mp4"
                   poster="/demos/calendar-control-light-preview.png"
                   darkPoster="/demos/calendar-control-dark-preview.png"
+                  className="rounded-none"
                 />
               </VisualShell>
             </div>
