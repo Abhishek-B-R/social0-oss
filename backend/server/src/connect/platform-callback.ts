@@ -984,6 +984,16 @@ export async function platformCallback(
               userId,
               workspaceId,
               accessToken: tokens.access_token,
+              // Must survive the company/personal select step — without this,
+              // LinkedIn accounts die after ~1h with no way to refresh.
+              refreshToken:
+                typeof tokens.refresh_token === "string"
+                  ? tokens.refresh_token
+                  : null,
+              expiresIn:
+                typeof tokens.expires_in === "number" && tokens.expires_in > 0
+                  ? tokens.expires_in
+                  : 60 * 24 * 60 * 60,
               personalProfile: {
                 id: userInfo.id,
                 name: userInfo.username ?? "Personal Profile",

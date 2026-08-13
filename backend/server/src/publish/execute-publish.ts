@@ -340,11 +340,10 @@ export async function executePublish(
       }
     }
 
-    // YouTube and TikTok use getValidToken during publish which auto-refreshes expired tokens.
-    // Skipping the tokenStatus/tokenExpiresAt guards for these platforms lets that refresh run.
-    // All other platforms without refresh support still fail fast here.
-    const supportsAutoRefresh =
-      pub.platform === "youtube" || pub.platform === "tiktok";
+    // Refreshable platforms call getValidToken during publish — don't fail-fast on
+    // stale tokenStatus / calendar expiry; let refresh run (or throw a reconnect error).
+    const { REFRESHABLE_PLATFORMS } = await import("../lib/token-refresh.js");
+    const supportsAutoRefresh = REFRESHABLE_PLATFORMS.has(pub.platform);
 
     if (
       !supportsAutoRefresh &&
@@ -370,14 +369,11 @@ export async function executePublish(
       return;
     }
 
-    // Do not attempt to publish with an expired token (by time).
-    // Exception: YouTube, TikTok, and LinkedIn call getValidToken which handles refresh on-demand.
+    // Time-based expiry fail-fast only for non-refreshable platforms.
     if (
+      !supportsAutoRefresh &&
       pub.tokenExpiresAt &&
-      new Date(pub.tokenExpiresAt) < new Date() &&
-      pub.platform !== "youtube" &&
-      pub.platform !== "tiktok" &&
-      pub.platform !== "linkedin"
+      new Date(pub.tokenExpiresAt) < new Date()
     ) {
       const tokenExpiredMsg =
         "Token expired - user must reconnect this account";
@@ -1272,25 +1268,6 @@ export async function executePublish(
       pub.platform === "tiktok" ||
       pub.platform === "threads"
     ) {
-      if (
-        pub.platform === "threads" &&
-        pub.tokenExpiresAt &&
-        new Date(pub.tokenExpiresAt) <= new Date()
-      ) {
-        const msg =
-          "Your Threads session has expired. Please reconnect Threads from the dashboard.";
-        await db
-          .update(postPublications)
-          .set({ status: "failed", lastError: msg, updatedAt: new Date() })
-          .where(eq(postPublications.id, pub.publicationId));
-        results.push({
-          platform: pub.platform,
-          connectedAccountId: pub.connectedAccountId,
-          status: "failed",
-          error: msg,
-        });
-        return;
-      }
       let platformAccessSecret = accessSecret;
       if (pub.platform === "bluesky" && pub.encryptedRefreshToken) {
         try {
@@ -1326,42 +1303,25 @@ export async function executePublish(
       }
 
       let tokenForPublish = accessToken;
-      if (pub.platform === "youtube") {
-        try {
-          const { getValidToken } = await import("@/lib/token-refresh");
-          tokenForPublish = await getValidToken(
-            pub.connectedAccountId,
-            "youtube",
-          );
-        } catch (err) {
-          publishLog.error("[executePublish] YouTube getValidToken failed:", err);
-          const errorMsg =
-            err instanceof Error ? err.message : "Failed to get valid token";
-          await db
-            .update(postPublications)
-            .set({
-              status: "failed",
-              lastError: errorMsg,
-              updatedAt: new Date(),
-            })
-            .where(eq(postPublications.id, pub.publicationId));
-          results.push({
-            platform: pub.platform,
-            connectedAccountId: pub.connectedAccountId,
-            status: "failed",
-            error: errorMsg,
-          });
-          return;
-        }
-      } else if (pub.platform === "tiktok") {
+      if (
+        pub.platform === "youtube" ||
+        pub.platform === "tiktok" ||
+        pub.platform === "instagram" ||
+        pub.platform === "threads" ||
+        pub.platform === "facebook" ||
+        pub.platform === "pinterest"
+      ) {
         try {
           const { getValidToken } = await import("../lib/token-refresh.js");
           tokenForPublish = await getValidToken(
             pub.connectedAccountId,
-            "tiktok",
+            pub.platform,
           );
         } catch (err) {
-          publishLog.error("[executePublish] TikTok getValidToken failed:", err);
+          publishLog.error(
+            `[executePublish] ${pub.platform} getValidToken failed:`,
+            err,
+          );
           const errorMsg =
             err instanceof Error ? err.message : "Failed to get valid token";
           await db

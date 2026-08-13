@@ -64,7 +64,7 @@ export type LoadConnectionsPageDataResult =
           profileImageUrl: string | null;
           isActive: boolean | null;
           isTwitterPremium: boolean;
-          tokenStatus: "ok" | "expiring_soon" | "expired";
+          tokenStatus: "ok" | "expired";
           expiresInDays: number | null;
         }>;
         accountLimit:

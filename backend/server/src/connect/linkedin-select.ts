@@ -14,12 +14,16 @@ import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-pr
 type LinkedInPayload = {
   userId: string;
   accessToken: string;
+  /** Present on new connects; older verification payloads may omit it. */
+  refreshToken?: string | null;
+  /** Seconds until access token expiry (LinkedIn typically ~60 days). */
+  expiresIn?: number;
   personalProfile: {
     id: string;
     name: string;
     picture: string | null;
   };
-  companyPages: Array< { id: string; urn: string; name: string } >;
+  companyPages: Array<{ id: string; urn: string; name: string }>;
 };
 
 export async function liSelectGet(req: AppRequest) {
@@ -152,6 +156,14 @@ export async function liSelectPost(req: AppRequest) {
         : ws.ctx.workspaceId;
 
   const accessToken = payload.accessToken;
+  const refreshToken =
+    typeof payload.refreshToken === "string" && payload.refreshToken
+      ? payload.refreshToken
+      : null;
+  const expiresInSec =
+    typeof payload.expiresIn === "number" && payload.expiresIn > 0
+      ? payload.expiresIn
+      : 60 * 24 * 60 * 60; // LinkedIn access tokens are typically 60 days
   const personalId = payload.personalProfile.id;
   const companyByUrn = new Map(payload.companyPages.map((p) => [p.urn, p]));
 
@@ -186,7 +198,7 @@ export async function liSelectPost(req: AppRequest) {
     return Response.json({ redirectUrl: redirectTo });
   }
 
-  const tokenExpiresAt = new Date(Date.now() + 3600 * 1000); // LinkedIn tokens ~1h
+  const tokenExpiresAt = new Date(Date.now() + expiresInSec * 1000);
 
   for (const acc of toSave) {
     const existing = await db.query.connectedAccounts.findFirst({
@@ -223,6 +235,10 @@ export async function liSelectPost(req: AppRequest) {
 
     const accountId = existing?.id ?? crypto.randomUUID();
     const encryptedAccess = encryptToken(accessToken, accountId);
+    // Keep prior refresh token if this select payload predates the fix.
+    const encryptedRefresh = refreshToken
+      ? encryptToken(refreshToken, accountId)
+      : (existing?.encryptedRefreshToken ?? null);
     const profileImageUrl = resolveProfileImageUrl(
       await mirrorProfileImageToR2(acc.profileImageUrl, {
         userId: resourceUserId,
@@ -237,7 +253,7 @@ export async function liSelectPost(req: AppRequest) {
         .update(connectedAccounts)
         .set({
           encryptedAccessToken: encryptedAccess,
-          encryptedRefreshToken: null,
+          encryptedRefreshToken: encryptedRefresh,
           tokenExpiresAt,
           tokenStatus: "active",
           platformUsername: acc.platformUsername,
@@ -257,7 +273,7 @@ export async function liSelectPost(req: AppRequest) {
         platformUsername: acc.platformUsername,
         profileImageUrl,
         encryptedAccessToken: encryptedAccess,
-        encryptedRefreshToken: null,
+        encryptedRefreshToken: encryptedRefresh,
         tokenExpiresAt,
         tokenStatus: "active",
         isActive: true,
