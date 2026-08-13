@@ -1,7 +1,7 @@
 /**
  * Lightweight token health check: cheapest API call per platform to validate "am I authenticated?".
  * Used by cron and on-demand when user opens Connections page.
- * Does NOT attempt token refresh (except YouTube/TikTok in cron: refresh instead of marking expired).
+ * For refreshable platforms near expiry (or after 401), attempts silent refresh first.
  */
 
 import { db } from "@/db";
@@ -138,20 +138,51 @@ async function verifyToken(
   }
 }
 
+/** How far ahead of expiry we proactively refresh during health sweeps. */
+function proactiveRefreshHorizonMs(platform: string): number {
+  switch (platform) {
+    case "linkedin":
+      return 7 * 24 * 60 * 60 * 1000;
+    case "instagram":
+    case "threads":
+    case "facebook":
+      return 14 * 24 * 60 * 60 * 1000;
+    case "pinterest":
+      return 24 * 60 * 60 * 1000;
+    case "youtube":
+    case "tiktok":
+    default:
+      return 60 * 60 * 1000;
+  }
+}
+
+const REFRESH_ON_HEALTH = new Set([
+  "youtube",
+  "tiktok",
+  "linkedin",
+  "instagram",
+  "threads",
+  "facebook",
+  "pinterest",
+]);
+
 /**
  * Run token health check for a list of accounts. Updates lastSyncedAt and tokenStatus.
- * For YouTube/TikTok: if expiring/expired, attempts refresh instead of marking expired (when refreshFn provided).
+ * When tryRefresh is on, refreshable platforms near expiry (or after 401) refresh instead of flipping expired.
  */
 export async function runTokenHealthCheck(
   accounts: AccountForHealthCheck[],
   options: {
     now?: Date;
+    /** @deprecated use tryRefresh — kept so existing callers keep working */
     tryRefreshYouTubeTikTok?: boolean;
+    tryRefresh?: boolean;
     twitterAccessSecretByAccountId?: Map<string, string>;
   } = {},
 ): Promise<void> {
   const now = options.now ?? new Date();
-  const tryRefresh = options.tryRefreshYouTubeTikTok ?? false;
+  const tryRefresh =
+    options.tryRefresh ?? options.tryRefreshYouTubeTikTok ?? false;
   const twitterSecrets = options.twitterAccessSecretByAccountId;
 
   // Collect results during API calls; write to DB in 2 batched updates at end
@@ -179,16 +210,13 @@ export async function runTokenHealthCheck(
       continue;
     }
 
-    // YouTube/TikTok: if expiring soon and we're allowed to refresh, try refresh first
-    if (
-      tryRefresh &&
-      (account.platform === "youtube" || account.platform === "tiktok")
-    ) {
+    // Proactive refresh before verify when within platform horizon
+    if (tryRefresh && REFRESH_ON_HEALTH.has(account.platform)) {
       const exp = account.tokenExpiresAt
         ? new Date(account.tokenExpiresAt).getTime()
-        : 0;
-      const oneHourFromNow = now.getTime() + 60 * 60 * 1000;
-      if (exp < oneHourFromNow) {
+        : null;
+      const horizon = now.getTime() + proactiveRefreshHorizonMs(account.platform);
+      if (exp != null && exp < horizon) {
         try {
           const { getValidToken } = await import("@/lib/token-refresh");
           await getValidToken(account.id, account.platform);
@@ -209,6 +237,19 @@ export async function runTokenHealthCheck(
     if (status === 200) {
       toMarkActive.push(account.id);
     } else if (status === 401 || status === 403) {
+      // Last chance: try silent refresh before marking expired
+      if (tryRefresh && REFRESH_ON_HEALTH.has(account.platform)) {
+        try {
+          const { getValidToken } = await import("@/lib/token-refresh");
+          await getValidToken(account.id, account.platform, {
+            forceRefresh: true,
+          });
+          toMarkActive.push(account.id);
+          continue;
+        } catch {
+          // fall through to expired
+        }
+      }
       toMarkExpired.push(account.id);
     }
     // Other statuses: leave tokenStatus/lastSyncedAt unchanged
@@ -298,7 +339,7 @@ export async function runTokenHealthCheckForUser(
     const batch = toCheck.slice(i, i + BATCH_SIZE);
     await runTokenHealthCheck(batch, {
       now,
-      tryRefreshYouTubeTikTok: true,
+      tryRefresh: true,
     });
   }
 }

@@ -1,7 +1,6 @@
 import { NEVER_EXPIRES_PLATFORMS, PLATFORMS } from "@/lib/platforms";
 
 const platformOrder: string[] = PLATFORMS.map((p) => p.id);
-const skipExpiryDisplay = new Set(["youtube", "tiktok"]);
 
 export type ApiAccountRow = {
   id: string;
@@ -37,7 +36,6 @@ export function transformAccountsForForm(
   rows: ApiAccountRow[],
   allowedPlatforms?: Set<string> | null,
 ): AccountForForm[] {
-  const now = Date.now();
   const filtered = rows.filter((a) => {
     if (a.isActive === false) return false;
     if (allowedPlatforms && !allowedPlatforms.has(a.platform)) return false;
@@ -50,12 +48,10 @@ export function transformAccountsForForm(
     profileImageUrl: a.profileImageUrl,
     isActive: a.isActive,
     isTwitterPremium: a.isTwitterPremium ?? false,
+    // Only trust health/refresh failure — never block compose on calendar expiry.
     tokenExpired: NEVER_EXPIRES_PLATFORMS.has(a.platform)
       ? false
-      : a.tokenStatus === "expired" ||
-          (!skipExpiryDisplay.has(a.platform) &&
-            !!a.tokenExpiresAt &&
-            new Date(a.tokenExpiresAt).getTime() < now),
+      : a.tokenStatus === "expired",
     platformMetadata: a.platformMetadata ?? undefined,
   }));
 }

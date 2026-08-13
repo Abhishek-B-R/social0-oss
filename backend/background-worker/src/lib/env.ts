@@ -20,6 +20,8 @@ const envSchema = z.object({
   YOUTUBE_CLIENT_SECRET: z.string().optional(),
   TIKTOK_CLIENT_ID: z.string().optional(),
   TIKTOK_CLIENT_SECRET: z.string().optional(),
+  PINTEREST_CLIENT_ID: z.string().optional(),
+  PINTEREST_CLIENT_SECRET: z.string().optional(),
   DODO_PAYMENTS_API_KEY: z.string().optional(),
   DODO_PAYMENTS_ENVIRONMENT: z.enum(["test_mode", "live_mode"]).optional(),
   DODO_PAYMENTS_STARTER_PRODUCT_ID: z.string().optional(),

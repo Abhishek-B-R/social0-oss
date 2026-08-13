@@ -54,7 +54,7 @@ export function startTokenWorker(
         const batch = toCheck.slice(i, i + BATCH_SIZE);
         await runTokenHealthCheck(batch, {
           now,
-          tryRefreshYouTubeTikTok: true,
+          tryRefresh: true,
         });
       }
       return { swept: toCheck.length };

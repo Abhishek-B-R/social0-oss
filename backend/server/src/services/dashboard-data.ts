@@ -147,31 +147,19 @@ type CalendarPostPayload = {
   isTwitterPremium?: boolean | null;
 };
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const SKIP_EXPIRY_DISPLAY = new Set(["youtube", "tiktok"]);
-
+/**
+ * Connection badge status.
+ * Never surface calendar "expires in X days" — refreshable platforms renew silently.
+ * Only show expired after health/refresh has actually failed (db token_status).
+ */
 function getTokenStatus(
   dbTokenStatus: string | null,
-  expiresAt: Date | null,
+  _expiresAt: Date | null,
   platform: string,
-): "ok" | "expiring_soon" | "expired" {
-  if (dbTokenStatus === "expired") return "expired";
+): "ok" | "expired" {
   if (NEVER_EXPIRES_PLATFORMS.has(platform)) return "ok";
-  if (SKIP_EXPIRY_DISPLAY.has(platform)) return "ok";
-  if (!expiresAt) return "ok";
-  const now = Date.now();
-  const exp = new Date(expiresAt).getTime();
-  if (exp < now) return "expired";
-  if (exp < now + 7 * ONE_DAY_MS) return "expiring_soon";
+  if (dbTokenStatus === "expired") return "expired";
   return "ok";
-}
-
-function getExpiresInDays(expiresAt: Date | null): number | null {
-  if (!expiresAt) return null;
-  const now = Date.now();
-  const exp = new Date(expiresAt).getTime();
-  if (exp < now) return null;
-  return Math.ceil((exp - now) / ONE_DAY_MS);
 }
 
 type SerializedPublication = Omit<PublicationRow, "publishedAt"> & {
@@ -328,7 +316,7 @@ export type LoadConnectionsPageDataResult =
           profileImageUrl: string | null;
           isActive: boolean | null;
           isTwitterPremium: boolean;
-          tokenStatus: "ok" | "expiring_soon" | "expired";
+          tokenStatus: "ok" | "expired";
           expiresInDays: number | null;
         }>;
         accountLimit:
@@ -357,6 +345,12 @@ export async function loadConnectionsPageData(): Promise<LoadConnectionsPageData
 
   await syncConnectedAccountsToLimit(userId).catch(() => {});
 
+  // Silent refresh + verify stale connections before rendering badges.
+  const { runTokenHealthCheckForUser } = await import("@/lib/token-health");
+  await runTokenHealthCheckForUser(userId).catch((err) => {
+    console.warn("[connections] token health check failed:", err);
+  });
+
   const [accounts, accountLimit] = await Promise.all([
     db.query.connectedAccounts.findMany({
       where: connectionScopeCondition(ctx),
@@ -381,7 +375,6 @@ export async function loadConnectionsPageData(): Promise<LoadConnectionsPageData
       a.tokenExpiresAt ?? null,
       a.platform,
     );
-    const expiresInDays = getExpiresInDays(a.tokenExpiresAt ?? null);
     return {
       id: a.id,
       platform: a.platform,
@@ -391,7 +384,7 @@ export async function loadConnectionsPageData(): Promise<LoadConnectionsPageData
       isActive: a.isActive,
       isTwitterPremium: a.isTwitterPremium ?? false,
       tokenStatus: status,
-      expiresInDays: status === "expiring_soon" ? expiresInDays : null,
+      expiresInDays: null,
     };
   });
 
