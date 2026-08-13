@@ -166,6 +166,18 @@ const REFRESH_ON_HEALTH = new Set([
   "pinterest",
 ]);
 
+const META_REFRESH_PLATFORMS = new Set([
+  "instagram",
+  "threads",
+  "facebook",
+]);
+
+function canProactiveRefresh(account: AccountForHealthCheck): boolean {
+  if (!REFRESH_ON_HEALTH.has(account.platform)) return false;
+  if (META_REFRESH_PLATFORMS.has(account.platform)) return true;
+  return Boolean(account.encryptedRefreshToken);
+}
+
 /**
  * Run token health check for a list of accounts. Updates lastSyncedAt and tokenStatus.
  * When tryRefresh is on, refreshable platforms near expiry (or after 401) refresh instead of flipping expired.
@@ -211,7 +223,7 @@ export async function runTokenHealthCheck(
     }
 
     // Proactive refresh before verify when within platform horizon
-    if (tryRefresh && REFRESH_ON_HEALTH.has(account.platform)) {
+    if (tryRefresh && canProactiveRefresh(account)) {
       const exp = account.tokenExpiresAt
         ? new Date(account.tokenExpiresAt).getTime()
         : null;
@@ -238,7 +250,7 @@ export async function runTokenHealthCheck(
       toMarkActive.push(account.id);
     } else if (status === 401 || status === 403) {
       // Last chance: try silent refresh before marking expired
-      if (tryRefresh && REFRESH_ON_HEALTH.has(account.platform)) {
+      if (tryRefresh && canProactiveRefresh(account)) {
         try {
           const { getValidToken } = await import("@/lib/token-refresh");
           await getValidToken(account.id, account.platform, {

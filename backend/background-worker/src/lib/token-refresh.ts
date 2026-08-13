@@ -190,6 +190,9 @@ export async function getValidToken(
 
   if (platform === "tiktok") {
     if (!account.encryptedRefreshToken) {
+      if (expiresAt && new Date(expiresAt) > new Date()) {
+        return accessToken;
+      }
       throw new Error(
         "No refresh token available. Please reconnect your account.",
       );
@@ -235,6 +238,10 @@ export async function getValidToken(
 
   if (platform === "linkedin") {
     if (!account.encryptedRefreshToken) {
+      // Standard LinkedIn apps (non-MDP) never get refresh_token — 60-day access token is the real TTL.
+      if (expiresAt && new Date(expiresAt) > new Date()) {
+        return accessToken;
+      }
       throw new Error(
         "No refresh token available. Please reconnect your account.",
       );
@@ -281,6 +288,9 @@ export async function getValidToken(
 
   if (platform === "pinterest") {
     if (!account.encryptedRefreshToken) {
+      if (expiresAt && new Date(expiresAt) > new Date()) {
+        return accessToken;
+      }
       throw new Error(
         "No refresh token available. Please reconnect your account.",
       );

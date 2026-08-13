@@ -685,6 +685,15 @@ export async function platformCallback(
       tokens = await tokenResponse.json();
     }
 
+    if (platform === "linkedin" && !tokens.refresh_token) {
+      // Standard LinkedIn apps are not in the Marketing Developer Platform
+      // refresh-token program — LinkedIn returns a 60-day access token only.
+      console.warn(
+        "[LinkedIn] token exchange had no refresh_token (expected without MDP); expires_in=",
+        tokens.expires_in ?? null,
+      );
+    }
+
     // Pinterest: complete connection (board chosen at post time)
     if (platform === "pinterest") {
       const userInfo = await fetchPlatformUserInfo(
