@@ -442,7 +442,7 @@ export default function McpPage() {
   return (
     <MarketingPageLayout showCta={false}>
       <SeoHead
-        title="Social0 MCP Server — Manage social media accounts from your AI"
+        title="Social0 MCP Server — Manage social media from your AI"
         description="Connect ChatGPT, Claude, Cursor, VS Code, OpenClaw, or Hermes to Social0. Remote OAuth for ChatGPT, Claude, and Cursor — or local npx / CLI skills. Create posts, publish, and schedule from natural language."
         path="/mcp"
         keywords={[

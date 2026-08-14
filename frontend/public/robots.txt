@@ -1,3 +1,5 @@
+# llms.txt: https://social0.app/llms.txt
+
 User-agent: *
 Allow: /
 Disallow: /dashboard
@@ -14,4 +16,52 @@ Disallow: /api
 Disallow: /api/
 Disallow: /v1
 Disallow: /v1/
+
+# AI crawlers - marketing + PSEO allowed; app routes blocked above
+User-agent: GPTBot
+Allow: /
+Disallow: /dashboard
+Disallow: /auth
+Disallow: /onboarding
+Disallow: /oauth
+Disallow: /invite
+Disallow: /api
+Disallow: /v1
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /dashboard
+Disallow: /auth
+Disallow: /onboarding
+Disallow: /oauth
+Disallow: /invite
+Disallow: /api
+Disallow: /v1
+
+User-agent: anthropic-ai
+Allow: /
+Disallow: /dashboard
+Disallow: /auth
+Disallow: /onboarding
+Disallow: /oauth
+Disallow: /invite
+Disallow: /api
+Disallow: /v1
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /dashboard
+Disallow: /auth
+Disallow: /onboarding
+Disallow: /oauth
+Disallow: /invite
+Disallow: /api
+Disallow: /v1
+
+User-agent: Google-Extended
+Allow: /
+
 Sitemap: https://social0.app/sitemap.xml

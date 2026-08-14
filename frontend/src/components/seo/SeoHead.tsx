@@ -26,7 +26,7 @@ export function SeoHead(config: PageSeoConfig) {
         ),
       )}
       {link.map((l) => (
-        <link key={l.rel} rel={l.rel} href={l.href} />
+        <link key={`${l.rel}-${l.href}`} rel={l.rel} href={l.href} />
       ))}
     </Helmet>
   );

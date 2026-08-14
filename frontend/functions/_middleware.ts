@@ -94,8 +94,8 @@ function upsertMeta(
   return html.replace(/<\/head>/i, `  ${tag}\n</head>`);
 }
 
-function injectJsonLd(html: string, meta: RouteMeta, url: string): string {
-  const graph = {
+function injectJsonLd(html: string, meta: RouteMeta, url: string, path: string): string {
+  const webPage = {
     "@context": "https://schema.org",
     "@type": "WebPage",
     name: meta.title,
@@ -107,7 +107,38 @@ function injectJsonLd(html: string, meta: RouteMeta, url: string): string {
       url: SITE,
     },
   };
-  const script = `<script type="application/ld+json">${JSON.stringify(graph).replace(/</g, "\\u003c")}</script>`;
+
+  const graph: object[] = [webPage];
+
+  if (path === "/") {
+    graph.push(
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        name: "Social0",
+        url: SITE,
+        logo: OG_IMAGE,
+        sameAs: ["https://x.com/social0_app"],
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "Social0",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
+        url: SITE,
+        description: meta.description,
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "USD",
+          description: "Free plan available; paid tiers for teams and bulk tools",
+        },
+      },
+    );
+  }
+
+  const script = `<script type="application/ld+json">${JSON.stringify(graph.length === 1 ? graph[0] : graph).replace(/</g, "\\u003c")}</script>`;
   if (/<script type="application\/ld\+json"/i.test(html)) return html;
   return html.replace(/<\/head>/i, `  ${script}\n</head>`);
 }
@@ -141,7 +172,7 @@ function applyRouteMeta(html: string, path: string, meta: RouteMeta): string {
     ? out.replace(canonicalRe, canonical)
     : out.replace(/<\/head>/i, `  ${canonical}\n</head>`);
 
-  out = injectJsonLd(out, meta, url);
+  out = injectJsonLd(out, meta, url, path);
   return out;
 }
 

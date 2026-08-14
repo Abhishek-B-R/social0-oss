@@ -77,6 +77,12 @@ export function LandingHeader() {
           >
             Tools
           </Link>
+          <Link
+            href="/alternatives"
+            className="text-[14px] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Compare
+          </Link>
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -153,6 +159,13 @@ export function LandingHeader() {
               onClick={() => setMobileMenuOpen(false)}
             >
               Tools
+            </Link>
+            <Link
+              href="/alternatives"
+              className="text-[15px] text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Compare
             </Link>
             {navLinks.map((link) => (
               <Link
