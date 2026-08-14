@@ -152,19 +152,27 @@ export function LandingFooter() {
     <footer className="relative overflow-hidden border-t border-border bg-muted/40 dark:bg-[#111111]">
       <div className="mx-auto max-w-[1180px] px-6 py-14 lg:px-8 lg:py-16">
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,2fr)] lg:gap-16">
-          {/* Brand + socials */}
           <div className="max-w-sm">
             <Link
               href={homeHref}
               className="inline-flex items-center gap-2.5 font-logo text-xl font-normal tracking-tight text-foreground"
             >
-              <img
-                src="/logo-circular.webp"
-                alt=""
-                width={28}
-                height={28}
-                className="size-7 rounded-full"
-              />
+              <span className="relative block size-7 shrink-0">
+                <img
+                  src="/logo-circular.webp"
+                  alt=""
+                  width={28}
+                  height={28}
+                  className="size-7 rounded-full dark:hidden"
+                />
+                <img
+                  src="/logo-dark.webp"
+                  alt=""
+                  width={28}
+                  height={28}
+                  className="absolute inset-0 hidden size-7 rounded-full border border-white/20 dark:block"
+                />
+              </span>
               Social0
             </Link>
             <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
@@ -190,7 +198,6 @@ export function LandingFooter() {
             </ul>
           </div>
 
-          {/* Link columns */}
           <div className="grid gap-10 sm:grid-cols-3">
             {columns.map((col) => (
               <div key={col.title}>
@@ -209,8 +216,8 @@ export function LandingFooter() {
           </div>
         </div>
 
-        <p className="mt-14 text-center text-[12px] text-muted-foreground sm:text-left">
-          © 2026 Social0 · Built by{" "}
+        <p className="mt-14 text-[12px] text-muted-foreground">
+          Social0 · Built by{" "}
           <a
             href="https://x.com/abhitwt"
             target="_blank"
@@ -219,15 +226,6 @@ export function LandingFooter() {
           >
             @abhitwt
           </a>
-        </p>
-      </div>
-
-      <div
-        className="pointer-events-none select-none overflow-hidden px-2 pb-2 pt-2 sm:pb-3"
-        aria-hidden
-      >
-        <p className="mx-auto max-w-[100vw] truncate text-center font-logo text-[clamp(4.5rem,18vw,14rem)] font-normal leading-none tracking-[-0.04em] text-foreground/[0.06] dark:text-white/[0.055]">
-          Social0
         </p>
       </div>
     </footer>
