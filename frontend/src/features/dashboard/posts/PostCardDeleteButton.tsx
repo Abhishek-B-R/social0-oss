@@ -1,21 +1,27 @@
-
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { usePostHog } from "@posthog/react";
 import { capturePostAction } from "@/lib/posthog-events";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { deletePost } from "@/api/posts";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 
 export function PostCardDeleteButton({
   postId,
   status,
   buttonLabel,
+  redirectTo,
 }: {
   postId: string;
   status: string | null;
   /** e.g. "Cancel" for scheduled posts; default "Delete" */
   buttonLabel?: string;
+  /** Where to go after a successful delete/cancel (detail page). */
+  redirectTo?: string;
 }) {
   const invalidateQueries = useInvalidateQueries();
+  const navigate = useNavigate();
+  const dash = useDashboardPath();
   const posthog = usePostHog();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,6 +49,10 @@ export function PostCardDeleteButton({
       );
       setOpen(false);
       invalidateQueries();
+      const fallback = isScheduled
+        ? dash("posts/scheduled")
+        : dash("posts/drafts");
+      navigate(redirectTo ?? fallback, { replace: true });
     }
   };
 

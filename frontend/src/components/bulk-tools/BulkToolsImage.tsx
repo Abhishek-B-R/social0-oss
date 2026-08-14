@@ -28,6 +28,7 @@ import { createPost } from "@/api/posts";
 import { uploadFile } from "@/lib/upload-file";
 import { usePostHog } from "@posthog/react";
 import { captureBulkPostsScheduled } from "@/lib/posthog-events";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { toast } from "sonner";
 import {
@@ -90,6 +91,7 @@ export function BulkToolsImage({
   supportedPlatforms?: string[];
 }) {
   const posthog = usePostHog();
+  const invalidateQueries = useInvalidateQueries();
   const dash = useDashboardPath();
   const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
   const validIds = useMemo(
@@ -500,6 +502,7 @@ export function BulkToolsImage({
         successfulUploads.length,
         accountIds.length,
       );
+      invalidateQueries();
     } catch {
       toast.error("Failed to schedule images. Please try again.");
     } finally {

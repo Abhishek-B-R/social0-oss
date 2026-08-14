@@ -17,6 +17,7 @@ type StatusPostsConfig = {
   description: string;
   basePath: string;
   emptyMessage: string;
+  emptyCtaLabel: string;
   guestTitle: string;
   guestDescription: string;
 };
@@ -152,6 +153,7 @@ export function StatusPostsPage({ config }: { config: StatusPostsConfig }) {
         resurfaceByPostId={data.resurfaceByPostId}
         queuedPostIds={new Set(data.queuedPostIds)}
         emptyMessage={config.emptyMessage}
+        emptyCtaLabel={config.emptyCtaLabel}
         filterMessage={`No ${config.title.toLowerCase()} match your filters.`}
         hasActiveFilters={hasActiveFilters}
         use24HourTimeFormat={data.use24HourTimeFormat}
@@ -182,6 +184,7 @@ export function DraftsPostsPage() {
         description: "Saved drafts",
         basePath: "/dashboard/posts/drafts",
         emptyMessage: "You have no drafts.",
+        emptyCtaLabel: "Create a post",
         guestTitle: "Sign in to see your drafts",
         guestDescription: "Your saved drafts will appear here after you sign in.",
       }}
@@ -198,6 +201,7 @@ export function ScheduledPostsPage() {
         description: "Upcoming scheduled posts",
         basePath: "/dashboard/posts/scheduled",
         emptyMessage: "You have no scheduled posts.",
+        emptyCtaLabel: "Schedule a post",
         guestTitle: "Sign in to see scheduled posts",
         guestDescription: "Your scheduled posts will appear here after you sign in.",
       }}
@@ -214,6 +218,7 @@ export function PostedPostsPage() {
         description: "Published posts",
         basePath: "/dashboard/posts/posted",
         emptyMessage: "You have no published posts yet.",
+        emptyCtaLabel: "Create a post",
         guestTitle: "Sign in to see posted content",
         guestDescription: "Your published posts will appear here after you sign in.",
       }}

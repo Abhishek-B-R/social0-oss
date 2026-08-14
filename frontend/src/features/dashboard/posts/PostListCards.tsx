@@ -556,6 +556,7 @@ export function PostListCards({
   firstMediaByPost,
   queuedPostIds,
   emptyMessage = "You haven't created any posts yet.",
+  emptyCtaLabel = "Create a post",
   filterMessage = "No posts match your filters.",
   hasActiveFilters,
   use24HourTimeFormat = false,
@@ -569,6 +570,8 @@ export function PostListCards({
   /** When provided, posts in this set show a "Queued" badge instead of "Scheduled" */
   queuedPostIds?: Set<string>;
   emptyMessage?: string;
+  /** Empty-state primary button (not "first post" on status-only lists). */
+  emptyCtaLabel?: string;
   filterMessage?: string;
   hasActiveFilters?: boolean;
   use24HourTimeFormat?: boolean;
@@ -589,7 +592,7 @@ export function PostListCards({
           href="/dashboard/composer"
           className="inline-flex rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-lg transition-colors hover:bg-accent-hover"
         >
-          Create your first post
+          {emptyCtaLabel}
         </Link>
       </div>
     );

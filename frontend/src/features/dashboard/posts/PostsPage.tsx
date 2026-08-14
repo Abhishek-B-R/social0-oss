@@ -239,6 +239,7 @@ export function PostsPage() {
         resurfaceByPostId={resurfaceByPostId}
         queuedPostIds={hydrated.queuedPostIds}
         emptyMessage="You haven't created any posts yet."
+        emptyCtaLabel="Create your first post"
         filterMessage="No posts match your filters."
         hasActiveFilters={hasActiveFilters}
         use24HourTimeFormat={use24HourTimeFormat}

@@ -152,30 +152,30 @@ export function LandingFooter() {
     <footer className="relative overflow-hidden border-t border-border bg-muted/40 dark:bg-[#111111]">
       <div className="mx-auto max-w-[1180px] px-6 py-14 lg:px-8 lg:py-16">
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,2fr)] lg:gap-16">
-          <div className="max-w-sm">
+          <div className="max-w-md">
             <Link
               href={homeHref}
-              className="inline-flex items-center gap-2.5 font-logo text-xl font-normal tracking-tight text-foreground"
+              className="inline-flex items-center gap-3 font-logo text-2xl font-normal tracking-tight text-foreground sm:text-[1.75rem]"
             >
-              <span className="relative block size-7 shrink-0">
+              <span className="relative block size-9 shrink-0">
                 <img
                   src="/logo-circular.webp"
                   alt=""
-                  width={28}
-                  height={28}
-                  className="size-7 rounded-full dark:hidden"
+                  width={36}
+                  height={36}
+                  className="size-9 rounded-full dark:hidden"
                 />
                 <img
                   src="/logo-dark.webp"
                   alt=""
-                  width={28}
-                  height={28}
-                  className="absolute inset-0 hidden size-7 rounded-full border border-white/20 dark:block"
+                  width={36}
+                  height={36}
+                  className="absolute inset-0 hidden size-9 rounded-full border border-white/20 dark:block"
                 />
               </span>
               Social0
             </Link>
-            <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
+            <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground sm:text-base">
               Multi-platform social scheduling — for humans and AI agents.
             </p>
             <ul className="mt-6 flex flex-wrap gap-2.5">

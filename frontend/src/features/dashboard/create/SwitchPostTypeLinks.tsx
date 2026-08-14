@@ -22,6 +22,7 @@ export function SwitchPostTypeLinks({
   onBeforeSwitch,
   className,
   draftId,
+  editId,
 }: {
   current: SwitchablePostType;
   caption: string;
@@ -29,6 +30,8 @@ export function SwitchPostTypeLinks({
   className?: string;
   /** Keep editing this draft after switching type (from drafts). */
   draftId?: string;
+  /** Keep editing this post after switching type (Edit and post). */
+  editId?: string;
 }) {
   const navigate = useNavigate();
   const dash = useDashboardPath();
@@ -43,6 +46,7 @@ export function SwitchPostTypeLinks({
     });
     const params = new URLSearchParams({ fromComposer: "1" });
     if (draftId) params.set("draft", draftId);
+    else if (editId) params.set("edit", editId);
     navigate(`${dash(`create/${slug}`)}?${params}`);
   };
 

@@ -733,6 +733,10 @@ export function VideoPostForm({
 
   useEffect(() => {
     if (!initialEditId) return;
+    const typeSwitch =
+      searchParams.get("fromComposer") === "1"
+        ? consumeComposerPayload()
+        : null;
     let cancelled = false;
     (async () => {
       try {
@@ -751,11 +755,13 @@ export function VideoPostForm({
         const restoredIds = toEdit.connectedAccountIds.filter((id) =>
           validAccountIds.has(id),
         );
-        setContent(toEdit.originalContent ?? "");
-        setSelectedIds(new Set(restoredIds));
-        const videoMedia = toEdit.media.find((m) =>
-          m.mimeType.startsWith("video/"),
+        setContent(
+          typeSwitch ? typeSwitch.text : (toEdit.originalContent ?? ""),
         );
+        setSelectedIds(new Set(restoredIds));
+        const videoMedia = typeSwitch
+          ? undefined
+          : toEdit.media.find((m) => m.mimeType.startsWith("video/"));
         if (videoMedia) {
           setExistingVideoId(videoMedia.id);
           setVideoPreview(videoMedia.url ?? videoMedia.thumbnailUrl ?? null);
@@ -825,8 +831,9 @@ export function VideoPostForm({
     })();
     return () => {
       cancelled = true;
+      if (typeSwitch) setTimeout(clearComposerPayload, 100);
     };
-  }, [initialEditId, accounts]);
+  }, [initialEditId, accounts, searchParams]);
 
   const handleDeleteDraft = async () => {
     if (!initialDraftId) return;
@@ -2746,11 +2753,12 @@ export function VideoPostForm({
           rememberAutoFeatures={rememberAutoFeatures}
           onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
-          {!initialScheduledId && !initialEditId ? (
+          {!initialScheduledId ? (
             <SwitchPostTypeLinks
               current="video"
               caption={content}
               draftId={initialDraftId}
+              editId={initialEditId}
               onBeforeSwitch={() => {
                 removeVideo();
               }}

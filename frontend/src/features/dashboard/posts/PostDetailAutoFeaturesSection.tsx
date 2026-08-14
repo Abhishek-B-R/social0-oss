@@ -148,6 +148,7 @@ export function PostDetailAutoFeaturesSection({
   variant = "published",
   pendingAutoPlugFromServer = null,
   pendingResurfaceFromServer = null,
+  onUpdated,
 }: {
   postId: string;
   publishedAt: Date | null;
@@ -160,6 +161,8 @@ export function PostDetailAutoFeaturesSection({
   variant?: "published" | "scheduled";
   pendingAutoPlugFromServer?: Partial<AutoPlugConfig> | null;
   pendingResurfaceFromServer?: Partial<AutoResurfaceConfig> | null;
+  /** Reload post-detail local state after mutations (RQ alone is not enough). */
+  onUpdated?: () => void | Promise<void>;
 }) {
   const invalidateQueries = useInvalidateQueries();
   const { accounts, loading } = useAccountsForForm(null);
@@ -252,7 +255,8 @@ export function PostDetailAutoFeaturesSection({
 
   const refresh = useCallback(() => {
     invalidateQueries();
-  }, [invalidateQueries]);
+    void onUpdated?.();
+  }, [invalidateQueries, onUpdated]);
 
   const handleSavePlugModal = useCallback(async () => {
     if (!draftPlug) {

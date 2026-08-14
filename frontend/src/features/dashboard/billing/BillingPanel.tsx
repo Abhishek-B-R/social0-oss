@@ -2,7 +2,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { fetchApi } from "@/lib/fetch-api";
 
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { usePostHog } from "@posthog/react";
 import {
   CircleNotch,
@@ -246,6 +246,8 @@ type BillingPanelProps = {
   justSubscribed?: boolean;
   dateFormat?: string | null;
   timezone?: string | null;
+  /** Reload billing page local state after mutations (RQ alone is not enough). */
+  onBillingUpdated?: () => void | Promise<void>;
 };
 
 function redirectToComposer() {
@@ -258,11 +260,18 @@ export function BillingPanel({
   justSubscribed = false,
   dateFormat = "dd/MM/yyyy",
   timezone,
+  onBillingUpdated,
 }: BillingPanelProps) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const invalidateQueries = useInvalidateQueries();
   const posthog = usePostHog();
+
+  // ponytail: invalidate RQ caches + reload BillingPage local `raw` state
+  const refreshBilling = useCallback(() => {
+    invalidateQueries();
+    void onBillingUpdated?.();
+  }, [invalidateQueries, onBillingUpdated]);
   const [verifying, setVerifying] = useState(false);
   const [loading, setLoading] = useState<
     "portal" | "pause" | "cancel" | "undoCancel" | null
@@ -322,7 +331,7 @@ export function BillingPanel({
         method: "POST",
         credentials: "include",
       });
-      invalidateQueries();
+      refreshBilling();
 
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
@@ -335,7 +344,7 @@ export function BillingPanel({
     };
 
     poll();
-  }, [searchParams, navigate, invalidateQueries]);
+  }, [searchParams, navigate, refreshBilling]);
 
   useEffect(() => {
     if (!waitingForWebhook) return;
@@ -380,13 +389,14 @@ export function BillingPanel({
       if (done) return;
       if (attempts >= POLL_MAX_ATTEMPTS) {
         setWaitingForWebhook(false);
+        refreshBilling();
       }
     };
 
     run();
     const id = setInterval(run, POLL_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [waitingForWebhook]);
+  }, [waitingForWebhook, refreshBilling]);
 
   const tierLabel =
     subscription.tier === "max"
@@ -439,10 +449,13 @@ export function BillingPanel({
           Still here after a minute?{" "}
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              setWaitingForWebhook(false);
+              refreshBilling();
+            }}
             className="font-medium text-accent hover:underline"
           >
-            Refresh the page
+            Refresh
           </button>{" "}
           to sync your plan.
         </p>
@@ -498,7 +511,7 @@ export function BillingPanel({
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
         setPauseOpen(false);
-        invalidateQueries();
+        refreshBilling();
         return;
       }
       if (data.error === "not_supported") {
@@ -531,13 +544,13 @@ export function BillingPanel({
           toast.success(
             "Subscription cancelled. You've been moved to the free plan.",
           );
-          invalidateQueries();
+          refreshBilling();
           navigate("/dashboard/billing", { replace: true });
         } else {
           toast.info(
             `You'll keep full access until ${renewalDate ?? "your period end"}. No further charges.`,
           );
-          invalidateQueries();
+          refreshBilling();
         }
         return;
       }
@@ -562,7 +575,7 @@ export function BillingPanel({
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
         toast.success("Cancellation undone. Your subscription will continue.");
-        invalidateQueries();
+        refreshBilling();
         return;
       }
       toast.error(
@@ -599,7 +612,7 @@ export function BillingPanel({
         toast.info(
           `Downgrade scheduled. You'll move to ${targetDowngradePlan === "starter" ? "Starter" : "Growth"} on ${renewalDate ?? "your renewal date"}.`,
         );
-        invalidateQueries();
+        refreshBilling();
         return;
       }
       if (res.status === 404 && data.error === "no_active_subscription") {
@@ -642,7 +655,7 @@ export function BillingPanel({
             ? `Scheduled upgrade to ${pendingLabel} cancelled.`
             : "Downgrade cancelled.",
         );
-        invalidateQueries();
+        refreshBilling();
       } else {
         const data = await res.json().catch(() => ({}));
         toast.error(
@@ -722,7 +735,7 @@ export function BillingPanel({
       toast.success(
         `Upgrade to ${planLabel} scheduled for ${renewalDate ?? "your renewal date"}. No charge today.`,
       );
-      invalidateQueries();
+      refreshBilling();
       return true;
     }
 
@@ -734,7 +747,7 @@ export function BillingPanel({
         );
       } else {
         toast.success(`You're on ${planLabel}.`);
-        invalidateQueries();
+        refreshBilling();
       }
       return true;
     }

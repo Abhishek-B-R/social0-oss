@@ -1,6 +1,5 @@
-
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { loadBillingPageData } from "@/api/dashboard-data";
 import type { SubscriptionState } from "@/lib/subscription";
 import { BillingPanel } from "./BillingPanel";
@@ -43,6 +42,21 @@ export function BillingPage() {
     return () => {
       cancelled = true;
     };
+  }, [navigate]);
+
+  // Silent reload after cancel/upgrade/etc — keeps panel props fresh without
+  // flipping the page back to the full skeleton.
+  const reloadBilling = useCallback(async () => {
+    const result = await loadBillingPageData();
+    if (!result.ok) {
+      if (result.error === "Unauthorized") {
+        navigate("/");
+        return;
+      }
+      return;
+    }
+    setError(null);
+    setRaw(result.data);
   }, [navigate]);
 
   const subscription: SubscriptionState | null = useMemo(() => {
@@ -88,6 +102,7 @@ export function BillingPage() {
           justSubscribed={justSubscribed}
           dateFormat={raw.dateFormat}
           timezone={raw.timezone}
+          onBillingUpdated={reloadBilling}
         />
       </div>
     </div>

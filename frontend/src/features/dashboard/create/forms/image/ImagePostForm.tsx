@@ -416,6 +416,10 @@ export function ImagePostForm({
 
   useEffect(() => {
     if (!initialEditId) return;
+    const typeSwitch =
+      searchParams.get("fromComposer") === "1"
+        ? consumeComposerPayload()
+        : null;
     let cancelled = false;
     (async () => {
       try {
@@ -434,18 +438,22 @@ export function ImagePostForm({
         const restoredIds = toEdit.connectedAccountIds.filter((id) =>
           validAccountIds.has(id),
         );
-        setContent(toEdit.originalContent ?? "");
+        setContent(
+          typeSwitch ? typeSwitch.text : (toEdit.originalContent ?? ""),
+        );
         setSelectedIds(new Set(restoredIds));
-        const imageMedia = toEdit.media.filter((m) =>
-          m.mimeType.startsWith("image/"),
-        );
-        setImages(
-          imageMedia.map((m, i) => ({
-            preview: m.thumbnailUrl ?? m.url ?? "",
-            order: i + 1,
-            existingId: m.id,
-          })),
-        );
+        if (!typeSwitch) {
+          const imageMedia = toEdit.media.filter((m) =>
+            m.mimeType.startsWith("image/"),
+          );
+          setImages(
+            imageMedia.map((m, i) => ({
+              preview: m.thumbnailUrl ?? m.url ?? "",
+              order: i + 1,
+              existingId: m.id,
+            })),
+          );
+        }
         const meta = toEdit.metadata as Record<string, unknown> | null;
         if (meta?.x && typeof meta.x === "object") {
           const x = meta.x as Record<string, unknown>;
@@ -513,8 +521,9 @@ export function ImagePostForm({
     })();
     return () => {
       cancelled = true;
+      if (typeSwitch) setTimeout(clearComposerPayload, 100);
     };
-  }, [initialEditId, accounts]);
+  }, [initialEditId, accounts, searchParams]);
 
   useEffect(() => {
     if (!initialScheduledId || initialDraftId) return;
@@ -2525,11 +2534,12 @@ export function ImagePostForm({
           rememberAutoFeatures={rememberAutoFeatures}
           onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
-          {!initialScheduledId && !initialEditId ? (
+          {!initialScheduledId ? (
             <SwitchPostTypeLinks
               current="image"
               caption={content}
               draftId={initialDraftId}
+              editId={initialEditId}
               onBeforeSwitch={() => {
                 setImages((prev) => {
                   for (const item of prev) {
