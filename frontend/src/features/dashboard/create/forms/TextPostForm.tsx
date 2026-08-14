@@ -299,6 +299,10 @@ export function TextPostForm({
 
   useEffect(() => {
     if (!initialEditId) return;
+    const typeSwitch =
+      searchParams.get("fromComposer") === "1"
+        ? consumeComposerPayload()
+        : null;
     let cancelled = false;
     (async () => {
       try {
@@ -316,7 +320,9 @@ export function TextPostForm({
         const restoredIds = toEdit.connectedAccountIds.filter((id) =>
           validAccountIds.has(id),
         );
-        setContent(toEdit.originalContent ?? "");
+        setContent(
+          typeSwitch ? typeSwitch.text : (toEdit.originalContent ?? ""),
+        );
         setSelectedIds(new Set(restoredIds));
         const editMeta = toEdit.metadata as Record<string, unknown> | null;
         if (editMeta?.x && typeof editMeta.x === "object") {
@@ -336,8 +342,9 @@ export function TextPostForm({
     })();
     return () => {
       cancelled = true;
+      if (typeSwitch) setTimeout(clearComposerPayload, 100);
     };
-  }, [initialEditId, accounts]);
+  }, [initialEditId, accounts, searchParams]);
 
   useEffect(() => {
     if (initialDraftId || initialScheduledId || initialEditId) return;
@@ -1352,11 +1359,12 @@ export function TextPostForm({
           rememberAutoFeatures={rememberAutoFeatures}
           onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
-          {!initialScheduledId && !initialEditId ? (
+          {!initialScheduledId ? (
             <SwitchPostTypeLinks
               current="text"
               caption={content}
               draftId={initialDraftId}
+              editId={initialEditId}
             />
           ) : null}
           <div className="hidden lg:block rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
