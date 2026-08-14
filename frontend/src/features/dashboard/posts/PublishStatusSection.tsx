@@ -101,18 +101,12 @@ export function PublishStatusSection({
   use24HourTimeFormat: boolean;
   formatDateTime: (date: Date, opts: DateTimeFormatOpts) => string;
 }) {
+  // Open log only when something failed / partial — keep quiet for
+  // published, scheduled, queued, and in-flight publishing.
   const needsAttention = useMemo(() => {
-    if (
-      postStatus === "failed" ||
-      postStatus === "partial" ||
-      postStatus === "publishing"
-    ) {
-      return true;
-    }
-    // Queued/in-progress can expand; plain scheduled wait should stay quiet.
-    if (postStatus === "scheduled" && isQueued) return true;
+    if (postStatus === "failed" || postStatus === "partial") return true;
     return publications.some((p) => p.status === "failed");
-  }, [postStatus, publications, isQueued]);
+  }, [postStatus, publications]);
 
   const allSuccess =
     publications.length > 0 &&
@@ -173,11 +167,9 @@ export function PublishStatusSection({
               ? "text-accent"
               : postStatus === "failed" || postStatus === "partial"
                 ? "text-red-600 dark:text-red-400"
-                : postStatus === "scheduled" && !isQueued
-                  ? "text-blue-700 dark:text-blue-300"
-                  : postStatus === "scheduled" && isQueued
-                    ? "text-amber-700 dark:text-amber-300"
-                    : "text-text-muted"
+                : postStatus === "scheduled" && isQueued
+                  ? "text-amber-700 dark:text-amber-300"
+                  : "text-text-muted"
           }`}
         >
           {headline}
@@ -206,7 +198,7 @@ export function PublishStatusSection({
                     />
                   ) : state === "scheduled" ? (
                     <Clock
-                      className="h-4 w-4 text-blue-600 dark:text-blue-400"
+                      className="h-4 w-4 text-text-muted"
                       aria-hidden
                     />
                   ) : state === "queued" || state === "active" ? (
@@ -225,11 +217,9 @@ export function PublishStatusSection({
                     </span>
                     <span
                       className={`text-xs ${
-                        state === "scheduled"
-                          ? "text-blue-700 dark:text-blue-300"
-                          : state === "queued" || state === "active"
-                            ? "text-amber-700 dark:text-amber-300"
-                            : "text-text-muted"
+                        state === "queued" || state === "active"
+                          ? "text-amber-700 dark:text-amber-300"
+                          : "text-text-muted"
                       }`}
                     >
                       {state === "published"
