@@ -8,6 +8,11 @@ import {
 } from "react";
 import { useLocation } from "react-router-dom";
 import type { PostHog } from "posthog-js";
+import {
+  applyRefToPostHog,
+  captureRefFromSearch,
+  getStoredRef,
+} from "@/lib/attribution-ref";
 import { sanitizeAnalyticsUrl } from "@/lib/sanitize-analytics-url";
 
 const APP_ROUTE_PREFIXES = [
@@ -84,6 +89,8 @@ export function PostHogAnalytics({ children }: { children: ReactNode }) {
           if (hostname === "localhost" || hostname === "127.0.0.1") {
             ph.opt_out_capturing();
           }
+          captureRefFromSearch(window.location.search);
+          applyRefToPostHog(ph);
         },
       });
 
@@ -108,10 +115,18 @@ export function PostHogAnalytics({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Capture ?ref= before PostHog finishes lazy-loading on marketing pages.
+  useEffect(() => {
+    captureRefFromSearch(location.search);
+    if (client?.__loaded) applyRefToPostHog(client);
+  }, [location.search, client]);
+
   useEffect(() => {
     if (!client?.__loaded) return;
+    const ref = getStoredRef();
     client.capture("$pageview", {
       $current_url: sanitizeAnalyticsUrl(window.location.href),
+      ...(ref ? { ref } : {}),
     });
   }, [location, client]);
 
