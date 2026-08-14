@@ -7,14 +7,13 @@ import { useQuery } from "@tanstack/react-query";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardBottomNav } from "@/components/dashboard/DashboardBottomNav";
 import { SubscriptionSync } from "@/components/dashboard/SubscriptionSync";
-import { GuestBanner } from "@/components/dashboard/GuestBanner";
-import { GuestTestModeDialog } from "@/components/dashboard/GuestTestModeDialog";
 import { FreePostsBanner } from "@/components/dashboard/FreePostsBanner";
 import { ConnectAccountsBanner } from "@/components/dashboard/ConnectAccountsBanner";
 import { TeamInviteBanners } from "@/components/dashboard/TeamInviteBanners";
 import { PersonalWorkspaceBoot } from "@/components/dashboard/PersonalWorkspaceBoot";
 import { LegalConsentGate } from "@/components/auth/LegalConsentGate";
 import { useSessionResolved } from "@/lib/use-is-guest";
+import { signInUrl } from "@/lib/sign-in-url";
 import { rpc } from "@/lib/rpc";
 import { getOnboardingStatus, type OnboardingStatus } from "@/api/onboarding";
 
@@ -27,10 +26,18 @@ function getPlanLabel(tier: string): string {
 }
 
 export function DashboardLayout() {
-  const { session, isPending, isGuest } = useSessionResolved();
+  const { session, isPending } = useSessionResolved();
   const location = useLocation();
   const navigate = useNavigate();
   const posthog = usePostHog();
+
+  useEffect(() => {
+    if (isPending) return;
+    if (!session) {
+      const returnTo = `${location.pathname}${location.search}`;
+      navigate(signInUrl(returnTo), { replace: true });
+    }
+  }, [isPending, session, location.pathname, location.search, navigate]);
 
   useEffect(() => {
     const email = session?.user?.email?.trim().toLowerCase();
@@ -92,14 +99,17 @@ export function DashboardLayout() {
     onboarding.connectedAccountsCount === 0 &&
     !onConnectionsPage;
 
-  const sidebarUser =
-    session && layoutData
-      ? {
-          ...session.user,
-          name: layoutData.profileName ?? session.user.name,
-          image: layoutData.profileImage ?? session.user.image,
-        }
-      : (session?.user ?? null);
+  if (isPending || !session) {
+    return null;
+  }
+
+  const sidebarUser = layoutData
+    ? {
+        ...session.user,
+        name: layoutData.profileName ?? session.user.name,
+        image: layoutData.profileImage ?? session.user.image,
+      }
+    : session.user;
 
   return (
     <div className="dashboard-shell flex h-screen overflow-hidden bg-bg">
@@ -113,23 +123,17 @@ export function DashboardLayout() {
       <DashboardSidebar
         user={sidebarUser}
         planLabel={
-          isGuest
-            ? "Guest"
-            : layoutData
-              ? getPlanLabel(layoutData.subscriptionTier)
-              : "…"
+          layoutData ? getPlanLabel(layoutData.subscriptionTier) : "…"
         }
-        isGuest={isGuest}
         sessionPending={isPending}
       />
-      {session && !isGuest ? <PersonalWorkspaceBoot enabled /> : null}
+      <PersonalWorkspaceBoot enabled />
       <main
         data-dashboard-main
         className="flex flex-1 flex-col min-h-0 overflow-y-auto pb-80 mb-20 lg:mb-0 lg:pb-0"
       >
         <div className="mx-auto flex h-full min-h-0 w-full max-w-[1200px] 2xl:max-w-7xl flex-1 flex-col px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-12 sm:pl-4 sm:pr-6 sm:pt-6 sm:pb-6 lg:px-8 lg:py-8 lg:pb-8">
-          {isGuest && <GuestBanner />}
-          {session && !isGuest ? <TeamInviteBanners /> : null}
+          <TeamInviteBanners />
           {showConnectBanner && <ConnectAccountsBanner />}
           {layoutData?.freePostsBanner && (
             <FreePostsBanner
@@ -141,8 +145,7 @@ export function DashboardLayout() {
         </div>
       </main>
       <DashboardBottomNav />
-      {session && <LegalConsentGate />}
-      {!isPending && isGuest && <GuestTestModeDialog />}
+      <LegalConsentGate />
     </div>
   );
 }

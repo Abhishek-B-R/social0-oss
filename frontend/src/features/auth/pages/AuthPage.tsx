@@ -469,16 +469,6 @@ function AuthPageContent() {
             </div>
           </div>
 
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Want to see how it works?{" "}
-            <Link
-              href="/dashboard"
-              className="font-medium text-emerald-700 transition-opacity hover:opacity-80 dark:text-emerald-400"
-            >
-              Explore the dashboard →
-            </Link>
-          </p>
-
           <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
             <Link
               href="/"
