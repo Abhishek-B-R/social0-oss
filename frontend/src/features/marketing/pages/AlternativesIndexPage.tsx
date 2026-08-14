@@ -3,6 +3,7 @@ import type { PageMetadata } from "@/lib/seo";
 import Link from "@/components/AppLink";
 import { PSEO_PAGES_ENABLED } from "@/lib/content/pseo-enabled";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
+import { PseoRelatedLinks } from "@/components/landing/PseoRelatedLinks";
 import { PseoJsonLd } from "@/components/seo/PseoJsonLd";
 import { ALTERNATIVES } from "@/lib/content/alternatives";
 import {
@@ -83,6 +84,14 @@ export default function AlternativesIndexPage() {
           </ul>
         </div>
       </section>
+      <PseoRelatedLinks
+        title="Also explore"
+        links={[
+          { href: "/features", label: "Platform schedulers" },
+          { href: "/tools", label: "Tools & integrations" },
+          { href: "/pricing", label: "Pricing" },
+        ]}
+      />
     </MarketingPageLayout>
   );
 }

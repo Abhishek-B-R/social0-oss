@@ -1,5 +1,6 @@
 import Link from "@/components/AppLink";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
+import { PseoRelatedLinks } from "@/components/landing/PseoRelatedLinks";
 import { SeoHead } from "@/components/seo/SeoHead";
 import { PseoJsonLd } from "@/components/seo/PseoJsonLd";
 import { TOOLS } from "@/lib/content/tools";
@@ -84,6 +85,14 @@ export default function ToolsIndexPage() {
           </ul>
         </div>
       </section>
+      <PseoRelatedLinks
+        title="Also explore"
+        links={[
+          { href: "/features", label: "Platform schedulers" },
+          { href: "/alternatives", label: "Scheduler comparisons" },
+          { href: "/mcp", label: "MCP for AI agents" },
+        ]}
+      />
     </MarketingPageLayout>
   );
 }

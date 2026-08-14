@@ -1,0 +1,188 @@
+{
+  "generatedAt": "2026-08-14T07:57:06.131Z",
+  "static": {
+    "/": {
+      "title": "Social0 — AI Agents & Multi-Platform Social Scheduling",
+      "description": "Publish and schedule across 9 platforms from one dashboard — or let ChatGPT, Claude, and your agents ship via MCP, API, and CLI. Start free."
+    },
+    "/pricing": {
+      "title": "Pricing — Social0",
+      "description": "Simple Social0 pricing. Start free, then upgrade to Starter, Growth, or Pro. Every plan includes REST API, MCP, and CLI."
+    },
+    "/mcp": {
+      "title": "Social0 MCP Server — Manage social media from your AI",
+      "description": "Connect Claude, Cursor, or VS Code to Social0 with the official MCP server. Publish, schedule, and track posts across every platform from natural language."
+    },
+    "/features": {
+      "title": "Social0 — Platform features",
+      "description": "Explore Social0 features for scheduling and publishing to X, Instagram, LinkedIn, TikTok, YouTube, Pinterest, Bluesky, Threads, and Facebook."
+    },
+    "/alternatives": {
+      "title": "Social0 alternatives and comparisons",
+      "description": "Compare Social0 with Buffer, Hootsuite, Later, and other social media schedulers."
+    },
+    "/tools": {
+      "title": "Tools & Integrations | Social0",
+      "description": "API, MCP, CLI, bulk tools, calendar, queue, teams, and agent integrations for multi-platform social publishing."
+    },
+    "/refund": {
+      "title": "Refund & Cancellation Policy | Social0",
+      "description": "Social0 refund and cancellation policy. Subscriptions are non-refundable except where required by law. Cancel anytime from Billing."
+    },
+    "/privacy": {
+      "title": "Privacy Policy | Social0",
+      "description": "Social0 privacy policy. Learn how we collect, use, and protect your data when you use our social media scheduling platform."
+    },
+    "/terms": {
+      "title": "Terms of Service | Social0",
+      "description": "Read the Social0 terms of service. Understand your rights and responsibilities when using our social media scheduling and publishing platform."
+    },
+    "/data-deletion": {
+      "title": "Data Deletion | Social0",
+      "description": "How to delete your Social0 account or request deletion of your account data."
+    },
+    "/llms.txt": {
+      "title": "Social0 llms.txt",
+      "description": "Machine-readable product summary for AI systems."
+    },
+    "/home": {
+      "title": "Social0 — AI Agents & Multi-Platform Social Scheduling",
+      "description": "Publish and schedule across 9 platforms from one dashboard — or let ChatGPT, Claude, and your agents ship via MCP, API, and CLI. Start free.",
+      "noindex": true
+    }
+  },
+  "features": {
+    "threads-scheduler": {
+      "title": "Threads Scheduler - Schedule Meta Threads Posts | Social0",
+      "description": "Schedule Threads posts from one dashboard. Compose text, images, and videos, pick your Threads account, and publish or schedule with Social0."
+    },
+    "bluesky-scheduling-tool": {
+      "title": "Bluesky Scheduling Tool - Schedule AT Protocol Posts | Social0",
+      "description": "Bluesky scheduling tool for creators on the AT Protocol. Connect with your handle, compose posts, and schedule or publish from Social0."
+    },
+    "tiktok-scheduler": {
+      "title": "TikTok Scheduler - Schedule TikTok Videos & Photos | Social0",
+      "description": "TikTok scheduler for videos and photo posts. Set privacy, titles, and publish or schedule TikTok content from Social0."
+    },
+    "instagram-scheduler": {
+      "title": "Instagram Scheduler - Schedule Posts & Reels | Social0",
+      "description": "Instagram scheduler for images, carousels, and reels. Connect via Instagram or Facebook Page and schedule from Social0."
+    },
+    "linkedin-scheduler": {
+      "title": "LinkedIn Scheduler - Schedule Posts & Articles | Social0",
+      "description": "LinkedIn scheduler for professionals and founders. Schedule text, images, and video posts to LinkedIn from Social0."
+    },
+    "twitter-scheduler": {
+      "title": "X / Twitter Scheduler - Schedule Tweets & Threads | Social0",
+      "description": "X and Twitter scheduler with support for long posts on Premium accounts. Schedule tweets, threads, and media from Social0."
+    },
+    "multi-platform-scheduler": {
+      "title": "Multi-Platform Social Media Scheduler | Social0",
+      "description": "Multi-platform social media scheduler. Write once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Threads, Bluesky, Facebook, and Pinterest."
+    },
+    "social-media-calendar": {
+      "title": "Social Media Calendar - Plan & Schedule Posts | Social0",
+      "description": "Social media content calendar to view scheduled and published posts across all connected platforms in Social0."
+    },
+    "youtube-scheduler": {
+      "title": "YouTube Scheduler - Schedule Shorts & Videos | Social0",
+      "description": "YouTube scheduler for Shorts and videos. Upload, set title and visibility, and schedule YouTube content from Social0 alongside your other platforms."
+    },
+    "pinterest-scheduler": {
+      "title": "Pinterest Scheduler - Schedule Pins & Idea Pins | Social0",
+      "description": "Pinterest scheduler to publish pins to boards you choose. Schedule images and video pins from Social0's multi-platform composer."
+    },
+    "facebook-scheduler": {
+      "title": "Facebook Page Scheduler - Schedule Page Posts | Social0",
+      "description": "Facebook Page scheduler for text, images, and video. Connect your Page via Meta OAuth and schedule posts from Social0."
+    }
+  },
+  "alternatives": {
+    "buffer": {
+      "title": "Buffer Alternative - Social0 | Multi-Platform Scheduler",
+      "description": "Looking for a Buffer alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Threads, Bluesky, and more from one dashboard."
+    },
+    "hootsuite": {
+      "title": "Hootsuite Alternative - Social0 | Simpler Social Scheduling",
+      "description": "Hootsuite alternative for creators and small teams. Social0 offers focused scheduling and publishing without enterprise complexity."
+    },
+    "later": {
+      "title": "Later Alternative - Social0 | Schedule Beyond Instagram",
+      "description": "Later alternative for scheduling across X, LinkedIn, TikTok, YouTube, Threads, Bluesky, and more — not just visual-first networks."
+    },
+    "metricool": {
+      "title": "Metricool Alternative - Social0 | Focused Publishing",
+      "description": "Metricool alternative focused on scheduling and publishing. Social0 prioritizes a fast compose-once workflow over analytics dashboards."
+    },
+    "publer": {
+      "title": "Publer Alternative - Social0 | Multi-Platform Scheduling",
+      "description": "Publer alternative with a compose-once workflow for X, LinkedIn, Instagram, TikTok, YouTube, Threads, Bluesky, and more."
+    },
+    "sprout-social": {
+      "title": "Sprout Social Alternative - Social0 | Focused Scheduling",
+      "description": "Sprout Social alternative for creators who need scheduling and publishing without enterprise suites or heavy onboarding."
+    }
+  },
+  "tools": {
+    "api": {
+      "title": "Social Media Publishing API | Social0",
+      "description": "REST API to create drafts, upload media, publish, and schedule across 9 platforms with API keys and webhooks."
+    },
+    "cli": {
+      "title": "Social0 CLI — Publish from the Terminal | Social0",
+      "description": "Official social0 CLI for accounts, drafts, media, and publishing. Built for agents and automation."
+    },
+    "webhooks": {
+      "title": "Publish Webhooks | Social0",
+      "description": "Subscribe to signed Social0 webhooks for publish success and failure events."
+    },
+    "bulk-image": {
+      "title": "Bulk Image Scheduling | Social0",
+      "description": "Upload many images and schedule them across days. Growth+ bulk image tools in Social0."
+    },
+    "bulk-video": {
+      "title": "Bulk Video Scheduling | Social0",
+      "description": "Batch upload and schedule videos across platforms. Social0 bulk video tools (Growth+)."
+    },
+    "auto-repost": {
+      "title": "Auto-Repost / Resurface Content | Social0",
+      "description": "Automatically resurface evergreen posts on an interval with Social0 auto-repost."
+    },
+    "auto-plug": {
+      "title": "Auto-Plug Engagement Replies | Social0",
+      "description": "Add a CTA reply automatically when a post hits engagement thresholds. Social0 auto-plug."
+    },
+    "calendar": {
+      "title": "Social Media Content Calendar | Social0",
+      "description": "One calendar for drafts, scheduled, queued, and published posts across every connected account."
+    },
+    "queue": {
+      "title": "Social Media Posting Queue | Social0",
+      "description": "Recurring weekly time slots. Drop posts into the next queue slot instead of picking times every time."
+    },
+    "teams": {
+      "title": "Teams & Workspaces for Social Scheduling | Social0",
+      "description": "Invite teammates, share workspaces, and collaborate on social publishing with Social0 teams."
+    },
+    "chatgpt": {
+      "title": "Publish with ChatGPT via MCP | Social0",
+      "description": "Connect Social0 MCP to ChatGPT and draft, schedule, or publish across platforms from chat."
+    },
+    "claude": {
+      "title": "Publish with Claude via MCP | Social0",
+      "description": "Use Claude with Social0 MCP to draft, schedule, and publish to LinkedIn, X, TikTok, and more."
+    },
+    "cursor": {
+      "title": "Social0 MCP in Cursor | Social0",
+      "description": "Add Social0 MCP to Cursor and publish social posts from your coding agent."
+    },
+    "openclaw": {
+      "title": "Social0 OpenClaw Skill | Social0",
+      "description": "Install the Social0 OpenClaw skill and let your agent publish across platforms."
+    },
+    "self-host": {
+      "title": "Self-Host Social0 | Social0",
+      "description": "Run Social0 yourself. Open GitHub for the self-host repository and deploy on your infra."
+    }
+  }
+}

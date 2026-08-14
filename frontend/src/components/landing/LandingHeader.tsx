@@ -65,6 +65,18 @@ export function LandingHeader() {
         </Link>
 
         <nav className="hidden items-center gap-8 lg:flex">
+          <Link
+            href="/features"
+            className="text-[14px] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Features
+          </Link>
+          <Link
+            href="/tools"
+            className="text-[14px] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Tools
+          </Link>
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -128,6 +140,20 @@ export function LandingHeader() {
       {mobileMenuOpen && (
         <div className="border-t border-border bg-background px-6 py-4 lg:hidden">
           <nav className="flex flex-col gap-4">
+            <Link
+              href="/features"
+              className="text-[15px] text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Features
+            </Link>
+            <Link
+              href="/tools"
+              className="text-[15px] text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Tools
+            </Link>
             {navLinks.map((link) => (
               <Link
                 key={link.href}
