@@ -13,7 +13,6 @@
     "/*.xml",
     "/*.txt",
     "/*.sh",
-    "/favicon.svg",
     "/robots.txt",
     "/sitemap.xml",
     "/install.sh"

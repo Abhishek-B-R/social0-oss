@@ -200,6 +200,10 @@ export function TextPostForm({
 
   useEffect(() => {
     if (!initialDraftId) return;
+    const typeSwitch =
+      searchParams.get("fromComposer") === "1"
+        ? consumeComposerPayload()
+        : null;
     let cancelled = false;
     (async () => {
       try {
@@ -216,7 +220,7 @@ export function TextPostForm({
         const restoredIds = draft.connectedAccountIds.filter((id) =>
           validAccountIds.has(id),
         );
-        setContent(draft.originalContent ?? "");
+        setContent(typeSwitch ? typeSwitch.text : (draft.originalContent ?? ""));
         setSelectedIds(new Set(restoredIds));
         setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
         const draftMeta = draft.metadata as Record<string, unknown> | null;
@@ -238,8 +242,9 @@ export function TextPostForm({
     })();
     return () => {
       cancelled = true;
+      if (typeSwitch) setTimeout(clearComposerPayload, 100);
     };
-  }, [initialDraftId, accounts]);
+  }, [initialDraftId, accounts, searchParams]);
 
   useEffect(() => {
     if (!initialScheduledId || initialDraftId) return;
@@ -1347,8 +1352,12 @@ export function TextPostForm({
           rememberAutoFeatures={rememberAutoFeatures}
           onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
-          {!initialDraftId && !initialScheduledId && !initialEditId ? (
-            <SwitchPostTypeLinks current="text" caption={content} />
+          {!initialScheduledId && !initialEditId ? (
+            <SwitchPostTypeLinks
+              current="text"
+              caption={content}
+              draftId={initialDraftId}
+            />
           ) : null}
           <div className="hidden lg:block rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
             <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-text">

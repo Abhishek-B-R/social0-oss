@@ -21,11 +21,14 @@ export function SwitchPostTypeLinks({
   caption,
   onBeforeSwitch,
   className,
+  draftId,
 }: {
   current: SwitchablePostType;
   caption: string;
   onBeforeSwitch?: (target: SwitchablePostType) => void;
   className?: string;
+  /** Keep editing this draft after switching type (from drafts). */
+  draftId?: string;
 }) {
   const navigate = useNavigate();
   const dash = useDashboardPath();
@@ -38,7 +41,9 @@ export function SwitchPostTypeLinks({
       isThread: false,
       media: [],
     });
-    navigate(`${dash(`create/${slug}`)}?fromComposer=1`);
+    const params = new URLSearchParams({ fromComposer: "1" });
+    if (draftId) params.set("draft", draftId);
+    navigate(`${dash(`create/${slug}`)}?${params}`);
   };
 
   return (

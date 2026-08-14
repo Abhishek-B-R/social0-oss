@@ -636,6 +636,10 @@ export function VideoPostForm({
 
   useEffect(() => {
     if (!initialDraftId) return;
+    const typeSwitch =
+      searchParams.get("fromComposer") === "1"
+        ? consumeComposerPayload()
+        : null;
     let cancelled = false;
     (async () => {
       try {
@@ -647,13 +651,13 @@ export function VideoPostForm({
           return;
         }
         const { draft } = result;
-        setContent(draft.originalContent ?? "");
+        setContent(typeSwitch ? typeSwitch.text : (draft.originalContent ?? ""));
         setSelectedIds(new Set(draft.connectedAccountIds));
         setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
         if (draft.scheduledAt) setMode("scheduled");
-        const videoMedia = draft.media.find((m) =>
-          m.mimeType.startsWith("video/"),
-        );
+        const videoMedia = typeSwitch
+          ? undefined
+          : draft.media.find((m) => m.mimeType.startsWith("video/"));
         if (videoMedia) {
           setExistingVideoId(videoMedia.id);
           setVideoPreview(videoMedia.url ?? videoMedia.thumbnailUrl ?? null);
@@ -723,8 +727,9 @@ export function VideoPostForm({
     })();
     return () => {
       cancelled = true;
+      if (typeSwitch) setTimeout(clearComposerPayload, 100);
     };
-  }, [initialDraftId, accounts]);
+  }, [initialDraftId, accounts, searchParams]);
 
   useEffect(() => {
     if (!initialEditId) return;
@@ -2741,10 +2746,11 @@ export function VideoPostForm({
           rememberAutoFeatures={rememberAutoFeatures}
           onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
-          {!initialDraftId && !initialScheduledId && !initialEditId ? (
+          {!initialScheduledId && !initialEditId ? (
             <SwitchPostTypeLinks
               current="video"
               caption={content}
+              draftId={initialDraftId}
               onBeforeSwitch={() => {
                 removeVideo();
               }}

@@ -149,6 +149,14 @@ const HomeMarketingPage = lazy(() =>
 );
 const McpPage = lazy(() => import("@/features/marketing/pages/McpPage"));
 const PricingPage = lazy(() => import("@/features/marketing/pages/PricingPage"));
+const ToolsIndexPage = lazy(
+  () => import("@/features/marketing/pages/ToolsIndexPage"),
+);
+const ToolDetailPage = lazy(() =>
+  import("@/pages/ToolDetailPage").then((m) => ({
+    default: m.ToolDetailPage,
+  })),
+);
 
 const OnboardingWelcomePage = lazy(
   () => import("@/features/onboarding/pages/OnboardingWelcomePage"),
@@ -322,6 +330,22 @@ export function AppRouter() {
             element={
               <Lazy>
                 <McpPage />
+              </Lazy>
+            }
+          />
+          <Route
+            path="tools"
+            element={
+              <Lazy>
+                <ToolsIndexPage />
+              </Lazy>
+            }
+          />
+          <Route
+            path="tools/:slug"
+            element={
+              <Lazy>
+                <ToolDetailPage />
               </Lazy>
             }
           />

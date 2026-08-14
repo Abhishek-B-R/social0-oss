@@ -306,6 +306,10 @@ export function ImagePostForm({
 
   useEffect(() => {
     if (!initialDraftId) return;
+    const typeSwitch =
+      searchParams.get("fromComposer") === "1"
+        ? consumeComposerPayload()
+        : null;
     let cancelled = false;
     (async () => {
       try {
@@ -323,20 +327,22 @@ export function ImagePostForm({
         const restoredIds = draft.connectedAccountIds.filter((id) =>
           validAccountIds.has(id),
         );
-        setContent(draft.originalContent ?? "");
+        setContent(typeSwitch ? typeSwitch.text : (draft.originalContent ?? ""));
         setSelectedIds(new Set(restoredIds));
         setScheduledAt(draft.scheduledAt ? new Date(draft.scheduledAt) : null);
         if (draft.scheduledAt) setMode("scheduled");
-        const imageMedia = draft.media.filter((m) =>
-          m.mimeType.startsWith("image/"),
-        );
-        setImages(
-          imageMedia.map((m, i) => ({
-            preview: m.thumbnailUrl ?? m.url ?? "",
-            order: i + 1,
-            existingId: m.id,
-          })),
-        );
+        if (!typeSwitch) {
+          const imageMedia = draft.media.filter((m) =>
+            m.mimeType.startsWith("image/"),
+          );
+          setImages(
+            imageMedia.map((m, i) => ({
+              preview: m.thumbnailUrl ?? m.url ?? "",
+              order: i + 1,
+              existingId: m.id,
+            })),
+          );
+        }
         const meta = draft.metadata as Record<string, unknown> | null;
         if (meta?.x && typeof meta.x === "object") {
           const x = meta.x as Record<string, unknown>;
@@ -404,8 +410,9 @@ export function ImagePostForm({
     })();
     return () => {
       cancelled = true;
+      if (typeSwitch) setTimeout(clearComposerPayload, 100);
     };
-  }, [initialDraftId, accounts]);
+  }, [initialDraftId, accounts, searchParams]);
 
   useEffect(() => {
     if (!initialEditId) return;
@@ -2518,10 +2525,11 @@ export function ImagePostForm({
           rememberAutoFeatures={rememberAutoFeatures}
           onRememberAutoFeaturesChange={setRememberAutoFeatures}
         >
-          {!initialDraftId && !initialScheduledId && !initialEditId ? (
+          {!initialScheduledId && !initialEditId ? (
             <SwitchPostTypeLinks
               current="image"
               caption={content}
+              draftId={initialDraftId}
               onBeforeSwitch={() => {
                 setImages((prev) => {
                   for (const item of prev) {
