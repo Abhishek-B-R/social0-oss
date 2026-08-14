@@ -557,7 +557,11 @@ export function PostDetailView({ postId }: { postId: string }) {
                   />
                 )}
                 {(post.status === "draft" || post.status === "scheduled") && (
-                  <PostCardDeleteButton postId={post.id} status={post.status} />
+                  <PostCardDeleteButton
+                    postId={post.id}
+                    status={post.status}
+                    redirectTo={back.href}
+                  />
                 )}
                 {(post.status === "published" || post.status === "partial") && (
                   <PostAgainButton postId={post.id} />
@@ -734,6 +738,7 @@ export function PostDetailView({ postId }: { postId: string }) {
                   ? xSelectedAccountIds
                   : xPublishedAccountIds
               }
+              onUpdated={reloadCore}
             />
           )}
         </div>

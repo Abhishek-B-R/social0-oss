@@ -1,6 +1,7 @@
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePostHog } from "@posthog/react";
 import { capturePostAction } from "@/lib/posthog-events";
 import { AlertTriangle } from "lucide-react";
@@ -24,6 +25,7 @@ export function DisconnectAccountModal({
   onDisconnected,
 }: DisconnectAccountModalProps) {
   const [disconnecting, setDisconnecting] = useState(false);
+  const queryClient = useQueryClient();
   const posthog = usePostHog();
 
   const handleDisconnect = async () => {
@@ -43,6 +45,11 @@ export function DisconnectAccountModal({
         platform: platform ?? "unknown",
       });
       onDisconnected?.(accountId);
+      // Connections page updates optimistically; refresh layout/onboarding
+      // so connect banner + plan chrome stay in sync.
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-layout"] });
+      void queryClient.invalidateQueries({ queryKey: ["onboarding-status"] });
+      void queryClient.invalidateQueries({ queryKey: ["connections"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to disconnect");
     } finally {

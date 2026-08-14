@@ -27,6 +27,7 @@ import {
 import { createPost } from "@/api/posts";
 import { usePostHog } from "@posthog/react";
 import { captureBulkPostsScheduled } from "@/lib/posthog-events";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { measureVideoAspectRatio } from "@/lib/video-aspect-ratio";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 import {
@@ -102,6 +103,7 @@ export function BulkToolsVideo({
   supportedPlatforms?: string[];
 }) {
   const posthog = usePostHog();
+  const invalidateQueries = useInvalidateQueries();
   const dash = useDashboardPath();
   const selectableAccounts = accounts.filter((a) => !a.tokenExpired);
   const validIds = useMemo(
@@ -619,6 +621,7 @@ export function BulkToolsVideo({
         successfulUploads.length,
         accountIds.length,
       );
+      invalidateQueries();
     } catch {
       toast.error("Failed to schedule videos. Please try again.");
     } finally {
