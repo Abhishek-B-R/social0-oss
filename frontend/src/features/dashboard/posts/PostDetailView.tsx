@@ -1,8 +1,7 @@
 
 import { useNavigate, useLocation } from "react-router-dom";
-import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import type { ComponentType } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "@/components/AppLink";
 import AppImage from "@/components/AppImage";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
@@ -168,7 +167,6 @@ export function PostDetailView({ postId }: { postId: string }) {
   const back = resolvePostDetailBack(
     (location.state as PostDetailLocationState | null)?.from,
   );
-  const invalidateQueries = useInvalidateQueries();
   const [core, setCore] = useState<CoreData | null>(null);
   const [coreLoading, setCoreLoading] = useState(true);
   const [coreError, setCoreError] = useState<string | null>(null);
@@ -203,7 +201,24 @@ export function PostDetailView({ postId }: { postId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [postId, navigate, invalidateQueries]);
+  }, [postId, navigate]);
+
+  const reloadCore = useCallback(async () => {
+    const result = await loadPostDetailCoreData(postId);
+    if (!result.ok) return;
+    setCore(result.data);
+  }, [postId]);
+
+  const markPublishing = useCallback(() => {
+    setCore((prev) =>
+      prev
+        ? {
+            ...prev,
+            post: { ...prev.post, status: "publishing" },
+          }
+        : prev,
+    );
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -228,7 +243,7 @@ export function PostDetailView({ postId }: { postId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [postId, navigate, invalidateQueries]);
+  }, [postId, navigate]);
 
   const partsWithMedia = useMemo(
     () => (core ? getThreadPartsWithMedia(core.post) : []),
@@ -537,6 +552,8 @@ export function PostDetailView({ postId }: { postId: string }) {
                         ? "Retry publish"
                         : "Publish now"
                     }
+                    onStarted={markPublishing}
+                    onFinished={() => void reloadCore()}
                   />
                 )}
                 {(post.status === "draft" || post.status === "scheduled") && (
@@ -672,6 +689,8 @@ export function PostDetailView({ postId }: { postId: string }) {
                               postId={post.id}
                               publicationId={pub.publicationId}
                               label="Retry"
+                              onStarted={markPublishing}
+                              onFinished={() => void reloadCore()}
                             />
                           )}
                         </div>
