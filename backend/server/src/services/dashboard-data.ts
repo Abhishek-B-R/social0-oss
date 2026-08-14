@@ -755,22 +755,45 @@ export async function loadPostDetailMediaData(
 export type LoadAdjacentPostsResult =
   | {
       ok: true;
-      data: { newerId: string | null; olderId: string | null };
+      data: { prevId: string | null; nextId: string | null };
     }
   | { ok: false; error: string };
 
-/** Newest-first neighbors for post detail edge navigation. */
-export async function loadAdjacentPosts(
-  postId: string,
-): Promise<LoadAdjacentPostsResult> {
+/** List-context neighbors for post detail edge / keyboard navigation. */
+export async function loadAdjacentPosts(input: {
+  postId: string;
+  statusFilter?: "scheduled" | "posted" | "draft" | null;
+  sort?: string | null;
+  platform?: string | null;
+  time?: string | null;
+  account?: string | null;
+}): Promise<LoadAdjacentPostsResult> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) return { ok: false, error: "Unauthorized" };
   const ctx = await resolveWorkspaceContext(session.user.id);
   const userId = ctx.resourceUserId;
 
+  const postId = input?.postId;
+  if (!postId || typeof postId !== "string") {
+    return { ok: false, error: "BadRequest" };
+  }
+
   const detail = await getPostDetail(postId, userId);
   if (!detail) return { ok: false, error: "NotFound" };
 
-  const adjacent = await getAdjacentPostIds(postId, userId);
+  const statusFilter: StatusFilter =
+    input.statusFilter === "posted"
+      ? "published"
+      : input.statusFilter === "scheduled" || input.statusFilter === "draft"
+        ? input.statusFilter
+        : null;
+
+  const adjacent = await getAdjacentPostIds(postId, userId, {
+    statusFilter,
+    sort: input.sort === "oldest" ? "oldest" : "newest",
+    platform: input.platform || null,
+    time: input.time || null,
+    account: input.account || null,
+  });
   return { ok: true, data: adjacent };
 }

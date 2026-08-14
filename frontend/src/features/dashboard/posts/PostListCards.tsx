@@ -15,6 +15,7 @@ import { PostAgainButton } from "./PostAgainButton";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
+import { parsePostListNavContextFromFrom } from "@/lib/post-detail-back";
 
 type FirstMediaMeta = {
   mimeType: string;
@@ -576,6 +577,7 @@ export function PostListCards({
 }) {
   const location = useLocation();
   const from = `${location.pathname}${location.search}`;
+  const list = parsePostListNavContextFromFrom(from);
 
   if (userPosts.length === 0) {
     return (
@@ -662,7 +664,7 @@ export function PostListCards({
             )}
             <Link
               href={`/dashboard/posts/${post.id}`}
-              state={{ from }}
+              state={{ from, list }}
               className="flex min-h-[11.5rem] flex-1 flex-col active:opacity-95 touch-manipulation"
             >
               <div className="flex flex-1 flex-col p-4 pb-3 pr-12">

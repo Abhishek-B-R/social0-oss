@@ -41,20 +41,19 @@ export async function hasPaymentFailedPosts(userId: string): Promise<boolean> {
   return !!row?.id;
 }
 
-export async function getPostsListData({
+/** Shared list WHERE — keep adjacent nav in lockstep with getPostsListData. */
+function buildPostsListWhere({
   userId,
   statusFilter,
-  sort = "newest",
   platform: platformFilter,
   time: timeFilter,
   account: accountFilter,
-  page = 1,
-  limit = POSTS_PAGE_SIZE,
-  offset: offsetParam,
-}: PostsListParams) {
-  const offset = offsetParam ?? (page - 1) * limit;
-
-  // Build WHERE fully in DB - no in-memory filtering after this point
+  /** When no status filter (all posts), detail nav still skips drafts. */
+  excludeDrafts = false,
+}: Pick<
+  PostsListParams,
+  "userId" | "statusFilter" | "platform" | "time" | "account"
+> & { excludeDrafts?: boolean }) {
   const timeFilterDate =
     timeFilter === "week"
       ? startOfWeek(new Date(), { weekStartsOn: 1 })
@@ -62,9 +61,12 @@ export async function getPostsListData({
         ? startOfMonth(new Date())
         : null;
 
-  const whereClause = and(
+  return and(
     eq(posts.userId, userId),
     statusFilter ? eq(posts.status, statusFilter) : undefined,
+    excludeDrafts && !statusFilter
+      ? sql`${posts.status} IS DISTINCT FROM 'draft'`
+      : undefined,
     timeFilterDate ? gte(posts.createdAt, timeFilterDate) : undefined,
     platformFilter
       ? exists(
@@ -97,6 +99,28 @@ export async function getPostsListData({
         )
       : undefined,
   );
+}
+
+export async function getPostsListData({
+  userId,
+  statusFilter,
+  sort = "newest",
+  platform: platformFilter,
+  time: timeFilter,
+  account: accountFilter,
+  page = 1,
+  limit = POSTS_PAGE_SIZE,
+  offset: offsetParam,
+}: PostsListParams) {
+  const offset = offsetParam ?? (page - 1) * limit;
+
+  const whereClause = buildPostsListWhere({
+    userId,
+    statusFilter,
+    platform: platformFilter,
+    time: timeFilter,
+    account: accountFilter,
+  });
 
   // COUNT + paginated SELECT - two fast indexed queries instead of one full scan
   const [[countRow], userPosts] = await Promise.all([
@@ -524,15 +548,22 @@ export type PostDetailResult = {
   resurface: ResurfaceDetail | null;
 };
 
+export type AdjacentPostsListContext = Pick<
+  PostsListParams,
+  "statusFilter" | "sort" | "platform" | "time" | "account"
+>;
+
 /**
- * Neighbor posts for detail-page edge nav, newest-first.
- * Skips drafts — draft detail immediately redirects to the composer.
- * newerId = more recent than current; olderId = older than current.
+ * Neighbors for detail-page edge nav, in the same order/filters as the
+ * list the user came from. prevId = left/← (earlier in list), nextId = right/→.
+ * Skips drafts when browsing unfiltered lists (detail redirects drafts away).
  */
 export async function getAdjacentPostIds(
   postId: string,
   userId: string,
-): Promise<{ newerId: string | null; olderId: string | null }> {
+  list: AdjacentPostsListContext = {},
+): Promise<{ prevId: string | null; nextId: string | null }> {
+  const sort = list.sort === "oldest" ? "oldest" : "newest";
   const [current] = await db
     .select({ id: posts.id, createdAt: posts.createdAt })
     .from(posts)
@@ -540,45 +571,58 @@ export async function getAdjacentPostIds(
     .limit(1);
 
   if (!current?.createdAt) {
-    return { newerId: null, olderId: null };
+    return { prevId: null, nextId: null };
   }
 
   const createdAt = current.createdAt;
-  // Detail page only stays for non-draft posts.
-  const detailVisible = sql`${posts.status} IS DISTINCT FROM 'draft'`;
+  const whereBase = buildPostsListWhere({
+    userId,
+    statusFilter: list.statusFilter,
+    platform: list.platform,
+    time: list.time,
+    account: list.account,
+    // All-posts / calendar: stay on detailable posts only.
+    excludeDrafts: !list.statusFilter,
+  });
 
   // ponytail: createdAt-only neighbors; same-ms ties are rare enough to ignore
-  const [newer] = await db
+  // newest: prev = newer (gt), next = older (lt)
+  // oldest: prev = older (lt), next = newer (gt)
+  const prevIsNewer = sort === "newest";
+
+  const [prev] = await db
     .select({ id: posts.id })
     .from(posts)
     .where(
       and(
-        eq(posts.userId, userId),
+        whereBase,
         ne(posts.id, postId),
-        gt(posts.createdAt, createdAt),
-        detailVisible,
+        prevIsNewer
+          ? gt(posts.createdAt, createdAt)
+          : lt(posts.createdAt, createdAt),
       ),
     )
-    .orderBy(asc(posts.createdAt))
+    .orderBy(prevIsNewer ? asc(posts.createdAt) : desc(posts.createdAt))
     .limit(1);
 
-  const [older] = await db
+  const [next] = await db
     .select({ id: posts.id })
     .from(posts)
     .where(
       and(
-        eq(posts.userId, userId),
+        whereBase,
         ne(posts.id, postId),
-        lt(posts.createdAt, createdAt),
-        detailVisible,
+        prevIsNewer
+          ? lt(posts.createdAt, createdAt)
+          : gt(posts.createdAt, createdAt),
       ),
     )
-    .orderBy(desc(posts.createdAt))
+    .orderBy(prevIsNewer ? desc(posts.createdAt) : asc(posts.createdAt))
     .limit(1);
 
   return {
-    newerId: newer?.id ?? null,
-    olderId: older?.id ?? null,
+    prevId: prev?.id ?? null,
+    nextId: next?.id ?? null,
   };
 }
 

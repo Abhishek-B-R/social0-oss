@@ -234,12 +234,17 @@ export async function loadPostDetailMediaData(
 export type LoadAdjacentPostsResult =
   | {
       ok: true;
-      data: { newerId: string | null; olderId: string | null };
+      data: { prevId: string | null; nextId: string | null };
     }
   | { ok: false; error: string };
 
-export async function loadAdjacentPosts(
-  postId: string,
-): Promise<LoadAdjacentPostsResult> {
-  return rpc("dashboard-data.loadAdjacentPosts", postId);
+export async function loadAdjacentPosts(input: {
+  postId: string;
+  statusFilter?: "scheduled" | "posted" | "draft" | null;
+  sort?: string | null;
+  platform?: string | null;
+  time?: string | null;
+  account?: string | null;
+}): Promise<LoadAdjacentPostsResult> {
+  return rpc("dashboard-data.loadAdjacentPosts", input);
 }
