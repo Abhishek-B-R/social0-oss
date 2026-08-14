@@ -197,6 +197,40 @@ export async function onRequest(context: PagesContext) {
 
   path = normalizePath(path);
 
+  const altRedirect = path.match(/^\/alternative-to-([^/]+)$/);
+  if (altRedirect && ALTERNATIVE_META[altRedirect[1]]) {
+    return Response.redirect(
+      new URL(`/alternatives/${altRedirect[1]}${url.search}`, url.origin).toString(),
+      301,
+    );
+  }
+
+  /** Root paths competitors use for platform scheduler PSEO (-> /features/*). */
+  const FEATURE_ROOT_ALIASES: Record<string, string> = {
+    "social-media-scheduler": "multi-platform-scheduler",
+    "bluesky-scheduler": "bluesky-scheduling-tool",
+    "x-scheduler": "twitter-scheduler",
+    "twitter-scheduler": "twitter-scheduler",
+    "instagram-scheduler": "instagram-scheduler",
+    "linkedin-scheduler": "linkedin-scheduler",
+    "tiktok-scheduler": "tiktok-scheduler",
+    "youtube-scheduler": "youtube-scheduler",
+    "pinterest-scheduler": "pinterest-scheduler",
+    "facebook-scheduler": "facebook-scheduler",
+    "threads-scheduler": "threads-scheduler",
+    "social-media-calendar": "social-media-calendar",
+  };
+  const rootMatch = path.match(/^\/([^/]+)$/);
+  if (rootMatch) {
+    const featureSlug = FEATURE_ROOT_ALIASES[rootMatch[1]];
+    if (featureSlug && FEATURE_META[featureSlug]) {
+      return Response.redirect(
+        new URL(`/features/${featureSlug}${url.search}`, url.origin).toString(),
+        301,
+      );
+    }
+  }
+
   // Soft-404 killer: unknown paths must not return SPA 200
   if (!isKnownPublicPath(path)) {
     return new Response("Not Found", {

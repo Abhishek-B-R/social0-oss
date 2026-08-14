@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
 import {
@@ -9,6 +10,8 @@ import {
   YouTubeIcon,
 } from "@/components/landing/PlatformIcons";
 import { DOCS_BASE_URL } from "@/lib/docs-url";
+import { ALTERNATIVES } from "@/lib/content/alternatives";
+import { FEATURES } from "@/lib/content/features";
 import { cn } from "@/lib/utils";
 
 type FooterLink = {
@@ -55,7 +58,21 @@ const socialLinks = [
   },
 ] as const;
 
-/** On /home, same-page anchors must use /home#… so they don't hit / and redirect logged-in users. */
+const PLATFORM_LABELS: Record<string, string> = {
+  "instagram-scheduler": "Instagram",
+  "facebook-scheduler": "Facebook",
+  "youtube-scheduler": "YouTube",
+  "tiktok-scheduler": "TikTok",
+  "twitter-scheduler": "X (Twitter)",
+  "linkedin-scheduler": "LinkedIn",
+  "threads-scheduler": "Threads",
+  "pinterest-scheduler": "Pinterest",
+  "bluesky-scheduling-tool": "Bluesky",
+  "multi-platform-scheduler": "All platforms",
+  "social-media-calendar": "Content calendar",
+};
+
+/** On /home, same-page anchors must use /home#id so they don't hit / and redirect logged-in users. */
 function landingNavHref(href: string, pathname: string | null) {
   if (pathname === "/home" && href.startsWith("/#")) {
     return `/home${href.slice(1)}`;
@@ -99,9 +116,109 @@ function FooterNavLink({
   );
 }
 
+const COMPARE_FOOTER_LIMIT = 8;
+
+/** High-intent competitors shown first in the footer Compare column. */
+const COMPARE_FOOTER_PRIORITY = [
+  "buffer",
+  "hootsuite",
+  "later",
+  "sprout-social",
+  "metricool",
+  "postiz",
+  "planable",
+  "socialbee",
+  "publer",
+  "agorapulse",
+  "socialpilot",
+  "sendible",
+  "postbridge",
+  "tailwind",
+  "coschedule",
+  "loomly",
+];
+
+function sortCompareLinks(links: FooterLink[]): FooterLink[] {
+  const rank = new Map(
+    COMPARE_FOOTER_PRIORITY.map((slug, i) => [`/alternatives/${slug}`, i]),
+  );
+  return [...links].sort(
+    (a, b) => (rank.get(a.href) ?? 999) - (rank.get(b.href) ?? 999),
+  );
+}
+
+function FooterCompareColumn({
+  links,
+  pathname,
+}: {
+  links: FooterLink[];
+  pathname: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const sorted = sortCompareLinks(links);
+  const hasMore = sorted.length > COMPARE_FOOTER_LIMIT;
+  const visible = expanded ? sorted : sorted.slice(0, COMPARE_FOOTER_LIMIT);
+  const hiddenCount = sorted.length - COMPARE_FOOTER_LIMIT;
+
+  return (
+    <div>
+      <p className="mb-4 text-[14px] font-semibold text-foreground">Compare</p>
+      <ul className="flex flex-col gap-2.5">
+        {visible.map((link) => (
+          <li key={`compare-${link.href}`}>
+            <FooterNavLink link={link} pathname={pathname} />
+          </li>
+        ))}
+      </ul>
+      {hasMore ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((open) => !open)}
+          className="mt-2.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {expanded ? "Show less" : `View more (${hiddenCount})`}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function FooterColumn({
+  title,
+  links,
+  pathname,
+}: {
+  title: string;
+  links: FooterLink[];
+  pathname: string;
+}) {
+  return (
+    <div>
+      <p className="mb-4 text-[14px] font-semibold text-foreground">{title}</p>
+      <ul className="flex flex-col gap-2.5">
+        {links.map((link) => (
+          <li key={`${title}-${link.href}-${link.label}`}>
+            <FooterNavLink link={link} pathname={pathname} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function LandingFooter() {
   const pathname = useLocation().pathname;
   const homeHref = pathname === "/home" ? "/home" : "/";
+
+  const platformLinks: FooterLink[] = FEATURES.map((f) => ({
+    href: `/features/${f.slug}`,
+    label: f.platformLabel ?? PLATFORM_LABELS[f.slug] ?? f.slug,
+  }));
+
+  const compareLinks: FooterLink[] = ALTERNATIVES.map((a) => ({
+    href: `/alternatives/${a.slug}`,
+    label: `${a.competitorName} alternative`,
+  }));
 
   const toolLinks: FooterLink[] = [
     { href: "/tools/api", label: "API" },
@@ -124,8 +241,8 @@ export function LandingFooter() {
 
   const resourceLinks: FooterLink[] = [
     { href: "/tools", label: "All tools" },
-    { href: "/features", label: "Features" },
-    { href: "/alternatives", label: "Alternatives" },
+    { href: "/features", label: "All features" },
+    { href: "/alternatives", label: "All comparisons" },
     { href: DOCS_BASE_URL, label: "Docs", external: true },
     { href: "/#platforms", label: "Channels" },
     { href: "/#stories", label: "Stories" },
@@ -142,16 +259,10 @@ export function LandingFooter() {
     { href: "/data-deletion", label: "Data deletion" },
   ];
 
-  const columns: { title: string; links: FooterLink[] }[] = [
-    { title: "Tools", links: toolLinks },
-    { title: "Resources", links: resourceLinks },
-    { title: "Company", links: companyLinks },
-  ];
-
   return (
     <footer className="relative overflow-hidden border-t border-border bg-muted/40 dark:bg-[#111111]">
       <div className="mx-auto max-w-[1180px] px-6 py-14 lg:px-8 lg:py-16">
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,2fr)] lg:gap-16">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)] lg:gap-16">
           <div className="max-w-md">
             <Link
               href={homeHref}
@@ -176,7 +287,7 @@ export function LandingFooter() {
               Social0
             </Link>
             <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground sm:text-base">
-              Multi-platform social scheduling — for humans and AI agents.
+              Multi-platform social scheduling - for humans and AI agents.
             </p>
             <ul className="mt-6 flex flex-wrap gap-2.5">
               {socialLinks.map(({ href, label, Icon }) => (
@@ -198,21 +309,12 @@ export function LandingFooter() {
             </ul>
           </div>
 
-          <div className="grid gap-10 sm:grid-cols-3">
-            {columns.map((col) => (
-              <div key={col.title}>
-                <p className="mb-4 text-[14px] font-semibold text-foreground">
-                  {col.title}
-                </p>
-                <ul className="flex flex-col gap-2.5">
-                  {col.links.map((link) => (
-                    <li key={`${col.title}-${link.href}-${link.label}`}>
-                      <FooterNavLink link={link} pathname={pathname} />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <FooterColumn title="Platforms" links={platformLinks} pathname={pathname} />
+            <FooterCompareColumn links={compareLinks} pathname={pathname} />
+            <FooterColumn title="Tools" links={toolLinks} pathname={pathname} />
+            <FooterColumn title="Resources" links={resourceLinks} pathname={pathname} />
+            <FooterColumn title="Company" links={companyLinks} pathname={pathname} />
           </div>
         </div>
 

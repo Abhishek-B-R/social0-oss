@@ -48,12 +48,36 @@ function extractFeatureEntries() {
 }
 
 function extractAlternativeEntries() {
-  const text = readText("alternatives.ts");
-  return [
-    ...text.matchAll(
+  const fromCore = [
+    ...readText("alternatives.ts").matchAll(
       /slug:\s*"([^"]+)"[\s\S]*?competitorName:\s*"([^"]+)"/g,
     ),
   ].map((m) => ({ slug: m[1], name: m[2] }));
+
+  const fromCatalog = extractCatalogEntries();
+  const seen = new Set(fromCore.map((e) => e.slug));
+  for (const entry of fromCatalog) {
+    if (!seen.has(entry.slug)) fromCore.push(entry);
+  }
+  return fromCore;
+}
+
+/** slug + name from alternatives-catalog.ts COMPETITOR_CATALOG */
+function extractCatalogEntries() {
+  return [
+    ...readText("alternatives-catalog.ts").matchAll(
+      /\{\s*slug:\s*"([^"]+)"[\s\S]*?name:\s*"([^"]+)"/g,
+    ),
+  ].map((m) => ({ slug: m[1], name: m[2] }));
+}
+
+function buildCatalogMeta({ slug, name }) {
+  const year = new Date().getFullYear();
+  return {
+    slug,
+    title: `${name} Alternative — Social0 | Multi-Platform Scheduler ${year}`,
+    description: `Looking for a ${name} alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free.`,
+  };
 }
 
 function extractToolEntries() {
@@ -68,13 +92,21 @@ const PSEO_PAGES_ENABLED = readText("pseo-enabled.ts").includes(
 );
 
 const FEATURE_SLUGS = extractSlugs("features.ts");
-const ALTERNATIVE_SLUGS = extractSlugs("alternatives.ts");
+const ALTERNATIVE_SLUGS = [
+  ...new Set([
+    ...extractSlugs("alternatives.ts"),
+    ...extractCatalogEntries().map((e) => e.slug),
+  ]),
+];
 const TOOL_SLUGS = extractSlugs("tools.ts");
 const featureEntries = extractFeatureEntries();
 const alternativeEntries = extractAlternativeEntries();
 const toolEntries = extractToolEntries();
 const featureMeta = extractMetaEntries("features.ts");
-const alternativeMeta = extractMetaEntries("alternatives.ts");
+const alternativeMeta = [
+  ...extractMetaEntries("alternatives.ts"),
+  ...extractCatalogEntries().map(buildCatalogMeta),
+];
 const toolMeta = extractMetaEntries("tools.ts");
 
 /** Static marketing routes (edge middleware + sitemap source of truth) */
@@ -102,7 +134,7 @@ const STATIC_ROUTE_META = {
   "/alternatives": {
     title: "Social0 alternatives and comparisons",
     description:
-      "Compare Social0 with Buffer, Hootsuite, Later, and other social media schedulers.",
+      "Compare Social0 with Buffer, Hootsuite, Later, Postiz, Planable, SocialBee, and 30+ other social media schedulers.",
   },
   "/tools": {
     title: "Tools & Integrations | Social0",

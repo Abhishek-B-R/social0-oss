@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-14T08:20:53.574Z",
+  "generatedAt": "2026-08-14T08:31:25.091Z",
   "static": {
     "/": {
       "title": "Social0 — AI Agents & Multi-Platform Social Scheduling",
@@ -19,7 +19,7 @@
     },
     "/alternatives": {
       "title": "Social0 alternatives and comparisons",
-      "description": "Compare Social0 with Buffer, Hootsuite, Later, and other social media schedulers."
+      "description": "Compare Social0 with Buffer, Hootsuite, Later, Postiz, Planable, SocialBee, and 30+ other social media schedulers."
     },
     "/tools": {
       "title": "Tools & Integrations | Social0",
@@ -121,6 +121,110 @@
     "sprout-social": {
       "title": "Sprout Social Alternative - Social0 | Focused Scheduling",
       "description": "Sprout Social alternative for creators who need scheduling and publishing without enterprise suites or heavy onboarding."
+    },
+    "agorapulse": {
+      "title": "Agorapulse Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Agorapulse alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "coschedule": {
+      "title": "CoSchedule Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a CoSchedule alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "eclincher": {
+      "title": "eClincher Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a eClincher alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "heyorca": {
+      "title": "HeyOrca Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a HeyOrca alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "hopper-hq": {
+      "title": "Hopper HQ Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Hopper HQ alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "iconosquare": {
+      "title": "Iconosquare Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Iconosquare alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "kontentino": {
+      "title": "Kontentino Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Kontentino alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "loomly": {
+      "title": "Loomly Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Loomly alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "meetedgar": {
+      "title": "MeetEdgar Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a MeetEdgar alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "napoleoncat": {
+      "title": "NapoleonCat Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a NapoleonCat alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "pallyy": {
+      "title": "Pallyy Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Pallyy alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "planable": {
+      "title": "Planable Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Planable alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "planoly": {
+      "title": "Planoly Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Planoly alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "postbridge": {
+      "title": "Post Bridge Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Post Bridge alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "postiz": {
+      "title": "Postiz Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Postiz alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "post-planner": {
+      "title": "Post Planner Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Post Planner alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "recurpost": {
+      "title": "RecurPost Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a RecurPost alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "sendible": {
+      "title": "Sendible Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Sendible alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "sked-social": {
+      "title": "Sked Social Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Sked Social alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "socialbee": {
+      "title": "SocialBee Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a SocialBee alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "socialpilot": {
+      "title": "SocialPilot Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a SocialPilot alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "sprinklr": {
+      "title": "Sprinklr Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Sprinklr alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "statusbrew": {
+      "title": "Statusbrew Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Statusbrew alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "tailwind": {
+      "title": "Tailwind Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Tailwind alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "vista-social": {
+      "title": "Vista Social Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Vista Social alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
+    },
+    "zoho-social": {
+      "title": "Zoho Social Alternative — Social0 | Multi-Platform Scheduler 2026",
+      "description": "Looking for a Zoho Social alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free."
     }
   },
   "tools": {

@@ -142,6 +142,16 @@ const AlternativeDetailPage = lazy(() =>
     default: m.AlternativeDetailPage,
   })),
 );
+const AlternativeToRedirect = lazy(() =>
+  import("@/pages/PseoRedirectPages").then((m) => ({
+    default: m.AlternativeToRedirect,
+  })),
+);
+const FeatureRootRedirect = lazy(() =>
+  import("@/pages/PseoRedirectPages").then((m) => ({
+    default: m.FeatureRootRedirect,
+  })),
+);
 const HomeMarketingPage = lazy(() =>
   import("@/pages/HomeMarketingPage").then((m) => ({
     default: m.HomeMarketingPage,
@@ -317,6 +327,38 @@ export function AppRouter() {
               </Lazy>
             }
           />
+          <Route
+            path="alternative-to-:slug"
+            element={
+              <Lazy>
+                <AlternativeToRedirect />
+              </Lazy>
+            }
+          />
+          {[
+            "social-media-scheduler",
+            "bluesky-scheduler",
+            "x-scheduler",
+            "twitter-scheduler",
+            "instagram-scheduler",
+            "linkedin-scheduler",
+            "tiktok-scheduler",
+            "youtube-scheduler",
+            "pinterest-scheduler",
+            "facebook-scheduler",
+            "threads-scheduler",
+            "social-media-calendar",
+          ].map((slug) => (
+            <Route
+              key={slug}
+              path={slug}
+              element={
+                <Lazy>
+                  <FeatureRootRedirect />
+                </Lazy>
+              }
+            />
+          ))}
           <Route
             path="home"
             element={

@@ -1,23 +1,7 @@
-export type ComparisonRow = {
-  feature: string;
-  social0: string;
-  competitor: string;
-};
+import { CATALOG_ALTERNATIVES } from "./alternatives-catalog";
+import type { AlternativePage, ComparisonRow } from "./alternative-page-types";
 
-export type AlternativePage = {
-  slug: string;
-  competitorName: string;
-  metaTitle: string;
-  metaDescription: string;
-  keywords: string[];
-  heroHeadline: string;
-  heroSubheadline: string;
-  intro: string;
-  whySwitch: string[];
-  comparisonRows: ComparisonRow[];
-  faq: { question: string; answer: string }[];
-  relatedFeatureSlugs: string[];
-};
+export type { AlternativePage, ComparisonRow };
 
 export const ALTERNATIVES: AlternativePage[] = [
   {
@@ -365,6 +349,7 @@ export const ALTERNATIVES: AlternativePage[] = [
       "social-media-calendar",
     ],
   },
+  ...CATALOG_ALTERNATIVES,
 ];
 
 export const ALTERNATIVE_SLUGS = ALTERNATIVES.map((a) => a.slug);
