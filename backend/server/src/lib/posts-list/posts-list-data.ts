@@ -8,7 +8,7 @@ import {
   autoPlugs,
   queuedPosts,
 } from "@/db/schema";
-import { eq, desc, asc, inArray, and, sql, gte, exists } from "drizzle-orm";
+import { eq, desc, asc, inArray, and, sql, gte, exists, gt, lt, ne } from "drizzle-orm";
 import { startOfWeek, startOfMonth } from "date-fns";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { isActiveTier } from "@social0/shared";
@@ -523,6 +523,64 @@ export type PostDetailResult = {
   /** Set when post has resurface/autorepost (X published); at most one schedule per post */
   resurface: ResurfaceDetail | null;
 };
+
+/**
+ * Neighbor posts for detail-page edge nav, newest-first.
+ * Skips drafts — draft detail immediately redirects to the composer.
+ * newerId = more recent than current; olderId = older than current.
+ */
+export async function getAdjacentPostIds(
+  postId: string,
+  userId: string,
+): Promise<{ newerId: string | null; olderId: string | null }> {
+  const [current] = await db
+    .select({ id: posts.id, createdAt: posts.createdAt })
+    .from(posts)
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
+    .limit(1);
+
+  if (!current?.createdAt) {
+    return { newerId: null, olderId: null };
+  }
+
+  const createdAt = current.createdAt;
+  // Detail page only stays for non-draft posts.
+  const detailVisible = sql`${posts.status} IS DISTINCT FROM 'draft'`;
+
+  // ponytail: createdAt-only neighbors; same-ms ties are rare enough to ignore
+  const [newer] = await db
+    .select({ id: posts.id })
+    .from(posts)
+    .where(
+      and(
+        eq(posts.userId, userId),
+        ne(posts.id, postId),
+        gt(posts.createdAt, createdAt),
+        detailVisible,
+      ),
+    )
+    .orderBy(asc(posts.createdAt))
+    .limit(1);
+
+  const [older] = await db
+    .select({ id: posts.id })
+    .from(posts)
+    .where(
+      and(
+        eq(posts.userId, userId),
+        ne(posts.id, postId),
+        lt(posts.createdAt, createdAt),
+        detailVisible,
+      ),
+    )
+    .orderBy(desc(posts.createdAt))
+    .limit(1);
+
+  return {
+    newerId: newer?.id ?? null,
+    olderId: older?.id ?? null,
+  };
+}
 
 /** Fetch a single post by id; verifies userId. Returns null if not found, not owner, or invalid id. */
 export async function getPostDetail(

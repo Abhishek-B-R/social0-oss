@@ -54,6 +54,7 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
   "dashboard-data.loadCalendarPageData": dashboardData.loadCalendarPageData,
   "dashboard-data.loadPostDetailCoreData": dashboardData.loadPostDetailCoreData,
   "dashboard-data.loadPostDetailMediaData": dashboardData.loadPostDetailMediaData,
+  "dashboard-data.loadAdjacentPosts": dashboardData.loadAdjacentPosts,
   "onboarding.getOnboardingStatus": onboarding.getOnboardingStatus,
   "onboarding.setOnboardingGoal": onboarding.setOnboardingGoal,
   "onboarding.setOnboardingCompleted": onboarding.setOnboardingCompleted,

@@ -178,6 +178,9 @@ export function PostDetailView({ postId }: { postId: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    setCoreLoading(true);
+    setCoreError(null);
+    setCore(null);
     void (async () => {
       const result = await loadPostDetailCoreData(postId);
       if (cancelled) return;
@@ -204,6 +207,9 @@ export function PostDetailView({ postId }: { postId: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    setMediaLoading(true);
+    setMediaError(null);
+    setMedia([]);
     void (async () => {
       const result = await loadPostDetailMediaData(postId);
       if (cancelled) return;

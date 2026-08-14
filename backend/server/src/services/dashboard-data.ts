@@ -8,6 +8,7 @@ import {
   POSTS_PAGE_SIZE,
   getPostDetail,
   getPostMedia,
+  getAdjacentPostIds,
 } from "@/lib/posts-list/posts-list-data";
 import type { PublicationRow, StatusFilter } from "@social0/shared";
 import { getSubscriptionForUser } from "@/lib/subscription";
@@ -749,4 +750,27 @@ export async function loadPostDetailMediaData(
   const mediaIds = detail.post.mediaIds ?? [];
   const media = mediaIds.length > 0 ? await getPostMedia(userId, mediaIds) : [];
   return { ok: true, data: { media } };
+}
+
+export type LoadAdjacentPostsResult =
+  | {
+      ok: true;
+      data: { newerId: string | null; olderId: string | null };
+    }
+  | { ok: false; error: string };
+
+/** Newest-first neighbors for post detail edge navigation. */
+export async function loadAdjacentPosts(
+  postId: string,
+): Promise<LoadAdjacentPostsResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user?.id) return { ok: false, error: "Unauthorized" };
+  const ctx = await resolveWorkspaceContext(session.user.id);
+  const userId = ctx.resourceUserId;
+
+  const detail = await getPostDetail(postId, userId);
+  if (!detail) return { ok: false, error: "NotFound" };
+
+  const adjacent = await getAdjacentPostIds(postId, userId);
+  return { ok: true, data: adjacent };
 }

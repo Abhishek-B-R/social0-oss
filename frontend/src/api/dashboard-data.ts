@@ -230,3 +230,16 @@ export async function loadPostDetailMediaData(
 ): Promise<LoadPostDetailMediaDataResult> {
   return rpc("dashboard-data.loadPostDetailMediaData", postId);
 }
+
+export type LoadAdjacentPostsResult =
+  | {
+      ok: true;
+      data: { newerId: string | null; olderId: string | null };
+    }
+  | { ok: false; error: string };
+
+export async function loadAdjacentPosts(
+  postId: string,
+): Promise<LoadAdjacentPostsResult> {
+  return rpc("dashboard-data.loadAdjacentPosts", postId);
+}
