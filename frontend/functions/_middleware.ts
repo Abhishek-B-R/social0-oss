@@ -197,12 +197,30 @@ export async function onRequest(context: PagesContext) {
 
   path = normalizePath(path);
 
+  const altSlugAliases: Record<string, string> = {
+    "post-bridge": "postbridge",
+    "postbridge": "postbridge",
+  };
   const altRedirect = path.match(/^\/alternative-to-([^/]+)$/);
-  if (altRedirect && ALTERNATIVE_META[altRedirect[1]]) {
-    return Response.redirect(
-      new URL(`/alternatives/${altRedirect[1]}${url.search}`, url.origin).toString(),
-      301,
-    );
+  if (altRedirect) {
+    const slug = altSlugAliases[altRedirect[1]] ?? altRedirect[1];
+    if (ALTERNATIVE_META[slug]) {
+      return Response.redirect(
+        new URL(`/alternatives/${slug}${url.search}`, url.origin).toString(),
+        301,
+      );
+    }
+  }
+
+  const altCanonicalRedirect = path.match(/^\/alternatives\/([^/]+)$/);
+  if (altCanonicalRedirect) {
+    const slug = altSlugAliases[altCanonicalRedirect[1]] ?? altCanonicalRedirect[1];
+    if (slug !== altCanonicalRedirect[1] && ALTERNATIVE_META[slug]) {
+      return Response.redirect(
+        new URL(`/alternatives/${slug}${url.search}`, url.origin).toString(),
+        301,
+      );
+    }
   }
 
   /** Root paths competitors use for platform scheduler PSEO (-> /features/*). */

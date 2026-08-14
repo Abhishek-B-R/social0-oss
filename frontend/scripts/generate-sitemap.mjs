@@ -134,7 +134,7 @@ const STATIC_ROUTE_META = {
   "/alternatives": {
     title: "Social0 alternatives and comparisons",
     description:
-      "Compare Social0 with Buffer, Hootsuite, Later, Postiz, Planable, SocialBee, and 30+ other social media schedulers.",
+      "Compare Social0 with Buffer, Hootsuite, Later, Postiz, PostSyncer, Blotato, and 60+ other social media schedulers.",
   },
   "/tools": {
     title: "Tools & Integrations | Social0",

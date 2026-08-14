@@ -261,15 +261,10 @@ export async function getValidToken(
     const data = await response.json();
     const newAccessToken = data.access_token as string;
     const expiresIn = (data.expires_in as number) || 3600;
-    // LinkedIn may rotate refresh_token — persist when present.
+    // LinkedIn may rotate refresh_token — persist when present
     const newRefresh =
       typeof data.refresh_token === "string" ? data.refresh_token : null;
-    await persistTokens(
-      account.id,
-      newAccessToken,
-      expiresIn,
-      newRefresh,
-    );
+    await persistTokens(account.id, newAccessToken, expiresIn, newRefresh);
     console.log(`✅ Refreshed LinkedIn token for account ${accountId}`);
     return newAccessToken;
   }
@@ -317,7 +312,9 @@ export async function getValidToken(
     const newAccessToken = data.access_token as string;
     const expiresIn = (data.expires_in as number) || 30 * 24 * 60 * 60;
     const newRefresh =
-      typeof data.refresh_token === "string" ? data.refresh_token : refreshToken;
+      typeof data.refresh_token === "string"
+        ? data.refresh_token
+        : refreshToken;
     await persistTokens(account.id, newAccessToken, expiresIn, newRefresh);
     console.log(`✅ Refreshed Pinterest token for account ${accountId}`);
     return newAccessToken;

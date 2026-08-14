@@ -7,6 +7,11 @@ export function AlternativeToRedirect() {
   if (ALTERNATIVE_SLUGS.includes(slug)) {
     return <Navigate to={`/alternatives/${slug}`} replace />;
   }
+  const aliases: Record<string, string> = { "post-bridge": "postbridge" };
+  const canonical = aliases[slug];
+  if (canonical && ALTERNATIVE_SLUGS.includes(canonical)) {
+    return <Navigate to={`/alternatives/${canonical}`} replace />;
+  }
   return <Navigate to="/alternatives" replace />;
 }
 

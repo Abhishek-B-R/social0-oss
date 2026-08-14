@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseTikTokTokenResponse } from "../lib/tiktok-connect.js";
 
 describe("parseTikTokTokenResponse", () => {
-  it("parses flat TikTok refresh responses (current API shape)", () => {
+  it("parses flat TikTok refresh responses", () => {
     const parsed = parseTikTokTokenResponse({
       access_token: "act",
       refresh_token: "rft",
@@ -32,7 +32,9 @@ describe("parseTikTokTokenResponse", () => {
   });
 
   it("returns null when access_token missing", () => {
-    expect(parseTikTokTokenResponse({ data: { refresh_token: "x" } })).toBeNull();
+    expect(
+      parseTikTokTokenResponse({ data: { refresh_token: "x" } }),
+    ).toBeNull();
     expect(parseTikTokTokenResponse(null)).toBeNull();
   });
 });
