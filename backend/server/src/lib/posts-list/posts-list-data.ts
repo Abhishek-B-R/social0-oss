@@ -8,7 +8,7 @@ import {
   autoPlugs,
   queuedPosts,
 } from "@/db/schema";
-import { eq, desc, asc, inArray, and, sql, gte, exists, gt, lt, ne } from "drizzle-orm";
+import { eq, desc, asc, inArray, and, sql, gte, exists, gt, lt, ne, isNull } from "drizzle-orm";
 import { startOfWeek, startOfMonth } from "date-fns";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { isActiveTier } from "@social0/shared";
@@ -23,7 +23,10 @@ export type {
 } from "@social0/shared";
 
 /** True if the user has payment-failed posts and no active subscription (so banner should show). */
-export async function hasPaymentFailedPosts(userId: string): Promise<boolean> {
+export async function hasPaymentFailedPosts(
+  userId: string,
+  workspaceId: string | null = null,
+): Promise<boolean> {
   const subscription = await getSubscriptionForUser(userId);
   if (isActiveTier(subscription.tier)) return false;
 
@@ -33,6 +36,9 @@ export async function hasPaymentFailedPosts(userId: string): Promise<boolean> {
     .where(
       and(
         eq(posts.userId, userId),
+        workspaceId
+          ? eq(posts.workspaceId, workspaceId)
+          : isNull(posts.workspaceId),
         eq(posts.status, "failed"),
         sql`${posts.failureReason} LIKE '%Payment required%'`,
       ),
@@ -44,6 +50,7 @@ export async function hasPaymentFailedPosts(userId: string): Promise<boolean> {
 /** Shared list WHERE — keep adjacent nav in lockstep with getPostsListData. */
 function buildPostsListWhere({
   userId,
+  workspaceId = null,
   statusFilter,
   platform: platformFilter,
   time: timeFilter,
@@ -52,7 +59,7 @@ function buildPostsListWhere({
   excludeDrafts = false,
 }: Pick<
   PostsListParams,
-  "userId" | "statusFilter" | "platform" | "time" | "account"
+  "userId" | "workspaceId" | "statusFilter" | "platform" | "time" | "account"
 > & { excludeDrafts?: boolean }) {
   const timeFilterDate =
     timeFilter === "week"
@@ -63,6 +70,9 @@ function buildPostsListWhere({
 
   return and(
     eq(posts.userId, userId),
+    workspaceId
+      ? eq(posts.workspaceId, workspaceId)
+      : isNull(posts.workspaceId),
     statusFilter ? eq(posts.status, statusFilter) : undefined,
     excludeDrafts && !statusFilter
       ? sql`${posts.status} IS DISTINCT FROM 'draft'`
@@ -103,6 +113,7 @@ function buildPostsListWhere({
 
 export async function getPostsListData({
   userId,
+  workspaceId = null,
   statusFilter,
   sort = "newest",
   platform: platformFilter,
@@ -116,6 +127,7 @@ export async function getPostsListData({
 
   const whereClause = buildPostsListWhere({
     userId,
+    workspaceId,
     statusFilter,
     platform: platformFilter,
     time: timeFilter,
@@ -404,6 +416,7 @@ export type PostForEdit = {
 export async function getPostForEdit(
   postId: string,
   userId: string,
+  workspaceId: string | null = null,
 ): Promise<PostForEdit | null> {
   const [post] = await db
     .select({
@@ -414,7 +427,15 @@ export async function getPostForEdit(
       mediaIds: posts.mediaIds,
     })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+    .where(
+      and(
+        eq(posts.id, postId),
+        eq(posts.userId, userId),
+        workspaceId
+          ? eq(posts.workspaceId, workspaceId)
+          : isNull(posts.workspaceId),
+      ),
+    );
 
   if (!post) return null;
 
@@ -550,7 +571,7 @@ export type PostDetailResult = {
 
 export type AdjacentPostsListContext = Pick<
   PostsListParams,
-  "statusFilter" | "sort" | "platform" | "time" | "account"
+  "workspaceId" | "statusFilter" | "sort" | "platform" | "time" | "account"
 >;
 
 /**
@@ -564,10 +585,19 @@ export async function getAdjacentPostIds(
   list: AdjacentPostsListContext = {},
 ): Promise<{ prevId: string | null; nextId: string | null }> {
   const sort = list.sort === "oldest" ? "oldest" : "newest";
+  const workspaceId = list.workspaceId ?? null;
   const [current] = await db
     .select({ id: posts.id, createdAt: posts.createdAt })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
+    .where(
+      and(
+        eq(posts.id, postId),
+        eq(posts.userId, userId),
+        workspaceId
+          ? eq(posts.workspaceId, workspaceId)
+          : isNull(posts.workspaceId),
+      ),
+    )
     .limit(1);
 
   if (!current?.createdAt) {
@@ -577,6 +607,7 @@ export async function getAdjacentPostIds(
   const createdAt = current.createdAt;
   const whereBase = buildPostsListWhere({
     userId,
+    workspaceId,
     statusFilter: list.statusFilter,
     platform: list.platform,
     time: list.time,
@@ -626,10 +657,11 @@ export async function getAdjacentPostIds(
   };
 }
 
-/** Fetch a single post by id; verifies userId. Returns null if not found, not owner, or invalid id. */
+/** Fetch a single post by id; verifies userId + workspace. Returns null if not found. */
 export async function getPostDetail(
   postId: string,
   userId: string,
+  workspaceId: string | null = null,
 ): Promise<PostDetailResult | null> {
   try {
     const [post] = await db
@@ -644,7 +676,15 @@ export async function getPostDetail(
         failureReason: posts.failureReason,
       })
       .from(posts)
-      .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+      .where(
+        and(
+          eq(posts.id, postId),
+          eq(posts.userId, userId),
+          workspaceId
+            ? eq(posts.workspaceId, workspaceId)
+            : isNull(posts.workspaceId),
+        ),
+      );
 
     if (!post) return null;
 

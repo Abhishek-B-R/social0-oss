@@ -37,7 +37,7 @@ import {
   userSettings,
   user,
 } from "@/db/schema";
-import { eq, inArray, and, or } from "drizzle-orm";
+import { eq, inArray, and, or, isNull } from "drizzle-orm";
 import { format } from "date-fns";
 import { syncConnectedAccountsToLimit } from "@/lib/plan-limits";
 import { NEVER_EXPIRES_PLATFORMS } from "@/lib/token-health";
@@ -241,6 +241,7 @@ export async function loadPostsPageData(input: {
   }
   const ctx = await resolveWorkspaceContext(session.user.id);
   const userId = ctx.resourceUserId;
+  const workspaceId = ctx.workspaceId;
   const page = Math.max(1, input.page ?? 1);
   const statusFilter: StatusFilter =
     input.statusFilter === "posted"
@@ -254,6 +255,7 @@ export async function loadPostsPageData(input: {
   ] = await Promise.all([
     getPostsListData({
       userId,
+      workspaceId,
       statusFilter,
       sort: input.sort === "oldest" ? "oldest" : "newest",
       platform: input.platform || null,
@@ -263,7 +265,7 @@ export async function loadPostsPageData(input: {
       limit: POSTS_PAGE_SIZE,
     }),
     getUserSettingsSnapshot(),
-    hasPaymentFailedPosts(userId),
+    hasPaymentFailedPosts(userId, workspaceId),
   ]);
 
   const {
@@ -495,6 +497,7 @@ export async function loadCalendarPageData(): Promise<LoadCalendarPageDataResult
   }
   const ctx = await resolveWorkspaceContext(session.user.id);
   const userId = ctx.resourceUserId;
+  const workspaceId = ctx.workspaceId;
 
   const now = new Date();
 
@@ -513,6 +516,9 @@ export async function loadCalendarPageData(): Promise<LoadCalendarPageDataResult
         .where(
           and(
             eq(posts.userId, userId),
+            workspaceId
+              ? eq(posts.workspaceId, workspaceId)
+              : isNull(posts.workspaceId),
             or(
               eq(posts.status, "scheduled"),
               eq(posts.status, "published"),
@@ -674,12 +680,13 @@ export async function loadPostDetailCoreData(
   if (!session?.user?.id) return { ok: false, error: "Unauthorized" };
   const ctx = await resolveWorkspaceContext(session.user.id);
   const userId = ctx.resourceUserId;
+  const workspaceId = ctx.workspaceId;
 
   const [detail, settings, showPaymentFailedBanner, subscription, publishTimeline] =
     await Promise.all([
-      getPostDetail(postId, userId),
+      getPostDetail(postId, userId, workspaceId),
       getUserSettingsSnapshot(),
-      hasPaymentFailedPosts(userId),
+      hasPaymentFailedPosts(userId, workspaceId),
       getSubscriptionForUser(userId),
       loadPublishTimelineForPost(postId, userId),
     ]);
@@ -744,8 +751,9 @@ export async function loadPostDetailMediaData(
   if (!session?.user?.id) return { ok: false, error: "Unauthorized" };
   const ctx = await resolveWorkspaceContext(session.user.id);
   const userId = ctx.resourceUserId;
+  const workspaceId = ctx.workspaceId;
 
-  const detail = await getPostDetail(postId, userId);
+  const detail = await getPostDetail(postId, userId, workspaceId);
   if (!detail) return { ok: false, error: "NotFound" };
   const mediaIds = detail.post.mediaIds ?? [];
   const media = mediaIds.length > 0 ? await getPostMedia(userId, mediaIds) : [];
@@ -772,13 +780,14 @@ export async function loadAdjacentPosts(input: {
   if (!session?.user?.id) return { ok: false, error: "Unauthorized" };
   const ctx = await resolveWorkspaceContext(session.user.id);
   const userId = ctx.resourceUserId;
+  const workspaceId = ctx.workspaceId;
 
   const postId = input?.postId;
   if (!postId || typeof postId !== "string") {
     return { ok: false, error: "BadRequest" };
   }
 
-  const detail = await getPostDetail(postId, userId);
+  const detail = await getPostDetail(postId, userId, workspaceId);
   if (!detail) return { ok: false, error: "NotFound" };
 
   const statusFilter: StatusFilter =
@@ -789,6 +798,7 @@ export async function loadAdjacentPosts(input: {
         : null;
 
   const adjacent = await getAdjacentPostIds(postId, userId, {
+    workspaceId,
     statusFilter,
     sort: input.sort === "oldest" ? "oldest" : "newest",
     platform: input.platform || null,

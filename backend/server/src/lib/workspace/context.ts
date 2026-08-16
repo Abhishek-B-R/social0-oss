@@ -2,6 +2,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import {
   connectedAccounts,
+  posts,
   teamMembers,
   teams,
   userSettings,
@@ -158,6 +159,23 @@ export function connectionScopeCondition(ctx: {
   return and(
     eq(connectedAccounts.userId, ctx.resourceUserId),
     isNull(connectedAccounts.workspaceId),
+  );
+}
+
+/** SQL filter for posts visible in the current context (null workspace = Main). */
+export function postScopeCondition(ctx: {
+  resourceUserId: string;
+  workspaceId: string | null;
+}) {
+  if (ctx.workspaceId) {
+    return and(
+      eq(posts.userId, ctx.resourceUserId),
+      eq(posts.workspaceId, ctx.workspaceId),
+    );
+  }
+  return and(
+    eq(posts.userId, ctx.resourceUserId),
+    isNull(posts.workspaceId),
   );
 }
 

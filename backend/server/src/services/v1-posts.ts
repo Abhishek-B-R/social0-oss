@@ -554,6 +554,7 @@ export async function v1CreateDraft(
     .insert(posts)
     .values({
       userId,
+      workspaceId: null,
       originalContent: content,
       finalContent: content,
       status: "draft",
@@ -590,7 +591,7 @@ export async function v1ListPosts(
   const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
   const offset = (page - 1) * limit;
 
-  const conditions = [eq(posts.userId, userId)];
+  const conditions = [eq(posts.userId, userId), isNull(posts.workspaceId)];
 
   if (opts.status) {
     conditions.push(eq(posts.status, opts.status as typeof posts.status.enumValues[number]));
@@ -673,7 +674,7 @@ export async function v1ListPosts(
 
 export async function v1GetPost(userId: string, postId: string) {
   if (!isValidUUID(postId)) return null;
-  const detail = await getPostDetail(postId, userId);
+  const detail = await getPostDetail(postId, userId, null);
   if (!detail) return null;
 
   return {
@@ -713,7 +714,7 @@ export async function v1UpdateDraft(
       metadata: posts.metadata,
     })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId), isNull(posts.workspaceId)))
     .limit(1);
 
   if (!existing) return { ok: false, error: "Post not found" };
@@ -805,7 +806,7 @@ export async function v1DeletePost(
   const [existing] = await db
     .select({ id: posts.id, status: posts.status })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId), isNull(posts.workspaceId)))
     .limit(1);
 
   if (!existing) return { ok: false, error: "Post not found" };
@@ -834,7 +835,7 @@ export async function v1SchedulePost(
   const [existing] = await db
     .select({ id: posts.id, status: posts.status })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId), isNull(posts.workspaceId)))
     .limit(1);
 
   if (!existing) return { ok: false, error: "Post not found" };
@@ -885,7 +886,7 @@ export async function v1PublishPost(
   const [existing] = await db
     .select({ id: posts.id, status: posts.status })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId), isNull(posts.workspaceId)))
     .limit(1);
 
   if (!existing) return { ok: false, error: "Post not found" };

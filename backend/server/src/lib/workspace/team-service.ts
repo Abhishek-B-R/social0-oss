@@ -3,6 +3,8 @@ import { and, asc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import {
   connectedAccounts,
+  posts,
+  postPublications,
   teamInvitations,
   teamMembers,
   teams,
@@ -1795,6 +1797,12 @@ export async function deleteWorkspaceInTeam(
     row.defaultWorkspaceId,
   );
 
+  // Keep posts with the accounts — don't let ON DELETE SET NULL dump them into Main.
+  await db
+    .update(posts)
+    .set({ workspaceId: row.defaultWorkspaceId, updatedAt: new Date() })
+    .where(eq(posts.workspaceId, workspaceId));
+
   await db.delete(workspaces).where(eq(workspaces.id, workspaceId));
   await invalidateTeamRoomCache(row.teamId, [workspaceId]);
   return result;
@@ -1950,10 +1958,26 @@ export async function deleteTeamForUser(
 
     if (keepConnections) {
       result = await moveConnectionsToPersonal(wsIds);
+      // Match connections → Main so SET NULL on workspace delete doesn't surprise.
+      await db
+        .update(posts)
+        .set({ workspaceId: null, updatedAt: new Date() })
+        .where(inArray(posts.workspaceId, wsIds));
     } else {
       await db
         .delete(connectedAccounts)
         .where(inArray(connectedAccounts.workspaceId, wsIds));
+      const postRows = await db
+        .select({ id: posts.id })
+        .from(posts)
+        .where(inArray(posts.workspaceId, wsIds));
+      const postIds = postRows.map((p) => p.id);
+      if (postIds.length > 0) {
+        await db
+          .delete(postPublications)
+          .where(inArray(postPublications.postId, postIds));
+        await db.delete(posts).where(inArray(posts.id, postIds));
+      }
     }
   }
 

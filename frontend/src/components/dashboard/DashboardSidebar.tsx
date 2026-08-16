@@ -24,7 +24,7 @@ import { SidebarAccountMenu } from "@/components/dashboard/SidebarAccountMenu";
 import { SidebarHoverTip } from "@/components/dashboard/SidebarHoverTip";
 import { WorkspaceSwitcher } from "@/components/dashboard/WorkspaceSwitcher";
 import { WritingIcon } from "@/components/dashboard/WritingIcon";
-import { switchWorkspace } from "@/api/team";
+import { switchWorkspace, listWorkspaces } from "@/api/team";
 import {
   getDashboardRelativePath,
   getTeamIdFromPathname,
@@ -33,8 +33,10 @@ import {
   useDashboardPath,
   writePersonalWorkspaceId,
 } from "@/lib/dashboard-base-path";
+import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
 const SIDEBAR_COLLAPSED_KEY = "social0.sidebar.collapsed";
 
@@ -155,10 +157,22 @@ export function DashboardSidebar({
   const pathname = useLocation().pathname;
   const dash = useDashboardPath();
   const relative = getDashboardRelativePath(pathname);
-  const inTeamApp = isTeamAppPath(pathname);
   const teamId = getTeamIdFromPathname(pathname);
   const onTeamSettings =
     !!teamId && pathname.includes(`/teams/${teamId}/settings`);
+  const { data: workspacesData } = useQuery({
+    queryKey: WORKSPACES_QUERY_KEY,
+    queryFn: listWorkspaces,
+    enabled: !!user && !isGuest,
+  });
+  // Team settings only for collaborative teams (not personal extra workspaces).
+  const activeWorkspace = workspacesData?.workspaces.find((w) => w.isActive);
+  const settingsTeamId = activeWorkspace?.teamId ?? teamId;
+  const showTeamSettings = Boolean(
+    settingsTeamId &&
+      workspacesData?.teams.find((t) => t.id === settingsTeamId)
+        ?.isCollaborative,
+  );
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -406,9 +420,9 @@ export function DashboardSidebar({
               collapsed={collapsed}
               isActive={relative === "connections"}
             />
-            {inTeamApp || onTeamSettings ? (
+            {showTeamSettings && settingsTeamId ? (
               <NavLink
-                href={`/dashboard/teams/${teamId}/settings`}
+                href={`/dashboard/teams/${settingsTeamId}/settings`}
                 label="Team settings"
                 icon={Users}
                 collapsed={collapsed}

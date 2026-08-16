@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { and, eq } from "drizzle-orm";
 import { requireUserId, unauthorized } from "../../middleware/auth.js";
 import { enforceRateLimit, publishLimiter } from "../../lib/ratelimit.js";
 import { scheduledAtInputSchema, scheduleTimezoneSchema } from "../../lib/validation.js";
@@ -11,12 +12,16 @@ import {
 } from "../../services/enqueue.js";
 import { openJobSseStream } from "../../lib/job-sse-stream.js";
 import { resolveJobSnapshot } from "../../lib/resolve-job-snapshot.js";
+import { requireWorkspacePermissionForUser } from "../../lib/workspace/session.js";
+import { postScopeCondition } from "../../lib/workspace/context.js";
+import { db } from "../../db/index.js";
+import { posts } from "../../db/schema.js";
 
 const publishSchema = z
   .object({
     postId: z.string(),
     connectedAccountIds: z.array(z.string()).optional(),
-    /** ISO datetime — UTC, offset, +default, or naive with timezone */
+    /** ISO datetime - UTC, offset, +default, or naive with timezone */
     scheduledAt: scheduledAtInputSchema.optional(),
     timezone: scheduleTimezoneSchema,
     /** Explicit mode override. */
@@ -37,10 +42,19 @@ function isScheduleRequest(data: z.infer<typeof publishSchema>) {
 
 export async function registerPublishRoutes(app: FastifyInstance) {
   app.post("/publish", async (request, reply) => {
-    const userId = await requireUserId(request);
-    if (!userId) return reply.status(401).send(unauthorized());
+    const actorUserId = await requireUserId(request);
+    if (!actorUserId) return reply.status(401).send(unauthorized());
 
-    const rate = await enforceRateLimit(publishLimiter, userId);
+    const ws = await requireWorkspacePermissionForUser(
+      actorUserId,
+      "publish_posts",
+    );
+    if (!ws.ok) {
+      return reply.status(ws.statusCode).send({ error: ws.error });
+    }
+    const userId = ws.ctx.resourceUserId;
+
+    const rate = await enforceRateLimit(publishLimiter, actorUserId);
     if (!rate.allowed) {
       return reply.status(rate.status).send({ error: rate.error });
     }
@@ -48,6 +62,19 @@ export async function registerPublishRoutes(app: FastifyInstance) {
     const body = publishSchema.safeParse(request.body);
     if (!body.success) {
       return reply.status(400).send({ error: body.error.flatten() });
+    }
+
+    const [owned] = await db
+      .select({ id: posts.id })
+      .from(posts)
+      .where(
+        and(eq(posts.id, body.data.postId), postScopeCondition(ws.ctx)),
+      )
+      .limit(1);
+    if (!owned) {
+      return reply
+        .status(404)
+        .send({ error: "Post not found or not publishable" });
     }
 
     const schedule = isScheduleRequest(body.data);

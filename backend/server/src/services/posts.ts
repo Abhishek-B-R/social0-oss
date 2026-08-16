@@ -9,7 +9,7 @@ import {
 } from "@/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
 import { requireWorkspaceSession } from "@/lib/workspace/session";
-import { connectionScopeCondition } from "@/lib/workspace/context";
+import { connectionScopeCondition, postScopeCondition } from "@/lib/workspace/context";
 import { enqueuePublishPostStandalone } from "./enqueue.js";
 import { userOwnsQueueSlot } from "@/lib/queue-slot-validation";
 import {
@@ -217,6 +217,7 @@ export async function createPost(
       .values({
         userId: userId,
         createdByUserId: actorUserId,
+        workspaceId: ws.ctx.workspaceId,
         originalContent: trimmed,
         finalContent: trimmed,
         status,
@@ -325,7 +326,7 @@ export async function deletePost(postId: string): Promise<DeletePostResult> {
     const [post] = await db
       .select({ id: posts.id })
       .from(posts)
-      .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+      .where(and(eq(posts.id, postId), postScopeCondition(ws.ctx)));
     if (!post) {
       return { success: false, error: "Post not found" };
     }
@@ -371,7 +372,7 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
       status: posts.status,
     })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
+    .where(and(eq(posts.id, postId), postScopeCondition(ws.ctx)))
     .limit(1);
 
   if (!post) {
@@ -406,7 +407,7 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
     .from(connectedAccounts)
     .where(
       and(
-        eq(connectedAccounts.userId, userId),
+        connectionScopeCondition(ws.ctx),
         inArray(connectedAccounts.id, accountIds),
       ),
     );
@@ -430,6 +431,7 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
       .values({
         userId: userId,
         createdByUserId: actorUserId,
+        workspaceId: ws.ctx.workspaceId,
         originalContent: post.originalContent,
         finalContent: post.finalContent,
         status: "scheduled",
@@ -554,7 +556,7 @@ export async function updatePost(
     const [existing] = await db
       .select({ id: posts.id, status: posts.status, mediaIds: posts.mediaIds })
       .from(posts)
-      .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+      .where(and(eq(posts.id, postId), postScopeCondition(ws.ctx)));
     if (!existing) {
       return { success: false, error: "Post not found" };
     }
@@ -701,7 +703,7 @@ export async function updateScheduledPostAutoFeatures(
     const [row] = await db
       .select({ id: posts.id, metadata: posts.metadata, status: posts.status })
       .from(posts)
-      .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+      .where(and(eq(posts.id, postId), postScopeCondition(ws.ctx)));
 
     if (!row) {
       return { success: false, error: "Post not found" };
@@ -774,7 +776,7 @@ export async function getDraft(postId: string): Promise<GetDraftResult> {
   if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
   }
-  const post = await getPostForEdit(postId, userId);
+  const post = await getPostForEdit(postId, userId, ws.ctx.workspaceId);
   if (!post) {
     return { success: false, error: "Draft not found" };
   }
@@ -787,7 +789,7 @@ export async function getDraft(postId: string): Promise<GetDraftResult> {
   const [row] = await db
     .select({ metadata: posts.metadata })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+    .where(and(eq(posts.id, postId), postScopeCondition(ws.ctx)));
   return {
     success: true,
     draft: {
@@ -829,7 +831,7 @@ export async function getScheduledPost(
   if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
   }
-  const post = await getPostForEdit(postId, userId);
+  const post = await getPostForEdit(postId, userId, ws.ctx.workspaceId);
   if (!post) {
     return { success: false, error: "Post not found" };
   }
@@ -845,7 +847,7 @@ export async function getScheduledPost(
   const [row] = await db
     .select({ metadata: posts.metadata })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+    .where(and(eq(posts.id, postId), postScopeCondition(ws.ctx)));
   let queueSlotId: string | null = null;
   if (post.status === "scheduled") {
     const slot = await getQueuedSlotForPost(postId, userId);
@@ -893,7 +895,7 @@ export async function getPostToEdit(
   if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
   }
-  const post = await getPostForEdit(postId, userId);
+  const post = await getPostForEdit(postId, userId, ws.ctx.workspaceId);
   if (!post) {
     return { success: false, error: "Post not found" };
   }
@@ -913,7 +915,7 @@ export async function getPostToEdit(
   const [row] = await db
     .select({ metadata: posts.metadata })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+    .where(and(eq(posts.id, postId), postScopeCondition(ws.ctx)));
   return {
     success: true,
     post: {
@@ -945,7 +947,7 @@ export async function deleteDraft(postId: string): Promise<DeleteDraftResult> {
     const [post] = await db
       .select({ id: posts.id, status: posts.status })
       .from(posts)
-      .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+      .where(and(eq(posts.id, postId), postScopeCondition(ws.ctx)));
     if (!post) {
       return { success: false, error: "Post not found" };
     }
@@ -1066,7 +1068,7 @@ export async function loadEditPostPageData(postId: string): Promise<
   const userId = ws.ctx.resourceUserId;
   if (!isValidUUID(postId)) return { ok: false, error: "Invalid post ID" };
 
-  const post = await getPostForEdit(postId, userId);
+  const post = await getPostForEdit(postId, userId, ws.ctx.workspaceId);
   if (!post) return { ok: false, error: "Post not found" };
   if (post.status !== "draft" && post.status !== "scheduled") {
     return { ok: false, error: "Post cannot be edited" };

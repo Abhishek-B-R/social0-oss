@@ -13,6 +13,7 @@ import { getNextAvailableSlot } from "../../lib/queue-utils.js";
 import { toZonedTime } from "date-fns-tz";
 import { format } from "date-fns";
 import { requireWorkspacePermissionForUser } from "../../lib/workspace/session.js";
+import { postScopeCondition } from "../../lib/workspace/context.js";
 
 export async function getNextQueueSlot() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -55,10 +56,12 @@ export async function getNextQueueSlot() {
   const pendingQueued = await db
     .select({ scheduledFor: queuedPosts.scheduledFor })
     .from(queuedPosts)
+    .innerJoin(posts, eq(queuedPosts.postId, posts.id))
     .where(
       and(
         eq(queuedPosts.userId, userId),
         eq(queuedPosts.status, "pending"),
+        postScopeCondition(ws.ctx),
       ),
     );
 
@@ -67,7 +70,7 @@ export async function getNextQueueSlot() {
     .from(posts)
     .where(
       and(
-        eq(posts.userId, userId),
+        postScopeCondition(ws.ctx),
         eq(posts.status, "scheduled"),
       ),
     );

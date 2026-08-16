@@ -178,6 +178,8 @@ export const posts = pgTable(
     userId: text("user_id")
       .references(() => user.id)
       .notNull(),
+    /** Null = Main; set when created from a workspace. */
+    workspaceId: uuid("workspace_id"),
     originalContent: text("original_content").notNull(), // User's raw input
     finalContent: text("final_content").notNull(), // What gets posted (can be AI-edited)
     isAiEnhanced: boolean("is_ai_enhanced").default(false),

@@ -20,6 +20,8 @@ export type StatusFilter = "draft" | "scheduled" | "published" | null;
 
 export type PostsListParams = {
   userId: string;
+  /** Null = Main pool; set filters to that workspace. */
+  workspaceId?: string | null;
   statusFilter?: StatusFilter;
   sort?: "newest" | "oldest";
   platform?: string | null;

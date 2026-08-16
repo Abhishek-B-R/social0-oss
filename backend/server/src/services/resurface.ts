@@ -10,6 +10,7 @@ import {
 } from "@/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { requireWorkspaceSession } from "@/lib/workspace/session";
+import { postScopeCondition } from "@/lib/workspace/context";
 import { isPostOlderThanAutoFeaturesEditWindow } from "@social0/shared";
 
 const PLATFORM_X = "x";
@@ -94,7 +95,7 @@ export async function createAutoPlug(
   const [post] = await db
     .select({ id: posts.id, userId: posts.userId, status: posts.status })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+    .where(and(eq(posts.id, postId), postScopeCondition(ws.ctx)));
 
   if (!post) {
     return { success: false, error: "Post not found" };
@@ -260,7 +261,7 @@ export async function createResurfaceSchedule(
   const [post] = await db
     .select({ id: posts.id, userId: posts.userId, status: posts.status })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+    .where(and(eq(posts.id, postId), postScopeCondition(ws.ctx)));
 
   if (!post) {
     return { success: false, error: "Post not found" };
@@ -381,7 +382,9 @@ export async function disableResurfaceSchedule(
     })
     .from(resurfaceSchedules)
     .innerJoin(posts, eq(resurfaceSchedules.postId, posts.id))
-    .where(eq(resurfaceSchedules.id, scheduleId));
+    .where(
+      and(eq(resurfaceSchedules.id, scheduleId), postScopeCondition(ws.ctx)),
+    );
 
   if (!schedule || schedule.userId !== userId) {
     return { success: false, error: "Schedule not found" };
@@ -445,7 +448,7 @@ export async function updateAutoPlug(
     .select({ id: autoPlugs.id, status: autoPlugs.status })
     .from(autoPlugs)
     .innerJoin(posts, eq(autoPlugs.postId, posts.id))
-    .where(and(eq(autoPlugs.postId, postId), eq(posts.userId, userId)))
+    .where(and(eq(autoPlugs.postId, postId), postScopeCondition(ws.ctx)))
     .orderBy(desc(autoPlugs.createdAt))
     .limit(1);
 
@@ -499,7 +502,7 @@ export async function cancelAutoPlug(
     .where(
       and(
         eq(autoPlugs.postId, postId),
-        eq(posts.userId, userId),
+        postScopeCondition(ws.ctx),
         eq(autoPlugs.status, "watching"),
       ),
     )
@@ -562,7 +565,9 @@ export async function updateResurfaceSchedule(
     })
     .from(resurfaceSchedules)
     .innerJoin(posts, eq(resurfaceSchedules.postId, posts.id))
-    .where(eq(resurfaceSchedules.id, scheduleId));
+    .where(
+      and(eq(resurfaceSchedules.id, scheduleId), postScopeCondition(ws.ctx)),
+    );
 
   if (!schedule || schedule.userId !== userId) {
     return { success: false, error: "Schedule not found" };

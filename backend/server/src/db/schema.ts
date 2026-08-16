@@ -185,6 +185,13 @@ export const posts = pgTable(
     createdByUserId: text("created_by_user_id").references(() => user.id, {
       onDelete: "set null",
     }),
+    /**
+     * Null = Main (personal) pool. Set when created from a workspace context.
+     * Existing rows stay null so they remain Main-only.
+     */
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+      onDelete: "set null",
+    }),
     originalContent: text("original_content").notNull(), // User's raw input
     finalContent: text("final_content").notNull(), // What gets posted (can be AI-edited)
     isAiEnhanced: boolean("is_ai_enhanced").default(false),

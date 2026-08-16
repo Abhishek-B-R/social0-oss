@@ -12,6 +12,7 @@ import { headers } from "../../lib/http/request-cookies.js";
 import { getNextAvailableSlot } from "../../lib/queue-utils.js";
 import { toZonedTime } from "date-fns-tz";
 import { requireWorkspacePermissionForUser } from "../../lib/workspace/session.js";
+import { postScopeCondition } from "../../lib/workspace/context.js";
 
 export async function addToQueue(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -43,7 +44,7 @@ export async function addToQueue(request: Request) {
   const [post] = await db
     .select({ id: posts.id })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
+    .where(and(eq(posts.id, postId), postScopeCondition(ws.ctx)))
     .limit(1);
 
   if (!post) {
@@ -78,10 +79,12 @@ export async function addToQueue(request: Request) {
   const pending = await db
     .select({ scheduledFor: queuedPosts.scheduledFor })
     .from(queuedPosts)
+    .innerJoin(posts, eq(queuedPosts.postId, posts.id))
     .where(
       and(
         eq(queuedPosts.userId, userId),
         eq(queuedPosts.status, "pending"),
+        postScopeCondition(ws.ctx),
       ),
     );
 
@@ -123,7 +126,7 @@ export async function addToQueue(request: Request) {
   await db
     .update(posts)
     .set({ status: "scheduled", scheduledAt: next.utc, updatedAt: new Date() })
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+    .where(and(eq(posts.id, postId), postScopeCondition(ws.ctx)));
 
   const displayInTz = toZonedTime(next.utc, timezone);
   const scheduledForUser = {

@@ -3,8 +3,12 @@
  * Core platform execution lives in `../publish/execute-publish.ts`.
  */
 
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { posts } from "@/db/schema";
 import { publishLimiter, enforceRateLimit } from "@/lib/ratelimit";
 import { requireWorkspaceSession } from "@/lib/workspace/session";
+import { postScopeCondition } from "@/lib/workspace/context";
 import { isValidPostId } from "@/lib/publish-validation";
 import { maybeFinalizePostPublish } from "../publish/finalize-post.js";
 import {
@@ -18,7 +22,7 @@ export type { PublishOptions, PublishResult };
 
 /**
  * Returns the list of publications for a post (for progress UI).
- * Caller must be authenticated and own the post.
+ * Caller must be authenticated and own the post in the active workspace.
  */
 export async function getPostPublicationList(postId: string): Promise<
   {
@@ -33,6 +37,13 @@ export async function getPostPublicationList(postId: string): Promise<
 > {
   const ws = await requireWorkspaceSession("view_posts");
   if (!ws.ok) return [];
+  if (!isValidPostId(postId)) return [];
+  const [owned] = await db
+    .select({ id: posts.id })
+    .from(posts)
+    .where(and(eq(posts.id, postId), postScopeCondition(ws.ctx)))
+    .limit(1);
+  if (!owned) return [];
   return getPostPublicationListCore(postId, ws.ctx.resourceUserId);
 }
 
@@ -98,6 +109,19 @@ export async function publishPost(
     return {
       success: false,
       error: "Invalid post ID format",
+      results: [],
+    };
+  }
+
+  const [owned] = await db
+    .select({ id: posts.id })
+    .from(posts)
+    .where(and(eq(posts.id, postId), postScopeCondition(ws.ctx)))
+    .limit(1);
+  if (!owned) {
+    return {
+      success: false,
+      error: "Post not found",
       results: [],
     };
   }
