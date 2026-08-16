@@ -1,5 +1,5 @@
 /**
- * Wall of love — real X quotes + a few standout themes (no fake tweet links).
+ * Wall of love - real X quotes + a few standout themes (no fake tweet links).
  * Separate pools per landing mode so social proof matches the buying decision.
  * Add `avatarSrc` when you have a local pfp; synthetic entries skip unavatar.
  */
@@ -15,7 +15,7 @@ type Tweet = {
   quote: string;
   /** Substring of quote to mark (case-sensitive match against quote text). */
   highlight?: string;
-  /** Real X status URL — omit for quotes without a public post yet. */
+  /** Real X status URL - omit for quotes without a public post yet. */
   href?: string;
   /** Local/override avatar when unavatar fails or is wrong. */
   avatarSrc?: string;
@@ -34,7 +34,7 @@ const ruben: Tweet = {
   name: "Ruben Ortiz",
   handle: "rubenbuilds",
   quote:
-    "Went from posting maybe once a week to ~10-20 times a week with Social0. Consistency actually moved the needle — likes, followers, impressions all up.",
+    "Went from posting maybe once a week to ~10-20 times a week with Social0. Consistency actually moved the needle - likes, followers, impressions all up.",
   highlight: "Consistency actually moved the needle",
   avatarSrc: "/testimonials/ruben-ortiz.png",
 };
@@ -70,7 +70,7 @@ const adam: Tweet = {
   name: "Adam Jensen",
   handle: "adamjbuilds",
   quote:
-    "Didn't even wait for the trial to end — paid for a year. I'd been watching Social0 ship and the first session sold me.",
+    "Didn't even wait for the trial to end - paid for a year. I'd been watching Social0 ship and the first session sold me.",
   highlight: "Didn't even wait for the trial to end",
   avatarSrc: "/testimonials/adam-jensen.png",
 };
@@ -116,7 +116,7 @@ const bey: Tweet = {
   name: "Bey Okonkwo",
   handle: "beyokonkwo",
   quote:
-    "Using Social0 across all my products. Cross-platform posting is finally not a chore — clean and easy.",
+    "Using Social0 across all my products. Cross-platform posting is finally not a chore - clean and easy.",
   highlight: "Cross-platform posting is finally not a chore",
 };
 
@@ -140,7 +140,7 @@ const vadim: Tweet = {
   name: "Vadim Keller",
   handle: "vadimkeller",
   quote:
-    "Connected every account in minutes. Polished product — onboarding didn't fight me once.",
+    "Connected every account in minutes. Polished product - onboarding didn't fight me once.",
   highlight: "Connected every account in minutes",
   avatarSrc: "/testimonials/vadim-keller.png",
 };
@@ -149,7 +149,7 @@ const maya: Tweet = {
   name: "Maya Chen",
   handle: "mayachen",
   quote:
-    "Abhishek's support goes the extra mile. No issue is too small — that alone keeps me subscribed.",
+    "Abhishek's support goes the extra mile. No issue is too small - that alone keeps me subscribed.",
   highlight: "goes the extra mile",
   avatarSrc: "/testimonials/maya-chen.png",
 };
@@ -179,7 +179,7 @@ const vibhu: Tweet = {
   href: "https://x.com/VibhuRevadi/status/2082771892071788744",
 };
 
-/** Normal mode: scheduler pain, consistency, polish, price — no MCP/CLI focus. */
+/** Normal mode: scheduler pain, consistency, polish, price - no MCP/CLI focus. */
 const NORMAL_TWEETS: Tweet[] = [
   nick,
   ruben,
@@ -377,9 +377,9 @@ export function SocialProofSection({
     >
       <div className="mx-auto max-w-295">
         <h2 className="mx-auto mb-12 max-w-2xl text-center font-sans text-[clamp(28px,4.2vw,42px)] font-bold leading-[1.15] tracking-tight text-[#333C4D] dark:text-white sm:mb-14">
-          Social0 is loved by early users.{" "}
+          Social0 is already loved by early users.{" "}
           <span className="text-muted-foreground">
-            Here&apos;s what they are saying.
+            Here&apos;s what they&apos;re saying.
           </span>
         </h2>
 

@@ -697,7 +697,7 @@ export function Composer() {
           <textarea
             ref={textareaRef}
             className="min-h-21 max-h-80 w-full resize-none overflow-y-auto border-none bg-transparent px-2 py-1.5 text-[15px] leading-relaxed text-text outline-none placeholder:text-text-muted/80 sm:min-h-23 sm:text-base"
-            placeholder="Share what's on your mind..."
+            placeholder="Write your post, or paste content..."
             value={text}
             onChange={(e) => setText(e.target.value)}
             onDragOver={(e) => {

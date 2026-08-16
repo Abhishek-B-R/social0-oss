@@ -10,16 +10,50 @@ import {
   readTeamWorkspaceId,
   writeTeamWorkspaceId,
 } from "@/lib/dashboard-base-path";
-import {
-  TeamDetailPageSkeleton,
-  TeamsPageSkeleton,
-} from "@/components/ui/page-skeletons";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 import {
   hasTeamBootstrap,
   markTeamBootstrapped,
   unmarkTeamBootstrapped,
 } from "@/layouts/team-bootstrap";
+
+/** Same vibe as /auth/continue — spinner + short line, no fake page chrome. */
+function WorkspaceLoading({
+  label = "Loading workspace…",
+}: {
+  label?: string;
+}) {
+  return (
+    <div
+      className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-5"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <svg
+        className="h-8 w-8 animate-spin text-accent"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <circle
+          className="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          strokeWidth="4"
+        />
+        <path
+          className="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+        />
+      </svg>
+      <p className="text-sm text-muted-foreground">{label}</p>
+    </div>
+  );
+}
 
 /**
  * Gate for /dashboard/teams/:teamId/* — ensures membership and activates
@@ -153,7 +187,7 @@ export function TeamAppLayout() {
 
   // Only block the first entry into a team — never on in-team page changes.
   if (!ready && (isLoading || (!error && !isError))) {
-    return <TeamsPageSkeleton />;
+    return <WorkspaceLoading />;
   }
 
   if (isError || error) {
@@ -176,7 +210,7 @@ export function TeamAppLayout() {
   }
 
   return (
-    <Suspense fallback={<TeamDetailPageSkeleton />}>
+    <Suspense fallback={<WorkspaceLoading />}>
       <Outlet />
     </Suspense>
   );

@@ -102,8 +102,8 @@ export function FounderSection({ signedIn = false }: { signedIn?: boolean }) {
               <p>Thanks for being here; it means a lot!</p>
 
               <p>
-                If you want to try it yourself and save hours this week, start
-                free below — no credit card required.
+                If you want to try it yourself and save several hours this week,
+                start free below — no credit card required.
               </p>
             </div>
           </div>
