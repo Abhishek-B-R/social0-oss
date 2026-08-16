@@ -89,6 +89,9 @@ function DemoVideoSlot({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
+  /** Attach src only after first intersect so 8 agent clips don't all download. */
+  const [activated, setActivated] = useState(false);
+  const inViewRef = useRef(false);
   const pad =
     flush === "top"
       ? "px-3 pt-3 pb-1 sm:px-4 sm:pt-4 sm:pb-1.5"
@@ -98,7 +101,7 @@ function DemoVideoSlot({
       ? "aspect-video w-full object-cover object-bottom"
       : "aspect-video w-full object-cover object-top";
 
-  // ponytail: pause off-screen / hidden tab / reduced-motion so decode doesn't burn CPU
+  // ponytail: play only in-view; pause off-screen / hidden tab / reduced-motion
   useEffect(() => {
     const el = videoRef.current;
     if (!el || failed) return;
@@ -111,18 +114,21 @@ function DemoVideoSlot({
       return;
     }
 
-    let inView = false;
     const sync = () => {
-      if (inView && !document.hidden) void el.play().catch(() => {});
-      else el.pause();
+      if (inViewRef.current && !document.hidden) {
+        setActivated(true);
+        void el.play().catch(() => {});
+      } else {
+        el.pause();
+      }
     };
 
     const io = new IntersectionObserver(
       ([entry]) => {
-        inView = entry.isIntersecting;
+        inViewRef.current = entry.isIntersecting;
         sync();
       },
-      { threshold: 0.25 },
+      { threshold: 0.25, rootMargin: "80px 0px" },
     );
     io.observe(el);
     document.addEventListener("visibilitychange", sync);
@@ -132,6 +138,15 @@ function DemoVideoSlot({
       el.pause();
     };
   }, [failed, src]);
+
+  // After src attaches on first activate, start playback if still in view.
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !activated || failed) return;
+    if (inViewRef.current && !document.hidden) {
+      void el.play().catch(() => {});
+    }
+  }, [activated, failed, src]);
 
   const media = failed ? (
     poster ? (
@@ -152,12 +167,12 @@ function DemoVideoSlot({
     <video
       ref={videoRef}
       className={`${fit} bg-muted/40 dark:bg-[#0d0d0d]`}
-      src={src}
+      src={activated ? src : undefined}
       poster={poster}
       muted
       playsInline
       loop
-      preload="metadata"
+      preload="none"
       onError={() => setFailed(true)}
     />
   );

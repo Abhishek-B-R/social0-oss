@@ -1,8 +1,14 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { motion, useReducedMotion } from "framer-motion";
-import { CalendarDays, LayoutGrid, Zap } from "lucide-react";
+import {
+  CalendarDays,
+  FolderKanban,
+  LayoutGrid,
+  PenLine,
+  Zap,
+} from "lucide-react";
 import { FlowAnimation } from "./FlowAnimation";
 
 function hashHref(pathname: string, hash: string) {
@@ -28,21 +34,42 @@ function VisualShell({
   );
 }
 
-/** Muted loop — pauses when off-screen / tab hidden. */
+/** Empty frame until you drop light/dark demos in public/videos + posters. */
+function MomentVideoPlaceholder({ label }: { label: string }) {
+  return (
+    <div
+      className="flex aspect-video w-full items-center justify-center bg-zinc-100 dark:bg-[#0d0d0d]"
+      aria-hidden
+    >
+      <p className="px-4 text-center text-[13px] text-muted-foreground">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+/** Muted loop — pauses when off-screen / tab hidden. Falls back to poster/placeholder. */
 function MomentDemoVideoClip({
   src,
   poster,
+  placeholderLabel,
   className = "",
 }: {
   src: string;
   poster?: string;
+  placeholderLabel?: string;
   className?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [failed, setFailed] = useState(false);
+  const [posterFailed, setPosterFailed] = useState(false);
+  /** Attach src only after first intersect so moments don't all download at once. */
+  const [activated, setActivated] = useState(false);
+  const inViewRef = useRef(false);
 
   useEffect(() => {
     const el = videoRef.current;
-    if (!el) return;
+    if (!el || failed) return;
 
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
@@ -52,18 +79,21 @@ function MomentDemoVideoClip({
       return;
     }
 
-    let inView = false;
     const sync = () => {
-      if (inView && !document.hidden) void el.play().catch(() => {});
-      else el.pause();
+      if (inViewRef.current && !document.hidden) {
+        setActivated(true);
+        void el.play().catch(() => {});
+      } else {
+        el.pause();
+      }
     };
 
     const io = new IntersectionObserver(
       ([entry]) => {
-        inView = entry.isIntersecting;
+        inViewRef.current = entry.isIntersecting;
         sync();
       },
-      { threshold: 0.25 },
+      { threshold: 0.25, rootMargin: "80px 0px" },
     );
     io.observe(el);
     document.addEventListener("visibilitychange", sync);
@@ -72,7 +102,37 @@ function MomentDemoVideoClip({
       document.removeEventListener("visibilitychange", sync);
       el.pause();
     };
-  }, [src]);
+  }, [failed, src]);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !activated || failed) return;
+    if (inViewRef.current && !document.hidden) {
+      void el.play().catch(() => {});
+    }
+  }, [activated, failed, src]);
+
+  if (failed) {
+    if (poster && !posterFailed) {
+      return (
+        <img
+          src={poster}
+          alt=""
+          className={`w-full bg-zinc-100 object-cover object-bottom dark:bg-[#0d0d0d] ${
+            /\brounded/.test(className)
+              ? className
+              : `rounded-[16px] sm:rounded-[20px] ${className}`
+          }`}
+          loading="lazy"
+          decoding="async"
+          onError={() => setPosterFailed(true)}
+        />
+      );
+    }
+    return (
+      <MomentVideoPlaceholder label={placeholderLabel ?? "Demo coming soon"} />
+    );
+  }
 
   return (
     <video
@@ -82,12 +142,13 @@ function MomentDemoVideoClip({
           ? className
           : `rounded-[16px] sm:rounded-[20px] ${className}`
       }`}
-      src={src}
+      src={activated ? src : undefined}
       poster={poster}
       muted
       playsInline
       loop
-      preload="metadata"
+      preload="none"
+      onError={() => setFailed(true)}
     />
   );
 }
@@ -98,17 +159,24 @@ function MomentDemoVideo({
   darkSrc,
   poster,
   darkPoster,
+  placeholderLabel,
   className = "",
 }: {
   src: string;
   darkSrc?: string;
   poster?: string;
   darkPoster?: string;
+  placeholderLabel?: string;
   className?: string;
 }) {
   if (!darkSrc) {
     return (
-      <MomentDemoVideoClip src={src} poster={poster} className={className} />
+      <MomentDemoVideoClip
+        src={src}
+        poster={poster}
+        placeholderLabel={placeholderLabel}
+        className={className}
+      />
     );
   }
 
@@ -117,11 +185,13 @@ function MomentDemoVideo({
       <MomentDemoVideoClip
         src={src}
         poster={poster}
+        placeholderLabel={placeholderLabel}
         className={`dark:hidden ${className}`}
       />
       <MomentDemoVideoClip
         src={darkSrc}
         poster={darkPoster}
+        placeholderLabel={placeholderLabel}
         className={`hidden dark:block ${className}`}
       />
     </>
@@ -208,8 +278,8 @@ function MomentRow({
 }
 
 /**
- * Three product moments — same in normal & agent mode.
- * First visual reuses FlowAnimation (theme-aware publish diagram).
+ * Product moments — same in normal & agent mode.
+ * First visual reuses FlowAnimation; composer + workspaces await demo clips.
  */
 export function ProductMomentsSection({
   signedIn = false,
@@ -218,6 +288,10 @@ export function ProductMomentsSection({
 }) {
   const { pathname } = useLocation();
   const startHref = signedIn ? "/dashboard" : "/auth?mode=signin";
+  const composerHref = signedIn ? "/dashboard/composer" : "/auth?mode=signin";
+  const workspacesHref = signedIn
+    ? "/dashboard/workspaces"
+    : "/auth?mode=signin";
 
   return (
     <section
@@ -250,7 +324,7 @@ export function ProductMomentsSection({
               </span>
             </>
           }
-          body="Create once, and Social0 publishes it across your connected platforms in parallel. No copy-pasting. No switching between tabs."
+          body="Create once, select your accounts, and Social0 publishes to them in parallel. No copy-pasting. No tab switching."
           primary={{
             label: signedIn ? "Go to dashboard" : "Publish for free",
             href: startHref,
@@ -268,17 +342,53 @@ export function ProductMomentsSection({
 
         <MomentRow
           flip
+          eyebrow="Composer-first"
+          Icon={PenLine}
+          title={
+            <>
+              A single composer for{" "}
+              <span className="text-emerald-600 dark:text-emerald-400">
+                every post type.
+              </span>
+            </>
+          }
+          body="Text, image, video, thread or collection (images + videos) - write it once in the Composer, pick your accounts, and publish or schedule without jumping between forms."
+          primary={{
+            label: signedIn ? "Open Composer" : "Try Composer free",
+            href: composerHref,
+          }}
+          secondary={{
+            label: "Watch the demo",
+            href: hashHref(pathname, "#demo"),
+          }}
+          visual={
+            <div className="mx-auto w-full max-w-140 lg:ml-0 lg:mr-auto lg:max-w-none">
+              <VisualShell flush>
+                <MomentDemoVideo
+                  src="/videos/composer-light.mp4"
+                  darkSrc="/videos/composer-dark.mp4"
+                  poster="/demos/composer-light-preview.png"
+                  darkPoster="/demos/composer-dark-preview.png"
+                  placeholderLabel="Composer demo — drop videos here later"
+                  className="rounded-none"
+                />
+              </VisualShell>
+            </div>
+          }
+        />
+
+        <MomentRow
           eyebrow="Plan ahead"
           Icon={CalendarDays}
           title={
             <>
-              Queue it.{" "}
+              Schedule it.{" "}
               <span className="text-emerald-600 dark:text-emerald-400">
-                Ship on time.
+                Post on time.
               </span>
             </>
           }
-          body="Choose accounts, tune captions per platform, set the slot. Queue evergreen reposts and auto-plug winners — edit or move anything before it goes live."
+          body="Select accounts, customize captions per platform, and pick a time. Schedule your posts, reposts, and autoplugs — change anything before it publishes."
           primary={{
             label: signedIn ? "Open calendar" : "Try scheduling free",
             href: signedIn ? "/dashboard/calendar" : "/auth?mode=signin",
@@ -288,7 +398,7 @@ export function ProductMomentsSection({
             href: hashHref(pathname, "#demo"),
           }}
           visual={
-            <div className="mx-auto w-full max-w-140 lg:ml-0 lg:mr-auto lg:max-w-none">
+            <div className="mx-auto w-full max-w-140 lg:ml-auto lg:mr-0 lg:max-w-none">
               <VisualShell flush>
                 <MomentDemoVideo
                   src="/videos/schedule-effortlessly-light.mp4"
@@ -303,11 +413,12 @@ export function ProductMomentsSection({
         />
 
         <MomentRow
+          flip
           eyebrow="Stay in control"
           Icon={LayoutGrid}
           title={
             <>
-              Everything you shipped.{" "}
+              Everything you posted.{" "}
               <span className="text-emerald-600 dark:text-emerald-400">
                 One calendar.
               </span>
@@ -323,13 +434,49 @@ export function ProductMomentsSection({
             href: "/pricing",
           }}
           visual={
-            <div className="mx-auto w-full max-w-140 lg:ml-auto lg:mr-0 lg:max-w-none">
+            <div className="mx-auto w-full max-w-140 lg:ml-0 lg:mr-auto lg:max-w-none">
               <VisualShell flush>
                 <MomentDemoVideo
                   src="/videos/calendar-control-light.mp4"
                   darkSrc="/videos/calendar-control-dark.mp4"
                   poster="/demos/calendar-control-light-preview.png"
                   darkPoster="/demos/calendar-control-dark-preview.png"
+                  className="rounded-none"
+                />
+              </VisualShell>
+            </div>
+          }
+        />
+
+        <MomentRow
+          eyebrow="Multiple workspaces"
+          Icon={FolderKanban}
+          title={
+            <>
+              Separate workspaces for{" "}
+              <span className="text-emerald-600 dark:text-emerald-400">
+                every brand.
+              </span>
+            </>
+          }
+          body="Give each brand or niche its own workspace — accounts, posts, and schedules stay cleanly separated so you never mix client content with personal."
+          primary={{
+            label: signedIn ? "Open workspaces" : "Start free",
+            href: workspacesHref,
+          }}
+          secondary={{
+            label: "Compare plans",
+            href: "/pricing",
+          }}
+          visual={
+            <div className="mx-auto w-full max-w-140 lg:ml-auto lg:mr-0 lg:max-w-none">
+              <VisualShell flush>
+                <MomentDemoVideo
+                  src="/videos/workspaces-light.mp4"
+                  darkSrc="/videos/workspaces-dark.mp4"
+                  poster="/demos/workspaces-light-preview.png"
+                  darkPoster="/demos/workspaces-dark-preview.png"
+                  placeholderLabel="Workspaces demo — drop videos here later"
                   className="rounded-none"
                 />
               </VisualShell>

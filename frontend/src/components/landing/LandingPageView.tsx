@@ -1,60 +1,28 @@
-import { lazy } from "react";
 import { useLandingHashScroll } from "@/lib/scroll-to-hash";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Hero } from "@/components/landing/Hero";
 import { DemoVideoSection } from "@/components/landing/DemoVideoSection";
 import { LandingFooter } from "@/components/landing/LandingFooter";
-import { DeferredSection } from "@/components/landing/DeferredSection";
+import { AgentDemosSection } from "@/components/landing/AgentDemosSection";
+import { DevelopersSection } from "@/components/landing/DevelopersSection";
+import { SupportedPlatforms } from "@/components/landing/SupportedPlatforms";
+import { FounderSection } from "@/components/landing/FounderSection";
+import { SocialProofSection } from "@/components/landing/SocialProofSection";
+import { ProductMomentsSection } from "@/components/landing/ProductMomentsSection";
+import { PricingTeaser } from "@/components/landing/PricingTeaser";
+import { FAQ } from "@/components/landing/FAQ";
+import { FinalCTA } from "@/components/landing/FinalCTA";
 import {
   LandingModeProvider,
   useLandingMode,
 } from "@/components/landing/landing-mode";
 
-const AgentDemosSection = lazy(() =>
-  import("@/components/landing/AgentDemosSection").then((m) => ({
-    default: m.AgentDemosSection,
-  })),
-);
-const DevelopersSection = lazy(() =>
-  import("@/components/landing/DevelopersSection").then((m) => ({
-    default: m.DevelopersSection,
-  })),
-);
-const SupportedPlatforms = lazy(() =>
-  import("@/components/landing/SupportedPlatforms").then((m) => ({
-    default: m.SupportedPlatforms,
-  })),
-);
-const FounderSection = lazy(() =>
-  import("@/components/landing/FounderSection").then((m) => ({
-    default: m.FounderSection,
-  })),
-);
-const SocialProofSection = lazy(() =>
-  import("@/components/landing/SocialProofSection").then((m) => ({
-    default: m.SocialProofSection,
-  })),
-);
-const ProductMomentsSection = lazy(() =>
-  import("@/components/landing/ProductMomentsSection").then((m) => ({
-    default: m.ProductMomentsSection,
-  })),
-);
-const PricingTeaser = lazy(() =>
-  import("@/components/landing/PricingTeaser").then((m) => ({
-    default: m.PricingTeaser,
-  })),
-);
-const FAQ = lazy(() =>
-  import("@/components/landing/FAQ").then((m) => ({ default: m.FAQ })),
-);
-const FinalCTA = lazy(() =>
-  import("@/components/landing/FinalCTA").then((m) => ({ default: m.FinalCTA })),
-);
-
 /**
  * Hero → demo → (agent: AI agents demos) → product moments → developers
  * → stories → founder → platforms → pricing → FAQ → CTA
+ *
+ * Sections mount eagerly (no DeferredSection). Demo videos stay paused
+ * until scrolled into view, then pause again when scrolled past.
  */
 function LandingMain({ signedIn }: { signedIn: boolean }) {
   const { mode } = useLandingMode();
@@ -63,35 +31,15 @@ function LandingMain({ signedIn }: { signedIn: boolean }) {
     <main>
       <Hero signedIn={signedIn} />
       <DemoVideoSection />
-      {mode === "agent" ? (
-        <DeferredSection minHeight="40rem">
-          <AgentDemosSection />
-        </DeferredSection>
-      ) : null}
-      <DeferredSection minHeight="48rem">
-        <ProductMomentsSection signedIn={signedIn} />
-      </DeferredSection>
-      <DeferredSection>
-        <DevelopersSection />
-      </DeferredSection>
-      <DeferredSection>
-        <SocialProofSection signedIn={signedIn} />
-      </DeferredSection>
-      <DeferredSection>
-        <FounderSection signedIn={signedIn} />
-      </DeferredSection>
-      <DeferredSection>
-        <SupportedPlatforms />
-      </DeferredSection>
-      <DeferredSection>
-        <PricingTeaser signedIn={signedIn} />
-      </DeferredSection>
-      <DeferredSection>
-        <FAQ />
-      </DeferredSection>
-      <DeferredSection>
-        <FinalCTA signedIn={signedIn} />
-      </DeferredSection>
+      {mode === "agent" ? <AgentDemosSection /> : null}
+      <ProductMomentsSection signedIn={signedIn} />
+      <DevelopersSection />
+      <SocialProofSection signedIn={signedIn} />
+      <FounderSection signedIn={signedIn} />
+      <SupportedPlatforms />
+      <PricingTeaser signedIn={signedIn} />
+      <FAQ />
+      <FinalCTA signedIn={signedIn} />
     </main>
   );
 }

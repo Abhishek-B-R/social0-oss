@@ -211,9 +211,16 @@ function AuthPageContent() {
             <div className="rounded-[22px] border border-border/60 bg-background p-7 dark:border-white/5 dark:bg-[#111111] sm:p-9">
               <div className="mb-6 text-center">
                 <h2 className="mb-2 font-sans text-[clamp(24px,3.5vw,32px)] font-bold leading-tight tracking-tight text-foreground dark:text-white">
-                  {mode === "signin"
-                    ? "Sign in to Social0"
-                    : "Create an account"}
+                  {mode === "signin" ? (
+                    <>
+                      Sign in to{" "}
+                      <span className="font-logo font-normal tracking-tight">
+                        Social0
+                      </span>
+                    </>
+                  ) : (
+                    "Create an account"
+                  )}
                 </h2>
                 <p className="text-[15px] leading-relaxed text-muted-foreground">
                   {mode === "signin"
