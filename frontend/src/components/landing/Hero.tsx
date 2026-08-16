@@ -12,18 +12,22 @@ function developersHref(pathname: string) {
 
 const copy = {
   normal: {
-    titleBefore: "Post to all your social media accounts from",
-    titleEm: "one dashboard",
+    titleBefore: "Post to all your social media accounts from ",
+    titleMid: "",
+    titleEm: "one workspace",
     titleAfter: ".",
+    breakBeforeMid: false,
     clarifier:
       "simple on purpose, fair and transparent pricing, start free, no card needed, with\u00A0human\u00A0support",
   },
   agent: {
-    titleBefore: "Run your social media accounts on autopilot with",
+    titleBefore: "The social media management layer built for ",
+    titleMid: "",
     titleEm: "AI agents",
     titleAfter: ".",
+    breakBeforeMid: false,
     clarifier:
-      "Plan, generate, review, and schedule with your AI agents. Simple by design, fair pricing, and human support when you need it.",
+      "Plan, generate, review, and schedule with your AI agents. Simple by design, fair pricing, with human support whenever needed.",
   },
 } as const;
 
@@ -50,14 +54,16 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
         <AnimatePresence mode="wait">
           <motion.div
             key={mode}
-            className="w-full max-w-230"
+            className="w-full max-w-210"
             initial={reduceMotion ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
             transition={fade}
           >
-            <h1 className="mx-auto mb-5 text-balance font-sans text-[clamp(40px,6.5vw,64px)] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#333C4D] sm:mb-6 sm:leading-[1.05] dark:text-foreground">
-              {c.titleBefore}{" "}
+            <h1 className="mx-auto mb-5 font-sans text-[clamp(40px,6.5vw,64px)] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#333C4D] sm:mb-6 sm:leading-[1.05] dark:text-foreground">
+              {c.titleBefore}
+              {c.breakBeforeMid ? <br /> : null}
+              {c.titleMid}
               <em className="not-italic text-emerald-600 dark:text-emerald-400">
                 {c.titleEm}
               </em>

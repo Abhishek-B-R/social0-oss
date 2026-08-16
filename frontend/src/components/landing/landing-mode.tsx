@@ -112,7 +112,7 @@ export function LandingModeToggle({ className = "" }: { className?: string }) {
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        I need normal scheduling
+        I post myself
       </button>
 
       <button
@@ -121,8 +121,8 @@ export function LandingModeToggle({ className = "" }: { className?: string }) {
         aria-checked={isAgent}
         aria-label={
           isAgent
-            ? "Agentic scheduling on. Switch to normal scheduling."
-            : "Normal scheduling on. Switch to agentic scheduling."
+            ? "Agent posting on. Switch to posting yourself."
+            : "Posting yourself on. Switch to agent posting."
         }
         onClick={() => setMode(isAgent ? "normal" : "agent")}
         className="relative h-5 w-9 shrink-0 rounded-full bg-emerald-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -144,7 +144,7 @@ export function LandingModeToggle({ className = "" }: { className?: string }) {
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        I need agentic scheduling
+        My agents post for me
       </button>
     </div>
   );

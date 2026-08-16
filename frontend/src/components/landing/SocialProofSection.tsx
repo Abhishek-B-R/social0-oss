@@ -379,7 +379,7 @@ export function SocialProofSection({
         <h2 className="mx-auto mb-12 max-w-2xl text-center font-sans text-[clamp(28px,4.2vw,42px)] font-bold leading-[1.15] tracking-tight text-[#333C4D] dark:text-white sm:mb-14">
           Social0 is loved by early users.{" "}
           <span className="text-muted-foreground">
-            Here’s what they are saying.
+            Here&apos;s what they are saying.
           </span>
         </h2>
 

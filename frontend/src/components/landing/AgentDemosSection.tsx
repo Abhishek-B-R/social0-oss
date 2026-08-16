@@ -38,7 +38,7 @@ const capabilities: {
     media: "bottom",
   },
   {
-    title: "Via Claude Code",
+    title: "Via Claude Code / any CLI agents",
     description:
       "Give Claude a task and let it create, schedule, and manage your social posts directly.",
     icon: ClaudeIcon,
@@ -222,7 +222,7 @@ export function AgentDemosSection() {
             Agent mode
           </p>
           <h2 className="max-w-3xl font-sans text-[clamp(36px,5.5vw,56px)] font-bold leading-[1.1] tracking-tight text-[#333C4D] dark:text-white">
-            Power your content with AI agents
+            Power your content effortlessly with AI agents
           </h2>
           <p className="max-w-xl text-[15px] leading-relaxed text-muted-foreground sm:text-[17px]">
             ChatGPT, Claude, OpenClaw, REST API, and more — all connected to the

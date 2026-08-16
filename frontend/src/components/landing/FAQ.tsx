@@ -9,7 +9,7 @@ export function FAQ() {
 }
 
 function FAQList({ faqs }: { faqs: LandingFaq[] }) {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
     <section id="faq" className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
