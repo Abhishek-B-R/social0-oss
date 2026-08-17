@@ -2,11 +2,16 @@
 
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
+import { fetchAllowedMedia } from "../media-fetch.js";
+import { uploadTwitterImage, uploadTwitterVideo } from "../twitter-media.js";
+import { inboxAllowsMedia } from "./media-capabilities.js";
 
 export type ReplyInput = {
   platform: string;
   commentId: string;
   text: string;
+  mediaUrl?: string | null;
+  mediaMimeType?: string | null;
   accessToken: string;
   accessSecret?: string | null;
   platformUserId: string;
@@ -157,11 +162,47 @@ async function replyTwitter(input: ReplyInput): Promise<ReplyResult> {
       accessToken: input.accessToken,
       accessSecret: input.accessSecret,
     });
-    const created = await client.v2.reply(input.text, input.commentId);
+    const body: {
+      text?: string;
+      reply: { in_reply_to_tweet_id: string };
+      media?: { media_ids: string[] };
+    } = { reply: { in_reply_to_tweet_id: input.commentId } };
+    if (input.text.trim()) body.text = input.text.trim();
+    if (input.mediaUrl && input.mediaMimeType) {
+      const mediaId = input.mediaMimeType.startsWith("video/")
+        ? await uploadTwitterVideo(input.mediaUrl, input.accessToken, input.accessSecret)
+        : await uploadTwitterImage(input.mediaUrl, input.accessToken, input.accessSecret);
+      body.media = { media_ids: [mediaId] };
+    }
+    if (!body.text && !body.media) return fail("Reply cannot be empty.");
+    const created = await client.v2.tweet(body);
     return { ok: true, replyId: created.data.id };
   } catch (e) {
     return fail(e instanceof Error ? e.message : "X reply failed");
   }
+}
+
+async function uploadBlueskyReplyBlob(
+  jwt: string,
+  mediaUrl: string,
+): Promise<unknown> {
+  const res = await fetchAllowedMedia(mediaUrl);
+  if (!res.ok) throw new Error("Could not fetch image for Bluesky reply.");
+  const buffer = Buffer.from(await res.arrayBuffer());
+  const contentType = res.headers.get("content-type") || "image/jpeg";
+  const uploadRes = await fetch(
+    "https://bsky.social/xrpc/com.atproto.repo.uploadBlob",
+    {
+      method: "POST",
+      headers: { "Content-Type": contentType, Authorization: `Bearer ${jwt}` },
+      body: buffer,
+    },
+  );
+  const data = (await uploadRes.json().catch(() => ({}))) as { blob?: unknown };
+  if (!uploadRes.ok || !data.blob) {
+    throw new Error("Bluesky image upload failed.");
+  }
+  return data.blob;
 }
 
 async function replyBluesky(input: ReplyInput): Promise<ReplyResult> {
@@ -209,6 +250,23 @@ async function replyBluesky(input: ReplyInput): Promise<ReplyResult> {
     return fail("Could not load the Bluesky post root.");
   }
 
+  const record: Record<string, unknown> = {
+    $type: "app.bsky.feed.post",
+    text: input.text,
+    createdAt: new Date().toISOString(),
+    reply: {
+      root: { uri: root.uri, cid: root.cid },
+      parent: { uri: parent.uri, cid: parent.cid },
+    },
+  };
+  if (input.mediaUrl && input.mediaMimeType?.startsWith("image/")) {
+    const blob = await uploadBlueskyReplyBlob(session.accessJwt, input.mediaUrl);
+    record.embed = {
+      $type: "app.bsky.embed.images",
+      images: [{ alt: "", image: blob }],
+    };
+  }
+
   const createRes = await fetch(
     "https://bsky.social/xrpc/com.atproto.repo.createRecord",
     {
@@ -220,15 +278,7 @@ async function replyBluesky(input: ReplyInput): Promise<ReplyResult> {
       body: JSON.stringify({
         repo: session.did,
         collection: "app.bsky.feed.post",
-        record: {
-          $type: "app.bsky.feed.post",
-          text: input.text,
-          createdAt: new Date().toISOString(),
-          reply: {
-            root: { uri: root.uri, cid: root.cid },
-            parent: { uri: parent.uri, cid: parent.cid },
-          },
-        },
+        record,
       }),
     },
   );
@@ -256,7 +306,15 @@ export function replyMaxLength(platform: string): number {
 
 export async function replyOnPlatform(input: ReplyInput): Promise<ReplyResult> {
   const text = input.text.trim();
-  if (!text) return fail("Reply cannot be empty.");
+  const hasMedia = Boolean(input.mediaUrl && input.mediaMimeType);
+  if (!text && !hasMedia) return fail("Reply cannot be empty.");
+  if (
+    hasMedia &&
+    input.mediaMimeType &&
+    !inboxAllowsMedia(input.platform, "comment", input.mediaMimeType)
+  ) {
+    return fail(`${input.platform} does not support this attachment type in comments.`);
+  }
   const max = replyMaxLength(input.platform);
   if (text.length > max) return fail(`Reply is too long (max ${max} characters).`);
 

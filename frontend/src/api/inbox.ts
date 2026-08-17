@@ -3,6 +3,12 @@ import type { DateWindowRange } from "@/lib/date-window";
 
 export type InboxRange = DateWindowRange;
 
+export type InboxAttachment = {
+  type: "image" | "video";
+  url: string;
+  thumbnailUrl?: string | null;
+};
+
 export type InboxComment = {
   id: string;
   platform: string;
@@ -15,7 +21,9 @@ export type InboxComment = {
   postSnippet: string;
   authorName: string;
   authorHandle: string | null;
+  authorAvatarUrl?: string | null;
   text: string;
+  attachment?: InboxAttachment | null;
   createdAt: string | null;
   likeCount?: number;
   parentId: string | null;
@@ -52,12 +60,15 @@ export type InboxDmThread = {
   platform: string;
   accountId: string;
   accountLabel: string | null;
+  accountProfileImageUrl?: string | null;
   peerId: string;
   peerName: string;
   peerHandle: string | null;
+  peerAvatarUrl?: string | null;
   lastMessageAt: string | null;
   snippet: string;
   canReply: boolean;
+  mediaKinds?: ("image" | "video")[];
 };
 
 export type InboxDmMessage = {
@@ -67,6 +78,20 @@ export type InboxDmMessage = {
   isOwn: boolean;
   authorName: string;
   authorHandle: string | null;
+  authorAvatarUrl?: string | null;
+  attachment?: InboxAttachment | null;
+};
+
+/** Client-only fields for optimistic / failed sends. */
+export type LocalInboxDmMessage = InboxDmMessage & {
+  sendStatus?: "sending" | "failed";
+  localPreviewUrl?: string | null;
+  retryPayload?: {
+    text: string;
+    mediaId?: string;
+    file?: File;
+    previewUrl?: string | null;
+  };
 };
 
 export type InboxDmListResult = {
@@ -102,6 +127,7 @@ export function replyToInboxComment(input: {
   publicationId: string;
   commentId: string;
   text: string;
+  mediaId?: string;
 }): Promise<{ ok: true; replyId?: string } | { ok: false; error: string }> {
   return rpc("inbox.replyToComment", input);
 }
@@ -128,6 +154,7 @@ export function replyToInboxDm(input: {
   conversationId: string;
   peerId: string;
   text: string;
+  mediaId?: string;
 }): Promise<{ ok: true; messageId?: string } | { ok: false; error: string }> {
   return rpc("inbox.replyToDm", input);
 }

@@ -38,6 +38,8 @@ export { Moon } from "@phosphor-icons/react/dist/csr/Moon";
 export { NoteBlank } from "@phosphor-icons/react/dist/csr/NoteBlank";
 export { Palette } from "@phosphor-icons/react/dist/csr/Palette";
 export { PaperPlaneTilt } from "@phosphor-icons/react/dist/csr/PaperPlaneTilt";
+export { Paperclip } from "@phosphor-icons/react/dist/csr/Paperclip";
+export { WarningCircle } from "@phosphor-icons/react/dist/csr/WarningCircle";
 export { Pencil } from "@phosphor-icons/react/dist/csr/Pencil";
 export { PencilSimple } from "@phosphor-icons/react/dist/csr/PencilSimple";
 export { PlugsConnected } from "@phosphor-icons/react/dist/csr/PlugsConnected";

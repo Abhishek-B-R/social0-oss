@@ -2,6 +2,12 @@
 
 import type { DateWindowRange } from "../date-window.js";
 
+export type InboxAttachment = {
+  type: "image" | "video";
+  url: string;
+  thumbnailUrl?: string | null;
+};
+
 export type InboxComment = {
   id: string;
   platform: string;
@@ -14,7 +20,9 @@ export type InboxComment = {
   postSnippet: string;
   authorName: string;
   authorHandle: string | null;
+  authorAvatarUrl?: string | null;
   text: string;
+  attachment?: InboxAttachment | null;
   createdAt: string | null;
   likeCount?: number;
   parentId: string | null;
@@ -61,12 +69,15 @@ export type InboxDmThread = {
   platform: string;
   accountId: string;
   accountLabel: string | null;
+  accountProfileImageUrl?: string | null;
   peerId: string;
   peerName: string;
   peerHandle: string | null;
+  peerAvatarUrl?: string | null;
   lastMessageAt: string | null;
   snippet: string;
   canReply: boolean;
+  mediaKinds?: ("image" | "video")[];
 };
 
 export type InboxDmMessage = {
@@ -76,19 +87,37 @@ export type InboxDmMessage = {
   isOwn: boolean;
   authorName: string;
   authorHandle: string | null;
+  authorAvatarUrl?: string | null;
+  attachment?: InboxAttachment | null;
 };
 
 export function peerFromParticipants(
-  participants: Array<{ id?: string; name?: string; username?: string }>,
+  participants: Array<{
+    id?: string;
+    name?: string;
+    username?: string;
+    picture?: unknown;
+  }>,
   selfId: string,
-): { id: string; name: string; handle: string | null } {
+): { id: string; name: string; handle: string | null; avatarUrl: string | null } {
   const others = participants.filter((p) => p.id && p.id !== selfId);
   const peer = others[0] ?? participants.find((p) => p.id) ?? {};
   return {
     id: peer.id ?? "",
     name: peer.name ?? peer.username ?? "Unknown",
     handle: peer.username ?? null,
+    avatarUrl: graphPictureUrl(peer.picture),
   };
+}
+
+export function graphPictureUrl(picture: unknown): string | null {
+  if (typeof picture === "string" && picture.startsWith("http")) return picture;
+  if (picture && typeof picture === "object") {
+    const url = (picture as { data?: { url?: string }; url?: string }).data?.url
+      ?? (picture as { url?: string }).url;
+    if (typeof url === "string" && url.startsWith("http")) return url;
+  }
+  return null;
 }
 
 export type InboxDmListResult = {

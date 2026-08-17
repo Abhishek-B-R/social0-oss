@@ -2,12 +2,16 @@
 
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
+import { uploadTwitterImage, uploadTwitterVideo } from "../lib/twitter-media.js";
+import { inboxAllowsMedia } from "./media-capabilities.js";
 
 export type DmReplyInput = {
   platform: string;
   conversationId: string;
   peerId: string;
   text: string;
+  mediaUrl?: string | null;
+  mediaMimeType?: string | null;
   accessToken: string;
   accessSecret?: string | null;
   platformUserId: string;
@@ -41,13 +45,27 @@ function graphError(data: unknown, fallback: string): string {
   );
 }
 
+function graphAttachment(
+  mediaUrl: string,
+  mediaMimeType: string,
+): { type: string; payload: { url: string; is_reusable?: boolean } } {
+  const type = mediaMimeType.startsWith("video/") ? "video" : "image";
+  return { type, payload: { url: mediaUrl, is_reusable: true } };
+}
+
 async function replyFacebook(input: DmReplyInput): Promise<DmReplyResult> {
   if (!input.peerId) return fail("Missing recipient for this Facebook conversation.");
   const url = `https://graph.facebook.com/v21.0/${encodeURIComponent(input.platformUserId)}/messages?access_token=${encodeURIComponent(input.accessToken)}`;
+  const message: Record<string, unknown> = {};
+  if (input.text.trim()) message.text = input.text.trim();
+  if (input.mediaUrl && input.mediaMimeType) {
+    message.attachment = graphAttachment(input.mediaUrl, input.mediaMimeType);
+  }
+  if (!message.text && !message.attachment) return fail("Message is empty.");
   const { ok, data } = await jsonPost(url, {
     recipient: { id: input.peerId },
     messaging_type: "RESPONSE",
-    message: { text: input.text },
+    message,
   });
   if (!ok) return fail(graphError(data, "Facebook DM failed"));
   const id = (data as { message_id?: string })?.message_id;
@@ -57,9 +75,15 @@ async function replyFacebook(input: DmReplyInput): Promise<DmReplyResult> {
 async function replyInstagram(input: DmReplyInput): Promise<DmReplyResult> {
   if (!input.peerId) return fail("Missing recipient for this Instagram conversation.");
   const url = `https://graph.instagram.com/v21.0/${encodeURIComponent(input.platformUserId)}/messages?access_token=${encodeURIComponent(input.accessToken)}`;
+  const message: Record<string, unknown> = {};
+  if (input.text.trim()) message.text = input.text.trim();
+  if (input.mediaUrl && input.mediaMimeType) {
+    message.attachment = graphAttachment(input.mediaUrl, input.mediaMimeType);
+  }
+  if (!message.text && !message.attachment) return fail("Message is empty.");
   const { ok, data } = await jsonPost(url, {
     recipient: { id: input.peerId },
-    message: { text: input.text },
+    message,
   });
   if (!ok) return fail(graphError(data, "Instagram DM failed"));
   const id = (data as { message_id?: string })?.message_id;
@@ -80,9 +104,18 @@ async function replyTwitter(input: DmReplyInput): Promise<DmReplyResult> {
       accessToken: input.accessToken,
       accessSecret: input.accessSecret,
     });
+    const body: { text?: string; attachments?: Array<{ media_id: string }> } = {};
+    if (input.text.trim()) body.text = input.text.trim();
+    if (input.mediaUrl && input.mediaMimeType && input.accessSecret) {
+      const mediaId = input.mediaMimeType.startsWith("video/")
+        ? await uploadTwitterVideo(input.mediaUrl, input.accessToken, input.accessSecret)
+        : await uploadTwitterImage(input.mediaUrl, input.accessToken, input.accessSecret);
+      body.attachments = [{ media_id: mediaId }];
+    }
+    if (!body.text && !body.attachments?.length) return fail("Message is empty.");
     const raw = await client.v2.post(
       `dm_conversations/with/${encodeURIComponent(input.peerId)}/messages`,
-      { text: input.text },
+      body,
     );
     const id = (raw as { data?: { dm_event_id?: string } })?.data?.dm_event_id;
     return { ok: true, messageId: id };
@@ -96,6 +129,9 @@ async function replyBluesky(input: DmReplyInput): Promise<DmReplyResult> {
   const appPassword = input.accessSecret;
   if (!handle || !appPassword) {
     return fail("Bluesky credentials incomplete. Reconnect the account.");
+  }
+  if (input.mediaUrl) {
+    return fail("Bluesky DMs do not support attachments yet.");
   }
   const sessionRes = await fetch(
     "https://bsky.social/xrpc/com.atproto.server.createSession",
@@ -135,7 +171,16 @@ export async function replyToDmOnPlatform(
   input: DmReplyInput,
 ): Promise<DmReplyResult> {
   const text = input.text.trim();
-  if (!text) return fail("Message is empty.");
+  const hasMedia = Boolean(input.mediaUrl && input.mediaMimeType);
+  if (!text && !hasMedia) return fail("Message is empty.");
+  if (
+    hasMedia &&
+    input.mediaMimeType &&
+    !inboxAllowsMedia(input.platform, "dm", input.mediaMimeType)
+  ) {
+    return fail(`${input.platform} does not support this attachment type in DMs.`);
+  }
+
   switch (input.platform) {
     case "facebook":
       return replyFacebook(input);

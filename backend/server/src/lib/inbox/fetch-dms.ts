@@ -7,16 +7,20 @@ import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
 import { inDateWindow } from "../date-window.js";
 import {
+  graphPictureUrl,
   peerFromParticipants,
+  type InboxAttachment,
   type InboxDmMessage,
   type InboxDmThread,
 } from "./types.js";
+import { inboxDmMediaKinds } from "./media-capabilities.js";
 
 export type DmAccount = {
   id: string;
   platform: string;
   platformUserId: string;
   platformUsername: string | null;
+  profileImageUrl?: string | null;
   accessToken: string;
   accessSecret?: string | null;
 };
@@ -36,7 +40,60 @@ export type DmThreadFetchResult = {
   missingScopes?: string[];
 };
 
-type GraphPerson = { id?: string; name?: string; username?: string };
+type GraphPerson = {
+  id?: string;
+  name?: string;
+  username?: string;
+  picture?: unknown;
+};
+
+function threadMeta(
+  account: DmAccount,
+  partial: Omit<
+    InboxDmThread,
+    "platform" | "accountId" | "accountLabel" | "accountProfileImageUrl" | "mediaKinds"
+  >,
+): InboxDmThread {
+  return {
+    platform: account.platform,
+    accountId: account.id,
+    accountLabel: account.platformUsername,
+    accountProfileImageUrl: account.profileImageUrl ?? null,
+    mediaKinds: inboxDmMediaKinds(account.platform),
+    ...partial,
+  };
+}
+
+function parseGraphAttachments(raw: unknown): InboxAttachment | null {
+  const rows = Array.isArray(raw)
+    ? raw
+    : (raw as { data?: unknown[] } | undefined)?.data;
+  if (!Array.isArray(rows) || !rows.length) return null;
+  const first = rows[0] as Record<string, unknown>;
+  const imageData = first.image_data as { url?: string } | undefined;
+  const videoData = first.video_data as { url?: string; preview_url?: string } | undefined;
+  const payload = first.payload as { url?: string } | undefined;
+  const mime = typeof first.mime_type === "string" ? first.mime_type : "";
+  if (imageData?.url) {
+    return { type: "image", url: imageData.url };
+  }
+  if (videoData?.url) {
+    return {
+      type: "video",
+      url: videoData.url,
+      thumbnailUrl: videoData.preview_url ?? null,
+    };
+  }
+  if (payload?.url) {
+    const type = mime.startsWith("video/") || first.type === "video" ? "video" : "image";
+    return { type, url: payload.url };
+  }
+  return null;
+}
+
+function personAvatar(person: GraphPerson | undefined): string | null {
+  return graphPictureUrl(person?.picture);
+}
 
 async function jsonGet(
   url: string,
@@ -131,7 +188,7 @@ async function fetchFacebookList(
 ): Promise<DmListFetchResult> {
   const id = encodeURIComponent(account.platformUserId);
   const fields =
-    "id,updated_time,snippet,participants{id,name,username},messages.limit(1){message,created_time,from}";
+    "id,updated_time,snippet,participants{id,name,username,picture},messages.limit(1){message,created_time,from,attachments{type,mime_type,image_data,video_data,payload}}";
   const url = `https://graph.facebook.com/v21.0/${id}/conversations?fields=${encodeURIComponent(fields)}&limit=25&access_token=${encodeURIComponent(account.accessToken)}`;
   const { ok, data } = await jsonGet(url);
   if (!ok) {
@@ -156,20 +213,20 @@ async function fetchFacebookList(
     const last =
       (row.messages as { data?: Array<{ message?: string }> } | undefined)
         ?.data?.[0];
-    threads.push({
-      conversationId: String(row.id ?? ""),
-      platform: "facebook",
-      accountId: account.id,
-      accountLabel: account.platformUsername,
-      peerId: peer.id,
-      peerName: peer.name,
-      peerHandle: peer.handle,
-      lastMessageAt: updated,
-      snippet: snippetOf(
-        typeof row.snippet === "string" ? row.snippet : last?.message,
-      ),
-      canReply: Boolean(peer.id),
-    });
+    threads.push(
+      threadMeta(account, {
+        conversationId: String(row.id ?? ""),
+        peerId: peer.id,
+        peerName: peer.name,
+        peerHandle: peer.handle,
+        peerAvatarUrl: peer.avatarUrl,
+        lastMessageAt: updated,
+        snippet: snippetOf(
+          typeof row.snippet === "string" ? row.snippet : last?.message,
+        ),
+        canReply: Boolean(peer.id),
+      }),
+    );
   }
   return { threads, status: "ok" };
 }
@@ -181,7 +238,7 @@ async function fetchInstagramList(
 ): Promise<DmListFetchResult> {
   const id = encodeURIComponent(account.platformUserId);
   const fields =
-    "id,updated_time,participants{id,username,name},messages.limit(1){message,created_time,from}";
+    "id,updated_time,participants{id,username,name,picture},messages.limit(1){message,created_time,from,attachments{type,mime_type,image_data,video_data,payload}}";
   const url = `https://graph.instagram.com/v21.0/${id}/conversations?platform=instagram&fields=${encodeURIComponent(fields)}&limit=25&access_token=${encodeURIComponent(account.accessToken)}`;
   const { ok, data } = await jsonGet(url);
   if (!ok) {
@@ -208,18 +265,18 @@ async function fetchInstagramList(
     const last =
       (row.messages as { data?: Array<{ message?: string }> } | undefined)
         ?.data?.[0];
-    threads.push({
-      conversationId: String(row.id ?? ""),
-      platform: "instagram",
-      accountId: account.id,
-      accountLabel: account.platformUsername,
-      peerId: peer.id,
-      peerName: peer.name,
-      peerHandle: peer.handle,
-      lastMessageAt: updated,
-      snippet: snippetOf(last?.message),
-      canReply: Boolean(peer.id),
-    });
+    threads.push(
+      threadMeta(account, {
+        conversationId: String(row.id ?? ""),
+        peerId: peer.id,
+        peerName: peer.name,
+        peerHandle: peer.handle,
+        peerAvatarUrl: peer.avatarUrl,
+        lastMessageAt: updated,
+        snippet: snippetOf(last?.message),
+        canReply: Boolean(peer.id),
+      }),
+    );
   }
   return { threads, status: "ok" };
 }
@@ -227,11 +284,13 @@ async function fetchInstagramList(
 function graphMessagesToInbox(
   rows: Array<Record<string, unknown>>,
   account: DmAccount,
+  avatarById: Map<string, string | null>,
 ): InboxDmMessage[] {
   const out: InboxDmMessage[] = [];
   for (const row of rows) {
     const from = row.from as GraphPerson | undefined;
     const isOwn = Boolean(from?.id && from.id === account.platformUserId);
+    const attachment = parseGraphAttachments(row.attachments);
     out.push({
       id: String(row.id ?? ""),
       text: String(row.message ?? ""),
@@ -242,17 +301,29 @@ function graphMessagesToInbox(
         ? "You"
         : (from?.name ?? from?.username ?? "Unknown"),
       authorHandle: from?.username ?? from?.id ?? null,
+      authorAvatarUrl: isOwn
+        ? account.profileImageUrl ?? null
+        : (from?.id ? avatarById.get(from.id) : null) ?? personAvatar(from),
+      attachment,
     });
   }
   out.sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""));
   return out;
 }
 
+function participantAvatars(participants: GraphPerson[]): Map<string, string | null> {
+  const map = new Map<string, string | null>();
+  for (const p of participants) {
+    if (p.id) map.set(p.id, personAvatar(p));
+  }
+  return map;
+}
+
 async function fetchFacebookThread(
   account: DmAccount,
   conversationId: string,
 ): Promise<DmThreadFetchResult> {
-  const url = `https://graph.facebook.com/v21.0/${encodeURIComponent(conversationId)}?fields=id,updated_time,participants{id,name,username},messages.limit(50){id,created_time,from,message}&access_token=${encodeURIComponent(account.accessToken)}`;
+  const url = `https://graph.facebook.com/v21.0/${encodeURIComponent(conversationId)}?fields=id,updated_time,participants{id,name,username,picture},messages.limit(50){id,created_time,from,message,attachments{type,mime_type,image_data,video_data,payload}}&access_token=${encodeURIComponent(account.accessToken)}`;
   const { ok, data } = await jsonGet(url);
   if (!ok) {
     const msg =
@@ -264,30 +335,27 @@ async function fetchFacebookThread(
     );
   }
   const row = data as Record<string, unknown>;
-  const peer = peerFromParticipants(
-    graphPeople(row.participants),
-    account.platformUserId,
-  );
+  const participants = graphPeople(row.participants);
+  const peer = peerFromParticipants(participants, account.platformUserId);
+  const avatars = participantAvatars(participants);
   const msgs =
     (row.messages as { data?: Array<Record<string, unknown>> } | undefined)
       ?.data ?? [];
-  const messages = graphMessagesToInbox(msgs, account);
+  const messages = graphMessagesToInbox(msgs, account, avatars);
   const last = messages[messages.length - 1];
   return {
     messages,
     status: "ok",
-    thread: {
+    thread: threadMeta(account, {
       conversationId,
-      platform: "facebook",
-      accountId: account.id,
-      accountLabel: account.platformUsername,
       peerId: peer.id,
       peerName: peer.name,
       peerHandle: peer.handle,
+      peerAvatarUrl: peer.avatarUrl,
       lastMessageAt: last?.createdAt ?? (typeof row.updated_time === "string" ? row.updated_time : null),
-      snippet: snippetOf(last?.text),
+      snippet: snippetOf(last?.text || (last?.attachment ? `[${last.attachment.type}]` : "")),
       canReply: Boolean(peer.id),
-    },
+    }),
   };
 }
 
@@ -295,7 +363,7 @@ async function fetchInstagramThread(
   account: DmAccount,
   conversationId: string,
 ): Promise<DmThreadFetchResult> {
-  const url = `https://graph.instagram.com/v21.0/${encodeURIComponent(conversationId)}?fields=id,updated_time,participants{id,username,name},messages.limit(50){id,created_time,from,message}&access_token=${encodeURIComponent(account.accessToken)}`;
+  const url = `https://graph.instagram.com/v21.0/${encodeURIComponent(conversationId)}?fields=id,updated_time,participants{id,username,name,picture},messages.limit(50){id,created_time,from,message,attachments{type,mime_type,image_data,video_data,payload}}&access_token=${encodeURIComponent(account.accessToken)}`;
   const { ok, data } = await jsonGet(url);
   if (!ok) {
     const msg =
@@ -309,30 +377,27 @@ async function fetchInstagramThread(
     );
   }
   const row = data as Record<string, unknown>;
-  const peer = peerFromParticipants(
-    graphPeople(row.participants),
-    account.platformUserId,
-  );
+  const participants = graphPeople(row.participants);
+  const peer = peerFromParticipants(participants, account.platformUserId);
+  const avatars = participantAvatars(participants);
   const msgs =
     (row.messages as { data?: Array<Record<string, unknown>> } | undefined)
       ?.data ?? [];
-  const messages = graphMessagesToInbox(msgs, account);
+  const messages = graphMessagesToInbox(msgs, account, avatars);
   const last = messages[messages.length - 1];
   return {
     messages,
     status: "ok",
-    thread: {
+    thread: threadMeta(account, {
       conversationId,
-      platform: "instagram",
-      accountId: account.id,
-      accountLabel: account.platformUsername,
       peerId: peer.id,
       peerName: peer.name,
       peerHandle: peer.handle,
+      peerAvatarUrl: peer.avatarUrl,
       lastMessageAt: last?.createdAt ?? (typeof row.updated_time === "string" ? row.updated_time : null),
-      snippet: snippetOf(last?.text),
+      snippet: snippetOf(last?.text || (last?.attachment ? `[${last.attachment.type}]` : "")),
       canReply: Boolean(peer.id),
-    },
+    }),
   };
 }
 
@@ -344,9 +409,44 @@ type XDmEvent = {
   created_at?: string;
   sender_id?: string;
   participant_ids?: string[];
+  attachments?: Array<{ media_keys?: string[] }>;
 };
 
-type XUser = { id: string; name?: string; username?: string };
+type XUser = {
+  id: string;
+  name?: string;
+  username?: string;
+  profile_image_url?: string;
+};
+
+type XMedia = {
+  media_key?: string;
+  type?: string;
+  url?: string;
+  preview_image_url?: string;
+};
+
+function xMediaAttachment(
+  ev: XDmEvent,
+  mediaByKey: Map<string, XMedia>,
+): InboxAttachment | null {
+  const key = ev.attachments?.[0]?.media_keys?.[0];
+  if (!key) return null;
+  const media = mediaByKey.get(key);
+  if (!media?.url && !media?.preview_image_url) return null;
+  if (media.type === "video" || media.type === "animated_gif") {
+    return {
+      type: "video",
+      url: media.url ?? media.preview_image_url ?? "",
+      thumbnailUrl: media.preview_image_url ?? null,
+    };
+  }
+  return {
+    type: "image",
+    url: media.url ?? media.preview_image_url ?? "",
+    thumbnailUrl: media.preview_image_url ?? null,
+  };
+}
 
 function twitterClient(account: DmAccount): TwitterApi | null {
   const appKey = env.TWITTER_CONSUMER_KEY;
@@ -379,9 +479,10 @@ async function fetchTwitterList(
       max_results: 100,
       event_types: "MessageCreate",
       "dm_event.fields":
-        "id,text,event_type,dm_conversation_id,created_at,sender_id,participant_ids",
-      expansions: "sender_id,participant_ids",
-      "user.fields": "name,username",
+        "id,text,event_type,dm_conversation_id,created_at,sender_id,participant_ids,attachments",
+      expansions: "sender_id,participant_ids,attachments.media_keys",
+      "user.fields": "name,username,profile_image_url",
+      "media.fields": "url,preview_image_url,type",
     });
     const events = ((raw as { data?: XDmEvent[] }).data ?? []).filter(
       (e) => e.event_type === "MessageCreate" || !e.event_type,
@@ -389,6 +490,10 @@ async function fetchTwitterList(
     const users = new Map<string, XUser>();
     for (const u of (raw as { includes?: { users?: XUser[] } }).includes?.users ?? []) {
       users.set(u.id, u);
+    }
+    const mediaByKey = new Map<string, XMedia>();
+    for (const m of (raw as { includes?: { media?: XMedia[] } }).includes?.media ?? []) {
+      if (m.media_key) mediaByKey.set(m.media_key, m);
     }
     const byConvo = new Map<string, XDmEvent[]>();
     for (const ev of events) {
@@ -411,18 +516,19 @@ async function fetchTwitterList(
       participantIds.delete(account.platformUserId);
       const peerId = [...participantIds][0] ?? "";
       const peer = peerId ? users.get(peerId) : undefined;
-      threads.push({
-        conversationId,
-        platform: "twitter_x",
-        accountId: account.id,
-        accountLabel: account.platformUsername,
-        peerId,
-        peerName: peer?.name ?? peer?.username ?? "X user",
-        peerHandle: peer?.username ?? null,
-        lastMessageAt: last?.created_at ?? null,
-        snippet: snippetOf(last?.text),
-        canReply: Boolean(peerId),
-      });
+      const attachment = last ? xMediaAttachment(last, mediaByKey) : null;
+      threads.push(
+        threadMeta(account, {
+          conversationId,
+          peerId,
+          peerName: peer?.name ?? peer?.username ?? "X user",
+          peerHandle: peer?.username ?? null,
+          peerAvatarUrl: peer?.profile_image_url ?? null,
+          lastMessageAt: last?.created_at ?? null,
+          snippet: snippetOf(last?.text || (attachment ? `[${attachment.type}]` : "")),
+          canReply: Boolean(peerId),
+        }),
+      );
     }
     threads.sort((a, b) =>
       (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""),
@@ -453,9 +559,10 @@ async function fetchTwitterThread(
         max_results: 50,
         event_types: "MessageCreate",
         "dm_event.fields":
-          "id,text,event_type,dm_conversation_id,created_at,sender_id",
-        expansions: "sender_id",
-        "user.fields": "name,username",
+          "id,text,event_type,dm_conversation_id,created_at,sender_id,attachments",
+        expansions: "sender_id,attachments.media_keys",
+        "user.fields": "name,username,profile_image_url",
+        "media.fields": "url,preview_image_url,type",
       },
     );
     const events = ((raw as { data?: XDmEvent[] }).data ?? []).filter(
@@ -465,10 +572,15 @@ async function fetchTwitterThread(
     for (const u of (raw as { includes?: { users?: XUser[] } }).includes?.users ?? []) {
       users.set(u.id, u);
     }
+    const mediaByKey = new Map<string, XMedia>();
+    for (const m of (raw as { includes?: { media?: XMedia[] } }).includes?.media ?? []) {
+      if (m.media_key) mediaByKey.set(m.media_key, m);
+    }
     events.sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? ""));
     const messages: InboxDmMessage[] = events.map((ev) => {
       const isOwn = ev.sender_id === account.platformUserId;
       const user = ev.sender_id ? users.get(ev.sender_id) : undefined;
+      const attachment = xMediaAttachment(ev, mediaByKey);
       return {
         id: String(ev.id ?? ""),
         text: ev.text ?? "",
@@ -476,6 +588,10 @@ async function fetchTwitterThread(
         isOwn,
         authorName: isOwn ? "You" : (user?.name ?? user?.username ?? "X user"),
         authorHandle: user?.username ?? null,
+        authorAvatarUrl: isOwn
+          ? account.profileImageUrl ?? null
+          : user?.profile_image_url ?? null,
+        attachment,
       };
     });
     const last = messages[messages.length - 1];
@@ -483,18 +599,16 @@ async function fetchTwitterThread(
     return {
       messages,
       status: "ok",
-      thread: {
+      thread: threadMeta(account, {
         conversationId,
-        platform: "twitter_x",
-        accountId: account.id,
-        accountLabel: account.platformUsername,
         peerId,
         peerName: peer?.name ?? peer?.username ?? "X user",
         peerHandle: peer?.username ?? null,
+        peerAvatarUrl: peer?.profile_image_url ?? null,
         lastMessageAt: last?.createdAt ?? null,
-        snippet: snippetOf(last?.text),
+        snippet: snippetOf(last?.text || (last?.attachment ? `[${last.attachment.type}]` : "")),
         canReply: Boolean(peerId),
-      },
+      }),
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "X thread failed";
@@ -549,7 +663,12 @@ async function blueskyChat(
   return { ok: res.ok, data };
 }
 
-type BskyMember = { did?: string; handle?: string; displayName?: string };
+type BskyMember = {
+  did?: string;
+  handle?: string;
+  displayName?: string;
+  avatar?: string;
+};
 type BskyConvo = {
   id?: string;
   members?: BskyMember[];
@@ -589,18 +708,18 @@ async function fetchBlueskyList(
     const sentAt = convo.lastMessage?.sentAt ?? null;
     if (!inDateWindow(sentAt, since, until)) continue;
     const peer = bskyPeer(convo.members, session.did);
-    threads.push({
-      conversationId: convo.id,
-      platform: "bluesky",
-      accountId: account.id,
-      accountLabel: account.platformUsername,
-      peerId: peer.did ?? "",
-      peerName: peer.displayName ?? peer.handle ?? "Bluesky user",
-      peerHandle: peer.handle ?? null,
-      lastMessageAt: sentAt,
-      snippet: snippetOf(convo.lastMessage?.text),
-      canReply: true,
-    });
+    threads.push(
+      threadMeta(account, {
+        conversationId: convo.id,
+        peerId: peer.did ?? "",
+        peerName: peer.displayName ?? peer.handle ?? "Bluesky user",
+        peerHandle: peer.handle ?? null,
+        peerAvatarUrl: peer.avatar ?? null,
+        lastMessageAt: sentAt,
+        snippet: snippetOf(convo.lastMessage?.text),
+        canReply: true,
+      }),
+    );
   }
   return { threads, status: "ok" };
 }
@@ -655,6 +774,9 @@ async function fetchBlueskyThread(
           ? "You"
           : (peer.displayName ?? peer.handle ?? "Bluesky user"),
         authorHandle: isOwn ? null : (peer.handle ?? null),
+        authorAvatarUrl: isOwn
+          ? account.profileImageUrl ?? null
+          : peer.avatar ?? null,
       };
     })
     .sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""));
@@ -662,17 +784,15 @@ async function fetchBlueskyThread(
   return {
     messages,
     status: "ok",
-    thread: {
+    thread: threadMeta(account, {
       conversationId,
-      platform: "bluesky",
-      accountId: account.id,
-      accountLabel: account.platformUsername,
       peerId: peer.did ?? "",
       peerName: peer.displayName ?? peer.handle ?? "Bluesky user",
       peerHandle: peer.handle ?? null,
+      peerAvatarUrl: peer.avatar ?? null,
       lastMessageAt: last?.createdAt ?? null,
       snippet: snippetOf(last?.text),
       canReply: true,
-    },
+    }),
   };
 }

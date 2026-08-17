@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "@/components/AppLink";
@@ -6,9 +6,8 @@ import {
   ArrowLeft,
   ArrowSquareOut,
   ChatCircle,
-  PaperPlaneTilt,
+  WarningCircle,
 } from "@/icons/phosphor";
-import { PlatformIcon } from "@/components/PlatformIcon";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 import type { AnalyticsAccount } from "@/api/analytics";
 import {
@@ -27,8 +26,12 @@ import {
   windowQueryParams,
   type DateWindow,
 } from "@/lib/date-window";
+import { uploadFile } from "@/lib/upload-file";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { InboxAttachmentView } from "./InboxAttachmentView";
+import { InboxAvatar } from "./InboxAvatar";
+import { InboxComposer, type InboxComposerPayload } from "./InboxComposer";
 
 function threadKey(thread: InboxThread): string {
   return `${thread.comment.publicationId}-${thread.comment.id}`;
@@ -49,6 +52,9 @@ function appendOptimisticReply(
     text: string;
     replyId?: string;
     accountLabel: string | null;
+    accountProfileImageUrl?: string | null;
+    attachment?: InboxComment["attachment"];
+    sendStatus?: "sending" | "failed";
   },
 ): InboxListResult {
   const id = args.replyId ?? `optimistic-${Date.now()}`;
@@ -72,7 +78,9 @@ function appendOptimisticReply(
       postSnippet: root.postSnippet,
       authorName: "You",
       authorHandle: args.accountLabel,
+      authorAvatarUrl: args.accountProfileImageUrl,
       text: args.text,
+      attachment: args.attachment,
       createdAt: new Date().toISOString(),
       parentId: args.parentCommentId,
       canReply: false,
@@ -121,43 +129,94 @@ export function InboxCommentsPane({
     staleTime: 30_000,
   });
 
-  const replyMut = useMutation({
-    mutationFn: replyToInboxComment,
-    onSuccess: (res, vars) => {
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success("Reply sent");
-      setSentTick((n) => n + 1);
-      const account =
-        accounts.find((a) => a.id === accountId) ??
-        accounts.find(
-          (a) =>
-            a.id ===
-            inboxQuery.data?.threads.find(
-              (t) => t.comment.publicationId === vars.publicationId,
-            )?.comment.accountId,
-        );
+  const [failedReplyIds, setFailedReplyIds] = useState<Set<string>>(new Set());
+  const [sendingReplyIds, setSendingReplyIds] = useState<Set<string>>(new Set());
+
+  const sendReply = async (
+    thread: InboxThread,
+    commentId: string,
+    payload: InboxComposerPayload,
+    opts?: { optimisticId?: string },
+  ) => {
+    const optimisticId = opts?.optimisticId ?? `optimistic-${Date.now()}`;
+    const account =
+      accounts.find((a) => a.id === accountId) ??
+      accounts.find((a) => a.id === thread.comment.accountId);
+    const attachment = payload.file && payload.previewUrl
+      ? {
+          type: (payload.file.type.startsWith("video/") ? "video" : "image") as
+            | "image"
+            | "video",
+          url: payload.previewUrl,
+        }
+      : null;
+
+    if (!opts?.optimisticId) {
       qc.setQueryData<InboxListResult>(queryKey, (old) => {
         if (!old) return old;
         return appendOptimisticReply(old, {
-          publicationId: vars.publicationId,
-          parentCommentId: vars.commentId,
-          text: vars.text,
-          replyId: res.replyId,
+          publicationId: thread.comment.publicationId,
+          parentCommentId: commentId,
+          text: payload.text,
+          replyId: optimisticId,
           accountLabel: account?.username ?? null,
+          accountProfileImageUrl: account?.profileImageUrl,
+          attachment,
         });
+      });
+    }
+    setSendingReplyIds((s) => new Set(s).add(optimisticId));
+    setFailedReplyIds((s) => {
+      const next = new Set(s);
+      next.delete(optimisticId);
+      return next;
+    });
+
+    try {
+      let mediaId: string | undefined;
+      if (payload.file) {
+        const uploaded = await uploadFile(payload.file, 0);
+        mediaId = uploaded.id;
+      }
+      const res = await replyToInboxComment({
+        publicationId: thread.comment.publicationId,
+        commentId,
+        text: payload.text,
+        mediaId,
+      });
+      if (!res.ok) {
+        setFailedReplyIds((s) => new Set(s).add(optimisticId));
+        toast.error(res.error);
+        return;
+      }
+      setSentTick((n) => n + 1);
+      qc.setQueryData<InboxListResult>(queryKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          threads: old.threads.map((t) => ({
+            ...t,
+            replies: t.replies.map((r) =>
+              r.id === optimisticId ? { ...r, id: res.replyId ?? r.id } : r,
+            ),
+          })),
+        };
       });
       if (refreshTimer.current) clearTimeout(refreshTimer.current);
       refreshTimer.current = setTimeout(() => {
         void qc.invalidateQueries({ queryKey: ["inbox-comments"] });
       }, 2500);
-    },
-    onError: (e) => {
+    } catch (e) {
+      setFailedReplyIds((s) => new Set(s).add(optimisticId));
       toast.error(e instanceof Error ? e.message : "Reply failed");
-    },
-  });
+    } finally {
+      setSendingReplyIds((s) => {
+        const next = new Set(s);
+        next.delete(optimisticId);
+        return next;
+      });
+    }
+  };
 
   const data = inboxQuery.data;
   const threads = (data?.threads ?? []).filter((t) => !t.comment.isOwn);
@@ -260,9 +319,13 @@ export function InboxCommentsPane({
                         : "hover:bg-bg-subtle/80",
                     )}
                   >
-                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bg-muted">
-                      <PlatformIcon platform={c.platform} size={13} />
-                    </span>
+                    <InboxAvatar
+                      profileImageUrl={c.authorAvatarUrl}
+                      username={c.authorHandle ?? c.authorName}
+                      platform={c.platform}
+                      size={32}
+                      className="mt-0.5"
+                    />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline gap-1.5">
                         <span className="truncate text-[13px] font-semibold text-text">
@@ -302,15 +365,13 @@ export function InboxCommentsPane({
               <ConversationPane
                 thread={selected}
                 dash={dash}
-                sending={replyMut.isPending}
+                accounts={accounts}
+                sending={sendingReplyIds.size > 0}
+                failedReplyIds={failedReplyIds}
                 sentTick={sentTick}
                 onBack={() => setMobileDetail(false)}
-                onReply={(commentId, text) =>
-                  replyMut.mutate({
-                    publicationId: selected.comment.publicationId,
-                    commentId,
-                    text,
-                  })
+                onReply={(commentId, payload, optimisticId) =>
+                  void sendReply(selected, commentId, payload, { optimisticId })
                 }
               />
             ) : (
@@ -339,25 +400,28 @@ export function InboxCommentsPane({
 function ConversationPane({
   thread,
   dash,
+  accounts,
   sending,
+  failedReplyIds,
   sentTick,
   onBack,
   onReply,
 }: {
   thread: InboxThread;
   dash: (path: string) => string;
+  accounts: AnalyticsAccount[];
   sending: boolean;
+  failedReplyIds: Set<string>;
   sentTick: number;
   onBack: () => void;
-  onReply: (commentId: string, text: string) => void;
+  onReply: (
+    commentId: string,
+    payload: InboxComposerPayload,
+    optimisticId?: string,
+  ) => void;
 }) {
   const c = thread.comment;
-  const [draft, setDraft] = useState("");
-  const max = replyMax(c.platform);
-
-  useEffect(() => {
-    setDraft("");
-  }, [c.id, sentTick]);
+  const account = accounts.find((a) => a.id === c.accountId);
 
   const messages = [c, ...thread.replies];
 
@@ -403,46 +467,32 @@ function ConversationPane({
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 sm:px-4">
         {messages.map((m, i) => (
-          <MessageBubble key={m.id} comment={m} isRoot={i === 0} />
+          <MessageBubble
+            key={m.id}
+            comment={m}
+            isRoot={i === 0}
+            accountProfileImageUrl={account?.profileImageUrl}
+            failed={failedReplyIds.has(m.id)}
+            onRetry={
+              m.isOwn && failedReplyIds.has(m.id)
+                ? () =>
+                    onReply(c.id, { text: m.text, file: null, previewUrl: null }, m.id)
+                : undefined
+            }
+          />
         ))}
       </div>
 
       {c.canReply ? (
-        <form
-          className="border-t border-border bg-bg-elevated p-3 sm:p-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const text = draft.trim();
-            if (!text || sending) return;
-            onReply(c.id, text);
-          }}
-        >
-          <label className="sr-only" htmlFor="inbox-reply">
-            Reply
-          </label>
-          <div className="flex gap-2">
-            <textarea
-              id="inbox-reply"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              rows={2}
-              maxLength={max}
-              placeholder={`Reply to ${c.isOwn ? "this thread" : c.authorName}…`}
-              className="min-h-[2.75rem] flex-1 resize-none rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text outline-none placeholder:text-text-muted focus:border-accent focus:ring-2 focus:ring-accent/20"
-            />
-            <button
-              type="submit"
-              disabled={sending || !draft.trim()}
-              aria-label="Send reply"
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-lg bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-50"
-            >
-              <PaperPlaneTilt size={16} weight="fill" />
-            </button>
-          </div>
-          <p className="mt-1.5 text-right text-[10px] tabular-nums text-text-muted">
-            {draft.length}/{max}
-          </p>
-        </form>
+        <InboxComposer
+          key={`${c.id}-${sentTick}`}
+          platform={c.platform}
+          mode="comment"
+          maxLength={replyMax(c.platform)}
+          placeholder={`Reply to ${c.isOwn ? "this thread" : c.authorName}…`}
+          sending={sending}
+          onSend={(payload) => onReply(c.id, payload)}
+        />
       ) : (
         <p className="border-t border-border px-4 py-3 text-sm text-text-muted">
           Replies aren&apos;t available for{" "}
@@ -456,14 +506,23 @@ function ConversationPane({
 function MessageBubble({
   comment,
   isRoot,
+  accountProfileImageUrl,
+  failed,
+  onRetry,
 }: {
   comment: InboxComment;
   isRoot?: boolean;
+  accountProfileImageUrl?: string | null;
+  failed?: boolean;
+  onRetry?: () => void;
 }) {
   const when = comment.createdAt
     ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })
     : null;
   const own = Boolean(comment.isOwn);
+  const avatarUrl = own
+    ? accountProfileImageUrl ?? comment.authorAvatarUrl
+    : comment.authorAvatarUrl;
 
   return (
     <div
@@ -473,34 +532,54 @@ function MessageBubble({
         !isRoot && "ml-2 sm:ml-4",
       )}
     >
-      <span
-        className={cn(
-          "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-          own ? "bg-accent/20 text-accent" : "bg-bg-muted",
-        )}
-      >
-        <PlatformIcon platform={comment.platform} size={12} />
-      </span>
-      <div
-        className={cn(
-          "max-w-[min(100%,28rem)] rounded-2xl px-3 py-2",
-          own
-            ? "rounded-tr-md bg-accent/15 text-text"
-            : "rounded-tl-md bg-bg-muted text-text",
-        )}
-      >
-        <p className="flex flex-wrap items-baseline gap-x-1.5 text-[11px]">
-          <span className="font-semibold">
-            {own ? "You" : comment.authorName}
-          </span>
-          {!own && comment.authorHandle ? (
-            <span className="text-text-muted">@{comment.authorHandle}</span>
+      <InboxAvatar
+        profileImageUrl={avatarUrl}
+        username={comment.authorHandle ?? comment.authorName}
+        platform={comment.platform}
+        size={28}
+        className="mt-0.5"
+      />
+      <div className="flex max-w-[min(100%,28rem)] flex-col gap-1">
+        <div
+          className={cn(
+            "rounded-2xl px-3 py-2",
+            own
+              ? "rounded-tr-md bg-accent/15 text-text"
+              : "rounded-tl-md bg-bg-muted text-text",
+            failed && "ring-1 ring-red-500/40",
+          )}
+        >
+          <p className="flex flex-wrap items-baseline gap-x-1.5 text-[11px]">
+            <span className="font-semibold">
+              {own ? "You" : comment.authorName}
+            </span>
+            {!own && comment.authorHandle ? (
+              <span className="text-text-muted">@{comment.authorHandle}</span>
+            ) : null}
+            {when ? <span className="text-text-muted">· {when}</span> : null}
+          </p>
+          {comment.text ? (
+            <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed">
+              {comment.text}
+            </p>
           ) : null}
-          {when ? <span className="text-text-muted">· {when}</span> : null}
-        </p>
-        <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed">
-          {comment.text}
-        </p>
+          {comment.attachment ? (
+            <InboxAttachmentView attachment={comment.attachment} />
+          ) : null}
+        </div>
+        {failed && onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className={cn(
+              "inline-flex items-center gap-1 text-[11px] font-medium text-red-500 hover:text-red-400",
+              own && "self-end",
+            )}
+          >
+            <WarningCircle size={14} weight="fill" />
+            Tap to retry
+          </button>
+        ) : null}
       </div>
     </div>
   );

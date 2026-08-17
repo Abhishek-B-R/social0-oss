@@ -67,7 +67,12 @@ describe("peerFromParticipants", () => {
       ],
       "page",
     );
-    expect(peer).toEqual({ id: "user-1", name: "Ada", handle: "ada" });
+    expect(peer).toEqual({
+      id: "user-1",
+      name: "Ada",
+      handle: "ada",
+      avatarUrl: null,
+    });
   });
 });
 

@@ -93,36 +93,74 @@ export function InboxPage() {
 
   return (
     <div className="-mx-1 flex min-h-[calc(100dvh-8rem)] flex-col gap-4 sm:mx-0">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
-            Inbox
-          </h1>
-          <p className="mt-1 text-sm text-text-muted">
-            {mode === "comments"
-              ? "Comments on posts you published through Social0."
-              : "Direct messages from Instagram, Facebook Pages, X, and Bluesky."}
-          </p>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <div className="min-w-0">
+              <h1 className="font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+                Inbox
+              </h1>
+              <p className="mt-1 text-sm text-text-muted">
+                {mode === "comments"
+                  ? "Comments on posts you published through Social0."
+                  : "Direct messages from Instagram, Facebook Pages, X, and Bluesky."}
+              </p>
+            </div>
+            <div
+              role="tablist"
+              aria-label="Inbox type"
+              className="inline-flex shrink-0 self-start rounded-full border border-border bg-bg-muted p-1"
+            >
+              {(
+                [
+                  { id: "comments", label: "Comments", icon: ChatCircle },
+                  { id: "dms", label: "DMs", icon: EnvelopeSimple },
+                ] as const
+              ).map((tab) => {
+                const selected = mode === tab.id;
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    onClick={() => setMode(tab.id)}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors",
+                      selected
+                        ? "bg-accent text-accent-foreground shadow-sm"
+                        : "text-text-muted hover:text-text",
+                    )}
+                  >
+                    <Icon size={14} weight={selected ? "fill" : "regular"} />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              void qc.invalidateQueries({
+                queryKey:
+                  mode === "comments" ? ["inbox-comments"] : ["inbox-dms"],
+              });
+              if (mode === "dms") {
+                void qc.invalidateQueries({ queryKey: ["inbox-dm-thread"] });
+              }
+            }}
+            disabled={loading}
+            className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text transition-colors hover:bg-bg-subtle disabled:opacity-60"
+          >
+            <ArrowClockwise
+              className={cn("h-4 w-4", loading && "animate-spin")}
+              size={16}
+            />
+            Refresh
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            void qc.invalidateQueries({
-              queryKey: mode === "comments" ? ["inbox-comments"] : ["inbox-dms"],
-            });
-            if (mode === "dms") {
-              void qc.invalidateQueries({ queryKey: ["inbox-dm-thread"] });
-            }
-          }}
-          disabled={loading}
-          className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text transition-colors hover:bg-bg-subtle disabled:opacity-60"
-        >
-          <ArrowClockwise
-            className={cn("h-4 w-4", loading && "animate-spin")}
-            size={16}
-          />
-          Refresh
-        </button>
       </div>
 
       <RangeToolbar
@@ -130,40 +168,6 @@ export function InboxPage() {
         onChange={setDateWindow}
         label="Inbox date range"
       />
-
-      <div
-        role="tablist"
-        aria-label="Inbox type"
-        className="inline-flex w-full rounded-full border border-border bg-bg-muted p-1 sm:w-auto"
-      >
-        {(
-          [
-            { id: "comments", label: "Comments", icon: ChatCircle },
-            { id: "dms", label: "DMs", icon: EnvelopeSimple },
-          ] as const
-        ).map((tab) => {
-          const selected = mode === tab.id;
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              onClick={() => setMode(tab.id)}
-              className={cn(
-                "inline-flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors sm:flex-none sm:px-4",
-                selected
-                  ? "bg-accent text-accent-foreground shadow-sm"
-                  : "text-text-muted hover:text-text",
-              )}
-            >
-              <Icon size={14} weight={selected ? "fill" : "regular"} />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
 
       {accountsQuery.isLoading ? (
         <div className="flex flex-wrap gap-3" aria-hidden>

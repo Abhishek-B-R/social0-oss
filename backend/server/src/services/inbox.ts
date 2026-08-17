@@ -22,6 +22,7 @@ import { fetchPublicationComments } from "../lib/inbox/fetch-comments.js";
 import { replyOnPlatform } from "../lib/inbox/reply-comment.js";
 import { fetchAccountDms, fetchDmMessages } from "../lib/inbox/fetch-dms.js";
 import { replyToDmOnPlatform } from "../lib/inbox/reply-dm.js";
+import { resolveInboxMedia } from "../lib/inbox/resolve-media.js";
 import { parseDateWindow } from "../lib/date-window.js";
 import {
   INBOX_DM_PLATFORMS,
@@ -325,6 +326,7 @@ export async function replyToInboxComment(input: {
   publicationId?: unknown;
   commentId?: unknown;
   text?: unknown;
+  mediaId?: unknown;
 }): Promise<{ ok: true; replyId?: string } | { ok: false; error: string }> {
   const ctx = await requireUser();
   if (typeof input.publicationId !== "string" || !input.publicationId) {
@@ -333,8 +335,10 @@ export async function replyToInboxComment(input: {
   if (typeof input.commentId !== "string" || !input.commentId) {
     return { ok: false, error: "commentId required" };
   }
-  if (typeof input.text !== "string") {
-    return { ok: false, error: "text required" };
+  const text = typeof input.text === "string" ? input.text : "";
+  const mediaId = typeof input.mediaId === "string" ? input.mediaId : undefined;
+  if (!text.trim() && !mediaId) {
+    return { ok: false, error: "text or mediaId required" };
   }
 
   const postFilter = postScopeCondition({
@@ -381,10 +385,20 @@ export async function replyToInboxComment(input: {
 
   try {
     const { accessToken, accessSecret } = await resolveAccess(account);
+    let mediaUrl: string | null = null;
+    let mediaMimeType: string | null = null;
+    if (mediaId) {
+      const resolved = await resolveInboxMedia(ctx.resourceUserId, mediaId);
+      if ("error" in resolved) return { ok: false, error: resolved.error };
+      mediaUrl = resolved.url;
+      mediaMimeType = resolved.mimeType;
+    }
     return await replyOnPlatform({
       platform: row.platform,
       commentId: input.commentId,
-      text: input.text,
+      text,
+      mediaUrl,
+      mediaMimeType,
       accessToken,
       accessSecret,
       platformUserId: row.platformUserId ?? "me",
@@ -404,6 +418,7 @@ type DmAccountRow = {
   platform: string;
   platformUserId: string;
   platformUsername: string | null;
+  profileImageUrl: string | null;
   scopes: string | null;
   encryptedAccessToken: string;
   encryptedRefreshToken: string | null;
@@ -419,6 +434,7 @@ async function loadDmAccounts(
       platform: connectedAccounts.platform,
       platformUserId: connectedAccounts.platformUserId,
       platformUsername: connectedAccounts.platformUsername,
+      profileImageUrl: connectedAccounts.profileImageUrl,
       scopes: connectedAccounts.scopes,
       encryptedAccessToken: connectedAccounts.encryptedAccessToken,
       encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
@@ -478,6 +494,7 @@ export async function listInboxDms(input: {
           platform: row.platform,
           platformUserId: row.platformUserId,
           platformUsername: row.platformUsername,
+          profileImageUrl: row.profileImageUrl,
           accessToken,
           accessSecret,
         },
@@ -559,6 +576,7 @@ export async function getInboxDmThread(input: {
       platform: row.platform,
       platformUserId: row.platformUserId,
       platformUsername: row.platformUsername,
+      profileImageUrl: row.profileImageUrl,
       accessToken,
       accessSecret,
     },
@@ -573,6 +591,7 @@ export async function getInboxDmThread(input: {
     platform: row.platform,
     accountId: row.id,
     accountLabel: row.platformUsername,
+    accountProfileImageUrl: row.profileImageUrl,
     peerId,
     peerName: "Conversation",
     peerHandle: null,
@@ -593,6 +612,7 @@ export async function replyToInboxDm(input: {
   conversationId?: unknown;
   peerId?: unknown;
   text?: unknown;
+  mediaId?: unknown;
 }): Promise<{ ok: true; messageId?: string } | { ok: false; error: string }> {
   const ctx = await requireUser();
   if (typeof input.accountId !== "string" || !input.accountId) {
@@ -601,8 +621,10 @@ export async function replyToInboxDm(input: {
   if (typeof input.conversationId !== "string" || !input.conversationId) {
     return { ok: false, error: "conversationId required" };
   }
-  if (typeof input.text !== "string") {
-    return { ok: false, error: "text required" };
+  const text = typeof input.text === "string" ? input.text : "";
+  const mediaId = typeof input.mediaId === "string" ? input.mediaId : undefined;
+  if (!text.trim() && !mediaId) {
+    return { ok: false, error: "text or mediaId required" };
   }
   const peerId = typeof input.peerId === "string" ? input.peerId : "";
 
@@ -614,11 +636,21 @@ export async function replyToInboxDm(input: {
 
   try {
     const { accessToken, accessSecret } = await resolveAccess(row);
+    let mediaUrl: string | null = null;
+    let mediaMimeType: string | null = null;
+    if (mediaId) {
+      const resolved = await resolveInboxMedia(ctx.resourceUserId, mediaId);
+      if ("error" in resolved) return { ok: false, error: resolved.error };
+      mediaUrl = resolved.url;
+      mediaMimeType = resolved.mimeType;
+    }
     return await replyToDmOnPlatform({
       platform: row.platform,
       conversationId: input.conversationId,
       peerId,
-      text: input.text,
+      text,
+      mediaUrl,
+      mediaMimeType,
       accessToken,
       accessSecret,
       platformUserId: row.platformUserId,

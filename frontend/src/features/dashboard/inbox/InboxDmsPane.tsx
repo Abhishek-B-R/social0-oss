@@ -1,22 +1,21 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "@/components/AppLink";
 import {
   ArrowLeft,
   EnvelopeSimple,
-  PaperPlaneTilt,
+  WarningCircle,
 } from "@/icons/phosphor";
-import { PlatformIcon } from "@/components/PlatformIcon";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 import {
   getInboxDmThread,
   listInboxDms,
   replyToInboxDm,
   type InboxDmListResult,
-  type InboxDmMessage,
   type InboxDmThread,
   type InboxDmThreadResult,
+  type LocalInboxDmMessage,
 } from "@/api/inbox";
 import { PLATFORM_LABEL } from "@/features/dashboard/analytics/analytics-utils";
 import {
@@ -24,8 +23,15 @@ import {
   windowQueryParams,
   type DateWindow,
 } from "@/lib/date-window";
+import { uploadFile } from "@/lib/upload-file";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { InboxAttachmentView } from "./InboxAttachmentView";
+import { InboxAvatar } from "./InboxAvatar";
+import {
+  InboxComposer,
+  type InboxComposerPayload,
+} from "./InboxComposer";
 
 function dmKey(t: InboxDmThread): string {
   return `${t.accountId}:${t.conversationId}`;
@@ -35,6 +41,41 @@ function dmReplyMax(platform: string): number {
   if (platform === "twitter_x") return 10000;
   if (platform === "bluesky") return 1000;
   return 2000;
+}
+
+function attachmentFromPreview(
+  file: File | null | undefined,
+  previewUrl: string | null | undefined,
+): LocalInboxDmMessage["attachment"] {
+  if (!file || !previewUrl) return null;
+  return {
+    type: file.type.startsWith("video/") ? "video" : "image",
+    url: previewUrl,
+  };
+}
+
+function mergeMessages(
+  server: LocalInboxDmMessage[],
+  pending: LocalInboxDmMessage[],
+): LocalInboxDmMessage[] {
+  const serverIds = new Set(server.map((m) => m.id));
+  const extra = pending.filter(
+    (m) =>
+      m.sendStatus &&
+      !serverIds.has(m.id) &&
+      !server.some(
+        (s) =>
+          s.isOwn &&
+          s.text === m.text &&
+          Math.abs(
+            new Date(s.createdAt ?? 0).getTime() -
+              new Date(m.createdAt ?? 0).getTime(),
+          ) < 60_000,
+      ),
+  );
+  return [...server, ...extra].sort((a, b) =>
+    (a.createdAt ?? "").localeCompare(b.createdAt ?? ""),
+  );
 }
 
 export function InboxDmsPane({
@@ -50,7 +91,9 @@ export function InboxDmsPane({
   const qc = useQueryClient();
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [mobileDetail, setMobileDetail] = useState(false);
-  const [sentTick, setSentTick] = useState(0);
+  const [pendingByConvo, setPendingByConvo] = useState<
+    Record<string, LocalInboxDmMessage[]>
+  >({});
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(
@@ -87,10 +130,12 @@ export function InboxDmsPane({
     }
   }, [threads, pickedId]);
 
+  const threadQueryKey = selected
+    ? (["inbox-dm-thread", selected.accountId, selected.conversationId] as const)
+    : (["inbox-dm-thread", "none"] as const);
+
   const threadQuery = useQuery({
-    queryKey: selected
-      ? ["inbox-dm-thread", selected.accountId, selected.conversationId]
-      : ["inbox-dm-thread", "none"],
+    queryKey: threadQueryKey,
     queryFn: () =>
       getInboxDmThread({
         accountId: selected!.accountId,
@@ -101,56 +146,121 @@ export function InboxDmsPane({
     staleTime: 15_000,
   });
 
-  const replyMut = useMutation({
-    mutationFn: replyToInboxDm,
-    onSuccess: (res, vars) => {
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success("Message sent");
-      setSentTick((n) => n + 1);
-      const optimistic: InboxDmMessage = {
-        id: res.messageId ?? `optimistic-${Date.now()}`,
-        text: vars.text,
-        createdAt: new Date().toISOString(),
+  const updatePending = useCallback(
+    (key: string, updater: (prev: LocalInboxDmMessage[]) => LocalInboxDmMessage[]) => {
+      setPendingByConvo((prev) => ({
+        ...prev,
+        [key]: updater(prev[key] ?? []),
+      }));
+    },
+    [],
+  );
+
+  const sendMessage = useCallback(
+    async (
+      thread: InboxDmThread,
+      payload: InboxComposerPayload,
+      opts?: { clientId?: string },
+    ) => {
+      const key = dmKey(thread);
+      const clientId = opts?.clientId ?? `local-${Date.now()}`;
+      const createdAt = new Date().toISOString();
+      const optimistic: LocalInboxDmMessage = {
+        id: clientId,
+        text: payload.text,
+        createdAt,
         isOwn: true,
         authorName: "You",
-        authorHandle: null,
-      };
-      qc.setQueryData<InboxDmThreadResult>(
-        ["inbox-dm-thread", vars.accountId, vars.conversationId],
-        (old) => {
-          if (!old) return old;
-          if (old.messages.some((m) => m.id === optimistic.id)) return old;
-          return { ...old, messages: [...old.messages, optimistic] };
+        authorHandle: thread.accountLabel,
+        authorAvatarUrl: thread.accountProfileImageUrl ?? null,
+        attachment: attachmentFromPreview(payload.file, payload.previewUrl),
+        sendStatus: "sending",
+        localPreviewUrl: payload.previewUrl,
+        retryPayload: {
+          text: payload.text,
+          file: payload.file ?? undefined,
+          previewUrl: payload.previewUrl,
         },
-      );
+      };
+
+      if (!opts?.clientId) {
+        updatePending(key, (prev) => [...prev, optimistic]);
+      } else {
+        updatePending(key, (prev) =>
+          prev.map((m) =>
+            m.id === clientId ? { ...m, sendStatus: "sending" as const } : m,
+          ),
+        );
+      }
+
       qc.setQueryData<InboxDmListResult>(listKey, (old) => {
         if (!old) return old;
+        const snippet =
+          payload.text ||
+          (payload.file?.type.startsWith("video/") ? "[video]" : "[image]");
         return {
           ...old,
           threads: old.threads.map((t) =>
-            t.accountId === vars.accountId &&
-            t.conversationId === vars.conversationId
-              ? {
-                  ...t,
-                  snippet: vars.text,
-                  lastMessageAt: optimistic.createdAt,
-                }
+            dmKey(t) === key
+              ? { ...t, snippet, lastMessageAt: createdAt }
               : t,
           ),
         };
       });
-      if (refreshTimer.current) clearTimeout(refreshTimer.current);
-      refreshTimer.current = setTimeout(() => {
-        void qc.invalidateQueries({ queryKey: ["inbox-dm-thread"] });
-      }, 2500);
+
+      try {
+        let mediaId: string | undefined;
+        if (payload.file) {
+          const uploaded = await uploadFile(payload.file, 0);
+          mediaId = uploaded.id;
+        }
+        const res = await replyToInboxDm({
+          accountId: thread.accountId,
+          conversationId: thread.conversationId,
+          peerId: thread.peerId,
+          text: payload.text,
+          mediaId,
+        });
+        if (!res.ok) {
+          updatePending(key, (prev) =>
+            prev.map((m) =>
+              m.id === clientId ? { ...m, sendStatus: "failed" as const } : m,
+            ),
+          );
+          toast.error(res.error);
+          return;
+        }
+        updatePending(key, (prev) => prev.filter((m) => m.id !== clientId));
+        qc.setQueryData<InboxDmThreadResult>(threadQueryKey, (old) => {
+          if (!old) return old;
+          const confirmed: LocalInboxDmMessage = {
+            id: res.messageId ?? clientId,
+            text: payload.text,
+            createdAt,
+            isOwn: true,
+            authorName: "You",
+            authorHandle: thread.accountLabel,
+            authorAvatarUrl: thread.accountProfileImageUrl ?? null,
+            attachment: attachmentFromPreview(payload.file, payload.previewUrl),
+          };
+          if (old.messages.some((m) => m.id === confirmed.id)) return old;
+          return { ...old, messages: [...old.messages, confirmed] };
+        });
+        if (refreshTimer.current) clearTimeout(refreshTimer.current);
+        refreshTimer.current = setTimeout(() => {
+          void qc.invalidateQueries({ queryKey: threadQueryKey });
+        }, 2500);
+      } catch (e) {
+        updatePending(key, (prev) =>
+          prev.map((m) =>
+            m.id === clientId ? { ...m, sendStatus: "failed" as const } : m,
+          ),
+        );
+        toast.error(e instanceof Error ? e.message : "Send failed");
+      }
     },
-    onError: (e) => {
-      toast.error(e instanceof Error ? e.message : "Send failed");
-    },
-  });
+    [listKey, qc, threadQueryKey, updatePending],
+  );
 
   const loading = listQuery.isLoading || listQuery.isFetching;
   const emptyRangeLabel =
@@ -159,6 +269,13 @@ export function InboxDmsPane({
       : WINDOW_EMPTY_LABEL[dateWindow.range];
   const showList = !mobileDetail;
   const showDetail = mobileDetail || Boolean(selected);
+  const convoKey = selected ? dmKey(selected) : "";
+  const pending = convoKey ? pendingByConvo[convoKey] ?? [] : [];
+  const messages = mergeMessages(
+    (threadQuery.data?.messages ?? []) as LocalInboxDmMessage[],
+    pending,
+  );
+  const activeThread = threadQuery.data?.thread ?? selected;
 
   return (
     <>
@@ -235,9 +352,13 @@ export function InboxDmsPane({
                         : "hover:bg-bg-subtle/80",
                     )}
                   >
-                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bg-muted">
-                      <PlatformIcon platform={t.platform} size={13} />
-                    </span>
+                    <InboxAvatar
+                      profileImageUrl={t.peerAvatarUrl}
+                      username={t.peerHandle ?? t.peerName}
+                      platform={t.platform}
+                      size={32}
+                      className="mt-0.5"
+                    />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline gap-1.5">
                         <span className="truncate text-[13px] font-semibold text-text">
@@ -252,7 +373,9 @@ export function InboxDmsPane({
                       </span>
                       <span className="mt-1 text-[10px] text-text-muted">
                         {PLATFORM_LABEL[t.platform] ?? t.platform}
-                        {t.accountLabel ? ` · @${t.accountLabel.replace(/^@/, "")}` : ""}
+                        {t.accountLabel
+                          ? ` · @${t.accountLabel.replace(/^@/, "")}`
+                          : ""}
                       </span>
                     </span>
                   </button>
@@ -267,10 +390,10 @@ export function InboxDmsPane({
               showDetail ? "flex" : "hidden lg:flex",
             )}
           >
-            {selected ? (
+            {selected && activeThread ? (
               <DmConversationPane
-                listThread={selected}
-                messages={threadQuery.data?.messages ?? []}
+                thread={activeThread}
+                messages={messages}
                 loading={threadQuery.isLoading}
                 error={
                   threadQuery.isError
@@ -279,17 +402,21 @@ export function InboxDmsPane({
                       : "Failed to load conversation"
                     : null
                 }
-                sending={replyMut.isPending}
-                sentTick={sentTick}
                 onBack={() => setMobileDetail(false)}
-                onSend={(text) =>
-                  replyMut.mutate({
-                    accountId: selected.accountId,
-                    conversationId: selected.conversationId,
-                    peerId: selected.peerId,
-                    text,
-                  })
-                }
+                onSend={(payload) => void sendMessage(selected, payload)}
+                onRetry={(message) => {
+                  const rp = message.retryPayload;
+                  if (!rp) return;
+                  void sendMessage(
+                    selected,
+                    {
+                      text: rp.text,
+                      file: rp.file ?? null,
+                      previewUrl: rp.previewUrl,
+                    },
+                    { clientId: message.id },
+                  );
+                }}
               />
             ) : (
               <div className="flex flex-1 items-center justify-center p-8 text-sm text-text-muted">
@@ -304,39 +431,32 @@ export function InboxDmsPane({
 }
 
 function DmConversationPane({
-  listThread,
+  thread,
   messages,
   loading,
   error,
-  sending,
-  sentTick,
   onBack,
   onSend,
+  onRetry,
 }: {
-  listThread: InboxDmThread;
-  messages: InboxDmMessage[];
+  thread: InboxDmThread;
+  messages: LocalInboxDmMessage[];
   loading: boolean;
   error: string | null;
-  sending: boolean;
-  sentTick: number;
   onBack: () => void;
-  onSend: (text: string) => void;
+  onSend: (payload: InboxComposerPayload) => void;
+  onRetry: (message: LocalInboxDmMessage) => void;
 }) {
-  const [draft, setDraft] = useState("");
-  const max = dmReplyMax(listThread.platform);
   const scroller = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setDraft("");
-  }, [listThread.conversationId, sentTick]);
+  const sending = messages.some((m) => m.sendStatus === "sending");
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
-  }, [messages.length, listThread.conversationId]);
+  }, [messages.length, thread.conversationId]);
 
-  const peerLabel = listThread.peerHandle
-    ? `${listThread.peerName} (@${listThread.peerHandle.replace(/^@/, "")})`
-    : listThread.peerName;
+  const peerLabel = thread.peerHandle
+    ? `${thread.peerName} (@${thread.peerHandle.replace(/^@/, "")})`
+    : thread.peerName;
 
   return (
     <>
@@ -349,14 +469,21 @@ function DmConversationPane({
         >
           <ArrowLeft size={16} />
         </button>
+        <InboxAvatar
+          profileImageUrl={thread.peerAvatarUrl}
+          username={thread.peerHandle ?? thread.peerName}
+          platform={thread.platform}
+          size={36}
+          className="mt-0.5 shrink-0"
+        />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold text-text">
             {peerLabel}
           </p>
           <p className="mt-0.5 text-[11px] text-text-muted">
-            {PLATFORM_LABEL[listThread.platform] ?? listThread.platform}
-            {listThread.accountLabel
-              ? ` · via @${listThread.accountLabel.replace(/^@/, "")}`
+            {PLATFORM_LABEL[thread.platform] ?? thread.platform}
+            {thread.accountLabel
+              ? ` · via @${thread.accountLabel.replace(/^@/, "")}`
               : ""}
           </p>
         </div>
@@ -373,46 +500,28 @@ function DmConversationPane({
         ) : messages.length === 0 ? (
           <p className="text-sm text-text-muted">No messages in this thread.</p>
         ) : (
-          messages.map((m) => <DmBubble key={m.id} message={m} platform={listThread.platform} />)
+          messages.map((m) => (
+            <DmBubble
+              key={m.id}
+              message={m}
+              thread={thread}
+              onRetry={() => onRetry(m)}
+            />
+          ))
         )}
       </div>
 
-      {listThread.canReply ? (
-        <form
-          className="border-t border-border bg-bg-elevated p-3 sm:p-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const text = draft.trim();
-            if (!text || sending) return;
-            onSend(text);
-          }}
-        >
-          <label className="sr-only" htmlFor="inbox-dm-reply">
-            Message
-          </label>
-          <div className="flex gap-2">
-            <textarea
-              id="inbox-dm-reply"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              rows={2}
-              maxLength={max}
-              placeholder={`Message ${listThread.peerName}…`}
-              className="min-h-[2.75rem] flex-1 resize-none rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text outline-none placeholder:text-text-muted focus:border-accent focus:ring-2 focus:ring-accent/20"
-            />
-            <button
-              type="submit"
-              disabled={sending || !draft.trim()}
-              aria-label="Send message"
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-lg bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-50"
-            >
-              <PaperPlaneTilt size={16} weight="fill" />
-            </button>
-          </div>
-          <p className="mt-1.5 text-right text-[10px] tabular-nums text-text-muted">
-            {draft.length}/{max}
-          </p>
-        </form>
+      {thread.canReply ? (
+        <InboxComposer
+          key={thread.conversationId}
+          platform={thread.platform}
+          mode="dm"
+          maxLength={dmReplyMax(thread.platform)}
+          placeholder={`Message ${thread.peerName}…`}
+          disabled={false}
+          sending={sending}
+          onSend={onSend}
+        />
       ) : (
         <p className="border-t border-border px-4 py-3 text-sm text-text-muted">
           Replies aren&apos;t available for this conversation.
@@ -424,45 +533,85 @@ function DmConversationPane({
 
 function DmBubble({
   message,
-  platform,
+  thread,
+  onRetry,
 }: {
-  message: InboxDmMessage;
-  platform: string;
+  message: LocalInboxDmMessage;
+  thread: InboxDmThread;
+  onRetry: () => void;
 }) {
   const when = message.createdAt
     ? formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })
     : null;
   const own = message.isOwn;
+  const failed = message.sendStatus === "failed";
+  const sending = message.sendStatus === "sending";
+  const avatarUrl = own
+    ? thread.accountProfileImageUrl
+    : message.authorAvatarUrl ?? thread.peerAvatarUrl;
+  const avatarName = own
+    ? thread.accountLabel
+    : message.authorHandle ?? message.authorName;
+  const attachment =
+    message.attachment ??
+    (message.localPreviewUrl
+      ? {
+          type: (message.retryPayload?.file?.type.startsWith("video/")
+            ? "video"
+            : "image") as "image" | "video",
+          url: message.localPreviewUrl,
+        }
+      : null);
+
   return (
     <div className={cn("flex gap-2.5", own && "flex-row-reverse")}>
-      <span
-        className={cn(
-          "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-          own ? "bg-accent/20 text-accent" : "bg-bg-muted",
-        )}
-      >
-        <PlatformIcon platform={platform} size={12} />
-      </span>
-      <div
-        className={cn(
-          "max-w-[min(100%,28rem)] rounded-2xl px-3 py-2",
-          own
-            ? "rounded-tr-md bg-accent/15 text-text"
-            : "rounded-tl-md bg-bg-muted text-text",
-        )}
-      >
-        <p className="flex flex-wrap items-baseline gap-x-1.5 text-[11px]">
-          <span className="font-semibold">
-            {own ? "You" : message.authorName}
-          </span>
-          {!own && message.authorHandle ? (
-            <span className="text-text-muted">@{message.authorHandle}</span>
+      <InboxAvatar
+        profileImageUrl={avatarUrl}
+        username={avatarName}
+        platform={thread.platform}
+        size={28}
+        className="mt-0.5"
+      />
+      <div className="flex max-w-[min(100%,28rem)] flex-col gap-1">
+        <div
+          className={cn(
+            "rounded-2xl px-3 py-2",
+            own
+              ? "rounded-tr-md bg-accent/15 text-text"
+              : "rounded-tl-md bg-bg-muted text-text",
+            failed && "ring-1 ring-red-500/40",
+            sending && "opacity-80",
+          )}
+        >
+          <p className="flex flex-wrap items-baseline gap-x-1.5 text-[11px]">
+            <span className="font-semibold">
+              {own ? "You" : message.authorName}
+            </span>
+            {!own && message.authorHandle ? (
+              <span className="text-text-muted">@{message.authorHandle}</span>
+            ) : null}
+            {when ? <span className="text-text-muted">· {when}</span> : null}
+          </p>
+          {message.text ? (
+            <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed">
+              {message.text}
+            </p>
           ) : null}
-          {when ? <span className="text-text-muted">· {when}</span> : null}
-        </p>
-        <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed">
-          {message.text}
-        </p>
+          {attachment ? <InboxAttachmentView attachment={attachment} /> : null}
+        </div>
+        {failed ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className={cn(
+              "inline-flex items-center gap-1 text-[11px] font-medium text-red-500 hover:text-red-400",
+              own && "self-end",
+            )}
+          >
+            <WarningCircle size={14} weight="fill" />
+            Tap to retry
+          </button>
+        ) : null}
       </div>
     </div>
   );
