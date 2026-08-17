@@ -52,7 +52,7 @@ export type OnboardingStatus = {
   onboardingGoal: string | null;
   hasSubscription: boolean;
   connectedAccountsCount: number;
-  /** True if user should be sent to onboarding (new user: no sub + no accounts) */
+  /** True until the user finishes onboarding (do not tie to connected account count). */
   shouldOnboard: boolean;
 };
 
@@ -83,8 +83,7 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus | null> {
     sub.tier === "pro" ||
     sub.tier === "max";
   const connectedAccountsCount = accounts.length;
-  const shouldOnboard =
-    !onboardingCompleted && !hasSubscription && connectedAccountsCount === 0;
+  const shouldOnboard = !onboardingCompleted;
 
   return {
     onboardingCompleted,

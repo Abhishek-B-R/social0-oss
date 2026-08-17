@@ -70,7 +70,7 @@ export function OnboardingLayout() {
   }, [isPending, session, navigate]);
 
   useEffect(() => {
-    if (status?.onboardingCompleted || (status && !status.shouldOnboard)) {
+    if (status?.onboardingCompleted) {
       navigate("/dashboard", { replace: true });
     }
   }, [status, navigate]);
@@ -84,7 +84,7 @@ export function OnboardingLayout() {
   if (isPending || !session || statusPending || !status) {
     return <OnboardingGateLoader />;
   }
-  if (status.onboardingCompleted || !status.shouldOnboard) {
+  if (status.onboardingCompleted) {
     return <OnboardingGateLoader />;
   }
 
