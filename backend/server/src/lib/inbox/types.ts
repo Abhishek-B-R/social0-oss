@@ -18,6 +18,10 @@ export type InboxComment = {
   platformPostId: string;
   platformPostUrl: string | null;
   postSnippet: string;
+  postContent: string;
+  postMediaUrl?: string | null;
+  postPublishedAt?: string | null;
+  postAccountImageUrl?: string | null;
   authorName: string;
   authorHandle: string | null;
   authorAvatarUrl?: string | null;

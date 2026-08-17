@@ -76,59 +76,80 @@ async function graphUploadAttachmentId(
   return { id };
 }
 
-async function replyFacebook(input: DmReplyInput): Promise<DmReplyResult> {
-  if (!input.peerId) return fail("Missing recipient for this Facebook conversation.");
-  const url = `https://graph.facebook.com/v21.0/${encodeURIComponent(input.platformUserId)}/messages?access_token=${encodeURIComponent(input.accessToken)}`;
+async function replyGraphMessenger(
+  host: "graph.facebook.com" | "graph.instagram.com",
+  input: DmReplyInput,
+  opts?: { messagingType?: string },
+): Promise<DmReplyResult> {
+  if (!input.peerId) return fail("Missing recipient for this conversation.");
+  const sendUrl = `https://${host}/v21.0/${encodeURIComponent(input.platformUserId)}/messages?access_token=${encodeURIComponent(input.accessToken)}`;
+
   const message: Record<string, unknown> = {};
   if (input.text.trim()) message.text = input.text.trim();
   if (input.mediaUrl && input.mediaMimeType) {
+    message.attachment = graphAttachment(input.mediaUrl, input.mediaMimeType);
+  }
+  if (!message.text && !message.attachment) return fail("Message is empty.");
+
+  const body: Record<string, unknown> = {
+    recipient: { id: input.peerId },
+    message,
+  };
+  if (opts?.messagingType) body.messaging_type = opts.messagingType;
+
+  let { ok, data } = await jsonPost(sendUrl, body);
+  if (ok) {
+    return { ok: true, messageId: (data as { message_id?: string })?.message_id };
+  }
+
+  if (!input.mediaUrl || !input.mediaMimeType) {
+    return fail(graphError(data, "Message failed"));
+  }
+
+  const type = input.mediaMimeType.startsWith("video/") ? "video" : "image";
+  const uploadHosts: Array<"graph.facebook.com" | "graph.instagram.com"> =
+    host === "graph.instagram.com"
+      ? ["graph.instagram.com", "graph.facebook.com"]
+      : ["graph.facebook.com"];
+
+  for (const uploadHost of uploadHosts) {
     const uploaded = await graphUploadAttachmentId(
-      "graph.facebook.com",
+      uploadHost,
       input.platformUserId,
       input.accessToken,
       input.mediaUrl,
       input.mediaMimeType,
     );
-    if ("error" in uploaded) return fail(uploaded.error);
-    const type = input.mediaMimeType.startsWith("video/") ? "video" : "image";
-    message.attachment = { type, payload: { attachment_id: uploaded.id } };
+    if ("error" in uploaded) continue;
+    const retryMsg: Record<string, unknown> = {};
+    if (input.text.trim()) retryMsg.text = input.text.trim();
+    retryMsg.attachment = { type, payload: { attachment_id: uploaded.id } };
+    const retryBody: Record<string, unknown> = {
+      recipient: { id: input.peerId },
+      message: retryMsg,
+    };
+    if (opts?.messagingType) retryBody.messaging_type = opts.messagingType;
+    const retry = await jsonPost(sendUrl, retryBody);
+    if (retry.ok) {
+      return {
+        ok: true,
+        messageId: (retry.data as { message_id?: string })?.message_id,
+      };
+    }
+    data = retry.data;
   }
-  if (!message.text && !message.attachment) return fail("Message is empty.");
-  const { ok, data } = await jsonPost(url, {
-    recipient: { id: input.peerId },
-    messaging_type: "RESPONSE",
-    message,
+
+  return fail(graphError(data, "Message with attachment failed"));
+}
+
+async function replyFacebook(input: DmReplyInput): Promise<DmReplyResult> {
+  return replyGraphMessenger("graph.facebook.com", input, {
+    messagingType: "RESPONSE",
   });
-  if (!ok) return fail(graphError(data, "Facebook DM failed"));
-  const id = (data as { message_id?: string })?.message_id;
-  return { ok: true, messageId: id };
 }
 
 async function replyInstagram(input: DmReplyInput): Promise<DmReplyResult> {
-  if (!input.peerId) return fail("Missing recipient for this Instagram conversation.");
-  const url = `https://graph.instagram.com/v21.0/${encodeURIComponent(input.platformUserId)}/messages?access_token=${encodeURIComponent(input.accessToken)}`;
-  const message: Record<string, unknown> = {};
-  if (input.text.trim()) message.text = input.text.trim();
-  if (input.mediaUrl && input.mediaMimeType) {
-    const uploaded = await graphUploadAttachmentId(
-      "graph.instagram.com",
-      input.platformUserId,
-      input.accessToken,
-      input.mediaUrl,
-      input.mediaMimeType,
-    );
-    if ("error" in uploaded) return fail(uploaded.error);
-    const type = input.mediaMimeType.startsWith("video/") ? "video" : "image";
-    message.attachment = { type, payload: { attachment_id: uploaded.id } };
-  }
-  if (!message.text && !message.attachment) return fail("Message is empty.");
-  const { ok, data } = await jsonPost(url, {
-    recipient: { id: input.peerId },
-    message,
-  });
-  if (!ok) return fail(graphError(data, "Instagram DM failed"));
-  const id = (data as { message_id?: string })?.message_id;
-  return { ok: true, messageId: id };
+  return replyGraphMessenger("graph.instagram.com", input);
 }
 
 async function replyTwitter(input: DmReplyInput): Promise<DmReplyResult> {

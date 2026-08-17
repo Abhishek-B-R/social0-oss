@@ -226,6 +226,15 @@ export function InboxDmsPane({
             ),
           );
         }
+        if (!payload.text.trim() && !mediaId) {
+          updatePending(key, (prev) =>
+            prev.map((m) =>
+              m.id === clientId ? { ...m, sendStatus: "failed" as const } : m,
+            ),
+          );
+          toast.error("Add a message or attachment.");
+          return;
+        }
         const res = await replyToInboxDm({
           accountId: thread.accountId,
           conversationId: thread.conversationId,

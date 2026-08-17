@@ -21,6 +21,8 @@ export function InboxComposer({
   placeholder,
   disabled,
   sending,
+  initialText = "",
+  variant = "default",
   onSend,
 }: {
   platform: string;
@@ -29,9 +31,11 @@ export function InboxComposer({
   placeholder: string;
   disabled?: boolean;
   sending?: boolean;
+  initialText?: string;
+  variant?: "default" | "embedded";
   onSend: (payload: InboxComposerPayload) => void;
 }) {
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(initialText);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -74,7 +78,11 @@ export function InboxComposer({
 
   return (
     <form
-      className="relative border-t border-border bg-bg-elevated p-3 sm:p-4"
+      className={cn(
+        "relative bg-bg-elevated p-3 sm:p-4",
+        variant === "default" && "border-t border-border",
+        variant === "embedded" && "p-0",
+      )}
       onSubmit={(e) => {
         e.preventDefault();
         submit();

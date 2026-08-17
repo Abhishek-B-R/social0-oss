@@ -7,6 +7,7 @@ import { and, desc, eq, gte, inArray, isNotNull, lte, notInArray } from "drizzle
 import { db } from "../db/index.js";
 import {
   connectedAccounts,
+  mediaUploads,
   postPublications,
   posts,
 } from "../db/schema.js";
@@ -73,11 +74,14 @@ type PubRow = {
   platformPostId: string | null;
   platformPostUrl: string | null;
   content: string | null;
+  mediaIds: string[] | null;
+  publishedAt: Date | null;
   account: {
     id: string;
     platform: string;
     platformUserId: string;
     platformUsername: string | null;
+    profileImageUrl: string | null;
     scopes: string | null;
     encryptedAccessToken: string;
     encryptedRefreshToken: string | null;
@@ -111,10 +115,13 @@ async function loadPubs(opts: {
       platformPostId: postPublications.platformPostId,
       platformPostUrl: postPublications.platformPostUrl,
       content: posts.finalContent,
+      mediaIds: posts.mediaIds,
+      publishedAt: postPublications.publishedAt,
       accountId: connectedAccounts.id,
       platform: connectedAccounts.platform,
       platformUserId: connectedAccounts.platformUserId,
       platformUsername: connectedAccounts.platformUsername,
+      profileImageUrl: connectedAccounts.profileImageUrl,
       scopes: connectedAccounts.scopes,
       encryptedAccessToken: connectedAccounts.encryptedAccessToken,
       encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
@@ -152,18 +159,53 @@ async function loadPubs(opts: {
     platformPostId: r.platformPostId,
     platformPostUrl: r.platformPostUrl,
     content: r.content,
+    mediaIds: r.mediaIds,
+    publishedAt: r.publishedAt,
     account: r.accountId
       ? {
           id: r.accountId,
           platform: r.platform!,
           platformUserId: r.platformUserId!,
           platformUsername: r.platformUsername,
+          profileImageUrl: r.profileImageUrl,
           scopes: r.scopes,
           encryptedAccessToken: r.encryptedAccessToken!,
           encryptedRefreshToken: r.encryptedRefreshToken,
         }
       : null,
   }));
+}
+
+async function resolvePostMediaUrls(
+  pubs: PubRow[],
+): Promise<Map<string, string>> {
+  const ids = new Set<string>();
+  for (const p of pubs) {
+    for (const id of p.mediaIds ?? []) {
+      if (id) ids.add(id);
+    }
+  }
+  if (!ids.size) return new Map();
+  const rows = await db
+    .select({ id: mediaUploads.id, url: mediaUploads.url })
+    .from(mediaUploads)
+    .where(inArray(mediaUploads.id, [...ids]));
+  const map = new Map<string, string>();
+  for (const row of rows) {
+    if (row.url?.trim()) map.set(row.id, row.url);
+  }
+  return map;
+}
+
+function firstPostMediaUrl(
+  mediaIds: string[] | null | undefined,
+  byId: Map<string, string>,
+): string | null {
+  for (const id of mediaIds ?? []) {
+    const url = byId.get(id);
+    if (url) return url;
+  }
+  return null;
 }
 
 type TokenAccount = {
@@ -217,6 +259,7 @@ export async function listInboxComments(input: {
     accountId,
     platform,
   });
+  const mediaById = await resolvePostMediaUrls(pubs);
 
   const reconnect = new Map<string, InboxReconnectHint>();
   const unsupported = new Set<string>();
@@ -243,6 +286,10 @@ export async function listInboxComments(input: {
         postId: row.postId,
         publicationId: row.publicationId,
         postSnippet: snippet(row.content),
+        postContent: row.content?.trim() || snippet(row.content),
+        postMediaUrl: firstPostMediaUrl(row.mediaIds, mediaById),
+        postPublishedAt: row.publishedAt?.toISOString() ?? null,
+        postAccountImageUrl: row.account.profileImageUrl,
       });
       allComments.push(...result.comments);
       const scopes = result.missingScopes?.length

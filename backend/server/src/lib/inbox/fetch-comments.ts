@@ -19,6 +19,10 @@ export type CommentFetchInput = {
   postId: string;
   publicationId: string;
   postSnippet: string;
+  postContent: string;
+  postMediaUrl?: string | null;
+  postPublishedAt?: string | null;
+  postAccountImageUrl?: string | null;
 };
 
 export type CommentFetchResult = {
@@ -41,6 +45,10 @@ function base(input: CommentFetchInput): Omit<
     platformPostId: input.platformPostId,
     platformPostUrl: input.platformPostUrl,
     postSnippet: input.postSnippet,
+    postContent: input.postContent,
+    postMediaUrl: input.postMediaUrl ?? null,
+    postPublishedAt: input.postPublishedAt ?? null,
+    postAccountImageUrl: input.postAccountImageUrl ?? null,
     canReply: true,
   };
 }

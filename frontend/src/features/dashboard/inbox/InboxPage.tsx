@@ -5,8 +5,6 @@ import { RangeToolbar } from "@/components/dashboard/RangeToolbar";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 import {
   ArrowClockwise,
-  ChatCircle,
-  EnvelopeSimple,
   SquaresFour,
 } from "@/icons/phosphor";
 import { PlatformIcon } from "@/components/PlatformIcon";
@@ -17,6 +15,7 @@ import { defaultDateWindow, type DateWindow } from "@/lib/date-window";
 import { cn } from "@/lib/utils";
 import { InboxCommentsPane } from "./InboxCommentsPane";
 import { InboxDmsPane } from "./InboxDmsPane";
+import { InboxModeToggle, type InboxMode } from "./InboxModeToggle";
 
 export const INBOX_COMMENT_PLATFORMS = new Set([
   "instagram",
@@ -34,8 +33,6 @@ export const INBOX_DM_PLATFORMS = new Set([
   "twitter_x",
   "bluesky",
 ]);
-
-type InboxMode = "comments" | "dms";
 
 function handleLabel(username: string | null | undefined): string {
   if (!username) return "account";
@@ -93,74 +90,41 @@ export function InboxPage() {
 
   return (
     <div className="-mx-1 flex min-h-[calc(100dvh-8rem)] flex-col gap-4 sm:mx-0">
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-            <div className="min-w-0">
-              <h1 className="font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
-                Inbox
-              </h1>
-              <p className="mt-1 text-sm text-text-muted">
-                {mode === "comments"
-                  ? "Comments on posts you published through Social0."
-                  : "Direct messages from Instagram, Facebook Pages, X, and Bluesky."}
-              </p>
-            </div>
-            <div
-              role="tablist"
-              aria-label="Inbox type"
-              className="inline-flex shrink-0 self-start rounded-full border border-border bg-bg-muted p-1"
-            >
-              {(
-                [
-                  { id: "comments", label: "Comments", icon: ChatCircle },
-                  { id: "dms", label: "DMs", icon: EnvelopeSimple },
-                ] as const
-              ).map((tab) => {
-                const selected = mode === tab.id;
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={selected}
-                    onClick={() => setMode(tab.id)}
-                    className={cn(
-                      "inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors",
-                      selected
-                        ? "bg-accent text-accent-foreground shadow-sm"
-                        : "text-text-muted hover:text-text",
-                    )}
-                  >
-                    <Icon size={14} weight={selected ? "fill" : "regular"} />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              void qc.invalidateQueries({
-                queryKey:
-                  mode === "comments" ? ["inbox-comments"] : ["inbox-dms"],
-              });
-              if (mode === "dms") {
-                void qc.invalidateQueries({ queryKey: ["inbox-dm-thread"] });
-              }
-            }}
-            disabled={loading}
-            className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text transition-colors hover:bg-bg-subtle disabled:opacity-60"
-          >
-            <ArrowClockwise
-              className={cn("h-4 w-4", loading && "animate-spin")}
-              size={16}
-            />
-            Refresh
-          </button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+            Inbox
+          </h1>
+          <p className="mt-1 text-sm text-text-muted">
+            {mode === "comments"
+              ? "Comments on posts you published through Social0."
+              : "Direct messages from Instagram, Facebook Pages, X, and Bluesky."}
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            void qc.invalidateQueries({
+              queryKey:
+                mode === "comments" ? ["inbox-comments"] : ["inbox-dms"],
+            });
+            if (mode === "dms") {
+              void qc.invalidateQueries({ queryKey: ["inbox-dm-thread"] });
+            }
+          }}
+          disabled={loading}
+          className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text transition-colors hover:bg-bg-subtle disabled:opacity-60"
+        >
+          <ArrowClockwise
+            className={cn("h-4 w-4", loading && "animate-spin")}
+            size={16}
+          />
+          Refresh
+        </button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <InboxModeToggle value={mode} onChange={setMode} />
       </div>
 
       <RangeToolbar

@@ -18,6 +18,7 @@ function comment(partial: Partial<InboxComment> & Pick<InboxComment, "id">): Inb
     platformPostId: "media",
     platformPostUrl: null,
     postSnippet: "hello",
+    postContent: "hello",
     authorName: "Ada",
     authorHandle: "ada",
     text: "hi",
