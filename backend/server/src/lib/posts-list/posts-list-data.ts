@@ -8,7 +8,7 @@ import {
   autoPlugs,
   queuedPosts,
 } from "@/db/schema";
-import { eq, desc, asc, inArray, and, sql, gte, exists, gt, lt, ne, isNull } from "drizzle-orm";
+import { eq, desc, asc, inArray, and, sql, gte, exists, gt, lt, ne, isNull, or } from "drizzle-orm";
 import { startOfWeek, startOfMonth } from "date-fns";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { isActiveTier } from "@social0/shared";
@@ -296,22 +296,28 @@ export async function getPostsListData({
     }
   }
 
-  const connectedAccountsList =
-    accountIds.length > 0
-      ? await db
-          .select({
-            id: connectedAccounts.id,
-            platform: connectedAccounts.platform,
-            platformUsername: connectedAccounts.platformUsername,
-          })
-          .from(connectedAccounts)
-          .where(
-            and(
-              eq(connectedAccounts.userId, userId),
-              inArray(connectedAccounts.id, accountIds),
-            ),
-          )
-      : [];
+  // "All accounts" filter should include every connected account available
+  // in the current workspace scope, not just accounts that appear on the
+  // current page's post/publication slice.
+  const connectedAccountsList = await db
+    .select({
+      id: connectedAccounts.id,
+      platform: connectedAccounts.platform,
+      platformUsername: connectedAccounts.platformUsername,
+    })
+    .from(connectedAccounts)
+    .where(
+      and(
+        eq(connectedAccounts.userId, userId),
+        eq(connectedAccounts.isActive, true),
+        workspaceId
+          ? or(
+              eq(connectedAccounts.workspaceId, workspaceId),
+              isNull(connectedAccounts.workspaceId),
+            )
+          : isNull(connectedAccounts.workspaceId),
+      ),
+    );
 
   const platformOptions = platforms.map((id) => ({
     value: id,
