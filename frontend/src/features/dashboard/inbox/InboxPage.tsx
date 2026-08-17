@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import Link from "@/components/AppLink";
 import { AccountAvatar } from "@/components/AccountAvatar";
@@ -15,7 +15,10 @@ import { PlatformIcon } from "@/components/PlatformIcon";
 import { useSession } from "@/lib/auth-client";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
-import { listAnalyticsAccounts } from "@/api/analytics";
+import {
+  listAnalyticsAccounts,
+  type AnalyticsAccount,
+} from "@/api/analytics";
 import {
   listInboxComments,
   replyToInboxComment,
@@ -28,7 +31,8 @@ import { PLATFORM_LABEL } from "@/features/dashboard/analytics/analytics-utils";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-const PLATFORM_FILTERS = [
+/** Platforms that can appear in the comments inbox. */
+const INBOX_ACCOUNT_PLATFORMS = new Set([
   "instagram",
   "facebook",
   "threads",
@@ -36,13 +40,13 @@ const PLATFORM_FILTERS = [
   "youtube",
   "bluesky",
   "linkedin",
-] as const;
+]);
 
 const RANGE_OPTIONS: Array<{ value: InboxRange; label: string }> = [
-  { value: "1d", label: "1d" },
-  { value: "7d", label: "7d" },
-  { value: "30d", label: "30d" },
-  { value: "90d", label: "90d" },
+  { value: "1d", label: "1 day" },
+  { value: "7d", label: "7 days" },
+  { value: "30d", label: "30 days" },
+  { value: "90d", label: "90 days" },
 ];
 
 const RANGE_EMPTY_LABEL: Record<InboxRange, string> = {
@@ -124,7 +128,6 @@ export function InboxPage() {
   const dash = useDashboardPath();
   const qc = useQueryClient();
   const [range, setRange] = useState<InboxRange>("7d");
-  const [platform, setPlatform] = useState<string | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [mobileDetail, setMobileDetail] = useState(false);
@@ -135,14 +138,13 @@ export function InboxPage() {
     enabled: !!session,
   });
 
-  const queryKey = ["inbox-comments", range, platform, accountId] as const;
+  const queryKey = ["inbox-comments", range, accountId] as const;
 
   const inboxQuery = useQuery({
     queryKey,
     queryFn: () =>
       listInboxComments({
         range,
-        platform: platform || undefined,
         accountId: accountId || undefined,
       }),
     enabled: !!session,
@@ -176,21 +178,23 @@ export function InboxPage() {
           accountLabel: account?.username ?? null,
         });
       });
-      // Soft refresh so platform nesting / ids catch up without wiping the reply.
-      void qc.invalidateQueries({ queryKey: ["inbox-comments"] });
+      // Delay refresh — X/search APIs often lag a few seconds behind a successful reply.
+      window.setTimeout(() => {
+        void qc.invalidateQueries({ queryKey: ["inbox-comments"] });
+      }, 2500);
     },
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : "Reply failed");
     },
   });
 
-  const accountsForFilter = useMemo(() => {
-    const rows = (accountsQuery.data ?? []).filter((a) =>
-      (PLATFORM_FILTERS as readonly string[]).includes(a.platform),
-    );
-    if (!platform) return rows;
-    return rows.filter((a) => a.platform === platform);
-  }, [accountsQuery.data, platform]);
+  const accountsForFilter = useMemo(
+    () =>
+      (accountsQuery.data ?? []).filter((a) =>
+        INBOX_ACCOUNT_PLATFORMS.has(a.platform),
+      ),
+    [accountsQuery.data],
+  );
 
   const data = inboxQuery.data;
   const threads = data?.threads ?? [];
@@ -233,33 +237,54 @@ export function InboxPage() {
   const showDetail = mobileDetail || Boolean(selected);
 
   return (
-    <div className="-mx-1 flex min-h-[calc(100dvh-8rem)] flex-col gap-3 sm:mx-0">
-      <header className="flex flex-wrap items-center gap-2 sm:gap-3">
-        <h1 className="font-logo text-[1.75rem] font-normal tracking-tight text-foreground sm:text-[2rem]">
-          Inbox
-        </h1>
+    <div className="-mx-1 flex min-h-[calc(100dvh-8rem)] flex-col gap-4 sm:mx-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+            Inbox
+          </h1>
+          <p className="mt-1 text-sm text-text-muted">
+            Comments on posts you published through Social0. Reply without
+            switching apps.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void inboxQuery.refetch()}
+          disabled={loading}
+          className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text transition-colors hover:bg-bg-subtle disabled:opacity-60"
+        >
+          <ArrowClockwise
+            className={cn("h-4 w-4", loading && "animate-spin")}
+            size={16}
+          />
+          Refresh
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div
           role="tablist"
           aria-label="Date range"
-          className="inline-flex rounded-lg border border-border bg-bg-muted p-0.5"
+          className="inline-flex w-full rounded-full border border-border bg-bg-muted p-1 sm:w-auto"
         >
           {RANGE_OPTIONS.map((opt) => {
-            const on = range === opt.value;
+            const selectedRange = range === opt.value;
             return (
               <button
                 key={opt.value}
                 type="button"
                 role="tab"
-                aria-selected={on}
+                aria-selected={selectedRange}
                 onClick={() => {
                   setRange(opt.value);
                   setPickedId(null);
                   setMobileDetail(false);
                 }}
                 className={cn(
-                  "rounded-md px-2.5 py-1 text-xs font-semibold tabular-nums transition-colors",
-                  on
-                    ? "bg-bg-elevated text-text shadow-sm"
+                  "flex-1 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors sm:flex-none sm:px-4",
+                  selectedRange
+                    ? "bg-accent text-accent-foreground shadow-sm"
                     : "text-text-muted hover:text-text",
                 )}
               >
@@ -269,97 +294,45 @@ export function InboxPage() {
           })}
         </div>
         {rangeLabel ? (
-          <span className="hidden text-xs tabular-nums text-text-muted sm:inline">
+          <p className="text-sm font-medium tabular-nums text-text-muted">
             {rangeLabel}
-          </span>
+          </p>
         ) : null}
-        <div className="ml-auto flex items-center gap-2">
-          {threads.length > 0 ? (
-            <span className="text-xs text-text-muted">
-              {threads.length} thread{threads.length === 1 ? "" : "s"}
-            </span>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => void inboxQuery.refetch()}
-            disabled={loading}
-            aria-label="Refresh inbox"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border text-text-muted hover:bg-bg-subtle hover:text-text disabled:opacity-60"
-          >
-            <ArrowClockwise
-              className={cn("h-4 w-4", loading && "animate-spin")}
-              size={16}
-            />
-          </button>
-        </div>
-      </header>
+      </div>
 
-      <div className="flex flex-wrap items-center gap-1.5">
-        <PlatformToggle
-          label="All"
-          selected={platform == null}
-          onClick={() => {
-            setPlatform(null);
-            setAccountId(null);
-            setPickedId(null);
-            setMobileDetail(false);
-          }}
-        />
-        {PLATFORM_FILTERS.map((id) => (
-          <PlatformToggle
-            key={id}
-            label={PLATFORM_LABEL[id] ?? id}
-            selected={platform === id}
-            icon={<PlatformIcon platform={id} size={13} />}
+      {accountsQuery.isLoading ? (
+        <div className="flex flex-wrap gap-3" aria-hidden>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex w-16 flex-col items-center gap-1.5">
+              <div className="h-12 w-12 animate-pulse rounded-full bg-bg-muted" />
+              <div className="h-2.5 w-12 animate-pulse rounded bg-bg-muted" />
+            </div>
+          ))}
+        </div>
+      ) : accountsForFilter.length > 0 ? (
+        <div className="flex flex-wrap items-start gap-3">
+          <AllAccountsChip
+            selected={accountId == null}
             onClick={() => {
-              setPlatform(id);
               setAccountId(null);
               setPickedId(null);
               setMobileDetail(false);
             }}
           />
-        ))}
-        {accountsForFilter.length > 1 ? (
-          <>
-            <span className="mx-1 h-4 w-px bg-border" aria-hidden />
-            <AccountToggle
-              selected={accountId == null}
-              label="All"
+          {accountsForFilter.map((a) => (
+            <InboxAccountChip
+              key={a.id}
+              account={a}
+              selected={accountId === a.id}
               onClick={() => {
-                setAccountId(null);
+                setAccountId(a.id);
                 setPickedId(null);
                 setMobileDetail(false);
               }}
-            >
-              <SquaresFour size={14} weight={accountId == null ? "fill" : "regular"} />
-            </AccountToggle>
-            {accountsForFilter.map((a) => (
-              <AccountToggle
-                key={a.id}
-                selected={accountId === a.id}
-                label={`@${handleLabel(a.username)}`}
-                onClick={() => {
-                  setAccountId(a.id);
-                  setPickedId(null);
-                  setMobileDetail(false);
-                }}
-              >
-                <span className="relative block h-5 w-5 overflow-hidden rounded-full">
-                  <AccountAvatar
-                    profileImageUrl={a.profileImageUrl}
-                    username={a.username}
-                    platform={a.platform}
-                    fill
-                  />
-                  <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-bg-elevated">
-                    <PlatformIcon platform={a.platform} size={8} />
-                  </span>
-                </span>
-              </AccountToggle>
-            ))}
-          </>
-        ) : null}
-      </div>
+            />
+          ))}
+        </div>
+      ) : null}
 
       {data?.accountsNeedingReconnect?.length ? (
         <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
@@ -506,62 +479,106 @@ export function InboxPage() {
   );
 }
 
-function PlatformToggle({
-  label,
+function AllAccountsChip({
   selected,
   onClick,
-  icon,
 }: {
-  label: string;
   selected: boolean;
   onClick: () => void;
-  icon?: ReactNode;
 }) {
   return (
     <button
       type="button"
-      title={label}
       onClick={onClick}
-      className={cn(
-        "inline-flex h-7 items-center gap-1 rounded-md px-2 text-[11px] font-medium transition-colors",
-        selected
-          ? "bg-accent text-accent-foreground"
-          : "bg-bg-muted text-text-muted hover:text-text",
-      )}
+      aria-pressed={selected}
+      className="flex w-16 flex-col items-center gap-1.5"
     >
-      {icon}
-      <span className={icon ? "hidden sm:inline" : undefined}>{label}</span>
+      <span
+        className={cn(
+          "relative flex h-12 w-12 items-center justify-center rounded-full border-2 transition-all",
+          selected
+            ? "border-accent bg-accent/15 text-accent"
+            : "border-transparent bg-bg-muted text-text-muted opacity-70 hover:opacity-100",
+        )}
+      >
+        <SquaresFour size={22} weight={selected ? "fill" : "regular"} />
+        {selected ? <SelectedCheck /> : null}
+      </span>
+      <span
+        className={cn(
+          "w-full truncate text-center text-[11px] font-semibold",
+          selected ? "text-accent" : "text-text-muted",
+        )}
+      >
+        All
+      </span>
     </button>
   );
 }
 
-function AccountToggle({
+function InboxAccountChip({
+  account,
   selected,
-  label,
   onClick,
-  children,
 }: {
+  account: AnalyticsAccount;
   selected: boolean;
-  label: string;
   onClick: () => void;
-  children: ReactNode;
 }) {
   return (
     <button
       type="button"
-      title={label}
-      aria-label={label}
-      aria-pressed={selected}
       onClick={onClick}
-      className={cn(
-        "inline-flex h-7 w-7 items-center justify-center rounded-full border transition-all",
-        selected
-          ? "border-accent bg-accent/10"
-          : "border-transparent opacity-70 hover:opacity-100",
-      )}
+      aria-pressed={selected}
+      title={`@${handleLabel(account.username)} · ${PLATFORM_LABEL[account.platform] ?? account.platform}`}
+      className="flex w-16 flex-col items-center gap-1.5"
     >
-      {children}
+      {/* Avatar clips itself; badge sits outside overflow so it doesn't bite the PFP. */}
+      <span
+        className={cn(
+          "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 transition-all",
+          selected
+            ? "border-accent opacity-100"
+            : "border-transparent opacity-60 hover:opacity-100",
+        )}
+      >
+        <span className="h-full w-full overflow-hidden rounded-full">
+          <AccountAvatar
+            profileImageUrl={account.profileImageUrl}
+            username={account.username}
+            platform={account.platform}
+            fill
+          />
+        </span>
+        <span className="absolute -bottom-0.5 -right-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-bg bg-bg-elevated shadow-sm">
+          <PlatformIcon platform={account.platform} size={11} />
+        </span>
+        {selected ? <SelectedCheck /> : null}
+      </span>
+      <span
+        className={cn(
+          "w-full truncate text-center text-[11px] font-semibold",
+          selected ? "text-accent" : "text-text",
+        )}
+      >
+        {handleLabel(account.username)}
+      </span>
     </button>
+  );
+}
+
+function SelectedCheck() {
+  return (
+    <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent text-accent-foreground">
+      <svg className="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2.5}
+          d="M5 13l4 4L19 7"
+        />
+      </svg>
+    </span>
   );
 }
 
