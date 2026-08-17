@@ -8,8 +8,9 @@ import {
   autoPlugs,
   queuedPosts,
 } from "@/db/schema";
-import { eq, desc, asc, inArray, and, sql, gte, exists, gt, lt, ne, isNull, or } from "drizzle-orm";
+import { eq, desc, asc, inArray, and, sql, gte, exists, gt, lt, ne, isNull } from "drizzle-orm";
 import { startOfWeek, startOfMonth } from "date-fns";
+import { connectionScopeCondition } from "@/lib/workspace/context";
 import { getSubscriptionForUser } from "@/lib/subscription";
 import { isActiveTier } from "@social0/shared";
 import { POSTS_PAGE_SIZE } from "@social0/shared";
@@ -230,13 +231,6 @@ export async function getPostsListData({
   }
 
   const platforms = [...new Set(publications.map((p) => p.platform))];
-  const accountIds = [
-    ...new Set(
-      publications
-        .map((p) => p.connectedAccountId)
-        .filter((id): id is string => id != null),
-    ),
-  ];
 
   // Use derived status: "publishing" -> "published" when all succeeded, "partial" when mixed
   const userPostsWithStatus = userPosts.map((p) => {
@@ -308,14 +302,8 @@ export async function getPostsListData({
     .from(connectedAccounts)
     .where(
       and(
-        eq(connectedAccounts.userId, userId),
+        connectionScopeCondition({ resourceUserId: userId, workspaceId }),
         eq(connectedAccounts.isActive, true),
-        workspaceId
-          ? or(
-              eq(connectedAccounts.workspaceId, workspaceId),
-              isNull(connectedAccounts.workspaceId),
-            )
-          : isNull(connectedAccounts.workspaceId),
       ),
     );
 
@@ -323,10 +311,12 @@ export async function getPostsListData({
     value: id,
     label: id.charAt(0).toUpperCase() + id.slice(1).replace("_", " "),
   }));
-  const accountOptions = connectedAccountsList.map((a) => ({
-    value: a.id,
-    label: `@${a.platformUsername || a.platform} (${a.platform})`,
-  }));
+  const accountOptions = connectedAccountsList
+    .map((a) => ({
+      value: a.id,
+      label: `@${a.platformUsername || a.platform} (${a.platform})`,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   const postIdsWithXPublished = userPostsWithStatus
     .filter((p) =>
