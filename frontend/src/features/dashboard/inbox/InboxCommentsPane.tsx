@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowSquareOut,
   ChatCircle,
+  CircleNotch,
   WarningCircle,
 } from "@/icons/phosphor";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
@@ -131,6 +132,7 @@ export function InboxCommentsPane({
 
   const [failedReplyIds, setFailedReplyIds] = useState<Set<string>>(new Set());
   const [sendingReplyIds, setSendingReplyIds] = useState<Set<string>>(new Set());
+  const retryPayloads = useRef(new Map<string, InboxComposerPayload>());
 
   const sendReply = async (
     thread: InboxThread,
@@ -152,6 +154,7 @@ export function InboxCommentsPane({
       : null;
 
     if (!opts?.optimisticId) {
+      retryPayloads.current.set(optimisticId, payload);
       qc.setQueryData<InboxListResult>(queryKey, (old) => {
         if (!old) return old;
         return appendOptimisticReply(old, {
@@ -190,6 +193,7 @@ export function InboxCommentsPane({
         return;
       }
       setSentTick((n) => n + 1);
+      retryPayloads.current.delete(optimisticId);
       qc.setQueryData<InboxListResult>(queryKey, (old) => {
         if (!old) return old;
         return {
@@ -338,6 +342,9 @@ export function InboxCommentsPane({
                       <span className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-text-muted">
                         {c.text || "(No text)"}
                       </span>
+                      <span className="mt-1 line-clamp-1 text-[10px] text-text-muted/80">
+                        Re: {c.postSnippet}
+                      </span>
                       <span className="mt-1 flex items-center gap-2 text-[10px] text-text-muted">
                         <span>{PLATFORM_LABEL[c.platform] ?? c.platform}</span>
                         {replyCount > 0 ? (
@@ -366,13 +373,20 @@ export function InboxCommentsPane({
                 thread={selected}
                 dash={dash}
                 accounts={accounts}
-                sending={sendingReplyIds.size > 0}
+                sendingReplyIds={sendingReplyIds}
                 failedReplyIds={failedReplyIds}
                 sentTick={sentTick}
                 onBack={() => setMobileDetail(false)}
                 onReply={(commentId, payload, optimisticId) =>
                   void sendReply(selected, commentId, payload, { optimisticId })
                 }
+                onRetryReply={(id) => {
+                  const payload = retryPayloads.current.get(id);
+                  if (!payload) return;
+                  void sendReply(selected, selected.comment.id, payload, {
+                    optimisticId: id,
+                  });
+                }}
               />
             ) : (
               <div className="flex flex-1 items-center justify-center p-8 text-sm text-text-muted">
@@ -401,16 +415,17 @@ function ConversationPane({
   thread,
   dash,
   accounts,
-  sending,
+  sendingReplyIds,
   failedReplyIds,
   sentTick,
   onBack,
   onReply,
+  onRetryReply,
 }: {
   thread: InboxThread;
   dash: (path: string) => string;
   accounts: AnalyticsAccount[];
-  sending: boolean;
+  sendingReplyIds: Set<string>;
   failedReplyIds: Set<string>;
   sentTick: number;
   onBack: () => void;
@@ -419,11 +434,11 @@ function ConversationPane({
     payload: InboxComposerPayload,
     optimisticId?: string,
   ) => void;
+  onRetryReply: (optimisticId: string) => void;
 }) {
   const c = thread.comment;
   const account = accounts.find((a) => a.id === c.accountId);
-
-  const messages = [c, ...thread.replies];
+  const replyCount = thread.replies.length;
 
   return (
     <>
@@ -438,12 +453,15 @@ function ConversationPane({
         </button>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-medium uppercase tracking-wide text-text-muted">
-            On your {PLATFORM_LABEL[c.platform] ?? c.platform} post
+            Comment thread · {PLATFORM_LABEL[c.platform] ?? c.platform}
           </p>
-          <p className="mt-0.5 line-clamp-2 text-[13px] text-text">
+          <p className="mt-0.5 line-clamp-2 text-[13px] font-medium text-text">
             {c.postSnippet}
           </p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px]">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-text-muted">
+            <span>
+              {replyCount} repl{replyCount === 1 ? "y" : "ies"}
+            </span>
             <Link
               href={dash(`posts/${c.postId}`)}
               className="text-accent hover:underline"
@@ -455,7 +473,7 @@ function ConversationPane({
                 href={c.platformPostUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-0.5 text-text-muted hover:text-accent"
+                className="inline-flex items-center gap-0.5 hover:text-accent"
               >
                 View on {PLATFORM_LABEL[c.platform] ?? c.platform}
                 <ArrowSquareOut size={11} />
@@ -465,34 +483,55 @@ function ConversationPane({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 sm:px-4">
-        {messages.map((m, i) => (
-          <MessageBubble
-            key={m.id}
-            comment={m}
-            isRoot={i === 0}
-            accountProfileImageUrl={account?.profileImageUrl}
-            failed={failedReplyIds.has(m.id)}
-            onRetry={
-              m.isOwn && failedReplyIds.has(m.id)
-                ? () =>
-                    onReply(c.id, { text: m.text, file: null, previewUrl: null }, m.id)
-                : undefined
-            }
-          />
-        ))}
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
+        <CommentThreadRow
+          comment={c}
+          accountProfileImageUrl={account?.profileImageUrl}
+          isRoot
+          sending={sendingReplyIds.has(c.id)}
+          failed={failedReplyIds.has(c.id)}
+        />
+        {thread.replies.length > 0 ? (
+          <div className="mt-1 space-y-0 border-l-2 border-border/80 pl-3 sm:pl-4 ml-4 sm:ml-5">
+            {thread.replies.map((reply) => (
+              <CommentThreadRow
+                key={reply.id}
+                comment={reply}
+                accountProfileImageUrl={account?.profileImageUrl}
+                sending={sendingReplyIds.has(reply.id)}
+                failed={failedReplyIds.has(reply.id)}
+                onRetry={
+                  reply.isOwn && failedReplyIds.has(reply.id)
+                    ? () => onRetryReply(reply.id)
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {c.canReply ? (
-        <InboxComposer
-          key={`${c.id}-${sentTick}`}
-          platform={c.platform}
-          mode="comment"
-          maxLength={replyMax(c.platform)}
-          placeholder={`Reply to ${c.isOwn ? "this thread" : c.authorName}…`}
-          sending={sending}
-          onSend={(payload) => onReply(c.id, payload)}
-        />
+        <div className="border-t border-border">
+          <p className="border-b border-border bg-bg-subtle/50 px-3 py-1.5 text-[11px] text-text-muted sm:px-4">
+            Replying to{" "}
+            <span className="font-medium text-text">
+              {c.isOwn ? "this thread" : c.authorName}
+            </span>
+            {c.authorHandle ? (
+              <span> (@{c.authorHandle.replace(/^@/, "")})</span>
+            ) : null}
+          </p>
+          <InboxComposer
+            key={`${c.id}-${sentTick}`}
+            platform={c.platform}
+            mode="comment"
+            maxLength={replyMax(c.platform)}
+            placeholder="Write a reply…"
+            sending={sendingReplyIds.size > 0}
+            onSend={(payload) => onReply(c.id, payload)}
+          />
+        </div>
       ) : (
         <p className="border-t border-border px-4 py-3 text-sm text-text-muted">
           Replies aren&apos;t available for{" "}
@@ -503,16 +542,18 @@ function ConversationPane({
   );
 }
 
-function MessageBubble({
+function CommentThreadRow({
   comment,
-  isRoot,
   accountProfileImageUrl,
+  isRoot,
+  sending,
   failed,
   onRetry,
 }: {
   comment: InboxComment;
-  isRoot?: boolean;
   accountProfileImageUrl?: string | null;
+  isRoot?: boolean;
+  sending?: boolean;
   failed?: boolean;
   onRetry?: () => void;
 }) {
@@ -525,62 +566,60 @@ function MessageBubble({
     : comment.authorAvatarUrl;
 
   return (
-    <div
+    <article
       className={cn(
-        "flex gap-2.5",
-        own && "flex-row-reverse",
-        !isRoot && "ml-2 sm:ml-4",
+        "flex gap-3 py-3",
+        !isRoot && "border-t border-border/60 first:border-t-0",
+        own && !isRoot && "rounded-r-lg bg-accent/[0.04]",
+        failed && "rounded-lg ring-1 ring-red-500/30",
       )}
     >
       <InboxAvatar
         profileImageUrl={avatarUrl}
         username={comment.authorHandle ?? comment.authorName}
         platform={comment.platform}
-        size={28}
-        className="mt-0.5"
+        size={32}
+        className="shrink-0"
       />
-      <div className="flex max-w-[min(100%,28rem)] flex-col gap-1">
-        <div
-          className={cn(
-            "rounded-2xl px-3 py-2",
-            own
-              ? "rounded-tr-md bg-accent/15 text-text"
-              : "rounded-tl-md bg-bg-muted text-text",
-            failed && "ring-1 ring-red-500/40",
-          )}
-        >
-          <p className="flex flex-wrap items-baseline gap-x-1.5 text-[11px]">
-            <span className="font-semibold">
-              {own ? "You" : comment.authorName}
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span className="text-[13px] font-semibold text-text">
+            {own ? "You" : comment.authorName}
+          </span>
+          {!own && comment.authorHandle ? (
+            <span className="text-[12px] text-text-muted">
+              @{comment.authorHandle.replace(/^@/, "")}
             </span>
-            {!own && comment.authorHandle ? (
-              <span className="text-text-muted">@{comment.authorHandle}</span>
-            ) : null}
-            {when ? <span className="text-text-muted">· {when}</span> : null}
-          </p>
-          {comment.text ? (
-            <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed">
-              {comment.text}
-            </p>
           ) : null}
-          {comment.attachment ? (
-            <InboxAttachmentView attachment={comment.attachment} />
+          {isRoot ? (
+            <span className="rounded-full bg-bg-muted px-1.5 py-0.5 text-[10px] font-medium text-text-muted">
+              Original comment
+            </span>
           ) : null}
+          <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-text-muted">
+            {sending ? <CircleNotch size={12} className="animate-spin" /> : null}
+            {when}
+          </span>
         </div>
+        {comment.text ? (
+          <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-text">
+            {comment.text}
+          </p>
+        ) : null}
+        {comment.attachment ? (
+          <InboxAttachmentView attachment={comment.attachment} />
+        ) : null}
         {failed && onRetry ? (
           <button
             type="button"
             onClick={onRetry}
-            className={cn(
-              "inline-flex items-center gap-1 text-[11px] font-medium text-red-500 hover:text-red-400",
-              own && "self-end",
-            )}
+            className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-red-500 hover:text-red-400"
           >
             <WarningCircle size={14} weight="fill" />
-            Tap to retry
+            Failed to send · Tap to retry
           </button>
         ) : null}
       </div>
-    </div>
+    </article>
   );
 }

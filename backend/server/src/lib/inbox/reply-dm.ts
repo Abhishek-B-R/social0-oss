@@ -53,13 +53,45 @@ function graphAttachment(
   return { type, payload: { url: mediaUrl, is_reusable: true } };
 }
 
+async function graphUploadAttachmentId(
+  host: "graph.facebook.com" | "graph.instagram.com",
+  platformUserId: string,
+  accessToken: string,
+  mediaUrl: string,
+  mediaMimeType: string,
+): Promise<{ id: string } | { error: string }> {
+  const url = `https://${host}/v21.0/${encodeURIComponent(platformUserId)}/message_attachments?access_token=${encodeURIComponent(accessToken)}`;
+  const { ok, data } = await jsonPost(url, {
+    message: { attachment: graphAttachment(mediaUrl, mediaMimeType) },
+  });
+  if (!ok) {
+    return {
+      error: graphError(data, "Could not upload attachment — ensure media URL is public HTTPS."),
+    };
+  }
+  const id = (data as { attachment_id?: string })?.attachment_id;
+  if (!id) {
+    return { error: "Platform did not return an attachment id." };
+  }
+  return { id };
+}
+
 async function replyFacebook(input: DmReplyInput): Promise<DmReplyResult> {
   if (!input.peerId) return fail("Missing recipient for this Facebook conversation.");
   const url = `https://graph.facebook.com/v21.0/${encodeURIComponent(input.platformUserId)}/messages?access_token=${encodeURIComponent(input.accessToken)}`;
   const message: Record<string, unknown> = {};
   if (input.text.trim()) message.text = input.text.trim();
   if (input.mediaUrl && input.mediaMimeType) {
-    message.attachment = graphAttachment(input.mediaUrl, input.mediaMimeType);
+    const uploaded = await graphUploadAttachmentId(
+      "graph.facebook.com",
+      input.platformUserId,
+      input.accessToken,
+      input.mediaUrl,
+      input.mediaMimeType,
+    );
+    if ("error" in uploaded) return fail(uploaded.error);
+    const type = input.mediaMimeType.startsWith("video/") ? "video" : "image";
+    message.attachment = { type, payload: { attachment_id: uploaded.id } };
   }
   if (!message.text && !message.attachment) return fail("Message is empty.");
   const { ok, data } = await jsonPost(url, {
@@ -78,7 +110,16 @@ async function replyInstagram(input: DmReplyInput): Promise<DmReplyResult> {
   const message: Record<string, unknown> = {};
   if (input.text.trim()) message.text = input.text.trim();
   if (input.mediaUrl && input.mediaMimeType) {
-    message.attachment = graphAttachment(input.mediaUrl, input.mediaMimeType);
+    const uploaded = await graphUploadAttachmentId(
+      "graph.instagram.com",
+      input.platformUserId,
+      input.accessToken,
+      input.mediaUrl,
+      input.mediaMimeType,
+    );
+    if ("error" in uploaded) return fail(uploaded.error);
+    const type = input.mediaMimeType.startsWith("video/") ? "video" : "image";
+    message.attachment = { type, payload: { attachment_id: uploaded.id } };
   }
   if (!message.text && !message.attachment) return fail("Message is empty.");
   const { ok, data } = await jsonPost(url, {

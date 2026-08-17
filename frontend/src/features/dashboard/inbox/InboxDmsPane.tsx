@@ -4,6 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import Link from "@/components/AppLink";
 import {
   ArrowLeft,
+  CircleNotch,
   EnvelopeSimple,
   WarningCircle,
 } from "@/icons/phosphor";
@@ -210,9 +211,20 @@ export function InboxDmsPane({
 
       try {
         let mediaId: string | undefined;
-        if (payload.file) {
+        if (opts?.clientId) {
+          mediaId = pendingByConvo[key]?.find((m) => m.id === clientId)
+            ?.retryPayload?.mediaId;
+        }
+        if (payload.file && !mediaId) {
           const uploaded = await uploadFile(payload.file, 0);
           mediaId = uploaded.id;
+          updatePending(key, (prev) =>
+            prev.map((m) =>
+              m.id === clientId && m.retryPayload
+                ? { ...m, retryPayload: { ...m.retryPayload, mediaId } }
+                : m,
+            ),
+          );
         }
         const res = await replyToInboxDm({
           accountId: thread.accountId,
@@ -259,7 +271,7 @@ export function InboxDmsPane({
         toast.error(e instanceof Error ? e.message : "Send failed");
       }
     },
-    [listKey, qc, threadQueryKey, updatePending],
+    [listKey, pendingByConvo, qc, threadQueryKey, updatePending],
   );
 
   const loading = listQuery.isLoading || listQuery.isFetching;
@@ -590,8 +602,11 @@ function DmBubble({
             {!own && message.authorHandle ? (
               <span className="text-text-muted">@{message.authorHandle}</span>
             ) : null}
-            {when ? <span className="text-text-muted">· {when}</span> : null}
-          </p>
+          {when ? <span className="text-text-muted">· {when}</span> : null}
+          {sending ? (
+            <CircleNotch size={12} className="animate-spin text-text-muted" />
+          ) : null}
+        </p>
           {message.text ? (
             <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed">
               {message.text}
