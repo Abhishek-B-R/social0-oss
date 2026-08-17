@@ -21,10 +21,11 @@ Source of truth in code: `backend/server/src/lib/platforms.ts`, `backend/shared/
 | X (Twitter) | Yes | Yes | Yes* | Yes | image, video | image, video |
 | Bluesky | Yes | Yes | Yes | Yes | image | — |
 | LinkedIn | Yes | partial | read-only | — | — | — |
-| TikTok | Yes | Yes | — | — | — | — |
+| TikTok | Yes | Yes | — | Yes* | — | image |
 | Pinterest | Yes | Yes | — | — | — | — |
 
 \* X comment search is limited to ~7 days via Recent Search API.
+\* TikTok DMs require Business Messaging (not Login Kit) and are unavailable in US/EEA/UK.
 
 ---
 
@@ -208,7 +209,7 @@ Stored as encrypted access + “secret” (app password) on the connected accoun
 
 ## TikTok
 
-### OAuth scopes
+### OAuth scopes (Login Kit — publish + analytics)
 
 | Scope | Feature |
 | ----- | ------- |
@@ -217,14 +218,32 @@ Stored as encrypted access + “secret” (app password) on the connected accoun
 | `video.list` | List videos (Analytics) |
 | `user.info.stats` | Follower / aggregate stats |
 
+### Inbox DMs — Business Messaging API (separate product)
+
+TikTok **does** have an official DM API: [Business Messaging](https://business-api.tiktok.com/portal/bm-api/education-hub) at `business-api.tiktok.com/open_api/v1.3`.
+
+This is **not** Login Kit. The token from `/v2/auth/authorize` (publish) cannot read DMs.
+
+| Item | Detail |
+| ---- | ------ |
+| Host | `https://business-api.tiktok.com/open_api/v1.3` |
+| Endpoints | `/business/message/conversation/list/`, `/business/message/content/list/`, `/business/message/send/`, `/business/message/media/upload/` |
+| Header | `Access-Token` |
+| `business_id` | TikTok Business Account id (not Login Kit `open_id`) |
+| Regions | **Unavailable** for accounts registered in the US, EEA, Switzerland, UK |
+| Window | Reply only after the user messages you first; ~10 messages / 48h |
+| Media | Images in/out; video inbound via download |
+
+Social0 tries this API with the connected TikTok token. If TikTok rejects it (typical for Login Kit / US accounts), Inbox shows a reconnect hint: **Business Messaging API**.
+
+### Inbox comments
+
+No public comments inbox on Login Kit. Business API has a comments product; not wired yet.
+
 ### TikTok Developer Portal
 
-- Apply for Display API / Login Kit scope approval.
-
-### Inbox behavior
-
-- **No comments API** exposed for third-party inbox products.
-- **No DMs API** for creators.
+- Apply for Display API / Login Kit (publish).
+- Apply separately for **Business Messaging API** if DMs are required and the account is in an eligible region.
 
 ---
 
@@ -287,6 +306,7 @@ See also [`docs/ANALYTICS_SCOPES.md`](./ANALYTICS_SCOPES.md).
 | Facebook | `pages_messaging` |
 | X | App permission **Direct Messages Read and Write** + reconnect |
 | Bluesky | App password with **chat** enabled |
+| TikTok | Business Messaging API product (separate from Login Kit; not US/EEA/UK) |
 
 ---
 

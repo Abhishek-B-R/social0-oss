@@ -41,6 +41,7 @@ function dmKey(t: InboxDmThread): string {
 function dmReplyMax(platform: string): number {
   if (platform === "twitter_x") return 10000;
   if (platform === "bluesky") return 1000;
+  if (platform === "tiktok") return 2000;
   return 2000;
 }
 
@@ -316,15 +317,6 @@ export function InboxDmsPane({
           >
             Connections
           </Link>
-          {" · "}
-          <a
-            href="https://github.com/Abhishek-B-R/social0/blob/main/docs/PLATFORM_PERMISSIONS.md"
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium text-accent underline-offset-2 hover:underline"
-          >
-            Permissions guide
-          </a>
         </div>
       ) : null}
 
@@ -346,9 +338,9 @@ export function InboxDmsPane({
           <EnvelopeSimple size={28} className="text-text-muted" />
           <p className="mt-3 text-sm font-medium text-text">No messages yet</p>
           <p className="mt-1 max-w-md text-sm text-text-muted">
-            DMs from Instagram, Facebook Pages, X, and Bluesky in{" "}
-            {emptyRangeLabel} show up here. Threads, TikTok, YouTube, Pinterest,
-            and LinkedIn don&apos;t expose a messaging API we can use.
+            DMs from Instagram, Facebook Pages, X, Bluesky, and TikTok in{" "}
+            {emptyRangeLabel} show up here. Threads, YouTube, Pinterest, and
+            LinkedIn don&apos;t expose a messaging API we can use.
           </p>
         </div>
       ) : (

@@ -53,9 +53,10 @@ describe("missingDmScopes", () => {
     expect(missingDmScopes("facebook", "")).toEqual(["pages_messaging"]);
   });
 
-  it("does not nag X or Bluesky for extra OAuth strings", () => {
+  it("does not nag X, Bluesky, or TikTok for extra OAuth strings", () => {
     expect(missingDmScopes("twitter_x", null)).toEqual([]);
     expect(missingDmScopes("bluesky", "")).toEqual([]);
+    expect(missingDmScopes("tiktok", null)).toEqual([]);
   });
 });
 

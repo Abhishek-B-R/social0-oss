@@ -32,6 +32,7 @@ export const INBOX_DM_PLATFORMS = new Set([
   "facebook",
   "twitter_x",
   "bluesky",
+  "tiktok",
 ]);
 
 function handleLabel(username: string | null | undefined): string {
@@ -98,7 +99,7 @@ export function InboxPage() {
           <p className="mt-1 text-sm text-text-muted">
             {mode === "comments"
               ? "Comments on posts you published through Social0."
-              : "Direct messages from Instagram, Facebook Pages, X, and Bluesky."}
+              : "Direct messages from Instagram, Facebook, X, Bluesky, and TikTok."}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2 sm:pt-1">
@@ -160,7 +161,7 @@ export function InboxPage() {
         <p className="text-sm text-text-muted">
           {mode === "comments"
             ? "Connect Instagram, Facebook, Threads, X, YouTube, Bluesky, or LinkedIn to see comments."
-            : "Connect Instagram, Facebook, X, or Bluesky to manage DMs here."}
+            : "Connect Instagram, Facebook, X, Bluesky, or TikTok to manage DMs here."}
         </p>
       )}
 
@@ -178,19 +179,6 @@ export function InboxPage() {
           <InboxDmsPane dateWindow={dateWindow} accountId={accountId} enabled />
         </div>
       )}
-
-      <p className="text-[11px] text-text-muted">
-        Missing features after reconnect? See{" "}
-        <a
-          href="https://github.com/Abhishek-B-R/social0/blob/main/docs/PLATFORM_PERMISSIONS.md"
-          target="_blank"
-          rel="noreferrer"
-          className="text-accent hover:underline"
-        >
-          platform permissions guide
-        </a>
-        .
-      </p>
     </div>
   );
 }

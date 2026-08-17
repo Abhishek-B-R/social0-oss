@@ -119,8 +119,9 @@ Comments | DMs toggle on the same page. DMs are **account-level** (not limited t
 | Facebook Pages | `/{page-id}/conversations` + `/{page-id}/messages` | `pages_messaging` |
 | X | v2 `dm_events` + `dm_conversations/with/:id/messages` | App permission **Direct Messages Read and Write** (OAuth 1.0a — no extra scope string). Reconnect after enabling it on the X developer app. |
 | Bluesky | `chat.bsky.convo.*` via `api.bsky.chat` + `Atproto-Proxy` | App password with **chat** enabled |
+| TikTok | Business Messaging `/business/message/*` | Separate TikTok for Business product (not Login Kit). Unavailable in US/EEA/UK. |
 
-**Not shipped** (no public messaging API we can call): Threads, TikTok, YouTube, Pinterest, LinkedIn (partner-only).
+**Not shipped** (no public messaging API we can call): Threads, YouTube, Pinterest, LinkedIn (partner-only).
 
 ## What users see before App Review
 

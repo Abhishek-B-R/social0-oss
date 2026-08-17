@@ -325,15 +325,6 @@ export function InboxCommentsPane({
           >
             Connections
           </Link>
-          {" · "}
-          <a
-            href="https://github.com/Abhishek-B-R/social0/blob/main/docs/PLATFORM_PERMISSIONS.md"
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium text-accent underline-offset-2 hover:underline"
-          >
-            Permissions guide
-          </a>
         </div>
       ) : null}
 
@@ -376,7 +367,7 @@ export function InboxCommentsPane({
                 : "";
               const replyCount = thread.replies.length;
               const needsReply = !thread.replies.some((r) => r.isOwn);
-              const pageLabel = c.accountLabel
+              const via = c.accountLabel
                 ? `@${c.accountLabel.replace(/^@/, "")}`
                 : PLATFORM_LABEL[c.platform] ?? c.platform;
 
@@ -389,10 +380,10 @@ export function InboxCommentsPane({
                       setMobileDetail(true);
                     }}
                     className={cn(
-                      "relative flex w-full gap-2.5 px-3 py-3 text-left transition-colors",
+                      "relative flex w-full gap-2.5 px-3 py-2.5 text-left transition-colors",
                       active
-                        ? "bg-accent/[0.08] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-accent"
-                        : "hover:bg-bg-subtle/70",
+                        ? "bg-accent/[0.08] before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent"
+                        : "hover:bg-bg-subtle/80",
                     )}
                   >
                     <InboxPostThumbnail
@@ -401,9 +392,9 @@ export function InboxCommentsPane({
                       platform={c.platform}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-1.5">
-                        <span className="truncate text-[12px] font-semibold text-text">
-                          {pageLabel}
+                      <span className="flex items-baseline gap-1.5">
+                        <span className="truncate text-[13px] font-semibold text-text">
+                          {c.authorName}
                         </span>
                         {needsReply ? (
                           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
@@ -412,14 +403,19 @@ export function InboxCommentsPane({
                           {when}
                         </span>
                       </span>
-                      <span className="mt-0.5 line-clamp-1 text-[11px] font-medium text-text">
-                        {c.authorName}: {c.text || "(No text)"}
+                      <span className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-text-muted">
+                        {c.text || "(No text)"}
                       </span>
-                      {replyCount > 0 ? (
-                        <span className="mt-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-sky-500/90 px-1 text-[10px] font-semibold text-white">
-                          {replyCount + 1}
+                      <span className="mt-1 flex items-center gap-2 text-[10px] text-text-muted">
+                        <span>
+                          {PLATFORM_LABEL[c.platform] ?? c.platform} · {via}
                         </span>
-                      ) : null}
+                        {replyCount > 0 ? (
+                          <span className="ml-auto inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-sky-500/90 px-1 text-[10px] font-semibold text-white">
+                            {replyCount + 1}
+                          </span>
+                        ) : null}
+                      </span>
                     </span>
                   </button>
                 </li>
@@ -436,7 +432,6 @@ export function InboxCommentsPane({
             {selected ? (
               <ConversationPane
                 thread={selected}
-                dash={dash}
                 accounts={accounts}
                 sendingReplyIds={sendingReplyIds}
                 failedReplyIds={failedReplyIds}
@@ -478,7 +473,6 @@ export function InboxCommentsPane({
 
 function ConversationPane({
   thread,
-  dash,
   accounts,
   sendingReplyIds,
   failedReplyIds,
@@ -487,7 +481,6 @@ function ConversationPane({
   onRetryReply,
 }: {
   thread: InboxThread;
-  dash: (path: string) => string;
   accounts: AnalyticsAccount[];
   sendingReplyIds: Set<string>;
   failedReplyIds: Set<string>;
@@ -527,32 +520,37 @@ function ConversationPane({
         >
           <ArrowLeft size={16} />
         </button>
+        <InboxAvatar
+          profileImageUrl={root.authorAvatarUrl}
+          username={root.authorHandle ?? root.authorName}
+          platform={root.platform}
+          size={36}
+          className="shrink-0"
+        />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-text">
-            {root.accountLabel
-              ? `@${root.accountLabel.replace(/^@/, "")}`
-              : "Your post"}
+          <p className="truncate text-[13px] font-semibold text-text">
+            {root.authorName}
+            {root.authorHandle
+              ? ` (@${root.authorHandle.replace(/^@/, "")})`
+              : ""}
           </p>
-          <p className="text-[11px] text-text-muted">
-            {PLATFORM_LABEL[root.platform] ?? root.platform} · {flat.length}{" "}
-            comment{flat.length === 1 ? "" : "s"}
+          <p className="mt-0.5 text-[11px] text-text-muted">
+            {PLATFORM_LABEL[root.platform] ?? root.platform}
+            {root.accountLabel
+              ? ` · via @${root.accountLabel.replace(/^@/, "")}`
+              : ""}
+            {` · ${flat.length} comment${flat.length === 1 ? "" : "s"}`}
           </p>
         </div>
-        <Link
-          href={dash(`posts/${root.postId}`)}
-          className="hidden shrink-0 text-[11px] font-medium text-accent hover:underline sm:inline"
-        >
-          Social0
-        </Link>
         {root.platformPostUrl ? (
           <a
             href={root.platformPostUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-text-muted hover:text-accent"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-muted hover:bg-bg-subtle hover:text-accent"
+            aria-label="View post"
           >
-            View
-            <ArrowSquareOut size={11} />
+            <ArrowSquareOut size={14} />
           </a>
         ) : null}
       </div>
@@ -682,11 +680,6 @@ function CommentRow({
             {!own && comment.authorHandle ? (
               <span className="text-[12px] text-text-muted">
                 @{comment.authorHandle.replace(/^@/, "")}
-              </span>
-            ) : null}
-            {depth === 0 ? (
-              <span className="rounded bg-bg-muted px-1.5 py-0.5 text-[10px] font-medium text-text-muted">
-                Top comment
               </span>
             ) : null}
             <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-text-muted">

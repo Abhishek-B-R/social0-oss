@@ -6,10 +6,11 @@ import {
 } from "../lib/inbox/media-capabilities.js";
 
 describe("inboxDmMediaKinds", () => {
-  it("allows image/video on IG, FB, X only", () => {
+  it("allows image/video on IG, FB, X; image on TikTok; none on Bluesky", () => {
     expect(inboxDmMediaKinds("instagram")).toEqual(["image", "video"]);
     expect(inboxDmMediaKinds("facebook")).toEqual(["image", "video"]);
     expect(inboxDmMediaKinds("twitter_x")).toEqual(["image", "video"]);
+    expect(inboxDmMediaKinds("tiktok")).toEqual(["image"]);
     expect(inboxDmMediaKinds("bluesky")).toEqual([]);
   });
 });

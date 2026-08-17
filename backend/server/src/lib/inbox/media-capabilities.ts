@@ -7,6 +7,7 @@ const DM_MEDIA: Record<string, InboxMediaKind[]> = {
   facebook: ["image", "video"],
   twitter_x: ["image", "video"],
   bluesky: [],
+  tiktok: ["image"],
 };
 
 const COMMENT_MEDIA: Record<string, InboxMediaKind[]> = {

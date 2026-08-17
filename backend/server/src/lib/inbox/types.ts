@@ -64,6 +64,7 @@ export const INBOX_DM_PLATFORMS = [
   "facebook",
   "twitter_x",
   "bluesky",
+  "tiktok",
 ] as const;
 
 export type InboxDmPlatform = (typeof INBOX_DM_PLATFORMS)[number];
@@ -164,6 +165,9 @@ export const INBOX_DM_REQUIRED_SCOPES: Record<string, string[]> = {
   facebook: ["pages_messaging"],
   twitter_x: [],
   bluesky: [],
+  // Login Kit tokens have no extra scope string; Business Messaging is a
+  // separate TikTok product. We try the API and surface a reconnect hint on fail.
+  tiktok: [],
 };
 
 export function missingDmScopes(

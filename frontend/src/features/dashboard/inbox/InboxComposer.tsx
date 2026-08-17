@@ -176,7 +176,7 @@ export function InboxComposer({
               type="button"
               disabled={disabled}
               onClick={() => inputRef.current?.click()}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-lg border border-border text-text-muted hover:bg-bg-subtle hover:text-text disabled:opacity-50"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-full border border-border text-text-muted hover:bg-bg-subtle hover:text-text disabled:opacity-50"
               aria-label="Attach image or video"
             >
               <Paperclip size={18} />
@@ -195,11 +195,7 @@ export function InboxComposer({
           }}
           rows={2}
           maxLength={maxLength}
-          placeholder={
-            canAttach
-              ? `${placeholder} · Paste or drop media`
-              : placeholder
-          }
+          placeholder={placeholder}
           disabled={disabled}
           className="min-h-[2.75rem] flex-1 resize-none rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text outline-none placeholder:text-text-muted focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
         />
@@ -208,7 +204,7 @@ export function InboxComposer({
           disabled={!canSend}
           aria-label={sending ? "Sending" : "Send"}
           className={cn(
-            "inline-flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-lg bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-50",
+            "inline-flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-full bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-50",
           )}
         >
           {sending ? (
