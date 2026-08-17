@@ -1,5 +1,7 @@
 import { rpc } from "@/lib/rpc";
 
+export type InboxRange = "1d" | "7d" | "30d" | "90d";
+
 export type InboxComment = {
   id: string;
   platform: string;
@@ -25,6 +27,9 @@ export type InboxThread = {
 };
 
 export type InboxListResult = {
+  range: InboxRange;
+  since: string;
+  until: string;
   threads: InboxThread[];
   accountsNeedingReconnect: Array<{
     accountId: string;
@@ -41,6 +46,7 @@ export type InboxListResult = {
 export function listInboxComments(input?: {
   accountId?: string | null;
   platform?: string | null;
+  range?: InboxRange;
 }): Promise<InboxListResult> {
   return rpc<InboxListResult>("inbox.listComments", input ?? {});
 }

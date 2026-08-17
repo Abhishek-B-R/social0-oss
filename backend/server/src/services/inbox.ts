@@ -22,10 +22,13 @@ import { fetchPublicationComments } from "../lib/inbox/fetch-comments.js";
 import { replyOnPlatform } from "../lib/inbox/reply-comment.js";
 import {
   INBOX_UNSUPPORTED,
+  inboxRangeToMs,
+  isInboxRange,
   missingInboxScopes,
   toInboxThreads,
   type InboxComment,
   type InboxListResult,
+  type InboxRange,
   type InboxReconnectHint,
 } from "../lib/inbox/types.js";
 
@@ -38,7 +41,6 @@ function parsePlatform(value: unknown): Platform | undefined {
 
 const SAMPLE_LIMIT = 24;
 const CONCURRENCY = 4;
-const DEFAULT_RANGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 async function mapPool<T, R>(
   items: T[],
@@ -181,10 +183,12 @@ function snippet(content: string | null): string {
 export async function listInboxComments(input: {
   accountId?: unknown;
   platform?: unknown;
+  range?: unknown;
 }): Promise<InboxListResult> {
   const ctx = await requireUser();
+  const range: InboxRange = isInboxRange(input.range) ? input.range : "7d";
   const until = new Date();
-  const since = new Date(until.getTime() - DEFAULT_RANGE_MS);
+  const since = new Date(until.getTime() - inboxRangeToMs(range));
   const accountId =
     typeof input.accountId === "string" && input.accountId
       ? input.accountId
@@ -292,6 +296,9 @@ export async function listInboxComments(input: {
   }
 
   return {
+    range,
+    since: since.toISOString(),
+    until: until.toISOString(),
     threads: toInboxThreads(allComments),
     accountsNeedingReconnect: [...reconnect.values()],
     unsupported: [...unsupported],

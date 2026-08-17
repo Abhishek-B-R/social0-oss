@@ -94,7 +94,7 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 
 ## Inbox comments (Social Inbox)
 
-`/dashboard/inbox` lists comments on **Social0-published posts** (last 30 days) and lets you reply from the dashboard. Same additive-scope rule: publishing keeps working until reconnect.
+`/dashboard/inbox` lists comments on **Social0-published posts** (range: 1 / 7 / 30 / 90 days, default 7) and lets you reply from the dashboard. Same additive-scope rule: publishing keeps working until reconnect.
 
 | Platform | Read | Reply | Extra OAuth |
 | -------- | ---- | ----- | ----------- |

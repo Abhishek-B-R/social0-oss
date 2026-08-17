@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import Link from "@/components/AppLink";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { ArrowClockwise, ChatCircle, SquaresFour } from "@/icons/phosphor";
@@ -13,6 +13,7 @@ import {
   listInboxComments,
   replyToInboxComment,
   type InboxComment,
+  type InboxRange,
   type InboxThread,
 } from "@/api/inbox";
 import { PLATFORM_LABEL } from "@/features/dashboard/analytics/analytics-utils";
@@ -28,6 +29,20 @@ const PLATFORM_FILTERS = [
   "bluesky",
   "linkedin",
 ] as const;
+
+const RANGE_OPTIONS: Array<{ value: InboxRange; label: string }> = [
+  { value: "1d", label: "1 day" },
+  { value: "7d", label: "7 days" },
+  { value: "30d", label: "30 days" },
+  { value: "90d", label: "90 days" },
+];
+
+const RANGE_EMPTY_LABEL: Record<InboxRange, string> = {
+  "1d": "the last day",
+  "7d": "the last 7 days",
+  "30d": "the last 30 days",
+  "90d": "the last 90 days",
+};
 
 function threadKey(thread: InboxThread): string {
   return `${thread.comment.publicationId}-${thread.comment.id}`;
@@ -49,6 +64,7 @@ export function InboxPage() {
   const { data: session, isPending: sessionPending } = useSession();
   const dash = useDashboardPath();
   const qc = useQueryClient();
+  const [range, setRange] = useState<InboxRange>("7d");
   const [platform, setPlatform] = useState<string | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [pickedId, setPickedId] = useState<string | null>(null);
@@ -60,9 +76,10 @@ export function InboxPage() {
   });
 
   const inboxQuery = useQuery({
-    queryKey: ["inbox-comments", platform, accountId],
+    queryKey: ["inbox-comments", range, platform, accountId],
     queryFn: () =>
       listInboxComments({
+        range,
         platform: platform || undefined,
         accountId: accountId || undefined,
       }),
@@ -113,6 +130,11 @@ export function InboxPage() {
   const threads = data?.threads ?? [];
   const selected =
     threads.find((t) => threadKey(t) === pickedId) ?? threads[0] ?? null;
+  const rangeLabel =
+    data?.since && data?.until
+      ? `${format(new Date(data.since), "MMM d")} – ${format(new Date(data.until), "MMM d, yyyy")}`
+      : null;
+  const emptyRangeLabel = RANGE_EMPTY_LABEL[range];
 
   return (
     <div className="flex flex-col gap-6">
@@ -138,6 +160,43 @@ export function InboxPage() {
           />
           Refresh
         </button>
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          role="tablist"
+          aria-label="Date range"
+          className="inline-flex w-full rounded-full border border-border bg-bg-muted p-1 sm:w-auto"
+        >
+          {RANGE_OPTIONS.map((opt) => {
+            const selectedRange = range === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="tab"
+                aria-selected={selectedRange}
+                onClick={() => {
+                  setRange(opt.value);
+                  setPickedId(null);
+                }}
+                className={cn(
+                  "flex-1 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors sm:flex-none sm:px-4",
+                  selectedRange
+                    ? "bg-accent text-accent-foreground shadow-sm"
+                    : "text-text-muted hover:text-text",
+                )}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        {rangeLabel ? (
+          <p className="text-sm font-medium tabular-nums text-text-muted">
+            {rangeLabel}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -295,8 +354,8 @@ export function InboxPage() {
           <ChatCircle size={32} className="text-text-muted" />
           <p className="mt-3 text-sm font-medium text-text">No comments yet</p>
           <p className="mt-1 max-w-sm text-sm text-text-muted">
-            Comments on Social0 posts from the last 30 days show up here. TikTok
-            and Pinterest don&apos;t expose a comments API yet.
+            Comments on Social0 posts from {emptyRangeLabel} show up here.
+            TikTok and Pinterest don&apos;t expose a comments API yet.
           </p>
         </div>
       ) : (

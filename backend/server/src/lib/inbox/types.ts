@@ -1,5 +1,25 @@
 /** Unified comments inbox — live fetch, no DB. */
 
+export const INBOX_RANGES = ["1d", "7d", "30d", "90d"] as const;
+export type InboxRange = (typeof INBOX_RANGES)[number];
+
+export function isInboxRange(v: unknown): v is InboxRange {
+  return typeof v === "string" && (INBOX_RANGES as readonly string[]).includes(v);
+}
+
+export function inboxRangeToMs(range: InboxRange): number {
+  switch (range) {
+    case "1d":
+      return 24 * 60 * 60 * 1000;
+    case "7d":
+      return 7 * 24 * 60 * 60 * 1000;
+    case "30d":
+      return 30 * 24 * 60 * 60 * 1000;
+    case "90d":
+      return 90 * 24 * 60 * 60 * 1000;
+  }
+}
+
 export type InboxComment = {
   id: string;
   platform: string;
@@ -32,6 +52,9 @@ export type InboxReconnectHint = {
 };
 
 export type InboxListResult = {
+  range: InboxRange;
+  since: string;
+  until: string;
   threads: InboxThread[];
   accountsNeedingReconnect: InboxReconnectHint[];
   unsupported: string[];

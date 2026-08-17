@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  inboxRangeToMs,
+  isInboxRange,
   missingInboxScopes,
   toInboxThreads,
   type InboxComment,
@@ -38,6 +40,15 @@ describe("missingInboxScopes", () => {
   it("does not nag platforms that need no extra scopes", () => {
     expect(missingInboxScopes("twitter_x", null)).toEqual([]);
     expect(missingInboxScopes("youtube", "")).toEqual([]);
+  });
+});
+
+describe("inbox ranges", () => {
+  it("accepts 1d/7d/30d/90d and maps to ms", () => {
+    expect(isInboxRange("1d")).toBe(true);
+    expect(isInboxRange("365d")).toBe(false);
+    expect(inboxRangeToMs("1d")).toBe(24 * 60 * 60 * 1000);
+    expect(inboxRangeToMs("7d")).toBe(7 * 24 * 60 * 60 * 1000);
   });
 });
 
