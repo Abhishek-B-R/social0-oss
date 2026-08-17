@@ -1,7 +1,7 @@
 /** Live social analytics types (no DB persistence). */
 
-export const ANALYTICS_RANGES = ["7d", "30d", "90d", "365d"] as const;
-export type AnalyticsRange = (typeof ANALYTICS_RANGES)[number];
+export const ANALYTICS_RANGES = ["7d", "14d", "28d", "90d", "365d"] as const;
+export type AnalyticsRange = (typeof ANALYTICS_RANGES)[number] | "custom";
 
 export type MetricKey =
   | "views"
@@ -109,12 +109,14 @@ export const ANALYTICS_REQUIRED_SCOPES: Record<string, string[]> = {
   bluesky: [],
 };
 
-export function rangeToMs(range: AnalyticsRange): number {
+export function rangeToMs(range: Exclude<AnalyticsRange, "custom">): number {
   switch (range) {
     case "7d":
       return 7 * 24 * 60 * 60 * 1000;
-    case "30d":
-      return 30 * 24 * 60 * 60 * 1000;
+    case "14d":
+      return 14 * 24 * 60 * 60 * 1000;
+    case "28d":
+      return 28 * 24 * 60 * 60 * 1000;
     case "90d":
       return 90 * 24 * 60 * 60 * 1000;
     case "365d":

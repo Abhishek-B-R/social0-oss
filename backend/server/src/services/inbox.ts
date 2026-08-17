@@ -3,7 +3,7 @@
  * No DB writes.
  */
 
-import { and, desc, eq, gte, isNotNull, lte, notInArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, lte, notInArray } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
   connectedAccounts,
@@ -20,15 +20,21 @@ import { getValidToken, REFRESHABLE_PLATFORMS } from "../lib/token-refresh.js";
 import { PLATFORMS, type Platform } from "../lib/platforms.js";
 import { fetchPublicationComments } from "../lib/inbox/fetch-comments.js";
 import { replyOnPlatform } from "../lib/inbox/reply-comment.js";
+import { fetchAccountDms, fetchDmMessages } from "../lib/inbox/fetch-dms.js";
+import { replyToDmOnPlatform } from "../lib/inbox/reply-dm.js";
+import { parseDateWindow } from "../lib/date-window.js";
 import {
+  INBOX_DM_PLATFORMS,
   INBOX_UNSUPPORTED,
-  inboxRangeToMs,
-  isInboxRange,
+  isInboxDmPlatform,
+  missingDmScopes,
   missingInboxScopes,
   toInboxThreads,
   type InboxComment,
+  type InboxDmListResult,
+  type InboxDmThread,
+  type InboxDmThreadResult,
   type InboxListResult,
-  type InboxRange,
   type InboxReconnectHint,
 } from "../lib/inbox/types.js";
 
@@ -159,7 +165,14 @@ async function loadPubs(opts: {
   }));
 }
 
-async function resolveAccess(account: NonNullable<PubRow["account"]>) {
+type TokenAccount = {
+  id: string;
+  platform: string;
+  encryptedAccessToken: string;
+  encryptedRefreshToken: string | null;
+};
+
+async function resolveAccess(account: TokenAccount) {
   let accessToken: string;
   if (REFRESHABLE_PLATFORMS.has(account.platform)) {
     accessToken = await getValidToken(account.id, account.platform);
@@ -184,11 +197,11 @@ export async function listInboxComments(input: {
   accountId?: unknown;
   platform?: unknown;
   range?: unknown;
+  since?: unknown;
+  until?: unknown;
 }): Promise<InboxListResult> {
   const ctx = await requireUser();
-  const range: InboxRange = isInboxRange(input.range) ? input.range : "7d";
-  const until = new Date();
-  const since = new Date(until.getTime() - inboxRangeToMs(range));
+  const { range, since, until } = parseDateWindow(input);
   const accountId =
     typeof input.accountId === "string" && input.accountId
       ? input.accountId
@@ -382,6 +395,239 @@ export async function replyToInboxComment(input: {
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Reply failed",
+    };
+  }
+}
+
+type DmAccountRow = {
+  id: string;
+  platform: string;
+  platformUserId: string;
+  platformUsername: string | null;
+  scopes: string | null;
+  encryptedAccessToken: string;
+  encryptedRefreshToken: string | null;
+};
+
+async function loadDmAccounts(
+  ctx: { resourceUserId: string; workspaceId: string | null },
+  accountId?: string,
+): Promise<DmAccountRow[]> {
+  return db
+    .select({
+      id: connectedAccounts.id,
+      platform: connectedAccounts.platform,
+      platformUserId: connectedAccounts.platformUserId,
+      platformUsername: connectedAccounts.platformUsername,
+      scopes: connectedAccounts.scopes,
+      encryptedAccessToken: connectedAccounts.encryptedAccessToken,
+      encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
+    })
+    .from(connectedAccounts)
+    .where(
+      and(
+        connectionScopeCondition(ctx),
+        eq(connectedAccounts.isActive, true),
+        inArray(connectedAccounts.platform, [...INBOX_DM_PLATFORMS]),
+        accountId ? eq(connectedAccounts.id, accountId) : undefined,
+      ),
+    );
+}
+
+const DM_CONCURRENCY = 3;
+const DM_SAMPLE_LIMIT = 80;
+
+export async function listInboxDms(input: {
+  accountId?: unknown;
+  range?: unknown;
+  since?: unknown;
+  until?: unknown;
+}): Promise<InboxDmListResult> {
+  const ctx = await requireUser();
+  const { range, since, until } = parseDateWindow(input);
+  const accountId =
+    typeof input.accountId === "string" && input.accountId
+      ? input.accountId
+      : undefined;
+
+  const accounts = await loadDmAccounts(ctx, accountId);
+  const reconnect = new Map<string, InboxReconnectHint>();
+  const unsupported = new Set<string>();
+  const threads: InboxDmThread[] = [];
+
+  await mapPool(accounts, DM_CONCURRENCY, async (row) => {
+    if (!isInboxDmPlatform(row.platform)) {
+      unsupported.add(row.platform);
+      return;
+    }
+    const missing = missingDmScopes(row.platform, row.scopes);
+    if (missing.length) {
+      reconnect.set(row.id, {
+        accountId: row.id,
+        platform: row.platform,
+        username: row.platformUsername,
+        missingScopes: missing,
+      });
+      return;
+    }
+    try {
+      const { accessToken, accessSecret } = await resolveAccess(row);
+      const result = await fetchAccountDms(
+        {
+          id: row.id,
+          platform: row.platform,
+          platformUserId: row.platformUserId,
+          platformUsername: row.platformUsername,
+          accessToken,
+          accessSecret,
+        },
+        since,
+        until,
+      );
+      threads.push(...result.threads);
+      const scopes = result.missingScopes?.length ? result.missingScopes : missing;
+      if (scopes.length) {
+        reconnect.set(row.id, {
+          accountId: row.id,
+          platform: row.platform,
+          username: row.platformUsername,
+          missingScopes: scopes,
+        });
+      }
+      if (result.status === "unsupported") unsupported.add(row.platform);
+    } catch {
+      if (missing.length) {
+        reconnect.set(row.id, {
+          accountId: row.id,
+          platform: row.platform,
+          username: row.platformUsername,
+          missingScopes: missing,
+        });
+      }
+    }
+  });
+
+  threads.sort((a, b) =>
+    (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""),
+  );
+  const sampled = threads.length > DM_SAMPLE_LIMIT;
+  return {
+    range,
+    since: since.toISOString(),
+    until: until.toISOString(),
+    threads: threads.slice(0, DM_SAMPLE_LIMIT),
+    accountsNeedingReconnect: [...reconnect.values()],
+    unsupported: [...unsupported],
+    fetchedAt: new Date().toISOString(),
+    sampled,
+    sampleLimit: DM_SAMPLE_LIMIT,
+  };
+}
+
+async function loadDmAccount(
+  ctx: { resourceUserId: string; workspaceId: string | null },
+  accountId: string,
+): Promise<DmAccountRow | null> {
+  const rows = await loadDmAccounts(ctx, accountId);
+  return rows[0] ?? null;
+}
+
+export async function getInboxDmThread(input: {
+  accountId?: unknown;
+  conversationId?: unknown;
+  peerId?: unknown;
+}): Promise<InboxDmThreadResult> {
+  const ctx = await requireUser();
+  if (typeof input.accountId !== "string" || !input.accountId) {
+    throw new Error("accountId required");
+  }
+  if (typeof input.conversationId !== "string" || !input.conversationId) {
+    throw new Error("conversationId required");
+  }
+  const peerId = typeof input.peerId === "string" ? input.peerId : "";
+
+  const row = await loadDmAccount(ctx, input.accountId);
+  if (!row) throw new Error("Account not found");
+  if (!isInboxDmPlatform(row.platform)) {
+    throw new Error(`DMs are not supported for ${row.platform}.`);
+  }
+
+  const { accessToken, accessSecret } = await resolveAccess(row);
+  const result = await fetchDmMessages(
+    {
+      id: row.id,
+      platform: row.platform,
+      platformUserId: row.platformUserId,
+      platformUsername: row.platformUsername,
+      accessToken,
+      accessSecret,
+    },
+    input.conversationId,
+    peerId,
+  );
+  if (result.status !== "ok") {
+    throw new Error(result.error ?? "Failed to load conversation");
+  }
+  const fallback: InboxDmThread = {
+    conversationId: input.conversationId,
+    platform: row.platform,
+    accountId: row.id,
+    accountLabel: row.platformUsername,
+    peerId,
+    peerName: "Conversation",
+    peerHandle: null,
+    lastMessageAt: result.messages.at(-1)?.createdAt ?? null,
+    snippet: result.messages.at(-1)?.text ?? "",
+    canReply: true,
+  };
+  return {
+    conversationId: input.conversationId,
+    thread: result.thread ?? fallback,
+    messages: result.messages,
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+export async function replyToInboxDm(input: {
+  accountId?: unknown;
+  conversationId?: unknown;
+  peerId?: unknown;
+  text?: unknown;
+}): Promise<{ ok: true; messageId?: string } | { ok: false; error: string }> {
+  const ctx = await requireUser();
+  if (typeof input.accountId !== "string" || !input.accountId) {
+    return { ok: false, error: "accountId required" };
+  }
+  if (typeof input.conversationId !== "string" || !input.conversationId) {
+    return { ok: false, error: "conversationId required" };
+  }
+  if (typeof input.text !== "string") {
+    return { ok: false, error: "text required" };
+  }
+  const peerId = typeof input.peerId === "string" ? input.peerId : "";
+
+  const row = await loadDmAccount(ctx, input.accountId);
+  if (!row) return { ok: false, error: "Account not found." };
+  if (!isInboxDmPlatform(row.platform)) {
+    return { ok: false, error: `DMs are not supported for ${row.platform}.` };
+  }
+
+  try {
+    const { accessToken, accessSecret } = await resolveAccess(row);
+    return await replyToDmOnPlatform({
+      platform: row.platform,
+      conversationId: input.conversationId,
+      peerId,
+      text: input.text,
+      accessToken,
+      accessSecret,
+      platformUserId: row.platformUserId,
+      accountHandle: row.platformUsername,
+    });
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "DM failed",
     };
   }
 }

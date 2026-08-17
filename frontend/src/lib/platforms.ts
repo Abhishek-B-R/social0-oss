@@ -43,7 +43,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     authUrl: "https://www.instagram.com/oauth/authorize", // ✅ This is correct
     tokenUrl: "https://api.instagram.com/oauth/access_token", // ✅ This too
     scope:
-      "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights,instagram_business_manage_comments",
+      "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights,instagram_business_manage_comments,instagram_business_manage_messages",
   },
   youtube: {
     clientIdEnv: "YOUTUBE_CLIENT_ID",

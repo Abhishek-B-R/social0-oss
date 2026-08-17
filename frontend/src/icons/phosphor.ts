@@ -25,6 +25,7 @@ export { Crown } from "@phosphor-icons/react/dist/csr/Crown";
 export { DotsThree } from "@phosphor-icons/react/dist/csr/DotsThree";
 export { Eye } from "@phosphor-icons/react/dist/csr/Eye";
 export { EyeSlash } from "@phosphor-icons/react/dist/csr/EyeSlash";
+export { EnvelopeSimple } from "@phosphor-icons/react/dist/csr/EnvelopeSimple";
 export { Faders } from "@phosphor-icons/react/dist/csr/Faders";
 export { GearSix } from "@phosphor-icons/react/dist/csr/GearSix";
 export { House } from "@phosphor-icons/react/dist/csr/House";

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  inboxRangeToMs,
-  isInboxRange,
+  missingDmScopes,
   missingInboxScopes,
+  peerFromParticipants,
   toInboxThreads,
   youtubeAuthorChannelId,
   type InboxComment,
@@ -44,12 +44,30 @@ describe("missingInboxScopes", () => {
   });
 });
 
-describe("inbox ranges", () => {
-  it("accepts 1d/7d/30d/90d and maps to ms", () => {
-    expect(isInboxRange("1d")).toBe(true);
-    expect(isInboxRange("365d")).toBe(false);
-    expect(inboxRangeToMs("1d")).toBe(24 * 60 * 60 * 1000);
-    expect(inboxRangeToMs("7d")).toBe(7 * 24 * 60 * 60 * 1000);
+describe("missingDmScopes", () => {
+  it("treats empty stored scopes as missing for Instagram/Facebook messaging", () => {
+    expect(missingDmScopes("instagram", null)).toEqual([
+      "instagram_business_manage_messages",
+    ]);
+    expect(missingDmScopes("facebook", "")).toEqual(["pages_messaging"]);
+  });
+
+  it("does not nag X or Bluesky for extra OAuth strings", () => {
+    expect(missingDmScopes("twitter_x", null)).toEqual([]);
+    expect(missingDmScopes("bluesky", "")).toEqual([]);
+  });
+});
+
+describe("peerFromParticipants", () => {
+  it("picks the other person, not the connected account", () => {
+    const peer = peerFromParticipants(
+      [
+        { id: "page", name: "My Page" },
+        { id: "user-1", name: "Ada", username: "ada" },
+      ],
+      "page",
+    );
+    expect(peer).toEqual({ id: "user-1", name: "Ada", handle: "ada" });
   });
 });
 

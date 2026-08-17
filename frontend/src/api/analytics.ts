@@ -1,6 +1,7 @@
 import { rpc } from "@/lib/rpc";
+import type { DateWindowRange } from "@/lib/date-window";
 
-export type AnalyticsRange = "7d" | "30d" | "90d" | "365d";
+export type AnalyticsRange = DateWindowRange;
 
 export type MetricMap = Partial<
   Record<
@@ -99,6 +100,8 @@ export type AnalyticsAccount = {
 
 export function getAnalyticsOverview(input: {
   range: AnalyticsRange;
+  since?: string;
+  until?: string;
   accountId?: string | null;
 }): Promise<AnalyticsOverview> {
   return rpc<AnalyticsOverview>("analytics.getOverview", input);

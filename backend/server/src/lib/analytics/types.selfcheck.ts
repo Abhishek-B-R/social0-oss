@@ -15,6 +15,8 @@ function assert(cond: unknown, msg: string): asserts cond {
 }
 
 assert(rangeToMs("7d") === 7 * 24 * 60 * 60 * 1000, "7d ms");
+assert(rangeToMs("14d") === 14 * 24 * 60 * 60 * 1000, "14d ms");
+assert(rangeToMs("28d") === 28 * 24 * 60 * 60 * 1000, "28d ms");
 assert(scopeGranted("a,b,c", "b"), "scopeGranted comma");
 assert(scopeGranted("video.list user.info.stats", "video.list"), "scopeGranted space");
 assert(!scopeGranted("video.upload", "video.list"), "scopeGranted missing");

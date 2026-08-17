@@ -7,11 +7,16 @@ import { PlatformIcon } from "@/components/PlatformIcon";
 import { useSession } from "@/lib/auth-client";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
+import { RangeToolbar } from "@/components/dashboard/RangeToolbar";
+import {
+  defaultDateWindow,
+  windowQueryParams,
+  type DateWindow,
+} from "@/lib/date-window";
 import {
   getAnalyticsOverview,
   listAnalyticsAccounts,
   type AnalyticsAccount,
-  type AnalyticsRange,
 } from "@/api/analytics";
 import {
   EngagementTrendChart,
@@ -19,7 +24,6 @@ import {
   EngagementMixChart,
 } from "./AnalyticsCharts";
 import {
-  RANGE_OPTIONS,
   PLATFORM_LABEL,
   engagementOf,
   engagementMix,
@@ -32,7 +36,7 @@ import { cn } from "@/lib/utils";
 export function AnalyticsPage() {
   const { data: session, isPending: sessionPending } = useSession();
   const dash = useDashboardPath();
-  const [range, setRange] = useState<AnalyticsRange>("7d");
+  const [dateWindow, setDateWindow] = useState<DateWindow>(defaultDateWindow);
   const [accountId, setAccountId] = useState<string | null>(null);
 
   const accountsQuery = useQuery({
@@ -42,9 +46,12 @@ export function AnalyticsPage() {
   });
 
   const overviewQuery = useQuery({
-    queryKey: ["analytics-overview", range, accountId],
+    queryKey: ["analytics-overview", dateWindow, accountId],
     queryFn: () =>
-      getAnalyticsOverview({ range, accountId: accountId || undefined }),
+      getAnalyticsOverview({
+        ...windowQueryParams(dateWindow),
+        accountId: accountId || undefined,
+      }),
     enabled: !!session,
     staleTime: 60_000,
   });
@@ -126,39 +133,7 @@ export function AnalyticsPage() {
         </button>
       </div>
 
-      <div className="shrink-0 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div
-          role="tablist"
-          aria-label="Date range"
-          className="inline-flex w-full rounded-full border border-border bg-bg-muted p-1 sm:w-auto"
-        >
-          {RANGE_OPTIONS.map((opt) => {
-            const selected = range === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => setRange(opt.value)}
-                className={cn(
-                  "flex-1 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors sm:flex-none sm:px-4",
-                  selected
-                    ? "bg-accent text-accent-foreground shadow-sm"
-                    : "text-text-muted hover:text-text",
-                )}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-        {rangeLabel ? (
-          <p className="text-sm font-medium tabular-nums text-text-muted">
-            {rangeLabel}
-          </p>
-        ) : null}
-      </div>
+      <RangeToolbar value={dateWindow} onChange={setDateWindow} />
 
       <div className="shrink-0">
         {accountsQuery.isLoading ? (
@@ -249,7 +224,7 @@ export function AnalyticsPage() {
       </div>
       {data && data.publications.length === 0 ? (
         <p className="-mt-3 text-sm text-text-muted">
-          No posts published through Social0 in this range. Try 30 days, or
+          No posts published through Social0 in this range. Try 4W, or
           publish something and refresh.
         </p>
       ) : data ? (

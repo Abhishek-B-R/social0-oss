@@ -45,6 +45,7 @@ const RPC_MUTATION_HANDLERS = new Set([
   "onboarding.setOnboardingGoal",
   "onboarding.setOnboardingCompleted",
   "inbox.replyToComment",
+  "inbox.replyToDm",
 ]);
 
 const RPC_HANDLERS: Record<string, RpcHandler> = {
@@ -87,6 +88,9 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
   "analytics.listAccounts": analytics.listAnalyticsAccounts,
   "inbox.listComments": inbox.listInboxComments,
   "inbox.replyToComment": inbox.replyToInboxComment,
+  "inbox.listDms": inbox.listInboxDms,
+  "inbox.getDmThread": inbox.getInboxDmThread,
+  "inbox.replyToDm": inbox.replyToInboxDm,
   "settings.loadSettingsPageData": settings.loadSettingsPageData,
   "settings.getUserSettingsSnapshot": settings.getUserSettingsSnapshot,
   "settings.updateDisplayName": settings.updateDisplayName,

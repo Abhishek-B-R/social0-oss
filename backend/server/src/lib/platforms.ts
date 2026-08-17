@@ -39,9 +39,9 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "INSTAGRAM_CLIENT_SECRET",
     authUrl: "https://www.instagram.com/oauth/authorize", // ✅ This is correct
     tokenUrl: "https://api.instagram.com/oauth/access_token", // ✅ This too
-    // manage_insights: media/account insights (App Review). Additive — existing tokens keep publishing.
+    // manage_insights + manage_comments + manage_messages: additive — existing tokens keep publishing.
     scope:
-      "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights,instagram_business_manage_comments",
+      "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights,instagram_business_manage_comments,instagram_business_manage_messages",
   },
   youtube: {
     clientIdEnv: "YOUTUBE_CLIENT_ID",
@@ -86,7 +86,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "FACEBOOK_CLIENT_SECRET",
     authUrl: "https://www.facebook.com/dialog/oauth",
     tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
-    // read_insights: Page/post insights. If FACEBOOK_LOGIN_CONFIG_ID is set, add it in Meta Login config too.
+    // read_insights + pages_manage_engagement + pages_messaging. If FACEBOOK_LOGIN_CONFIG_ID is set, add them in Meta Login config too.
     scope: FACEBOOK_PAGE_SCOPES,
   },
 };

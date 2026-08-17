@@ -94,7 +94,7 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 
 ## Inbox comments (Social Inbox)
 
-`/dashboard/inbox` lists comments on **Social0-published posts** (range: 1 / 7 / 30 / 90 days, default 7) and lets you reply from the dashboard. Same additive-scope rule: publishing keeps working until reconnect.
+`/dashboard/inbox` lists comments on **Social0-published posts** (same date control as Analytics: `7D` / `2W` / `4W` / `3M` / `1Y` + custom) and lets you reply from the dashboard. Same additive-scope rule: publishing keeps working until reconnect.
 
 | Platform | Read | Reply | Extra OAuth |
 | -------- | ---- | ----- | ----------- |
@@ -103,12 +103,24 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 | Threads | Replies | Yes | already had `threads_manage_replies` |
 | YouTube | commentThreads | Yes | `youtube.force-ssl` for replies (list works with readonly) |
 | X | conversation search | Yes | existing OAuth 1.0a. Recent Search only covers ~7 days |
-
 | Bluesky | public thread | Yes | app password |
 | LinkedIn | best-effort read | No | MDP often required |
 | TikTok / Pinterest | — | — | no usable comments API |
 
-If `FACEBOOK_LOGIN_CONFIG_ID` is set, add `pages_manage_engagement` in that Login config too.
+If `FACEBOOK_LOGIN_CONFIG_ID` is set, add `pages_manage_engagement` **and** `pages_messaging` in that Login config too.
+
+## Inbox DMs
+
+Comments | DMs toggle on the same page. DMs are **account-level** (not limited to Social0 posts). Live-fetch, no new tables.
+
+| Platform | API | Extra OAuth / setup |
+| -------- | --- | ------------------- |
+| Instagram | `/{ig-id}/conversations?platform=instagram` + `/{ig-id}/messages` | `instagram_business_manage_messages` (Instagram Login) |
+| Facebook Pages | `/{page-id}/conversations` + `/{page-id}/messages` | `pages_messaging` |
+| X | v2 `dm_events` + `dm_conversations/with/:id/messages` | App permission **Direct Messages Read and Write** (OAuth 1.0a — no extra scope string). Reconnect after enabling it on the X developer app. |
+| Bluesky | `chat.bsky.convo.*` via `api.bsky.chat` + `Atproto-Proxy` | App password with **chat** enabled |
+
+**Not shipped** (no public messaging API we can call): Threads, TikTok, YouTube, Pinterest, LinkedIn (partner-only).
 
 ## What users see before App Review
 
@@ -121,5 +133,5 @@ If `FACEBOOK_LOGIN_CONFIG_ID` is set, add `pages_manage_engagement` in that Logi
 1. Reconnect one Instagram / Threads / TikTok / Facebook account.
 2. Publish a test post (or use an existing published `platform_post_id`).
 3. Open `/dashboard/analytics` (Past week) and **Show analytics** on `/dashboard/posts/:id`.
-4. Open `/dashboard/inbox` and confirm comments load; reply on one thread.
+4. Open `/dashboard/inbox` (Comments + DMs) and confirm the date pills match Analytics; reply on one comment thread and one DM if the platform is connected.
 5. Confirm metrics appear and Connections still lists the account as active.

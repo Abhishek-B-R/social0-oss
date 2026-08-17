@@ -19,14 +19,12 @@ import {
 } from "../lib/workspace/context.js";
 import { getValidToken, REFRESHABLE_PLATFORMS } from "../lib/token-refresh.js";
 import { fetchPlatformPublicationMetrics } from "../lib/analytics/fetch-platform-metrics.js";
+import { parseDateWindow } from "../lib/date-window.js";
 import {
-  ANALYTICS_RANGES,
   engagementTotal,
   missingAnalyticsScopes,
-  rangeToMs,
   sumMetrics,
   type AnalyticsOverview,
-  type AnalyticsRange,
   type AnalyticsSeriesPoint,
   type MetricMap,
   type PlatformBreakdownRow,
@@ -38,13 +36,6 @@ import {
 
 const SAMPLE_LIMIT = 48;
 const CONCURRENCY = 6;
-
-function isAnalyticsRange(v: unknown): v is AnalyticsRange {
-  return (
-    typeof v === "string" &&
-    (ANALYTICS_RANGES as readonly string[]).includes(v)
-  );
-}
 
 async function mapPool<T, R>(
   items: T[],
@@ -390,6 +381,8 @@ function buildTopPosts(
 
 export async function getAnalyticsOverview(input: {
   range?: unknown;
+  since?: unknown;
+  until?: unknown;
   accountId?: unknown;
 }): Promise<AnalyticsOverview> {
   const { auth } = await import("../lib/auth.js");
@@ -397,11 +390,8 @@ export async function getAnalyticsOverview(input: {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) throw new Error("Unauthorized");
 
-  const range: AnalyticsRange = isAnalyticsRange(input.range)
-    ? input.range
-    : "7d";
-  const until = new Date();
-  const since = new Date(until.getTime() - rangeToMs(range));
+  const window = parseDateWindow(input);
+  const { range, since, until } = window;
 
   const ctx = await resolveWorkspaceContext(session.user.id);
   const accountId =

@@ -1,24 +1,6 @@
-/** Unified comments inbox — live fetch, no DB. */
+/** Unified inbox — live fetch, no DB. */
 
-export const INBOX_RANGES = ["1d", "7d", "30d", "90d"] as const;
-export type InboxRange = (typeof INBOX_RANGES)[number];
-
-export function isInboxRange(v: unknown): v is InboxRange {
-  return typeof v === "string" && (INBOX_RANGES as readonly string[]).includes(v);
-}
-
-export function inboxRangeToMs(range: InboxRange): number {
-  switch (range) {
-    case "1d":
-      return 24 * 60 * 60 * 1000;
-    case "7d":
-      return 7 * 24 * 60 * 60 * 1000;
-    case "30d":
-      return 30 * 24 * 60 * 60 * 1000;
-    case "90d":
-      return 90 * 24 * 60 * 60 * 1000;
-  }
-}
+import type { DateWindowRange } from "../date-window.js";
 
 export type InboxComment = {
   id: string;
@@ -54,7 +36,7 @@ export type InboxReconnectHint = {
 };
 
 export type InboxListResult = {
-  range: InboxRange;
+  range: DateWindowRange;
   since: string;
   until: string;
   threads: InboxThread[];
@@ -63,6 +45,69 @@ export type InboxListResult = {
   fetchedAt: string;
   sampled: boolean;
   sampleLimit: number;
+};
+
+export const INBOX_DM_PLATFORMS = [
+  "instagram",
+  "facebook",
+  "twitter_x",
+  "bluesky",
+] as const;
+
+export type InboxDmPlatform = (typeof INBOX_DM_PLATFORMS)[number];
+
+export type InboxDmThread = {
+  conversationId: string;
+  platform: string;
+  accountId: string;
+  accountLabel: string | null;
+  peerId: string;
+  peerName: string;
+  peerHandle: string | null;
+  lastMessageAt: string | null;
+  snippet: string;
+  canReply: boolean;
+};
+
+export type InboxDmMessage = {
+  id: string;
+  text: string;
+  createdAt: string | null;
+  isOwn: boolean;
+  authorName: string;
+  authorHandle: string | null;
+};
+
+export function peerFromParticipants(
+  participants: Array<{ id?: string; name?: string; username?: string }>,
+  selfId: string,
+): { id: string; name: string; handle: string | null } {
+  const others = participants.filter((p) => p.id && p.id !== selfId);
+  const peer = others[0] ?? participants.find((p) => p.id) ?? {};
+  return {
+    id: peer.id ?? "",
+    name: peer.name ?? peer.username ?? "Unknown",
+    handle: peer.username ?? null,
+  };
+}
+
+export type InboxDmListResult = {
+  range: DateWindowRange;
+  since: string;
+  until: string;
+  threads: InboxDmThread[];
+  accountsNeedingReconnect: InboxReconnectHint[];
+  unsupported: string[];
+  fetchedAt: string;
+  sampled: boolean;
+  sampleLimit: number;
+};
+
+export type InboxDmThreadResult = {
+  conversationId: string;
+  thread: InboxDmThread;
+  messages: InboxDmMessage[];
+  fetchedAt: string;
 };
 
 /** Extra scopes for reading/replying to comments. Empty = current token is enough. */
@@ -79,6 +124,28 @@ export const INBOX_REQUIRED_SCOPES: Record<string, string[]> = {
 };
 
 export const INBOX_UNSUPPORTED = new Set(["tiktok", "pinterest"]);
+
+/** Extra scopes for DMs. Empty = current token is enough (app-level X / Bluesky app password). */
+export const INBOX_DM_REQUIRED_SCOPES: Record<string, string[]> = {
+  instagram: ["instagram_business_manage_messages"],
+  facebook: ["pages_messaging"],
+  twitter_x: [],
+  bluesky: [],
+};
+
+export function missingDmScopes(
+  platform: string,
+  granted: string | null | undefined,
+): string[] {
+  const needed = INBOX_DM_REQUIRED_SCOPES[platform] ?? [];
+  if (needed.length === 0) return [];
+  if (!granted?.trim()) return [...needed];
+  return needed.filter((s) => !inboxScopeGranted(granted, s));
+}
+
+export function isInboxDmPlatform(platform: string): platform is InboxDmPlatform {
+  return (INBOX_DM_PLATFORMS as readonly string[]).includes(platform);
+}
 
 export function inboxScopeGranted(
   granted: string | null | undefined,

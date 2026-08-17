@@ -57,13 +57,6 @@ export const PLATFORM_LABEL: Record<string, string> = {
   threads: "Threads",
 };
 
-export const RANGE_OPTIONS = [
-  { value: "7d" as const, label: "7 days" },
-  { value: "30d" as const, label: "30 days" },
-  { value: "90d" as const, label: "90 days" },
-  { value: "365d" as const, label: "12 months" },
-];
-
 /** Inclusive range label; keeps the start year when the window crosses New Year. */
 export function formatRangeLabel(since: string, until: string): string {
   const a = new Date(since);
