@@ -455,7 +455,7 @@ function OnboardingPlanContent() {
 
         <p className="mt-6 text-center text-[13px] text-muted-foreground">
           Or{" "}
-          <Link href="/pricing" className={onboardingGhostLinkClass}>
+          <Link href="/pricing#compare" className={onboardingGhostLinkClass}>
             compare all plans
           </Link>
         </p>
