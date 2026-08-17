@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
 import { endOfDay, format, startOfDay, subDays } from "date-fns";
-import { CalendarBlank } from "@/icons/phosphor";
+import { CalendarBlank, CaretLeft, CaretRight } from "@/icons/phosphor";
 import {
   WINDOW_PRESET_OPTIONS,
   type DateWindow,
@@ -9,6 +9,7 @@ import {
 } from "@/lib/date-window";
 import { cn } from "@/lib/utils";
 import "react-day-picker/style.css";
+import "./range-toolbar.css";
 
 type RangeToolbarProps = {
   value: DateWindow;
@@ -29,6 +30,24 @@ function presetSinceUntil(preset: WindowPreset): { since: Date; until: Date } {
             ? 90
             : 365;
   return { since: subDays(until, days), until };
+}
+
+function RangeChevron({
+  orientation,
+  className,
+  size = 16,
+}: {
+  className?: string;
+  size?: number;
+  orientation?: "up" | "down" | "left" | "right";
+}) {
+  if (orientation === "left") {
+    return <CaretLeft className={className} size={size} weight="bold" />;
+  }
+  if (orientation === "right") {
+    return <CaretRight className={className} size={size} weight="bold" />;
+  }
+  return <CaretRight className={className} size={size} weight="bold" />;
 }
 
 export function RangeToolbar({ value, onChange, label = "Date range" }: RangeToolbarProps) {
@@ -107,10 +126,13 @@ export function RangeToolbar({ value, onChange, label = "Date range" }: RangeToo
       <p className="text-sm font-medium tabular-nums text-text-muted">{rangeLabel}</p>
 
       {open ? (
-        <div className="absolute top-full left-0 z-40 mt-2 max-w-[calc(100vw-2rem)] overflow-x-auto rounded-2xl border border-border bg-bg-elevated p-3 shadow-xl">
+        <div className="absolute top-full left-0 z-40 mt-2 rounded-2xl border border-border bg-bg-elevated p-4 shadow-xl">
           <DayPicker
             mode="range"
             numberOfMonths={2}
+            navLayout="around"
+            showOutsideDays
+            className="range-toolbar-cal"
             selected={draft}
             onSelect={(next) => {
               setDraft(next ?? { from: undefined, to: undefined });
@@ -124,29 +146,7 @@ export function RangeToolbar({ value, onChange, label = "Date range" }: RangeToo
             }}
             disabled={{ after: new Date() }}
             defaultMonth={subDays(new Date(), 30)}
-            classNames={{
-              months: "flex flex-col gap-4 sm:flex-row",
-              month: "rdp-month",
-              month_caption:
-                "flex justify-between items-center h-9 mb-3 text-sm font-semibold text-text",
-              nav: "flex gap-1",
-              button_previous:
-                "rounded-lg border border-border bg-bg p-1.5 text-text-muted hover:bg-bg-muted",
-              button_next:
-                "rounded-lg border border-border bg-bg p-1.5 text-text-muted hover:bg-bg-muted",
-              weekdays: "flex",
-              weekday: "w-9 text-center text-[11px] font-medium text-text-muted",
-              week: "flex",
-              day: "w-9 h-9 text-center text-sm",
-              day_button: "h-9 w-9 rounded-md text-text hover:bg-bg-muted",
-              selected: "bg-foreground text-background hover:bg-foreground",
-              range_start: "rounded-l-md bg-foreground text-background",
-              range_end: "rounded-r-md bg-foreground text-background",
-              range_middle: "bg-bg-muted text-text rounded-none",
-              today: "font-semibold",
-              outside: "text-text-muted/40",
-              disabled: "text-text-muted/40",
-            }}
+            components={{ Chevron: RangeChevron }}
           />
         </div>
       ) : null}

@@ -12,6 +12,7 @@ export { CalendarBlank } from "@phosphor-icons/react/dist/csr/CalendarBlank";
 export { CalendarDots } from "@phosphor-icons/react/dist/csr/CalendarDots";
 export { Camera } from "@phosphor-icons/react/dist/csr/Camera";
 export { CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
+export { CaretLeft } from "@phosphor-icons/react/dist/csr/CaretLeft";
 export { CaretRight } from "@phosphor-icons/react/dist/csr/CaretRight";
 export { ChartLine } from "@phosphor-icons/react/dist/csr/ChartLine";
 export { ChatCircle } from "@phosphor-icons/react/dist/csr/ChatCircle";
