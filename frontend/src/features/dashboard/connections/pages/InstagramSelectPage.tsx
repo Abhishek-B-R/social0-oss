@@ -2,9 +2,10 @@ import { useSearchParams } from "react-router-dom";
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "@/components/AppLink";
 import {
   AccountPicker,
+  AccountPickerEmpty,
+  AccountPickerSkeleton,
   type AccountPickerAccount,
 } from "@/components/AccountPicker";
 import { toast } from "sonner";
@@ -102,45 +103,30 @@ export default function InstagramSelectPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-12">
-        <p className="text-muted-foreground">Loading Instagram accounts…</p>
-      </div>
+      <AccountPickerSkeleton
+        title="Connect Instagram"
+        subtitle="Pick the account you want to connect."
+      />
     );
   }
 
   if (accounts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-12">
-        <Link
-          href={returnTo}
-          className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
-        >
-          Back to connections
-        </Link>
-      </div>
-    );
-  }
-
-  if (accounts.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 py-12">
-        <p className="text-muted-foreground">No Instagram accounts found.</p>
-        <Link
-          href={returnTo}
-          className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
-        >
-          Back to connections
-        </Link>
-      </div>
+      <AccountPickerEmpty
+        title="Connect Instagram"
+        message="No Instagram accounts were found on this Facebook login."
+        cancelHref={returnTo}
+      />
     );
   }
 
   return (
     <AccountPicker
       accounts={accounts}
-      title="Instagram Connection"
-      subtitle="Select an account to connect:"
-      submitLabel="Connect Selected Page"
+      title="Connect Instagram"
+      subtitle="Pick the account you want to connect."
+      submitLabel="Connect selected"
+      cancelHref={returnTo}
       onSelect={handleSelect}
       loading={submitLoading}
     />

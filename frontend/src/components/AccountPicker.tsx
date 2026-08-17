@@ -1,5 +1,28 @@
+import { useState, type FormEvent } from "react";
+import Link from "@/components/AppLink";
+import { Button } from "@/components/ui/button";
+import { CheckCircle, CircleNotch } from "@/icons/phosphor";
+import { cn } from "@/lib/utils";
+import { SkeletonBone } from "@/components/ui/skeleton-bone";
 
-import { useState } from "react";
+function PickerHeader({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <>
+      <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+        {title}
+      </h1>
+      {subtitle ? (
+        <p className="text-sm leading-snug text-text-muted">{subtitle}</p>
+      ) : null}
+    </>
+  );
+}
 
 export type AccountPickerAccount = {
   id: string;
@@ -12,75 +35,144 @@ type AccountPickerProps = {
   title: string;
   subtitle?: string;
   submitLabel?: string;
+  cancelHref?: string;
   onSelect: (id: string) => void;
   loading?: boolean;
   error?: string | null;
 };
 
+export function AccountPickerSkeleton({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="mx-auto w-full max-w-xl">
+      <PickerHeader title={title} subtitle={subtitle} />
+      <div className="mt-8 space-y-2">
+        <SkeletonBone className="h-[4.25rem] w-full rounded-xl" />
+        <SkeletonBone className="h-[4.25rem] w-full rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+export function AccountPickerEmpty({
+  title,
+  message,
+  cancelHref,
+  cancelLabel = "Back to connections",
+}: {
+  title: string;
+  message: string;
+  cancelHref: string;
+  cancelLabel?: string;
+}) {
+  return (
+    <div className="mx-auto w-full max-w-xl">
+      <PickerHeader title={title} subtitle={message} />
+      <Button asChild variant="outline" className="mt-6">
+        <Link href={cancelHref}>{cancelLabel}</Link>
+      </Button>
+    </div>
+  );
+}
+
 export function AccountPicker({
   accounts,
   title,
-  subtitle = "Select a page to connect:",
-  submitLabel = "Connect Selected Page",
+  subtitle = "Pick the page you want to connect.",
+  submitLabel = "Connect selected",
+  cancelHref,
   onSelect,
   loading = false,
   error = null,
 }: AccountPickerProps) {
-  const [selectedId, setSelectedId] = useState<string>("");
+  const [selectedId, setSelectedId] = useState<string>(
+    () => accounts[0]?.id ?? "",
+  );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (selectedId) onSelect(selectedId);
   };
 
   return (
-    <div className="mx-auto mt-8 max-w-md rounded-2xl border border-border bg-card p-8 shadow-sm">
-      <h2 className="mb-1 text-center text-2xl font-bold text-foreground">
-        {title}
-      </h2>
-      <p className="mb-6 text-center text-muted-foreground">{subtitle}</p>
+    <div className="mx-auto w-full max-w-xl">
+      <PickerHeader title={title} subtitle={subtitle} />
 
-      <form onSubmit={handleSubmit}>
-        <div className="space-y-1">
-          {accounts.map((account) => (
-            <label
-              key={account.id}
-              className="flex cursor-pointer items-center gap-4 rounded-lg p-3 transition-colors hover:bg-muted/50"
-            >
-              <input
-                type="radio"
-                name="account"
-                value={account.id}
-                checked={selectedId === account.id}
-                onChange={() => setSelectedId(account.id)}
-                className="h-4 w-4"
-              />
-              {account.pictureUrl ? (
-                <img
-                  src={account.pictureUrl}
-                  alt=""
-                  referrerPolicy="no-referrer"
-                  className="h-10 w-10 shrink-0 rounded-full object-cover"
+      <form onSubmit={handleSubmit} className="mt-8">
+        <div className="space-y-2" role="radiogroup" aria-label={title}>
+          {accounts.map((account) => {
+            const selected = selectedId === account.id;
+            return (
+              <label
+                key={account.id}
+                className={cn(
+                  "flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition-[background-color,border-color,transform] duration-150 ease-out focus-within:ring-2 focus-within:ring-accent/30 active:scale-[0.99]",
+                  selected
+                    ? "border-accent bg-accent/10"
+                    : "border-border bg-card hover:bg-muted/50",
+                )}
+              >
+                <input
+                  type="radio"
+                  name="account"
+                  value={account.id}
+                  checked={selected}
+                  onChange={() => setSelectedId(account.id)}
+                  className="sr-only"
                 />
-              ) : (
-                <div className="h-10 w-10 shrink-0 rounded-full bg-muted" />
-              )}
-              <span className="font-medium text-foreground">{account.name}</span>
-            </label>
-          ))}
+                {account.pictureUrl ? (
+                  <img
+                    src={account.pictureUrl}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    className="h-10 w-10 shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-10 w-10 shrink-0 rounded-full bg-muted" />
+                )}
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                  {account.name}
+                </span>
+                <CheckCircle
+                  size={20}
+                  weight={selected ? "fill" : "regular"}
+                  className={cn(
+                    "shrink-0",
+                    selected ? "text-accent" : "text-muted-foreground/40",
+                  )}
+                  aria-hidden
+                />
+              </label>
+            );
+          })}
         </div>
 
-        {error && (
+        {error ? (
           <p className="mt-4 text-sm text-destructive">{error}</p>
-        )}
+        ) : null}
 
-        <button
-          type="submit"
-          disabled={!selectedId || loading}
-          className="mt-6 w-full rounded-xl bg-foreground py-3 font-medium text-background transition-opacity disabled:opacity-50 hover:opacity-90"
-        >
-          {loading ? "Connecting…" : submitLabel}
-        </button>
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          {cancelHref ? (
+            <Button asChild variant="outline">
+              <Link href={cancelHref}>Cancel</Link>
+            </Button>
+          ) : null}
+          <Button type="submit" disabled={!selectedId || loading}>
+            {loading ? (
+              <>
+                <CircleNotch size={16} className="animate-spin" />
+                Connecting
+              </>
+            ) : (
+              submitLabel
+            )}
+          </Button>
+        </div>
       </form>
     </div>
   );

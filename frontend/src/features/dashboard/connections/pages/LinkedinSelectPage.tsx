@@ -1,12 +1,19 @@
 import { useSearchParams } from "react-router-dom";
 import { fetchApi } from "@/lib/fetch-api";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "@/components/AppLink";
 import { toast } from "sonner";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 import { completeConnectSelect } from "@/lib/connect-select-response";
 import { stripSensitiveQueryParams } from "@/lib/sanitize-analytics-url";
+import {
+  AccountPickerEmpty,
+  AccountPickerSkeleton,
+} from "@/components/AccountPicker";
+import { Button } from "@/components/ui/button";
+import { CheckCircle, CircleNotch } from "@/icons/phosphor";
+import { cn } from "@/lib/utils";
 
 type PersonalProfile = {
   id: string;
@@ -87,7 +94,7 @@ export default function LinkedInSelectPage() {
   }, []);
 
   const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
+    async (e: FormEvent) => {
       e.preventDefault();
       if (!token) return;
       const ids: string[] = [];
@@ -121,131 +128,148 @@ export default function LinkedInSelectPage() {
     [token, returnTo, selectedPersonal, personalProfile, selectedCompanyIds],
   );
 
+  const canSubmit =
+    (selectedPersonal && Boolean(personalProfile)) ||
+    selectedCompanyIds.size > 0;
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-12">
-        <p className="text-muted-foreground">Loading accounts…</p>
-      </div>
+      <AccountPickerSkeleton
+        title="Connect LinkedIn"
+        subtitle="Pick the profiles and pages you want to connect."
+      />
     );
   }
 
   if (!personalProfile && companyPages.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-12">
-        <Link
-          href={returnTo}
-          className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
-        >
-          Back to connections
-        </Link>
-      </div>
-    );
-  }
-
-  if (!personalProfile) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 py-12">
-        <p className="text-muted-foreground">No LinkedIn profile found.</p>
-        <Link
-          href={returnTo}
-          className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
-        >
-          Back to connections
-        </Link>
-      </div>
+      <AccountPickerEmpty
+        title="Connect LinkedIn"
+        message="No LinkedIn profiles or pages were found on this account."
+        cancelHref={returnTo}
+      />
     );
   }
 
   return (
-    <div className="mx-auto mt-8 max-w-md rounded-2xl border border-border bg-card p-8 shadow-sm">
-      <h2 className="mb-1 text-center text-2xl font-bold text-foreground">
-        Connect LinkedIn Accounts
-      </h2>
-      <p className="mb-6 text-center text-muted-foreground">
-        Choose which LinkedIn accounts you want to connect.
+    <div className="mx-auto w-full max-w-xl">
+      <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+        Connect LinkedIn
+      </h1>
+      <p className="text-sm leading-snug text-text-muted">
+        Pick the profiles and pages you want to connect.
       </p>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="mt-8">
         <div className="space-y-6">
-          <div>
-            <h3 className="mb-2 text-sm font-semibold text-foreground">
-              Personal Profile
-            </h3>
-            <label className="flex cursor-pointer items-center gap-4 rounded-lg p-3 transition-colors hover:bg-muted/50">
-              <input
-                type="checkbox"
-                checked={selectedPersonal}
-                onChange={() => setSelectedPersonal((v) => !v)}
-                className="h-4 w-4 rounded border-input text-accent focus:ring-accent"
-              />
-              {personalProfile.pictureUrl ? (
-                <img
-                  src={personalProfile.pictureUrl}
-                  alt=""
-                  referrerPolicy="no-referrer"
-                  className="h-10 w-10 shrink-0 rounded-full object-cover"
+          {personalProfile ? (
+            <div>
+              <p className="mb-2 text-xs font-medium text-text-muted">
+                Personal profile
+              </p>
+              <label
+                className={cn(
+                  "flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition-[background-color,border-color,transform] duration-150 ease-out focus-within:ring-2 focus-within:ring-accent/30 active:scale-[0.99]",
+                  selectedPersonal
+                    ? "border-accent bg-accent/10"
+                    : "border-border bg-card hover:bg-muted/50",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedPersonal}
+                  onChange={() => setSelectedPersonal((v) => !v)}
+                  className="sr-only"
                 />
-              ) : (
-                <div className="h-10 w-10 shrink-0 rounded-full bg-muted" />
-              )}
-              <div>
-                <span className="font-medium text-foreground">
+                {personalProfile.pictureUrl ? (
+                  <img
+                    src={personalProfile.pictureUrl}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    className="h-10 w-10 shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-10 w-10 shrink-0 rounded-full bg-muted" />
+                )}
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                   {personalProfile.name}
                 </span>
-                <p className="text-xs text-muted-foreground">
-                  Personal Profile
-                </p>
-              </div>
-            </label>
-          </div>
+                <CheckCircle
+                  size={20}
+                  weight={selectedPersonal ? "fill" : "regular"}
+                  className={cn(
+                    "shrink-0",
+                    selectedPersonal
+                      ? "text-accent"
+                      : "text-muted-foreground/40",
+                  )}
+                  aria-hidden
+                />
+              </label>
+            </div>
+          ) : null}
 
-          {companyPages.length > 0 && (
+          {companyPages.length > 0 ? (
             <div>
-              <h3 className="mb-2 text-sm font-semibold text-foreground">
-                Business Pages
-              </h3>
-              <div className="space-y-1">
-                {companyPages.map((page) => (
-                  <label
-                    key={page.urn}
-                    className="flex cursor-pointer items-center gap-4 rounded-lg p-3 transition-colors hover:bg-muted/50"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedCompanyIds.has(page.urn)}
-                      onChange={() => toggleCompany(page.urn)}
-                      className="h-4 w-4 rounded border-input text-accent focus:ring-accent"
-                    />
-                    <div className="h-10 w-10 shrink-0 rounded-full bg-muted" />
-                    <div>
-                      <span className="font-medium text-foreground">
+              <p className="mb-2 text-xs font-medium text-text-muted">
+                Company pages
+              </p>
+              <div className="space-y-2">
+                {companyPages.map((page) => {
+                  const selected = selectedCompanyIds.has(page.urn);
+                  return (
+                    <label
+                      key={page.urn}
+                      className={cn(
+                        "flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition-[background-color,border-color,transform] duration-150 ease-out focus-within:ring-2 focus-within:ring-accent/30 active:scale-[0.99]",
+                        selected
+                          ? "border-accent bg-accent/10"
+                          : "border-border bg-card hover:bg-muted/50",
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleCompany(page.urn)}
+                        className="sr-only"
+                      />
+                      <div className="h-10 w-10 shrink-0 rounded-full bg-muted" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                         {page.name}
                       </span>
-                      <p className="text-xs text-muted-foreground">
-                        @{page.name.replace(/\s+/g, "").toLowerCase()}
-                      </p>
-                    </div>
-                  </label>
-                ))}
+                      <CheckCircle
+                        size={20}
+                        weight={selected ? "fill" : "regular"}
+                        className={cn(
+                          "shrink-0",
+                          selected
+                            ? "text-accent"
+                            : "text-muted-foreground/40",
+                        )}
+                        aria-hidden
+                      />
+                    </label>
+                  );
+                })}
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <Link
-            href={returnTo}
-            className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
-          >
-            Cancel
-          </Link>
-          <button
-            type="submit"
-            disabled={submitLoading}
-            className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground transition-opacity hover:bg-accent-hover disabled:opacity-60"
-          >
-            {submitLoading ? "Connecting…" : "Connect Selected"}
-          </button>
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button asChild variant="outline">
+            <Link href={returnTo}>Cancel</Link>
+          </Button>
+          <Button type="submit" disabled={!canSubmit || submitLoading}>
+            {submitLoading ? (
+              <>
+                <CircleNotch size={16} className="animate-spin" />
+                Connecting
+              </>
+            ) : (
+              "Connect selected"
+            )}
+          </Button>
         </div>
       </form>
     </div>

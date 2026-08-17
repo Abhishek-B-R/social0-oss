@@ -2,9 +2,10 @@ import { useSearchParams } from "react-router-dom";
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "@/components/AppLink";
 import {
   AccountPicker,
+  AccountPickerEmpty,
+  AccountPickerSkeleton,
   type AccountPickerAccount,
 } from "@/components/AccountPicker";
 import { toast } from "sonner";
@@ -94,36 +95,20 @@ export default function FacebookSelectPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-12">
-        <p className="text-muted-foreground">Loading pages…</p>
-      </div>
+      <AccountPickerSkeleton
+        title="Connect a Facebook Page"
+        subtitle="Pick the page you want to connect."
+      />
     );
   }
 
   if (accounts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-12">
-        <Link
-          href={returnTo}
-          className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
-        >
-          Back to connections
-        </Link>
-      </div>
-    );
-  }
-
-  if (accounts.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 py-12">
-        <p className="text-muted-foreground">No Facebook Pages found.</p>
-        <Link
-          href={returnTo}
-          className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
-        >
-          Back to connections
-        </Link>
-      </div>
+      <AccountPickerEmpty
+        title="Connect a Facebook Page"
+        message="No Facebook Pages were found on this account."
+        cancelHref={returnTo}
+      />
     );
   }
 
@@ -131,8 +116,9 @@ export default function FacebookSelectPage() {
     <AccountPicker
       accounts={accounts}
       title="Connect a Facebook Page"
-      subtitle="Select a page to connect:"
-      submitLabel="Connect Selected Page"
+      subtitle="Pick the page you want to connect."
+      submitLabel="Connect selected"
+      cancelHref={returnTo}
       onSelect={handleSelect}
       loading={submitLoading}
     />
