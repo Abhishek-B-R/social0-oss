@@ -1,9 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import Link from "@/components/AppLink";
 import { AccountAvatar } from "@/components/AccountAvatar";
-import { ArrowClockwise, ChatCircle, SquaresFour } from "@/icons/phosphor";
+import {
+  ArrowClockwise,
+  ArrowLeft,
+  ArrowSquareOut,
+  ChatCircle,
+  PaperPlaneTilt,
+  SquaresFour,
+} from "@/icons/phosphor";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import { useSession } from "@/lib/auth-client";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
@@ -13,6 +20,7 @@ import {
   listInboxComments,
   replyToInboxComment,
   type InboxComment,
+  type InboxListResult,
   type InboxRange,
   type InboxThread,
 } from "@/api/inbox";
@@ -31,10 +39,10 @@ const PLATFORM_FILTERS = [
 ] as const;
 
 const RANGE_OPTIONS: Array<{ value: InboxRange; label: string }> = [
-  { value: "1d", label: "1 day" },
-  { value: "7d", label: "7 days" },
-  { value: "30d", label: "30 days" },
-  { value: "90d", label: "90 days" },
+  { value: "1d", label: "1d" },
+  { value: "7d", label: "7d" },
+  { value: "30d", label: "30d" },
+  { value: "90d", label: "90d" },
 ];
 
 const RANGE_EMPTY_LABEL: Record<InboxRange, string> = {
@@ -55,9 +63,60 @@ function replyMax(platform: string): number {
   return 2000;
 }
 
-function handleLabel(username: string | null): string {
+function handleLabel(username: string | null | undefined): string {
   if (!username) return "account";
   return username.startsWith("@") ? username.slice(1) : username;
+}
+
+function appendOptimisticReply(
+  data: InboxListResult,
+  args: {
+    publicationId: string;
+    parentCommentId: string;
+    text: string;
+    replyId?: string;
+    accountLabel: string | null;
+  },
+): InboxListResult {
+  const reply: InboxComment = {
+    id: args.replyId ?? `optimistic-${Date.now()}`,
+    platform: "",
+    accountId: "",
+    accountLabel: args.accountLabel,
+    postId: "",
+    publicationId: args.publicationId,
+    platformPostId: "",
+    platformPostUrl: null,
+    postSnippet: "",
+    authorName: "You",
+    authorHandle: args.accountLabel,
+    text: args.text,
+    createdAt: new Date().toISOString(),
+    parentId: args.parentCommentId,
+    canReply: false,
+    isOwn: true,
+  };
+
+  const threads = data.threads.map((thread) => {
+    const root = thread.comment;
+    const inThread =
+      root.publicationId === args.publicationId &&
+      (root.id === args.parentCommentId ||
+        thread.replies.some((r) => r.id === args.parentCommentId));
+    if (!inThread) return thread;
+
+    reply.platform = root.platform;
+    reply.accountId = root.accountId;
+    reply.postId = root.postId;
+    reply.platformPostId = root.platformPostId;
+    reply.platformPostUrl = root.platformPostUrl;
+    reply.postSnippet = root.postSnippet;
+
+    if (thread.replies.some((r) => r.id === reply.id)) return thread;
+    return { ...thread, replies: [...thread.replies, reply] };
+  });
+
+  return { ...data, threads };
 }
 
 export function InboxPage() {
@@ -68,6 +127,7 @@ export function InboxPage() {
   const [platform, setPlatform] = useState<string | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [pickedId, setPickedId] = useState<string | null>(null);
+  const [mobileDetail, setMobileDetail] = useState(false);
 
   const accountsQuery = useQuery({
     queryKey: ["analytics-accounts"],
@@ -75,8 +135,10 @@ export function InboxPage() {
     enabled: !!session,
   });
 
+  const queryKey = ["inbox-comments", range, platform, accountId] as const;
+
   const inboxQuery = useQuery({
-    queryKey: ["inbox-comments", range, platform, accountId],
+    queryKey,
     queryFn: () =>
       listInboxComments({
         range,
@@ -89,13 +151,33 @@ export function InboxPage() {
 
   const replyMut = useMutation({
     mutationFn: replyToInboxComment,
-    onSuccess: (res) => {
-      if (res.ok) {
-        toast.success("Reply sent");
-        void qc.invalidateQueries({ queryKey: ["inbox-comments"] });
-      } else {
+    onSuccess: (res, vars) => {
+      if (!res.ok) {
         toast.error(res.error);
+        return;
       }
+      toast.success("Reply sent");
+      const account =
+        accountsQuery.data?.find((a) => a.id === accountId) ??
+        accountsQuery.data?.find(
+          (a) =>
+            a.id ===
+            inboxQuery.data?.threads.find(
+              (t) => t.comment.publicationId === vars.publicationId,
+            )?.comment.accountId,
+        );
+      qc.setQueryData<InboxListResult>(queryKey, (old) => {
+        if (!old) return old;
+        return appendOptimisticReply(old, {
+          publicationId: vars.publicationId,
+          parentCommentId: vars.commentId,
+          text: vars.text,
+          replyId: res.replyId,
+          accountLabel: account?.username ?? null,
+        });
+      });
+      // Soft refresh so platform nesting / ids catch up without wiping the reply.
+      void qc.invalidateQueries({ queryKey: ["inbox-comments"] });
     },
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : "Reply failed");
@@ -109,6 +191,20 @@ export function InboxPage() {
     if (!platform) return rows;
     return rows.filter((a) => a.platform === platform);
   }, [accountsQuery.data, platform]);
+
+  const data = inboxQuery.data;
+  const threads = data?.threads ?? [];
+
+  useEffect(() => {
+    if (!data?.threads?.length) {
+      setPickedId(null);
+      return;
+    }
+    const keys = data.threads.map(threadKey);
+    if (!pickedId || !keys.includes(pickedId)) {
+      setPickedId(keys[0] ?? null);
+    }
+  }, [data?.threads, pickedId]);
 
   if (sessionPending) {
     return <InboxSkeleton />;
@@ -125,65 +221,45 @@ export function InboxPage() {
     );
   }
 
-  const data = inboxQuery.data;
   const loading = inboxQuery.isLoading || inboxQuery.isFetching;
-  const threads = data?.threads ?? [];
   const selected =
     threads.find((t) => threadKey(t) === pickedId) ?? threads[0] ?? null;
   const rangeLabel =
     data?.since && data?.until
-      ? `${format(new Date(data.since), "MMM d")} – ${format(new Date(data.until), "MMM d, yyyy")}`
+      ? `${format(new Date(data.since), "MMM d")} – ${format(new Date(data.until), "MMM d")}`
       : null;
   const emptyRangeLabel = RANGE_EMPTY_LABEL[range];
+  const showList = !mobileDetail;
+  const showDetail = mobileDetail || Boolean(selected);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
-            Inbox
-          </h1>
-          <p className="mt-1 text-sm text-text-muted">
-            Comments on posts you published through Social0. Reply without
-            switching apps.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void inboxQuery.refetch()}
-          disabled={loading}
-          className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text hover:bg-bg-subtle disabled:opacity-60"
-        >
-          <ArrowClockwise
-            className={cn("h-4 w-4", loading && "animate-spin")}
-            size={16}
-          />
-          Refresh
-        </button>
-      </div>
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="-mx-1 flex min-h-[calc(100dvh-8rem)] flex-col gap-3 sm:mx-0">
+      <header className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <h1 className="font-logo text-[1.75rem] font-normal tracking-tight text-foreground sm:text-[2rem]">
+          Inbox
+        </h1>
         <div
           role="tablist"
           aria-label="Date range"
-          className="inline-flex w-full rounded-full border border-border bg-bg-muted p-1 sm:w-auto"
+          className="inline-flex rounded-lg border border-border bg-bg-muted p-0.5"
         >
           {RANGE_OPTIONS.map((opt) => {
-            const selectedRange = range === opt.value;
+            const on = range === opt.value;
             return (
               <button
                 key={opt.value}
                 type="button"
                 role="tab"
-                aria-selected={selectedRange}
+                aria-selected={on}
                 onClick={() => {
                   setRange(opt.value);
                   setPickedId(null);
+                  setMobileDetail(false);
                 }}
                 className={cn(
-                  "flex-1 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors sm:flex-none sm:px-4",
-                  selectedRange
-                    ? "bg-accent text-accent-foreground shadow-sm"
+                  "rounded-md px-2.5 py-1 text-xs font-semibold tabular-nums transition-colors",
+                  on
+                    ? "bg-bg-elevated text-text shadow-sm"
                     : "text-text-muted hover:text-text",
                 )}
               >
@@ -193,151 +269,119 @@ export function InboxPage() {
           })}
         </div>
         {rangeLabel ? (
-          <p className="text-sm font-medium tabular-nums text-text-muted">
+          <span className="hidden text-xs tabular-nums text-text-muted sm:inline">
             {rangeLabel}
-          </p>
+          </span>
         ) : null}
-      </div>
+        <div className="ml-auto flex items-center gap-2">
+          {threads.length > 0 ? (
+            <span className="text-xs text-text-muted">
+              {threads.length} thread{threads.length === 1 ? "" : "s"}
+            </span>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void inboxQuery.refetch()}
+            disabled={loading}
+            aria-label="Refresh inbox"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border text-text-muted hover:bg-bg-subtle hover:text-text disabled:opacity-60"
+          >
+            <ArrowClockwise
+              className={cn("h-4 w-4", loading && "animate-spin")}
+              size={16}
+            />
+          </button>
+        </div>
+      </header>
 
-      <div className="flex flex-wrap gap-2">
-        <FilterChip
-          label="All platforms"
+      <div className="flex flex-wrap items-center gap-1.5">
+        <PlatformToggle
+          label="All"
           selected={platform == null}
           onClick={() => {
             setPlatform(null);
             setAccountId(null);
             setPickedId(null);
+            setMobileDetail(false);
           }}
         />
         {PLATFORM_FILTERS.map((id) => (
-          <FilterChip
+          <PlatformToggle
             key={id}
             label={PLATFORM_LABEL[id] ?? id}
             selected={platform === id}
-            icon={<PlatformIcon platform={id} size={12} />}
+            icon={<PlatformIcon platform={id} size={13} />}
             onClick={() => {
               setPlatform(id);
               setAccountId(null);
               setPickedId(null);
+              setMobileDetail(false);
             }}
           />
         ))}
-      </div>
-
-      {accountsForFilter.length > 0 ? (
-        <div className="flex flex-wrap items-start gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setAccountId(null);
-              setPickedId(null);
-            }}
-            aria-pressed={accountId == null}
-            className="flex w-16 flex-col items-center gap-1.5"
-          >
-            <span
-              className={cn(
-                "relative flex h-12 w-12 items-center justify-center rounded-full border-2 transition-all",
-                accountId == null
-                  ? "border-accent bg-accent/15 text-accent"
-                  : "border-transparent bg-bg-muted text-text-muted opacity-70 hover:opacity-100",
-              )}
-            >
-              <SquaresFour
-                size={22}
-                weight={accountId == null ? "fill" : "regular"}
-              />
-            </span>
-            <span
-              className={cn(
-                "w-full truncate text-center text-[11px] font-semibold",
-                accountId == null ? "text-accent" : "text-text-muted",
-              )}
-            >
-              All
-            </span>
-          </button>
-          {accountsForFilter.map((a) => (
-            <button
-              key={a.id}
-              type="button"
+        {accountsForFilter.length > 1 ? (
+          <>
+            <span className="mx-1 h-4 w-px bg-border" aria-hidden />
+            <AccountToggle
+              selected={accountId == null}
+              label="All"
               onClick={() => {
-                setAccountId(a.id);
+                setAccountId(null);
                 setPickedId(null);
+                setMobileDetail(false);
               }}
-              aria-pressed={accountId === a.id}
-              title={`@${handleLabel(a.username)}`}
-              className="flex w-16 flex-col items-center gap-1.5"
             >
-              <span
-                className={cn(
-                  "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 transition-all",
-                  accountId === a.id
-                    ? "border-accent opacity-100"
-                    : "border-transparent opacity-60 hover:opacity-100",
-                )}
+              <SquaresFour size={14} weight={accountId == null ? "fill" : "regular"} />
+            </AccountToggle>
+            {accountsForFilter.map((a) => (
+              <AccountToggle
+                key={a.id}
+                selected={accountId === a.id}
+                label={`@${handleLabel(a.username)}`}
+                onClick={() => {
+                  setAccountId(a.id);
+                  setPickedId(null);
+                  setMobileDetail(false);
+                }}
               >
-                <span className="h-full w-full overflow-hidden rounded-full">
+                <span className="relative block h-5 w-5 overflow-hidden rounded-full">
                   <AccountAvatar
                     profileImageUrl={a.profileImageUrl}
                     username={a.username}
                     platform={a.platform}
                     fill
                   />
+                  <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-bg-elevated">
+                    <PlatformIcon platform={a.platform} size={8} />
+                  </span>
                 </span>
-                <span className="absolute bottom-0 right-0 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-bg-elevated bg-bg-elevated">
-                  <PlatformIcon platform={a.platform} size={11} />
-                </span>
-              </span>
-              <span
-                className={cn(
-                  "w-full truncate text-center text-[11px] font-semibold",
-                  accountId === a.id ? "text-accent" : "text-text",
-                )}
-              >
-                {handleLabel(a.username)}
-              </span>
-            </button>
-          ))}
-        </div>
-      ) : null}
+              </AccountToggle>
+            ))}
+          </>
+        ) : null}
+      </div>
 
       {data?.accountsNeedingReconnect?.length ? (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
-          <p className="font-medium">Reconnect to read & reply</p>
-          <p className="mt-1 text-amber-800/90 dark:text-amber-100/80">
-            Instagram needs comment permission; Facebook needs page engagement.
-            Publishing still works.
-          </p>
-          <ul className="mt-2 list-inside list-disc text-xs">
-            {data.accountsNeedingReconnect.map((a) => (
-              <li key={a.accountId}>
-                {PLATFORM_LABEL[a.platform] ?? a.platform}
-                {a.username ? ` (@${a.username})` : ""}
-              </li>
-            ))}
-          </ul>
+        <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
+          <span className="font-medium">Reconnect for comments: </span>
+          {data.accountsNeedingReconnect
+            .map(
+              (a) =>
+                `${PLATFORM_LABEL[a.platform] ?? a.platform}${a.username ? ` @${a.username}` : ""}`,
+            )
+            .join(" · ")}
+          {" · "}
           <Link
             href={dash("connections")}
-            className="mt-2 inline-block text-sm font-medium text-accent underline-offset-2 hover:underline"
+            className="font-medium text-accent underline-offset-2 hover:underline"
           >
-            Open Connections
+            Connections
           </Link>
         </div>
       ) : null}
 
-      {data?.unsupported?.length ? (
-        <p className="text-xs text-text-muted">
-          Comments aren&apos;t available for{" "}
-          {data.unsupported
-            .map((p) => PLATFORM_LABEL[p] ?? p)
-            .join(", ")}{" "}
-          yet.
-        </p>
-      ) : null}
-
       {inboxQuery.isError ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">
           {inboxQuery.error instanceof Error
             ? inboxQuery.error.message
             : "Failed to load comments"}
@@ -345,112 +389,124 @@ export function InboxPage() {
       ) : null}
 
       {loading && !data ? (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-          <div className="h-72 animate-pulse rounded-2xl bg-bg-muted" />
-          <div className="h-72 animate-pulse rounded-2xl bg-bg-muted" />
+        <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
+          <div className="h-full animate-pulse bg-bg-muted/60" />
+          <div className="hidden h-full animate-pulse bg-bg-muted/40 lg:block" />
         </div>
       ) : !data || threads.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-bg-elevated px-6 py-16 text-center">
-          <ChatCircle size={32} className="text-text-muted" />
+        <div className="flex min-h-[20rem] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-elevated px-6 text-center">
+          <ChatCircle size={28} className="text-text-muted" />
           <p className="mt-3 text-sm font-medium text-text">No comments yet</p>
           <p className="mt-1 max-w-sm text-sm text-text-muted">
             Comments on Social0 posts from {emptyRangeLabel} show up here.
-            TikTok and Pinterest don&apos;t expose a comments API yet.
+            Try a longer range if you just published.
           </p>
         </div>
       ) : (
-        <div className="grid min-h-[28rem] overflow-hidden rounded-2xl border border-border bg-bg-elevated shadow-sm lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+        <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[minmax(0,18.5rem)_minmax(0,1fr)]">
           <ul
             className={cn(
-              "max-h-[70vh] divide-y divide-border overflow-y-auto lg:border-r lg:border-border",
-              pickedId ? "hidden lg:block" : "block",
+              "max-h-[min(70vh,40rem)] overflow-y-auto border-border lg:max-h-none lg:border-r",
+              showList ? "block" : "hidden lg:block",
             )}
           >
             {threads.map((thread) => {
               const key = threadKey(thread);
               const active = selected ? threadKey(selected) === key : false;
               const c = thread.comment;
+              const when = c.createdAt
+                ? formatDistanceToNow(new Date(c.createdAt), {
+                    addSuffix: false,
+                  })
+                : "";
+              const replyCount = thread.replies.length;
+              const ownReply = thread.replies.some((r) => r.isOwn);
               return (
-                <li key={key}>
+                <li key={key} className="border-b border-border last:border-b-0">
                   <button
                     type="button"
-                    onClick={() => setPickedId(key)}
+                    onClick={() => {
+                      setPickedId(key);
+                      setMobileDetail(true);
+                    }}
                     className={cn(
-                      "flex w-full gap-3 px-4 py-3 text-left hover:bg-bg-subtle",
-                      active && "bg-accent/10",
+                      "relative flex w-full gap-2.5 px-3 py-2.5 text-left transition-colors",
+                      active
+                        ? "bg-accent/10 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent"
+                        : "hover:bg-bg-subtle/80",
                     )}
                   >
-                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bg-muted">
-                      <PlatformIcon platform={c.platform} size={14} />
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bg-muted">
+                      <PlatformIcon platform={c.platform} size={13} />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-1.5 text-sm">
-                        <span className="truncate font-semibold text-text">
-                          {c.authorName}
+                      <span className="flex items-baseline gap-1.5">
+                        <span className="truncate text-[13px] font-semibold text-text">
+                          {c.isOwn ? "You" : c.authorName}
                         </span>
-                        <span className="shrink-0 text-xs text-text-muted">
-                          {PLATFORM_LABEL[c.platform] ?? c.platform}
+                        <span className="ml-auto shrink-0 text-[10px] tabular-nums text-text-muted">
+                          {when}
                         </span>
                       </span>
-                      <span className="mt-0.5 line-clamp-2 text-sm text-text-muted">
+                      <span className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-text-muted">
                         {c.text || "(No text)"}
                       </span>
-                      {thread.replies.length > 0 ? (
-                        <span className="mt-1 block text-xs text-text-muted">
-                          {thread.replies.length}{" "}
-                          {thread.replies.length === 1 ? "reply" : "replies"}
-                        </span>
-                      ) : null}
+                      <span className="mt-1 flex items-center gap-2 text-[10px] text-text-muted">
+                        <span>{PLATFORM_LABEL[c.platform] ?? c.platform}</span>
+                        {replyCount > 0 ? (
+                          <span>
+                            {replyCount} repl
+                            {replyCount === 1 ? "y" : "ies"}
+                            {ownReply ? " · you replied" : ""}
+                          </span>
+                        ) : null}
+                      </span>
                     </span>
                   </button>
                 </li>
               );
             })}
           </ul>
-          <div
+
+          <section
             className={cn(
-              "flex min-w-0 flex-col p-4 sm:p-5",
-              pickedId ? "flex" : "hidden lg:flex",
+              "min-h-0 min-w-0 flex-col",
+              showDetail ? "flex" : "hidden lg:flex",
             )}
           >
             {selected ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setPickedId(null)}
-                  className="mb-3 self-start text-sm text-text-muted hover:text-text lg:hidden"
-                >
-                  ← All comments
-                </button>
-                <ThreadDetail
-                  thread={selected}
-                  dash={dash}
-                  sending={replyMut.isPending}
-                  onReply={(commentId, text) =>
-                    replyMut.mutate({
-                      publicationId: selected.comment.publicationId,
-                      commentId,
-                      text,
-                    })
-                  }
-                />
-              </>
-            ) : null}
-          </div>
+              <ConversationPane
+                thread={selected}
+                dash={dash}
+                sending={replyMut.isPending}
+                onBack={() => setMobileDetail(false)}
+                onReply={(commentId, text) =>
+                  replyMut.mutate({
+                    publicationId: selected.comment.publicationId,
+                    commentId,
+                    text,
+                  })
+                }
+              />
+            ) : (
+              <div className="flex flex-1 items-center justify-center p-8 text-sm text-text-muted">
+                Select a comment
+              </div>
+            )}
+          </section>
         </div>
       )}
 
       {data?.sampled ? (
-        <p className="text-xs text-text-muted">
-          Showing comments from the latest {data.sampleLimit} Social0
-          publications.
+        <p className="text-[11px] text-text-muted">
+          Latest {data.sampleLimit} Social0 publications in this range.
         </p>
       ) : null}
     </div>
   );
 }
 
-function FilterChip({
+function PlatformToggle({
   label,
   selected,
   onClick,
@@ -464,189 +520,220 @@ function FilterChip({
   return (
     <button
       type="button"
+      title={label}
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+        "inline-flex h-7 items-center gap-1 rounded-md px-2 text-[11px] font-medium transition-colors",
         selected
           ? "bg-accent text-accent-foreground"
-          : "border border-border text-text-muted hover:bg-bg-subtle hover:text-text",
+          : "bg-bg-muted text-text-muted hover:text-text",
       )}
     >
       {icon}
-      {label}
+      <span className={icon ? "hidden sm:inline" : undefined}>{label}</span>
     </button>
   );
 }
 
-function ThreadDetail({
+function AccountToggle({
+  selected,
+  label,
+  onClick,
+  children,
+}: {
+  selected: boolean;
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      aria-pressed={selected}
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-7 w-7 items-center justify-center rounded-full border transition-all",
+        selected
+          ? "border-accent bg-accent/10"
+          : "border-transparent opacity-70 hover:opacity-100",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ConversationPane({
   thread,
   dash,
   sending,
+  onBack,
   onReply,
 }: {
   thread: InboxThread;
   dash: (path: string) => string;
   sending: boolean;
+  onBack: () => void;
   onReply: (commentId: string, text: string) => void;
 }) {
   const c = thread.comment;
+  const [draft, setDraft] = useState("");
+  const max = replyMax(c.platform);
+
+  // Reset composer when switching threads.
+  useEffect(() => {
+    setDraft("");
+  }, [c.id]);
+
+  const messages = [c, ...thread.replies];
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <CommentBlock comment={c} />
-      {thread.replies.length > 0 ? (
-        <ul className="mt-4 space-y-4 border-l border-border pl-4">
-          {thread.replies.map((r) => (
-            <li key={r.id}>
-              <CommentBlock comment={r} compact />
-              {r.canReply ? (
-                <ReplyForm
-                  platform={r.platform}
-                  sending={sending}
-                  onReply={(text) => onReply(r.id, text)}
-                />
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      <div className="mt-4 flex flex-wrap items-center gap-3 text-xs">
-        <Link
-          href={dash(`posts/${c.postId}`)}
-          className="text-text-muted hover:text-accent"
+    <>
+      <div className="flex items-start gap-2 border-b border-border px-3 py-2.5 sm:px-4">
+        <button
+          type="button"
+          onClick={onBack}
+          className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:bg-bg-subtle hover:text-text lg:hidden"
+          aria-label="Back to list"
         >
-          On: {c.postSnippet}
-        </Link>
-        {c.platformPostUrl ? (
-          <a
-            href={c.platformPostUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-text-muted hover:text-accent"
-          >
-            View on {PLATFORM_LABEL[c.platform] ?? c.platform}
-          </a>
-        ) : null}
+          <ArrowLeft size={16} />
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-text-muted">
+            On your {PLATFORM_LABEL[c.platform] ?? c.platform} post
+          </p>
+          <p className="mt-0.5 line-clamp-2 text-[13px] text-text">
+            {c.postSnippet}
+          </p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px]">
+            <Link
+              href={dash(`posts/${c.postId}`)}
+              className="text-accent hover:underline"
+            >
+              Open in Social0
+            </Link>
+            {c.platformPostUrl ? (
+              <a
+                href={c.platformPostUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-0.5 text-text-muted hover:text-accent"
+              >
+                View on {PLATFORM_LABEL[c.platform] ?? c.platform}
+                <ArrowSquareOut size={11} />
+              </a>
+            ) : null}
+          </div>
+        </div>
       </div>
+
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 sm:px-4">
+        {messages.map((m, i) => (
+          <MessageBubble
+            key={m.id}
+            comment={m}
+            isRoot={i === 0}
+          />
+        ))}
+      </div>
+
       {c.canReply ? (
-        <ReplyForm
-          platform={c.platform}
-          sending={sending}
-          onReply={(text) => onReply(c.id, text)}
-        />
+        <form
+          className="border-t border-border bg-bg-elevated p-3 sm:p-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const text = draft.trim();
+            if (!text || sending) return;
+            onReply(c.id, text);
+            setDraft("");
+          }}
+        >
+          <label className="sr-only" htmlFor="inbox-reply">
+            Reply
+          </label>
+          <div className="flex gap-2">
+            <textarea
+              id="inbox-reply"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              rows={2}
+              maxLength={max}
+              placeholder={`Reply to ${c.isOwn ? "this thread" : c.authorName}…`}
+              className="min-h-[2.75rem] flex-1 resize-none rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text outline-none placeholder:text-text-muted focus:border-accent focus:ring-2 focus:ring-accent/20"
+            />
+            <button
+              type="submit"
+              disabled={sending || !draft.trim()}
+              aria-label="Send reply"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-lg bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-50"
+            >
+              <PaperPlaneTilt size={16} weight="fill" />
+            </button>
+          </div>
+          <p className="mt-1.5 text-right text-[10px] tabular-nums text-text-muted">
+            {draft.length}/{max}
+          </p>
+        </form>
       ) : (
-        <p className="mt-4 text-sm text-text-muted">
+        <p className="border-t border-border px-4 py-3 text-sm text-text-muted">
           Replies aren&apos;t available for{" "}
           {PLATFORM_LABEL[c.platform] ?? c.platform} yet.
         </p>
       )}
-    </div>
+    </>
   );
 }
 
-function ReplyForm({
-  platform,
-  sending,
-  onReply,
-}: {
-  platform: string;
-  sending: boolean;
-  onReply: (text: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState("");
-  const max = replyMax(platform);
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mt-3 text-sm font-medium text-accent hover:underline"
-      >
-        Reply
-      </button>
-    );
-  }
-
-  return (
-    <form
-      className="mt-3 flex flex-col gap-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const text = draft.trim();
-        if (!text) return;
-        onReply(text);
-        setDraft("");
-        setOpen(false);
-      }}
-    >
-      <textarea
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        rows={3}
-        maxLength={max}
-        placeholder="Write a reply…"
-        className="w-full rounded-xl border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-      />
-      <div className="flex items-center gap-2">
-        <button
-          type="submit"
-          disabled={sending || !draft.trim()}
-          className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-60"
-        >
-          Send reply
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="rounded-lg px-3 py-1.5 text-sm text-text-muted hover:text-text"
-        >
-          Cancel
-        </button>
-        <span className="ml-auto text-xs text-text-muted">
-          {draft.length}/{max}
-        </span>
-      </div>
-    </form>
-  );
-}
-
-function CommentBlock({
+function MessageBubble({
   comment,
-  compact,
+  isRoot,
 }: {
   comment: InboxComment;
-  compact?: boolean;
+  isRoot?: boolean;
 }) {
   const when = comment.createdAt
     ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })
     : null;
+  const own = Boolean(comment.isOwn);
+
   return (
-    <div className={cn("flex gap-3", compact && "opacity-90")}>
-      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bg-muted">
-        <PlatformIcon platform={comment.platform} size={14} />
+    <div
+      className={cn(
+        "flex gap-2.5",
+        own && "flex-row-reverse",
+        !isRoot && "ml-2 sm:ml-4",
+      )}
+    >
+      <span
+        className={cn(
+          "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+          own ? "bg-accent/20 text-accent" : "bg-bg-muted",
+        )}
+      >
+        <PlatformIcon platform={comment.platform} size={12} />
       </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-text">
-          <span className="font-semibold">{comment.authorName}</span>
-          {comment.authorHandle ? (
-            <span className="text-text-muted"> @{comment.authorHandle}</span>
-          ) : null}
-          <span className="text-text-muted">
-            {" "}
-            · {PLATFORM_LABEL[comment.platform] ?? comment.platform}
-            {comment.accountLabel ? ` · ${comment.accountLabel}` : ""}
-            {when ? ` · ${when}` : ""}
+      <div
+        className={cn(
+          "max-w-[min(100%,28rem)] rounded-2xl px-3 py-2",
+          own
+            ? "rounded-tr-md bg-accent/15 text-text"
+            : "rounded-tl-md bg-bg-muted text-text",
+        )}
+      >
+        <p className="flex flex-wrap items-baseline gap-x-1.5 text-[11px]">
+          <span className="font-semibold">
+            {own ? "You" : comment.authorName}
           </span>
+          {!own && comment.authorHandle ? (
+            <span className="text-text-muted">@{comment.authorHandle}</span>
+          ) : null}
+          {when ? <span className="text-text-muted">· {when}</span> : null}
         </p>
-        <p className="mt-1 whitespace-pre-wrap text-sm text-text">
+        <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed">
           {comment.text}
         </p>
-        {comment.likeCount ? (
-          <p className="mt-1 text-xs text-text-muted">
-            {comment.likeCount} {comment.likeCount === 1 ? "like" : "likes"}
-          </p>
-        ) : null}
       </div>
     </div>
   );
@@ -654,9 +741,9 @@ function CommentBlock({
 
 function InboxSkeleton() {
   return (
-    <div className="flex flex-col gap-6" aria-busy>
-      <div className="h-10 w-40 animate-pulse rounded bg-bg-muted" />
-      <div className="h-28 animate-pulse rounded-2xl bg-bg-muted" />
+    <div className="flex flex-col gap-3" aria-busy>
+      <div className="h-9 w-36 animate-pulse rounded bg-bg-muted" />
+      <div className="h-[28rem] animate-pulse rounded-xl bg-bg-muted" />
     </div>
   );
 }

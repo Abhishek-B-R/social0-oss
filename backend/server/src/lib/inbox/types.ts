@@ -37,6 +37,8 @@ export type InboxComment = {
   likeCount?: number;
   parentId: string | null;
   canReply: boolean;
+  /** True when the comment author is the connected Social0 account. */
+  isOwn?: boolean;
 };
 
 export type InboxThread = {
@@ -100,30 +102,60 @@ export function missingInboxScopes(
   return needed.filter((s) => !inboxScopeGranted(granted, s));
 }
 
-/** Nest replies under parents. Orphans (parent missing from this fetch) stay top-level. */
+export function sameInboxHandle(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  if (!a || !b) return false;
+  return (
+    a.replace(/^@/, "").trim().toLowerCase() ===
+    b.replace(/^@/, "").trim().toLowerCase()
+  );
+}
+
+/**
+ * Nest replies under the top-level comment in the conversation.
+ * Deeper replies (reply-to-reply) flatten under that root so the pane shows
+ * the full back-and-forth. Orphans stay top-level.
+ */
 export function toInboxThreads(comments: InboxComment[]): InboxThread[] {
-  const byParent = new Map<string, InboxComment[]>();
-  const top: InboxComment[] = [];
+  const byId = new Map<string, InboxComment>();
   for (const c of comments) {
-    if (!c.id) continue;
-    if (c.parentId) {
-      const list = byParent.get(c.parentId) ?? [];
-      list.push(c);
-      byParent.set(c.parentId, list);
-    } else {
-      top.push(c);
+    if (c.id) byId.set(c.id, c);
+  }
+
+  function findRoot(c: InboxComment): InboxComment {
+    let cur = c;
+    const seen = new Set<string>();
+    while (cur.parentId && byId.has(cur.parentId) && !seen.has(cur.parentId)) {
+      seen.add(cur.id);
+      cur = byId.get(cur.parentId)!;
     }
+    return cur;
   }
-  const topIds = new Set(top.map((c) => c.id));
-  for (const [parentId, kids] of byParent) {
-    if (topIds.has(parentId)) continue;
-    top.push(...kids);
-    byParent.delete(parentId);
+
+  const repliesByRoot = new Map<string, InboxComment[]>();
+  const tops: InboxComment[] = [];
+  const topIds = new Set<string>();
+
+  for (const c of byId.values()) {
+    const root = findRoot(c);
+    if (root.id === c.id) {
+      if (!topIds.has(c.id)) {
+        tops.push(c);
+        topIds.add(c.id);
+      }
+      continue;
+    }
+    const list = repliesByRoot.get(root.id) ?? [];
+    list.push(c);
+    repliesByRoot.set(root.id, list);
   }
-  top.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
-  return top.map((comment) => ({
+
+  tops.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+  return tops.map((comment) => ({
     comment,
-    replies: (byParent.get(comment.id) ?? []).sort((a, b) =>
+    replies: (repliesByRoot.get(comment.id) ?? []).sort((a, b) =>
       (a.createdAt ?? "").localeCompare(b.createdAt ?? ""),
     ),
   }));

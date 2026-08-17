@@ -5,7 +5,7 @@
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
 import type { InboxComment } from "./types.js";
-import { INBOX_UNSUPPORTED } from "./types.js";
+import { INBOX_UNSUPPORTED, sameInboxHandle } from "./types.js";
 
 export type CommentFetchInput = {
   platform: string;
@@ -30,7 +30,7 @@ export type CommentFetchResult = {
 
 function base(input: CommentFetchInput): Omit<
   InboxComment,
-  "id" | "authorName" | "authorHandle" | "text" | "createdAt" | "parentId" | "likeCount"
+  "id" | "authorName" | "authorHandle" | "text" | "createdAt" | "parentId" | "likeCount" | "isOwn"
 > {
   return {
     platform: input.platform,
@@ -43,6 +43,13 @@ function base(input: CommentFetchInput): Omit<
     postSnippet: input.postSnippet,
     canReply: true,
   };
+}
+
+function withAuthor(
+  input: CommentFetchInput,
+  authorHandle: string | null,
+): { isOwn: boolean } {
+  return { isOwn: sameInboxHandle(authorHandle, input.accountLabel) };
 }
 
 async function jsonGet(
@@ -96,6 +103,7 @@ async function fetchFacebook(
       likeCount:
         typeof row.like_count === "number" ? row.like_count : undefined,
       parentId: null,
+      ...withAuthor(input, from?.name ?? null),
     });
     const nested =
       (row.comments as { data?: Array<Record<string, unknown>> } | undefined)
@@ -111,6 +119,7 @@ async function fetchFacebook(
         createdAt:
           typeof child.created_time === "string" ? child.created_time : null,
         parentId: String(row.id ?? ""),
+        ...withAuthor(input, cfrom?.name ?? null),
       });
     }
   }
@@ -147,6 +156,7 @@ async function fetchInstagram(
       likeCount:
         typeof row.like_count === "number" ? row.like_count : undefined,
       parentId: null,
+      ...withAuthor(input, handle),
     });
     const nested =
       (row.replies as { data?: Array<Record<string, unknown>> } | undefined)
@@ -161,6 +171,7 @@ async function fetchInstagram(
         text: String(child.text ?? ""),
         createdAt: typeof child.timestamp === "string" ? child.timestamp : null,
         parentId: String(row.id ?? ""),
+        ...withAuthor(input, ch),
       });
     }
   }
@@ -194,6 +205,7 @@ async function fetchThreads(
       text: String(row.text ?? ""),
       createdAt: typeof row.timestamp === "string" ? row.timestamp : null,
       parentId: null,
+      ...withAuthor(input, handle),
     };
   });
   return { comments, status: "ok" };
@@ -239,6 +251,7 @@ async function fetchYouTube(
       createdAt: typeof sn.publishedAt === "string" ? sn.publishedAt : null,
       likeCount: typeof sn.likeCount === "number" ? sn.likeCount : undefined,
       parentId: null,
+      isOwn: Boolean(sn.authorChannelId === input.platformUserId),
     });
     const replies =
       (item.replies as { comments?: Array<{ id?: string; snippet?: Record<string, unknown> }> })
@@ -254,6 +267,7 @@ async function fetchYouTube(
         text: String(rs.textDisplay ?? rs.textOriginal ?? ""),
         createdAt: typeof rs.publishedAt === "string" ? rs.publishedAt : null,
         parentId: top.id,
+        isOwn: Boolean(rs.authorChannelId === input.platformUserId),
       });
     }
   }
@@ -279,7 +293,12 @@ async function fetchTwitter(
       `conversation_id:${input.platformPostId}`,
       {
         max_results: 50,
-        "tweet.fields": ["created_at", "author_id", "in_reply_to_user_id"],
+        "tweet.fields": [
+          "created_at",
+          "author_id",
+          "referenced_tweets",
+          "conversation_id",
+        ],
         expansions: ["author_id"],
         "user.fields": ["name", "username"],
       },
@@ -294,14 +313,22 @@ async function fetchTwitter(
     for (const tweet of tweets) {
       if (tweet.id === input.platformPostId) continue;
       const user = tweet.author_id ? users.get(tweet.author_id) : undefined;
+      const handle = user?.username ?? null;
+      const repliedTo = tweet.referenced_tweets?.find(
+        (r) => r.type === "replied_to",
+      )?.id;
+      // Direct reply to the Social0 post = top-level comment; else nest under parent tweet.
+      const parentId =
+        !repliedTo || repliedTo === input.platformPostId ? null : repliedTo;
       comments.push({
         ...common,
         id: tweet.id,
         authorName: user?.name ?? "X user",
-        authorHandle: user?.username ?? null,
+        authorHandle: handle,
         text: tweet.text ?? "",
         createdAt: tweet.created_at ?? null,
-        parentId: null,
+        parentId,
+        ...withAuthor(input, handle),
       });
     }
     return { comments, status: "ok" };
@@ -352,6 +379,7 @@ async function fetchBluesky(
         createdAt: node.post.record?.createdAt ?? null,
         likeCount: node.post.likeCount,
         parentId,
+        ...withAuthor(input, node.post.author?.handle ?? null),
       });
     }
     for (const child of node.replies ?? []) {

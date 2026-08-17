@@ -312,7 +312,7 @@ export async function replyToInboxComment(input: {
   publicationId?: unknown;
   commentId?: unknown;
   text?: unknown;
-}): Promise<{ ok: true } | { ok: false; error: string }> {
+}): Promise<{ ok: true; replyId?: string } | { ok: false; error: string }> {
   const ctx = await requireUser();
   if (typeof input.publicationId !== "string" || !input.publicationId) {
     return { ok: false, error: "publicationId required" };

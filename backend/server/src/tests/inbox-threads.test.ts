@@ -76,4 +76,24 @@ describe("toInboxThreads", () => {
     expect(threads.map((t) => t.comment.id)).toEqual(["orphan", "parent"]);
     expect(threads[1]?.replies.map((r) => r.id)).toEqual(["child"]);
   });
+
+  it("flattens reply-to-reply under the conversation root", () => {
+    const threads = toInboxThreads([
+      comment({ id: "root", createdAt: "2026-01-01T00:00:00.000Z" }),
+      comment({
+        id: "r1",
+        parentId: "root",
+        createdAt: "2026-01-02T00:00:00.000Z",
+      }),
+      comment({
+        id: "r2",
+        parentId: "r1",
+        text: "your reply",
+        isOwn: true,
+        createdAt: "2026-01-03T00:00:00.000Z",
+      }),
+    ]);
+    expect(threads).toHaveLength(1);
+    expect(threads[0]?.replies.map((r) => r.id)).toEqual(["r1", "r2"]);
+  });
 });

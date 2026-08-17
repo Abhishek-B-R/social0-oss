@@ -19,6 +19,7 @@ export type InboxComment = {
   likeCount?: number;
   parentId: string | null;
   canReply: boolean;
+  isOwn?: boolean;
 };
 
 export type InboxThread = {
@@ -55,6 +56,6 @@ export function replyToInboxComment(input: {
   publicationId: string;
   commentId: string;
   text: string;
-}): Promise<{ ok: true } | { ok: false; error: string }> {
+}): Promise<{ ok: true; replyId?: string } | { ok: false; error: string }> {
   return rpc("inbox.replyToComment", input);
 }

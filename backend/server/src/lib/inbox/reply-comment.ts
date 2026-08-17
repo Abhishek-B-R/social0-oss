@@ -15,7 +15,9 @@ export type ReplyInput = {
   accountHandle?: string | null;
 };
 
-export type ReplyResult = { ok: true } | { ok: false; error: string };
+export type ReplyResult =
+  | { ok: true; replyId?: string }
+  | { ok: false; error: string };
 
 async function formPost(
   url: string,
@@ -46,7 +48,13 @@ async function replyFacebook(input: ReplyInput): Promise<ReplyResult> {
         "Facebook reply failed",
     );
   }
-  return { ok: true };
+  return {
+    ok: true,
+    replyId:
+      typeof (data as { id?: string }).id === "string"
+        ? (data as { id: string }).id
+        : undefined,
+  };
 }
 
 async function replyInstagram(input: ReplyInput): Promise<ReplyResult> {
@@ -61,7 +69,13 @@ async function replyInstagram(input: ReplyInput): Promise<ReplyResult> {
         "Instagram reply failed",
     );
   }
-  return { ok: true };
+  return {
+    ok: true,
+    replyId:
+      typeof (data as { id?: string }).id === "string"
+        ? (data as { id: string }).id
+        : undefined,
+  };
 }
 
 async function replyThreads(input: ReplyInput): Promise<ReplyResult> {
@@ -91,7 +105,13 @@ async function replyThreads(input: ReplyInput): Promise<ReplyResult> {
         "Threads reply publish failed",
     );
   }
-  return { ok: true };
+  return {
+    ok: true,
+    replyId:
+      typeof (published.data as { id?: string }).id === "string"
+        ? (published.data as { id: string }).id
+        : creationId,
+  };
 }
 
 async function replyYouTube(input: ReplyInput): Promise<ReplyResult> {
@@ -115,7 +135,13 @@ async function replyYouTube(input: ReplyInput): Promise<ReplyResult> {
         "YouTube reply failed — reconnect YouTube to grant comment access.",
     );
   }
-  return { ok: true };
+  return {
+    ok: true,
+    replyId:
+      typeof (data as { id?: string }).id === "string"
+        ? (data as { id: string }).id
+        : undefined,
+  };
 }
 
 async function replyTwitter(input: ReplyInput): Promise<ReplyResult> {
@@ -131,8 +157,8 @@ async function replyTwitter(input: ReplyInput): Promise<ReplyResult> {
       accessToken: input.accessToken,
       accessSecret: input.accessSecret,
     });
-    await client.v2.reply(input.text, input.commentId);
-    return { ok: true };
+    const created = await client.v2.reply(input.text, input.commentId);
+    return { ok: true, replyId: created.data.id };
   } catch (e) {
     return fail(e instanceof Error ? e.message : "X reply failed");
   }
@@ -212,7 +238,10 @@ async function replyBluesky(input: ReplyInput): Promise<ReplyResult> {
       (data as { message?: string })?.message ?? "Bluesky reply failed",
     );
   }
-  return { ok: true };
+  const created = (await createRes.json().catch(() => ({}))) as {
+    uri?: string;
+  };
+  return { ok: true, replyId: created.uri };
 }
 
 const REPLY_MAX: Record<string, number> = {
