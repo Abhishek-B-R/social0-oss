@@ -19,6 +19,7 @@ import { MorePageAccountCollapsible } from "@/components/dashboard/MorePageAccou
 import { useSession } from "@/lib/auth-client";
 import { useQuery } from "@tanstack/react-query";
 import { rpc } from "@/lib/rpc";
+import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
 
 function getPlanLabel(tier: string): string {
   if (tier === "pro") return "Pro plan";
@@ -32,20 +33,25 @@ const MANUAL_POSTING_LINKS = [
   { href: "/dashboard/bulk-tools", label: "Bulk tools", icon: Stack },
 ] as const;
 
-const MORE_LINKS = [
+const MORE_LINKS: Array<{
+  href: string;
+  label: string;
+  icon: (typeof ChartLine);
+  experimental?: boolean;
+}> = [
   { href: "/dashboard/posts", label: "All posts", icon: List },
   { href: "/dashboard/posts/scheduled", label: "Scheduled", icon: Clock },
   { href: "/dashboard/posts/posted", label: "Posted", icon: CheckCircle },
   { href: "/dashboard/posts/drafts", label: "Drafts", icon: NoteBlank },
   { href: "/dashboard/calendar", label: "Calendar", icon: CalendarDots },
-  { href: "/dashboard/analytics", label: "Analytics", icon: ChartLine },
-  { href: "/dashboard/inbox", label: "Inbox", icon: ChatCircle },
+  { href: "/dashboard/analytics", label: "Analytics", icon: ChartLine, experimental: true },
+  { href: "/dashboard/inbox", label: "Inbox", icon: ChatCircle, experimental: true },
   { href: "/dashboard/workspaces", label: "Workspaces", icon: SquaresFour },
   { href: "/dashboard/teams", label: "Teams", icon: Users },
   { href: "/dashboard/settings", label: "Account settings", icon: GearSix },
   { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
   { href: "/dashboard/api-keys", label: "Developer", icon: Code },
-] as const;
+];
 
 export function MorePage() {
   const { data: session } = useSession();
@@ -101,14 +107,15 @@ export function MorePage() {
           Posts & tools
         </h2>
         <ul className="space-y-0.5 rounded-xl border border-border bg-bg-elevated shadow-sm sm:space-y-1">
-          {MORE_LINKS.map(({ href, label, icon: Icon }) => (
+          {MORE_LINKS.map(({ href, label, icon: Icon, experimental }) => (
             <li key={href}>
               <Link
                 href={href}
                 className="flex min-h-[44px] items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors active:bg-bg-muted touch-manipulation"
               >
                 <Icon className="h-4 w-4 shrink-0 text-text-muted" />
-                {label}
+                <span className="flex-1">{label}</span>
+                {experimental ? <ExperimentalBadge /> : null}
               </Link>
             </li>
           ))}

@@ -56,25 +56,32 @@ function attachmentFromPreview(
   };
 }
 
+function sameLocalDm(
+  server: LocalInboxDmMessage,
+  local: LocalInboxDmMessage,
+): boolean {
+  if (server.id === local.id) return true;
+  if (!server.isOwn || !local.isOwn) return false;
+  const dt = Math.abs(
+    new Date(server.createdAt ?? 0).getTime() -
+      new Date(local.createdAt ?? 0).getTime(),
+  );
+  if (dt > 120_000) return false;
+  if (local.attachment || server.attachment) {
+    return (
+      Boolean(server.attachment) &&
+      Boolean(local.attachment) &&
+      server.attachment!.type === local.attachment!.type
+    );
+  }
+  return Boolean(local.text) && server.text === local.text;
+}
+
 function mergeMessages(
   server: LocalInboxDmMessage[],
   pending: LocalInboxDmMessage[],
 ): LocalInboxDmMessage[] {
-  const serverIds = new Set(server.map((m) => m.id));
-  const extra = pending.filter(
-    (m) =>
-      m.sendStatus &&
-      !serverIds.has(m.id) &&
-      !server.some(
-        (s) =>
-          s.isOwn &&
-          s.text === m.text &&
-          Math.abs(
-            new Date(s.createdAt ?? 0).getTime() -
-              new Date(m.createdAt ?? 0).getTime(),
-          ) < 60_000,
-      ),
-  );
+  const extra = pending.filter((m) => !server.some((s) => sameLocalDm(s, m)));
   return [...server, ...extra].sort((a, b) =>
     (a.createdAt ?? "").localeCompare(b.createdAt ?? ""),
   );
@@ -114,7 +121,9 @@ export function InboxDmsPane({
         accountId: accountId || undefined,
       }),
     enabled,
-    staleTime: 30_000,
+    staleTime: 15_000,
+    refetchInterval: enabled ? 15_000 : false,
+    refetchIntervalInBackground: false,
   });
 
   const threads = listQuery.data?.threads ?? [];
@@ -145,7 +154,9 @@ export function InboxDmsPane({
         peerId: selected!.peerId,
       }),
     enabled: enabled && Boolean(selected),
-    staleTime: 15_000,
+    staleTime: 10_000,
+    refetchInterval: enabled && selected ? 15_000 : false,
+    refetchIntervalInBackground: false,
   });
 
   const updatePending = useCallback(
@@ -252,7 +263,17 @@ export function InboxDmsPane({
           toast.error(res.error);
           return;
         }
-        updatePending(key, (prev) => prev.filter((m) => m.id !== clientId));
+        updatePending(key, (prev) =>
+          prev.map((m) =>
+            m.id === clientId
+              ? {
+                  ...m,
+                  id: res.messageId ?? clientId,
+                  sendStatus: undefined,
+                }
+              : m,
+          ),
+        );
         qc.setQueryData<InboxDmThreadResult>(threadQueryKey, (old) => {
           if (!old) return old;
           const confirmed: LocalInboxDmMessage = {
@@ -265,13 +286,14 @@ export function InboxDmsPane({
             authorAvatarUrl: thread.accountProfileImageUrl ?? null,
             attachment: attachmentFromPreview(payload.file, payload.previewUrl),
           };
-          if (old.messages.some((m) => m.id === confirmed.id)) return old;
+          if (old.messages.some((m) => sameLocalDm(m, confirmed))) return old;
           return { ...old, messages: [...old.messages, confirmed] };
         });
         if (refreshTimer.current) clearTimeout(refreshTimer.current);
         refreshTimer.current = setTimeout(() => {
           void qc.invalidateQueries({ queryKey: threadQueryKey });
-        }, 2500);
+          void qc.invalidateQueries({ queryKey: ["inbox-dms"] });
+        }, 8000);
       } catch (e) {
         updatePending(key, (prev) =>
           prev.map((m) =>
@@ -297,6 +319,21 @@ export function InboxDmsPane({
     (threadQuery.data?.messages ?? []) as LocalInboxDmMessage[],
     pending,
   );
+
+  useEffect(() => {
+    const server = threadQuery.data?.messages;
+    if (!server?.length || !selected) return;
+    const key = dmKey(selected);
+    setPendingByConvo((prev) => {
+      const list = prev[key];
+      if (!list?.length) return prev;
+      const next = list.filter(
+        (m) => !server.some((s) => sameLocalDm(s as LocalInboxDmMessage, m)),
+      );
+      if (next.length === list.length) return prev;
+      return { ...prev, [key]: next };
+    });
+  }, [threadQuery.data?.messages, selected]);
   const activeThread = threadQuery.data?.thread ?? selected;
 
   return (

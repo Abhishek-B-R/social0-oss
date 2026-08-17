@@ -15,7 +15,6 @@ import {
   listInboxComments,
   replyToInboxComment,
   type InboxComment,
-  type InboxListResult,
   type InboxThread,
 } from "@/api/inbox";
 import {
@@ -30,6 +29,7 @@ import {
 import {
   inboxReplyTargetId,
   inboxSupportsNestedReplies,
+  formatInboxReplyText,
 } from "@/lib/inbox-reply";
 import { uploadFile } from "@/lib/upload-file";
 import { cn } from "@/lib/utils";
@@ -50,63 +50,43 @@ function replyMax(platform: string): number {
   return 2000;
 }
 
-function mentionPrefix(comment: InboxComment, rootId: string): string {
-  if (comment.id === rootId || !comment.authorHandle) return "";
-  return `@${comment.authorHandle.replace(/^@/, "")} `;
+function replyLooksSent(
+  server: InboxComment,
+  pending: InboxComment,
+): boolean {
+  if (server.id === pending.id) return true;
+  if (!server.isOwn) return false;
+  if ((server.text || "") !== (pending.text || "")) return false;
+  const dt = Math.abs(
+    new Date(server.createdAt ?? 0).getTime() -
+      new Date(pending.createdAt ?? 0).getTime(),
+  );
+  return dt < 120_000;
+}
+
+function mergePendingReplies(
+  threads: InboxThread[],
+  pending: InboxComment[],
+): InboxThread[] {
+  if (!pending.length) return threads;
+  return threads.map((thread) => {
+    const extras = pending.filter((p) => {
+      if (p.publicationId !== thread.comment.publicationId) return false;
+      const inThread =
+        thread.comment.id === p.parentId ||
+        thread.replies.some((r) => r.id === p.parentId);
+      if (!inThread) return false;
+      if (thread.replies.some((r) => replyLooksSent(r, p))) return false;
+      if (replyLooksSent(thread.comment, p)) return false;
+      return true;
+    });
+    return extras.length
+      ? { ...thread, replies: [...thread.replies, ...extras] }
+      : thread;
+  });
 }
 
 type RetryPayload = InboxComposerPayload & { parentCommentId: string };
-
-function appendOptimisticReply(
-  data: InboxListResult,
-  args: {
-    publicationId: string;
-    parentCommentId: string;
-    text: string;
-    replyId?: string;
-    accountLabel: string | null;
-    accountProfileImageUrl?: string | null;
-    attachment?: InboxComment["attachment"];
-    root: InboxComment;
-  },
-): InboxListResult {
-  const id = args.replyId ?? `optimistic-${Date.now()}`;
-  const threads = data.threads.map((thread) => {
-    const root = thread.comment;
-    const inThread =
-      root.publicationId === args.publicationId &&
-      (root.id === args.parentCommentId ||
-        thread.replies.some((r) => r.id === args.parentCommentId));
-    if (!inThread) return thread;
-    if (thread.replies.some((r) => r.id === id)) return thread;
-    const next: InboxComment = {
-      id,
-      platform: root.platform,
-      accountId: root.accountId,
-      accountLabel: args.accountLabel,
-      postId: root.postId,
-      publicationId: args.publicationId,
-      platformPostId: root.platformPostId,
-      platformPostUrl: root.platformPostUrl,
-      postSnippet: root.postSnippet,
-      postContent: root.postContent,
-      postMediaUrl: root.postMediaUrl,
-      postPublishedAt: root.postPublishedAt,
-      postAccountImageUrl: root.postAccountImageUrl,
-      authorName: "You",
-      authorHandle: args.accountLabel,
-      authorAvatarUrl: args.accountProfileImageUrl,
-      text: args.text,
-      attachment: args.attachment,
-      createdAt: new Date().toISOString(),
-      parentId: args.parentCommentId,
-      canReply: false,
-      isOwn: true,
-    };
-    return { ...thread, replies: [...thread.replies, next] };
-  });
-  return { ...data, threads };
-}
 
 type FlatComment = { comment: InboxComment; depth: number };
 
@@ -182,9 +162,12 @@ export function InboxCommentsPane({
         accountId: accountId || undefined,
       }),
     enabled,
-    staleTime: 30_000,
+    staleTime: 15_000,
+    refetchInterval: enabled ? 15_000 : false,
+    refetchIntervalInBackground: false,
   });
 
+  const [pendingReplies, setPendingReplies] = useState<InboxComment[]>([]);
   const [failedReplyIds, setFailedReplyIds] = useState<Set<string>>(new Set());
   const [sendingReplyIds, setSendingReplyIds] = useState<Set<string>>(new Set());
   const retryPayloads = useRef(new Map<string, RetryPayload>());
@@ -216,19 +199,31 @@ export function InboxCommentsPane({
         ...payload,
         parentCommentId: uiParentId,
       });
-      qc.setQueryData<InboxListResult>(queryKey, (old) => {
-        if (!old) return old;
-        return appendOptimisticReply(old, {
-          publicationId: root.publicationId,
-          parentCommentId: uiParentId,
-          text: payload.text,
-          replyId: optimisticId,
-          accountLabel: account?.username ?? null,
-          accountProfileImageUrl: account?.profileImageUrl,
-          attachment,
-          root,
-        });
-      });
+      const next: InboxComment = {
+        id: optimisticId,
+        platform: root.platform,
+        accountId: root.accountId,
+        accountLabel: account?.username ?? null,
+        postId: root.postId,
+        publicationId: root.publicationId,
+        platformPostId: root.platformPostId,
+        platformPostUrl: root.platformPostUrl,
+        postSnippet: root.postSnippet,
+        postContent: root.postContent,
+        postMediaUrl: root.postMediaUrl,
+        postPublishedAt: root.postPublishedAt,
+        postAccountImageUrl: root.postAccountImageUrl,
+        authorName: "You",
+        authorHandle: account?.username ?? null,
+        authorAvatarUrl: account?.profileImageUrl,
+        text: payload.text,
+        attachment,
+        createdAt: new Date().toISOString(),
+        parentId: uiParentId,
+        canReply: false,
+        isOwn: true,
+      };
+      setPendingReplies((p) => [...p, next]);
     }
     setSendingReplyIds((s) => new Set(s).add(optimisticId));
     setFailedReplyIds((s) => {
@@ -255,22 +250,15 @@ export function InboxCommentsPane({
         return;
       }
       retryPayloads.current.delete(optimisticId);
-      qc.setQueryData<InboxListResult>(queryKey, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          threads: old.threads.map((t) => ({
-            ...t,
-            replies: t.replies.map((r) =>
-              r.id === optimisticId ? { ...r, id: res.replyId ?? r.id } : r,
-            ),
-          })),
-        };
-      });
+      setPendingReplies((p) =>
+        p.map((r) =>
+          r.id === optimisticId ? { ...r, id: res.replyId ?? r.id } : r,
+        ),
+      );
       if (refreshTimer.current) clearTimeout(refreshTimer.current);
       refreshTimer.current = setTimeout(() => {
         void qc.invalidateQueries({ queryKey: ["inbox-comments"] });
-      }, 2500);
+      }, 8000);
     } catch (e) {
       setFailedReplyIds((s) => new Set(s).add(optimisticId));
       toast.error(e instanceof Error ? e.message : "Reply failed");
@@ -284,7 +272,26 @@ export function InboxCommentsPane({
   };
 
   const data = inboxQuery.data;
-  const threads = (data?.threads ?? []).filter((t) => !t.comment.isOwn);
+  const threads = mergePendingReplies(
+    (data?.threads ?? []).filter((t) => !t.comment.isOwn),
+    pendingReplies,
+  );
+
+  useEffect(() => {
+    if (!inboxQuery.data) return;
+    setPendingReplies((prev) =>
+      prev.filter((p) => {
+        const thread = inboxQuery.data.threads.find(
+          (t) =>
+            t.comment.publicationId === p.publicationId &&
+            (t.comment.id === p.parentId ||
+              t.replies.some((r) => r.id === p.parentId)),
+        );
+        if (!thread) return true;
+        return !thread.replies.some((r) => replyLooksSent(r, p));
+      }),
+    );
+  }, [inboxQuery.data]);
 
   useEffect(() => {
     if (!data?.threads?.length) {
@@ -506,7 +513,6 @@ function ConversationPane({
     [root, thread.replies],
   );
 
-  const composerPrefix = mentionPrefix(replyTarget, root.id);
   const sending = sendingReplyIds.size > 0;
 
   return (
@@ -598,7 +604,6 @@ function ConversationPane({
             maxLength={replyMax(root.platform)}
             placeholder="Write a reply…"
             sending={sending}
-            initialText={composerPrefix}
             replyTo={
               replyTarget.id !== root.id
                 ? {
@@ -608,10 +613,12 @@ function ConversationPane({
                 : null
             }
             onSend={(payload) => {
-              const text =
-                composerPrefix && !payload.text.startsWith(composerPrefix)
-                  ? `${composerPrefix}${payload.text}`.trim()
-                  : payload.text;
+              const text = formatInboxReplyText({
+                platform: root.platform,
+                targetHandle: replyTarget.authorHandle,
+                isRoot: replyTarget.id === root.id,
+                text: payload.text,
+              });
               onReply(replyTarget.id, { ...payload, text });
             }}
           />

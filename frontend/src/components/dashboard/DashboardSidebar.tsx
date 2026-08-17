@@ -36,6 +36,7 @@ import {
   writePersonalWorkspaceId,
 } from "@/lib/dashboard-base-path";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
+import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
@@ -52,6 +53,7 @@ type NavItem = {
     size?: number;
     weight?: IconWeight;
   }>;
+  experimental?: boolean;
 };
 
 function NavLink({
@@ -60,6 +62,7 @@ function NavLink({
   icon: Icon,
   isActive,
   collapsed,
+  experimental,
 }: NavItem & { isActive: boolean; collapsed: boolean }) {
   const pathname = useLocation().pathname;
   const [navPending, setNavPending] = useState(false);
@@ -81,6 +84,7 @@ function NavLink({
         isActive && "bg-sidebar-active",
         navPending && "opacity-60",
         collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2",
+        experimental && collapsed && "relative",
       )}
     >
       <Icon
@@ -88,12 +92,15 @@ function NavLink({
         size={16}
         weight={isActive ? "fill" : "regular"}
       />
-      {!collapsed ? <span className="truncate">{label}</span> : null}
+      {!collapsed ? <span className="min-w-0 flex-1 truncate">{label}</span> : null}
+      {experimental ? (
+        <ExperimentalBadge compact={collapsed} className={collapsed ? "absolute -right-0.5 -top-0.5" : "ml-auto shrink-0"} />
+      ) : null}
     </Link>
   );
 
   return (
-    <SidebarHoverTip label={label} enabled={collapsed}>
+    <SidebarHoverTip label={experimental ? `${label} (experimental)` : label} enabled={collapsed}>
       {link}
     </SidebarHoverTip>
   );
@@ -418,6 +425,7 @@ export function DashboardSidebar({
               icon={ChartLine}
               collapsed={collapsed}
               isActive={relativeMatches(relative, "analytics")}
+              experimental
             />
             <NavLink
               href={dash("inbox")}
@@ -425,6 +433,7 @@ export function DashboardSidebar({
               icon={ChatCircle}
               collapsed={collapsed}
               isActive={relativeMatches(relative, "inbox")}
+              experimental
             />
           </Section>
 

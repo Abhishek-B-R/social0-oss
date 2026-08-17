@@ -76,9 +76,9 @@ export function InboxComposer({
     if (disabled || sending) return;
     if (!draft.trim() && !file) return;
     onSend({ text: draft.trim(), file, previewUrl });
-    setDraft(initialText);
+    setDraft("");
     clearFile();
-  }, [clearFile, disabled, draft, file, initialText, onSend, previewUrl, sending]);
+  }, [clearFile, disabled, draft, file, onSend, previewUrl, sending]);
 
   const canSend = Boolean(draft.trim() || file) && !disabled;
 

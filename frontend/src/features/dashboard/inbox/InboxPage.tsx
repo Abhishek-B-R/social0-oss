@@ -12,6 +12,7 @@ import { useSession } from "@/lib/auth-client";
 import { listAnalyticsAccounts, type AnalyticsAccount } from "@/api/analytics";
 import { PLATFORM_LABEL } from "@/features/dashboard/analytics/analytics-utils";
 import { defaultDateWindow, type DateWindow } from "@/lib/date-window";
+import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
 import { cn } from "@/lib/utils";
 import { InboxCommentsPane } from "./InboxCommentsPane";
 import { InboxDmsPane } from "./InboxDmsPane";
@@ -93,8 +94,9 @@ export function InboxPage() {
     <div className="-mx-1 flex min-h-[calc(100dvh-8rem)] flex-col gap-4 sm:mx-0">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
-          <h1 className="font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+          <h1 className="flex flex-wrap items-center gap-2.5 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
             Inbox
+            <ExperimentalBadge />
           </h1>
           <p className="mt-1 text-sm text-text-muted">
             {mode === "comments"

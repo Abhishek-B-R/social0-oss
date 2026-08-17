@@ -31,6 +31,7 @@ import {
   formatRangeLabel,
   viewsOf,
 } from "./analytics-utils";
+import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
 import { cn } from "@/lib/utils";
 
 export function AnalyticsPage() {
@@ -111,8 +112,9 @@ export function AnalyticsPage() {
     <div className="flex flex-col gap-6">
       <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+          <h1 className="flex flex-wrap items-center gap-2.5 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
             Analytics
+            <ExperimentalBadge />
           </h1>
           <p className="mt-1 text-sm text-text-muted">
             Live metrics for posts you published through Social0 — not the rest
