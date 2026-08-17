@@ -29,6 +29,20 @@ assert(
   missingAnalyticsScopes("twitter_x", "whatever").length === 0,
   "twitter no required analytics scopes",
 );
+assert(
+  missingAnalyticsScopes("instagram", null).includes(
+    "instagram_business_manage_insights",
+  ),
+  "null stored scopes still flags IG insights",
+);
+assert(
+  missingAnalyticsScopes("tiktok", "").includes("video.list"),
+  "empty tiktok scopes flags video.list",
+);
+assert(
+  missingAnalyticsScopes("youtube", null).length === 0,
+  "youtube not nagged",
+);
 
 const sums = sumMetrics([{ likes: 2, views: 10 }, { likes: 3, comments: 1 }]);
 assert(sums.likes === 5 && sums.views === 10 && sums.comments === 1, "sumMetrics");

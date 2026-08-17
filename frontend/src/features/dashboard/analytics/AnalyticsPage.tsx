@@ -1,13 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { format } from "date-fns";
 import Link from "@/components/AppLink";
-import { ArrowClockwise } from "@/icons/phosphor";
+import { ArrowClockwise, SquaresFour } from "@/icons/phosphor";
+import { AccountAvatar } from "@/components/AccountAvatar";
+import { PlatformIcon } from "@/components/PlatformIcon";
 import { useSession } from "@/lib/auth-client";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 import {
   getAnalyticsOverview,
   listAnalyticsAccounts,
+  type AnalyticsAccount,
   type AnalyticsRange,
 } from "@/api/analytics";
 import {
@@ -43,6 +47,19 @@ export function AnalyticsPage() {
     staleTime: 60_000,
   });
 
+  const reconnect = useMemo(() => {
+    const fromOverview = overviewQuery.data?.accountsNeedingReconnect ?? [];
+    if (fromOverview.length) return fromOverview;
+    return (accountsQuery.data ?? [])
+      .filter((a) => a.missingScopes.length > 0)
+      .map((a) => ({
+        accountId: a.id,
+        platform: a.platform,
+        username: a.username,
+        missingScopes: a.missingScopes,
+      }));
+  }, [overviewQuery.data, accountsQuery.data]);
+
   if (sessionPending) {
     return <AnalyticsSkeleton />;
   }
@@ -74,22 +91,27 @@ export function AnalyticsPage() {
         (row.metrics.quotes ?? 0),
     })) ?? [];
 
+  const rangeLabel =
+    data?.since && data?.until
+      ? `${format(new Date(data.since), "MMM d")} – ${format(new Date(data.until), "MMM d, yyyy")}`
+      : null;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+          <h1 className="font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
             Analytics
           </h1>
-          <p className="text-sm text-text-muted">
-            Live metrics from platforms for posts published in this range.
+          <p className="mt-1 text-sm text-text-muted">
+            Live metrics for posts published in this range.
           </p>
         </div>
         <button
           type="button"
           onClick={() => void overviewQuery.refetch()}
           disabled={loading}
-          className="inline-flex items-center gap-2 self-start rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm font-medium text-text transition-colors hover:bg-bg-subtle disabled:opacity-60"
+          className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text transition-colors hover:bg-bg-subtle disabled:opacity-60"
         >
           <ArrowClockwise
             className={cn("h-4 w-4", loading && "animate-spin")}
@@ -99,70 +121,72 @@ export function AnalyticsPage() {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {RANGE_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => setRange(opt.value)}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-              range === opt.value
-                ? "bg-accent text-accent-foreground"
-                : "border border-border bg-bg-elevated text-text hover:bg-bg-subtle",
-            )}
-          >
-            {opt.label}
-          </button>
-        ))}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          role="tablist"
+          aria-label="Date range"
+          className="inline-flex w-full rounded-full border border-border bg-bg-muted p-1 sm:w-auto"
+        >
+          {RANGE_OPTIONS.map((opt) => {
+            const selected = range === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setRange(opt.value)}
+                className={cn(
+                  "flex-1 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors sm:flex-none sm:px-4",
+                  selected
+                    ? "bg-accent text-accent-foreground shadow-sm"
+                    : "text-text-muted hover:text-text",
+                )}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        {rangeLabel ? (
+          <p className="text-sm font-medium tabular-nums text-text-muted">
+            {rangeLabel}
+          </p>
+        ) : null}
       </div>
 
       {(accountsQuery.data?.length ?? 0) > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setAccountId(null)}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-              accountId == null
-                ? "bg-sidebar-active text-text"
-                : "border border-border text-text-muted hover:bg-bg-subtle",
-            )}
-          >
-            All accounts
-          </button>
-          {accountsQuery.data?.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              onClick={() => setAccountId(a.id)}
-              className={cn(
-                "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                accountId === a.id
-                  ? "bg-sidebar-active text-text"
-                  : "border border-border text-text-muted hover:bg-bg-subtle",
-              )}
-            >
-              {PLATFORM_LABEL[a.platform] ?? a.platform}
-              {a.username ? ` · ${a.username}` : ""}
-            </button>
-          ))}
+        <div className="-mx-1 overflow-x-auto px-1 pb-1">
+          <div className="flex w-max gap-1 sm:w-full sm:flex-wrap">
+            <AllAccountsChip
+              selected={accountId == null}
+              onClick={() => setAccountId(null)}
+            />
+            {accountsQuery.data?.map((a) => (
+              <AccountChip
+                key={a.id}
+                account={a}
+                selected={accountId === a.id}
+                onClick={() => setAccountId(a.id)}
+              />
+            ))}
+          </div>
         </div>
       ) : null}
 
-      {data?.accountsNeedingReconnect?.length ? (
+      {reconnect.length ? (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
           <p className="font-medium">Reconnect for full insights</p>
           <p className="mt-1 text-amber-800/90 dark:text-amber-100/80">
-            Some accounts are missing analytics scopes. Publishing still works —
-            reconnect to unlock views/reach where required.
+            These accounts still have posting access. Reconnect to grant
+            analytics scopes — Instagram, Threads, TikTok, and Facebook need an
+            extra permission we didn&apos;t ask for when you first connected.
           </p>
           <ul className="mt-2 list-inside list-disc text-xs">
-            {data.accountsNeedingReconnect.map((a) => (
+            {reconnect.map((a) => (
               <li key={a.accountId}>
                 {PLATFORM_LABEL[a.platform] ?? a.platform}
-                {a.username ? ` (@${a.username})` : ""}:{" "}
-                {a.missingScopes.join(", ")}
+                {a.username ? ` (@${a.username})` : ""}
               </li>
             ))}
           </ul>
@@ -209,10 +233,10 @@ export function AnalyticsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm sm:p-5">
           <h2 className="mb-1 text-sm font-semibold text-text">
-            Views & engagement over time
+            Views & engagement
           </h2>
           <p className="mb-4 text-xs text-text-muted">
-            Based on publish date of each post (live platform totals).
+            Daily totals across posts published in {rangeLabel ?? "this range"}.
           </p>
           {loading && !data ? (
             <div className="h-64 animate-pulse rounded-xl bg-bg-muted sm:h-72" />
@@ -250,7 +274,10 @@ export function AnalyticsPage() {
         ) : (
           <ul className="divide-y divide-border">
             {data.topPosts.map((post) => (
-              <li key={post.postId} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <li
+                key={post.postId}
+                className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
                 <div className="min-w-0">
                   <Link
                     href={dash(`posts/${post.postId}`)}
@@ -295,6 +322,103 @@ export function AnalyticsPage() {
         ) : null}
       </section>
     </div>
+  );
+}
+
+function handleLabel(username: string | null): string {
+  if (!username) return "account";
+  return username.startsWith("@") ? username.slice(1) : username;
+}
+
+function AllAccountsChip({
+  selected,
+  onClick,
+}: {
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "flex w-[4.75rem] flex-col items-center gap-1.5 rounded-2xl px-1 py-2 transition-colors",
+        selected
+          ? "bg-accent/15 ring-2 ring-accent ring-offset-2 ring-offset-bg"
+          : "hover:bg-bg-subtle",
+      )}
+    >
+      <span
+        className={cn(
+          "flex h-12 w-12 items-center justify-center rounded-full border-2 bg-bg-muted",
+          selected ? "border-accent text-accent" : "border-transparent text-text-muted",
+        )}
+      >
+        <SquaresFour size={22} weight={selected ? "fill" : "regular"} />
+      </span>
+      <span
+        className={cn(
+          "w-full truncate text-center text-[11px] font-semibold",
+          selected ? "text-accent" : "text-text-muted",
+        )}
+      >
+        All
+      </span>
+    </button>
+  );
+}
+
+function AccountChip({
+  account,
+  selected,
+  onClick,
+}: {
+  account: AnalyticsAccount;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const needsReconnect = account.missingScopes.length > 0;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      title={
+        needsReconnect
+          ? `Reconnect ${PLATFORM_LABEL[account.platform] ?? account.platform} for full insights`
+          : undefined
+      }
+      className={cn(
+        "flex w-[4.75rem] flex-col items-center gap-1.5 rounded-2xl px-1 py-2 transition-colors",
+        selected
+          ? "bg-accent/15 ring-2 ring-accent ring-offset-2 ring-offset-bg"
+          : "hover:bg-bg-subtle",
+      )}
+    >
+      <span className="relative">
+        <AccountAvatar
+          profileImageUrl={account.profileImageUrl}
+          username={account.username}
+          platform={account.platform}
+          size="lg"
+        />
+        <span className="absolute -bottom-0.5 -right-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-bg bg-bg-elevated p-px shadow-sm">
+          <PlatformIcon platform={account.platform} size={11} />
+        </span>
+        {needsReconnect ? (
+          <span className="absolute -top-0.5 -right-0.5 z-10 h-2.5 w-2.5 rounded-full border-2 border-bg bg-amber-500" />
+        ) : null}
+      </span>
+      <span
+        className={cn(
+          "w-full truncate text-center text-[11px] font-semibold",
+          selected ? "text-accent" : "text-text",
+        )}
+      >
+        {handleLabel(account.username)}
+      </span>
+    </button>
   );
 }
 

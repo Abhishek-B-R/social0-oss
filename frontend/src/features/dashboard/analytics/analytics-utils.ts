@@ -38,8 +38,8 @@ export const PLATFORM_LABEL: Record<string, string> = {
 };
 
 export const RANGE_OPTIONS = [
-  { value: "7d" as const, label: "Past week" },
-  { value: "30d" as const, label: "Past month" },
-  { value: "90d" as const, label: "Past 3 months" },
-  { value: "365d" as const, label: "Past year" },
+  { value: "7d" as const, label: "7 days" },
+  { value: "30d" as const, label: "30 days" },
+  { value: "90d" as const, label: "90 days" },
+  { value: "365d" as const, label: "12 months" },
 ];

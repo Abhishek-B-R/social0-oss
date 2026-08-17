@@ -93,14 +93,16 @@ export type PostAnalyticsResult = {
   fetchedAt: string;
 };
 
-/** Scopes we request for analytics (additive to publish scopes). */
+/**
+ * Extra scopes needed for insights. Empty = current publish token is enough.
+ * YouTube video stats already work with youtube.readonly — don't nag for yt-analytics.
+ */
 export const ANALYTICS_REQUIRED_SCOPES: Record<string, string[]> = {
   instagram: ["instagram_business_manage_insights"],
   threads: ["threads_manage_insights"],
   tiktok: ["video.list", "user.info.stats"],
   facebook: ["read_insights"],
-  youtube: ["https://www.googleapis.com/auth/yt-analytics.readonly"],
-  // LinkedIn organic stats typically need MDP products; keep empty and surface API errors.
+  youtube: [],
   linkedin: [],
   pinterest: [],
   twitter_x: [],
@@ -159,7 +161,7 @@ export function missingAnalyticsScopes(
 ): string[] {
   const needed = ANALYTICS_REQUIRED_SCOPES[platform] ?? [];
   if (needed.length === 0) return [];
-  // Unknown/null scopes: don't block the attempt; platform fetch will report errors.
-  if (!granted) return [];
+  // Empty/unknown stored scopes = connected before we asked for insights.
+  if (!granted?.trim()) return [...needed];
   return needed.filter((s) => !scopeGranted(granted, s));
 }

@@ -93,6 +93,7 @@ export type AnalyticsAccount = {
   id: string;
   platform: string;
   username: string | null;
+  profileImageUrl: string | null;
   missingScopes: string[];
 };
 

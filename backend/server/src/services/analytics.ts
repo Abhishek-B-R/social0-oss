@@ -4,7 +4,7 @@
  */
 
 import { and, desc, eq, gte, isNotNull, lte } from "drizzle-orm";
-import { format } from "date-fns";
+import { addDays, format, startOfDay } from "date-fns";
 import { db } from "../db/index.js";
 import {
   connectedAccounts,
@@ -267,7 +267,11 @@ function collectReconnectHints(
   return [...byId.values()];
 }
 
-function buildSeries(pubs: PublicationMetrics[]): AnalyticsSeriesPoint[] {
+function buildSeries(
+  pubs: PublicationMetrics[],
+  since: Date,
+  until: Date,
+): AnalyticsSeriesPoint[] {
   const byDay = new Map<string, AnalyticsSeriesPoint>();
   for (const p of pubs) {
     if (p.status !== "ok" && Object.keys(p.metrics).length === 0) continue;
@@ -291,7 +295,23 @@ function buildSeries(pubs: PublicationMetrics[]): AnalyticsSeriesPoint[] {
     cur.engagement += engagementTotal(p.metrics);
     byDay.set(day, cur);
   }
-  return [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date));
+  // ponytail: fill every day in range so the chart spans the selected window (X Analytics-style).
+  const out: AnalyticsSeriesPoint[] = [];
+  const last = startOfDay(until);
+  for (let d = startOfDay(since); d <= last; d = addDays(d, 1)) {
+    const key = format(d, "yyyy-MM-dd");
+    out.push(
+      byDay.get(key) ?? {
+        date: key,
+        views: 0,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        engagement: 0,
+      },
+    );
+  }
+  return out;
 }
 
 function buildByPlatform(pubs: PublicationMetrics[]): PlatformBreakdownRow[] {
@@ -397,16 +417,29 @@ export async function getAnalyticsOverview(input: {
   );
   const okMetrics = results.map((r) => r.metrics);
 
+  const accountRows = await loadWorkspaceAccounts(ctx);
+  const fromAccounts: AccountReconnectHint[] = accountRows
+    .map((r) => ({
+      accountId: r.id,
+      platform: r.platform,
+      username: r.username,
+      missingScopes: missingAnalyticsScopes(r.platform, r.scopes),
+    }))
+    .filter((a) => a.missingScopes.length > 0);
+
   return {
     range,
     since: since.toISOString(),
     until: until.toISOString(),
     totals: sumMetrics(okMetrics),
     byPlatform: buildByPlatform(results),
-    series: buildSeries(results),
+    series: buildSeries(results, since, until),
     topPosts: buildTopPosts(results, contentByPost),
     publications: results,
-    accountsNeedingReconnect: collectReconnectHints(results),
+    accountsNeedingReconnect: mergeReconnectHints(
+      fromAccounts,
+      collectReconnectHints(results),
+    ),
     fetchedAt: new Date().toISOString(),
     sampled: pubs.length >= SAMPLE_LIMIT,
     sampleLimit: SAMPLE_LIMIT,
@@ -458,12 +491,57 @@ export async function getPostAnalytics(input: {
   };
 }
 
+function mergeReconnectHints(
+  ...lists: AccountReconnectHint[][]
+): AccountReconnectHint[] {
+  const byId = new Map<string, AccountReconnectHint>();
+  for (const list of lists) {
+    for (const h of list) {
+      const existing = byId.get(h.accountId);
+      if (existing) {
+        existing.missingScopes = [
+          ...new Set([...existing.missingScopes, ...h.missingScopes]),
+        ];
+      } else {
+        byId.set(h.accountId, { ...h, missingScopes: [...h.missingScopes] });
+      }
+    }
+  }
+  return [...byId.values()];
+}
+
+type AccountListRow = {
+  id: string;
+  platform: string;
+  username: string | null;
+  scopes: string | null;
+  profileImageUrl: string | null;
+};
+
+async function loadWorkspaceAccounts(ctx: {
+  resourceUserId: string;
+  workspaceId: string | null;
+}): Promise<AccountListRow[]> {
+  const scope = connectionScopeCondition(ctx);
+  return db
+    .select({
+      id: connectedAccounts.id,
+      platform: connectedAccounts.platform,
+      username: connectedAccounts.platformUsername,
+      scopes: connectedAccounts.scopes,
+      profileImageUrl: connectedAccounts.profileImageUrl,
+    })
+    .from(connectedAccounts)
+    .where(and(scope, eq(connectedAccounts.isActive, true)));
+}
+
 /** Connected accounts list for analytics filter chips. */
 export async function listAnalyticsAccounts(): Promise<
   Array<{
     id: string;
     platform: string;
     username: string | null;
+    profileImageUrl: string | null;
     missingScopes: string[];
   }>
 > {
@@ -473,22 +551,13 @@ export async function listAnalyticsAccounts(): Promise<
   if (!session?.user?.id) throw new Error("Unauthorized");
 
   const ctx = await resolveWorkspaceContext(session.user.id);
-  const scope = connectionScopeCondition(ctx);
-
-  const rows = await db
-    .select({
-      id: connectedAccounts.id,
-      platform: connectedAccounts.platform,
-      username: connectedAccounts.platformUsername,
-      scopes: connectedAccounts.scopes,
-    })
-    .from(connectedAccounts)
-    .where(and(scope, eq(connectedAccounts.isActive, true)));
+  const rows = await loadWorkspaceAccounts(ctx);
 
   return rows.map((r) => ({
     id: r.id,
     platform: r.platform,
     username: r.username,
+    profileImageUrl: r.profileImageUrl,
     missingScopes: missingAnalyticsScopes(r.platform, r.scopes),
   }));
 }

@@ -29,9 +29,15 @@ type SeriesPoint = {
   engagement: number;
 };
 
+function axisTick(v: number): string {
+  if (!Number.isFinite(v)) return "";
+  if (Math.abs(v) >= 1000) return formatMetric(v);
+  return String(Math.round(v));
+}
+
 function shortDate(iso: string): string {
   const [, m, d] = iso.split("-");
-  return `${m}/${d}`;
+  return `${Number(m)}/${Number(d)}`;
 }
 
 function ChartTooltip({
@@ -90,13 +96,22 @@ export function EngagementTrendChart({ data }: { data: SeriesPoint[] }) {
             tick={{ fill: MUTED, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
+            interval={
+              chartData.length > 60
+                ? Math.ceil(chartData.length / 6)
+                : chartData.length > 14
+                  ? Math.ceil(chartData.length / 7)
+                  : 0
+            }
+            minTickGap={24}
           />
           <YAxis
             tick={{ fill: MUTED, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
             width={40}
-            tickFormatter={(v) => formatMetric(Number(v))}
+            allowDecimals={false}
+            tickFormatter={(v) => axisTick(Number(v))}
           />
           <Tooltip content={<ChartTooltip />} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
@@ -153,7 +168,8 @@ export function PlatformBreakdownChart({
             axisLine={false}
             tickLine={false}
             width={40}
-            tickFormatter={(v) => formatMetric(Number(v))}
+            allowDecimals={false}
+            tickFormatter={(v) => axisTick(Number(v))}
           />
           <Tooltip content={<ChartTooltip />} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
