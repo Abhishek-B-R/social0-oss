@@ -1,5 +1,6 @@
 /** Shared metric formatting for analytics UI. */
 
+import { format } from "date-fns";
 import type { MetricMap } from "@/api/analytics";
 
 export function formatMetric(n: number | undefined | null): string {
@@ -62,3 +63,13 @@ export const RANGE_OPTIONS = [
   { value: "90d" as const, label: "90 days" },
   { value: "365d" as const, label: "12 months" },
 ];
+
+/** Inclusive range label; keeps the start year when the window crosses New Year. */
+export function formatRangeLabel(since: string, until: string): string {
+  const a = new Date(since);
+  const b = new Date(until);
+  if (a.getFullYear() === b.getFullYear()) {
+    return `${format(a, "MMM d")} – ${format(b, "MMM d, yyyy")}`;
+  }
+  return `${format(a, "MMM d, yyyy")} – ${format(b, "MMM d, yyyy")}`;
+}

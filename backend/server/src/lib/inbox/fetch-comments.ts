@@ -5,7 +5,7 @@
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
 import type { InboxComment } from "./types.js";
-import { INBOX_UNSUPPORTED, sameInboxHandle } from "./types.js";
+import { INBOX_UNSUPPORTED, sameInboxHandle, youtubeAuthorChannelId } from "./types.js";
 
 export type CommentFetchInput = {
   platform: string;
@@ -77,7 +77,7 @@ async function fetchFacebook(
   input: CommentFetchInput,
 ): Promise<CommentFetchResult> {
   const id = encodeURIComponent(input.platformPostId);
-  const url = `https://graph.facebook.com/v21.0/${id}/comments?fields=id,from,message,created_time,like_count,comments.limit(5){id,from,message,created_time}&filter=stream&limit=25&access_token=${encodeURIComponent(input.accessToken)}`;
+  const url = `https://graph.facebook.com/v21.0/${id}/comments?fields=id,from,message,created_time,like_count,comments.limit(5){id,from,message,created_time}&limit=25&access_token=${encodeURIComponent(input.accessToken)}`;
   const { ok, data } = await jsonGet(url);
   if (!ok) {
     const msg =
@@ -103,7 +103,7 @@ async function fetchFacebook(
       likeCount:
         typeof row.like_count === "number" ? row.like_count : undefined,
       parentId: null,
-      ...withAuthor(input, from?.name ?? null),
+      isOwn: Boolean(from?.id && from.id === input.platformUserId),
     });
     const nested =
       (row.comments as { data?: Array<Record<string, unknown>> } | undefined)
@@ -119,7 +119,7 @@ async function fetchFacebook(
         createdAt:
           typeof child.created_time === "string" ? child.created_time : null,
         parentId: String(row.id ?? ""),
-        ...withAuthor(input, cfrom?.name ?? null),
+        isOwn: Boolean(cfrom?.id && cfrom.id === input.platformUserId),
       });
     }
   }
@@ -251,7 +251,7 @@ async function fetchYouTube(
       createdAt: typeof sn.publishedAt === "string" ? sn.publishedAt : null,
       likeCount: typeof sn.likeCount === "number" ? sn.likeCount : undefined,
       parentId: null,
-      isOwn: Boolean(sn.authorChannelId === input.platformUserId),
+      isOwn: youtubeAuthorChannelId(sn.authorChannelId) === input.platformUserId,
     });
     const replies =
       (item.replies as { comments?: Array<{ id?: string; snippet?: Record<string, unknown> }> })
@@ -267,7 +267,7 @@ async function fetchYouTube(
         text: String(rs.textDisplay ?? rs.textOriginal ?? ""),
         createdAt: typeof rs.publishedAt === "string" ? rs.publishedAt : null,
         parentId: top.id,
-        isOwn: Boolean(rs.authorChannelId === input.platformUserId),
+        isOwn: youtubeAuthorChannelId(rs.authorChannelId) === input.platformUserId,
       });
     }
   }

@@ -102,7 +102,8 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 | Instagram | Media comments | Yes | `instagram_business_manage_comments` |
 | Threads | Replies | Yes | already had `threads_manage_replies` |
 | YouTube | commentThreads | Yes | `youtube.force-ssl` for replies (list works with readonly) |
-| X | conversation search | Yes | existing OAuth 1.0a |
+| X | conversation search | Yes | existing OAuth 1.0a. Recent Search only covers ~7 days |
+
 | Bluesky | public thread | Yes | app password |
 | LinkedIn | best-effort read | No | MDP often required |
 | TikTok / Pinterest | — | — | no usable comments API |

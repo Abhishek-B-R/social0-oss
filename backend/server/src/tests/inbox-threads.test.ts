@@ -4,6 +4,7 @@ import {
   isInboxRange,
   missingInboxScopes,
   toInboxThreads,
+  youtubeAuthorChannelId,
   type InboxComment,
 } from "../lib/inbox/types.js";
 
@@ -95,5 +96,14 @@ describe("toInboxThreads", () => {
     ]);
     expect(threads).toHaveLength(1);
     expect(threads[0]?.replies.map((r) => r.id)).toEqual(["r1", "r2"]);
+  });
+});
+
+describe("youtubeAuthorChannelId", () => {
+  it("unwraps { value } and ignores empty", () => {
+    expect(youtubeAuthorChannelId({ value: "UC123" })).toBe("UC123");
+    expect(youtubeAuthorChannelId("UC123")).toBe("UC123");
+    expect(youtubeAuthorChannelId({ value: "" })).toBeNull();
+    expect(youtubeAuthorChannelId(null)).toBeNull();
   });
 });

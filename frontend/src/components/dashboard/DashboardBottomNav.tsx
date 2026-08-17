@@ -79,7 +79,7 @@ export function DashboardBottomNav() {
         pathname.startsWith("/dashboard/api-keys") ||
         pathname.startsWith("/dashboard/feedback") ||
         (pathname.startsWith("/dashboard/teams") &&
-          !pathname.match(/\/teams\/[^/]+\/(composer|create|posts|calendar|connections)/)) ||
+          !pathname.match(/\/teams\/[^/]+\/(composer|create|posts|calendar|connections|inbox|analytics)/)) ||
         pathname.startsWith("/dashboard/workspaces") ||
         (relative === "settings" && pathname.includes("/dashboard/settings"))
       );

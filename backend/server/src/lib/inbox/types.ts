@@ -113,6 +113,16 @@ export function sameInboxHandle(
   );
 }
 
+/** YouTube comment snippets expose `{ value: channelId }`, not a bare string. */
+export function youtubeAuthorChannelId(v: unknown): string | null {
+  if (typeof v === "string" && v) return v;
+  if (v && typeof v === "object" && typeof (v as { value?: unknown }).value === "string") {
+    const id = (v as { value: string }).value;
+    return id || null;
+  }
+  return null;
+}
+
 /**
  * Nest replies under the top-level comment in the conversation.
  * Deeper replies (reply-to-reply) flatten under that root so the pane shows

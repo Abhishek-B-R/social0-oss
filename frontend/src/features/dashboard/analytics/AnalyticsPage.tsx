@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { format } from "date-fns";
 import Link from "@/components/AppLink";
 import { ArrowClockwise, SquaresFour } from "@/icons/phosphor";
 import { AccountAvatar } from "@/components/AccountAvatar";
@@ -25,6 +24,7 @@ import {
   engagementOf,
   engagementMix,
   formatMetric,
+  formatRangeLabel,
   viewsOf,
 } from "./analytics-utils";
 import { cn } from "@/lib/utils";
@@ -97,7 +97,7 @@ export function AnalyticsPage() {
   const singleAccount = accountId != null;
   const rangeLabel =
     data?.since && data?.until
-      ? `${format(new Date(data.since), "MMM d")} – ${format(new Date(data.until), "MMM d, yyyy")}`
+      ? formatRangeLabel(data.since, data.until)
       : null;
 
   return (

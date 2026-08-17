@@ -134,6 +134,7 @@ async function loadPublishedPubs(opts: {
           ? undefined
           : and(
               isNotNull(postPublications.publishedAt),
+              isNotNull(postPublications.platformPostId),
               gte(postPublications.publishedAt, opts.since),
               lte(postPublications.publishedAt, opts.until),
             ),

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
-import { format, formatDistanceToNow } from "date-fns";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { formatDistanceToNow } from "date-fns";
 import Link from "@/components/AppLink";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import {
@@ -27,7 +27,7 @@ import {
   type InboxRange,
   type InboxThread,
 } from "@/api/inbox";
-import { PLATFORM_LABEL } from "@/features/dashboard/analytics/analytics-utils";
+import { PLATFORM_LABEL, formatRangeLabel } from "@/features/dashboard/analytics/analytics-utils";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -82,25 +82,7 @@ function appendOptimisticReply(
     accountLabel: string | null;
   },
 ): InboxListResult {
-  const reply: InboxComment = {
-    id: args.replyId ?? `optimistic-${Date.now()}`,
-    platform: "",
-    accountId: "",
-    accountLabel: args.accountLabel,
-    postId: "",
-    publicationId: args.publicationId,
-    platformPostId: "",
-    platformPostUrl: null,
-    postSnippet: "",
-    authorName: "You",
-    authorHandle: args.accountLabel,
-    text: args.text,
-    createdAt: new Date().toISOString(),
-    parentId: args.parentCommentId,
-    canReply: false,
-    isOwn: true,
-  };
-
+  const id = args.replyId ?? `optimistic-${Date.now()}`;
   const threads = data.threads.map((thread) => {
     const root = thread.comment;
     const inThread =
@@ -108,18 +90,27 @@ function appendOptimisticReply(
       (root.id === args.parentCommentId ||
         thread.replies.some((r) => r.id === args.parentCommentId));
     if (!inThread) return thread;
-
-    reply.platform = root.platform;
-    reply.accountId = root.accountId;
-    reply.postId = root.postId;
-    reply.platformPostId = root.platformPostId;
-    reply.platformPostUrl = root.platformPostUrl;
-    reply.postSnippet = root.postSnippet;
-
-    if (thread.replies.some((r) => r.id === reply.id)) return thread;
-    return { ...thread, replies: [...thread.replies, reply] };
+    if (thread.replies.some((r) => r.id === id)) return thread;
+    const next: InboxComment = {
+      id,
+      platform: root.platform,
+      accountId: root.accountId,
+      accountLabel: args.accountLabel,
+      postId: root.postId,
+      publicationId: args.publicationId,
+      platformPostId: root.platformPostId,
+      platformPostUrl: root.platformPostUrl,
+      postSnippet: root.postSnippet,
+      authorName: "You",
+      authorHandle: args.accountLabel,
+      text: args.text,
+      createdAt: new Date().toISOString(),
+      parentId: args.parentCommentId,
+      canReply: false,
+      isOwn: true,
+    };
+    return { ...thread, replies: [...thread.replies, next] };
   });
-
   return { ...data, threads };
 }
 
@@ -131,6 +122,15 @@ export function InboxPage() {
   const [accountId, setAccountId] = useState<string | null>(null);
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [mobileDetail, setMobileDetail] = useState(false);
+  const [sentTick, setSentTick] = useState(0);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    },
+    [],
+  );
 
   const accountsQuery = useQuery({
     queryKey: ["analytics-accounts"],
@@ -159,6 +159,7 @@ export function InboxPage() {
         return;
       }
       toast.success("Reply sent");
+      setSentTick((n) => n + 1);
       const account =
         accountsQuery.data?.find((a) => a.id === accountId) ??
         accountsQuery.data?.find(
@@ -178,8 +179,8 @@ export function InboxPage() {
           accountLabel: account?.username ?? null,
         });
       });
-      // Delay refresh — X/search APIs often lag a few seconds behind a successful reply.
-      window.setTimeout(() => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      refreshTimer.current = setTimeout(() => {
         void qc.invalidateQueries({ queryKey: ["inbox-comments"] });
       }, 2500);
     },
@@ -197,7 +198,7 @@ export function InboxPage() {
   );
 
   const data = inboxQuery.data;
-  const threads = data?.threads ?? [];
+  const threads = (data?.threads ?? []).filter((t) => !t.comment.isOwn);
 
   useEffect(() => {
     if (!data?.threads?.length) {
@@ -230,7 +231,7 @@ export function InboxPage() {
     threads.find((t) => threadKey(t) === pickedId) ?? threads[0] ?? null;
   const rangeLabel =
     data?.since && data?.until
-      ? `${format(new Date(data.since), "MMM d")} – ${format(new Date(data.until), "MMM d")}`
+      ? formatRangeLabel(data.since, data.until)
       : null;
   const emptyRangeLabel = RANGE_EMPTY_LABEL[range];
   const showList = !mobileDetail;
@@ -452,6 +453,7 @@ export function InboxPage() {
                 thread={selected}
                 dash={dash}
                 sending={replyMut.isPending}
+                sentTick={sentTick}
                 onBack={() => setMobileDetail(false)}
                 onReply={(commentId, text) =>
                   replyMut.mutate({
@@ -586,12 +588,14 @@ function ConversationPane({
   thread,
   dash,
   sending,
+  sentTick,
   onBack,
   onReply,
 }: {
   thread: InboxThread;
   dash: (path: string) => string;
   sending: boolean;
+  sentTick: number;
   onBack: () => void;
   onReply: (commentId: string, text: string) => void;
 }) {
@@ -599,10 +603,9 @@ function ConversationPane({
   const [draft, setDraft] = useState("");
   const max = replyMax(c.platform);
 
-  // Reset composer when switching threads.
   useEffect(() => {
     setDraft("");
-  }, [c.id]);
+  }, [c.id, sentTick]);
 
   const messages = [c, ...thread.replies];
 
@@ -664,7 +667,6 @@ function ConversationPane({
             const text = draft.trim();
             if (!text || sending) return;
             onReply(c.id, text);
-            setDraft("");
           }}
         >
           <label className="sr-only" htmlFor="inbox-reply">
