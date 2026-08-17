@@ -90,6 +90,7 @@ async function loadPublishedPubs(opts: {
   since: Date;
   until: Date;
   postId?: string;
+  accountId?: string;
   limit?: number;
 }): Promise<PubRow[]> {
   const postFilter = postScopeCondition({
@@ -126,6 +127,9 @@ async function loadPublishedPubs(opts: {
         postFilter,
         eq(postPublications.status, "published"),
         opts.postId ? eq(posts.id, opts.postId) : undefined,
+        opts.accountId
+          ? eq(postPublications.connectedAccountId, opts.accountId)
+          : undefined,
         opts.postId
           ? undefined
           : and(
@@ -399,17 +403,18 @@ export async function getAnalyticsOverview(input: {
   const since = new Date(until.getTime() - rangeToMs(range));
 
   const ctx = await resolveWorkspaceContext(session.user.id);
-  let pubs = await loadPublishedPubs({
+  const accountId =
+    typeof input.accountId === "string" && input.accountId
+      ? input.accountId
+      : undefined;
+  const pubs = await loadPublishedPubs({
     resourceUserId: ctx.resourceUserId,
     workspaceId: ctx.workspaceId,
     since,
     until,
+    accountId,
     limit: SAMPLE_LIMIT,
   });
-
-  if (typeof input.accountId === "string" && input.accountId) {
-    pubs = pubs.filter((p) => p.account?.id === input.accountId);
-  }
 
   const results = await mapPool(pubs, CONCURRENCY, metricsForPub);
   const contentByPost = new Map(

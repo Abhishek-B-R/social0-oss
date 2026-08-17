@@ -97,14 +97,15 @@ export function AnalyticsPage() {
       : null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="flex flex-col gap-6">
+      <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
             Analytics
           </h1>
           <p className="mt-1 text-sm text-text-muted">
-            Live metrics for posts published in this range.
+            Live metrics for posts you published through Social0 — not the rest
+            of the account.
           </p>
         </div>
         <button
@@ -121,7 +122,7 @@ export function AnalyticsPage() {
         </button>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="shrink-0 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div
           role="tablist"
           aria-label="Date range"
@@ -155,9 +156,18 @@ export function AnalyticsPage() {
         ) : null}
       </div>
 
-      {(accountsQuery.data?.length ?? 0) > 0 ? (
-        <div className="-mx-1 overflow-x-auto px-1 pb-1">
-          <div className="flex w-max gap-1 sm:w-full sm:flex-wrap">
+      <div className="shrink-0">
+        {accountsQuery.isLoading ? (
+          <div className="flex flex-wrap gap-3" aria-hidden>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex w-16 flex-col items-center gap-1.5">
+                <div className="h-12 w-12 animate-pulse rounded-full bg-bg-muted" />
+                <div className="h-2.5 w-12 animate-pulse rounded bg-bg-muted" />
+              </div>
+            ))}
+          </div>
+        ) : (accountsQuery.data?.length ?? 0) > 0 ? (
+          <div className="flex flex-wrap items-start gap-3">
             <AllAccountsChip
               selected={accountId == null}
               onClick={() => setAccountId(null)}
@@ -171,8 +181,12 @@ export function AnalyticsPage() {
               />
             ))}
           </div>
-        </div>
-      ) : null}
+        ) : (
+          <p className="text-sm text-text-muted">
+            Connect an account to see analytics.
+          </p>
+        )}
+      </div>
 
       {reconnect.length ? (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
@@ -229,6 +243,18 @@ export function AnalyticsPage() {
           loading={loading && !data}
         />
       </div>
+      {data && data.publications.length === 0 ? (
+        <p className="-mt-3 text-sm text-text-muted">
+          No posts published through Social0 in this range. Try 30 days, or
+          publish something and refresh.
+        </p>
+      ) : data ? (
+        <p className="-mt-3 text-xs text-text-muted">
+          {data.publications.length} Social0 publication
+          {data.publications.length === 1 ? "" : "s"} in this range
+          {data.sampled ? ` (latest ${data.sampleLimit})` : ""}.
+        </p>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm sm:p-5">
@@ -342,20 +368,18 @@ function AllAccountsChip({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={cn(
-        "flex w-[4.75rem] flex-col items-center gap-1.5 rounded-2xl px-1 py-2 transition-colors",
-        selected
-          ? "bg-accent/15 ring-2 ring-accent ring-offset-2 ring-offset-bg"
-          : "hover:bg-bg-subtle",
-      )}
+      className="flex w-16 flex-col items-center gap-1.5"
     >
       <span
         className={cn(
-          "flex h-12 w-12 items-center justify-center rounded-full border-2 bg-bg-muted",
-          selected ? "border-accent text-accent" : "border-transparent text-text-muted",
+          "relative flex h-12 w-12 items-center justify-center rounded-full border-2 transition-all",
+          selected
+            ? "border-accent bg-accent/15 text-accent"
+            : "border-transparent bg-bg-muted text-text-muted opacity-70 hover:opacity-100",
         )}
       >
         <SquaresFour size={22} weight={selected ? "fill" : "regular"} />
+        {selected ? <SelectedCheck /> : null}
       </span>
       <span
         className={cn(
@@ -387,27 +411,32 @@ function AccountChip({
       title={
         needsReconnect
           ? `Reconnect ${PLATFORM_LABEL[account.platform] ?? account.platform} for full insights`
-          : undefined
+          : `@${handleLabel(account.username)}`
       }
-      className={cn(
-        "flex w-[4.75rem] flex-col items-center gap-1.5 rounded-2xl px-1 py-2 transition-colors",
-        selected
-          ? "bg-accent/15 ring-2 ring-accent ring-offset-2 ring-offset-bg"
-          : "hover:bg-bg-subtle",
-      )}
+      className="flex w-16 flex-col items-center gap-1.5"
     >
-      <span className="relative">
-        <AccountAvatar
-          profileImageUrl={account.profileImageUrl}
-          username={account.username}
-          platform={account.platform}
-          size="lg"
-        />
-        <span className="absolute -bottom-0.5 -right-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-bg bg-bg-elevated p-px shadow-sm">
+      <span
+        className={cn(
+          "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 transition-all",
+          selected
+            ? "border-accent opacity-100"
+            : "border-transparent opacity-60 hover:opacity-100",
+        )}
+      >
+        <span className="h-full w-full overflow-hidden rounded-full">
+          <AccountAvatar
+            profileImageUrl={account.profileImageUrl}
+            username={account.username}
+            platform={account.platform}
+            fill
+          />
+        </span>
+        <span className="absolute bottom-0 right-0 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-bg-elevated bg-bg-elevated">
           <PlatformIcon platform={account.platform} size={11} />
         </span>
+        {selected ? <SelectedCheck /> : null}
         {needsReconnect ? (
-          <span className="absolute -top-0.5 -right-0.5 z-10 h-2.5 w-2.5 rounded-full border-2 border-bg bg-amber-500" />
+          <span className="absolute -top-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 border-bg bg-amber-500" />
         ) : null}
       </span>
       <span
@@ -419,6 +448,21 @@ function AccountChip({
         {handleLabel(account.username)}
       </span>
     </button>
+  );
+}
+
+function SelectedCheck() {
+  return (
+    <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent text-accent-foreground">
+      <svg className="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2.5}
+          d="M5 13l4 4L19 7"
+        />
+      </svg>
+    </span>
   );
 }
 
@@ -449,7 +493,7 @@ function StatCard({
 
 function AnalyticsSkeleton() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-6" aria-busy>
+    <div className="flex flex-col gap-6" aria-busy>
       <div>
         <div className="h-10 w-48 animate-pulse rounded bg-bg-muted" />
         <div className="mt-2 h-4 w-72 animate-pulse rounded bg-bg-muted" />
