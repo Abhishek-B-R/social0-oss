@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { mediaUploads } from "../db/schema.js";
+import { db } from "../../db/index.js";
+import { mediaUploads } from "../../db/schema.js";
 
 export async function resolveInboxMedia(
   resourceUserId: string,

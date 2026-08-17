@@ -2,7 +2,7 @@
 
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
-import { uploadTwitterImage, uploadTwitterVideo } from "../lib/twitter-media.js";
+import { uploadTwitterImage, uploadTwitterVideo } from "../twitter-media.js";
 import { inboxAllowsMedia } from "./media-capabilities.js";
 
 export type DmReplyInput = {

@@ -165,7 +165,7 @@ async function replyTwitter(input: ReplyInput): Promise<ReplyResult> {
     const body: {
       text?: string;
       reply: { in_reply_to_tweet_id: string };
-      media?: { media_ids: string[] };
+      media?: { media_ids: [string] };
     } = { reply: { in_reply_to_tweet_id: input.commentId } };
     if (input.text.trim()) body.text = input.text.trim();
     if (input.mediaUrl && input.mediaMimeType) {
