@@ -3,6 +3,7 @@ import { PostsPage as PostsPageView } from "@/features/dashboard/posts/PostsPage
 import { BillingPage as BillingPageView } from "@/features/dashboard/billing/BillingPage";
 import { CalendarPage as CalendarPageView } from "@/features/dashboard/calendar/CalendarPage";
 import { AnalyticsPage as AnalyticsPageView } from "@/features/dashboard/analytics/AnalyticsPage";
+import { InboxPage as InboxPageView } from "@/features/dashboard/inbox/InboxPage";
 import { ConnectionsPage as ConnectionsPageView } from "@/features/dashboard/connections/ConnectionsPage";
 import { SettingsPage as SettingsPageView } from "@/pages/SettingsPage";
 import { FeedbackPage as FeedbackPageView } from "@/features/dashboard/feedback/FeedbackPage";
@@ -43,6 +44,10 @@ export function CalendarPage() {
 
 export function AnalyticsPage() {
   return <AnalyticsPageView />;
+}
+
+export function InboxPage() {
+  return <InboxPageView />;
 }
 
 export function ConnectionsPage() {

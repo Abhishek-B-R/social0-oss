@@ -7,6 +7,7 @@ import { useTheme } from "next-themes";
 import {
   CalendarDots,
   ChartLine,
+  ChatCircle,
   CheckCircle,
   Clock,
   List,
@@ -417,6 +418,13 @@ export function DashboardSidebar({
               icon={ChartLine}
               collapsed={collapsed}
               isActive={relativeMatches(relative, "analytics")}
+            />
+            <NavLink
+              href={dash("inbox")}
+              label="Inbox"
+              icon={ChatCircle}
+              collapsed={collapsed}
+              isActive={relativeMatches(relative, "inbox")}
             />
           </Section>
 

@@ -92,6 +92,23 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 | Do not break publish | Keep `w_member_social` (+ org scopes when MDP-approved) |
 | UX | UI shows “unsupported / needs LinkedIn product” instead of failing publish |
 
+## Inbox comments (Social Inbox)
+
+`/dashboard/inbox` lists comments on **Social0-published posts** (last 30 days) and lets you reply from the dashboard. Same additive-scope rule: publishing keeps working until reconnect.
+
+| Platform | Read | Reply | Extra OAuth |
+| -------- | ---- | ----- | ----------- |
+| Facebook | Page post comments | Yes | `pages_manage_engagement` |
+| Instagram | Media comments | Yes | `instagram_business_manage_comments` |
+| Threads | Replies | Yes | already had `threads_manage_replies` |
+| YouTube | commentThreads | Yes | `youtube.force-ssl` for replies (list works with readonly) |
+| X | conversation search | Yes | existing OAuth 1.0a |
+| Bluesky | public thread | Yes | app password |
+| LinkedIn | best-effort read | No | MDP often required |
+| TikTok / Pinterest | — | — | no usable comments API |
+
+If `FACEBOOK_LOGIN_CONFIG_ID` is set, add `pages_manage_engagement` in that Login config too.
+
 ## What users see before App Review
 
 - Analytics tab loads; platforms with public/basic metrics populate charts.
@@ -103,4 +120,5 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 1. Reconnect one Instagram / Threads / TikTok / Facebook account.
 2. Publish a test post (or use an existing published `platform_post_id`).
 3. Open `/dashboard/analytics` (Past week) and **Show analytics** on `/dashboard/posts/:id`.
-4. Confirm metrics appear and Connections still lists the account as active.
+4. Open `/dashboard/inbox` and confirm comments load; reply on one thread.
+5. Confirm metrics appear and Connections still lists the account as active.

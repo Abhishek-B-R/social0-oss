@@ -43,6 +43,9 @@ const CalendarPage = lazy(() =>
 const AnalyticsPage = lazy(() =>
   import("@/pages/DashboardPages").then((m) => ({ default: m.AnalyticsPage })),
 );
+const InboxPage = lazy(() =>
+  import("@/pages/DashboardPages").then((m) => ({ default: m.InboxPage })),
+);
 const ConnectionsPage = lazy(() =>
   import("@/pages/DashboardPages").then((m) => ({
     default: m.ConnectionsPage,
@@ -456,6 +459,7 @@ export function AppRouter() {
             <Route path="posts/:id/edit" element={<EditPostPage />} />
             <Route path="calendar" element={<CalendarPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
+            <Route path="inbox" element={<InboxPage />} />
             <Route path="connections" element={<ConnectionsPage />} />
             <Route
               path="connections/facebook/select"
@@ -511,6 +515,7 @@ export function AppRouter() {
               <Route path="posts/:id/edit" element={<EditPostPage />} />
               <Route path="calendar" element={<CalendarPage />} />
               <Route path="analytics" element={<AnalyticsPage />} />
+              <Route path="inbox" element={<InboxPage />} />
               <Route path="connections" element={<ConnectionsPage />} />
               <Route
                 path="connections/facebook/select"

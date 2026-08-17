@@ -43,7 +43,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     authUrl: "https://www.instagram.com/oauth/authorize", // ✅ This is correct
     tokenUrl: "https://api.instagram.com/oauth/access_token", // ✅ This too
     scope:
-      "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights",
+      "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights,instagram_business_manage_comments",
   },
   youtube: {
     clientIdEnv: "YOUTUBE_CLIENT_ID",
@@ -51,7 +51,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
     tokenUrl: "https://oauth2.googleapis.com/token",
     scope:
-      "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly https://www.googleapis.com/auth/youtube.force-ssl https://www.googleapis.com/auth/userinfo.profile",
   },
   twitter_x: null, // OAuth 1.0a - handled separately in route handler
   threads: {

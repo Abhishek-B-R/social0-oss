@@ -41,7 +41,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     tokenUrl: "https://api.instagram.com/oauth/access_token", // ✅ This too
     // manage_insights: media/account insights (App Review). Additive — existing tokens keep publishing.
     scope:
-      "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights",
+      "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights,instagram_business_manage_comments",
   },
   youtube: {
     clientIdEnv: "YOUTUBE_CLIENT_ID",
@@ -50,7 +50,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     tokenUrl: "https://oauth2.googleapis.com/token",
     // youtube.readonly covers video statistics; yt-analytics.readonly for Reports API (future).
     scope:
-      "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly https://www.googleapis.com/auth/youtube.force-ssl https://www.googleapis.com/auth/userinfo.profile",
   },
   twitter_x: null, // OAuth 1.0a - handled separately in route handler
   threads: {

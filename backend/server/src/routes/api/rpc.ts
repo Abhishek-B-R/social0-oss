@@ -14,6 +14,7 @@ import * as publish from "../../services/publish.js";
 import * as resurface from "../../services/resurface.js";
 import * as settings from "../../services/settings.js";
 import * as analytics from "../../services/analytics.js";
+import * as inbox from "../../services/inbox.js";
 
 type RpcHandler = (...args: never[]) => Promise<unknown>;
 
@@ -43,6 +44,7 @@ const RPC_MUTATION_HANDLERS = new Set([
   "settings.deleteAccount",
   "onboarding.setOnboardingGoal",
   "onboarding.setOnboardingCompleted",
+  "inbox.replyToComment",
 ]);
 
 const RPC_HANDLERS: Record<string, RpcHandler> = {
@@ -83,6 +85,8 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
   "analytics.getOverview": analytics.getAnalyticsOverview,
   "analytics.getPostAnalytics": analytics.getPostAnalytics,
   "analytics.listAccounts": analytics.listAnalyticsAccounts,
+  "inbox.listComments": inbox.listInboxComments,
+  "inbox.replyToComment": inbox.replyToInboxComment,
   "settings.loadSettingsPageData": settings.loadSettingsPageData,
   "settings.getUserSettingsSnapshot": settings.getUserSettingsSnapshot,
   "settings.updateDisplayName": settings.updateDisplayName,
