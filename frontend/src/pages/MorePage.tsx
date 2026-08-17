@@ -20,6 +20,7 @@ import { useSession } from "@/lib/auth-client";
 import { useQuery } from "@tanstack/react-query";
 import { rpc } from "@/lib/rpc";
 import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
+import { useInboxUnreadBadge } from "@/hooks/useInboxUnreadBadge";
 
 function getPlanLabel(tier: string): string {
   if (tier === "pro") return "Pro plan";
@@ -55,6 +56,7 @@ const MORE_LINKS: Array<{
 
 export function MorePage() {
   const { data: session } = useSession();
+  const inboxUnread = useInboxUnreadBadge();
   const { data: layoutData } = useQuery({
     queryKey: ["dashboard-layout"],
     queryFn: () =>
@@ -115,7 +117,12 @@ export function MorePage() {
               >
                 <Icon className="h-4 w-4 shrink-0 text-text-muted" />
                 <span className="flex-1">{label}</span>
-                {experimental ? <ExperimentalBadge /> : null}
+                {href === "/dashboard/inbox" && inboxUnread > 0 ? (
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-bold tabular-nums text-accent-foreground">
+                    {inboxUnread > 99 ? "99+" : inboxUnread}
+                  </span>
+                ) : null}
+                {experimental ? <ExperimentalBadge compact /> : null}
               </Link>
             </li>
           ))}

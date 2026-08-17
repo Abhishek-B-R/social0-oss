@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import Link from "@/components/AppLink";
 import {
@@ -38,6 +39,7 @@ import { InboxAttachmentView } from "./InboxAttachmentView";
 import { InboxAvatar } from "./InboxAvatar";
 import { InboxComposer, type InboxComposerPayload } from "./InboxComposer";
 import { InboxPostCard, InboxPostThumbnail } from "./InboxPostCard";
+import { resolveInboxBody } from "@/lib/inbox-display";
 
 function threadKey(thread: InboxThread): string {
   return `${thread.comment.publicationId}-${thread.comment.id}`;
@@ -141,6 +143,7 @@ export function InboxCommentsPane({
 }) {
   const dash = useDashboardPath();
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [mobileDetail, setMobileDetail] = useState(false);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -294,15 +297,23 @@ export function InboxCommentsPane({
   }, [inboxQuery.data]);
 
   useEffect(() => {
-    if (!data?.threads?.length) {
+    if (!threads.length) {
       setPickedId(null);
       return;
     }
-    const keys = data.threads.map(threadKey);
+    const keys = threads.map(threadKey);
+    const fromUrl = searchParams.get("thread");
+    const match = fromUrl
+      ? threads.find((t) => t.comment.id === fromUrl)
+      : null;
+    if (match) {
+      setPickedId(threadKey(match));
+      return;
+    }
     if (!pickedId || !keys.includes(pickedId)) {
       setPickedId(keys[0] ?? null);
     }
-  }, [data?.threads, pickedId]);
+  }, [threads, pickedId, searchParams]);
 
   const loading = inboxQuery.isLoading || inboxQuery.isFetching;
   const selected =
@@ -385,6 +396,14 @@ export function InboxCommentsPane({
                     onClick={() => {
                       setPickedId(key);
                       setMobileDetail(true);
+                      setSearchParams(
+                        (prev) => {
+                          const next = new URLSearchParams(prev);
+                          next.set("thread", c.id);
+                          return next;
+                        },
+                        { replace: true },
+                      );
                     }}
                     className={cn(
                       "relative flex w-full gap-2.5 px-3 py-2.5 text-left transition-colors",
@@ -411,7 +430,12 @@ export function InboxCommentsPane({
                         </span>
                       </span>
                       <span className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-text-muted">
-                        {c.text || "(No text)"}
+                        {c.text ||
+                          (c.attachment?.type === "video"
+                            ? "Video"
+                            : c.attachment
+                              ? "Photo"
+                              : "(No text)")}
                       </span>
                       <span className="mt-1 flex items-center gap-2 text-[10px] text-text-muted">
                         <span>
@@ -661,6 +685,7 @@ function CommentRow({
   const avatarUrl = own
     ? account?.profileImageUrl ?? comment.authorAvatarUrl
     : comment.authorAvatarUrl;
+  const body = resolveInboxBody(comment.text, comment.attachment);
 
   return (
     <article
@@ -694,13 +719,13 @@ function CommentRow({
               {when}
             </span>
           </div>
-          {comment.text ? (
+          {body.text ? (
             <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-text">
-              {comment.text}
+              {body.text}
             </p>
           ) : null}
-          {comment.attachment ? (
-            <InboxAttachmentView attachment={comment.attachment} className="max-w-sm" />
+          {body.attachment ? (
+            <InboxAttachmentView attachment={body.attachment} className="max-w-sm" />
           ) : null}
           {failed && onRetry ? (
             <button

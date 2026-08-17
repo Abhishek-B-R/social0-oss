@@ -1,4 +1,4 @@
-import { TestTube } from "@/icons/phosphor";
+import { Flask } from "@/icons/phosphor";
 import { cn } from "@/lib/utils";
 
 export function ExperimentalBadge({
@@ -10,14 +10,16 @@ export function ExperimentalBadge({
 }) {
   return (
     <span
-      title="Experimental — still being polished"
+      title="Experimental"
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200",
-        compact ? "p-0.5" : "gap-1 px-1.5 py-0.5 text-[10px]",
+        "inline-flex items-center font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200",
+        compact
+          ? "rounded-full p-0.5 text-amber-700 dark:text-amber-300"
+          : "gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px]",
         className,
       )}
     >
-      <TestTube size={compact ? 11 : 11} weight="fill" />
+      <Flask size={compact ? 12 : 11} weight="duotone" />
       {compact ? null : "Experimental"}
     </span>
   );

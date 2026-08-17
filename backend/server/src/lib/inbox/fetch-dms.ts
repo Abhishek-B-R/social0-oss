@@ -14,6 +14,12 @@ import {
   type InboxDmThread,
 } from "./types.js";
 import { inboxDmMediaKinds } from "./media-capabilities.js";
+import {
+  parseGraphAttachments,
+  withMediaFallback,
+  xMediaToAttachment,
+  type XMediaLike,
+} from "./parse-attachment.js";
 
 export type DmAccount = {
   id: string;
@@ -64,32 +70,8 @@ function threadMeta(
   };
 }
 
-function parseGraphAttachments(raw: unknown): InboxAttachment | null {
-  const rows = Array.isArray(raw)
-    ? raw
-    : (raw as { data?: unknown[] } | undefined)?.data;
-  if (!Array.isArray(rows) || !rows.length) return null;
-  const first = rows[0] as Record<string, unknown>;
-  const imageData = first.image_data as { url?: string } | undefined;
-  const videoData = first.video_data as { url?: string; preview_url?: string } | undefined;
-  const payload = first.payload as { url?: string } | undefined;
-  const mime = typeof first.mime_type === "string" ? first.mime_type : "";
-  if (imageData?.url) {
-    return { type: "image", url: imageData.url };
-  }
-  if (videoData?.url) {
-    return {
-      type: "video",
-      url: videoData.url,
-      thumbnailUrl: videoData.preview_url ?? null,
-    };
-  }
-  if (payload?.url) {
-    const type = mime.startsWith("video/") || first.type === "video" ? "video" : "image";
-    return { type, url: payload.url };
-  }
-  return null;
-}
+const GRAPH_MSG_ATTACHMENT_FIELDS =
+  "attachments{type,mime_type,image_data,video_data,payload,file_url}";
 
 function personAvatar(person: GraphPerson | undefined): string | null {
   return graphPictureUrl(person?.picture);
@@ -192,7 +174,7 @@ async function fetchFacebookList(
 ): Promise<DmListFetchResult> {
   const id = encodeURIComponent(account.platformUserId);
   const fields =
-    "id,updated_time,snippet,participants{id,name,username,picture},messages.limit(1){message,created_time,from,attachments{type,mime_type,image_data,video_data,payload}}";
+    `id,updated_time,snippet,participants{id,name,username,picture},messages.limit(1){message,created_time,from,${GRAPH_MSG_ATTACHMENT_FIELDS}}`;
   const url = `https://graph.facebook.com/v21.0/${id}/conversations?fields=${encodeURIComponent(fields)}&limit=25&access_token=${encodeURIComponent(account.accessToken)}`;
   const { ok, data } = await jsonGet(url);
   if (!ok) {
@@ -242,7 +224,7 @@ async function fetchInstagramList(
 ): Promise<DmListFetchResult> {
   const id = encodeURIComponent(account.platformUserId);
   const fields =
-    "id,updated_time,participants{id,username,name,picture},messages.limit(1){message,created_time,from,attachments{type,mime_type,image_data,video_data,payload}}";
+    `id,updated_time,participants{id,username,name,picture},messages.limit(1){message,created_time,from,${GRAPH_MSG_ATTACHMENT_FIELDS}}`;
   const url = `https://graph.instagram.com/v21.0/${id}/conversations?platform=instagram&fields=${encodeURIComponent(fields)}&limit=25&access_token=${encodeURIComponent(account.accessToken)}`;
   const { ok, data } = await jsonGet(url);
   if (!ok) {
@@ -294,10 +276,13 @@ function graphMessagesToInbox(
   for (const row of rows) {
     const from = row.from as GraphPerson | undefined;
     const isOwn = Boolean(from?.id && from.id === account.platformUserId);
-    const attachment = parseGraphAttachments(row.attachments);
+    const media = withMediaFallback(
+      String(row.message ?? ""),
+      parseGraphAttachments(row.attachments),
+    );
     out.push({
       id: String(row.id ?? ""),
-      text: String(row.message ?? ""),
+      text: media.text,
       createdAt:
         typeof row.created_time === "string" ? row.created_time : null,
       isOwn,
@@ -308,7 +293,7 @@ function graphMessagesToInbox(
       authorAvatarUrl: isOwn
         ? account.profileImageUrl ?? null
         : (from?.id ? avatarById.get(from.id) : null) ?? personAvatar(from),
-      attachment,
+      attachment: media.attachment,
     });
   }
   out.sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""));
@@ -327,7 +312,7 @@ async function fetchFacebookThread(
   account: DmAccount,
   conversationId: string,
 ): Promise<DmThreadFetchResult> {
-  const url = `https://graph.facebook.com/v21.0/${encodeURIComponent(conversationId)}?fields=id,updated_time,participants{id,name,username,picture},messages.limit(50){id,created_time,from,message,attachments{type,mime_type,image_data,video_data,payload}}&access_token=${encodeURIComponent(account.accessToken)}`;
+  const url = `https://graph.facebook.com/v21.0/${encodeURIComponent(conversationId)}?fields=id,updated_time,participants{id,name,username,picture},messages.limit(50){id,created_time,from,message,${GRAPH_MSG_ATTACHMENT_FIELDS}}&access_token=${encodeURIComponent(account.accessToken)}`;
   const { ok, data } = await jsonGet(url);
   if (!ok) {
     const msg =
@@ -367,7 +352,7 @@ async function fetchInstagramThread(
   account: DmAccount,
   conversationId: string,
 ): Promise<DmThreadFetchResult> {
-  const url = `https://graph.instagram.com/v21.0/${encodeURIComponent(conversationId)}?fields=id,updated_time,participants{id,username,name,picture},messages.limit(50){id,created_time,from,message,attachments{type,mime_type,image_data,video_data,payload}}&access_token=${encodeURIComponent(account.accessToken)}`;
+  const url = `https://graph.instagram.com/v21.0/${encodeURIComponent(conversationId)}?fields=id,updated_time,participants{id,username,name,picture},messages.limit(50){id,created_time,from,message,${GRAPH_MSG_ATTACHMENT_FIELDS}}&access_token=${encodeURIComponent(account.accessToken)}`;
   const { ok, data } = await jsonGet(url);
   if (!ok) {
     const msg =
@@ -423,12 +408,7 @@ type XUser = {
   profile_image_url?: string;
 };
 
-type XMedia = {
-  media_key?: string;
-  type?: string;
-  url?: string;
-  preview_image_url?: string;
-};
+type XMedia = XMediaLike;
 
 function xMediaAttachment(
   ev: XDmEvent,
@@ -436,20 +416,7 @@ function xMediaAttachment(
 ): InboxAttachment | null {
   const key = ev.attachments?.[0]?.media_keys?.[0];
   if (!key) return null;
-  const media = mediaByKey.get(key);
-  if (!media?.url && !media?.preview_image_url) return null;
-  if (media.type === "video" || media.type === "animated_gif") {
-    return {
-      type: "video",
-      url: media.url ?? media.preview_image_url ?? "",
-      thumbnailUrl: media.preview_image_url ?? null,
-    };
-  }
-  return {
-    type: "image",
-    url: media.url ?? media.preview_image_url ?? "",
-    thumbnailUrl: media.preview_image_url ?? null,
-  };
+  return xMediaToAttachment(mediaByKey.get(key));
 }
 
 function twitterClient(account: DmAccount): TwitterApi | null {
@@ -486,7 +453,7 @@ async function fetchTwitterList(
         "id,text,event_type,dm_conversation_id,created_at,sender_id,participant_ids,attachments",
       expansions: "sender_id,participant_ids,attachments.media_keys",
       "user.fields": "name,username,profile_image_url",
-      "media.fields": "url,preview_image_url,type",
+      "media.fields": "url,preview_image_url,type,variants",
     });
     const events = ((raw as { data?: XDmEvent[] }).data ?? []).filter(
       (e) => e.event_type === "MessageCreate" || !e.event_type,
@@ -566,7 +533,7 @@ async function fetchTwitterThread(
           "id,text,event_type,dm_conversation_id,created_at,sender_id,attachments",
         expansions: "sender_id,attachments.media_keys",
         "user.fields": "name,username,profile_image_url",
-        "media.fields": "url,preview_image_url,type",
+        "media.fields": "url,preview_image_url,type,variants",
       },
     );
     const events = ((raw as { data?: XDmEvent[] }).data ?? []).filter(
@@ -584,10 +551,13 @@ async function fetchTwitterThread(
     const messages: InboxDmMessage[] = events.map((ev) => {
       const isOwn = ev.sender_id === account.platformUserId;
       const user = ev.sender_id ? users.get(ev.sender_id) : undefined;
-      const attachment = xMediaAttachment(ev, mediaByKey);
+      const media = withMediaFallback(
+        ev.text ?? "",
+        xMediaAttachment(ev, mediaByKey),
+      );
       return {
         id: String(ev.id ?? ""),
-        text: ev.text ?? "",
+        text: media.text,
         createdAt: ev.created_at ?? null,
         isOwn,
         authorName: isOwn ? "You" : (user?.name ?? user?.username ?? "X user"),
@@ -595,7 +565,7 @@ async function fetchTwitterThread(
         authorAvatarUrl: isOwn
           ? account.profileImageUrl ?? null
           : user?.profile_image_url ?? null,
-        attachment,
+        attachment: media.attachment,
       };
     });
     const last = messages[messages.length - 1];

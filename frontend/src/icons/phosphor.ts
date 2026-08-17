@@ -53,7 +53,7 @@ export { SquaresFour } from "@phosphor-icons/react/dist/csr/SquaresFour";
 export { Stack } from "@phosphor-icons/react/dist/csr/Stack";
 export { Sun } from "@phosphor-icons/react/dist/csr/Sun";
 export { Terminal } from "@phosphor-icons/react/dist/csr/Terminal";
-export { TestTube } from "@phosphor-icons/react/dist/csr/TestTube";
+export { Flask } from "@phosphor-icons/react/dist/csr/Flask";
 export { Trash } from "@phosphor-icons/react/dist/csr/Trash";
 export { User } from "@phosphor-icons/react/dist/csr/User";
 export { Users } from "@phosphor-icons/react/dist/csr/Users";

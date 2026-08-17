@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient, useIsFetching } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { RangeToolbar } from "@/components/dashboard/RangeToolbar";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
@@ -44,9 +45,39 @@ function handleLabel(username: string | null | undefined): string {
 export function InboxPage() {
   const { data: session, isPending: sessionPending } = useSession();
   const qc = useQueryClient();
-  const [mode, setMode] = useState<InboxMode>("comments");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const mode: InboxMode = searchParams.get("tab") === "dms" ? "dms" : "comments";
+  const accountId = searchParams.get("account");
   const [dateWindow, setDateWindow] = useState<DateWindow>(defaultDateWindow);
-  const [accountId, setAccountId] = useState<string | null>(null);
+
+  const setMode = (next: InboxMode) => {
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        if (next === "dms") {
+          nextParams.set("tab", "dms");
+          nextParams.delete("thread");
+        } else {
+          nextParams.delete("tab");
+          nextParams.delete("convo");
+        }
+        return nextParams;
+      },
+      { replace: true },
+    );
+  };
+
+  const setAccountId = (id: string | null) => {
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        if (id) nextParams.set("account", id);
+        else nextParams.delete("account");
+        return nextParams;
+      },
+      { replace: true },
+    );
+  };
 
   const accountsQuery = useQuery({
     queryKey: ["analytics-accounts"],
@@ -63,11 +94,11 @@ export function InboxPage() {
   );
 
   useEffect(() => {
-    if (!accountId) return;
+    if (!accountId || accountsQuery.isLoading) return;
     if (!accountsForFilter.some((a) => a.id === accountId)) {
       setAccountId(null);
     }
-  }, [accountId, accountsForFilter]);
+  }, [accountId, accountsForFilter, accountsQuery.isLoading]);
 
   const fetching = useIsFetching({
     queryKey: mode === "comments" ? ["inbox-comments"] : ["inbox-dms"],

@@ -6,6 +6,13 @@ import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
 import type { InboxComment } from "./types.js";
 import { INBOX_UNSUPPORTED, sameInboxHandle, youtubeAuthorChannelId } from "./types.js";
+import {
+  parseBskyViewEmbed,
+  parseFbCommentAttachment,
+  withMediaFallback,
+  xMediaToAttachment,
+  type XMediaLike,
+} from "./parse-attachment.js";
 
 export type CommentFetchInput = {
   platform: string;
@@ -85,7 +92,7 @@ async function fetchFacebook(
   input: CommentFetchInput,
 ): Promise<CommentFetchResult> {
   const id = encodeURIComponent(input.platformPostId);
-  const url = `https://graph.facebook.com/v21.0/${id}/comments?fields=id,from,message,created_time,like_count,comments.limit(5){id,from,message,created_time}&limit=25&access_token=${encodeURIComponent(input.accessToken)}`;
+  const url = `https://graph.facebook.com/v21.0/${id}/comments?fields=id,from,message,created_time,like_count,attachment,comments.limit(5){id,from,message,created_time,attachment}&limit=25&access_token=${encodeURIComponent(input.accessToken)}`;
   const { ok, data } = await jsonGet(url);
   if (!ok) {
     const msg =
@@ -101,12 +108,17 @@ async function fetchFacebook(
   const common = base(input);
   for (const row of rows) {
     const from = row.from as { name?: string; id?: string } | undefined;
+    const media = withMediaFallback(
+      String(row.message ?? ""),
+      parseFbCommentAttachment(row.attachment),
+    );
     comments.push({
       ...common,
       id: String(row.id ?? ""),
       authorName: from?.name ?? "Facebook user",
       authorHandle: from?.id ?? null,
-      text: String(row.message ?? ""),
+      text: media.text,
+      attachment: media.attachment,
       createdAt: typeof row.created_time === "string" ? row.created_time : null,
       likeCount:
         typeof row.like_count === "number" ? row.like_count : undefined,
@@ -118,12 +130,17 @@ async function fetchFacebook(
         ?.data ?? [];
     for (const child of nested) {
       const cfrom = child.from as { name?: string; id?: string } | undefined;
+      const childMedia = withMediaFallback(
+        String(child.message ?? ""),
+        parseFbCommentAttachment(child.attachment),
+      );
       comments.push({
         ...common,
         id: String(child.id ?? ""),
         authorName: cfrom?.name ?? "Facebook user",
         authorHandle: cfrom?.id ?? null,
-        text: String(child.message ?? ""),
+        text: childMedia.text,
+        attachment: childMedia.attachment,
         createdAt:
           typeof child.created_time === "string" ? child.created_time : null,
         parentId: String(row.id ?? ""),
@@ -306,14 +323,20 @@ async function fetchTwitter(
           "author_id",
           "referenced_tweets",
           "conversation_id",
+          "attachments",
         ],
-        expansions: ["author_id"],
+        expansions: ["author_id", "attachments.media_keys"],
         "user.fields": ["name", "username"],
+        "media.fields": ["url", "preview_image_url", "type", "variants"],
       },
     );
     const users = new Map<string, { name?: string; username?: string }>();
     for (const u of search.includes?.users ?? []) {
       users.set(u.id, { name: u.name, username: u.username });
+    }
+    const mediaByKey = new Map<string, XMediaLike>();
+    for (const m of search.includes?.media ?? []) {
+      if (m.media_key) mediaByKey.set(m.media_key, m);
     }
     const common = base(input);
     const tweets = search.tweets ?? [];
@@ -328,12 +351,14 @@ async function fetchTwitter(
       // Direct reply to the Social0 post = top-level comment; else nest under parent tweet.
       const parentId =
         !repliedTo || repliedTo === input.platformPostId ? null : repliedTo;
+      const mediaKey = tweet.attachments?.media_keys?.[0];
       comments.push({
         ...common,
         id: tweet.id,
         authorName: user?.name ?? "X user",
         authorHandle: handle,
         text: tweet.text ?? "",
+        attachment: mediaKey ? xMediaToAttachment(mediaByKey.get(mediaKey)) : null,
         createdAt: tweet.created_at ?? null,
         parentId,
         ...withAuthor(input, handle),
@@ -367,6 +392,7 @@ async function fetchBluesky(
       uri?: string;
       author?: { displayName?: string; handle?: string };
       record?: { text?: string; createdAt?: string };
+      embed?: unknown;
       likeCount?: number;
     };
     replies?: ThreadNode[];
@@ -384,6 +410,7 @@ async function fetchBluesky(
           "Bluesky user",
         authorHandle: node.post.author?.handle ?? null,
         text: node.post.record?.text ?? "",
+        attachment: parseBskyViewEmbed(node.post.embed),
         createdAt: node.post.record?.createdAt ?? null,
         likeCount: node.post.likeCount,
         parentId,
@@ -455,21 +482,29 @@ export async function fetchPublicationComments(
       error: `Comments inbox is not available for ${input.platform} yet.`,
     };
   }
+  let result: CommentFetchResult;
   switch (input.platform) {
     case "facebook":
-      return fetchFacebook(input);
+      result = await fetchFacebook(input);
+      break;
     case "instagram":
-      return fetchInstagram(input);
+      result = await fetchInstagram(input);
+      break;
     case "threads":
-      return fetchThreads(input);
+      result = await fetchThreads(input);
+      break;
     case "youtube":
-      return fetchYouTube(input);
+      result = await fetchYouTube(input);
+      break;
     case "twitter_x":
-      return fetchTwitter(input);
+      result = await fetchTwitter(input);
+      break;
     case "bluesky":
-      return fetchBluesky(input);
+      result = await fetchBluesky(input);
+      break;
     case "linkedin":
-      return fetchLinkedIn(input);
+      result = await fetchLinkedIn(input);
+      break;
     default:
       return {
         comments: [],
@@ -477,4 +512,11 @@ export async function fetchPublicationComments(
         error: `Comments not supported for ${input.platform}`,
       };
   }
+  return {
+    ...result,
+    comments: result.comments.map((c) => {
+      const media = withMediaFallback(c.text, c.attachment);
+      return { ...c, text: media.text, attachment: media.attachment };
+    }),
+  };
 }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { InboxAttachment } from "@/api/inbox";
 import { cn } from "@/lib/utils";
 
@@ -8,33 +9,36 @@ export function InboxAttachmentView({
   attachment: InboxAttachment;
   className?: string;
 }) {
+  const [broken, setBroken] = useState(false);
+  if (broken || !attachment.url) return null;
+
   if (attachment.type === "image") {
     return (
-      <a
-        href={attachment.url}
-        target="_blank"
-        rel="noreferrer"
-        className={cn("mt-1.5 block overflow-hidden rounded-lg", className)}
-      >
-        <img
-          src={attachment.url}
-          alt=""
-          className="max-h-56 w-full object-cover"
-          referrerPolicy="no-referrer"
-        />
-      </a>
+      <img
+        src={attachment.url}
+        alt=""
+        referrerPolicy="no-referrer"
+        onError={() => setBroken(true)}
+        className={cn(
+          "mt-1.5 max-h-72 w-auto max-w-full rounded-lg object-contain",
+          className,
+        )}
+      />
     );
   }
+
   return (
-    <div className={cn("mt-1.5 overflow-hidden rounded-lg", className)}>
-      <video
-        src={attachment.url}
-        controls
-        playsInline
-        preload="metadata"
-        poster={attachment.thumbnailUrl ?? undefined}
-        className="max-h-56 w-full bg-black/20"
-      />
-    </div>
+    <video
+      src={attachment.url}
+      controls
+      playsInline
+      preload="metadata"
+      poster={attachment.thumbnailUrl ?? undefined}
+      onError={() => setBroken(true)}
+      className={cn(
+        "mt-1.5 max-h-72 w-full rounded-lg bg-black/80 object-contain",
+        className,
+      )}
+    />
   );
 }

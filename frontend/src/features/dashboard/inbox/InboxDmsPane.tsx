@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import Link from "@/components/AppLink";
 import {
@@ -33,6 +34,7 @@ import {
   InboxComposer,
   type InboxComposerPayload,
 } from "./InboxComposer";
+import { resolveInboxBody } from "@/lib/inbox-display";
 
 function dmKey(t: InboxDmThread): string {
   return `${t.accountId}:${t.conversationId}`;
@@ -98,6 +100,7 @@ export function InboxDmsPane({
 }) {
   const dash = useDashboardPath();
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [mobileDetail, setMobileDetail] = useState(false);
   const [pendingByConvo, setPendingByConvo] = useState<
@@ -136,10 +139,18 @@ export function InboxDmsPane({
       return;
     }
     const keys = threads.map(dmKey);
+    const convo = searchParams.get("convo");
+    const fromUrl = convo
+      ? threads.find((t) => t.conversationId === convo)
+      : null;
+    if (fromUrl) {
+      setPickedId(dmKey(fromUrl));
+      return;
+    }
     if (!pickedId || !keys.includes(pickedId)) {
       setPickedId(keys[0] ?? null);
     }
-  }, [threads, pickedId]);
+  }, [threads, pickedId, searchParams]);
 
   const threadQueryKey = selected
     ? (["inbox-dm-thread", selected.accountId, selected.conversationId] as const)
@@ -403,6 +414,14 @@ export function InboxDmsPane({
                     onClick={() => {
                       setPickedId(key);
                       setMobileDetail(true);
+                      setSearchParams(
+                        (prev) => {
+                          const next = new URLSearchParams(prev);
+                          next.set("convo", t.conversationId);
+                          return next;
+                        },
+                        { replace: true },
+                      );
                     }}
                     className={cn(
                       "relative flex w-full gap-2.5 px-3 py-2.5 text-left transition-colors",
@@ -621,6 +640,7 @@ function DmBubble({
           url: message.localPreviewUrl,
         }
       : null);
+  const body = resolveInboxBody(message.text, attachment);
 
   return (
     <div className={cn("flex gap-2.5", own && "flex-row-reverse")}>
@@ -654,12 +674,12 @@ function DmBubble({
             <CircleNotch size={12} className="animate-spin text-text-muted" />
           ) : null}
         </p>
-          {message.text ? (
+          {body.text ? (
             <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed">
-              {message.text}
+              {body.text}
             </p>
           ) : null}
-          {attachment ? <InboxAttachmentView attachment={attachment} /> : null}
+          {body.attachment ? <InboxAttachmentView attachment={body.attachment} /> : null}
         </div>
         {failed ? (
           <button

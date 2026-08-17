@@ -50,10 +50,8 @@ export function InboxComposer({
   }, [initialText]);
 
   const clearFile = useCallback(() => {
-    setPreviewUrl((prev) => {
-      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
-      return null;
-    });
+    // ponytail: don't revoke blob URLs — the optimistic bubble still uses them
+    setPreviewUrl(null);
     setFile(null);
     if (inputRef.current) inputRef.current.value = "";
   }, []);
