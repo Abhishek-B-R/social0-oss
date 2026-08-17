@@ -21,8 +21,14 @@ type FooterLink = {
 };
 
 const socialLinks = [
+  // ponytail: self-host repo private - uncomment block below when re-opened
+  // {
+  //   href: "https://github.com/abhishek-b-r/social0-selfhost",
+  //   label: "GitHub",
+  //   Icon: GitHubIcon,
+  // },
   {
-    href: "https://github.com/abhishek-b-r/social0-selfhost",
+    href: "https://github.com/Abhishek-B-R/social0-cli",
     label: "GitHub",
     Icon: GitHubIcon,
   },
@@ -240,7 +246,8 @@ export function LandingFooter() {
     { href: "/tools/claude", label: "Claude MCP" },
     { href: "/tools/cursor", label: "Cursor MCP" },
     { href: "/tools/openclaw", label: "OpenClaw skill" },
-    { href: "/tools/self-host", label: "Self-host" },
+    // ponytail: self-host hidden while repo private
+    // { href: "/tools/self-host", label: "Self-host" },
     { href: "/tools/teams", label: "Teams" },
   ];
 
@@ -253,7 +260,9 @@ export function LandingFooter() {
     { href: "/#stories", label: "Stories" },
     { href: "/#faq", label: "FAQ" },
     { href: "/#developers", label: "Developers" },
-    { href: "https://github.com/abhishek-b-r/social0-selfhost", label: "GitHub", external: true },
+    // ponytail: self-host repo private
+    // { href: "https://github.com/abhishek-b-r/social0-selfhost", label: "GitHub", external: true },
+    { href: "https://github.com/Abhishek-B-R/social0-cli", label: "GitHub", external: true },
   ];
 
   const companyLinks: FooterLink[] = [

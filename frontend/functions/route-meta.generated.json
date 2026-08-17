@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-14T08:50:17.884Z",
+  "generatedAt": "2026-08-17T06:54:09.412Z",
   "static": {
     "/": {
       "title": "Social0 — AI Agents & Multi-Platform Social Scheduling",
@@ -419,10 +419,6 @@
     "openclaw": {
       "title": "Social0 OpenClaw Skill | Social0",
       "description": "Install the Social0 OpenClaw skill and let your agent publish across platforms."
-    },
-    "self-host": {
-      "title": "Self-Host Social0 | Social0",
-      "description": "Run Social0 yourself. Open GitHub for the self-host repository and deploy on your infra."
     }
   }
 }

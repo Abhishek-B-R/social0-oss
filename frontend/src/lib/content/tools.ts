@@ -840,6 +840,8 @@ export const TOOLS: ToolPage[] = [
     ctaHref: "/mcp",
     ctaLabel: "See agent setup",
   },
+  // ponytail: self-host page hidden while repo is private — restore block when re-opened
+  /*
   {
     slug: "self-host",
     label: "Self-host",
@@ -896,6 +898,7 @@ export const TOOLS: ToolPage[] = [
     ctaHref: "https://github.com/abhishek-b-r/social0-selfhost",
     ctaLabel: "View on GitHub",
   },
+  */
 ];
 
 export const TOOL_SLUGS = TOOLS.map((t) => t.slug);
