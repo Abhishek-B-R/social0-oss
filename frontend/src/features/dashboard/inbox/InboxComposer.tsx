@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CircleNotch, Paperclip, PaperPlaneTilt, X } from "@/icons/phosphor";
 import { cn } from "@/lib/utils";
 import { inboxMediaAccept } from "@/lib/inbox-media";
@@ -23,6 +23,7 @@ export function InboxComposer({
   sending,
   initialText = "",
   variant = "default",
+  replyTo,
   onSend,
 }: {
   platform: string;
@@ -33,6 +34,7 @@ export function InboxComposer({
   sending?: boolean;
   initialText?: string;
   variant?: "default" | "embedded";
+  replyTo?: { name: string; onClear: () => void } | null;
   onSend: (payload: InboxComposerPayload) => void;
 }) {
   const [draft, setDraft] = useState(initialText);
@@ -42,6 +44,10 @@ export function InboxComposer({
   const inputRef = useRef<HTMLInputElement>(null);
   const accept = inboxMediaAccept(platform, mode);
   const canAttach = Boolean(accept);
+
+  useEffect(() => {
+    setDraft(initialText);
+  }, [initialText]);
 
   const clearFile = useCallback(() => {
     setPreviewUrl((prev) => {
@@ -70,9 +76,9 @@ export function InboxComposer({
     if (disabled || sending) return;
     if (!draft.trim() && !file) return;
     onSend({ text: draft.trim(), file, previewUrl });
-    setDraft("");
+    setDraft(initialText);
     clearFile();
-  }, [clearFile, disabled, draft, file, onSend, previewUrl, sending]);
+  }, [clearFile, disabled, draft, file, initialText, onSend, previewUrl, sending]);
 
   const canSend = Boolean(draft.trim() || file) && !disabled;
 
@@ -110,6 +116,22 @@ export function InboxComposer({
       {canAttach && dragOver ? (
         <div className="pointer-events-none absolute inset-2 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-accent bg-accent/10 text-sm font-medium text-accent">
           Drop image or video
+        </div>
+      ) : null}
+
+      {replyTo ? (
+        <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-bg-subtle px-2.5 py-1.5 text-[11px]">
+          <span className="text-text-muted">
+            Replying to{" "}
+            <span className="font-medium text-text">{replyTo.name}</span>
+          </span>
+          <button
+            type="button"
+            onClick={replyTo.onClear}
+            className="shrink-0 font-medium text-text-muted hover:text-text"
+          >
+            Cancel
+          </button>
         </div>
       ) : null}
 

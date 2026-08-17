@@ -50,6 +50,11 @@ function replyMax(platform: string): number {
   return 2000;
 }
 
+function mentionPrefix(comment: InboxComment, rootId: string): string {
+  if (comment.id === rootId || !comment.authorHandle) return "";
+  return `@${comment.authorHandle.replace(/^@/, "")} `;
+}
+
 type RetryPayload = InboxComposerPayload & { parentCommentId: string };
 
 function appendOptimisticReply(
@@ -62,7 +67,6 @@ function appendOptimisticReply(
     accountLabel: string | null;
     accountProfileImageUrl?: string | null;
     attachment?: InboxComment["attachment"];
-    sendStatus?: "sending" | "failed";
     root: InboxComment;
   },
 ): InboxListResult {
@@ -104,37 +108,44 @@ function appendOptimisticReply(
   return { ...data, threads };
 }
 
-type CommentNode = {
-  comment: InboxComment;
-  children: CommentNode[];
-};
+type FlatComment = { comment: InboxComment; depth: number };
 
-function buildReplyTree(
+function flattenThread(
   root: InboxComment,
   replies: InboxComment[],
   platform: string,
-): CommentNode[] {
+): FlatComment[] {
   const sorted = [...replies].sort((a, b) =>
     (a.createdAt ?? "").localeCompare(b.createdAt ?? ""),
   );
-  if (!inboxSupportsNestedReplies(platform)) {
-    return sorted.map((comment) => ({ comment, children: [] }));
+  const nested = inboxSupportsNestedReplies(platform);
+  const out: FlatComment[] = [{ comment: root, depth: 0 }];
+
+  if (!nested) {
+    for (const c of sorted) out.push({ comment: c, depth: 1 });
+    return out;
   }
-  const nodes = new Map<string, CommentNode>();
-  for (const comment of sorted) {
-    nodes.set(comment.id, { comment, children: [] });
-  }
-  const tops: CommentNode[] = [];
-  for (const comment of sorted) {
-    const node = nodes.get(comment.id)!;
-    const parentId = comment.parentId;
+
+  const nodes = new Map<string, { comment: InboxComment; children: InboxComment[] }>();
+  for (const c of sorted) nodes.set(c.id, { comment: c, children: [] });
+  const tops: InboxComment[] = [];
+  for (const c of sorted) {
+    const parentId = c.parentId;
     if (parentId && parentId !== root.id && nodes.has(parentId)) {
-      nodes.get(parentId)!.children.push(node);
+      nodes.get(parentId)!.children.push(c);
     } else {
-      tops.push(node);
+      tops.push(c);
     }
   }
-  return tops;
+  function walk(list: InboxComment[], depth: number) {
+    for (const c of list) {
+      out.push({ comment: c, depth });
+      const kids = nodes.get(c.id)?.children ?? [];
+      if (kids.length) walk(kids, depth + 1);
+    }
+  }
+  walk(tops, 1);
+  return out;
 }
 
 export function InboxCommentsPane({
@@ -152,7 +163,6 @@ export function InboxCommentsPane({
   const qc = useQueryClient();
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [mobileDetail, setMobileDetail] = useState(false);
-  const [sentTick, setSentTick] = useState(0);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(
@@ -244,7 +254,6 @@ export function InboxCommentsPane({
         toast.error(res.error);
         return;
       }
-      setSentTick((n) => n + 1);
       retryPayloads.current.delete(optimisticId);
       qc.setQueryData<InboxListResult>(queryKey, (old) => {
         if (!old) return old;
@@ -316,6 +325,15 @@ export function InboxCommentsPane({
           >
             Connections
           </Link>
+          {" · "}
+          <a
+            href="https://github.com/Abhishek-B-R/social0/blob/main/docs/PLATFORM_PERMISSIONS.md"
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-accent underline-offset-2 hover:underline"
+          >
+            Permissions guide
+          </a>
         </div>
       ) : null}
 
@@ -328,12 +346,12 @@ export function InboxCommentsPane({
       ) : null}
 
       {loading && !data ? (
-        <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
-          <div className="h-full min-h-[20rem] animate-pulse bg-bg-muted/60" />
+        <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[17.5rem_minmax(0,1fr)]">
+          <div className="h-full animate-pulse bg-bg-muted/60" />
           <div className="hidden h-full animate-pulse bg-bg-muted/40 lg:block" />
         </div>
       ) : !data || threads.length === 0 ? (
-        <div className="flex min-h-[20rem] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-elevated px-6 text-center">
+        <div className="flex min-h-[24rem] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-elevated px-6 text-center">
           <ChatCircle size={28} className="text-text-muted" />
           <p className="mt-3 text-sm font-medium text-text">No comments yet</p>
           <p className="mt-1 max-w-sm text-sm text-text-muted">
@@ -342,10 +360,10 @@ export function InboxCommentsPane({
           </p>
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+        <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[17.5rem_minmax(0,1fr)]">
           <ul
             className={cn(
-              "max-h-[min(70vh,40rem)] overflow-y-auto border-border lg:max-h-none lg:border-r",
+              "overflow-y-auto border-border lg:border-r",
               showList ? "block" : "hidden lg:block",
             )}
           >
@@ -357,7 +375,11 @@ export function InboxCommentsPane({
                 ? formatDistanceToNow(new Date(c.createdAt), { addSuffix: false })
                 : "";
               const replyCount = thread.replies.length;
-              const totalInThread = replyCount + 1;
+              const needsReply = !thread.replies.some((r) => r.isOwn);
+              const pageLabel = c.accountLabel
+                ? `@${c.accountLabel.replace(/^@/, "")}`
+                : PLATFORM_LABEL[c.platform] ?? c.platform;
+
               return (
                 <li key={key} className="border-b border-border last:border-b-0">
                   <button
@@ -367,10 +389,10 @@ export function InboxCommentsPane({
                       setMobileDetail(true);
                     }}
                     className={cn(
-                      "relative flex w-full gap-2.5 px-3 py-2.5 text-left transition-colors",
+                      "relative flex w-full gap-2.5 px-3 py-3 text-left transition-colors",
                       active
-                        ? "bg-accent/10 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent"
-                        : "hover:bg-bg-subtle/80",
+                        ? "bg-accent/[0.08] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-accent"
+                        : "hover:bg-bg-subtle/70",
                     )}
                   >
                     <InboxPostThumbnail
@@ -380,24 +402,22 @@ export function InboxCommentsPane({
                     />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-1.5">
-                        <span className="truncate text-[13px] font-semibold text-text">
-                          {c.authorName}
+                        <span className="truncate text-[12px] font-semibold text-text">
+                          {pageLabel}
                         </span>
-                        <span className="truncate text-[11px] text-text-muted">
-                          {c.accountLabel
-                            ? `@${c.accountLabel.replace(/^@/, "")}`
-                            : PLATFORM_LABEL[c.platform]}
-                        </span>
+                        {needsReply ? (
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                        ) : null}
                         <span className="ml-auto shrink-0 text-[10px] tabular-nums text-text-muted">
                           {when}
                         </span>
                       </span>
-                      <span className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-text-muted">
-                        {c.text || "(No text)"}
+                      <span className="mt-0.5 line-clamp-1 text-[11px] font-medium text-text">
+                        {c.authorName}: {c.text || "(No text)"}
                       </span>
-                      {totalInThread > 1 ? (
-                        <span className="mt-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-500 px-1.5 text-[10px] font-semibold text-white">
-                          {totalInThread}
+                      {replyCount > 0 ? (
+                        <span className="mt-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-sky-500/90 px-1 text-[10px] font-semibold text-white">
+                          {replyCount + 1}
                         </span>
                       ) : null}
                     </span>
@@ -420,7 +440,6 @@ export function InboxCommentsPane({
                 accounts={accounts}
                 sendingReplyIds={sendingReplyIds}
                 failedReplyIds={failedReplyIds}
-                sentTick={sentTick}
                 onBack={() => setMobileDetail(false)}
                 onReply={(uiParentId, payload, optimisticId) =>
                   void sendReply(selected, uiParentId, payload, { optimisticId })
@@ -436,7 +455,7 @@ export function InboxCommentsPane({
               />
             ) : (
               <div className="flex flex-1 items-center justify-center p-8 text-sm text-text-muted">
-                Select a comment
+                Select a comment thread
               </div>
             )}
           </section>
@@ -463,7 +482,6 @@ function ConversationPane({
   accounts,
   sendingReplyIds,
   failedReplyIds,
-  sentTick,
   onBack,
   onReply,
   onRetryReply,
@@ -473,7 +491,6 @@ function ConversationPane({
   accounts: AnalyticsAccount[];
   sendingReplyIds: Set<string>;
   failedReplyIds: Set<string>;
-  sentTick: number;
   onBack: () => void;
   onReply: (
     uiParentId: string,
@@ -482,245 +499,155 @@ function ConversationPane({
   ) => void;
   onRetryReply: (optimisticId: string) => void;
 }) {
-  const c = thread.comment;
-  const account = accounts.find((a) => a.id === c.accountId);
-  const [replyingTo, setReplyingTo] = useState<InboxComment | null>(null);
-  const replyTree = useMemo(
-    () => buildReplyTree(c, thread.replies, c.platform),
-    [c, thread.replies],
-  );
-  const totalComments = thread.replies.length + 1;
-  const nested = inboxSupportsNestedReplies(c.platform);
+  const root = thread.comment;
+  const account = accounts.find((a) => a.id === root.accountId);
+  const [replyTarget, setReplyTarget] = useState<InboxComment>(root);
+  const composerRef = useRef<HTMLDivElement>(null);
 
-  const closeInlineReply = () => setReplyingTo(null);
+  useEffect(() => {
+    setReplyTarget(root);
+  }, [root.id]);
+
+  const flat = useMemo(
+    () => flattenThread(root, thread.replies, root.platform),
+    [root, thread.replies],
+  );
+
+  const composerPrefix = mentionPrefix(replyTarget, root.id);
+  const sending = sendingReplyIds.size > 0;
 
   return (
     <>
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2 sm:px-4">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5 sm:px-4">
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-muted hover:bg-bg-subtle hover:text-text lg:hidden"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-muted hover:bg-bg-subtle hover:text-text lg:hidden"
           aria-label="Back to list"
         >
           <ArrowLeft size={16} />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-text">
-            {PLATFORM_LABEL[c.platform] ?? c.platform} comment
+          <p className="truncate text-sm font-semibold text-text">
+            {root.accountLabel
+              ? `@${root.accountLabel.replace(/^@/, "")}`
+              : "Your post"}
           </p>
           <p className="text-[11px] text-text-muted">
-            {totalComments} comment{totalComments === 1 ? "" : "s"}
-            {!nested ? " · replies stay in one thread" : ""}
+            {PLATFORM_LABEL[root.platform] ?? root.platform} · {flat.length}{" "}
+            comment{flat.length === 1 ? "" : "s"}
           </p>
         </div>
         <Link
-          href={dash(`posts/${c.postId}`)}
-          className="hidden shrink-0 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-bg-subtle hover:text-text sm:inline-flex"
+          href={dash(`posts/${root.postId}`)}
+          className="hidden shrink-0 text-[11px] font-medium text-accent hover:underline sm:inline"
         >
-          Open in Social0
+          Social0
         </Link>
-        {c.platformPostUrl ? (
+        {root.platformPostUrl ? (
           <a
-            href={c.platformPostUrl}
+            href={root.platformPostUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex shrink-0 items-center gap-0.5 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-bg-subtle hover:text-text"
+            className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-text-muted hover:text-accent"
           >
-            View post
+            View
             <ArrowSquareOut size={11} />
           </a>
         ) : null}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="border-b border-border px-3 py-3 sm:px-4">
+        <div className="border-b border-border p-3 sm:p-4">
           <InboxPostCard
-            comment={c}
-            accountLabel={account?.username ?? c.accountLabel}
+            comment={root}
+            accountLabel={account?.username ?? root.accountLabel}
             accountProfileImageUrl={account?.profileImageUrl}
           />
         </div>
 
-        <div className="px-3 py-2 sm:px-4">
-          <p className="text-[12px] font-semibold text-text">
-            {totalComments} comment{totalComments === 1 ? "" : "s"}
-          </p>
-        </div>
-
-        <div className="space-y-0 px-3 pb-3 sm:px-4">
-          <CommentCard
-            comment={c}
-            root={c}
-            account={account}
-            sendingReplyIds={sendingReplyIds}
-            failedReplyIds={failedReplyIds}
-            replyingTo={replyingTo}
-            sentTick={sentTick}
-            onStartReply={() => setReplyingTo(c)}
-            onCancelReply={closeInlineReply}
-            onReply={(payload, optimisticId) => {
-              onReply(c.id, payload, optimisticId);
-              closeInlineReply();
-            }}
-            onRetryReply={onRetryReply}
-            isRoot
-          />
-          {replyTree.length > 0 ? (
-            <div
-              className={cn(
-                "space-y-0",
-                nested ? "ml-4 border-l-2 border-border/70 pl-3 sm:ml-5 sm:pl-4" : "mt-0",
-              )}
-            >
-              {replyTree.map((node) => (
-                <ReplyBranch
-                  key={node.comment.id}
-                  node={node}
-                  root={c}
-                  account={account}
-                  sendingReplyIds={sendingReplyIds}
-                  failedReplyIds={failedReplyIds}
-                  replyingTo={replyingTo}
-                  sentTick={sentTick}
-                  nested={nested}
-                  onStartReply={setReplyingTo}
-                  onCancelReply={closeInlineReply}
-                  onReply={onReply}
-                  onRetryReply={onRetryReply}
-                />
-              ))}
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      {c.canReply && !replyingTo ? (
-        <div className="border-t border-border">
-          <p className="border-b border-border bg-bg-subtle/50 px-3 py-1.5 text-[11px] text-text-muted sm:px-4">
-            Reply to{" "}
-            <span className="font-medium text-text">{c.authorName}</span>
-          </p>
-          <InboxComposer
-            key={`root-${c.id}-${sentTick}`}
-            platform={c.platform}
-            mode="comment"
-            maxLength={replyMax(c.platform)}
-            placeholder="Write a reply…"
-            sending={sendingReplyIds.size > 0}
-            onSend={(payload) => onReply(c.id, payload)}
-          />
-        </div>
-      ) : !c.canReply ? (
-        <p className="border-t border-border px-4 py-3 text-sm text-text-muted">
-          Replies aren&apos;t available for{" "}
-          {PLATFORM_LABEL[c.platform] ?? c.platform} yet.
-        </p>
-      ) : null}
-    </>
-  );
-}
-
-function ReplyBranch({
-  node,
-  root,
-  account,
-  sendingReplyIds,
-  failedReplyIds,
-  replyingTo,
-  sentTick,
-  nested,
-  onStartReply,
-  onCancelReply,
-  onReply,
-  onRetryReply,
-}: {
-  node: CommentNode;
-  root: InboxComment;
-  account?: AnalyticsAccount;
-  sendingReplyIds: Set<string>;
-  failedReplyIds: Set<string>;
-  replyingTo: InboxComment | null;
-  sentTick: number;
-  nested: boolean;
-  onStartReply: (comment: InboxComment) => void;
-  onCancelReply: () => void;
-  onReply: (
-    uiParentId: string,
-    payload: InboxComposerPayload,
-    optimisticId?: string,
-  ) => void;
-  onRetryReply: (optimisticId: string) => void;
-}) {
-  return (
-    <>
-      <CommentCard
-        comment={node.comment}
-        root={root}
-        account={account}
-        sendingReplyIds={sendingReplyIds}
-        failedReplyIds={failedReplyIds}
-        replyingTo={replyingTo}
-        sentTick={sentTick}
-        onStartReply={() => onStartReply(node.comment)}
-        onCancelReply={onCancelReply}
-        onReply={(payload, optimisticId) => {
-          onReply(node.comment.id, payload, optimisticId);
-          onCancelReply();
-        }}
-        onRetryReply={onRetryReply}
-      />
-      {nested && node.children.length > 0 ? (
-        <div className="ml-4 space-y-0 border-l-2 border-border/60 pl-3 sm:ml-5 sm:pl-4">
-          {node.children.map((child) => (
-            <ReplyBranch
-              key={child.comment.id}
-              node={child}
+        <div className="divide-y divide-border">
+          {flat.map(({ comment, depth }) => (
+            <CommentRow
+              key={comment.id}
+              comment={comment}
+              depth={depth}
               root={root}
               account={account}
-              sendingReplyIds={sendingReplyIds}
-              failedReplyIds={failedReplyIds}
-              replyingTo={replyingTo}
-              sentTick={sentTick}
-              nested={nested}
-              onStartReply={onStartReply}
-              onCancelReply={onCancelReply}
-              onReply={onReply}
-              onRetryReply={onRetryReply}
+              active={replyTarget.id === comment.id}
+              sending={sendingReplyIds.has(comment.id)}
+              failed={failedReplyIds.has(comment.id)}
+              onReply={() => {
+                if (comment.isOwn) return;
+                setReplyTarget(comment);
+                composerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+              }}
+              onRetry={
+                comment.isOwn && failedReplyIds.has(comment.id)
+                  ? () => onRetryReply(comment.id)
+                  : undefined
+              }
             />
           ))}
         </div>
-      ) : null}
+      </div>
+
+      {root.canReply ? (
+        <div ref={composerRef} className="shrink-0">
+          <InboxComposer
+            platform={root.platform}
+            mode="comment"
+            maxLength={replyMax(root.platform)}
+            placeholder="Write a reply…"
+            sending={sending}
+            initialText={composerPrefix}
+            replyTo={
+              replyTarget.id !== root.id
+                ? {
+                    name: replyTarget.authorName,
+                    onClear: () => setReplyTarget(root),
+                  }
+                : null
+            }
+            onSend={(payload) => {
+              const text =
+                composerPrefix && !payload.text.startsWith(composerPrefix)
+                  ? `${composerPrefix}${payload.text}`.trim()
+                  : payload.text;
+              onReply(replyTarget.id, { ...payload, text });
+            }}
+          />
+        </div>
+      ) : (
+        <p className="shrink-0 border-t border-border px-4 py-3 text-sm text-text-muted">
+          Replies aren&apos;t available for{" "}
+          {PLATFORM_LABEL[root.platform] ?? root.platform} yet.
+        </p>
+      )}
     </>
   );
 }
 
-function CommentCard({
+function CommentRow({
   comment,
+  depth,
   root,
   account,
-  sendingReplyIds,
-  failedReplyIds,
-  replyingTo,
-  sentTick,
-  onStartReply,
-  onCancelReply,
+  active,
+  sending,
+  failed,
   onReply,
-  onRetryReply,
-  isRoot,
+  onRetry,
 }: {
   comment: InboxComment;
+  depth: number;
   root: InboxComment;
   account?: AnalyticsAccount;
-  sendingReplyIds: Set<string>;
-  failedReplyIds: Set<string>;
-  replyingTo: InboxComment | null;
-  sentTick: number;
-  onStartReply: () => void;
-  onCancelReply: () => void;
-  onReply: (payload: InboxComposerPayload, optimisticId?: string) => void;
-  onRetryReply: (optimisticId: string) => void;
-  isRoot?: boolean;
+  active: boolean;
+  sending: boolean;
+  failed: boolean;
+  onReply: () => void;
+  onRetry?: () => void;
 }) {
   const when = comment.createdAt
     ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })
@@ -729,28 +656,22 @@ function CommentCard({
   const avatarUrl = own
     ? account?.profileImageUrl ?? comment.authorAvatarUrl
     : comment.authorAvatarUrl;
-  const sending = sendingReplyIds.has(comment.id);
-  const failed = failedReplyIds.has(comment.id);
-  const showInlineReply = replyingTo?.id === comment.id && root.canReply;
-  const mention =
-    !isRoot && comment.authorHandle
-      ? `@${comment.authorHandle.replace(/^@/, "")} `
-      : "";
 
   return (
     <article
       className={cn(
-        "rounded-xl border border-border bg-bg-elevated px-3 py-2.5 sm:px-4",
-        !isRoot && "mt-2",
-        failed && "ring-1 ring-red-500/30",
+        "px-3 py-3 sm:px-4",
+        active && "bg-accent/[0.04]",
+        own && "bg-bg-subtle/30",
+        failed && "bg-red-500/[0.04]",
       )}
     >
-      <div className="flex gap-3">
+      <div className="flex gap-2.5" style={{ marginLeft: depth * 16 }}>
         <InboxAvatar
           profileImageUrl={avatarUrl}
           username={comment.authorHandle ?? comment.authorName}
           platform={comment.platform}
-          size={32}
+          size={depth === 0 ? 36 : 30}
           className="shrink-0"
         />
         <div className="min-w-0 flex-1">
@@ -761,6 +682,11 @@ function CommentCard({
             {!own && comment.authorHandle ? (
               <span className="text-[12px] text-text-muted">
                 @{comment.authorHandle.replace(/^@/, "")}
+              </span>
+            ) : null}
+            {depth === 0 ? (
+              <span className="rounded bg-bg-muted px-1.5 py-0.5 text-[10px] font-medium text-text-muted">
+                Top comment
               </span>
             ) : null}
             <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-text-muted">
@@ -774,87 +700,32 @@ function CommentCard({
             </p>
           ) : null}
           {comment.attachment ? (
-            <InboxAttachmentView attachment={comment.attachment} />
+            <InboxAttachmentView attachment={comment.attachment} className="max-w-sm" />
           ) : null}
-          {failed && own ? (
+          {failed && onRetry ? (
             <button
               type="button"
-              onClick={() => onRetryReply(comment.id)}
+              onClick={onRetry}
               className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-red-500 hover:text-red-400"
             >
               <WarningCircle size={14} weight="fill" />
-              Failed to send · Tap to retry
+              Failed · Retry
             </button>
           ) : null}
-          {root.canReply && !own && !showInlineReply ? (
+          {root.canReply && !own ? (
             <button
               type="button"
-              onClick={onStartReply}
-              className="mt-2 text-[11px] font-medium text-text-muted hover:text-accent"
+              onClick={onReply}
+              className={cn(
+                "mt-2 text-[11px] font-semibold",
+                active ? "text-accent" : "text-text-muted hover:text-accent",
+              )}
             >
               Reply
             </button>
           ) : null}
         </div>
       </div>
-
-      {showInlineReply ? (
-        <div className="mt-3 border-t border-border pt-3">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-[11px] text-text-muted">
-              Replying to{" "}
-              <span className="font-medium text-text">{comment.authorName}</span>
-            </p>
-            <button
-              type="button"
-              onClick={onCancelReply}
-              className="text-[11px] text-text-muted hover:text-text"
-            >
-              Cancel
-            </button>
-          </div>
-          <InlineReplyComposer
-            key={`inline-${comment.id}-${sentTick}`}
-            platform={root.platform}
-            mention={mention}
-            maxLength={replyMax(root.platform)}
-            sending={sendingReplyIds.size > 0}
-            onSend={onReply}
-          />
-        </div>
-      ) : null}
     </article>
-  );
-}
-
-function InlineReplyComposer({
-  platform,
-  mention,
-  maxLength,
-  sending,
-  onSend,
-}: {
-  platform: string;
-  mention: string;
-  maxLength: number;
-  sending: boolean;
-  onSend: (payload: InboxComposerPayload) => void;
-}) {
-  return (
-    <InboxComposer
-      platform={platform}
-      mode="comment"
-      maxLength={maxLength}
-      placeholder="Write a reply…"
-      sending={sending}
-      initialText={mention}
-      variant="embedded"
-      onSend={(payload) => {
-        const text = mention && !payload.text.startsWith(mention)
-          ? `${mention}${payload.text}`.trim()
-          : payload.text;
-        onSend({ ...payload, text });
-      }}
-    />
   );
 }

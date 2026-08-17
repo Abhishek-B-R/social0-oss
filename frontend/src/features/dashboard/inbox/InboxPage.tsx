@@ -90,8 +90,8 @@ export function InboxPage() {
 
   return (
     <div className="-mx-1 flex min-h-[calc(100dvh-8rem)] flex-col gap-4 sm:mx-0">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
           <h1 className="font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
             Inbox
           </h1>
@@ -101,30 +101,29 @@ export function InboxPage() {
               : "Direct messages from Instagram, Facebook Pages, X, and Bluesky."}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            void qc.invalidateQueries({
-              queryKey:
-                mode === "comments" ? ["inbox-comments"] : ["inbox-dms"],
-            });
-            if (mode === "dms") {
-              void qc.invalidateQueries({ queryKey: ["inbox-dm-thread"] });
-            }
-          }}
-          disabled={loading}
-          className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text transition-colors hover:bg-bg-subtle disabled:opacity-60"
-        >
-          <ArrowClockwise
-            className={cn("h-4 w-4", loading && "animate-spin")}
-            size={16}
-          />
-          Refresh
-        </button>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <InboxModeToggle value={mode} onChange={setMode} />
+        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:pt-1">
+          <InboxModeToggle value={mode} onChange={setMode} />
+          <button
+            type="button"
+            onClick={() => {
+              void qc.invalidateQueries({
+                queryKey:
+                  mode === "comments" ? ["inbox-comments"] : ["inbox-dms"],
+              });
+              if (mode === "dms") {
+                void qc.invalidateQueries({ queryKey: ["inbox-dm-thread"] });
+              }
+            }}
+            disabled={loading}
+            className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-bg-elevated px-3 text-sm font-medium text-text transition-colors hover:bg-bg-subtle disabled:opacity-60"
+          >
+            <ArrowClockwise
+              className={cn("h-4 w-4", loading && "animate-spin")}
+              size={16}
+            />
+            Refresh
+          </button>
+        </div>
       </div>
 
       <RangeToolbar
@@ -166,15 +165,32 @@ export function InboxPage() {
       )}
 
       {mode === "comments" ? (
-        <InboxCommentsPane
-          dateWindow={dateWindow}
-          accountId={accountId}
-          accounts={accountsForFilter}
-          enabled
-        />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <InboxCommentsPane
+            dateWindow={dateWindow}
+            accountId={accountId}
+            accounts={accountsForFilter}
+            enabled
+          />
+        </div>
       ) : (
-        <InboxDmsPane dateWindow={dateWindow} accountId={accountId} enabled />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <InboxDmsPane dateWindow={dateWindow} accountId={accountId} enabled />
+        </div>
       )}
+
+      <p className="text-[11px] text-text-muted">
+        Missing features after reconnect? See{" "}
+        <a
+          href="https://github.com/Abhishek-B-R/social0/blob/main/docs/PLATFORM_PERMISSIONS.md"
+          target="_blank"
+          rel="noreferrer"
+          className="text-accent hover:underline"
+        >
+          platform permissions guide
+        </a>
+        .
+      </p>
     </div>
   );
 }

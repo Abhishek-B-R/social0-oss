@@ -316,6 +316,15 @@ export function InboxDmsPane({
           >
             Connections
           </Link>
+          {" · "}
+          <a
+            href="https://github.com/Abhishek-B-R/social0/blob/main/docs/PLATFORM_PERMISSIONS.md"
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-accent underline-offset-2 hover:underline"
+          >
+            Permissions guide
+          </a>
         </div>
       ) : null}
 
@@ -328,7 +337,7 @@ export function InboxDmsPane({
       ) : null}
 
       {loading && !listQuery.data ? (
-        <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
+        <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[17.5rem_minmax(0,1fr)]">
           <div className="h-full min-h-[20rem] animate-pulse bg-bg-muted/60" />
           <div className="hidden h-full animate-pulse bg-bg-muted/40 lg:block" />
         </div>
@@ -343,7 +352,7 @@ export function InboxDmsPane({
           </p>
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[minmax(0,18.5rem)_minmax(0,1fr)]">
+        <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[17.5rem_minmax(0,1fr)]">
           <ul
             className={cn(
               "max-h-[min(70vh,40rem)] overflow-y-auto border-border lg:max-h-none lg:border-r",
