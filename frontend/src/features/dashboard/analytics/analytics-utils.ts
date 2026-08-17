@@ -25,6 +25,25 @@ export function viewsOf(m: MetricMap): number {
   return m.views ?? m.impressions ?? 0;
 }
 
+export type MixSlice = { key: string; label: string; value: number };
+
+/** Engagement composition for a single account (skips zeros). */
+export function engagementMix(m: MetricMap): MixSlice[] {
+  const slices: MixSlice[] = [
+    { key: "likes", label: "Likes", value: m.likes ?? 0 },
+    { key: "comments", label: "Comments", value: m.comments ?? 0 },
+    {
+      key: "shares",
+      label: "Shares",
+      value: (m.shares ?? 0) + (m.reposts ?? 0),
+    },
+    { key: "quotes", label: "Quotes", value: m.quotes ?? 0 },
+    { key: "saves", label: "Saves", value: m.saves ?? 0 },
+    { key: "clicks", label: "Clicks", value: m.clicks ?? 0 },
+  ];
+  return slices.filter((s) => s.value > 0);
+}
+
 export const PLATFORM_LABEL: Record<string, string> = {
   linkedin: "LinkedIn",
   facebook: "Facebook",

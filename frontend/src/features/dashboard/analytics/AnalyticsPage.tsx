@@ -17,11 +17,13 @@ import {
 import {
   EngagementTrendChart,
   PlatformBreakdownChart,
+  EngagementMixChart,
 } from "./AnalyticsCharts";
 import {
   RANGE_OPTIONS,
   PLATFORM_LABEL,
   engagementOf,
+  engagementMix,
   formatMetric,
   viewsOf,
 } from "./analytics-utils";
@@ -91,6 +93,8 @@ export function AnalyticsPage() {
         (row.metrics.quotes ?? 0),
     })) ?? [];
 
+  const selectedAccount = accountsQuery.data?.find((a) => a.id === accountId);
+  const singleAccount = accountId != null;
   const rangeLabel =
     data?.since && data?.until
       ? `${format(new Date(data.since), "MMM d")} – ${format(new Date(data.until), "MMM d, yyyy")}`
@@ -272,16 +276,40 @@ export function AnalyticsPage() {
         </section>
 
         <section className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm sm:p-5">
-          <h2 className="mb-1 text-sm font-semibold text-text">
-            By platform
-          </h2>
-          <p className="mb-4 text-xs text-text-muted">
-            Totals across publications in this range.
-          </p>
-          {loading && !data ? (
-            <div className="h-64 animate-pulse rounded-xl bg-bg-muted sm:h-72" />
+          {singleAccount ? (
+            <>
+              <h2 className="mb-1 text-sm font-semibold text-text">
+                Engagement mix
+              </h2>
+              <p className="mb-4 text-xs text-text-muted">
+                How interactions split on{" "}
+                {selectedAccount
+                  ? `@${handleLabel(selectedAccount.username)}`
+                  : "this account"}
+                .
+              </p>
+              {loading && !data ? (
+                <div className="h-64 animate-pulse rounded-xl bg-bg-muted sm:h-72" />
+              ) : (
+                <EngagementMixChart
+                  data={data ? engagementMix(data.totals) : []}
+                />
+              )}
+            </>
           ) : (
-            <PlatformBreakdownChart data={platformChart} />
+            <>
+              <h2 className="mb-1 text-sm font-semibold text-text">
+                By platform
+              </h2>
+              <p className="mb-4 text-xs text-text-muted">
+                Totals across publications in this range.
+              </p>
+              {loading && !data ? (
+                <div className="h-64 animate-pulse rounded-xl bg-bg-muted sm:h-72" />
+              ) : (
+                <PlatformBreakdownChart data={platformChart} />
+              )}
+            </>
           )}
         </section>
       </div>
