@@ -6,6 +6,7 @@ import Link from "@/components/AppLink";
 import { useTheme } from "next-themes";
 import {
   CalendarDots,
+  ChartLine,
   CheckCircle,
   Clock,
   List,
@@ -409,6 +410,13 @@ export function DashboardSidebar({
               icon={CalendarDots}
               collapsed={collapsed}
               isActive={relativeMatches(relative, "calendar")}
+            />
+            <NavLink
+              href={dash("analytics")}
+              label="Analytics"
+              icon={ChartLine}
+              collapsed={collapsed}
+              isActive={relativeMatches(relative, "analytics")}
             />
           </Section>
 

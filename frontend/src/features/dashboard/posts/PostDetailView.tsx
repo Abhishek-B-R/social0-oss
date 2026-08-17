@@ -17,6 +17,7 @@ import {
   LayoutGrid,
 } from "lucide-react";
 import { PostDetailAutoFeaturesSection } from "./PostDetailAutoFeaturesSection";
+import { PostAnalyticsPanel } from "@/features/dashboard/analytics/PostAnalyticsPanel";
 import { formatDateTime } from "@/lib/date-format";
 import { sortBySlowPlatformsLast } from "@/lib/publish-order";
 import { getPublicationViewUrl } from "@/lib/platform-view-url";
@@ -712,6 +713,13 @@ export function PostDetailView({ postId }: { postId: string }) {
               </ul>
             )}
           </div>
+
+          {(post.status === "published" || post.status === "partial") && (
+            <PostAnalyticsPanel
+              postId={post.id}
+              enabled={publications.some((p) => p.status === "published")}
+            />
+          )}
 
           {((hasXPublished &&
             (post.status === "published" || post.status === "partial")) ||

@@ -60,6 +60,7 @@ Plan gates reflect `react-frontend/src/lib/plans.ts` and the pricing page.
 
 - **Schedule for later** — date/time in user’s timezone
 - **Content calendar** — month/week view of scheduled and published posts (`/dashboard/calendar`)
+- **Analytics** — live platform metrics for the past week / month / 3 months / year (`/dashboard/analytics`); per-post **Show analytics** on post detail
 - **Posts list** — all posts with filters (platform, account, time, sort); views for drafts, scheduled, posted
 - **Posting queue** — recurring weekly time slots (Settings → Queue); assign posts to “next queue slot”
 - **Timezone** — user timezone drives schedule display and queue slots (Settings)

@@ -1,0 +1,494 @@
+/**
+ * Analytics orchestrator — live fetch for overview + per-post.
+ * No DB writes. Caps concurrency to stay polite with platform APIs.
+ */
+
+import { and, desc, eq, gte, isNotNull, lte } from "drizzle-orm";
+import { format } from "date-fns";
+import { db } from "../db/index.js";
+import {
+  connectedAccounts,
+  postPublications,
+  posts,
+} from "../db/schema.js";
+import { decryptToken } from "@social0/shared";
+import {
+  resolveWorkspaceContext,
+  connectionScopeCondition,
+  postScopeCondition,
+} from "../lib/workspace/context.js";
+import { getValidToken, REFRESHABLE_PLATFORMS } from "../lib/token-refresh.js";
+import { fetchPlatformPublicationMetrics } from "../lib/analytics/fetch-platform-metrics.js";
+import {
+  ANALYTICS_RANGES,
+  engagementTotal,
+  missingAnalyticsScopes,
+  rangeToMs,
+  sumMetrics,
+  type AnalyticsOverview,
+  type AnalyticsRange,
+  type AnalyticsSeriesPoint,
+  type MetricMap,
+  type PlatformBreakdownRow,
+  type PostAnalyticsResult,
+  type PublicationMetrics,
+  type TopPostRow,
+  type AccountReconnectHint,
+} from "../lib/analytics/types.js";
+
+const SAMPLE_LIMIT = 48;
+const CONCURRENCY = 6;
+
+function isAnalyticsRange(v: unknown): v is AnalyticsRange {
+  return (
+    typeof v === "string" &&
+    (ANALYTICS_RANGES as readonly string[]).includes(v)
+  );
+}
+
+async function mapPool<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]!);
+    }
+  }
+  const n = Math.min(concurrency, Math.max(items.length, 1));
+  await Promise.all(Array.from({ length: n }, () => worker()));
+  return results;
+}
+
+type PubRow = {
+  publicationId: string;
+  postId: string;
+  platformPostId: string | null;
+  platformPostUrl: string | null;
+  publishedAt: Date | null;
+  connectedAccountId: string | null;
+  content: string | null;
+  account: {
+    id: string;
+    platform: string;
+    platformUserId: string;
+    platformUsername: string | null;
+    scopes: string | null;
+    encryptedAccessToken: string;
+    encryptedRefreshToken: string | null;
+    platformAccountType: string | null;
+  } | null;
+};
+
+async function loadPublishedPubs(opts: {
+  resourceUserId: string;
+  workspaceId: string | null;
+  since: Date;
+  until: Date;
+  postId?: string;
+  limit?: number;
+}): Promise<PubRow[]> {
+  const postFilter = postScopeCondition({
+    resourceUserId: opts.resourceUserId,
+    workspaceId: opts.workspaceId,
+  });
+
+  const rows = await db
+    .select({
+      publicationId: postPublications.id,
+      postId: posts.id,
+      platformPostId: postPublications.platformPostId,
+      platformPostUrl: postPublications.platformPostUrl,
+      publishedAt: postPublications.publishedAt,
+      connectedAccountId: postPublications.connectedAccountId,
+      content: posts.finalContent,
+      accountId: connectedAccounts.id,
+      platform: connectedAccounts.platform,
+      platformUserId: connectedAccounts.platformUserId,
+      platformUsername: connectedAccounts.platformUsername,
+      scopes: connectedAccounts.scopes,
+      encryptedAccessToken: connectedAccounts.encryptedAccessToken,
+      encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
+      platformAccountType: connectedAccounts.platformAccountType,
+    })
+    .from(postPublications)
+    .innerJoin(posts, eq(postPublications.postId, posts.id))
+    .leftJoin(
+      connectedAccounts,
+      eq(postPublications.connectedAccountId, connectedAccounts.id),
+    )
+    .where(
+      and(
+        postFilter,
+        eq(postPublications.status, "published"),
+        opts.postId ? eq(posts.id, opts.postId) : undefined,
+        opts.postId
+          ? undefined
+          : and(
+              isNotNull(postPublications.publishedAt),
+              gte(postPublications.publishedAt, opts.since),
+              lte(postPublications.publishedAt, opts.until),
+            ),
+      ),
+    )
+    .orderBy(desc(postPublications.publishedAt))
+    .limit(opts.limit ?? SAMPLE_LIMIT);
+
+  return rows.map((r) => ({
+    publicationId: r.publicationId,
+    postId: r.postId,
+    platformPostId: r.platformPostId,
+    platformPostUrl: r.platformPostUrl,
+    publishedAt: r.publishedAt,
+    connectedAccountId: r.connectedAccountId,
+    content: r.content,
+    account: r.accountId
+      ? {
+          id: r.accountId,
+          platform: r.platform!,
+          platformUserId: r.platformUserId!,
+          platformUsername: r.platformUsername,
+          scopes: r.scopes,
+          encryptedAccessToken: r.encryptedAccessToken!,
+          encryptedRefreshToken: r.encryptedRefreshToken,
+          platformAccountType: r.platformAccountType,
+        }
+      : null,
+  }));
+}
+
+async function resolveAccess(
+  account: NonNullable<PubRow["account"]>,
+): Promise<{ accessToken: string; accessSecret: string | null }> {
+  let accessToken: string;
+  if (REFRESHABLE_PLATFORMS.has(account.platform)) {
+    accessToken = await getValidToken(account.id, account.platform);
+  } else {
+    accessToken = decryptToken(account.encryptedAccessToken, account.id);
+  }
+  let accessSecret: string | null = null;
+  if (account.platform === "twitter_x" && account.encryptedRefreshToken) {
+    accessSecret = decryptToken(account.encryptedRefreshToken, account.id);
+  }
+  if (account.platform === "bluesky" && account.encryptedRefreshToken) {
+    // Bluesky stores app password as access; DID/handle in metadata — token is JWT-ish after login.
+    // Publish path uses handle+password; for public getPosts we don't need the token.
+  }
+  return { accessToken, accessSecret };
+}
+
+async function metricsForPub(row: PubRow): Promise<PublicationMetrics> {
+  const base: PublicationMetrics = {
+    publicationId: row.publicationId,
+    postId: row.postId,
+    platform: row.account?.platform ?? "unknown",
+    accountId: row.account?.id ?? row.connectedAccountId,
+    accountLabel: row.account?.platformUsername ?? null,
+    platformPostId: row.platformPostId,
+    platformPostUrl: row.platformPostUrl,
+    publishedAt: row.publishedAt?.toISOString() ?? null,
+    metrics: {},
+    status: "ok",
+  };
+
+  if (!row.platformPostId) {
+    return { ...base, status: "no_platform_id", error: "Missing platform post id." };
+  }
+  if (!row.account) {
+    return {
+      ...base,
+      status: "error",
+      error: "Connected account was removed.",
+    };
+  }
+
+  const missing = missingAnalyticsScopes(row.account.platform, row.account.scopes);
+  // Soft hint only when we know scopes and they're incomplete; still try for platforms
+  // that can return partial metrics without the extra scope (FB/IG likes).
+
+  try {
+    const { accessToken, accessSecret } = await resolveAccess(row.account);
+    const result = await fetchPlatformPublicationMetrics({
+      platform: row.account.platform,
+      platformPostId: row.platformPostId,
+      platformUserId: row.account.platformUserId,
+      accessToken,
+      accessSecret,
+      scopes: row.account.scopes,
+      platformAccountType: row.account.platformAccountType,
+    });
+
+    const missingScopes = result.missingScopes?.length
+      ? result.missingScopes
+      : missing.length && result.status === "scope_missing"
+        ? missing
+        : result.missingScopes;
+
+    return {
+      ...base,
+      metrics: result.metrics,
+      status: result.status,
+      error: result.error,
+      missingScopes,
+    };
+  } catch (e) {
+    return {
+      ...base,
+      status: "error",
+      error: e instanceof Error ? e.message : "Metrics fetch failed",
+      missingScopes: missing.length ? missing : undefined,
+    };
+  }
+}
+
+function collectReconnectHints(
+  pubs: PublicationMetrics[],
+): AccountReconnectHint[] {
+  const byId = new Map<string, AccountReconnectHint>();
+  for (const p of pubs) {
+    if (!p.accountId || !p.missingScopes?.length) continue;
+    const existing = byId.get(p.accountId);
+    if (existing) {
+      const set = new Set([...existing.missingScopes, ...p.missingScopes]);
+      existing.missingScopes = [...set];
+    } else {
+      byId.set(p.accountId, {
+        accountId: p.accountId,
+        platform: p.platform,
+        username: p.accountLabel,
+        missingScopes: [...p.missingScopes],
+      });
+    }
+  }
+  return [...byId.values()];
+}
+
+function buildSeries(pubs: PublicationMetrics[]): AnalyticsSeriesPoint[] {
+  const byDay = new Map<string, AnalyticsSeriesPoint>();
+  for (const p of pubs) {
+    if (p.status !== "ok" && Object.keys(p.metrics).length === 0) continue;
+    const day = p.publishedAt
+      ? format(new Date(p.publishedAt), "yyyy-MM-dd")
+      : null;
+    if (!day) continue;
+    const cur = byDay.get(day) ?? {
+      date: day,
+      views: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      engagement: 0,
+    };
+    cur.views += p.metrics.views ?? p.metrics.impressions ?? 0;
+    cur.likes += p.metrics.likes ?? 0;
+    cur.comments += p.metrics.comments ?? 0;
+    cur.shares +=
+      (p.metrics.shares ?? 0) + (p.metrics.reposts ?? 0) + (p.metrics.quotes ?? 0);
+    cur.engagement += engagementTotal(p.metrics);
+    byDay.set(day, cur);
+  }
+  return [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function buildByPlatform(pubs: PublicationMetrics[]): PlatformBreakdownRow[] {
+  const map = new Map<string, { metrics: MetricMap[]; postIds: Set<string> }>();
+  for (const p of pubs) {
+    if (!map.has(p.platform)) {
+      map.set(p.platform, { metrics: [], postIds: new Set() });
+    }
+    const row = map.get(p.platform)!;
+    row.metrics.push(p.metrics);
+    row.postIds.add(p.postId);
+  }
+  return [...map.entries()]
+    .map(([platform, v]) => ({
+      platform,
+      postCount: v.postIds.size,
+      metrics: sumMetrics(v.metrics),
+    }))
+    .sort(
+      (a, b) =>
+        engagementTotal(b.metrics) + (b.metrics.views ?? 0) -
+        (engagementTotal(a.metrics) + (a.metrics.views ?? 0)),
+    );
+}
+
+function buildTopPosts(
+  pubs: PublicationMetrics[],
+  contentByPost: Map<string, string | null>,
+): TopPostRow[] {
+  const byPost = new Map<
+    string,
+    { metrics: MetricMap[]; platforms: Set<string>; publishedAt: string | null }
+  >();
+  for (const p of pubs) {
+    const cur = byPost.get(p.postId) ?? {
+      metrics: [],
+      platforms: new Set<string>(),
+      publishedAt: p.publishedAt,
+    };
+    cur.metrics.push(p.metrics);
+    cur.platforms.add(p.platform);
+    if (
+      p.publishedAt &&
+      (!cur.publishedAt || p.publishedAt > cur.publishedAt)
+    ) {
+      cur.publishedAt = p.publishedAt;
+    }
+    byPost.set(p.postId, cur);
+  }
+  return [...byPost.entries()]
+    .map(([postId, v]) => {
+      const metrics = sumMetrics(v.metrics);
+      const raw = contentByPost.get(postId) ?? "";
+      const snippet =
+        raw.replace(/\s+/g, " ").trim().slice(0, 120) || "(No caption)";
+      return {
+        postId,
+        snippet,
+        publishedAt: v.publishedAt,
+        metrics,
+        platforms: [...v.platforms],
+      };
+    })
+    .sort(
+      (a, b) =>
+        engagementTotal(b.metrics) + (b.metrics.views ?? 0) -
+        (engagementTotal(a.metrics) + (a.metrics.views ?? 0)),
+    )
+    .slice(0, 10);
+}
+
+export async function getAnalyticsOverview(input: {
+  range?: unknown;
+  accountId?: unknown;
+}): Promise<AnalyticsOverview> {
+  const { auth } = await import("../lib/auth.js");
+  const { headers } = await import("../lib/http/request-cookies.js");
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const range: AnalyticsRange = isAnalyticsRange(input.range)
+    ? input.range
+    : "7d";
+  const until = new Date();
+  const since = new Date(until.getTime() - rangeToMs(range));
+
+  const ctx = await resolveWorkspaceContext(session.user.id);
+  let pubs = await loadPublishedPubs({
+    resourceUserId: ctx.resourceUserId,
+    workspaceId: ctx.workspaceId,
+    since,
+    until,
+    limit: SAMPLE_LIMIT,
+  });
+
+  if (typeof input.accountId === "string" && input.accountId) {
+    pubs = pubs.filter((p) => p.account?.id === input.accountId);
+  }
+
+  const results = await mapPool(pubs, CONCURRENCY, metricsForPub);
+  const contentByPost = new Map(
+    pubs.map((p) => [p.postId, p.content] as const),
+  );
+  const okMetrics = results.map((r) => r.metrics);
+
+  return {
+    range,
+    since: since.toISOString(),
+    until: until.toISOString(),
+    totals: sumMetrics(okMetrics),
+    byPlatform: buildByPlatform(results),
+    series: buildSeries(results),
+    topPosts: buildTopPosts(results, contentByPost),
+    publications: results,
+    accountsNeedingReconnect: collectReconnectHints(results),
+    fetchedAt: new Date().toISOString(),
+    sampled: pubs.length >= SAMPLE_LIMIT,
+    sampleLimit: SAMPLE_LIMIT,
+  };
+}
+
+export async function getPostAnalytics(input: {
+  postId?: unknown;
+}): Promise<PostAnalyticsResult> {
+  const { auth } = await import("../lib/auth.js");
+  const { headers } = await import("../lib/http/request-cookies.js");
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user?.id) throw new Error("Unauthorized");
+  if (typeof input.postId !== "string" || !input.postId) {
+    throw new Error("postId required");
+  }
+
+  const ctx = await resolveWorkspaceContext(session.user.id);
+  const until = new Date();
+  const since = new Date(0);
+  const pubs = await loadPublishedPubs({
+    resourceUserId: ctx.resourceUserId,
+    workspaceId: ctx.workspaceId,
+    since,
+    until,
+    postId: input.postId,
+    limit: 50,
+  });
+
+  if (pubs.length === 0) {
+    // Distinguish missing post vs no published pubs
+    const post = await db.query.posts.findFirst({
+      where: and(
+        eq(posts.id, input.postId),
+        eq(posts.userId, ctx.resourceUserId),
+      ),
+      columns: { id: true },
+    });
+    if (!post) throw new Error("Post not found");
+  }
+
+  const results = await mapPool(pubs, CONCURRENCY, metricsForPub);
+  return {
+    postId: input.postId,
+    publications: results,
+    totals: sumMetrics(results.map((r) => r.metrics)),
+    accountsNeedingReconnect: collectReconnectHints(results),
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+/** Connected accounts list for analytics filter chips. */
+export async function listAnalyticsAccounts(): Promise<
+  Array<{
+    id: string;
+    platform: string;
+    username: string | null;
+    missingScopes: string[];
+  }>
+> {
+  const { auth } = await import("../lib/auth.js");
+  const { headers } = await import("../lib/http/request-cookies.js");
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const ctx = await resolveWorkspaceContext(session.user.id);
+  const scope = connectionScopeCondition(ctx);
+
+  const rows = await db
+    .select({
+      id: connectedAccounts.id,
+      platform: connectedAccounts.platform,
+      username: connectedAccounts.platformUsername,
+      scopes: connectedAccounts.scopes,
+    })
+    .from(connectedAccounts)
+    .where(and(scope, eq(connectedAccounts.isActive, true)));
+
+  return rows.map((r) => ({
+    id: r.id,
+    platform: r.platform,
+    username: r.username,
+    missingScopes: missingAnalyticsScopes(r.platform, r.scopes),
+  }));
+}

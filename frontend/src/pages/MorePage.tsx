@@ -1,5 +1,7 @@
 import Link from "@/components/AppLink";
 import {
+  CalendarDots,
+  ChartLine,
   CheckCircle,
   Clock,
   Code,
@@ -34,6 +36,8 @@ const MORE_LINKS = [
   { href: "/dashboard/posts/scheduled", label: "Scheduled", icon: Clock },
   { href: "/dashboard/posts/posted", label: "Posted", icon: CheckCircle },
   { href: "/dashboard/posts/drafts", label: "Drafts", icon: NoteBlank },
+  { href: "/dashboard/calendar", label: "Calendar", icon: CalendarDots },
+  { href: "/dashboard/analytics", label: "Analytics", icon: ChartLine },
   { href: "/dashboard/workspaces", label: "Workspaces", icon: SquaresFour },
   { href: "/dashboard/teams", label: "Teams", icon: Users },
   { href: "/dashboard/settings", label: "Account settings", icon: GearSix },

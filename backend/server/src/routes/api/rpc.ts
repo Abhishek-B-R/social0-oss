@@ -13,6 +13,7 @@ import * as posts from "../../services/posts.js";
 import * as publish from "../../services/publish.js";
 import * as resurface from "../../services/resurface.js";
 import * as settings from "../../services/settings.js";
+import * as analytics from "../../services/analytics.js";
 
 type RpcHandler = (...args: never[]) => Promise<unknown>;
 
@@ -79,6 +80,9 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
   "resurface.updateAutoPlug": resurface.updateAutoPlug,
   "resurface.cancelAutoPlug": resurface.cancelAutoPlug,
   "resurface.updateResurfaceSchedule": resurface.updateResurfaceSchedule,
+  "analytics.getOverview": analytics.getAnalyticsOverview,
+  "analytics.getPostAnalytics": analytics.getPostAnalytics,
+  "analytics.listAccounts": analytics.listAnalyticsAccounts,
   "settings.loadSettingsPageData": settings.loadSettingsPageData,
   "settings.getUserSettingsSnapshot": settings.getUserSettingsSnapshot,
   "settings.updateDisplayName": settings.updateDisplayName,
