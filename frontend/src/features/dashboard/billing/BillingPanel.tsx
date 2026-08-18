@@ -4,10 +4,7 @@ import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { usePostHog } from "@posthog/react";
-import {
-  CircleNotch,
-  X,
-} from "@/icons/phosphor";
+import { X } from "@/icons/phosphor";
 import { toast } from "sonner";
 import type { SubscriptionState } from "@/lib/subscription";
 import type { AccountLimitResult } from "@/lib/plan-limits";
@@ -115,24 +112,46 @@ function formatPreviewAmount(raw: PreviewChargeSummary): string {
   return cur === "USD" ? `$${amount}` : `${cur} ${amount}`;
 }
 
+type PaidPlan = "starter" | "growth" | "pro" | "max";
+
+function tierRank(tier: string): number {
+  switch (tier) {
+    case "starter":
+      return 1;
+    case "growth":
+      return 2;
+    case "pro":
+      return 3;
+    case "max":
+      return 4;
+    default:
+      return 0;
+  }
+}
+
+function planTierLabel(plan: PaidPlan): string {
+  switch (plan) {
+    case "max":
+      return "Max";
+    case "pro":
+      return "Pro";
+    case "growth":
+      return "Growth";
+    default:
+      return "Starter";
+  }
+}
+
 function PlanButtonLabel({
   loading,
+  loadingText = "Loading…",
   children,
 }: {
   loading: boolean;
+  loadingText?: string;
   children: ReactNode;
 }) {
-  return (
-    <span className="inline-flex items-center justify-center gap-2">
-      {loading ? (
-        <CircleNotch
-          className="h-4 w-4 shrink-0 animate-spin"
-          aria-hidden
-        />
-      ) : null}
-      {children}
-    </span>
-  );
+  return <span>{loading ? loadingText : children}</span>;
 }
 
 const STARTER_BILLING_FEATURES = [
@@ -236,8 +255,6 @@ const MAX_BILLING_FEATURES = [
   "10,000 API requests / hour",
 ];
 
-type PaidPlan = "starter" | "growth" | "pro" | "max";
-
 const POLL_MAX_ATTEMPTS = 45; // ~1.5 min
 
 type BillingPanelProps = {
@@ -274,7 +291,7 @@ export function BillingPanel({
   }, [invalidateQueries, onBillingUpdated]);
   const [verifying, setVerifying] = useState(false);
   const [loading, setLoading] = useState<
-    "portal" | "pause" | "cancel" | "undoCancel" | null
+    "portal" | "pause" | "cancel" | "undoCancel" | "cancelPending" | null
   >(null);
   const [pauseOpen, setPauseOpen] = useState(false);
   const [cancelStep, setCancelStep] = useState<0 | 1 | 2>(0);
@@ -474,11 +491,8 @@ export function BillingPanel({
 
   if (verifying) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-        <CircleNotch
-          className="w-4 h-4 shrink-0 animate-spin"
-        />
-        Confirming your subscription...
+      <div className="py-4 text-sm text-muted-foreground">
+        Confirming your subscription…
       </div>
     );
   }
@@ -659,7 +673,7 @@ export function BillingPanel({
             subscription.pendingPlanTier === "max")) ||
         (subscription.tier === "pro" &&
           subscription.pendingPlanTier === "max"));
-    setLoading("portal");
+    setLoading("cancelPending");
     try {
       const res = await fetchApi("/api/billing/cancel-downgrade", {
         method: "POST",
@@ -702,9 +716,8 @@ export function BillingPanel({
     try {
       // Paid → higher paid: show preview so user picks Upgrade now vs on renewal.
       const needsPreview =
-        (plan === "growth" && subscription.tier === "starter") ||
-        (plan === "pro" &&
-          (subscription.tier === "starter" || subscription.tier === "growth"));
+        subscription.tier !== "free" &&
+        tierRank(plan) > tierRank(subscription.tier);
       if (needsPreview) {
         const previewRes = await fetchApi("/api/billing/preview-plan-change", {
           method: "POST",
@@ -740,8 +753,7 @@ export function BillingPanel({
     plan: PaidPlan,
     scheduleAtPeriodEnd: boolean,
   ) => {
-    const planLabel =
-      plan === "pro" ? "Pro" : plan === "growth" ? "Growth" : "Starter";
+    const planLabel = planTierLabel(plan);
     const res = await fetchApi("/api/billing/change-plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -810,6 +822,21 @@ export function BillingPanel({
           typeof data.error === "string"
             ? data.error
             : "You already have an active subscription.",
+        );
+        return true;
+      }
+      if (data.code === "cancel_pending") {
+        setUpgradePending(true);
+        setUpgradeRecoveryAction("cancel_pending");
+        setUpgradeRecoveryMessage(
+          typeof data.error === "string"
+            ? data.error
+            : "Your subscription needs attention. Cancel the pending upgrade below, then try again.",
+        );
+        toast.info(
+          typeof data.error === "string"
+            ? data.error
+            : "Cancel the pending upgrade and try again.",
         );
         return true;
       }
@@ -1030,7 +1057,10 @@ export function BillingPanel({
             disabled={loading !== null}
             className="min-w-44 justify-center"
           >
-            <PlanButtonLabel loading={loading === "portal"}>
+            <PlanButtonLabel
+              loading={loading === "portal"}
+              loadingText="Opening…"
+            >
               Manage Subscription
             </PlanButtonLabel>
           </Button>
@@ -1083,7 +1113,10 @@ export function BillingPanel({
               disabled={loading !== null}
               className="border-amber-500/40 bg-white/80 text-amber-900 hover:bg-white dark:bg-transparent dark:text-amber-100"
             >
-              <PlanButtonLabel loading={loading === "portal"}>
+              <PlanButtonLabel
+                loading={loading === "cancelPending"}
+                loadingText="Cancelling…"
+              >
                 Cancel pending upgrade
               </PlanButtonLabel>
             </Button>
@@ -1094,7 +1127,10 @@ export function BillingPanel({
               disabled={loading !== null}
               className="border-amber-500/40 bg-white/80 text-amber-900 hover:bg-white dark:bg-transparent dark:text-amber-100"
             >
-              <PlanButtonLabel loading={loading === "portal"}>
+              <PlanButtonLabel
+                loading={loading === "portal"}
+                loadingText="Opening…"
+              >
                 Update payment method
               </PlanButtonLabel>
             </Button>
@@ -1114,7 +1150,10 @@ export function BillingPanel({
             disabled={loadingChangePlan !== null}
             className="border-amber-500/40 bg-white/80 text-amber-900 hover:bg-white dark:bg-transparent dark:text-amber-100"
           >
-            <PlanButtonLabel loading={loadingChangePlan === stuckCheckoutPlan}>
+            <PlanButtonLabel
+              loading={loadingChangePlan === stuckCheckoutPlan}
+              loadingText="Starting…"
+            >
               Start a fresh checkout
             </PlanButtonLabel>
           </Button>
@@ -1546,7 +1585,10 @@ export function BillingPanel({
               className="w-full rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-accent/50 hover:bg-accent/5 disabled:opacity-50"
             >
               <p className="font-medium text-foreground">
-                <PlanButtonLabel loading={confirmUpgradeAction === "now"}>
+                <PlanButtonLabel
+                  loading={confirmUpgradeAction === "now"}
+                  loadingText="Processing…"
+                >
                   Upgrade now
                 </PlanButtonLabel>
               </p>
@@ -1570,7 +1612,10 @@ export function BillingPanel({
               className="w-full rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-accent/50 hover:bg-accent/5 disabled:opacity-50"
             >
               <p className="font-medium text-foreground">
-                <PlanButtonLabel loading={confirmUpgradeAction === "renewal"}>
+                <PlanButtonLabel
+                  loading={confirmUpgradeAction === "renewal"}
+                  loadingText="Scheduling…"
+                >
                   Upgrade on renewal
                 </PlanButtonLabel>
               </p>

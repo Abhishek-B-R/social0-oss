@@ -8,8 +8,11 @@ import { setSubscription } from "../../lib/subscription.js";
 import { syncConnectedAccountsToLimit } from "../../lib/plan-limits.js";
 import {
   getTierFromProductId,
+  getProductId,
+  getIntervalFromProductId,
   PLAN_IDS,
   isActiveTier,
+  type PaidPlanTier,
   type SubscriptionTier,
 } from "@social0/shared";
 import { env } from "../../lib/env.js";
@@ -306,28 +309,61 @@ async function handleSubscriptionOnHold(payload: {
   data: DodoSubscriptionData;
 }) {
   const data = payload.data;
+  const incomingSubId = data.subscription_id ?? null;
   let userId: string | null = null;
+  let isCanonical = false;
 
-  if (data.subscription_id) {
+  if (incomingSubId) {
     const bySubId = await db.query.userSettings.findFirst({
-      where: eq(userSettings.subscriptionId, data.subscription_id),
+      where: eq(userSettings.subscriptionId, incomingSubId),
       columns: { userId: true },
     });
-    if (bySubId) userId = bySubId.userId;
+    if (bySubId) {
+      userId = bySubId.userId;
+      isCanonical = true;
+    }
   }
   if (!userId && data.customer?.email) {
     const byEmail = await db.query.user.findFirst({
       where: eq(user.email, data.customer.email),
       columns: { id: true },
     });
-    if (byEmail) userId = byEmail.id;
+    if (byEmail) {
+      const settings = await db.query.userSettings.findFirst({
+        where: eq(userSettings.userId, byEmail.id),
+        columns: { subscriptionId: true },
+      });
+      if (
+        incomingSubId &&
+        settings?.subscriptionId &&
+        settings.subscriptionId !== incomingSubId
+      ) {
+        console.log(
+          "[dodo webhook] Ignoring on_hold for non-canonical subscription",
+          { incomingSubId, canonicalSubId: settings.subscriptionId },
+        );
+        await forceCancelDodoSubscription(incomingSubId);
+        return;
+      }
+      userId = byEmail.id;
+      isCanonical = Boolean(
+        incomingSubId && settings?.subscriptionId === incomingSubId,
+      );
+    }
   }
   if (!userId) return;
+
+  if (!isCanonical) {
+    if (incomingSubId) {
+      await forceCancelDodoSubscription(incomingSubId);
+    }
+    return;
+  }
 
   await setSubscription(userId, {
     tier: "free",
     expiresAt: null,
-    subscriptionId: data.subscription_id ?? null,
+    subscriptionId: null,
     customerId: data.customer?.customer_id ?? null,
   });
   await syncConnectedAccountsToLimit(userId).catch((e) =>
@@ -372,11 +408,12 @@ async function handleSubscriptionCancelledOrExpired(payload: {
   data: DodoSubscriptionData;
 }) {
   const data = payload.data;
+  const incomingSubId = data.subscription_id ?? null;
   let userId: string | null = null;
 
-  if (data.subscription_id) {
+  if (incomingSubId) {
     const bySubId = await db.query.userSettings.findFirst({
-      where: eq(userSettings.subscriptionId, data.subscription_id),
+      where: eq(userSettings.subscriptionId, incomingSubId),
       columns: { userId: true },
     });
     if (bySubId) userId = bySubId.userId;
@@ -386,7 +423,26 @@ async function handleSubscriptionCancelledOrExpired(payload: {
       where: eq(user.email, data.customer.email),
       columns: { id: true },
     });
-    if (byEmail) userId = byEmail.id;
+    if (byEmail) {
+      const settings = await db.query.userSettings.findFirst({
+        where: eq(userSettings.userId, byEmail.id),
+        columns: { subscriptionId: true },
+      });
+      // Ignore cancel/expired events for duplicate/zombie subs — only act on
+      // the canonical subscription stored in user_settings.
+      if (
+        incomingSubId &&
+        settings?.subscriptionId &&
+        settings.subscriptionId !== incomingSubId
+      ) {
+        console.log(
+          "[dodo webhook] Ignoring cancel/expired for non-canonical subscription",
+          { incomingSubId, canonicalSubId: settings.subscriptionId },
+        );
+        return;
+      }
+      userId = byEmail.id;
+    }
   }
   if (!userId) return;
 
@@ -420,9 +476,7 @@ async function handleSubscriptionRenewed(payload: {
   });
   if (
     !row?.pendingPlanTier ||
-    (row.pendingPlanTier !== "starter" &&
-      row.pendingPlanTier !== "growth" &&
-      row.pendingPlanTier !== "pro")
+    !isActiveTier(row.pendingPlanTier as SubscriptionTier)
   ) {
     return;
   }
@@ -440,12 +494,12 @@ async function handleSubscriptionRenewed(payload: {
   }
 
   // Legacy local-only downgrade: apply now.
-  const productId =
-    row.pendingPlanTier === "starter"
-      ? PLAN_IDS.starter
-      : row.pendingPlanTier === "growth"
-        ? PLAN_IDS.growth
-        : PLAN_IDS.pro;
+  const interval =
+    getIntervalFromProductId(data.product_id ?? "") ?? "monthly";
+  const productId = getProductId(
+    row.pendingPlanTier as PaidPlanTier,
+    interval,
+  );
   if (!productId) return;
 
   const client = new DodoPayments({ bearerToken: apiKey, environment });

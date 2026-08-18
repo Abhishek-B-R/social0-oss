@@ -118,8 +118,29 @@ export async function setSubscription(
     subscriptionId: string | null;
     customerId: string | null;
   },
+  options?: { clearCancelAtPeriodEnd?: boolean },
 ): Promise<void> {
   const isPaidTier = isActiveTier(data.tier);
+  const clearCancelAtPeriodEnd =
+    !isPaidTier || options?.clearCancelAtPeriodEnd === true;
+
+  const conflictPatch: {
+    subscriptionTier: SubscriptionTier;
+    subscriptionExpiresAt: Date | null;
+    subscriptionId: string | null;
+    customerId: string | null;
+    hasUsedTrial: ReturnType<typeof sql>;
+    subscriptionCancelAtPeriodEnd?: boolean;
+  } = {
+    subscriptionTier: data.tier,
+    subscriptionExpiresAt: data.expiresAt,
+    subscriptionId: data.subscriptionId,
+    customerId: data.customerId,
+    hasUsedTrial: sql`GREATEST(${userSettings.hasUsedTrial}::int, ${isPaidTier ? 1 : 0}::int)::boolean`,
+  };
+  if (clearCancelAtPeriodEnd) {
+    conflictPatch.subscriptionCancelAtPeriodEnd = false;
+  }
 
   // Single UPSERT - replaces a SELECT + conditional INSERT/UPDATE (was 2 queries)
   await db
@@ -136,15 +157,7 @@ export async function setSubscription(
     })
     .onConflictDoUpdate({
       target: userSettings.userId,
-      set: {
-        subscriptionTier: data.tier,
-        subscriptionExpiresAt: data.expiresAt,
-        subscriptionId: data.subscriptionId,
-        customerId: data.customerId,
-        // Preserve hasUsedTrial once set - never downgrade to false
-        hasUsedTrial: sql`GREATEST(${userSettings.hasUsedTrial}::int, ${isPaidTier ? 1 : 0}::int)::boolean`,
-        subscriptionCancelAtPeriodEnd: false,
-      },
+      set: conflictPatch,
     });
 
   // Teams plans need an owner workspace for invitations.
