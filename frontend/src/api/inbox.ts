@@ -47,6 +47,12 @@ export type InboxReconnectHint = {
   missingScopes: string[];
 };
 
+export type InboxFetchError = {
+  accountId: string;
+  platform: string;
+  error: string;
+};
+
 export type InboxListResult = {
   range: InboxRange;
   since: string;
@@ -54,6 +60,7 @@ export type InboxListResult = {
   threads: InboxThread[];
   accountsNeedingReconnect: InboxReconnectHint[];
   unsupported: string[];
+  fetchErrors: InboxFetchError[];
   fetchedAt: string;
   sampled: boolean;
   sampleLimit: number;
@@ -105,9 +112,18 @@ export type InboxDmListResult = {
   threads: InboxDmThread[];
   accountsNeedingReconnect: InboxReconnectHint[];
   unsupported: string[];
+  fetchErrors: InboxFetchError[];
   fetchedAt: string;
   sampled: boolean;
   sampleLimit: number;
+};
+
+export type InboxAccount = {
+  id: string;
+  platform: string;
+  username: string | null;
+  profileImageUrl: string | null;
+  missingScopes: string[];
 };
 
 export type InboxDmThreadResult = {
@@ -149,8 +165,14 @@ export function getInboxDmThread(input: {
   accountId: string;
   conversationId: string;
   peerId?: string;
-}): Promise<InboxDmThreadResult> {
-  return rpc<InboxDmThreadResult>("inbox.getDmThread", input);
+}): Promise<InboxDmThreadResult | { error: string }> {
+  return rpc<InboxDmThreadResult | { error: string }>("inbox.getDmThread", input);
+}
+
+export function listInboxAccounts(input?: {
+  mode?: "comments" | "dms";
+}): Promise<InboxAccount[]> {
+  return rpc<InboxAccount[]>("inbox.listAccounts", input ?? {});
 }
 
 export function replyToInboxDm(input: {

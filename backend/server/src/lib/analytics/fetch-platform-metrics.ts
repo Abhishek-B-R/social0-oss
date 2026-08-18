@@ -43,8 +43,9 @@ function pick(...vals: Array<number | undefined>): number | undefined {
 async function jsonGet(
   url: string,
   headers?: Record<string, string>,
+  timeoutMs = 12_000,
 ): Promise<{ ok: boolean; status: number; data: unknown }> {
-  const res = await fetch(url, { headers });
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
 }

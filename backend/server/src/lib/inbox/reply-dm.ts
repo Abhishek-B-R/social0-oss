@@ -84,62 +84,69 @@ async function replyGraphMessenger(
   if (!input.peerId) return fail("Missing recipient for this conversation.");
   const sendUrl = `https://${host}/v21.0/${encodeURIComponent(input.platformUserId)}/messages?access_token=${encodeURIComponent(input.accessToken)}`;
 
-  const message: Record<string, unknown> = {};
-  if (input.text.trim()) message.text = input.text.trim();
-  if (input.mediaUrl && input.mediaMimeType) {
-    message.attachment = graphAttachment(input.mediaUrl, input.mediaMimeType);
-  }
-  if (!message.text && !message.attachment) return fail("Message is empty.");
-
-  const body: Record<string, unknown> = {
-    recipient: { id: input.peerId },
-    message,
-  };
-  if (opts?.messagingType) body.messaging_type = opts.messagingType;
-
-  let { ok, data } = await jsonPost(sendUrl, body);
-  if (ok) {
-    return { ok: true, messageId: (data as { message_id?: string })?.message_id };
-  }
-
-  if (!input.mediaUrl || !input.mediaMimeType) {
+  const postMessage = async (
+    message: Record<string, unknown>,
+  ): Promise<DmReplyResult> => {
+    const body: Record<string, unknown> = {
+      recipient: { id: input.peerId },
+      message,
+    };
+    if (opts?.messagingType) body.messaging_type = opts.messagingType;
+    const { ok, data } = await jsonPost(sendUrl, body);
+    if (ok) {
+      return { ok: true, messageId: (data as { message_id?: string })?.message_id };
+    }
     return fail(graphError(data, "Message failed"));
+  };
+
+  const hasText = Boolean(input.text.trim());
+  const hasMedia = Boolean(input.mediaUrl && input.mediaMimeType);
+  if (!hasText && !hasMedia) return fail("Message is empty.");
+
+  // Graph rejects text + attachment in one payload — send separately.
+  if (hasText && hasMedia) {
+    const mediaResult = await postMessage({
+      attachment: graphAttachment(input.mediaUrl!, input.mediaMimeType!),
+    });
+    if (!mediaResult.ok) return mediaResult;
+    return postMessage({ text: input.text.trim() });
   }
 
-  const type = input.mediaMimeType.startsWith("video/") ? "video" : "image";
+  const message: Record<string, unknown> = {};
+  if (hasText) message.text = input.text.trim();
+  if (hasMedia) {
+    message.attachment = graphAttachment(input.mediaUrl!, input.mediaMimeType!);
+  }
+
+  let result = await postMessage(message);
+  if (result.ok || !hasMedia) return result;
+
+  const type = input.mediaMimeType!.startsWith("video/") ? "video" : "image";
   const uploadHosts: Array<"graph.facebook.com" | "graph.instagram.com"> =
     host === "graph.instagram.com"
       ? ["graph.instagram.com", "graph.facebook.com"]
       : ["graph.facebook.com"];
 
+  let lastError = result.error ?? "Message with attachment failed";
   for (const uploadHost of uploadHosts) {
     const uploaded = await graphUploadAttachmentId(
       uploadHost,
       input.platformUserId,
       input.accessToken,
-      input.mediaUrl,
-      input.mediaMimeType,
+      input.mediaUrl!,
+      input.mediaMimeType!,
     );
     if ("error" in uploaded) continue;
-    const retryMsg: Record<string, unknown> = {};
-    if (input.text.trim()) retryMsg.text = input.text.trim();
-    retryMsg.attachment = { type, payload: { attachment_id: uploaded.id } };
-    const retryBody: Record<string, unknown> = {
-      recipient: { id: input.peerId },
-      message: retryMsg,
+    const retryMsg: Record<string, unknown> = {
+      attachment: { type, payload: { attachment_id: uploaded.id } },
     };
-    if (opts?.messagingType) retryBody.messaging_type = opts.messagingType;
-    const retry = await jsonPost(sendUrl, retryBody);
-    if (retry.ok) {
-      return {
-        ok: true,
-        messageId: (retry.data as { message_id?: string })?.message_id,
-      };
-    }
-    data = retry.data;
+    if (hasText) retryMsg.text = input.text.trim();
+    const retry = await postMessage(retryMsg);
+    if (retry.ok) return retry;
+    lastError = retry.error;
   }
 
-  return fail(graphError(data, "Message with attachment failed"));
+  return fail(lastError);
 }
 
 async function replyFacebook(input: DmReplyInput): Promise<DmReplyResult> {

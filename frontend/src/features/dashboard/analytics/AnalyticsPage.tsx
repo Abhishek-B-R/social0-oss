@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/AppLink";
 import { ArrowClockwise, SquaresFour } from "@/icons/phosphor";
 import { AccountAvatar } from "@/components/AccountAvatar";
@@ -18,6 +18,8 @@ import {
   listAnalyticsAccounts,
   type AnalyticsAccount,
 } from "@/api/analytics";
+import { listWorkspaces } from "@/api/team";
+import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 import {
   EngagementTrendChart,
   PlatformBreakdownChart,
@@ -41,14 +43,22 @@ export function AnalyticsPage() {
   const [dateWindow, setDateWindow] = useState<DateWindow>(defaultDateWindow);
   const [accountId, setAccountId] = useState<string | null>(null);
 
+  const workspacesQuery = useQuery({
+    queryKey: WORKSPACES_QUERY_KEY,
+    queryFn: listWorkspaces,
+    enabled: !!session,
+  });
+  const workspaceId =
+    workspacesQuery.data?.workspaces.find((w) => w.isActive)?.id ?? "main";
+
   const accountsQuery = useQuery({
-    queryKey: ["analytics-accounts"],
+    queryKey: ["analytics-accounts", workspaceId],
     queryFn: listAnalyticsAccounts,
     enabled: !!session,
   });
 
   const overviewQuery = useQuery({
-    queryKey: ["analytics-overview", dateWindow, accountId],
+    queryKey: ["analytics-overview", workspaceId, dateWindow, accountId],
     queryFn: () =>
       getAnalyticsOverview({
         ...windowQueryParams(dateWindow),
@@ -65,6 +75,11 @@ export function AnalyticsPage() {
       ),
     [accountsQuery.data],
   );
+
+  useEffect(() => {
+    if (!accountId || accountsQuery.isLoading) return;
+    if (!accounts.some((a) => a.id === accountId)) setAccountId(null);
+  }, [accountId, accounts, accountsQuery.isLoading]);
 
   const reconnect = useMemo(() => {
     const fromOverview = (overviewQuery.data?.accountsNeedingReconnect ?? []).filter(

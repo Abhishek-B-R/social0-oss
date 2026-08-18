@@ -47,6 +47,12 @@ export type InboxReconnectHint = {
   missingScopes: string[];
 };
 
+export type InboxFetchError = {
+  accountId: string;
+  platform: string;
+  error: string;
+};
+
 export type InboxListResult = {
   range: DateWindowRange;
   since: string;
@@ -54,6 +60,7 @@ export type InboxListResult = {
   threads: InboxThread[];
   accountsNeedingReconnect: InboxReconnectHint[];
   unsupported: string[];
+  fetchErrors: InboxFetchError[];
   fetchedAt: string;
   sampled: boolean;
   sampleLimit: number;
@@ -132,6 +139,7 @@ export type InboxDmListResult = {
   threads: InboxDmThread[];
   accountsNeedingReconnect: InboxReconnectHint[];
   unsupported: string[];
+  fetchErrors: InboxFetchError[];
   fetchedAt: string;
   sampled: boolean;
   sampleLimit: number;

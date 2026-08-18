@@ -89,6 +89,7 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
   "inbox.listComments": inbox.listInboxComments,
   "inbox.replyToComment": inbox.replyToInboxComment,
   "inbox.listDms": inbox.listInboxDms,
+  "inbox.listAccounts": inbox.listInboxAccounts,
   "inbox.getDmThread": inbox.getInboxDmThread,
   "inbox.replyToDm": inbox.replyToInboxDm,
   "settings.loadSettingsPageData": settings.loadSettingsPageData,
@@ -173,7 +174,15 @@ export async function registerRpcRoutes(app: FastifyInstance) {
       }
     } catch (err) {
       rethrowRouteRedirect(err);
-      if (!reply.sent) throw err;
+      if (!reply.sent) {
+        const statusCode = (err as { statusCode?: number }).statusCode;
+        const message =
+          err instanceof Error ? err.message : "Internal server error";
+        if (statusCode && statusCode >= 400 && statusCode < 500) {
+          return reply.status(statusCode).send({ error: message });
+        }
+        throw err;
+      }
     }
   });
 }

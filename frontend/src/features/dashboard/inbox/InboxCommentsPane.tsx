@@ -11,7 +11,7 @@ import {
   WarningCircle,
 } from "@/icons/phosphor";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
-import type { AnalyticsAccount } from "@/api/analytics";
+import type { InboxAccount } from "@/api/inbox";
 import {
   listInboxComments,
   replyToInboxComment,
@@ -31,6 +31,7 @@ import {
   inboxReplyTargetId,
   inboxSupportsNestedReplies,
   formatInboxReplyText,
+  inboxReplyTextsMatch,
 } from "@/lib/inbox-reply";
 import { uploadFile } from "@/lib/upload-file";
 import { cn } from "@/lib/utils";
@@ -55,10 +56,20 @@ function replyMax(platform: string): number {
 function replyLooksSent(
   server: InboxComment,
   pending: InboxComment,
+  platform: string,
 ): boolean {
   if (server.id === pending.id) return true;
   if (!server.isOwn) return false;
-  if ((server.text || "") !== (pending.text || "")) return false;
+  if (
+    !inboxReplyTextsMatch(
+      platform,
+      server.text || "",
+      pending.text || "",
+      pending.authorHandle ?? server.authorHandle,
+    )
+  ) {
+    return false;
+  }
   const dt = Math.abs(
     new Date(server.createdAt ?? 0).getTime() -
       new Date(pending.createdAt ?? 0).getTime(),
@@ -78,8 +89,8 @@ function mergePendingReplies(
         thread.comment.id === p.parentId ||
         thread.replies.some((r) => r.id === p.parentId);
       if (!inThread) return false;
-      if (thread.replies.some((r) => replyLooksSent(r, p))) return false;
-      if (replyLooksSent(thread.comment, p)) return false;
+      if (thread.replies.some((r) => replyLooksSent(r, p, thread.comment.platform))) return false;
+      if (replyLooksSent(thread.comment, p, thread.comment.platform)) return false;
       return true;
     });
     return extras.length
@@ -138,7 +149,7 @@ export function InboxCommentsPane({
 }: {
   dateWindow: DateWindow;
   accountId: string | null;
-  accounts: AnalyticsAccount[];
+  accounts: InboxAccount[];
   enabled: boolean;
 }) {
   const dash = useDashboardPath();
@@ -166,7 +177,7 @@ export function InboxCommentsPane({
       }),
     enabled,
     staleTime: 15_000,
-    refetchInterval: enabled ? 15_000 : false,
+    refetchInterval: enabled ? 60_000 : false,
     refetchIntervalInBackground: false,
   });
 
@@ -276,7 +287,10 @@ export function InboxCommentsPane({
 
   const data = inboxQuery.data;
   const threads = mergePendingReplies(
-    (data?.threads ?? []).filter((t) => !t.comment.isOwn),
+    (data?.threads ?? []).filter((t) => {
+      if (!t.comment.isOwn) return true;
+      return t.replies.some((r) => !r.isOwn);
+    }),
     pendingReplies,
   );
 
@@ -291,7 +305,7 @@ export function InboxCommentsPane({
               t.replies.some((r) => r.id === p.parentId)),
         );
         if (!thread) return true;
-        return !thread.replies.some((r) => replyLooksSent(r, p));
+        return !thread.replies.some((r) => replyLooksSent(r, p, thread.comment.platform));
       }),
     );
   }, [inboxQuery.data]);
@@ -343,6 +357,18 @@ export function InboxCommentsPane({
           >
             Connections
           </Link>
+        </div>
+      ) : null}
+
+      {data?.fetchErrors?.length ? (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-200">
+          <span className="font-medium">Could not load some accounts: </span>
+          {data.fetchErrors
+            .map(
+              (e) =>
+                `${PLATFORM_LABEL[e.platform] ?? e.platform} — ${e.error}`,
+            )
+            .join(" · ")}
         </div>
       ) : null}
 
@@ -512,7 +538,7 @@ function ConversationPane({
   onRetryReply,
 }: {
   thread: InboxThread;
-  accounts: AnalyticsAccount[];
+  accounts: InboxAccount[];
   sendingReplyIds: Set<string>;
   failedReplyIds: Set<string>;
   onBack: () => void;
@@ -623,6 +649,7 @@ function ConversationPane({
       {root.canReply ? (
         <div ref={composerRef} className="shrink-0">
           <InboxComposer
+            key={root.id}
             platform={root.platform}
             mode="comment"
             maxLength={replyMax(root.platform)}
@@ -671,7 +698,7 @@ function CommentRow({
   comment: InboxComment;
   depth: number;
   root: InboxComment;
-  account?: AnalyticsAccount;
+  account?: InboxAccount;
   active: boolean;
   sending: boolean;
   failed: boolean;

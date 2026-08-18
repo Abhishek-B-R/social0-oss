@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { inDateWindow, parseDateWindow } from "../lib/date-window.js";
+import { startOfDay, subDays } from "date-fns";
 
 describe("parseDateWindow", () => {
   it("defaults to 7d", () => {
     const w = parseDateWindow({});
     expect(w.range).toBe("7d");
-    expect(w.until.getTime() - w.since.getTime()).toBe(7 * 24 * 60 * 60 * 1000);
+    const expectedSince = startOfDay(subDays(w.until, 6));
+    expect(w.since.getTime()).toBe(expectedSince.getTime());
   });
 
   it("maps legacy 1d → 7d and 30d → 28d", () => {

@@ -68,7 +68,7 @@ function ChartTooltip({
   return (
     <div className="rounded-lg border border-border bg-bg-elevated px-3 py-2 text-xs shadow-md">
       <p className="mb-1 font-medium text-text">{heading}</p>
-      {payload.map((p) => (
+          {payload.map((p) => (
         <p key={p.name} className="flex items-center gap-2 text-text-muted">
           <span
             className="inline-block h-2 w-2 rounded-full"
@@ -76,7 +76,7 @@ function ChartTooltip({
           />
           {p.name}:{" "}
           <span className="font-medium tabular-nums text-text">
-            {formatMetric(p.value)}
+            {p.value == null ? "—" : formatMetric(p.value)}
           </span>
         </p>
       ))}
@@ -115,7 +115,8 @@ export function EngagementTrendChart({ data }: { data: SeriesPoint[] }) {
           </defs>
           <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
           <XAxis
-            dataKey="tick"
+            dataKey="date"
+            tickFormatter={(iso) => tickLabel(String(iso), days)}
             tick={{ fill: MUTED, fontSize: 11 }}
             axisLine={false}
             tickLine={false}

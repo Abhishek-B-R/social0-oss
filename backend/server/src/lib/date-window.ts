@@ -1,19 +1,22 @@
 /** Shared lookback window for analytics + inbox. Mirrors X Analytics: 7D / 2W / 4W / 3M / 1Y + custom. */
 
+import { startOfDay, subDays } from "date-fns";
+
 export const WINDOW_PRESETS = ["7d", "14d", "28d", "90d", "365d"] as const;
 export type WindowPreset = (typeof WINDOW_PRESETS)[number];
 export type DateWindowRange = WindowPreset | "custom";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const PRESET_MS: Record<WindowPreset, number> = {
-  "7d": 7 * DAY_MS,
-  "14d": 14 * DAY_MS,
-  "28d": 28 * DAY_MS,
-  "90d": 90 * DAY_MS,
-  "365d": 365 * DAY_MS,
+/** Inclusive calendar-day counts (today + N-1 prior days). */
+const PRESET_DAYS: Record<WindowPreset, number> = {
+  "7d": 7,
+  "14d": 14,
+  "28d": 28,
+  "90d": 90,
+  "365d": 365,
 };
 
-const MAX_CUSTOM_MS = PRESET_MS["365d"];
+const MAX_CUSTOM_MS = PRESET_DAYS["365d"] * DAY_MS;
 
 function parseDate(v: unknown): Date | null {
   if (typeof v !== "string" || !v.trim()) return null;
@@ -40,7 +43,7 @@ export function parseDateWindow(input: {
     if (until.getTime() > now.getTime()) until = now;
     let since = parseDate(input.since);
     if (!since || since >= until) {
-      since = new Date(until.getTime() - PRESET_MS["7d"]);
+      since = startOfDay(subDays(until, PRESET_DAYS["7d"] - 1));
     }
     if (until.getTime() - since.getTime() > MAX_CUSTOM_MS) {
       since = new Date(until.getTime() - MAX_CUSTOM_MS);
@@ -53,7 +56,7 @@ export function parseDateWindow(input: {
     : "7d";
   return {
     range: preset,
-    since: new Date(now.getTime() - PRESET_MS[preset]),
+    since: startOfDay(subDays(now, PRESET_DAYS[preset] - 1)),
     until: now,
   };
 }

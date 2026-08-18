@@ -80,8 +80,9 @@ function personAvatar(person: GraphPerson | undefined): string | null {
 async function jsonGet(
   url: string,
   headers?: Record<string, string>,
+  timeoutMs = 12_000,
 ): Promise<{ ok: boolean; status: number; data: unknown }> {
-  const res = await fetch(url, { headers });
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
 }
@@ -595,16 +596,28 @@ async function fetchTwitterThread(
 
 const BSKY_CHAT_PROXY = "did:web:api.bsky.chat#bsky_chat";
 
+const bskySessionCache = new Map<
+  string,
+  { accessJwt: string; did: string; exp: number }
+>();
+const BSKY_SESSION_TTL_MS = 50 * 60 * 1000;
+
 async function blueskySession(
+  accountId: string,
   handle: string,
   appPassword: string,
 ): Promise<{ accessJwt: string; did: string } | null> {
+  const cached = bskySessionCache.get(accountId);
+  if (cached && cached.exp > Date.now()) {
+    return { accessJwt: cached.accessJwt, did: cached.did };
+  }
   const res = await fetch(
     "https://bsky.social/xrpc/com.atproto.server.createSession",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ identifier: handle, password: appPassword }),
+      signal: AbortSignal.timeout(12_000),
     },
   );
   const data = (await res.json().catch(() => ({}))) as {
@@ -612,6 +625,11 @@ async function blueskySession(
     did?: string;
   };
   if (!res.ok || !data.accessJwt || !data.did) return null;
+  bskySessionCache.set(accountId, {
+    accessJwt: data.accessJwt,
+    did: data.did,
+    exp: Date.now() + BSKY_SESSION_TTL_MS,
+  });
   return { accessJwt: data.accessJwt, did: data.did };
 }
 
@@ -663,7 +681,7 @@ async function fetchBlueskyList(
   if (!handle || !appPassword) {
     return graphErr("Bluesky credentials incomplete. Reconnect the account.");
   }
-  const session = await blueskySession(handle, appPassword);
+  const session = await blueskySession(account.id, handle, appPassword);
   if (!session) {
     return graphErr("Bluesky login failed. Reconnect the account.");
   }
@@ -714,7 +732,7 @@ async function fetchBlueskyThread(
   if (!handle || !appPassword) {
     return graphMsg("Bluesky credentials incomplete. Reconnect the account.");
   }
-  const session = await blueskySession(handle, appPassword);
+  const session = await blueskySession(account.id, handle, appPassword);
   if (!session) {
     return graphMsg("Bluesky login failed. Reconnect the account.");
   }

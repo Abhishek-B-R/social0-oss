@@ -42,6 +42,7 @@ export function InboxComposer({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const inFlightRef = useRef(false);
   const accept = inboxMediaAccept(platform, mode);
   const canAttach = Boolean(accept);
 
@@ -70,9 +71,14 @@ export function InboxComposer({
     [clearFile, mode, platform],
   );
 
+  useEffect(() => {
+    if (!sending) inFlightRef.current = false;
+  }, [sending]);
+
   const submit = useCallback(() => {
-    if (disabled || sending) return;
+    if (disabled || sending || inFlightRef.current) return;
     if (!draft.trim() && !file) return;
+    inFlightRef.current = true;
     onSend({ text: draft.trim(), file, previewUrl });
     setDraft("");
     clearFile();

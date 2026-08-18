@@ -13,10 +13,11 @@ import {
 } from "../db/schema.js";
 import { decryptToken } from "@social0/shared";
 import {
-  resolveWorkspaceContext,
   postScopeCondition,
   connectionScopeCondition,
 } from "../lib/workspace/context.js";
+import { requireWorkspaceSession } from "../lib/workspace/session.js";
+import { rpcHttpError } from "../lib/rpc-http-error.js";
 import { getValidToken, REFRESHABLE_PLATFORMS } from "../lib/token-refresh.js";
 import { PLATFORMS, type Platform } from "../lib/platforms.js";
 import { fetchPublicationComments } from "../lib/inbox/fetch-comments.js";
@@ -25,7 +26,7 @@ import { fetchAccountDms, fetchDmMessages } from "../lib/inbox/fetch-dms.js";
 import { replyToDmOnPlatform } from "../lib/inbox/reply-dm.js";
 import { resolveInboxMedia } from "../lib/inbox/resolve-media.js";
 import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
-import { parseDateWindow } from "../lib/date-window.js";
+import { parseDateWindow, inDateWindow } from "../lib/date-window.js";
 import {
   INBOX_UNSUPPORTED,
   isInboxDmPlatform,
@@ -47,6 +48,8 @@ function parsePlatform(value: unknown): Platform | undefined {
 
 const SAMPLE_LIMIT = 24;
 const CONCURRENCY = 4;
+/** Posts published before the window can still receive in-window comments. */
+const POST_PUBLISH_SLACK_MS = 90 * 24 * 60 * 60 * 1000;
 
 async function mapPool<T, R>(
   items: T[],
@@ -87,11 +90,9 @@ type PubRow = {
 };
 
 async function requireUser() {
-  const { auth } = await import("../lib/auth.js");
-  const { headers } = await import("../lib/http/request-cookies.js");
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  return resolveWorkspaceContext(session.user.id);
+  const ws = await requireWorkspaceSession("view_posts");
+  if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
+  return ws.ctx;
 }
 
 async function loadPubs(opts: {
@@ -138,7 +139,10 @@ async function loadPubs(opts: {
         eq(postPublications.status, "published"),
         isNotNull(postPublications.platformPostId),
         isNotNull(postPublications.publishedAt),
-        gte(postPublications.publishedAt, opts.since),
+        gte(
+          postPublications.publishedAt,
+          new Date(opts.since.getTime() - POST_PUBLISH_SLACK_MS),
+        ),
         lte(postPublications.publishedAt, opts.until),
         opts.accountId
           ? eq(postPublications.connectedAccountId, opts.accountId)
@@ -261,6 +265,7 @@ export async function listInboxComments(input: {
 
   const reconnect = new Map<string, InboxReconnectHint>();
   const unsupported = new Set<string>();
+  const fetchErrors: InboxListResult["fetchErrors"] = [];
   const allComments: InboxComment[] = [];
 
   await mapPool(pubs, CONCURRENCY, async (row) => {
@@ -305,7 +310,20 @@ export async function listInboxComments(input: {
       if (result.status === "unsupported") {
         unsupported.add(row.account.platform);
       }
+      if (result.status === "error" && result.error) {
+        fetchErrors.push({
+          accountId: row.account.id,
+          platform: row.account.platform,
+          error: result.error,
+        });
+      }
     } catch (e) {
+      const message = e instanceof Error ? e.message : "Comment fetch failed";
+      fetchErrors.push({
+        accountId: row.account.id,
+        platform: row.account.platform,
+        error: message,
+      });
       if (missing.length) {
         reconnect.set(row.account.id, {
           accountId: row.account.id,
@@ -314,7 +332,6 @@ export async function listInboxComments(input: {
           missingScopes: missing,
         });
       }
-      void e;
     }
   });
 
@@ -357,13 +374,18 @@ export async function listInboxComments(input: {
     }
   }
 
+  const filteredComments = allComments.filter((c) =>
+    inDateWindow(c.createdAt, since, until),
+  );
+
   return {
     range,
     since: since.toISOString(),
     until: until.toISOString(),
-    threads: toInboxThreads(allComments),
+    threads: toInboxThreads(filteredComments),
     accountsNeedingReconnect: [...reconnect.values()],
     unsupported: [...unsupported],
+    fetchErrors,
     fetchedAt: new Date().toISOString(),
     sampled: pubs.length >= SAMPLE_LIMIT,
     sampleLimit: SAMPLE_LIMIT,
@@ -519,6 +541,7 @@ export async function listInboxDms(input: {
   const accounts = await loadDmAccounts(ctx, accountId);
   const reconnect = new Map<string, InboxReconnectHint>();
   const unsupported = new Set<string>();
+  const fetchErrors: InboxDmListResult["fetchErrors"] = [];
   const threads: InboxDmThread[] = [];
 
   await mapPool(accounts, DM_CONCURRENCY, async (row) => {
@@ -562,7 +585,20 @@ export async function listInboxDms(input: {
         });
       }
       if (result.status === "unsupported") unsupported.add(row.platform);
-    } catch {
+      if (result.status === "error" && result.error) {
+        fetchErrors.push({
+          accountId: row.id,
+          platform: row.platform,
+          error: result.error,
+        });
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "DM fetch failed";
+      fetchErrors.push({
+        accountId: row.id,
+        platform: row.platform,
+        error: message,
+      });
       if (missing.length) {
         reconnect.set(row.id, {
           accountId: row.id,
@@ -585,6 +621,7 @@ export async function listInboxDms(input: {
     threads: threads.slice(0, DM_SAMPLE_LIMIT),
     accountsNeedingReconnect: [...reconnect.values()],
     unsupported: [...unsupported],
+    fetchErrors,
     fetchedAt: new Date().toISOString(),
     sampled,
     sampleLimit: DM_SAMPLE_LIMIT,
@@ -603,20 +640,20 @@ export async function getInboxDmThread(input: {
   accountId?: unknown;
   conversationId?: unknown;
   peerId?: unknown;
-}): Promise<InboxDmThreadResult> {
+}): Promise<InboxDmThreadResult | { error: string }> {
   const ctx = await requireUser();
   if (typeof input.accountId !== "string" || !input.accountId) {
-    throw new Error("accountId required");
+    return { error: "accountId required" };
   }
   if (typeof input.conversationId !== "string" || !input.conversationId) {
-    throw new Error("conversationId required");
+    return { error: "conversationId required" };
   }
   const peerId = typeof input.peerId === "string" ? input.peerId : "";
 
   const row = await loadDmAccount(ctx, input.accountId);
-  if (!row) throw new Error("Account not found");
+  if (!row) return { error: "Account not found" };
   if (!isInboxDmPlatform(row.platform)) {
-    throw new Error(`DMs are not supported for ${row.platform}.`);
+    return { error: `DMs are not supported for ${row.platform}.` };
   }
 
   const { accessToken, accessSecret } = await resolveAccess(row);
@@ -634,7 +671,7 @@ export async function getInboxDmThread(input: {
     peerId,
   );
   if (result.status !== "ok") {
-    throw new Error(result.error ?? "Failed to load conversation");
+    return { error: result.error ?? "Failed to load conversation" };
   }
   const fallback: InboxDmThread = {
     conversationId: input.conversationId,
@@ -712,4 +749,56 @@ export async function replyToInboxDm(input: {
       error: e instanceof Error ? e.message : "DM failed",
     };
   }
+}
+
+type InboxAccountRow = {
+  id: string;
+  platform: string;
+  username: string | null;
+  profileImageUrl: string | null;
+  scopes: string | null;
+};
+
+/** Connected accounts for inbox filter chips (comments or DMs). */
+export async function listInboxAccounts(input: {
+  mode?: unknown;
+}): Promise<
+  Array<{
+    id: string;
+    platform: string;
+    username: string | null;
+    profileImageUrl: string | null;
+    missingScopes: string[];
+  }>
+> {
+  const ws = await requireWorkspaceSession("view_posts");
+  if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
+
+  const feature =
+    input.mode === "dms" ? ("inboxDms" as const) : ("inboxComments" as const);
+  const rows: InboxAccountRow[] = await db
+    .select({
+      id: connectedAccounts.id,
+      platform: connectedAccounts.platform,
+      username: connectedAccounts.platformUsername,
+      profileImageUrl: connectedAccounts.profileImageUrl,
+      scopes: connectedAccounts.scopes,
+    })
+    .from(connectedAccounts)
+    .where(
+      and(connectionScopeCondition(ws.ctx), eq(connectedAccounts.isActive, true)),
+    );
+
+  return rows
+    .filter((r) => isPlatformLive(feature, r.platform))
+    .map((r) => ({
+      id: r.id,
+      platform: r.platform,
+      username: r.username,
+      profileImageUrl: r.profileImageUrl,
+      missingScopes:
+        feature === "inboxDms"
+          ? missingDmScopes(r.platform, r.scopes)
+          : missingInboxScopes(r.platform, r.scopes),
+    }));
 }

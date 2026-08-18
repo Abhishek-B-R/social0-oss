@@ -10,7 +10,7 @@ import {
 } from "@/icons/phosphor";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import { useSession } from "@/lib/auth-client";
-import { listAnalyticsAccounts, type AnalyticsAccount } from "@/api/analytics";
+import { listInboxAccounts, type InboxAccount } from "@/api/inbox";
 import { PLATFORM_LABEL } from "@/features/dashboard/analytics/analytics-utils";
 import { defaultDateWindow, type DateWindow } from "@/lib/date-window";
 import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
@@ -81,8 +81,9 @@ export function InboxPage() {
   };
 
   const accountsQuery = useQuery({
-    queryKey: ["analytics-accounts"],
-    queryFn: listAnalyticsAccounts,
+    queryKey: ["inbox-accounts", mode],
+    queryFn: () =>
+      listInboxAccounts({ mode: mode === "dms" ? "dms" : "comments" }),
     enabled: !!session,
   });
 
@@ -266,7 +267,7 @@ function InboxAccountChip({
   selected,
   onClick,
 }: {
-  account: AnalyticsAccount;
+  account: InboxAccount;
   selected: boolean;
   onClick: () => void;
 }) {

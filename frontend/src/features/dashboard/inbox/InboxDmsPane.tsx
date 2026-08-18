@@ -73,7 +73,9 @@ function sameLocalDm(
     return (
       Boolean(server.attachment) &&
       Boolean(local.attachment) &&
-      server.attachment!.type === local.attachment!.type
+      server.attachment!.type === local.attachment!.type &&
+      server.text === local.text &&
+      dt < 15_000
     );
   }
   return Boolean(local.text) && server.text === local.text;
@@ -124,8 +126,8 @@ export function InboxDmsPane({
         accountId: accountId || undefined,
       }),
     enabled,
-    staleTime: 15_000,
-    refetchInterval: enabled ? 15_000 : false,
+    staleTime: 30_000,
+    refetchInterval: enabled ? 45_000 : false,
     refetchIntervalInBackground: false,
   });
 
@@ -158,15 +160,18 @@ export function InboxDmsPane({
 
   const threadQuery = useQuery({
     queryKey: threadQueryKey,
-    queryFn: () =>
-      getInboxDmThread({
+    queryFn: async () => {
+      const result = await getInboxDmThread({
         accountId: selected!.accountId,
         conversationId: selected!.conversationId,
         peerId: selected!.peerId,
-      }),
+      });
+      if ("error" in result) throw new Error(result.error);
+      return result;
+    },
     enabled: enabled && Boolean(selected),
-    staleTime: 10_000,
-    refetchInterval: enabled && selected ? 15_000 : false,
+    staleTime: 20_000,
+    refetchInterval: enabled && selected ? 45_000 : false,
     refetchIntervalInBackground: false,
   });
 
@@ -365,6 +370,18 @@ export function InboxDmsPane({
           >
             Connections
           </Link>
+        </div>
+      ) : null}
+
+      {listQuery.data?.fetchErrors?.length ? (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-200">
+          <span className="font-medium">Could not load some accounts: </span>
+          {listQuery.data.fetchErrors
+            .map(
+              (e) =>
+                `${PLATFORM_LABEL[e.platform] ?? e.platform} — ${e.error}`,
+            )
+            .join(" · ")}
         </div>
       ) : null}
 

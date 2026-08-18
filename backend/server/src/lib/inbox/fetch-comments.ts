@@ -70,8 +70,9 @@ function withAuthor(
 async function jsonGet(
   url: string,
   headers?: Record<string, string>,
+  timeoutMs = 12_000,
 ): Promise<{ ok: boolean; status: number; data: unknown }> {
-  const res = await fetch(url, { headers });
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
 }
@@ -318,6 +319,7 @@ async function fetchTwitter(
       `conversation_id:${input.platformPostId}`,
       {
         max_results: 50,
+        start_time: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
         "tweet.fields": [
           "created_at",
           "author_id",

@@ -14,7 +14,7 @@ import {
   subscribeInboxSeen,
 } from "@/lib/inbox-unread";
 
-const POLL_MS = 45_000;
+const POLL_MS = 120_000;
 const WINDOW = defaultDateWindow();
 
 function commentIdsFrom(threads: Array<{ comment: { id: string; isOwn?: boolean }; replies: Array<{ id: string; isOwn?: boolean }> }>): string[] {
@@ -45,18 +45,18 @@ export function useInboxUnreadBadge(): number {
   const commentsQuery = useQuery({
     queryKey: ["inbox-comments", WINDOW, null],
     queryFn: () => listInboxComments({ ...windowQueryParams(WINDOW) }),
-    enabled,
-    staleTime: 30_000,
-    refetchInterval: enabled ? POLL_MS : false,
+    enabled: enabled && !onInbox,
+    staleTime: 60_000,
+    refetchInterval: enabled && !onInbox ? POLL_MS : false,
     refetchIntervalInBackground: false,
   });
 
   const dmsQuery = useQuery({
     queryKey: ["inbox-dms", WINDOW, null],
     queryFn: () => listInboxDms({ ...windowQueryParams(WINDOW) }),
-    enabled,
-    staleTime: 30_000,
-    refetchInterval: enabled ? POLL_MS : false,
+    enabled: enabled && !onInbox,
+    staleTime: 60_000,
+    refetchInterval: enabled && !onInbox ? POLL_MS : false,
     refetchIntervalInBackground: false,
   });
 

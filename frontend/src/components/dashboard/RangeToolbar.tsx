@@ -29,7 +29,7 @@ function presetSinceUntil(preset: WindowPreset): { since: Date; until: Date } {
           : preset === "90d"
             ? 90
             : 365;
-  return { since: subDays(until, days), until };
+  return { since: startOfDay(subDays(until, days - 1)), until };
 }
 
 function RangeChevron({

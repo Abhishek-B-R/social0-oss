@@ -3,20 +3,25 @@
 const NESTED_REPLY_PLATFORMS = new Set([
   "twitter_x",
   "bluesky",
-  "youtube",
   "threads",
+  "facebook",
 ]);
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 export function inboxSupportsNestedReplies(platform: string): boolean {
   return NESTED_REPLY_PLATFORMS.has(platform);
 }
 
-/** Platform API target id — IG/FB always reply to the top-level comment. */
+/** Platform API target id — Instagram always replies to the top-level comment. */
 export function inboxReplyTargetId(
   platform: string,
   rootCommentId: string,
   targetCommentId: string,
 ): string {
+  if (platform === "instagram") return rootCommentId;
   if (inboxSupportsNestedReplies(platform)) return targetCommentId;
   return rootCommentId;
 }
@@ -29,7 +34,7 @@ function handleOf(raw: string | null | undefined): string {
 export function inboxTextHasLeadingMention(text: string, handle: string): boolean {
   const h = handleOf(handle);
   if (!h) return false;
-  return new RegExp(`^@${h}\\b`, "i").test(text.trim());
+  return new RegExp(`^@${escapeRegExp(h)}\\b`, "i").test(text.trim());
 }
 
 /**
@@ -51,9 +56,36 @@ export function formatInboxReplyText(opts: {
 
   if (opts.platform === "twitter_x") {
     if (!has) return text;
-    return text.replace(new RegExp(`^@${handle}\\s*`, "i"), "").trim();
+    return text
+      .replace(new RegExp(`^@${escapeRegExp(handle)}\\s*`, "i"), "")
+      .trim();
   }
   if (opts.isRoot) return text;
   if (has) return text;
   return text ? `${mention} ${text}` : mention;
+}
+
+/** Compare reply bodies after platform-specific mention normalization. */
+export function inboxReplyTextsMatch(
+  platform: string,
+  a: string,
+  b: string,
+  targetHandle?: string | null,
+): boolean {
+  if ((a || "") === (b || "")) return true;
+  if (platform !== "twitter_x" || !targetHandle) return false;
+  return (
+    formatInboxReplyText({
+      platform,
+      targetHandle,
+      isRoot: false,
+      text: a,
+    }) ===
+    formatInboxReplyText({
+      platform,
+      targetHandle,
+      isRoot: false,
+      text: b,
+    })
+  );
 }

@@ -13,10 +13,11 @@ import {
 } from "../db/schema.js";
 import { decryptToken } from "@social0/shared";
 import {
-  resolveWorkspaceContext,
   connectionScopeCondition,
   postScopeCondition,
 } from "../lib/workspace/context.js";
+import { requireWorkspaceSession } from "../lib/workspace/session.js";
+import { rpcHttpError } from "../lib/rpc-http-error.js";
 import { getValidToken, REFRESHABLE_PLATFORMS } from "../lib/token-refresh.js";
 import { fetchPlatformPublicationMetrics } from "../lib/analytics/fetch-platform-metrics.js";
 import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
@@ -112,7 +113,7 @@ async function loadPublishedPubs(opts: {
     })
     .from(postPublications)
     .innerJoin(posts, eq(postPublications.postId, posts.id))
-    .leftJoin(
+    .innerJoin(
       connectedAccounts,
       eq(postPublications.connectedAccountId, connectedAccounts.id),
     )
@@ -321,6 +322,7 @@ function buildSeries(
 function buildByPlatform(pubs: PublicationMetrics[]): PlatformBreakdownRow[] {
   const map = new Map<string, { metrics: MetricMap[]; postIds: Set<string> }>();
   for (const p of pubs) {
+    if (p.status !== "ok") continue;
     if (!map.has(p.platform)) {
       map.set(p.platform, { metrics: [], postIds: new Set() });
     }
@@ -350,6 +352,7 @@ function buildTopPosts(
     { metrics: MetricMap[]; platforms: Set<string>; publishedAt: string | null }
   >();
   for (const p of pubs) {
+    if (p.status !== "ok") continue;
     const cur = byPost.get(p.postId) ?? {
       metrics: [],
       platforms: new Set<string>(),
@@ -393,19 +396,23 @@ export async function getAnalyticsOverview(input: {
   until?: unknown;
   accountId?: unknown;
 }): Promise<AnalyticsOverview> {
-  const { auth } = await import("../lib/auth.js");
-  const { headers } = await import("../lib/http/request-cookies.js");
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const ws = await requireWorkspaceSession("view_posts");
+  if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
 
   const window = parseDateWindow(input);
   const { range, since, until } = window;
 
-  const ctx = await resolveWorkspaceContext(session.user.id);
+  const ctx = ws.ctx;
   const accountId =
     typeof input.accountId === "string" && input.accountId
       ? input.accountId
       : undefined;
+  if (accountId) {
+    const accounts = await loadWorkspaceAccounts(ctx);
+    if (!accounts.some((a) => a.id === accountId)) {
+      throw rpcHttpError("Account not found", 404);
+    }
+  }
   const pubs = await loadPublishedPubs({
     resourceUserId: ctx.resourceUserId,
     workspaceId: ctx.workspaceId,
@@ -419,7 +426,7 @@ export async function getAnalyticsOverview(input: {
   const contentByPost = new Map(
     pubs.map((p) => [p.postId, p.content] as const),
   );
-  const okMetrics = results.map((r) => r.metrics);
+  const okResults = results.filter((r) => r.status === "ok");
 
   const accountRows = await loadWorkspaceAccounts(ctx);
   const fromAccounts: AccountReconnectHint[] = accountRows
@@ -436,10 +443,10 @@ export async function getAnalyticsOverview(input: {
     range,
     since: since.toISOString(),
     until: until.toISOString(),
-    totals: sumMetrics(okMetrics),
+    totals: sumMetrics(okResults.map((r) => r.metrics)),
     byPlatform: buildByPlatform(results),
-    series: buildSeries(results, since, until),
-    topPosts: buildTopPosts(results, contentByPost),
+    series: buildSeries(okResults, since, until),
+    topPosts: buildTopPosts(okResults, contentByPost),
     publications: results,
     accountsNeedingReconnect: mergeReconnectHints(
       fromAccounts,
@@ -454,15 +461,13 @@ export async function getAnalyticsOverview(input: {
 export async function getPostAnalytics(input: {
   postId?: unknown;
 }): Promise<PostAnalyticsResult> {
-  const { auth } = await import("../lib/auth.js");
-  const { headers } = await import("../lib/http/request-cookies.js");
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const ws = await requireWorkspaceSession("view_posts");
+  if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
   if (typeof input.postId !== "string" || !input.postId) {
-    throw new Error("postId required");
+    throw rpcHttpError("postId required", 400);
   }
 
-  const ctx = await resolveWorkspaceContext(session.user.id);
+  const ctx = ws.ctx;
   const until = new Date();
   const since = new Date(0);
   const pubs = await loadPublishedPubs({
@@ -475,22 +480,19 @@ export async function getPostAnalytics(input: {
   });
 
   if (pubs.length === 0) {
-    // Distinguish missing post vs no published pubs
     const post = await db.query.posts.findFirst({
-      where: and(
-        eq(posts.id, input.postId),
-        eq(posts.userId, ctx.resourceUserId),
-      ),
+      where: and(eq(posts.id, input.postId), postScopeCondition(ctx)),
       columns: { id: true },
     });
-    if (!post) throw new Error("Post not found");
+    if (!post) throw rpcHttpError("Post not found", 404);
   }
 
   const results = await mapPool(pubs, CONCURRENCY, metricsForPub);
+  const okResults = results.filter((r) => r.status === "ok");
   return {
     postId: input.postId,
     publications: results,
-    totals: sumMetrics(results.map((r) => r.metrics)),
+    totals: sumMetrics(okResults.map((r) => r.metrics)),
     accountsNeedingReconnect: collectReconnectHints(results),
     fetchedAt: new Date().toISOString(),
   };
@@ -550,12 +552,10 @@ export async function listAnalyticsAccounts(): Promise<
     missingScopes: string[];
   }>
 > {
-  const { auth } = await import("../lib/auth.js");
-  const { headers } = await import("../lib/http/request-cookies.js");
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const ws = await requireWorkspaceSession("view_posts");
+  if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
 
-  const ctx = await resolveWorkspaceContext(session.user.id);
+  const ctx = ws.ctx;
   const rows = await loadWorkspaceAccounts(ctx);
 
   return rows
