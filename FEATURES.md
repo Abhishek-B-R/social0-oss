@@ -90,9 +90,7 @@ Rolling out as App Review lands. `LIVE_PLATFORMS.analytics` — keep frontend an
 
 | Platform | Analytics today |
 | -------- | --------------- |
-| **X (Twitter)** | Live |
-| **Bluesky** | Live |
-| Instagram, Facebook, Threads, YouTube, LinkedIn, TikTok, Pinterest | Hidden until the flag is `true` |
+| Instagram, Facebook, Threads, YouTube, X, Bluesky, LinkedIn, TikTok, Pinterest | Live (`LIVE_PLATFORMS.analytics`) |
 
 Team roles: **Analyst**, **Member**, and **Admin** can open Analytics. **Community** cannot.
 
@@ -119,18 +117,19 @@ Unread badge on **Inbox** in the dashboard nav (and More on mobile). Polls while
 
 ### Live vs not yet (today)
 
-Same gate as Analytics: `LIVE_PLATFORMS.inboxComments` / `inboxDms`. **Today only X and Bluesky are on.** Others stay hidden until the matching flag is `true`.
+Same gate as Analytics: `LIVE_PLATFORMS.inboxComments` / `inboxDms`.
 
 | Platform | Comments | DMs |
 | -------- | -------- | --- |
+| Instagram | Live | Live |
 | **X (Twitter)** | Live | Live |
 | **Bluesky** | Live | Live |
-| Instagram, TikTok | Hidden | Hidden |
-| Facebook | Hidden | Not supported |
-| Threads, YouTube, LinkedIn, Pinterest | Hidden | Not in the DMs map yet |
+| Facebook | Live | Not supported |
+| Threads, YouTube, LinkedIn | Live | Not in the DMs map |
+| TikTok | Hidden (Login Kit has no comments inbox) | Live (Business Messaging; Login Kit token will fail until a BM app is connected) |
+| Pinterest | Hidden | Not in the DMs map |
 
-FIXME: empty-state copy on Inbox still names platforms that are not live yet; chips and fetches already hide them.
-FIXME: Inbox chips reuse the analytics account list — a platform live for inbox but not analytics would not appear until both flags are true.
+Inbox chips use `inbox.listAccounts` with the matching live flag (not the analytics list).
 
 Team roles: **Community**, **Member**, and **Admin** can open Inbox and reply. **Analyst** cannot. **Community** cannot publish.
 
@@ -148,7 +147,7 @@ Route: `/dashboard/posts/:id`. Two columns.
    - If **X is not** on the post: full-width **Post analytics** card (published / partial only)
    - If **X is** on the post: that row splits — **Post analytics** \| **Auto-Plug & Auto-Repost** (Growth+; X-only). Scheduled X posts can show Auto-Plug / Auto-Repost without the analytics card
 
-**Post analytics** starts **collapsed**. Clicking **Show analytics** is what fetches metrics. They do not load on page open. **Hide analytics** / **Refresh** after open. Live-platform filter still applies: only X and Bluesky return numbers today.
+**Post analytics** starts **collapsed**. Clicking **Show analytics** is what fetches metrics. They do not load on page open. **Hide analytics** / **Refresh** after open. Live-platform filter still applies: platforms with `LIVE_PLATFORMS.analytics` false are skipped.
 
 FIXME: the analytics card still renders for any published/partial post; non-live platforms on that post are skipped when metrics load.
 

@@ -22,6 +22,9 @@ describe("analytics types", () => {
       "instagram_business_manage_insights",
     );
     expect(missingAnalyticsScopes("tiktok", "")).toContain("video.list");
+    expect(
+      missingAnalyticsScopes("tiktok", "user.info.basic,video.publish,video.list"),
+    ).toEqual([]);
     expect(missingAnalyticsScopes("youtube", null)).toEqual([]);
   });
 

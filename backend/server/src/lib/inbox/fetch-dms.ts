@@ -1,5 +1,5 @@
 /**
- * Live DM fetchers. Failures degrade — never throw past the dispatcher.
+ * Live DM fetchers. Failures degrade - never throw past the dispatcher.
  * Instagram, X, Bluesky, TikTok Business Messaging.
  */
 
@@ -22,6 +22,18 @@ import {
   xMediaToAttachment,
   type XMediaLike,
 } from "./parse-attachment.js";
+import { mapPool } from "../map-pool.js";
+import {
+  isTikTokBmOwnMessage,
+  tiktokBmConversations,
+  tiktokBmCursor,
+  tiktokBmData,
+  tiktokBmErrorMessage,
+  tiktokBmGet,
+  tiktokBmListFailed,
+  tiktokBmPost,
+  type TikTokBmEnvelope,
+} from "./tiktok-bm.js";
 
 export type DmAccount = {
   id: string;
@@ -648,48 +660,6 @@ async function fetchBlueskyThread(
   };
 }
 
-const TT_BM = "https://business-api.tiktok.com/open_api/v1.3";
-const TT_BM_SCOPE_HINT = ["Business Messaging API"];
-
-type TtEnvelope = {
-  code?: number;
-  message?: string;
-  data?: Record<string, unknown>;
-};
-
-function ttData(env: TtEnvelope): Record<string, unknown> {
-  return env.data ?? {};
-}
-
-function unixToIso(ts: number | undefined | null): string | null {
-  if (!ts || !Number.isFinite(ts)) return null;
-  const ms = ts < 1e12 ? ts * 1000 : ts;
-  const d = new Date(ms);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
-}
-
-async function ttBm(
-  accessToken: string,
-  path: string,
-  opts?: { method?: "GET" | "POST"; query?: Record<string, string>; body?: unknown },
-): Promise<{ ok: boolean; data: TtEnvelope }> {
-  const url = new URL(`${TT_BM}${path}`);
-  if (opts?.query) {
-    for (const [k, v] of Object.entries(opts.query)) url.searchParams.set(k, v);
-  }
-  const res = await fetch(url, {
-    method: opts?.method ?? "GET",
-    headers: {
-      "Access-Token": accessToken,
-      ...(opts?.body ? { "Content-Type": "application/json" } : {}),
-    },
-    body: opts?.body ? JSON.stringify(opts.body) : undefined,
-  });
-  const data = (await res.json().catch(() => ({}))) as TtEnvelope;
-  const ok = res.ok && (data.code === 0 || data.code === undefined);
-  return { ok, data };
-}
-
 type TtConversation = {
   conversation_id?: string;
   update_time?: number;
@@ -712,11 +682,74 @@ type TtMessage = {
   sender?: string;
 };
 
+function unixToIso(ts: number | undefined | null): string | null {
+  if (!ts || !Number.isFinite(ts)) return null;
+  const ms = ts < 1e12 ? ts * 1000 : ts;
+  const d = new Date(ms);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 function ttPeer(participants: TtParticipant[] | undefined, selfId: string): TtParticipant {
   const others = (participants ?? []).filter(
     (p) => p.id && p.id !== selfId && p.role !== "BUSINESS_ACCOUNT",
   );
   return others[0] ?? (participants ?? []).find((p) => p.id && p.id !== selfId) ?? {};
+}
+
+function ttMessages(raw: unknown): TtMessage[] {
+  if (!Array.isArray(raw)) return [];
+  return [...(raw as TtMessage[])].sort(
+    (a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0),
+  );
+}
+
+function ttSnippet(last: TtMessage | undefined): string {
+  return snippetOf(
+    last?.text?.body || (last?.image ? "[image]" : last?.video ? "[video]" : ""),
+  );
+}
+
+function ttBmFail(env: TikTokBmEnvelope, fallback: string): DmListFetchResult {
+  return graphErr(tiktokBmErrorMessage(env, fallback));
+}
+
+function ttBmMsgFail(env: TikTokBmEnvelope, fallback: string): DmThreadFetchResult {
+  return graphMsg(tiktokBmErrorMessage(env, fallback));
+}
+
+async function listTikTokConversations(
+  account: DmAccount,
+  conversationType: "SINGLE" | "STRANGER",
+): Promise<{ ok: boolean; rows: TtConversation[]; error: TikTokBmEnvelope | null }> {
+  const rows: TtConversation[] = [];
+  let cursor: string | undefined;
+  let lastEnv: TikTokBmEnvelope | null = null;
+  for (let page = 0; page < 2; page++) {
+    const query: Record<string, string> = {
+      business_id: account.platformUserId,
+      conversation_type: conversationType,
+      limit: "20",
+    };
+    if (cursor) query.cursor = cursor;
+    const { ok, data } = await tiktokBmGet(
+      account.accessToken,
+      "/business/message/conversation/list/",
+      query,
+    );
+    lastEnv = data;
+    if (!ok) {
+      if (rows.length) return { ok: true, rows, error: data };
+      return { ok: false, rows, error: data };
+    }
+    const inner = tiktokBmData(data);
+    for (const c of tiktokBmConversations(inner)) {
+      if (c.conversation_id) rows.push(c);
+    }
+    const next = tiktokBmCursor(inner);
+    if (!next) break;
+    cursor = next;
+  }
+  return { ok: true, rows, error: lastEnv };
 }
 
 async function fetchTikTokList(
@@ -725,70 +758,68 @@ async function fetchTikTokList(
   until: Date,
 ): Promise<DmListFetchResult> {
   if (!account.platformUserId) {
-    return graphErr("TikTok account id missing. Reconnect the account.", TT_BM_SCOPE_HINT);
+    return graphErr("TikTok account id missing. Reconnect the account.");
   }
   const types = ["SINGLE", "STRANGER"] as const;
   const seen = new Set<string>();
   const rows: TtConversation[] = [];
-  let lastErr: string | null = null;
+  let lastErr: TikTokBmEnvelope | null = null;
+  let anyOk = false;
   for (const conversationType of types) {
-    const { ok, data } = await ttBm(account.accessToken, "/business/message/conversation/list/", {
-      query: {
-        business_id: account.platformUserId,
-        conversation_type: conversationType,
-        limit: "50",
-      },
-    });
-    if (!ok) {
-      lastErr = data.message ?? "TikTok DMs failed";
+    const page = await listTikTokConversations(account, conversationType);
+    if (!page.ok) {
+      lastErr = page.error;
       continue;
     }
-    const list = (ttData(data).conversations as TtConversation[] | undefined) ?? [];
-    for (const c of list) {
+    anyOk = true;
+    for (const c of page.rows) {
       if (!c.conversation_id || seen.has(c.conversation_id)) continue;
       seen.add(c.conversation_id);
       rows.push(c);
     }
   }
-  if (!rows.length && lastErr) {
-    return graphErr(
-      `${lastErr} TikTok DMs need Business Messaging (separate from Login Kit; not available in US/EEA/UK).`,
-      TT_BM_SCOPE_HINT,
-    );
+  if (
+    tiktokBmListFailed({
+      anyOk,
+      lastErr: lastErr ? tiktokBmErrorMessage(lastErr, "TikTok DMs failed") : null,
+      rowCount: rows.length,
+    })
+  ) {
+    return ttBmFail(lastErr ?? {}, "TikTok DMs failed");
   }
-  const threads: InboxDmThread[] = [];
-  for (const row of rows) {
-    const when = unixToIso(row.update_time);
-    if (!inDateWindow(when, since, until)) continue;
+  const inWindow = rows.filter((row) =>
+    inDateWindow(unixToIso(row.update_time), since, until),
+  );
+  const details = await mapPool(inWindow, 4, async (row) => {
     const cid = row.conversation_id!;
-    const detail = await ttBm(account.accessToken, "/business/message/content/list/", {
-      query: {
+    const detail = await tiktokBmGet(
+      account.accessToken,
+      "/business/message/content/list/",
+      {
         business_id: account.platformUserId,
         conversation_id: cid,
       },
-    });
-    const inner = ttData(detail.data);
+    );
+    const inner = detail.ok ? tiktokBmData(detail.data) : {};
     const participants = (inner.participants as TtParticipant[] | undefined) ?? [];
-    const messages = (inner.messages as TtMessage[] | undefined) ?? [];
+    const messages = ttMessages(inner.messages);
     const last = messages[messages.length - 1];
     const peer = ttPeer(participants, account.platformUserId);
-    threads.push(
-      threadMeta(account, {
-        conversationId: cid,
-        peerId: peer.id ?? "",
-        peerName: peer.display_name ?? "TikTok user",
-        peerHandle: null,
-        peerAvatarUrl: peer.profile_image ?? null,
-        lastMessageAt: when,
-        snippet: snippetOf(last?.text?.body || (last?.image ? "[image]" : "")),
-        canReply: true,
-      }),
-    );
-  }
-  threads.sort((a, b) =>
+    return threadMeta(account, {
+      conversationId: cid,
+      peerId: peer.id ?? "",
+      peerName: peer.display_name ?? "TikTok user",
+      peerHandle: null,
+      peerAvatarUrl: peer.profile_image ?? null,
+      lastMessageAt: unixToIso(row.update_time),
+      snippet: ttSnippet(last),
+      canReply: true,
+    });
+  });
+  details.sort((a, b) =>
     (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""),
   );
-  return { threads, status: "ok" };
+  return { threads: details, status: "ok" };
 }
 
 async function ttMediaUrl(
@@ -800,19 +831,19 @@ async function ttMediaUrl(
   const videoId = message.video?.media_id;
   const mediaId = imageId || videoId;
   if (!mediaId || !message.message_id) return null;
-  const { ok, data } = await ttBm(account.accessToken, "/business/message/media/download/", {
-    method: "POST",
-    body: {
+  const { ok, data } = await tiktokBmPost(
+    account.accessToken,
+    "/business/message/media/download/",
+    {
       business_id: account.platformUserId,
       conversation_id: conversationId,
       message_id: message.message_id,
       media_id: mediaId,
       media_type: videoId ? "VIDEO" : "IMAGE",
     },
-  });
-  const inner = ttData(data);
-  const url = inner.download_url as string | undefined;
-  if (!ok || !url) return null;
+  );
+  const url = tiktokBmData(data).download_url;
+  if (!ok || typeof url !== "string" || !url) return null;
   return { type: videoId ? "video" : "image", url };
 }
 
@@ -820,30 +851,27 @@ async function fetchTikTokThread(
   account: DmAccount,
   conversationId: string,
 ): Promise<DmThreadFetchResult> {
-  const { ok, data } = await ttBm(account.accessToken, "/business/message/content/list/", {
-    query: {
+  const { ok, data } = await tiktokBmGet(
+    account.accessToken,
+    "/business/message/content/list/",
+    {
       business_id: account.platformUserId,
       conversation_id: conversationId,
     },
-  });
+  );
   if (!ok) {
-    return graphMsg(
-      data.message ?? "TikTok conversation failed",
-      TT_BM_SCOPE_HINT,
-    );
+    return ttBmMsgFail(data, "TikTok conversation failed");
   }
-  const inner = ttData(data);
+  const inner = tiktokBmData(data);
   const participants = (inner.participants as TtParticipant[] | undefined) ?? [];
-  const rows = (inner.messages as TtMessage[] | undefined) ?? [];
+  const rows = ttMessages(inner.messages);
   const peer = ttPeer(participants, account.platformUserId);
-  const messages: InboxDmMessage[] = [];
-  for (const m of rows) {
-    const isOwn =
-      m.from_user?.role === "BUSINESS_ACCOUNT" ||
-      m.from_user?.id === account.platformUserId ||
-      m.sender === account.platformUserId;
-    const attachment = await ttMediaUrl(account, conversationId, m);
-    messages.push({
+  const attachments = await mapPool(rows, 4, (m) =>
+    ttMediaUrl(account, conversationId, m),
+  );
+  const messages: InboxDmMessage[] = rows.map((m, i) => {
+    const isOwn = isTikTokBmOwnMessage(m, account.platformUserId);
+    return {
       id: String(m.message_id ?? ""),
       text: m.text?.body ?? "",
       createdAt: unixToIso(m.timestamp),
@@ -853,10 +881,9 @@ async function fetchTikTokThread(
       authorAvatarUrl: isOwn
         ? account.profileImageUrl ?? null
         : peer.profile_image ?? null,
-      attachment,
-    });
-  }
-  messages.sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""));
+      attachment: attachments[i] ?? null,
+    };
+  });
   const last = messages[messages.length - 1];
   return {
     messages,

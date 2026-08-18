@@ -11,6 +11,10 @@ import {
 } from "@/lib/tiktok-photo-process";
 import { resolveTikTokProfileUrl } from "@/lib/platform-view-url";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+import {
+  parseTikTokJson,
+  storedTikTokPostId,
+} from "@/lib/tiktok-post-id";
 import type {
   Post,
   Pub,
@@ -438,17 +442,22 @@ export async function publishToTikTok(
         body: JSON.stringify({ publish_id: publishId }),
       },
     );
-    const statusData = (await statusRes.json().catch((e) => {
-      publishLog.error("TikTok publish/status: failed to parse JSON", e);
-      return {};
-    })) as {
-      data?: {
-        status?: string;
-        fail_reason?: string;
-        publicaly_available_post_id?: (string | number)[];
-      };
-      error?: { code?: string; message?: string };
-    };
+    const statusText = await statusRes.text();
+    const statusData = (() => {
+      try {
+        return parseTikTokJson(statusText) as {
+          data?: {
+            status?: string;
+            fail_reason?: string;
+            publicaly_available_post_id?: unknown;
+          };
+          error?: { code?: string; message?: string };
+        };
+      } catch (e) {
+        publishLog.error("TikTok publish/status: failed to parse JSON", e);
+        return {};
+      }
+    })();
     return { statusRes, statusData };
   }
 
@@ -488,16 +497,23 @@ export async function publishToTikTok(
     }
 
     if (status && TIKTOK_ACCEPTED_STATUSES.has(status)) {
-      const postIds = statusData.data?.publicaly_available_post_id;
-      const firstId =
-        Array.isArray(postIds) && postIds.length > 0 ? postIds[0] : undefined;
-      const videoId = firstId !== undefined ? String(firstId) : undefined;
-      return buildTikTokPublishedResult(pub, accessToken, videoId);
+      return buildTikTokPublishedResult(
+        pub,
+        accessToken,
+        storedTikTokPostId({
+          publishId,
+          publicIds: statusData.data?.publicaly_available_post_id,
+        }),
+      );
     }
   }
 
   // TikTok accepted the upload but is still processing - don't block the UI/server action.
   publishLog.warn("[TikTok] Publish status still processing after poll cap; marking published",
     { publishId },);
-  return buildTikTokPublishedResult(pub, accessToken, null);
+  return buildTikTokPublishedResult(
+    pub,
+    accessToken,
+    storedTikTokPostId({ publishId }),
+  );
 }

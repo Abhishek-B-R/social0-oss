@@ -30,6 +30,7 @@ import {
   youtubeTokenExpiresAt,
 } from "../lib/youtube-token.js";
 import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-profile-image.js";
+import { grantedScopesForConnect } from "../lib/oauth-granted-scopes.js";
 
 function normalizeWorkspaceId(value: unknown): string | null {
   return typeof value === "string" ? value : null;
@@ -717,6 +718,7 @@ export async function platformCallback(
         { userId, accountId, platform: "pinterest" },
       );
       if (existing) {
+        const pinterestScopes = grantedScopesForConnect("pinterest", tokens);
         await db
           .update(connectedAccounts)
           .set({
@@ -739,6 +741,7 @@ export async function platformCallback(
             isActive: true,
             platformMetadata:
               (existing.platformMetadata as Record<string, unknown>) ?? {},
+            ...(pinterestScopes ? { scopes: pinterestScopes } : {}),
             updatedAt: new Date(),
           })
           .where(eq(connectedAccounts.id, existing.id));
@@ -777,6 +780,7 @@ export async function platformCallback(
           tokenStatus: "active",
           isActive: true,
           platformMetadata: {},
+          scopes: grantedScopesForConnect("pinterest", tokens),
         });
       }
       return safeRedirect(successRedirect, successRedirect);
@@ -1091,6 +1095,7 @@ export async function platformCallback(
         profileImageUrl: string | null;
         isActive: boolean;
         platformMetadata?: Record<string, unknown>;
+        scopes?: string | null;
         updatedAt: Date;
       } = {
         encryptedAccessToken: encryptToken(tokens.access_token, existing.id),
@@ -1118,6 +1123,9 @@ export async function platformCallback(
           : {}),
         ...(platform === "youtube" ? { platformUserId: userInfo.id } : {}),
       };
+
+      const grantedScopes = grantedScopesForConnect(platform, tokens);
+      if (grantedScopes) updateData.scopes = grantedScopes;
 
       // Set connectionMethod for Instagram direct OAuth
       if (platform === "instagram") {
@@ -1210,6 +1218,7 @@ export async function platformCallback(
       tokenStatus: "active",
       isActive: true,
       platformMetadata,
+      scopes: grantedScopesForConnect(platform, tokens),
     });
 
     const insertRedirectUrl = isReauth

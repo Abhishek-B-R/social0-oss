@@ -1,6 +1,7 @@
 /**
- * Analytics orchestrator — live fetch for overview + per-post.
- * No DB writes. Caps concurrency to stay polite with platform APIs.
+ * Analytics orchestrator - live fetch for overview + per-post.
+ * Caps concurrency to stay polite with platform APIs.
+ * May persist a resolved TikTok public video id onto post_publications.
  */
 
 import { and, desc, eq, gte, inArray, isNotNull, lte } from "drizzle-orm";
@@ -181,6 +182,20 @@ async function metricsForPub(row: PubRow): Promise<PublicationMetrics> {
       platformAccountType: row.account.platformAccountType,
     });
 
+    if (
+      result.resolvedPlatformPostId &&
+      result.resolvedPlatformPostId !== row.platformPostId
+    ) {
+      await db
+        .update(postPublications)
+        .set({
+          platformPostId: result.resolvedPlatformPostId,
+          updatedAt: new Date(),
+        })
+        .where(eq(postPublications.id, row.publicationId));
+      row.platformPostId = result.resolvedPlatformPostId;
+    }
+
     const missingScopes = result.missingScopes?.length
       ? result.missingScopes
       : missing.length && result.status === "scope_missing"
@@ -189,6 +204,7 @@ async function metricsForPub(row: PubRow): Promise<PublicationMetrics> {
 
     return {
       ...base,
+      platformPostId: row.platformPostId,
       metrics: result.metrics,
       status: result.status,
       error: result.error,
@@ -414,10 +430,16 @@ export async function getAnalyticsOverview(input: {
 
 export async function getPostAnalytics(input: {
   postId?: unknown;
-}): Promise<PostAnalyticsResult> {
+} | string): Promise<PostAnalyticsResult> {
   const ws = await requireWorkspaceSession("view_analytics");
   if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
-  if (typeof input.postId !== "string" || !input.postId) {
+  const postId =
+    typeof input === "string"
+      ? input
+      : typeof input?.postId === "string"
+        ? input.postId
+        : "";
+  if (!postId) {
     throw rpcHttpError("postId required", 400);
   }
 
@@ -429,13 +451,13 @@ export async function getPostAnalytics(input: {
     workspaceId: ctx.workspaceId,
     since,
     until,
-    postId: input.postId,
+    postId,
     limit: 50,
   });
 
   if (pubs.length === 0) {
     const post = await db.query.posts.findFirst({
-      where: and(eq(posts.id, input.postId), postScopeCondition(ctx)),
+      where: and(eq(posts.id, postId), postScopeCondition(ctx)),
       columns: { id: true },
     });
     if (!post) throw rpcHttpError("Post not found", 404);
@@ -444,7 +466,7 @@ export async function getPostAnalytics(input: {
   const results = await mapPool(pubs, CONCURRENCY, metricsForPub);
   const okResults = results.filter((r) => r.status === "ok");
   return {
-    postId: input.postId,
+    postId,
     publications: results,
     totals: sumMetrics(okResults.map((r) => r.metrics)),
     accountsNeedingReconnect: collectReconnectHints(results),

@@ -101,7 +101,7 @@ export type PostAnalyticsResult = {
 export const ANALYTICS_REQUIRED_SCOPES: Record<string, string[]> = {
   instagram: ["instagram_business_manage_insights"],
   threads: ["threads_manage_insights"],
-  tiktok: ["video.list", "user.info.stats"],
+  tiktok: ["video.list"],
   facebook: ["read_insights"],
   youtube: [],
   linkedin: [],

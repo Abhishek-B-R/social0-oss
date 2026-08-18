@@ -7,6 +7,13 @@ import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
 import { jsonGet } from "../http-json.js";
 import type { MetricMap } from "./types.js";
+import {
+  firstTikTokPublicVideoId,
+  isTikTokApiOk,
+  isTikTokVideoId,
+  parseTikTokJson,
+  tiktokPublishIdFromStored,
+} from "../tiktok-post-id.js";
 
 export type PlatformFetchInput = {
   platform: string;
@@ -24,6 +31,8 @@ export type PlatformFetchResult = {
   status: "ok" | "scope_missing" | "unsupported" | "error";
   error?: string;
   missingScopes?: string[];
+  /** When a publish_id was resolved to a real platform id (TikTok). */
+  resolvedPlatformPostId?: string;
 };
 
 function num(v: unknown): number | undefined {
@@ -287,9 +296,54 @@ async function fetchThreads(
   return { status: "ok", metrics };
 }
 
+async function resolveTikTokVideoId(
+  storedId: string,
+  accessToken: string,
+): Promise<string | null> {
+  if (isTikTokVideoId(storedId)) return storedId;
+  const publishId = tiktokPublishIdFromStored(storedId);
+  if (!publishId) return null;
+  const res = await fetch(
+    "https://open.tiktokapis.com/v2/post/publish/status/fetch/",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json; charset=UTF-8",
+      },
+      body: JSON.stringify({ publish_id: publishId }),
+    },
+  );
+  const text = await res.text();
+  let data: {
+    data?: { publicaly_available_post_id?: unknown };
+    error?: { code?: string; message?: string };
+  } = {};
+  try {
+    data = parseTikTokJson(text) as typeof data;
+  } catch {
+    return null;
+  }
+  if (!isTikTokApiOk(data, res.ok)) return null;
+  return firstTikTokPublicVideoId(data.data?.publicaly_available_post_id);
+}
+
 async function fetchTikTok(
   input: PlatformFetchInput,
 ): Promise<PlatformFetchResult> {
+  const videoId = await resolveTikTokVideoId(
+    input.platformPostId,
+    input.accessToken,
+  );
+  if (!videoId) {
+    return {
+      metrics: {},
+      status: "error",
+      error:
+        "TikTok has not issued a public video id yet. Sandbox and private posts often stay in inbox until the app is approved and the post is public.",
+    };
+  }
+
   const url =
     "https://open.tiktokapis.com/v2/video/query/?fields=id,like_count,comment_count,share_count,view_count";
   const res = await fetch(url, {
@@ -299,14 +353,20 @@ async function fetchTikTok(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      filters: { video_ids: [input.platformPostId] },
+      filters: { video_ids: [videoId] },
     }),
   });
-  const data = (await res.json().catch(() => ({}))) as {
+  const text = await res.text();
+  let data: {
     error?: { code?: string; message?: string };
     data?: { videos?: Array<Record<string, unknown>> };
-  };
-  if (!res.ok || data.error?.code) {
+  } = {};
+  try {
+    data = parseTikTokJson(text) as typeof data;
+  } catch {
+    return errResult("TikTok video.query returned invalid JSON");
+  }
+  if (!isTikTokApiOk(data, res.ok)) {
     const msg = data.error?.message ?? "TikTok video.query failed";
     if (/scope|permission|video\.list/i.test(msg) || data.error?.code === "scope_not_authorized") {
       return scopeError(["video.list"], msg);
@@ -323,6 +383,8 @@ async function fetchTikTok(
       shares: num(video.share_count),
       views: num(video.view_count),
     },
+    resolvedPlatformPostId:
+      videoId !== input.platformPostId ? videoId : undefined,
   };
 }
 

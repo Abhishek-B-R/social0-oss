@@ -43,7 +43,7 @@ function dmKey(t: InboxDmThread): string {
 function dmReplyMax(platform: string): number {
   if (platform === "twitter_x") return 10000;
   if (platform === "bluesky") return 1000;
-  if (platform === "tiktok") return 2000;
+  if (platform === "tiktok") return 6000;
   return 2000;
 }
 

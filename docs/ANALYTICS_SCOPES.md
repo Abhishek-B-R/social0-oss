@@ -56,7 +56,7 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 
 | Item | Detail |
 | ---- | ------ |
-| New scopes | `video.list`, `user.info.stats` |
+| New scopes | `video.list` (required for reconnect nag), `user.info.stats` (requested, not used for per-post metrics) |
 | Keep | `user.info.basic`, `video.upload`, `video.publish` |
 | Do **not** add yet | `user.info.profile` (separate review; not required for video metrics) |
 | Portal | TikTok Developer Portal → your app → products (Login Kit + Display API) → apply for scopes |

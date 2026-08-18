@@ -233,7 +233,7 @@ This is **not** Login Kit. The token from `/v2/auth/authorize` (publish) cannot 
 | Window | Reply only after the user messages you first; ~10 messages / 48h |
 | Media | Images in/out; video inbound via download |
 
-Social0 tries this API with the connected TikTok token. If TikTok rejects it (typical for Login Kit / US accounts), Inbox shows a reconnect hint: **Business Messaging API**.
+Social0 tries this API with the connected TikTok (Login Kit) token. That usually fails: Login Kit `open_id` is not `business_id`, and the token is not a Business Messaging Access-Token. Inbox shows a **fetch error**, not a reconnect-scope nag (reconnecting Login Kit cannot grant BM). Marketing API (ads) apps are a third product and also cannot send organic DMs.
 
 ### Inbox comments
 
@@ -277,7 +277,7 @@ Use each platform’s publish scopes in `PLATFORM_OAUTH_CONFIG` — no inbox sco
 | Facebook | `read_insights` |
 | Threads | `threads_manage_insights` |
 | YouTube | `youtube.readonly` (MVP); `yt-analytics.readonly` optional |
-| TikTok | `video.list`, `user.info.stats` |
+| TikTok | `video.list` (reconnect nag). `user.info.stats` is requested on connect but not used for per-post metrics. |
 | X | OAuth 1.0a user context (public_metrics) |
 | Pinterest | `pins:read` |
 | Bluesky | App password (public AppView) |

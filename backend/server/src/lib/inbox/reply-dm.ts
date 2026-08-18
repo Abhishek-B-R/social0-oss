@@ -6,6 +6,14 @@ import { jsonPost } from "../http-json.js";
 import { uploadTwitterImage, uploadTwitterVideo } from "../twitter-media.js";
 import { inboxAllowsMedia } from "./media-capabilities.js";
 import { blueskySession } from "./bluesky-session.js";
+import {
+  tiktokBmData,
+  tiktokBmErrorMessage,
+  tiktokBmMediaId,
+  tiktokBmPost,
+  tiktokBmSentMessageId,
+  tiktokBmUploadImage,
+} from "./tiktok-bm.js";
 
 export type DmReplyInput = {
   platform: string;
@@ -56,7 +64,7 @@ async function graphUploadAttachmentId(
   });
   if (!ok) {
     return {
-      error: graphError(data, "Could not upload attachment — ensure media URL is public HTTPS."),
+      error: graphError(data, "Could not upload attachment - ensure media URL is public HTTPS."),
     };
   }
   const id = (data as { attachment_id?: string })?.attachment_id;
@@ -93,7 +101,7 @@ async function replyGraphMessenger(
   const hasMedia = Boolean(input.mediaUrl && input.mediaMimeType);
   if (!hasText && !hasMedia) return fail("Message is empty.");
 
-  // Graph rejects text + attachment in one payload — send separately.
+  // Graph rejects text + attachment in one payload - send separately.
   if (hasText && hasMedia) {
     const mediaResult = await postMessage({
       attachment: graphAttachment(input.mediaUrl!, input.mediaMimeType!),
@@ -213,8 +221,6 @@ async function replyBluesky(input: DmReplyInput): Promise<DmReplyResult> {
   return { ok: true, messageId: id };
 }
 
-const TT_BM = "https://business-api.tiktok.com/open_api/v1.3";
-
 async function replyTikTok(input: DmReplyInput): Promise<DmReplyResult> {
   if (!input.conversationId) return fail("Missing TikTok conversation.");
   if (!input.platformUserId) return fail("Missing TikTok business id.");
@@ -226,25 +232,23 @@ async function replyTikTok(input: DmReplyInput): Promise<DmReplyResult> {
     }
     const fileRes = await fetch(input.mediaUrl);
     if (!fileRes.ok) return fail("Could not fetch the image to send.");
-    const blob = await fileRes.blob();
-    const form = new FormData();
-    form.append("business_id", input.platformUserId);
-    form.append("file", blob, "inbox.jpg");
-    form.append("media_type", "IMAGE");
-    const uploadRes = await fetch(`${TT_BM}/business/message/media/upload/`, {
-      method: "POST",
-      headers: { "Access-Token": input.accessToken },
-      body: form,
-    });
-    const uploaded = (await uploadRes.json().catch(() => ({}))) as {
-      code?: number;
-      message?: string;
-      data?: { media_id?: string };
-    };
-    if (!uploadRes.ok || uploaded.code !== 0 || !uploaded.data?.media_id) {
-      return fail(uploaded.message ?? "TikTok image upload failed");
+    const buf = await fileRes.arrayBuffer();
+    const mime = input.mediaMimeType.split(";")[0]?.trim() || "image/jpeg";
+    const ext = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
+    const blob = new Blob([buf], { type: mime });
+    const uploaded = await tiktokBmUploadImage(
+      input.accessToken,
+      input.platformUserId,
+      blob,
+      `inbox.${ext}`,
+    );
+    const mediaId = tiktokBmMediaId(tiktokBmData(uploaded.data));
+    if (!uploaded.ok || !mediaId) {
+      return fail(
+        tiktokBmErrorMessage(uploaded.data, "TikTok image upload failed"),
+      );
     }
-    imageMediaId = uploaded.data.media_id;
+    imageMediaId = mediaId;
   }
 
   const body: Record<string, unknown> = {
@@ -257,26 +261,15 @@ async function replyTikTok(input: DmReplyInput): Promise<DmReplyResult> {
   if (imageMediaId) body.image = { media_id: imageMediaId };
   if (!input.text.trim() && !imageMediaId) return fail("Message is empty.");
 
-  const res = await fetch(`${TT_BM}/business/message/send/`, {
-    method: "POST",
-    headers: {
-      "Access-Token": input.accessToken,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  const data = (await res.json().catch(() => ({}))) as {
-    code?: number;
-    message?: string;
-    data?: { message?: { message_id?: string } };
-  };
-  if (!res.ok || data.code !== 0) {
-    return fail(
-      data.message ??
-        "TikTok send failed. DMs need Business Messaging (not Login Kit; unavailable in US/EEA/UK).",
-    );
+  const { ok, data } = await tiktokBmPost(
+    input.accessToken,
+    "/business/message/send/",
+    body,
+  );
+  if (!ok) {
+    return fail(tiktokBmErrorMessage(data, "TikTok send failed"));
   }
-  return { ok: true, messageId: data.data?.message?.message_id };
+  return { ok: true, messageId: tiktokBmSentMessageId(tiktokBmData(data)) };
 }
 
 export async function replyToDmOnPlatform(

@@ -1,4 +1,4 @@
-/** Unified inbox — live fetch, no DB. */
+/** Unified inbox - live fetch, no DB. */
 
 import type { DateWindowRange } from "../date-window.js";
 
@@ -171,8 +171,8 @@ export const INBOX_DM_REQUIRED_SCOPES: Record<string, string[]> = {
   instagram: ["instagram_business_manage_messages"],
   twitter_x: [],
   bluesky: [],
-  // Login Kit tokens have no extra scope string; Business Messaging is a
-  // separate TikTok product. We try the API and surface a reconnect hint on fail.
+  // Login Kit has no extra DM scope. Business Messaging is a separate product;
+  // failures are fetch errors, not "reconnect to grant a scope".
   tiktok: [],
 };
 
