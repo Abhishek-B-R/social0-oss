@@ -37,7 +37,8 @@ function parsePending(raw: unknown): PendingCheckout | null {
     if (
       (data.plan === "starter" ||
         data.plan === "growth" ||
-        data.plan === "pro") &&
+        data.plan === "pro" ||
+        data.plan === "max") &&
       typeof data.url === "string" &&
       typeof data.sessionId === "string"
     ) {
@@ -99,6 +100,14 @@ export async function clearPendingCheckout(userId: string): Promise<void> {
   await db
     .delete(verification)
     .where(eq(verification.identifier, pendingDbIdentifier(userId)));
+}
+
+export async function replacePendingCheckout(
+  userId: string,
+  pending: PendingCheckout,
+): Promise<void> {
+  await clearPendingCheckout(userId);
+  await savePendingCheckout(userId, pending);
 }
 
 async function acquireCheckoutLock(userId: string): Promise<boolean> {

@@ -302,6 +302,9 @@ export function BillingPanel({
   const [upgradePending, setUpgradePending] = useState(false);
   const [billingInterval, setBillingInterval] =
     useState<BillingInterval>("monthly");
+  const [stuckCheckoutPlan, setStuckCheckoutPlan] = useState<PaidPlan | null>(
+    null,
+  );
   const [waitingForWebhook, setWaitingForWebhook] = useState(
     Boolean(justSubscribed && subscription.tier === "free"),
   );
@@ -616,8 +619,8 @@ export function BillingPanel({
         return;
       }
       if (res.status === 404 && data.error === "no_active_subscription") {
-        const ok = await redirectToCheckoutForPlan(targetDowngradePlan);
-        if (ok) return;
+        const result = await redirectToCheckoutForPlan(targetDowngradePlan);
+        if (result !== "failed") return;
       }
       toast.error(
         toFriendlyBillingError(
@@ -753,8 +756,8 @@ export function BillingPanel({
     }
 
     if (data.requireCheckout === true) {
-      const ok = await redirectToCheckoutForPlan(plan);
-      if (ok) return true;
+      const result = await redirectToCheckoutForPlan(plan);
+      if (result !== "failed") return true;
     }
     if (res.status === 409) {
       if (data.code === "use_portal") {
@@ -789,8 +792,8 @@ export function BillingPanel({
       return true;
     }
     if (res.status === 404 && data.error === "no_active_subscription") {
-      const ok = await redirectToCheckoutForPlan(plan);
-      if (ok) return true;
+      const result = await redirectToCheckoutForPlan(plan);
+      if (result !== "failed") return true;
     }
     toast.error(
       toFriendlyBillingError(
@@ -835,7 +838,10 @@ export function BillingPanel({
     }
   };
 
-  const redirectToCheckoutForPlan = async (plan: PaidPlan) => {
+  const redirectToCheckoutForPlan = async (
+    plan: PaidPlan,
+    options?: { forceNewSession?: boolean },
+  ): Promise<"redirected" | "handled" | "failed"> => {
     const res = await fetchApi("/api/billing/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -844,17 +850,19 @@ export function BillingPanel({
         plan,
         interval: billingInterval,
         successUrl: "/dashboard/billing?success=1",
+        forceNewSession: options?.forceNewSession === true,
       }),
     });
     const data = await res.json().catch(() => ({}));
     // Only follow URLs for a successful checkout (or an explicit portal handoff).
     // Never redirect on checkout_in_progress — that used to reopen another plan's session.
     if (res.ok && typeof data.url === "string") {
+      setStuckCheckoutPlan(null);
       if (!assignSafeRedirectUrl(data.url)) {
         toast.error("Failed to start checkout. Please try again.");
-        return false;
+        return "failed";
       }
-      return true;
+      return "redirected";
     }
     if (res.status === 409 && data.code === "use_portal") {
       toast.info(
@@ -865,20 +873,21 @@ export function BillingPanel({
       if (typeof data.url === "string") {
         if (!assignSafeRedirectUrl(data.url)) {
           toast.error("Failed to open the customer portal. Please try again.");
-          return false;
+          return "failed";
         }
-        return true;
+        return "redirected";
       }
       await handleChangePlan();
-      return true;
+      return "handled";
     }
     if (res.status === 409 && data.code === "checkout_in_progress") {
+      setStuckCheckoutPlan(plan);
       toast.info(
         typeof data.error === "string"
-          ? data.error
-          : "Checkout is already being prepared. Try again in a few seconds.",
+          ? `${data.error} If it stays stuck, start a fresh checkout below.`
+          : "Checkout is already being prepared. If it stays stuck, start a fresh checkout below.",
       );
-      return false;
+      return "handled";
     }
     if (res.status === 409 && data.code === "use_change_plan") {
       toast.info(
@@ -886,16 +895,18 @@ export function BillingPanel({
           ? data.error
           : "You already have a subscription on this account.",
       );
-      return false;
+      return "handled";
     }
-    return false;
+    return "failed";
   };
 
   const handleUpgradeFromFree = async (plan: PaidPlan) => {
     setLoadingChangePlan(plan);
     try {
-      const ok = await redirectToCheckoutForPlan(plan);
-      if (!ok) toast.error("Failed to start checkout. Please try again.");
+      const result = await redirectToCheckoutForPlan(plan);
+      if (result === "failed") {
+        toast.error("Failed to start checkout. Please try again.");
+      }
     } finally {
       setLoadingChangePlan(null);
     }
@@ -905,6 +916,21 @@ export function BillingPanel({
     setLoadingChangePlan(plan);
     try {
       await executeUpgrade(plan, false);
+    } finally {
+      setLoadingChangePlan(null);
+    }
+  };
+
+  const handleFreshCheckout = async () => {
+    if (!stuckCheckoutPlan) return;
+    setLoadingChangePlan(stuckCheckoutPlan);
+    try {
+      const result = await redirectToCheckoutForPlan(stuckCheckoutPlan, {
+        forceNewSession: true,
+      });
+      if (result === "failed") {
+        toast.error("Could not start a fresh checkout. Please try again.");
+      }
     } finally {
       setLoadingChangePlan(null);
     }
@@ -995,6 +1021,25 @@ export function BillingPanel({
           Upgrade payment is processing with your payment provider. You&apos;ll
           move to the new plan automatically once payment succeeds. Track whether
           it&apos;s done via Manage Subscription.
+        </div>
+      )}
+
+      {stuckCheckoutPlan && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 flex items-center justify-between flex-wrap gap-3">
+          <span>
+            Your last checkout looks stuck. Start a fresh checkout to create a
+            new payment session and try again.
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => void handleFreshCheckout()}
+            disabled={loadingChangePlan !== null}
+            className="border-amber-500/40 bg-white/80 text-amber-900 hover:bg-white dark:bg-transparent dark:text-amber-100"
+          >
+            <PlanButtonLabel loading={loadingChangePlan === stuckCheckoutPlan}>
+              Start a fresh checkout
+            </PlanButtonLabel>
+          </Button>
         </div>
       )}
 

@@ -16,7 +16,10 @@ import {
   evaluateCheckoutEligibility,
   resolveBillingCustomer,
 } from "../../lib/billing-guards.js";
-import { resolveCheckoutSession } from "../../lib/pending-checkout.js";
+import {
+  clearPendingCheckout,
+  resolveCheckoutSession,
+} from "../../lib/pending-checkout.js";
 
 const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
 const environment = env.DODO_PAYMENTS_ENVIRONMENT ?? "test_mode";
@@ -36,6 +39,7 @@ export async function createCheckout(request: Request) {
   const body = await request.json().catch(() => ({}));
   const planTier = parsePaidPlanTier(body.plan);
   const interval = parseBillingInterval(body.interval);
+  const forceNewSession = body.forceNewSession === true;
   const successUrl =
     typeof body.successUrl === "string" ? body.successUrl.trim() : null;
   if (!planTier) {
@@ -98,6 +102,10 @@ export async function createCheckout(request: Request) {
     : `${appUrl}/dashboard/billing?success=1`;
 
   try {
+    if (forceNewSession) {
+      await clearPendingCheckout(session.user.id);
+    }
+
     const resolved = await resolveCheckoutSession({
       userId: session.user.id,
       plan: planTier,
@@ -142,6 +150,7 @@ export async function createCheckout(request: Request) {
     return RouteResponse.json({
       url: resolved.url,
       reused: resolved.reused,
+      fresh: forceNewSession && !resolved.reused,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Checkout failed";

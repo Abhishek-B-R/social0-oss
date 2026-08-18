@@ -107,6 +107,9 @@ function OnboardingPlanContent() {
     Partial<Record<PaidPlanId, boolean>>
   >({});
   const [verifying, setVerifying] = useState(searchParams.get("paid") === "1");
+  const [stuckCheckoutPlan, setStuckCheckoutPlan] = useState<PaidPlanId | null>(
+    null,
+  );
   const syncAttempted = useRef(false);
   const paid = searchParams.get("paid") === "1";
 
@@ -185,7 +188,10 @@ function OnboardingPlanContent() {
     }
   }
 
-  async function handleSelectPlan(plan: PaidPlanId) {
+  async function handleSelectPlan(
+    plan: PaidPlanId,
+    options?: { forceNewSession?: boolean },
+  ) {
     if (loadingPlan !== null) return;
     toast.dismiss();
     posthog?.capture("checkout_started", { plan, interval });
@@ -199,10 +205,12 @@ function OnboardingPlanContent() {
           plan,
           interval,
           successUrl: ONBOARDING_CHECKOUT_SUCCESS,
+          forceNewSession: options?.forceNewSession === true,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && typeof data.url === "string") {
+        setStuckCheckoutPlan(null);
         if (!assignSafeRedirectUrl(data.url)) {
           toast.error("Failed to start checkout");
           return;
@@ -234,10 +242,11 @@ function OnboardingPlanContent() {
         }
       }
       if (res.status === 409 && data.code === "checkout_in_progress") {
+        setStuckCheckoutPlan(plan);
         toast.info(
           typeof data.error === "string"
-            ? data.error
-            : "Checkout is already being prepared. Try again in a few seconds.",
+            ? `${data.error} If it stays stuck, start a fresh checkout below.`
+            : "Checkout is already being prepared. If it stays stuck, start a fresh checkout below.",
         );
         return;
       }
@@ -256,6 +265,11 @@ function OnboardingPlanContent() {
     } finally {
       setLoadingPlan(null);
     }
+  }
+
+  async function handleFreshCheckout() {
+    if (!stuckCheckoutPlan) return;
+    await handleSelectPlan(stuckCheckoutPlan, { forceNewSession: true });
   }
 
   if (verifying) {
@@ -293,6 +307,33 @@ function OnboardingPlanContent() {
             </>
           }
         />
+
+        {stuckCheckoutPlan && (
+          <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              Your last checkout looks stuck. Start a fresh checkout to create
+              a new payment session and try again.
+            </p>
+            <button
+              type="button"
+              onClick={() => void handleFreshCheckout()}
+              disabled={loadingPlan !== null}
+              className={cn(
+                onboardingSecondaryCtaClass,
+                "w-full border-amber-500/40 bg-white/80 text-amber-900 hover:bg-white dark:bg-transparent dark:text-amber-100 sm:w-auto",
+              )}
+            >
+              {loadingPlan === stuckCheckoutPlan ? (
+                <>
+                  <CircleNotch className="h-4 w-4 animate-spin" />
+                  Starting fresh…
+                </>
+              ) : (
+                "Start a fresh checkout"
+              )}
+            </button>
+          </div>
+        )}
 
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="grid flex-1 gap-3 sm:grid-cols-3">
