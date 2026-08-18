@@ -351,43 +351,32 @@ export function FeedbackPageSkeleton() {
 export function PostDetailPageSkeleton() {
   return (
     <div className="space-y-6" aria-busy="true" aria-label="Loading post">
-      <SkeletonBone className="mb-6 h-5 w-28" />
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-        <div className="space-y-6">
-          <div className="space-y-4 rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
-            <SkeletonBone className="h-5 w-28" />
-            <div className="min-h-[80px] space-y-2 rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
-              <SkeletonBone className="h-4 w-full" />
-              <SkeletonBone className="h-4 w-[90%]" />
-              <SkeletonBone className="h-4 w-[75%]" />
-            </div>
-          </div>
-          <div className="space-y-3 rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
-            <SkeletonBone className="h-5 w-24" />
-            <div className="flex gap-2">
-              <SkeletonBone className="h-20 w-20 rounded-lg" />
-              <SkeletonBone className="h-20 w-20 rounded-lg" />
-            </div>
-          </div>
+      <SkeletonBone className="h-5 w-28" />
+      <div className="space-y-4 rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
+        <SkeletonBone className="h-5 w-28" />
+        <div className="space-y-2 rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
+          <SkeletonBone className="h-4 w-full" />
+          <SkeletonBone className="h-4 w-[90%]" />
+          <SkeletonBone className="h-4 w-[40%]" />
         </div>
-
-        <div className="space-y-6">
-          <div className="space-y-4 rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
-            <SkeletonBone className="h-5 w-20" />
-            <SkeletonBone className="h-6 w-24 rounded-md" />
-            <SkeletonBone className="h-4 w-40" />
-            <div className="space-y-2 pt-2">
-              <SkeletonBone className="h-10 w-full rounded-lg" />
-              <SkeletonBone className="h-10 w-full rounded-lg" />
-            </div>
-          </div>
-          <div className="space-y-3 rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
-            <SkeletonBone className="h-5 w-32" />
-            <SkeletonBone className="h-16 w-full rounded-lg" />
-            <SkeletonBone className="h-16 w-full rounded-lg" />
-          </div>
+      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
+          <SkeletonBone className="h-5 w-32" />
+          <SkeletonBone className="h-4 w-48" />
+          <SkeletonBone className="h-5 w-40" />
         </div>
+        <div className="space-y-3 rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
+          <SkeletonBone className="h-5 w-32" />
+          <SkeletonBone className="h-4 w-full" />
+          <SkeletonBone className="h-4 w-full" />
+          <SkeletonBone className="h-4 w-2/3" />
+        </div>
+      </div>
+      <div className="space-y-3 rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
+        <SkeletonBone className="h-5 w-28" />
+        <SkeletonBone className="h-12 w-full rounded-lg" />
+        <SkeletonBone className="h-12 w-full rounded-lg" />
       </div>
     </div>
   );

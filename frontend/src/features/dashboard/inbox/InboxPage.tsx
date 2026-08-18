@@ -14,6 +14,7 @@ import { listAnalyticsAccounts, type AnalyticsAccount } from "@/api/analytics";
 import { PLATFORM_LABEL } from "@/features/dashboard/analytics/analytics-utils";
 import { defaultDateWindow, type DateWindow } from "@/lib/date-window";
 import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
+import { isPlatformLive } from "@/lib/live-platforms";
 import { cn } from "@/lib/utils";
 import { InboxCommentsPane } from "./InboxCommentsPane";
 import { InboxDmsPane } from "./InboxDmsPane";
@@ -89,8 +90,15 @@ export function InboxPage() {
     mode === "comments" ? INBOX_COMMENT_PLATFORMS : INBOX_DM_PLATFORMS;
   const accountsForFilter = useMemo(
     () =>
-      (accountsQuery.data ?? []).filter((a) => platformSet.has(a.platform)),
-    [accountsQuery.data, platformSet],
+      (accountsQuery.data ?? []).filter(
+        (a) =>
+          platformSet.has(a.platform) &&
+          isPlatformLive(
+            mode === "comments" ? "inboxComments" : "inboxDms",
+            a.platform,
+          ),
+      ),
+    [accountsQuery.data, platformSet, mode],
   );
 
   useEffect(() => {

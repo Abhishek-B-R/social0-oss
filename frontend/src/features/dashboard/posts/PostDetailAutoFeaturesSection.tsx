@@ -149,6 +149,7 @@ export function PostDetailAutoFeaturesSection({
   pendingAutoPlugFromServer = null,
   pendingResurfaceFromServer = null,
   onUpdated,
+  embedded = false,
 }: {
   postId: string;
   publishedAt: Date | null;
@@ -163,6 +164,8 @@ export function PostDetailAutoFeaturesSection({
   pendingResurfaceFromServer?: Partial<AutoResurfaceConfig> | null;
   /** Reload post-detail local state after mutations (RQ alone is not enough). */
   onUpdated?: () => void | Promise<void>;
+  /** Drop the outer card chrome when nested under a details/summary. */
+  embedded?: boolean;
 }) {
   const invalidateQueries = useInvalidateQueries();
   const { accounts, loading } = useAccountsForForm(null);
@@ -518,7 +521,7 @@ export function PostDetailAutoFeaturesSection({
   }, [allowResurface, repostEditLocked]);
 
   if (loading) {
-    return <PostDetailAutoFeaturesSkeleton />;
+    return embedded ? null : <PostDetailAutoFeaturesSkeleton />;
   }
 
   if (selectedAccountIds.length === 0) {
@@ -547,7 +550,14 @@ export function PostDetailAutoFeaturesSection({
     allowResurface && !repostEditLocked && resurfaceToggleOn;
 
   return (
-    <div className="rounded-2xl border border-border/80 bg-bg-elevated p-5 shadow-sm space-y-4 dark:border-white/8 dark:bg-[#121212]/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]">
+    <div
+      className={
+        embedded
+          ? "space-y-4"
+          : "rounded-2xl border border-border/80 bg-bg-elevated p-5 shadow-sm space-y-4 dark:border-white/8 dark:bg-[#121212]/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]"
+      }
+    >
+      {embedded ? null : (
       <div className="space-y-1">
         <h2 className="text-base font-semibold tracking-tight text-foreground">
           Auto-Plug &amp; Auto-Repost
@@ -563,6 +573,14 @@ export function PostDetailAutoFeaturesSection({
           </p>
         )}
       </div>
+      )}
+
+      {embedded && ageLocked ? (
+        <p className="text-[13px] text-muted-foreground">
+          This post was published more than 24 hours ago - Auto-Plug and
+          Auto-Repost can no longer be edited.
+        </p>
+      ) : null}
 
       {(!allowAutoPlug || !allowResurface) && (
         <p className="text-xs text-muted-foreground">

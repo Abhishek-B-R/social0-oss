@@ -3,7 +3,7 @@
  * No DB writes. Caps concurrency to stay polite with platform APIs.
  */
 
-import { and, desc, eq, gte, isNotNull, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, lte } from "drizzle-orm";
 import { addDays, format, startOfDay } from "date-fns";
 import { db } from "../db/index.js";
 import {
@@ -19,6 +19,7 @@ import {
 } from "../lib/workspace/context.js";
 import { getValidToken, REFRESHABLE_PLATFORMS } from "../lib/token-refresh.js";
 import { fetchPlatformPublicationMetrics } from "../lib/analytics/fetch-platform-metrics.js";
+import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
 import { parseDateWindow } from "../lib/date-window.js";
 import {
   engagementTotal,
@@ -84,6 +85,8 @@ async function loadPublishedPubs(opts: {
   accountId?: string;
   limit?: number;
 }): Promise<PubRow[]> {
+  const live = livePlatformIds("analytics");
+  if (!live.length) return [];
   const postFilter = postScopeCondition({
     resourceUserId: opts.resourceUserId,
     workspaceId: opts.workspaceId,
@@ -117,6 +120,7 @@ async function loadPublishedPubs(opts: {
       and(
         postFilter,
         eq(postPublications.status, "published"),
+        inArray(connectedAccounts.platform, live),
         opts.postId ? eq(posts.id, opts.postId) : undefined,
         opts.accountId
           ? eq(postPublications.connectedAccountId, opts.accountId)
@@ -200,6 +204,10 @@ async function metricsForPub(row: PubRow): Promise<PublicationMetrics> {
       status: "error",
       error: "Connected account was removed.",
     };
+  }
+
+  if (!isPlatformLive("analytics", row.account.platform)) {
+    return { ...base, status: "skipped" };
   }
 
   const missing = missingAnalyticsScopes(row.account.platform, row.account.scopes);
@@ -415,6 +423,7 @@ export async function getAnalyticsOverview(input: {
 
   const accountRows = await loadWorkspaceAccounts(ctx);
   const fromAccounts: AccountReconnectHint[] = accountRows
+    .filter((r) => isPlatformLive("analytics", r.platform))
     .map((r) => ({
       accountId: r.id,
       platform: r.platform,
@@ -549,11 +558,13 @@ export async function listAnalyticsAccounts(): Promise<
   const ctx = await resolveWorkspaceContext(session.user.id);
   const rows = await loadWorkspaceAccounts(ctx);
 
-  return rows.map((r) => ({
-    id: r.id,
-    platform: r.platform,
-    username: r.username,
-    profileImageUrl: r.profileImageUrl,
-    missingScopes: missingAnalyticsScopes(r.platform, r.scopes),
-  }));
+  return rows
+    .filter((r) => isPlatformLive("analytics", r.platform))
+    .map((r) => ({
+      id: r.id,
+      platform: r.platform,
+      username: r.username,
+      profileImageUrl: r.profileImageUrl,
+      missingScopes: missingAnalyticsScopes(r.platform, r.scopes),
+    }));
 }

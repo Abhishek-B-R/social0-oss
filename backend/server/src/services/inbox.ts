@@ -3,7 +3,7 @@
  * No DB writes.
  */
 
-import { and, desc, eq, gte, inArray, isNotNull, lte, notInArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, lte } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
   connectedAccounts,
@@ -24,9 +24,9 @@ import { replyOnPlatform } from "../lib/inbox/reply-comment.js";
 import { fetchAccountDms, fetchDmMessages } from "../lib/inbox/fetch-dms.js";
 import { replyToDmOnPlatform } from "../lib/inbox/reply-dm.js";
 import { resolveInboxMedia } from "../lib/inbox/resolve-media.js";
+import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
 import { parseDateWindow } from "../lib/date-window.js";
 import {
-  INBOX_DM_PLATFORMS,
   INBOX_UNSUPPORTED,
   isInboxDmPlatform,
   missingDmScopes,
@@ -39,8 +39,6 @@ import {
   type InboxListResult,
   type InboxReconnectHint,
 } from "../lib/inbox/types.js";
-
-const INBOX_SKIP_PLATFORMS = ["tiktok", "pinterest"] as const;
 
 function parsePlatform(value: unknown): Platform | undefined {
   if (typeof value !== "string" || !value) return undefined;
@@ -104,6 +102,8 @@ async function loadPubs(opts: {
   accountId?: string;
   platform?: Platform;
 }): Promise<PubRow[]> {
+  const live = livePlatformIds("inboxComments");
+  if (!opts.platform && !live.length) return [];
   const postFilter = postScopeCondition({
     resourceUserId: opts.resourceUserId,
     workspaceId: opts.workspaceId,
@@ -145,9 +145,7 @@ async function loadPubs(opts: {
           : undefined,
         opts.platform
           ? eq(connectedAccounts.platform, opts.platform)
-          : notInArray(connectedAccounts.platform, [
-              ...INBOX_SKIP_PLATFORMS,
-            ]),
+          : inArray(connectedAccounts.platform, live),
       ),
     )
     .orderBy(desc(postPublications.publishedAt))
@@ -267,6 +265,7 @@ export async function listInboxComments(input: {
 
   await mapPool(pubs, CONCURRENCY, async (row) => {
     if (!row.platformPostId || !row.account) return;
+    if (!isPlatformLive("inboxComments", row.account.platform)) return;
     if (INBOX_UNSUPPORTED.has(row.account.platform)) {
       unsupported.add(row.account.platform);
       return;
@@ -322,6 +321,7 @@ export async function listInboxComments(input: {
   // Also flag connected accounts that never appeared in this sample.
   for (const row of pubs) {
     if (!row.account) continue;
+    if (!isPlatformLive("inboxComments", row.account.platform)) continue;
     const missing = missingInboxScopes(row.account.platform, row.account.scopes);
     if (missing.length && !reconnect.has(row.account.id)) {
       reconnect.set(row.account.id, {
@@ -345,6 +345,7 @@ export async function listInboxComments(input: {
       and(connectionScopeCondition(ctx), eq(connectedAccounts.isActive, true)),
     );
   for (const a of accountRows) {
+    if (!isPlatformLive("inboxComments", a.platform)) continue;
     const missing = missingInboxScopes(a.platform, a.scopes);
     if (missing.length && !reconnect.has(a.id)) {
       reconnect.set(a.id, {
@@ -475,6 +476,8 @@ async function loadDmAccounts(
   ctx: { resourceUserId: string; workspaceId: string | null },
   accountId?: string,
 ): Promise<DmAccountRow[]> {
+  const live = livePlatformIds("inboxDms");
+  if (!live.length) return [];
   return db
     .select({
       id: connectedAccounts.id,
@@ -491,7 +494,7 @@ async function loadDmAccounts(
       and(
         connectionScopeCondition(ctx),
         eq(connectedAccounts.isActive, true),
-        inArray(connectedAccounts.platform, [...INBOX_DM_PLATFORMS]),
+        inArray(connectedAccounts.platform, live),
         accountId ? eq(connectedAccounts.id, accountId) : undefined,
       ),
     );
@@ -519,7 +522,7 @@ export async function listInboxDms(input: {
   const threads: InboxDmThread[] = [];
 
   await mapPool(accounts, DM_CONCURRENCY, async (row) => {
-    if (!isInboxDmPlatform(row.platform)) {
+    if (!isInboxDmPlatform(row.platform) || !isPlatformLive("inboxDms", row.platform)) {
       unsupported.add(row.platform);
       return;
     }

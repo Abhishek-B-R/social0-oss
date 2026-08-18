@@ -32,6 +32,7 @@ import {
   viewsOf,
 } from "./analytics-utils";
 import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
+import { isPlatformLive } from "@/lib/live-platforms";
 import { cn } from "@/lib/utils";
 
 export function AnalyticsPage() {
@@ -57,10 +58,20 @@ export function AnalyticsPage() {
     staleTime: 60_000,
   });
 
+  const accounts = useMemo(
+    () =>
+      (accountsQuery.data ?? []).filter((a) =>
+        isPlatformLive("analytics", a.platform),
+      ),
+    [accountsQuery.data],
+  );
+
   const reconnect = useMemo(() => {
-    const fromOverview = overviewQuery.data?.accountsNeedingReconnect ?? [];
+    const fromOverview = (overviewQuery.data?.accountsNeedingReconnect ?? []).filter(
+      (a) => isPlatformLive("analytics", a.platform),
+    );
     if (fromOverview.length) return fromOverview;
-    return (accountsQuery.data ?? [])
+    return accounts
       .filter((a) => a.missingScopes.length > 0)
       .map((a) => ({
         accountId: a.id,
@@ -68,7 +79,7 @@ export function AnalyticsPage() {
         username: a.username,
         missingScopes: a.missingScopes,
       }));
-  }, [overviewQuery.data, accountsQuery.data]);
+  }, [overviewQuery.data, accounts]);
 
   if (sessionPending) {
     return <AnalyticsSkeleton />;
@@ -101,7 +112,7 @@ export function AnalyticsPage() {
         (row.metrics.quotes ?? 0),
     })) ?? [];
 
-  const selectedAccount = accountsQuery.data?.find((a) => a.id === accountId);
+  const selectedAccount = accounts.find((a) => a.id === accountId);
   const singleAccount = accountId != null;
   const rangeLabel =
     data?.since && data?.until
@@ -147,13 +158,13 @@ export function AnalyticsPage() {
               </div>
             ))}
           </div>
-        ) : (accountsQuery.data?.length ?? 0) > 0 ? (
+        ) : accounts.length > 0 ? (
           <div className="flex flex-wrap items-start gap-3">
             <AllAccountsChip
               selected={accountId == null}
               onClick={() => setAccountId(null)}
             />
-            {accountsQuery.data?.map((a) => (
+            {accounts.map((a) => (
               <AccountChip
                 key={a.id}
                 account={a}
@@ -174,8 +185,7 @@ export function AnalyticsPage() {
           <p className="font-medium">Reconnect for full insights</p>
           <p className="mt-1 text-amber-800/90 dark:text-amber-100/80">
             These accounts still have posting access. Reconnect to grant
-            analytics scopes — Instagram, Threads, TikTok, and Facebook need an
-            extra permission we didn&apos;t ask for when you first connected.
+            analytics scopes for the platforms currently rolled out.
           </p>
           <ul className="mt-2 list-inside list-disc text-xs">
             {reconnect.map((a) => (
