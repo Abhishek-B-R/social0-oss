@@ -30,7 +30,7 @@ export function PostAnalyticsPanel({
     enabled && totals ? formatMetric(engagementOf(totals)) : "—";
 
   return (
-    <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
+    <div className="h-full rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
       <div>
         <h2 className="text-base font-semibold text-text">Post analytics</h2>
         <p className="mt-0.5 text-xs text-text-muted">

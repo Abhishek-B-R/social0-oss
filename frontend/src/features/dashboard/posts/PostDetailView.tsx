@@ -4,7 +4,7 @@ import type { ComponentType } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "@/components/AppLink";
 import AppImage from "@/components/AppImage";
-import { ArrowLeft, AlertTriangle, ChevronDown, FileText, Image as ImageIcon, Layers, LayoutGrid, Video } from "lucide-react";
+import { ArrowLeft, AlertTriangle, FileText, Image as ImageIcon, Layers, LayoutGrid, Video } from "lucide-react";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { PublishButton } from "./PublishButton";
 import { PostAgainButton } from "./PostAgainButton";
@@ -385,7 +385,8 @@ export function PostDetailView({ postId }: { postId: string }) {
         {back.label}
       </button>
 
-      <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] lg:items-stretch">
+      <div className="h-full rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-base font-semibold text-text">Post content</h1>
@@ -610,7 +611,100 @@ export function PostDetailView({ postId }: { postId: string }) {
         ) : null}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="h-full rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
+        <h2 className="text-base font-semibold text-text">Platforms</h2>
+        {publicationsSorted.length === 0 ? (
+          <p className="text-sm text-text-muted">No platforms selected.</p>
+        ) : (
+          <ul className="space-y-2">
+            {publicationsSorted.map((pub) => {
+              const badge = getPublicationStatusBadge(pub.status);
+              const viewUrl = getPublicationViewUrl(pub);
+              return (
+                <li
+                  key={pub.connectedAccountId ?? pub.platform}
+                  className="rounded-xl border border-border bg-bg-subtle px-3 py-2"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <AccountAvatar
+                        accountId={pub.connectedAccountId ?? undefined}
+                        profileImageUrl={pub.profileImageUrl}
+                        username={pub.platformUsername}
+                        platform={pub.platform}
+                        isTwitterPremium={pub.isTwitterPremium ?? false}
+                        size="md"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-medium text-text">
+                            {PLATFORM_LABEL[pub.platform] ?? pub.platform}
+                          </span>
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${badge.className}`}
+                          >
+                            {badge.label}
+                          </span>
+                        </div>
+                        {pub.platformUsername ? (
+                          <p className="truncate text-xs text-text-muted">
+                            @{pub.platformUsername.replace(/^@/, "")}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                      {viewUrl && pub.status === "published" ? (
+                        <a
+                          href={viewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-medium text-accent hover:text-accent-hover"
+                        >
+                          View
+                        </a>
+                      ) : pub.status === "failed" ? (
+                        <PublishButton
+                          postId={post.id}
+                          publicationId={pub.publicationId}
+                          label="Retry"
+                          onStarted={markPublishing}
+                          onFinished={() => void reloadCore()}
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+                  {pub.lastError && pub.status === "failed" ? (
+                    <p className="mt-2 text-xs leading-relaxed text-red-600 dark:text-red-400 break-words whitespace-pre-wrap">
+                      {isTwitterPlatformId(pub.platform)
+                        ? enrichTwitterErrorForDisplay(pub.lastError)
+                        : pub.lastError}
+                    </p>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-stretch">
+        {(post.status === "published" || post.status === "partial") ? (
+          <PostAnalyticsPanel
+            postId={post.id}
+            enabled={publications.some((p) => p.status === "published")}
+          />
+        ) : (
+          <div className="h-full rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
+            <h2 className="text-base font-semibold text-text">Post analytics</h2>
+            <p className="mt-2 text-sm text-text-muted">
+              Metrics show up after this post is published.
+            </p>
+          </div>
+        )}
+
+        <div className="h-full min-h-0">
         <PublishStatusSection
           postStatus={post.status}
           isQueued={Boolean(queuedSlot)}
@@ -621,130 +715,15 @@ export function PostDetailView({ postId }: { postId: string }) {
           use24HourTimeFormat={core.use24HourTimeFormat}
           formatDateTime={formatDateTime}
         />
-        {(post.status === "published" || post.status === "partial") ? (
-          <PostAnalyticsPanel
-            postId={post.id}
-            enabled={publications.some((p) => p.status === "published")}
-          />
-        ) : (
-          <div className="rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
-            <h2 className="text-base font-semibold text-text">Post analytics</h2>
-            <p className="mt-2 text-sm text-text-muted">
-              Metrics show up after this post is published.
-            </p>
-          </div>
-        )}
-      </div>
+        </div>
 
-      <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
-        <h2 className="text-base font-semibold text-text">Platforms</h2>
-        {publicationsSorted.length === 0 ? (
-          <p className="text-sm text-text-muted">No platforms selected.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] text-left text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-text-muted">
-                  <th className="pb-2 pr-3 font-medium">Platform</th>
-                  <th className="pb-2 pr-3 font-medium">Status</th>
-                  <th className="pb-2 pr-3 font-medium">Published at</th>
-                  <th className="pb-2 font-medium text-right">Link</th>
-                </tr>
-              </thead>
-              <tbody>
-                {publicationsSorted.map((pub) => {
-                  const badge = getPublicationStatusBadge(pub.status);
-                  const viewUrl = getPublicationViewUrl(pub);
-                  return (
-                    <tr
-                      key={pub.connectedAccountId ?? pub.platform}
-                      className="border-b border-border/70 last:border-b-0"
-                    >
-                      <td className="py-3 pr-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <AccountAvatar
-                            accountId={pub.connectedAccountId ?? undefined}
-                            profileImageUrl={pub.profileImageUrl}
-                            username={pub.platformUsername}
-                            platform={pub.platform}
-                            isTwitterPremium={pub.isTwitterPremium ?? false}
-                            size="md"
-                          />
-                          <div className="min-w-0">
-                            <p className="font-medium text-text">
-                              {PLATFORM_LABEL[pub.platform] ?? pub.platform}
-                            </p>
-                            {pub.platformUsername ? (
-                              <p className="truncate text-xs text-text-muted">
-                                @{pub.platformUsername.replace(/^@/, "")}
-                              </p>
-                            ) : null}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 pr-3">
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${badge.className}`}
-                        >
-                          {badge.label}
-                        </span>
-                        {pub.lastError && pub.status === "failed" ? (
-                          <p className="mt-1 max-w-xs text-xs leading-relaxed text-red-600 dark:text-red-400 break-words whitespace-pre-wrap">
-                            {isTwitterPlatformId(pub.platform)
-                              ? enrichTwitterErrorForDisplay(pub.lastError)
-                              : pub.lastError}
-                          </p>
-                        ) : null}
-                      </td>
-                      <td className="py-3 pr-3 text-text-muted tabular-nums">
-                        {pub.publishedAt
-                          ? formatDateTime(pub.publishedAt, {
-                              timezone: core.timezone,
-                              dateFormat: core.dateFormat,
-                              use24HourTimeFormat: core.use24HourTimeFormat,
-                            })
-                          : "—"}
-                      </td>
-                      <td className="py-3 text-right">
-                        {viewUrl && pub.status === "published" ? (
-                          <a
-                            href={viewUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm font-medium text-accent hover:text-accent-hover"
-                          >
-                            View →
-                          </a>
-                        ) : pub.status === "failed" ? (
-                          <PublishButton
-                            postId={post.id}
-                            publicationId={pub.publicationId}
-                            label="Retry"
-                            onStarted={markPublishing}
-                            onFinished={() => void reloadCore()}
-                          />
-                        ) : (
-                          <span className="text-text-muted">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {((hasXPublished &&
-        (post.status === "published" || post.status === "partial")) ||
-        (post.status === "scheduled" && hasXSelected)) && (
-        <details className="group rounded-2xl border border-border bg-bg-elevated shadow-sm">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 text-sm font-semibold text-text [&::-webkit-details-marker]:hidden">
-            Automation
-            <ChevronDown className="h-4 w-4 shrink-0 text-text-muted transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="border-t border-border px-6 py-4">
+        <div className="h-full rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
+          <h2 className="text-base font-semibold text-text">
+            Auto-Plug & Auto-Repost
+          </h2>
+          {((hasXPublished &&
+            (post.status === "published" || post.status === "partial")) ||
+            (post.status === "scheduled" && hasXSelected)) ? (
             <PostDetailAutoFeaturesSection
               embedded
               postId={post.id}
@@ -770,9 +749,13 @@ export function PostDetailView({ postId }: { postId: string }) {
               }
               onUpdated={reloadCore}
             />
-          </div>
-        </details>
-      )}
+          ) : (
+            <p className="text-sm text-text-muted">
+              Available for X posts after they are scheduled or published.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
