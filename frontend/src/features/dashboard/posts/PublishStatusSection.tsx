@@ -158,7 +158,7 @@ export function PublishStatusSection({
   })();
 
   return (
-    <div className="h-full rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
+    <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
       <div className="space-y-1">
         <h2 className="text-base font-semibold text-text">Publish status</h2>
         <p

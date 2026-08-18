@@ -348,6 +348,47 @@ export function PostDetailView({ postId }: { postId: string }) {
       }
     : null;
 
+  const showAnalytics =
+    post.status === "published" || post.status === "partial";
+  const showAuto =
+    (hasXPublished &&
+      (post.status === "published" || post.status === "partial")) ||
+    (post.status === "scheduled" && hasXSelected);
+
+  const autoFeatures = showAuto ? (
+    <PostDetailAutoFeaturesSection
+      postId={post.id}
+      publishedAt={
+        post.status === "scheduled" ? null : publishedAtForXAutoFeatures
+      }
+      variant={post.status === "scheduled" ? "scheduled" : "published"}
+      pendingAutoPlugFromServer={
+        post.status === "scheduled" ? pendingAutoPlugFromBulk : null
+      }
+      pendingResurfaceFromServer={
+        post.status === "scheduled" ? pendingResurfaceFromBulk : null
+      }
+      use24HourTimeFormat={core.use24HourTimeFormat}
+      allowAutoPlug={core.allowAutoPlug}
+      allowResurface={core.allowResurface}
+      autoPlugDetail={core.autoPlug}
+      resurfaceDetail={core.resurface}
+      selectedAccountIds={
+        post.status === "scheduled"
+          ? xSelectedAccountIds
+          : xPublishedAccountIds
+      }
+      onUpdated={reloadCore}
+    />
+  ) : null;
+
+  const analyticsPanel = showAnalytics ? (
+    <PostAnalyticsPanel
+      postId={post.id}
+      enabled={publications.some((p) => p.status === "published")}
+    />
+  ) : null;
+
   return (
     <div className="space-y-6">
       {core.showPaymentFailedBanner && (
@@ -385,375 +426,341 @@ export function PostDetailView({ postId }: { postId: string }) {
         {back.label}
       </button>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] lg:items-stretch">
-      <div className="h-full rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
             <h1 className="text-base font-semibold text-text">Post content</h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-bg-muted px-3 py-1 text-xs font-medium text-text">
-              <TypeIcon className="h-4 w-4" />
-              {displayType}
-            </span>
-            <span
-              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                post.status === "published"
-                  ? "bg-accent text-accent-foreground"
-                  : post.status === "partial"
-                    ? "bg-purple-500/20 text-purple-800 dark:text-purple-200 border border-purple-500/30"
-                    : post.status === "publishing"
-                      ? "bg-amber-500 text-white"
-                      : post.status === "scheduled"
-                        ? queuedSlot
-                          ? "bg-orange-600 text-white"
-                          : "bg-blue-600 text-white"
-                        : post.status === "failed"
-                          ? "bg-red-600 text-white"
-                          : "bg-gray-500 text-gray-100"
-              }`}
-            >
-              {post.status === "scheduled"
-                ? queuedSlot
-                  ? "Queued"
-                  : "Scheduled"
-                : (STATUS_LABEL[post.status ?? "draft"] ?? "Draft")}
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {post.status === "scheduled" && (
-              <Link
-                href={`/dashboard/create/${slug}?scheduled=${post.id}`}
-                className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
-              >
-                Edit post
-              </Link>
-            )}
-            {(post.status === "draft" ||
-              post.status === "scheduled" ||
-              post.status === "failed" ||
-              post.status === "partial") && (
-              <PublishButton
-                postId={post.id}
-                label={
-                  post.status === "failed" || post.status === "partial"
-                    ? "Retry publish"
-                    : "Publish now"
-                }
-                onStarted={markPublishing}
-                onFinished={() => void reloadCore()}
-              />
-            )}
-            {(post.status === "draft" || post.status === "scheduled") && (
-              <PostCardDeleteButton
-                postId={post.id}
-                status={post.status}
-                redirectTo={back.href}
-              />
-            )}
-            {(post.status === "published" || post.status === "partial") && (
-              <PostAgainButton postId={post.id} />
-            )}
-            {(post.status === "published" ||
-              post.status === "partial" ||
-              post.status === "failed") && (
-              <Link
-                href={`/dashboard/create/${slug}?edit=${post.id}`}
-                className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
-              >
-                Edit and post
-              </Link>
+            {partsWithMedia.length > 1 ? (
+              <div className="space-y-3">
+                {partsWithMedia.map((part, idx) => {
+                  const partMedia = part.mediaIds
+                    .map((mid) => mediaById.get(mid))
+                    .filter((m): m is PostMediaRow => m != null);
+                  return (
+                    <div key={idx} className="rounded-lg bg-neutral-100 dark:bg-neutral-900 p-4">
+                      <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">
+                        Part {idx + 1}
+                      </span>
+                      <p className="mt-2 text-sm text-text whitespace-pre-wrap wrap-break-word">
+                        {part.text}
+                      </p>
+                      {part.mediaIds.length > 0 && mediaLoading && (
+                        <p className="mt-2 text-xs text-text-muted">Loading media...</p>
+                      )}
+                      {partMedia.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {partMedia.map((m) => (
+                            <div
+                              key={m.id}
+                              className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-bg-muted"
+                            >
+                              {m.mimeType.startsWith("video/") ? (
+                                <video
+                                  src={m.url ?? undefined}
+                                  className="h-full w-full object-cover"
+                                  muted
+                                  playsInline
+                                  preload="metadata"
+                                />
+                              ) : (
+                                <AppImage
+                                  src={m.thumbnailUrl ?? m.url ?? ""}
+                                  alt={m.originalFilename}
+                                  fill
+                                  sizes="80px"
+                                  className="object-cover"
+                                  unoptimized
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-lg bg-neutral-100 dark:bg-neutral-900 p-4 min-h-[80px]">
+                <p className="text-sm text-text whitespace-pre-wrap wrap-break-word">
+                  {partsWithMedia[0]?.text ?? "(No caption)"}
+                </p>
+              </div>
             )}
           </div>
+
+          {mediaLoading && (
+            <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 text-sm text-text-muted">
+              Loading media...
+            </div>
+          )}
+          {mediaError && (
+            <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 text-sm text-red-500">
+              Could not load media.
+            </div>
+          )}
+          {media.length > 0 && (
+            <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
+              <h2 className="text-base font-semibold text-text">Media</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {media.map((m) => (
+                  <div
+                    key={m.id}
+                    className="relative aspect-square max-h-[200px] rounded-lg overflow-hidden bg-bg-muted"
+                  >
+                    {m.mimeType.startsWith("video/") ? (
+                      <video
+                        src={m.url ?? undefined}
+                        className="w-full h-full object-cover"
+                        controls
+                        muted
+                        playsInline
+                        preload="metadata"
+                        poster={m.thumbnailUrl ?? undefined}
+                      />
+                    ) : (
+                      <AppImage
+                        src={m.thumbnailUrl ?? m.url ?? ""}
+                        alt={m.originalFilename}
+                        fill
+                        sizes="(max-width: 768px) 33vw, 200px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {showAnalytics && showAuto ? (
+            <div className="grid gap-6 lg:grid-cols-2">
+              {analyticsPanel}
+              {autoFeatures}
+            </div>
+          ) : (
+            analyticsPanel ?? autoFeatures
+          )}
         </div>
 
-        {partsWithMedia.length > 1 ? (
-          <div className="space-y-3">
-            {partsWithMedia.map((part, idx) => {
-              const partMedia = part.mediaIds
-                .map((mid) => mediaById.get(mid))
-                .filter((m): m is PostMediaRow => m != null);
-              return (
-                <div key={idx} className="rounded-lg bg-neutral-100 dark:bg-neutral-900 p-4">
-                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">
-                    Part {idx + 1}
-                  </span>
-                  <p className="mt-2 text-sm text-text whitespace-pre-wrap wrap-break-word">
-                    {part.text}
-                  </p>
-                  {part.mediaIds.length > 0 && mediaLoading && (
-                    <p className="mt-2 text-xs text-text-muted">Loading media...</p>
-                  )}
-                  {partMedia.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {partMedia.map((m) => (
-                        <div
-                          key={m.id}
-                          className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-bg-muted"
-                        >
-                          {m.mimeType.startsWith("video/") ? (
-                            <video
-                              src={m.url ?? undefined}
-                              className="h-full w-full object-cover"
-                              muted
-                              playsInline
-                              preload="metadata"
-                            />
-                          ) : (
-                            <AppImage
-                              src={m.thumbnailUrl ?? m.url ?? ""}
-                              alt={m.originalFilename}
-                              fill
-                              sizes="80px"
-                              className="object-cover"
-                              unoptimized
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="rounded-lg bg-neutral-100 dark:bg-neutral-900 p-4">
-            <p className="text-sm text-text whitespace-pre-wrap wrap-break-word">
-              {partsWithMedia[0]?.text ?? "(No caption)"}
-            </p>
-          </div>
-        )}
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-bg-muted px-3 py-1 text-xs font-medium text-text">
+                  <TypeIcon className="h-4 w-4" />
+                  {displayType}
+                </span>
+                <span
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                    post.status === "published"
+                      ? "bg-accent text-accent-foreground"
+                      : post.status === "partial"
+                        ? "bg-purple-500/20 text-purple-800 dark:text-purple-200 border border-purple-500/30"
+                        : post.status === "publishing"
+                          ? "bg-amber-500 text-white"
+                          : post.status === "scheduled"
+                            ? queuedSlot
+                              ? "bg-orange-600 text-white"
+                              : "bg-blue-600 text-white"
+                            : post.status === "failed"
+                              ? "bg-red-600 text-white"
+                              : "bg-gray-500 text-gray-100"
+                  }`}
+                >
+                  {post.status === "scheduled"
+                    ? queuedSlot
+                      ? "Queued"
+                      : "Scheduled"
+                    : (STATUS_LABEL[post.status ?? "draft"] ?? "Draft")}
+                </span>
+              </div>
 
-        {mediaLoading ? (
-          <p className="text-sm text-text-muted">Loading media...</p>
-        ) : null}
-        {mediaError ? (
-          <p className="text-sm text-red-500">Could not load media.</p>
-        ) : null}
-        {media.length > 0 && partsWithMedia.length <= 1 ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {media.map((m) => (
-              <div
-                key={m.id}
-                className="relative aspect-square max-h-[240px] overflow-hidden rounded-lg bg-bg-muted"
-              >
-                {m.mimeType.startsWith("video/") ? (
-                  <video
-                    src={m.url ?? undefined}
-                    className="h-full w-full object-cover"
-                    controls
-                    muted
-                    playsInline
-                    preload="metadata"
-                    poster={m.thumbnailUrl ?? undefined}
-                  />
-                ) : (
-                  <AppImage
-                    src={m.thumbnailUrl ?? m.url ?? ""}
-                    alt={m.originalFilename}
-                    fill
-                    sizes="(max-width: 768px) 50vw, 240px"
-                    className="object-cover"
-                    unoptimized
+              <div className="flex flex-wrap items-center gap-2">
+                {post.status === "scheduled" && (
+                  <Link
+                    href={`/dashboard/create/${slug}?scheduled=${post.id}`}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
+                  >
+                    Edit post
+                  </Link>
+                )}
+                {(post.status === "draft" ||
+                  post.status === "scheduled" ||
+                  post.status === "failed" ||
+                  post.status === "partial") && (
+                  <PublishButton
+                    postId={post.id}
+                    label={
+                      post.status === "failed" || post.status === "partial"
+                        ? "Retry publish"
+                        : "Publish now"
+                    }
+                    onStarted={markPublishing}
+                    onFinished={() => void reloadCore()}
                   />
                 )}
+                {(post.status === "draft" || post.status === "scheduled") && (
+                  <PostCardDeleteButton
+                    postId={post.id}
+                    status={post.status}
+                    redirectTo={back.href}
+                  />
+                )}
+                {(post.status === "published" || post.status === "partial") && (
+                  <PostAgainButton postId={post.id} />
+                )}
+                {(post.status === "published" ||
+                  post.status === "partial" ||
+                  post.status === "failed") && (
+                  <Link
+                    href={`/dashboard/create/${slug}?edit=${post.id}`}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle transition-colors"
+                  >
+                    Edit and post
+                  </Link>
+                )}
               </div>
-            ))}
+            </div>
+
+            <div className="text-xs text-text-muted space-y-1">
+              {post.createdAt && (
+                <p>
+                  <span className="font-medium text-text">Created:</span>{" "}
+                  {formatDateTime(new Date(post.createdAt), {
+                    timezone: core.timezone,
+                    dateFormat: core.dateFormat,
+                    use24HourTimeFormat: core.use24HourTimeFormat,
+                  })}
+                </p>
+              )}
+              {queuedSlot?.scheduledFor && (
+                <p>
+                  <span className="font-medium text-text">Queued for:</span>{" "}
+                  {formatDateTime(new Date(queuedSlot.scheduledFor), {
+                    timezone: core.timezone,
+                    dateFormat: core.dateFormat,
+                    use24HourTimeFormat: core.use24HourTimeFormat,
+                  })}
+                </p>
+              )}
+              {!queuedSlot && post.scheduledAt && (
+                <p>
+                  <span className="font-medium text-text">Scheduled for:</span>{" "}
+                  {formatDateTime(new Date(post.scheduledAt), {
+                    timezone: core.timezone,
+                    dateFormat: core.dateFormat,
+                    use24HourTimeFormat: core.use24HourTimeFormat,
+                  })}
+                </p>
+              )}
+              {publishedAt && (
+                <p>
+                  <span className="font-medium text-text">Posted:</span>{" "}
+                  {formatDateTime(publishedAt, {
+                    timezone: core.timezone,
+                    dateFormat: core.dateFormat,
+                    use24HourTimeFormat: core.use24HourTimeFormat,
+                  })}
+                </p>
+              )}
+            </div>
+            {post.status === "failed" && post.failureReason && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{post.failureReason}</span>
+              </div>
+            )}
           </div>
-        ) : null}
 
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
-          {post.createdAt ? (
-            <p>
-              <span className="font-medium text-text">Created</span>{" "}
-              {formatDateTime(new Date(post.createdAt), {
-                timezone: core.timezone,
-                dateFormat: core.dateFormat,
-                use24HourTimeFormat: core.use24HourTimeFormat,
-              })}
-            </p>
-          ) : null}
-          {queuedSlot?.scheduledFor ? (
-            <p>
-              <span className="font-medium text-text">Queued for</span>{" "}
-              {formatDateTime(new Date(queuedSlot.scheduledFor), {
-                timezone: core.timezone,
-                dateFormat: core.dateFormat,
-                use24HourTimeFormat: core.use24HourTimeFormat,
-              })}
-            </p>
-          ) : null}
-          {!queuedSlot && post.scheduledAt ? (
-            <p>
-              <span className="font-medium text-text">Scheduled for</span>{" "}
-              {formatDateTime(new Date(post.scheduledAt), {
-                timezone: core.timezone,
-                dateFormat: core.dateFormat,
-                use24HourTimeFormat: core.use24HourTimeFormat,
-              })}
-            </p>
-          ) : null}
-          {publishedAt ? (
-            <p>
-              <span className="font-medium text-text">Posted</span>{" "}
-              {formatDateTime(publishedAt, {
-                timezone: core.timezone,
-                dateFormat: core.dateFormat,
-                use24HourTimeFormat: core.use24HourTimeFormat,
-              })}
-            </p>
-          ) : null}
-        </div>
-        {post.status === "failed" && post.failureReason ? (
-          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-            <span>{post.failureReason}</span>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="h-full rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
-        <h2 className="text-base font-semibold text-text">Platforms</h2>
-        {publicationsSorted.length === 0 ? (
-          <p className="text-sm text-text-muted">No platforms selected.</p>
-        ) : (
-          <ul className="space-y-2">
-            {publicationsSorted.map((pub) => {
-              const badge = getPublicationStatusBadge(pub.status);
-              const viewUrl = getPublicationViewUrl(pub);
-              return (
-                <li
-                  key={pub.connectedAccountId ?? pub.platform}
-                  className="rounded-xl border border-border bg-bg-subtle px-3 py-2"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0 flex-1">
-                      <AccountAvatar
-                        accountId={pub.connectedAccountId ?? undefined}
-                        profileImageUrl={pub.profileImageUrl}
-                        username={pub.platformUsername}
-                        platform={pub.platform}
-                        isTwitterPremium={pub.isTwitterPremium ?? false}
-                        size="md"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-medium text-text">
-                            {PLATFORM_LABEL[pub.platform] ?? pub.platform}
-                          </span>
-                          <span
-                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${badge.className}`}
-                          >
-                            {badge.label}
-                          </span>
-                        </div>
-                        {pub.platformUsername ? (
-                          <p className="truncate text-xs text-text-muted">
-                            @{pub.platformUsername.replace(/^@/, "")}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0 pt-0.5">
-                      {viewUrl && pub.status === "published" ? (
-                        <a
-                          href={viewUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs font-medium text-accent hover:text-accent-hover"
-                        >
-                          View
-                        </a>
-                      ) : pub.status === "failed" ? (
-                        <PublishButton
-                          postId={post.id}
-                          publicationId={pub.publicationId}
-                          label="Retry"
-                          onStarted={markPublishing}
-                          onFinished={() => void reloadCore()}
-                        />
-                      ) : null}
-                    </div>
-                  </div>
-                  {pub.lastError && pub.status === "failed" ? (
-                    <p className="mt-2 text-xs leading-relaxed text-red-600 dark:text-red-400 break-words whitespace-pre-wrap">
-                      {isTwitterPlatformId(pub.platform)
-                        ? enrichTwitterErrorForDisplay(pub.lastError)
-                        : pub.lastError}
-                    </p>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-stretch">
-        {(post.status === "published" || post.status === "partial") ? (
-          <PostAnalyticsPanel
-            postId={post.id}
-            enabled={publications.some((p) => p.status === "published")}
+          <PublishStatusSection
+            postStatus={post.status}
+            isQueued={Boolean(queuedSlot)}
+            publications={publicationsSorted}
+            events={core.publishTimeline ?? []}
+            timezone={core.timezone}
+            dateFormat={core.dateFormat}
+            use24HourTimeFormat={core.use24HourTimeFormat}
+            formatDateTime={formatDateTime}
           />
-        ) : (
-          <div className="h-full rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
-            <h2 className="text-base font-semibold text-text">Post analytics</h2>
-            <p className="mt-2 text-sm text-text-muted">
-              Metrics show up after this post is published.
-            </p>
+
+          <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
+            <h2 className="text-base font-semibold text-text">Platforms</h2>
+            {publicationsSorted.length === 0 ? (
+              <p className="text-xs text-text-muted">No platforms selected.</p>
+            ) : (
+              <ul className="space-y-2">
+                {publicationsSorted.map((pub) => {
+                  const badge = getPublicationStatusBadge(pub.status);
+                  const viewUrl = getPublicationViewUrl(pub);
+                  return (
+                    <li
+                      key={pub.connectedAccountId ?? pub.platform}
+                      className="rounded-xl border border-border bg-bg-subtle px-3 py-2"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                          <AccountAvatar
+                            accountId={pub.connectedAccountId ?? undefined}
+                            profileImageUrl={pub.profileImageUrl}
+                            username={pub.platformUsername}
+                            platform={pub.platform}
+                            isTwitterPremium={pub.isTwitterPremium ?? false}
+                            size="md"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-medium text-text">
+                                {PLATFORM_LABEL[pub.platform] ?? pub.platform}
+                              </span>
+                              <span
+                                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${badge.className}`}
+                              >
+                                {badge.label}
+                              </span>
+                            </div>
+                            {pub.platformUsername ? (
+                              <p className="truncate text-xs text-text-muted">
+                                @{pub.platformUsername.replace(/^@/, "")}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                          {viewUrl && pub.status === "published" ? (
+                            <a
+                              href={viewUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-medium text-accent hover:text-accent-hover"
+                            >
+                              View
+                            </a>
+                          ) : pub.status === "failed" ? (
+                            <PublishButton
+                              postId={post.id}
+                              publicationId={pub.publicationId}
+                              label="Retry"
+                              onStarted={markPublishing}
+                              onFinished={() => void reloadCore()}
+                            />
+                          ) : null}
+                        </div>
+                      </div>
+                      {pub.lastError && pub.status === "failed" ? (
+                        <p className="mt-2 text-xs leading-relaxed text-red-600 dark:text-red-400 break-words whitespace-pre-wrap">
+                          {isTwitterPlatformId(pub.platform)
+                            ? enrichTwitterErrorForDisplay(pub.lastError)
+                            : pub.lastError}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
-        )}
-
-        <div className="h-full min-h-0">
-        <PublishStatusSection
-          postStatus={post.status}
-          isQueued={Boolean(queuedSlot)}
-          publications={publicationsSorted}
-          events={core.publishTimeline ?? []}
-          timezone={core.timezone}
-          dateFormat={core.dateFormat}
-          use24HourTimeFormat={core.use24HourTimeFormat}
-          formatDateTime={formatDateTime}
-        />
-        </div>
-
-        <div className="h-full rounded-2xl border border-border bg-bg-elevated shadow-sm p-6 space-y-4">
-          <h2 className="text-base font-semibold text-text">
-            Auto-Plug & Auto-Repost
-          </h2>
-          {((hasXPublished &&
-            (post.status === "published" || post.status === "partial")) ||
-            (post.status === "scheduled" && hasXSelected)) ? (
-            <PostDetailAutoFeaturesSection
-              embedded
-              postId={post.id}
-              publishedAt={
-                post.status === "scheduled" ? null : publishedAtForXAutoFeatures
-              }
-              variant={post.status === "scheduled" ? "scheduled" : "published"}
-              pendingAutoPlugFromServer={
-                post.status === "scheduled" ? pendingAutoPlugFromBulk : null
-              }
-              pendingResurfaceFromServer={
-                post.status === "scheduled" ? pendingResurfaceFromBulk : null
-              }
-              use24HourTimeFormat={core.use24HourTimeFormat}
-              allowAutoPlug={core.allowAutoPlug}
-              allowResurface={core.allowResurface}
-              autoPlugDetail={core.autoPlug}
-              resurfaceDetail={core.resurface}
-              selectedAccountIds={
-                post.status === "scheduled"
-                  ? xSelectedAccountIds
-                  : xPublishedAccountIds
-              }
-              onUpdated={reloadCore}
-            />
-          ) : (
-            <p className="text-sm text-text-muted">
-              Available for X posts after they are scheduled or published.
-            </p>
-          )}
         </div>
       </div>
     </div>
