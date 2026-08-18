@@ -303,6 +303,9 @@ export function BillingPanel({
   const [upgradeRecoveryMessage, setUpgradeRecoveryMessage] = useState<
     string | null
   >(null);
+  const [upgradeRecoveryAction, setUpgradeRecoveryAction] = useState<
+    "cancel_pending" | "portal" | null
+  >(null);
   const [billingInterval, setBillingInterval] =
     useState<BillingInterval>("monthly");
   const [stuckCheckoutPlan, setStuckCheckoutPlan] = useState<PaidPlan | null>(
@@ -642,28 +645,40 @@ export function BillingPanel({
         ? "Pro"
         : subscription.pendingPlanTier === "growth"
           ? "Growth"
-          : "Starter";
+          : subscription.pendingPlanTier === "max"
+            ? "Max"
+            : "Starter";
     const isPendingUpgrade =
       subscription.pendingPlanTier != null &&
       ((subscription.tier === "starter" &&
         (subscription.pendingPlanTier === "growth" ||
-          subscription.pendingPlanTier === "pro")) ||
+          subscription.pendingPlanTier === "pro" ||
+          subscription.pendingPlanTier === "max")) ||
         (subscription.tier === "growth" &&
-          subscription.pendingPlanTier === "pro"));
+          (subscription.pendingPlanTier === "pro" ||
+            subscription.pendingPlanTier === "max")) ||
+        (subscription.tier === "pro" &&
+          subscription.pendingPlanTier === "max"));
+    setLoading("portal");
     try {
       const res = await fetchApi("/api/billing/cancel-downgrade", {
         method: "POST",
         credentials: "include",
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        setUpgradePending(false);
+        setUpgradeRecoveryMessage(null);
+        setUpgradeRecoveryAction(null);
         toast.success(
           isPendingUpgrade
-            ? `Scheduled upgrade to ${pendingLabel} cancelled.`
-            : "Downgrade cancelled.",
+            ? `Pending upgrade${pendingLabel !== "Starter" ? ` to ${pendingLabel}` : ""} cancelled. You can try again.`
+            : data.cancelledRivals
+              ? "Pending plan change cleared and duplicate subscriptions removed. You can try again."
+              : "Pending plan change cancelled.",
         );
         refreshBilling();
       } else {
-        const data = await res.json().catch(() => ({}));
         toast.error(
           toFriendlyBillingError(
             data.error,
@@ -673,6 +688,8 @@ export function BillingPanel({
       }
     } catch {
       toast.error("Failed to cancel plan change. Please try again.");
+    } finally {
+      setLoading(null);
     }
   };
 
@@ -740,6 +757,7 @@ export function BillingPanel({
     if (res.ok && data.success && data.scheduled) {
       setUpgradePending(false);
       setUpgradeRecoveryMessage(null);
+      setUpgradeRecoveryAction(null);
       toast.success(
         `Upgrade to ${planLabel} scheduled for ${renewalDate ?? "your renewal date"}. No charge today.`,
       );
@@ -750,8 +768,9 @@ export function BillingPanel({
     if (res.ok && data.success) {
       if (data.pending) {
         setUpgradePending(true);
+        setUpgradeRecoveryAction("cancel_pending");
         setUpgradeRecoveryMessage(
-          "Your upgrade charge is being processed on your saved payment method. If this stays stuck, open Manage Subscription to update or remove the old payment method, then try again.",
+          "Your upgrade charge is being processed. If this stays stuck for more than a few minutes, cancel the pending upgrade and try again.",
         );
         toast.info(
           `You'll be charged on your saved payment method. Once payment succeeds, you'll move to ${planLabel} automatically. Track status anytime via Manage Subscription.`,
@@ -759,6 +778,7 @@ export function BillingPanel({
       } else {
         setUpgradePending(false);
         setUpgradeRecoveryMessage(null);
+        setUpgradeRecoveryAction(null);
         toast.success(`You're on ${planLabel}.`);
         refreshBilling();
       }
@@ -772,17 +792,17 @@ export function BillingPanel({
     if (res.status === 409) {
       if (data.code === "use_portal") {
         setUpgradePending(true);
+        setUpgradeRecoveryAction("cancel_pending");
         setUpgradeRecoveryMessage(
           typeof data.error === "string"
-            ? data.error
-            : "Update your payment method in the customer portal, then try the upgrade again.",
+            ? `${data.error} Cancel the pending upgrade below, then try again.`
+            : "Your subscription payment needs attention. Cancel the pending upgrade below, then try again.",
         );
         toast.info(
           typeof data.error === "string"
             ? data.error
-            : "Update your payment method in the customer portal.",
+            : "Payment issue detected.",
         );
-        await handleChangePlan();
         return true;
       }
       if (data.code === "use_change_plan") {
@@ -795,10 +815,11 @@ export function BillingPanel({
       }
       if (data.code === "pending_plan_change") {
         setUpgradePending(true);
+        setUpgradeRecoveryAction("cancel_pending");
         setUpgradeRecoveryMessage(
           typeof data.error === "string"
             ? data.error
-            : "A previous plan change is still pending. Open Manage Subscription to fix the payment method or wait for the payment provider to finish processing.",
+            : "A previous plan change is still pending. Cancel it below, then try the upgrade again.",
         );
         toast.info(
           typeof data.error === "string"
@@ -808,8 +829,9 @@ export function BillingPanel({
         return true;
       }
       setUpgradePending(true);
+      setUpgradeRecoveryAction("cancel_pending");
       setUpgradeRecoveryMessage(
-        "Your upgrade payment is still being processed. If it stays stuck, open Manage Subscription to update or remove the old payment method, then try again.",
+        "Your upgrade payment is still being processed. If it stays stuck, cancel the pending upgrade below and try again.",
       );
       toast.info(
         "Your upgrade payment is still being processed. You'll move to the new plan automatically once it succeeds. Track status anytime via Manage Subscription.",
@@ -818,8 +840,9 @@ export function BillingPanel({
     }
     if (res.status === 402) {
       setUpgradePending(true);
+      setUpgradeRecoveryAction("cancel_pending");
       setUpgradeRecoveryMessage(
-        "Your payment could not be processed. Open Manage Subscription to update your payment method, then try the upgrade again.",
+        "Your payment could not be processed. Cancel the pending upgrade below, then try again.",
       );
     }
     if (res.status === 404 && data.error === "no_active_subscription") {
@@ -1051,18 +1074,31 @@ export function BillingPanel({
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 flex items-center justify-between flex-wrap gap-3">
           <span>
             {upgradeRecoveryMessage ??
-              "Upgrade payment is processing with your payment provider. You'll move to the new plan automatically once payment succeeds. Track whether it's done via Manage Subscription."}
+              "Upgrade payment is processing with your payment provider. You'll move to the new plan automatically once payment succeeds."}
           </span>
-          <Button
-            variant="outline"
-            onClick={() => void handleChangePlan()}
-            disabled={loading !== null}
-            className="border-amber-500/40 bg-white/80 text-amber-900 hover:bg-white dark:bg-transparent dark:text-amber-100"
-          >
-            <PlanButtonLabel loading={loading === "portal"}>
-              Update payment method
-            </PlanButtonLabel>
-          </Button>
+          {upgradeRecoveryAction === "cancel_pending" ? (
+            <Button
+              variant="outline"
+              onClick={() => void handleCancelPendingPlanChange()}
+              disabled={loading !== null}
+              className="border-amber-500/40 bg-white/80 text-amber-900 hover:bg-white dark:bg-transparent dark:text-amber-100"
+            >
+              <PlanButtonLabel loading={loading === "portal"}>
+                Cancel pending upgrade
+              </PlanButtonLabel>
+            </Button>
+          ) : upgradeRecoveryAction === "portal" ? (
+            <Button
+              variant="outline"
+              onClick={() => void handleChangePlan()}
+              disabled={loading !== null}
+              className="border-amber-500/40 bg-white/80 text-amber-900 hover:bg-white dark:bg-transparent dark:text-amber-100"
+            >
+              <PlanButtonLabel loading={loading === "portal"}>
+                Update payment method
+              </PlanButtonLabel>
+            </Button>
+          ) : null}
         </div>
       )}
 
