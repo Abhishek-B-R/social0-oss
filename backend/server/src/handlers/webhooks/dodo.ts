@@ -17,6 +17,7 @@ import { claimWebhookDelivery } from "../../lib/webhook-idempotency.js";
 import {
   findRecentPaidUpgradePayment,
   hasTrialBeenClaimed,
+  listOpenDodoSubscriptions,
   recordTrialClaim,
 } from "../../lib/billing-guards.js";
 import { clearPendingCheckout } from "../../lib/pending-checkout.js";
@@ -137,6 +138,7 @@ async function handleSubscriptionActiveOrUpdated(payload: {
   const canonicalSubId = settings?.subscriptionId ?? null;
 
   // Ignore duplicate subscription objects - only one canonical sub per user.
+  // Cancel the rival in Dodo so the customer is never double-charged.
   if (
     incomingSubId &&
     canonicalSubId &&
@@ -147,6 +149,12 @@ async function handleSubscriptionActiveOrUpdated(payload: {
       incomingSubId,
       canonicalSubId,
     });
+    forceCancelDodoSubscription(incomingSubId).catch((e) =>
+      console.error(
+        "[dodo webhook] Failed to cancel duplicate subscription:",
+        e,
+      ),
+    );
     return;
   }
 
@@ -229,6 +237,23 @@ async function handleSubscriptionActiveOrUpdated(payload: {
     subscriptionId: data.subscription_id ?? null,
     customerId: data.customer?.customer_id ?? null,
   });
+
+  // Cancel any other open Dodo subscriptions so the user is never double-charged.
+  // This covers the race where two checkout sessions (e.g. a stuck one and a fresh
+  // retry) both complete — the first webhook to write wins, and the loser sub is
+  // cancelled in Dodo so no further renewals occur.
+  const acceptedSubId = data.subscription_id ?? null;
+  const customerEmail = data.customer?.email ?? "";
+  if (acceptedSubId && customerEmail && apiKey) {
+    cancelRivalSubscriptions(
+      customerEmail,
+      data.customer?.customer_id ?? null,
+      acceptedSubId,
+    ).catch((e) =>
+      console.error("[dodo webhook] cancelRivalSubscriptions failed:", e),
+    );
+  }
+
   if (settings?.pendingPlanTier === tier) {
     await db
       .update(userSettings)
@@ -251,6 +276,30 @@ async function handleSubscriptionActiveOrUpdated(payload: {
     );
   }
   console.log("[dodo webhook] Subscription updated", { tier });
+}
+
+/**
+ * After accepting a subscription, cancel any *other* open Dodo subscriptions
+ * for the same customer/email. Prevents double-charging when two checkout
+ * sessions (e.g. a stuck one and a fresh retry) both complete.
+ */
+async function cancelRivalSubscriptions(
+  email: string,
+  customerId: string | null,
+  acceptedSubId: string,
+): Promise<void> {
+  const openSubs = await listOpenDodoSubscriptions(email, customerId);
+  for (const rival of openSubs) {
+    if (rival.subscriptionId === acceptedSubId) continue;
+    console.log("[dodo webhook] Cancelling rival subscription", {
+      rivalSubId: rival.subscriptionId,
+      rivalStatus: rival.status,
+      acceptedSubId,
+    });
+    await forceCancelDodoSubscription(rival.subscriptionId).catch((e) =>
+      console.error("[dodo webhook] Failed to cancel rival subscription:", e),
+    );
+  }
 }
 
 async function handleSubscriptionOnHold(payload: {
