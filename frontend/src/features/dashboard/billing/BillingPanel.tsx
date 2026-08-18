@@ -300,6 +300,9 @@ export function BillingPanel({
   const [showRenewedTodayBanner] = useState(false);
   const [renewedOnDate] = useState<Date | null>(null);
   const [upgradePending, setUpgradePending] = useState(false);
+  const [upgradeRecoveryMessage, setUpgradeRecoveryMessage] = useState<
+    string | null
+  >(null);
   const [billingInterval, setBillingInterval] =
     useState<BillingInterval>("monthly");
   const [stuckCheckoutPlan, setStuckCheckoutPlan] = useState<PaidPlan | null>(
@@ -735,6 +738,8 @@ export function BillingPanel({
     const data = await res.json().catch(() => ({}));
 
     if (res.ok && data.success && data.scheduled) {
+      setUpgradePending(false);
+      setUpgradeRecoveryMessage(null);
       toast.success(
         `Upgrade to ${planLabel} scheduled for ${renewalDate ?? "your renewal date"}. No charge today.`,
       );
@@ -745,10 +750,15 @@ export function BillingPanel({
     if (res.ok && data.success) {
       if (data.pending) {
         setUpgradePending(true);
+        setUpgradeRecoveryMessage(
+          "Your upgrade charge is being processed on your saved payment method. If this stays stuck, open Manage Subscription to update or remove the old payment method, then try again.",
+        );
         toast.info(
           `You'll be charged on your saved payment method. Once payment succeeds, you'll move to ${planLabel} automatically. Track status anytime via Manage Subscription.`,
         );
       } else {
+        setUpgradePending(false);
+        setUpgradeRecoveryMessage(null);
         toast.success(`You're on ${planLabel}.`);
         refreshBilling();
       }
@@ -761,6 +771,12 @@ export function BillingPanel({
     }
     if (res.status === 409) {
       if (data.code === "use_portal") {
+        setUpgradePending(true);
+        setUpgradeRecoveryMessage(
+          typeof data.error === "string"
+            ? data.error
+            : "Update your payment method in the customer portal, then try the upgrade again.",
+        );
         toast.info(
           typeof data.error === "string"
             ? data.error
@@ -778,6 +794,12 @@ export function BillingPanel({
         return true;
       }
       if (data.code === "pending_plan_change") {
+        setUpgradePending(true);
+        setUpgradeRecoveryMessage(
+          typeof data.error === "string"
+            ? data.error
+            : "A previous plan change is still pending. Open Manage Subscription to fix the payment method or wait for the payment provider to finish processing.",
+        );
         toast.info(
           typeof data.error === "string"
             ? data.error
@@ -786,10 +808,19 @@ export function BillingPanel({
         return true;
       }
       setUpgradePending(true);
+      setUpgradeRecoveryMessage(
+        "Your upgrade payment is still being processed. If it stays stuck, open Manage Subscription to update or remove the old payment method, then try again.",
+      );
       toast.info(
         "Your upgrade payment is still being processed. You'll move to the new plan automatically once it succeeds. Track status anytime via Manage Subscription.",
       );
       return true;
+    }
+    if (res.status === 402) {
+      setUpgradePending(true);
+      setUpgradeRecoveryMessage(
+        "Your payment could not be processed. Open Manage Subscription to update your payment method, then try the upgrade again.",
+      );
     }
     if (res.status === 404 && data.error === "no_active_subscription") {
       const result = await redirectToCheckoutForPlan(plan);
@@ -1016,11 +1047,22 @@ export function BillingPanel({
         </div>
       )}
 
-      {upgradePending && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-          Upgrade payment is processing with your payment provider. You&apos;ll
-          move to the new plan automatically once payment succeeds. Track whether
-          it&apos;s done via Manage Subscription.
+      {(upgradePending || upgradeRecoveryMessage) && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 flex items-center justify-between flex-wrap gap-3">
+          <span>
+            {upgradeRecoveryMessage ??
+              "Upgrade payment is processing with your payment provider. You'll move to the new plan automatically once payment succeeds. Track whether it's done via Manage Subscription."}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => void handleChangePlan()}
+            disabled={loading !== null}
+            className="border-amber-500/40 bg-white/80 text-amber-900 hover:bg-white dark:bg-transparent dark:text-amber-100"
+          >
+            <PlanButtonLabel loading={loading === "portal"}>
+              Update payment method
+            </PlanButtonLabel>
+          </Button>
         </div>
       )}
 
