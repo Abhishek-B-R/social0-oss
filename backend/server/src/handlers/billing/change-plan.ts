@@ -10,6 +10,7 @@ import { env } from "../../lib/env.js";
 import {
   listOpenDodoSubscriptions,
 } from "../../lib/billing-guards.js";
+import { forceCancelDodoSubscription } from "../../lib/billing-zombie-utils.js";
 
 const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
 const environment = env.DODO_PAYMENTS_ENVIRONMENT ?? "test_mode";
@@ -132,6 +133,21 @@ export async function changePlan(request: Request) {
   }
 
   try {
+    // Drop duplicate/on-hold Dodo subs before changing plan (e.g. stuck Pro
+    // from a previous failed upgrade attempt).
+    if (userEmail) {
+      const openSubs = await listOpenDodoSubscriptions(
+        userEmail,
+        row.customerId,
+      );
+      for (const sub of openSubs) {
+        if (sub.subscriptionId === row.subscriptionId) continue;
+        await forceCancelDodoSubscription(sub.subscriptionId).catch((e) =>
+          console.warn("[billing/change-plan] cancel rival sub:", e),
+        );
+      }
+    }
+
     let subscription: {
       status?: string;
       product_id?: string | null;
@@ -150,8 +166,8 @@ export async function changePlan(request: Request) {
       return RouteResponse.json(
         {
           error:
-            "Your subscription payment failed. Update your payment method in the customer portal.",
-          code: "use_portal",
+            "Your subscription payment failed. Cancel the pending upgrade from billing, then try again.",
+          code: "cancel_pending",
         },
         { status: 409 },
       );

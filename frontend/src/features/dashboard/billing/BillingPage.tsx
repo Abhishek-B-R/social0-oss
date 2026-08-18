@@ -1,6 +1,7 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { loadBillingPageData } from "@/api/dashboard-data";
+import { fetchApi } from "@/lib/fetch-api";
 import type { SubscriptionState } from "@/lib/subscription";
 import { BillingPanel } from "./BillingPanel";
 import { BillingPageSkeleton } from "@/components/ui/page-skeletons";
@@ -25,6 +26,10 @@ export function BillingPage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
+      await fetchApi("/api/billing/sync", {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => undefined);
       const result = await loadBillingPageData();
       if (cancelled) return;
       if (!result.ok) {
@@ -47,6 +52,10 @@ export function BillingPage() {
   // Silent reload after cancel/upgrade/etc — keeps panel props fresh without
   // flipping the page back to the full skeleton.
   const reloadBilling = useCallback(async () => {
+    await fetchApi("/api/billing/sync", {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => undefined);
     const result = await loadBillingPageData();
     if (!result.ok) {
       if (result.error === "Unauthorized") {
