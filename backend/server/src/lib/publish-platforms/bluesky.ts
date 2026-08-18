@@ -56,6 +56,36 @@ async function resolveDidToPds(
   }
 }
 
+/** Upload image bytes to the user's PDS (falls back to bsky.social entryway). */
+async function uploadBlueskyImageBlob(
+  jwt: string,
+  did: string,
+  buffer: Buffer,
+  contentType: string,
+): Promise<unknown | null> {
+  const pds = await resolveDidToPds(did);
+  const uploadUrl = pds
+    ? `${pds.pdsUrl}/xrpc/com.atproto.repo.uploadBlob`
+    : "https://bsky.social/xrpc/com.atproto.repo.uploadBlob";
+  const uploadRes = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": contentType,
+      Authorization: `Bearer ${jwt}`,
+    },
+    body: new Uint8Array(buffer),
+  });
+  if (!uploadRes.ok) {
+    const errorText = await uploadRes.text().catch(() => "Unknown error");
+    publishLog.warn(
+      `Bluesky uploadBlob failed (${uploadRes.status}): ${errorText}`,
+    );
+    return null;
+  }
+  const uploadData = (await uploadRes.json()) as { blob?: unknown };
+  return uploadData.blob ?? null;
+}
+
 /** Publish a Bluesky thread (reply chain). Returns null to fall back to single-post. */
 async function publishBlueskyThread(
   pub: Pub,
@@ -96,22 +126,13 @@ async function publishBlueskyThread(
           "bluesky",
           img.mimeType,
         );
-        const uploadRes = await fetch(
-          "https://bsky.social/xrpc/com.atproto.repo.uploadBlob",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": contentType,
-              Authorization: `Bearer ${jwt}`,
-            },
-            body: new Uint8Array(buffer),
-          },
+        const uploadBlob = await uploadBlueskyImageBlob(
+          jwt,
+          did,
+          buffer,
+          contentType,
         );
-        if (uploadRes.ok) {
-          const uploadData = (await uploadRes.json()) as { blob?: unknown };
-          if (uploadData.blob)
-            imageBlobs.push({ alt: "", image: uploadData.blob });
-        }
+        if (uploadBlob) imageBlobs.push({ alt: "", image: uploadBlob });
       } catch {
         // skip failed image
       }
@@ -330,6 +351,17 @@ export async function publishToBluesky(
     const orderedMedia = post.mediaIds?.length
       ? await getOrderedMediaWithUrls(post.mediaIds)
       : [];
+    if (post.mediaIds?.length && orderedMedia.length === 0) {
+      publishLog.error("Bluesky: mediaIds present but none resolved for publish", {
+        mediaIds: post.mediaIds,
+      });
+      return {
+        status: "failed",
+        lastError:
+          "Could not load attached media for Bluesky. Re-upload the image and try again.",
+        error: "Media not found",
+      };
+    }
     const images = orderedMedia.filter((m) => m.mimeType.startsWith("image/"));
     const videos = orderedMedia.filter((m) => m.mimeType.startsWith("video/"));
     const selectedImages = images.slice(0, 4);
@@ -349,38 +381,31 @@ export async function publishToBluesky(
           img.mimeType,
         );
 
-        // Upload to Bluesky
-        const uploadRes = await fetch(
-          "https://bsky.social/xrpc/com.atproto.repo.uploadBlob",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": contentType,
-              Authorization: `Bearer ${jwt}`,
-            },
-            body: new Uint8Array(buffer),
-          },
+        const uploadBlob = await uploadBlueskyImageBlob(
+          jwt,
+          did,
+          buffer,
+          contentType,
         );
-
-        if (uploadRes.ok) {
-          const uploadData = (await uploadRes.json()) as {
-            blob?: unknown;
-          };
-          if (uploadData.blob) {
-            imageBlobs.push({
-              alt: "",
-              image: uploadData.blob,
-            });
-          }
-        } else {
-          const errorText = await uploadRes.text().catch(() => "Unknown error");
-          publishLog.warn(`Failed to upload blob for ${img.url}: ${uploadRes.status}`,
-            errorText,);
+        if (uploadBlob) {
+          imageBlobs.push({
+            alt: "",
+            image: uploadBlob,
+          });
         }
       } catch (error) {
         publishLog.error(`Error processing image ${img.url}:`, error);
         // Continue with other images
       }
+    }
+
+    if (selectedImages.length > 0 && imageBlobs.length === 0) {
+      return {
+        status: "failed",
+        lastError:
+          "Bluesky image upload failed. Try a smaller image (max 1MB) or reconnect your account.",
+        error: "Image upload failed",
+      };
     }
 
     // Upload video and get blob ref (Bluesky supports one video per post, max 100MB).
@@ -629,6 +654,7 @@ export async function publishToBluesky(
 
     // Create post record
     const record: {
+      $type: "app.bsky.feed.post";
       text: string;
       createdAt: string;
       embed?:
@@ -643,6 +669,7 @@ export async function publishToBluesky(
           }
         | undefined;
     } = {
+      $type: "app.bsky.feed.post",
       text: text || "",
       createdAt: new Date().toISOString(),
     };
