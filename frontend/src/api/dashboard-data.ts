@@ -248,3 +248,20 @@ export async function loadAdjacentPosts(input: {
 }): Promise<LoadAdjacentPostsResult> {
   return rpc("dashboard-data.loadAdjacentPosts", input);
 }
+
+export type DashboardLayoutData = {
+  planLabel: string;
+  subscriptionTier: string;
+  freePostsBanner: { remaining: number; limit: number } | null;
+  profileName: string | null;
+  profileImage: string | null;
+  canCreatePosts: boolean;
+  canViewAnalytics: boolean;
+  canViewInbox: boolean;
+  canReplyComments: boolean;
+  canReplyDms: boolean;
+};
+
+export function loadDashboardLayoutData(): Promise<DashboardLayoutData> {
+  return rpc("dashboard-data.loadDashboardLayoutData");
+}

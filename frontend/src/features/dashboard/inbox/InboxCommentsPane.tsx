@@ -144,11 +144,13 @@ export function InboxCommentsPane({
   accountId,
   accounts,
   enabled,
+  allowReply = true,
 }: {
   dateWindow: DateWindow;
   accountId: string | null;
   accounts: InboxAccount[];
   enabled: boolean;
+  allowReply?: boolean;
 }) {
   const dash = useDashboardPath();
   const qc = useQueryClient();
@@ -464,6 +466,7 @@ export function InboxCommentsPane({
               <ConversationPane
                 thread={selected}
                 accounts={accounts}
+                allowReply={allowReply}
                 sendingReplyIds={sendingReplyIds}
                 failedReplyIds={failedReplyIds}
                 onBack={() => setMobileDetail(false)}
@@ -505,6 +508,7 @@ export function InboxCommentsPane({
 function ConversationPane({
   thread,
   accounts,
+  allowReply,
   sendingReplyIds,
   failedReplyIds,
   onBack,
@@ -513,6 +517,7 @@ function ConversationPane({
 }: {
   thread: InboxThread;
   accounts: InboxAccount[];
+  allowReply: boolean;
   sendingReplyIds: Set<string>;
   failedReplyIds: Set<string>;
   onBack: () => void;
@@ -602,6 +607,7 @@ function ConversationPane({
               depth={depth}
               root={root}
               account={account}
+              allowReply={allowReply}
               active={replyTarget.id === comment.id}
               sending={sendingReplyIds.has(comment.id)}
               failed={failedReplyIds.has(comment.id)}
@@ -620,7 +626,7 @@ function ConversationPane({
         </div>
       </div>
 
-      {root.canReply ? (
+      {root.canReply && allowReply ? (
         <div ref={composerRef} className="shrink-0">
           <InboxComposer
             key={root.id}
@@ -650,8 +656,9 @@ function ConversationPane({
         </div>
       ) : (
         <p className="shrink-0 border-t border-border px-4 py-3 text-sm text-text-muted">
-          Replies aren&apos;t available for{" "}
-          {PLATFORM_LABEL[root.platform] ?? root.platform} yet.
+          {allowReply
+            ? `Replies aren't available for ${PLATFORM_LABEL[root.platform] ?? root.platform} yet.`
+            : "Your role can view this thread but not reply."}
         </p>
       )}
     </>
@@ -663,6 +670,7 @@ function CommentRow({
   depth,
   root,
   account,
+  allowReply,
   active,
   sending,
   failed,
@@ -673,6 +681,7 @@ function CommentRow({
   depth: number;
   root: InboxComment;
   account?: InboxAccount;
+  allowReply: boolean;
   active: boolean;
   sending: boolean;
   failed: boolean;
@@ -738,7 +747,7 @@ function CommentRow({
               Failed · Retry
             </button>
           ) : null}
-          {root.canReply && !own ? (
+          {root.canReply && allowReply && !own ? (
             <button
               type="button"
               onClick={onReply}

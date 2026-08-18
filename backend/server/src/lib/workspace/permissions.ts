@@ -3,7 +3,14 @@
  * Prefer these over scattered `role === "admin"` checks.
  */
 
-export type WorkspaceRole = "admin" | "member";
+export const WORKSPACE_ROLES = [
+  "admin",
+  "member",
+  "community",
+  "analyst",
+] as const;
+
+export type WorkspaceRole = (typeof WORKSPACE_ROLES)[number];
 
 export type WorkspacePermission =
   | "invite_users"
@@ -16,6 +23,10 @@ export type WorkspacePermission =
   | "delete_posts"
   | "publish_posts"
   | "view_posts"
+  | "view_analytics"
+  | "view_inbox"
+  | "reply_comments"
+  | "reply_dms"
   | "manage_workspace_settings"
   | "access_billing";
 
@@ -30,6 +41,10 @@ const ADMIN_PERMISSIONS = new Set<WorkspacePermission>([
   "delete_posts",
   "publish_posts",
   "view_posts",
+  "view_analytics",
+  "view_inbox",
+  "reply_comments",
+  "reply_dms",
   "manage_workspace_settings",
 ]);
 
@@ -40,6 +55,24 @@ const MEMBER_PERMISSIONS = new Set<WorkspacePermission>([
   "delete_posts",
   "publish_posts",
   "view_posts",
+  "view_analytics",
+  "view_inbox",
+  "reply_comments",
+  "reply_dms",
+]);
+
+const COMMUNITY_PERMISSIONS = new Set<WorkspacePermission>([
+  "view_connections",
+  "view_posts",
+  "view_inbox",
+  "reply_comments",
+  "reply_dms",
+]);
+
+const ANALYST_PERMISSIONS = new Set<WorkspacePermission>([
+  "view_connections",
+  "view_posts",
+  "view_analytics",
 ]);
 
 /** Owner always has Admin capabilities plus billing. */
@@ -53,6 +86,13 @@ const PERSONAL_PERMISSIONS = new Set<WorkspacePermission>([
   ...OWNER_PERMISSIONS,
 ]);
 
+const ROLE_RANK: Record<WorkspaceRole, number> = {
+  admin: 0,
+  member: 1,
+  community: 2,
+  analyst: 3,
+};
+
 export type TeamPermissionsDto = {
   canInvite: boolean;
   canRemoveMembers: boolean;
@@ -65,6 +105,10 @@ export type TeamPermissionsDto = {
   canDeletePosts: boolean;
   canPublishPosts: boolean;
   canViewConnections: boolean;
+  canViewAnalytics: boolean;
+  canViewInbox: boolean;
+  canReplyComments: boolean;
+  canReplyDms: boolean;
 };
 
 export function permissionsForRole(
@@ -94,6 +138,14 @@ export function permissionsForRole(
 
   if (role === "member") {
     return new Set(MEMBER_PERMISSIONS);
+  }
+
+  if (role === "community") {
+    return new Set(COMMUNITY_PERMISSIONS);
+  }
+
+  if (role === "analyst") {
+    return new Set(ANALYST_PERMISSIONS);
   }
 
   return new Set<WorkspacePermission>();
@@ -132,9 +184,35 @@ export function toPermissionsDto(
     canDeletePosts: granted.has("delete_posts"),
     canPublishPosts: granted.has("publish_posts"),
     canViewConnections: granted.has("view_connections"),
+    canViewAnalytics: granted.has("view_analytics"),
+    canViewInbox: granted.has("view_inbox"),
+    canReplyComments: granted.has("reply_comments"),
+    canReplyDms: granted.has("reply_dms"),
   };
 }
 
 export function isWorkspaceRole(value: unknown): value is WorkspaceRole {
-  return value === "admin" || value === "member";
+  return (
+    typeof value === "string" &&
+    (WORKSPACE_ROLES as readonly string[]).includes(value)
+  );
+}
+
+export function workspaceRoleLabel(role: string): string {
+  switch (role) {
+    case "admin":
+      return "Admin";
+    case "member":
+      return "Member";
+    case "community":
+      return "Community";
+    case "analyst":
+      return "Analyst";
+    default:
+      return role;
+  }
+}
+
+export function workspaceRoleRank(role: WorkspaceRole): number {
+  return ROLE_RANK[role] ?? 99;
 }

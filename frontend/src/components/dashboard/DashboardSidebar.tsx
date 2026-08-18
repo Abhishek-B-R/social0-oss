@@ -158,6 +158,9 @@ type DashboardSidebarProps = {
   isGuest?: boolean;
   sessionPending?: boolean;
   inboxUnread?: number;
+  canCreatePosts?: boolean;
+  canViewAnalytics?: boolean;
+  canViewInbox?: boolean;
 };
 
 function relativeMatches(
@@ -183,6 +186,9 @@ export function DashboardSidebar({
   isGuest = false,
   sessionPending = false,
   inboxUnread = 0,
+  canCreatePosts = true,
+  canViewAnalytics = true,
+  canViewInbox = true,
 }: DashboardSidebarProps) {
   const pathname = useLocation().pathname;
   const dash = useDashboardPath();
@@ -352,6 +358,7 @@ export function DashboardSidebar({
           )
         ) : null}
 
+        {canCreatePosts ? (
         <SidebarHoverTip label="Create post" enabled={collapsed}>
           <Link
             href={dash("composer")}
@@ -371,6 +378,7 @@ export function DashboardSidebar({
             {!collapsed ? <span>Create post</span> : null}
           </Link>
         </SidebarHoverTip>
+        ) : null}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-visible">
@@ -380,6 +388,7 @@ export function DashboardSidebar({
             collapsed ? "gap-3 px-2 pb-3" : "gap-6 p-4 pt-0",
           )}
         >
+          {canCreatePosts ? (
           <Section title="Create" collapsed={collapsed}>
             <NavLink
               href={dash("composer")}
@@ -403,6 +412,7 @@ export function DashboardSidebar({
               isActive={relativeMatches(relative, "bulk-tools")}
             />
           </Section>
+          ) : null}
 
           <Section title="Posts" collapsed={collapsed}>
             <NavLink
@@ -440,6 +450,7 @@ export function DashboardSidebar({
               collapsed={collapsed}
               isActive={relativeMatches(relative, "calendar")}
             />
+            {canViewAnalytics ? (
             <NavLink
               href={dash("analytics")}
               label="Analytics"
@@ -448,6 +459,8 @@ export function DashboardSidebar({
               isActive={relativeMatches(relative, "analytics")}
               experimental
             />
+            ) : null}
+            {canViewInbox ? (
             <NavLink
               href={dash("inbox")}
               label="Inbox"
@@ -457,6 +470,7 @@ export function DashboardSidebar({
               experimental
               unread={inboxUnread}
             />
+            ) : null}
           </Section>
 
           <Section title="Workspace" collapsed={collapsed}>

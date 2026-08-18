@@ -95,10 +95,12 @@ export function InboxDmsPane({
   dateWindow,
   accountId,
   enabled,
+  allowReply = true,
 }: {
   dateWindow: DateWindow;
   accountId: string | null;
   enabled: boolean;
+  allowReply?: boolean;
 }) {
   const dash = useDashboardPath();
   const qc = useQueryClient();
@@ -464,6 +466,7 @@ export function InboxDmsPane({
               <DmConversationPane
                 thread={activeThread}
                 messages={messages}
+                allowReply={allowReply}
                 loading={threadQuery.isLoading}
                 error={
                   threadQuery.isError
@@ -505,6 +508,7 @@ function DmConversationPane({
   messages,
   loading,
   error,
+  allowReply,
   onBack,
   onSend,
   onRetry,
@@ -513,6 +517,7 @@ function DmConversationPane({
   messages: LocalInboxDmMessage[];
   loading: boolean;
   error: string | null;
+  allowReply: boolean;
   onBack: () => void;
   onSend: (payload: InboxComposerPayload) => void;
   onRetry: (message: LocalInboxDmMessage) => void;
@@ -581,20 +586,22 @@ function DmConversationPane({
         )}
       </div>
 
-      {thread.canReply ? (
+      {thread.canReply && allowReply ? (
         <InboxComposer
           key={thread.conversationId}
           platform={thread.platform}
           mode="dm"
           maxLength={dmReplyMax(thread.platform)}
-          placeholder={`Message ${thread.peerName}…`}
+          placeholder={`Message ${thread.peerName}...`}
           disabled={false}
           sending={sending}
           onSend={onSend}
         />
       ) : (
         <p className="border-t border-border px-4 py-3 text-sm text-text-muted">
-          Replies aren&apos;t available for this conversation.
+          {allowReply
+            ? "Replies aren't available for this conversation."
+            : "Your role can view this conversation but not reply."}
         </p>
       )}
     </>

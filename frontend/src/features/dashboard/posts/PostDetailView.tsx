@@ -12,6 +12,7 @@ import { PostCardDeleteButton } from "./PostCardDeleteButton";
 import { PostDetailAutoFeaturesSection } from "./PostDetailAutoFeaturesSection";
 import { PostAnalyticsPanel } from "@/features/dashboard/analytics/PostAnalyticsPanel";
 import { PLATFORM_LABEL } from "@/lib/platforms";
+import { useWorkspaceNavPermissions } from "@/hooks/useWorkspaceNavPermissions";
 import { formatDateTime } from "@/lib/date-format";
 import { sortBySlowPlatformsLast } from "@/lib/publish-order";
 import { getPublicationViewUrl } from "@/lib/platform-view-url";
@@ -159,6 +160,7 @@ const DISPLAY_TYPE_TO_SLUG: Record<string, string> = {
 export function PostDetailView({ postId }: { postId: string }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { canViewAnalytics } = useWorkspaceNavPermissions();
   const back = resolvePostDetailBack(
     (location.state as PostDetailLocationState | null)?.from,
   );
@@ -349,7 +351,8 @@ export function PostDetailView({ postId }: { postId: string }) {
     : null;
 
   const showAnalytics =
-    post.status === "published" || post.status === "partial";
+    canViewAnalytics &&
+    (post.status === "published" || post.status === "partial");
   const showAuto =
     (hasXPublished &&
       (post.status === "published" || post.status === "partial")) ||

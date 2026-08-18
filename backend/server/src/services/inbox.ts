@@ -16,6 +16,7 @@ import {
   connectionScopeCondition,
 } from "../lib/workspace/context.js";
 import { requireWorkspaceSession } from "../lib/workspace/session.js";
+import type { WorkspacePermission } from "../lib/workspace/permissions.js";
 import { rpcHttpError } from "../lib/rpc-http-error.js";
 import { resolveAccountAccess } from "../lib/account-access.js";
 import { listActiveConnectedAccounts } from "../lib/connected-accounts.js";
@@ -72,8 +73,8 @@ type PubRow = {
   } | null;
 };
 
-async function requireUser() {
-  const ws = await requireWorkspaceSession("view_posts");
+async function requireUser(permission: WorkspacePermission = "view_inbox") {
+  const ws = await requireWorkspaceSession(permission);
   if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
   return ws.ctx;
 }
@@ -331,7 +332,7 @@ export async function replyToInboxComment(input: {
   text?: unknown;
   mediaId?: unknown;
 }): Promise<{ ok: true; replyId?: string } | { ok: false; error: string }> {
-  const ctx = await requireUser();
+  const ctx = await requireUser("reply_comments");
   if (typeof input.publicationId !== "string" || !input.publicationId) {
     return { ok: false, error: "publicationId required" };
   }
@@ -634,7 +635,7 @@ export async function replyToInboxDm(input: {
   text?: unknown;
   mediaId?: unknown;
 }): Promise<{ ok: true; messageId?: string } | { ok: false; error: string }> {
-  const ctx = await requireUser();
+  const ctx = await requireUser("reply_dms");
   if (typeof input.accountId !== "string" || !input.accountId) {
     return { ok: false, error: "accountId required" };
   }
@@ -697,7 +698,7 @@ export async function listInboxAccounts(input: {
     missingScopes: string[];
   }>
 > {
-  const ws = await requireWorkspaceSession("view_posts");
+  const ws = await requireWorkspaceSession("view_inbox");
   if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
 
   const feature =

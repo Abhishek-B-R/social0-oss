@@ -43,7 +43,12 @@ export const publicationStatusEnum = pgEnum("publication_status", [
   "failed",
 ]);
 
-export const workspaceRoleEnum = pgEnum("workspace_role", ["admin", "member"]);
+export const workspaceRoleEnum = pgEnum("workspace_role", [
+  "admin",
+  "member",
+  "community",
+  "analyst",
+]);
 
 // ===== BETTER AUTH TABLES =====
 // Better Auth creates and owns these tables.

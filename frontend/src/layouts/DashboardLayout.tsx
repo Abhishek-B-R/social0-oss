@@ -14,7 +14,7 @@ import { PersonalWorkspaceBoot } from "@/components/dashboard/PersonalWorkspaceB
 import { LegalConsentGate } from "@/components/auth/LegalConsentGate";
 import { useSessionResolved } from "@/lib/use-is-guest";
 import { signInUrl } from "@/lib/sign-in-url";
-import { rpc } from "@/lib/rpc";
+import { loadDashboardLayoutData } from "@/api/dashboard-data";
 import { getOnboardingStatus, type OnboardingStatus } from "@/api/onboarding";
 import { useInboxUnreadBadge } from "@/hooks/useInboxUnreadBadge";
 
@@ -53,14 +53,7 @@ export function DashboardLayout() {
 
   const { data: layoutData } = useQuery({
     queryKey: ["dashboard-layout"],
-    queryFn: () =>
-      rpc<{
-        planLabel: string;
-        subscriptionTier: string;
-        freePostsBanner: { remaining: number; limit: number } | null;
-        profileName: string | null;
-        profileImage: string | null;
-      }>("dashboard-data.loadDashboardLayoutData"),
+    queryFn: loadDashboardLayoutData,
     enabled: !!session,
     retry: false,
   });
@@ -125,10 +118,13 @@ export function DashboardLayout() {
       <DashboardSidebar
         user={sidebarUser}
         planLabel={
-          layoutData ? getPlanLabel(layoutData.subscriptionTier) : "…"
+          layoutData ? getPlanLabel(layoutData.subscriptionTier) : "..."
         }
         sessionPending={isPending}
         inboxUnread={inboxUnread}
+        canCreatePosts={layoutData?.canCreatePosts ?? true}
+        canViewAnalytics={layoutData?.canViewAnalytics ?? true}
+        canViewInbox={layoutData?.canViewInbox ?? true}
       />
       <PersonalWorkspaceBoot enabled />
       <main
@@ -147,7 +143,9 @@ export function DashboardLayout() {
           <Outlet />
         </div>
       </main>
-      <DashboardBottomNav />
+      <DashboardBottomNav
+        canCreatePosts={layoutData?.canCreatePosts ?? true}
+      />
       <LegalConsentGate />
     </div>
   );

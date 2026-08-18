@@ -94,6 +94,8 @@ Rolling out as App Review lands. `LIVE_PLATFORMS.analytics` — keep frontend an
 | **Bluesky** | Live |
 | Instagram, Facebook, Threads, YouTube, LinkedIn, TikTok, Pinterest | Hidden until the flag is `true` |
 
+Team roles: **Analyst**, **Member**, and **Admin** can open Analytics. **Community** cannot.
+
 ---
 
 ## Inbox
@@ -128,6 +130,8 @@ Same gate as Analytics: `LIVE_PLATFORMS.inboxComments` / `inboxDms`. **Today onl
 
 FIXME: empty-state copy on Inbox still names platforms that are not live yet; chips and fetches already hide them.
 FIXME: Inbox chips reuse the analytics account list — a platform live for inbox but not analytics would not appear until both flags are true.
+
+Team roles: **Community**, **Member**, and **Admin** can open Inbox and reply. **Analyst** cannot. **Community** cannot publish.
 
 ---
 
@@ -242,7 +246,7 @@ FIXME: the analytics card still renders for any published/partial post; non-live
 | API keys UI (`/dashboard/api-keys`) | Coming soon (backend supports keys) |
 | User outbound webhooks | ✓ Backend |
 | REST `/v1/*` CRUD API | Stubs / not implemented |
-| Teams (`/dashboard/teams`) | ✓ Invite teammates, roles, Pro-gated workspace |
+| Teams (`/dashboard/teams`) | ✓ Invite teammates as Admin, Member, Community, or Analyst (Pro-gated) |
 
 ---
 

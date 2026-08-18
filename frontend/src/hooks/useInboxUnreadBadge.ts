@@ -5,6 +5,7 @@ import { listInboxComments, listInboxDms } from "@/api/inbox";
 import { getDashboardRelativePath } from "@/lib/dashboard-base-path";
 import { defaultDateWindow, windowQueryParams } from "@/lib/date-window";
 import { useSession } from "@/lib/auth-client";
+import { useWorkspaceNavPermissions } from "@/hooks/useWorkspaceNavPermissions";
 import {
   countInboxUnread,
   inboxDmFingerprint,
@@ -30,7 +31,8 @@ function commentIdsFrom(threads: Array<{ comment: { id: string; isOwn?: boolean 
 
 export function useInboxUnreadBadge(): number {
   const { data: session } = useSession();
-  const enabled = Boolean(session);
+  const { canViewInbox } = useWorkspaceNavPermissions();
+  const enabled = Boolean(session) && canViewInbox;
   const relative = getDashboardRelativePath(useLocation().pathname);
   const onInbox = relative === "inbox" || relative.startsWith("inbox/");
   const seenRev = useSyncExternalStore(

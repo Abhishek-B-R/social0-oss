@@ -42,6 +42,19 @@ export async function requireWorkspaceSession(
   return { ok: true, ctx };
 }
 
+/** Same as requireWorkspaceSession, but throws with Fastify `statusCode` on deny. */
+export async function requireWorkspaceContext(
+  permission?: WorkspacePermission,
+): Promise<WorkspaceContext> {
+  const ws = await requireWorkspaceSession(permission);
+  if (!ws.ok) {
+    const err = new Error(ws.error) as Error & { statusCode: number };
+    err.statusCode = ws.statusCode;
+    throw err;
+  }
+  return ws.ctx;
+}
+
 /** For REST handlers that already validated userId from the request. */
 export async function requireWorkspacePermissionForUser(
   userId: string,

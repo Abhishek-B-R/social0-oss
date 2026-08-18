@@ -33,9 +33,11 @@ import {
 import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
 import { PLATFORM_LABEL } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
+import { useWorkspaceNavPermissions } from "@/hooks/useWorkspaceNavPermissions";
 
 export function AnalyticsPage() {
   const { data: session, isPending: sessionPending } = useSession();
+  const { canViewAnalytics } = useWorkspaceNavPermissions();
   const dash = useDashboardPath();
   const [dateWindow, setDateWindow] = useState<DateWindow>(defaultDateWindow);
   const [accountId, setAccountId] = useState<string | null>(null);
@@ -51,7 +53,7 @@ export function AnalyticsPage() {
   const accountsQuery = useQuery({
     queryKey: ["analytics-accounts", workspaceId],
     queryFn: listAnalyticsAccounts,
-    enabled: !!session,
+    enabled: !!session && canViewAnalytics,
   });
 
   const overviewQuery = useQuery({
@@ -61,7 +63,7 @@ export function AnalyticsPage() {
         ...windowQueryParams(dateWindow),
         accountId: accountId || undefined,
       }),
-    enabled: !!session,
+    enabled: !!session && canViewAnalytics,
     staleTime: 60_000,
   });
 
@@ -97,6 +99,17 @@ export function AnalyticsPage() {
         promptTitle="Sign in to see analytics"
         promptDescription="Once you publish, Social0 pulls likes, views, and engagement live from each platform."
       />
+    );
+  }
+
+  if (!canViewAnalytics) {
+    return (
+      <div className="flex min-h-[24rem] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-elevated px-6 text-center">
+        <p className="text-sm font-medium text-text">Analytics is not in your role</p>
+        <p className="mt-1 max-w-sm text-sm text-text-muted">
+          Ask a team admin to switch you to Member, Analyst, or Admin.
+        </p>
+      </div>
     );
   }
 

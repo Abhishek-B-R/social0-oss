@@ -13,9 +13,12 @@ import { cn } from "@/lib/utils";
 import { InboxCommentsPane } from "./InboxCommentsPane";
 import { InboxDmsPane } from "./InboxDmsPane";
 import { InboxModeToggle, type InboxMode } from "./InboxModeToggle";
+import { useWorkspaceNavPermissions } from "@/hooks/useWorkspaceNavPermissions";
 
 export function InboxPage() {
   const { data: session, isPending: sessionPending } = useSession();
+  const { canViewInbox, canReplyComments, canReplyDms } =
+    useWorkspaceNavPermissions();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const mode: InboxMode = searchParams.get("tab") === "dms" ? "dms" : "comments";
@@ -55,7 +58,7 @@ export function InboxPage() {
     queryKey: ["inbox-accounts", mode],
     queryFn: () =>
       listInboxAccounts({ mode: mode === "dms" ? "dms" : "comments" }),
-    enabled: !!session,
+    enabled: !!session && canViewInbox,
   });
 
   const accounts = accountsQuery.data ?? [];
@@ -83,6 +86,17 @@ export function InboxPage() {
         promptTitle="Sign in to open your inbox"
         promptDescription="Once you connect accounts, Social0 pulls comments on your posts and DMs from platforms that support it."
       />
+    );
+  }
+
+  if (!canViewInbox) {
+    return (
+      <div className="flex min-h-[24rem] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-elevated px-6 text-center">
+        <p className="text-sm font-medium text-text">Inbox is not in your role</p>
+        <p className="mt-1 max-w-sm text-sm text-text-muted">
+          Ask a team admin to switch you to Member, Community, or Admin.
+        </p>
+      </div>
     );
   }
 
@@ -152,11 +166,17 @@ export function InboxPage() {
             accountId={accountId}
             accounts={accounts}
             enabled
+            allowReply={canReplyComments}
           />
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
-          <InboxDmsPane dateWindow={dateWindow} accountId={accountId} enabled />
+          <InboxDmsPane
+            dateWindow={dateWindow}
+            accountId={accountId}
+            enabled
+            allowReply={canReplyDms}
+          />
         </div>
       )}
     </div>

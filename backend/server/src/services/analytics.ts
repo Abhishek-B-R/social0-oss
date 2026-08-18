@@ -350,7 +350,7 @@ export async function getAnalyticsOverview(input: {
   until?: unknown;
   accountId?: unknown;
 }): Promise<AnalyticsOverview> {
-  const ws = await requireWorkspaceSession("view_posts");
+  const ws = await requireWorkspaceSession("view_analytics");
   if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
 
   const window = parseDateWindow(input);
@@ -415,7 +415,7 @@ export async function getAnalyticsOverview(input: {
 export async function getPostAnalytics(input: {
   postId?: unknown;
 }): Promise<PostAnalyticsResult> {
-  const ws = await requireWorkspaceSession("view_posts");
+  const ws = await requireWorkspaceSession("view_analytics");
   if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
   if (typeof input.postId !== "string" || !input.postId) {
     throw rpcHttpError("postId required", 400);
@@ -481,7 +481,7 @@ export async function listAnalyticsAccounts(): Promise<
     missingScopes: string[];
   }>
 > {
-  const ws = await requireWorkspaceSession("view_posts");
+  const ws = await requireWorkspaceSession("view_analytics");
   if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
 
   const ctx = ws.ctx;
