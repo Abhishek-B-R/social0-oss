@@ -212,6 +212,7 @@ export function AnalyticsPage() {
         </div>
       ) : null}
 
+      <div className="space-y-2">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
           label="Views"
@@ -235,17 +236,18 @@ export function AnalyticsPage() {
         />
       </div>
       {data && data.publications.length === 0 ? (
-        <p className="-mt-3 text-sm text-text-muted">
+        <p className="text-sm text-text-muted">
           No posts published through Social0 in this range. Try 4W, or
           publish something and refresh.
         </p>
       ) : data ? (
-        <p className="-mt-3 text-xs text-text-muted">
+        <p className="text-xs text-text-muted">
           {data.publications.length} Social0 publication
           {data.publications.length === 1 ? "" : "s"} in this range
           {data.sampled ? ` (latest ${data.sampleLimit})` : ""}.
         </p>
       ) : null}
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm sm:p-5">
@@ -491,7 +493,7 @@ function StatCard({
   loading?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm">
+    <div className="min-w-0 rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm">
       <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
         {label}
       </p>

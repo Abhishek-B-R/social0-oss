@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import Link from "@/components/AppLink";
 import { ChartLine, ArrowClockwise } from "@/icons/phosphor";
+import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
 import { getPostAnalytics } from "@/api/analytics";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 import {
@@ -36,12 +37,23 @@ export function PostAnalyticsPanel({
     <div className="rounded-2xl border border-border bg-bg-elevated shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 p-5">
         <div>
-          <h2 className="text-base font-semibold text-text">Post analytics</h2>
+          <h2 className="inline-flex items-center gap-1.5 text-base font-semibold text-text">
+            Post analytics
+            <ExperimentalBadge compact withTip />
+          </h2>
           <p className="mt-0.5 text-xs text-text-muted">
             Live likes, views, and engagement from each platform.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:bg-accent-hover"
+          >
+            <ChartLine size={16} weight="bold" />
+            {open ? "Hide analytics" : "Show analytics"}
+          </button>
           {open ? (
             <button
               type="button"
@@ -56,14 +68,6 @@ export function PostAnalyticsPanel({
               Refresh
             </button>
           ) : null}
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:bg-accent-hover"
-          >
-            <ChartLine size={16} weight="bold" />
-            {open ? "Hide analytics" : "Show analytics"}
-          </button>
         </div>
       </div>
 
@@ -86,7 +90,7 @@ export function PostAnalyticsPanel({
             </p>
           ) : (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3">
                 <MiniStat label="Views" value={formatMetric(viewsOf(query.data.totals))} />
                 <MiniStat
                   label="Likes"
@@ -172,11 +176,13 @@ export function PostAnalyticsPanel({
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border bg-bg px-3 py-2">
+    <div className="min-w-0 rounded-xl border border-border bg-bg px-3.5 py-2.5">
       <p className="text-[10px] font-medium uppercase tracking-wide text-text-muted">
         {label}
       </p>
-      <p className="text-lg font-semibold text-text">{value}</p>
+      <p className="mt-0.5 text-lg font-semibold tabular-nums text-text">
+        {value}
+      </p>
     </div>
   );
 }

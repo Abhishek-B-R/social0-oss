@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -32,15 +33,20 @@ type SeriesPoint = {
   engagement: number;
 };
 
+function dayDate(iso: string): Date {
+  return new Date(`${iso}T12:00:00`);
+}
+
 function axisTick(v: number): string {
   if (!Number.isFinite(v)) return "";
   if (Math.abs(v) >= 1000) return formatMetric(v);
   return String(Math.round(v));
 }
 
-function shortDate(iso: string): string {
-  const [, m, d] = iso.split("-");
-  return `${Number(m)}/${Number(d)}`;
+function tickLabel(iso: string, days: number): string {
+  const d = dayDate(iso);
+  if (days > 180) return format(d, "MMM");
+  return format(d, "MMM d");
 }
 
 function ChartTooltip({
@@ -49,13 +55,19 @@ function ChartTooltip({
   label,
 }: {
   active?: boolean;
-  payload?: Array<{ name?: string; value?: number; color?: string }>;
+  payload?: Array<{
+    name?: string;
+    value?: number;
+    color?: string;
+    payload?: { fullDate?: string };
+  }>;
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
+  const heading = payload[0]?.payload?.fullDate ?? label;
   return (
     <div className="rounded-lg border border-border bg-bg-elevated px-3 py-2 text-xs shadow-md">
-      <p className="mb-1 font-medium text-text">{label}</p>
+      <p className="mb-1 font-medium text-text">{heading}</p>
       {payload.map((p) => (
         <p key={p.name} className="flex items-center gap-2 text-text-muted">
           <span
@@ -63,7 +75,7 @@ function ChartTooltip({
             style={{ background: p.color }}
           />
           {p.name}:{" "}
-          <span className="font-medium text-text">
+          <span className="font-medium tabular-nums text-text">
             {formatMetric(p.value)}
           </span>
         </p>
@@ -73,7 +85,12 @@ function ChartTooltip({
 }
 
 export function EngagementTrendChart({ data }: { data: SeriesPoint[] }) {
-  const chartData = data.map((d) => ({ ...d, label: shortDate(d.date) }));
+  const days = data.length;
+  const chartData = data.map((d) => ({
+    ...d,
+    tick: tickLabel(d.date, days),
+    fullDate: format(dayDate(d.date), "MMM d, yyyy"),
+  }));
   if (chartData.length === 0) {
     return (
       <EmptyChart message="No published posts with metrics in this range yet." />
@@ -82,7 +99,10 @@ export function EngagementTrendChart({ data }: { data: SeriesPoint[] }) {
   return (
     <div className="h-64 w-full sm:h-72">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <AreaChart
+          data={chartData}
+          margin={{ top: 8, right: 12, left: 0, bottom: 4 }}
+        >
           <defs>
             <linearGradient id="engFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={ACCENT} stopOpacity={0.35} />
@@ -95,29 +115,27 @@ export function EngagementTrendChart({ data }: { data: SeriesPoint[] }) {
           </defs>
           <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
           <XAxis
-            dataKey="label"
+            dataKey="tick"
             tick={{ fill: MUTED, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
-            interval={
-              chartData.length > 60
-                ? Math.ceil(chartData.length / 6)
-                : chartData.length > 14
-                  ? Math.ceil(chartData.length / 7)
-                  : 0
-            }
-            minTickGap={24}
+            interval="preserveStartEnd"
+            minTickGap={20}
+            tickMargin={8}
           />
           <YAxis
             tick={{ fill: MUTED, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
-            width={40}
+            width={36}
             allowDecimals={false}
             tickFormatter={(v) => axisTick(Number(v))}
           />
-          <Tooltip content={<ChartTooltip />} />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Tooltip
+            content={<ChartTooltip />}
+            cursor={{ stroke: MUTED, strokeDasharray: "3 3" }}
+          />
+          <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
           <Area
             type="monotone"
             dataKey="views"
@@ -125,6 +143,8 @@ export function EngagementTrendChart({ data }: { data: SeriesPoint[] }) {
             stroke={BLUE}
             fill="url(#viewsFill)"
             strokeWidth={2}
+            dot={<ValueDot fill={BLUE} dataKey="views" />}
+            activeDot={{ r: 4 }}
           />
           <Area
             type="monotone"
@@ -133,12 +153,39 @@ export function EngagementTrendChart({ data }: { data: SeriesPoint[] }) {
             stroke={ACCENT}
             fill="url(#engFill)"
             strokeWidth={2}
+            dot={<ValueDot fill={ACCENT} dataKey="engagement" />}
+            activeDot={{ r: 4 }}
           />
         </AreaChart>
       </ResponsiveContainer>
     </div>
   );
 }
+
+function ValueDot({
+  cx,
+  cy,
+  payload,
+  fill,
+  dataKey,
+}: {
+  cx?: number;
+  cy?: number;
+  payload?: Record<string, number>;
+  fill: string;
+  dataKey: "views" | "engagement";
+}) {
+  if (cx == null || cy == null || !payload) return null;
+  if (!(payload[dataKey] > 0)) return null;
+  return <circle cx={cx} cy={cy} r={3} fill={fill} stroke="none" />;
+}
+
+const BAR_SERIES = [
+  { key: "views", name: "Views", fill: BLUE },
+  { key: "likes", name: "Likes", fill: ROSE },
+  { key: "comments", name: "Comments", fill: AMBER },
+  { key: "shares", name: "Shares", fill: VIOLET },
+] as const;
 
 export function PlatformBreakdownChart({
   data,
@@ -157,41 +204,47 @@ export function PlatformBreakdownChart({
       <EmptyChart message="No Social0 posts in this range to break down by platform." />
     );
   }
+  const series = BAR_SERIES.filter((s) => data.some((d) => d[s.key] > 0));
   return (
     <div className="h-64 w-full sm:h-72">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <BarChart
+          data={data}
+          margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
+          barGap={3}
+          barCategoryGap="28%"
+        >
           <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
           <XAxis
             dataKey="label"
             tick={{ fill: MUTED, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
+            tickMargin={8}
           />
           <YAxis
             tick={{ fill: MUTED, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
-            width={40}
+            width={36}
             allowDecimals={false}
             tickFormatter={(v) => axisTick(Number(v))}
           />
-          <Tooltip content={<ChartTooltip />} />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Bar dataKey="views" name="Views" fill={BLUE} radius={[4, 4, 0, 0]} />
-          <Bar dataKey="likes" name="Likes" fill={ROSE} radius={[4, 4, 0, 0]} />
-          <Bar
-            dataKey="comments"
-            name="Comments"
-            fill={AMBER}
-            radius={[4, 4, 0, 0]}
+          <Tooltip
+            content={<ChartTooltip />}
+            cursor={{ fill: "var(--color-bg-muted, #f3f4f6)", opacity: 0.45 }}
           />
-          <Bar
-            dataKey="shares"
-            name="Shares"
-            fill={VIOLET}
-            radius={[4, 4, 0, 0]}
-          />
+          <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+          {series.map((s) => (
+            <Bar
+              key={s.key}
+              dataKey={s.key}
+              name={s.name}
+              fill={s.fill}
+              maxBarSize={36}
+              radius={[4, 4, 0, 0]}
+            />
+          ))}
         </BarChart>
       </ResponsiveContainer>
     </div>
