@@ -69,20 +69,19 @@ Banner shows `instagram_business_manage_comments` or `instagram_business_manage_
 | `pages_manage_posts` | Publish to Page |
 | `read_insights` | Page/post insights (Analytics) |
 | `pages_manage_engagement` | **Inbox:** read + reply to Page post comments |
-| `pages_messaging` | **Inbox:** Page Messenger conversations + DMs |
 
 Defined in `FACEBOOK_PAGE_SCOPES` (`backend/shared`).
 
 ### App Review (Meta)
 
-- Permissions → `read_insights`, `pages_manage_engagement`, `pages_messaging`.
-- Use case: “Page admins view analytics and respond to comments and Messenger messages.”
+- Permissions → `read_insights`, `pages_manage_engagement`.
+- Use case: “Page admins view analytics and respond to comments.”
 
 ### Inbox behavior
 
 - Comments on Social0-published Page posts only.
 - Replies attach to top-level comment (same as Instagram).
-- DM attachments: image + video.
+- Page Messenger DMs are not supported.
 
 ---
 
@@ -303,7 +302,6 @@ See also [`docs/ANALYTICS_SCOPES.md`](./ANALYTICS_SCOPES.md).
 | Platform | OAuth / setup |
 | -------- | ------------- |
 | Instagram | `instagram_business_manage_messages` |
-| Facebook | `pages_messaging` |
 | X | App permission **Direct Messages Read and Write** + reconnect |
 | Bluesky | App password with **chat** enabled |
 | TikTok | Business Messaging API product (separate from Login Kit; not US/EEA/UK) |

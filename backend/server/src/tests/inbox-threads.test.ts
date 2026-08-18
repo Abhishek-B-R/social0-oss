@@ -46,11 +46,11 @@ describe("missingInboxScopes", () => {
 });
 
 describe("missingDmScopes", () => {
-  it("treats empty stored scopes as missing for Instagram/Facebook messaging", () => {
+  it("treats empty stored scopes as missing for Instagram messaging", () => {
     expect(missingDmScopes("instagram", null)).toEqual([
       "instagram_business_manage_messages",
     ]);
-    expect(missingDmScopes("facebook", "")).toEqual(["pages_messaging"]);
+    expect(missingDmScopes("facebook", "")).toEqual([]);
   });
 
   it("does not nag X, Bluesky, or TikTok for extra OAuth strings", () => {

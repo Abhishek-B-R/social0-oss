@@ -4,7 +4,6 @@ export type InboxMediaKind = "image" | "video";
 
 const DM_MEDIA: Record<string, InboxMediaKind[]> = {
   instagram: ["image", "video"],
-  facebook: ["image", "video"],
   twitter_x: ["image", "video"],
   bluesky: [],
   tiktok: ["image"],

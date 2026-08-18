@@ -1,6 +1,6 @@
 /**
  * Live DM fetchers. Failures degrade — never throw past the dispatcher.
- * Instagram, Facebook Pages, X, Bluesky, TikTok Business Messaging.
+ * Instagram, X, Bluesky, TikTok Business Messaging.
  */
 
 import { TwitterApi } from "twitter-api-v2";
@@ -118,8 +118,6 @@ export async function fetchAccountDms(
   until: Date,
 ): Promise<DmListFetchResult> {
   switch (account.platform) {
-    case "facebook":
-      return fetchFacebookList(account, since, until);
     case "instagram":
       return fetchInstagramList(account, since, until);
     case "twitter_x":
@@ -139,8 +137,6 @@ export async function fetchDmMessages(
   peerId: string,
 ): Promise<DmThreadFetchResult> {
   switch (account.platform) {
-    case "facebook":
-      return fetchFacebookThread(account, conversationId);
     case "instagram":
       return fetchInstagramThread(account, conversationId);
     case "twitter_x":
@@ -155,59 +151,9 @@ export async function fetchDmMessages(
 }
 
 function isMessagingPermissionError(msg: string): boolean {
-  return /permission|#200|#10|pages_messaging|manage_messages|messaging/i.test(
+  return /permission|#200|#10|manage_messages|messaging/i.test(
     msg,
   );
-}
-
-async function fetchFacebookList(
-  account: DmAccount,
-  since: Date,
-  until: Date,
-): Promise<DmListFetchResult> {
-  const id = encodeURIComponent(account.platformUserId);
-  const fields =
-    `id,updated_time,snippet,participants{id,name,username,picture},messages.limit(1){message,created_time,from,${GRAPH_MSG_ATTACHMENT_FIELDS}}`;
-  const url = `https://graph.facebook.com/v21.0/${id}/conversations?fields=${encodeURIComponent(fields)}&limit=25&access_token=${encodeURIComponent(account.accessToken)}`;
-  const { ok, data } = await jsonGet(url);
-  if (!ok) {
-    const msg =
-      (data as { error?: { message?: string } })?.error?.message ??
-      "Facebook DMs failed";
-    return graphErr(
-      msg,
-      isMessagingPermissionError(msg) ? ["pages_messaging"] : undefined,
-    );
-  }
-  const rows = (data as { data?: Array<Record<string, unknown>> })?.data ?? [];
-  const threads: InboxDmThread[] = [];
-  for (const row of rows) {
-    const updated =
-      typeof row.updated_time === "string" ? row.updated_time : null;
-    if (!inDateWindow(updated, since, until)) continue;
-    const peer = peerFromParticipants(
-      graphPeople(row.participants),
-      account.platformUserId,
-    );
-    const last =
-      (row.messages as { data?: Array<{ message?: string }> } | undefined)
-        ?.data?.[0];
-    threads.push(
-      threadMeta(account, {
-        conversationId: String(row.id ?? ""),
-        peerId: peer.id,
-        peerName: peer.name,
-        peerHandle: peer.handle,
-        peerAvatarUrl: peer.avatarUrl,
-        lastMessageAt: updated,
-        snippet: snippetOf(
-          typeof row.snippet === "string" ? row.snippet : last?.message,
-        ),
-        canReply: Boolean(peer.id),
-      }),
-    );
-  }
-  return { threads, status: "ok" };
 }
 
 async function fetchInstagramList(
@@ -299,46 +245,6 @@ function participantAvatars(participants: GraphPerson[]): Map<string, string | n
     if (p.id) map.set(p.id, personAvatar(p));
   }
   return map;
-}
-
-async function fetchFacebookThread(
-  account: DmAccount,
-  conversationId: string,
-): Promise<DmThreadFetchResult> {
-  const url = `https://graph.facebook.com/v21.0/${encodeURIComponent(conversationId)}?fields=id,updated_time,participants{id,name,username,picture},messages.limit(50){id,created_time,from,message,${GRAPH_MSG_ATTACHMENT_FIELDS}}&access_token=${encodeURIComponent(account.accessToken)}`;
-  const { ok, data } = await jsonGet(url);
-  if (!ok) {
-    const msg =
-      (data as { error?: { message?: string } })?.error?.message ??
-      "Facebook thread failed";
-    return graphMsg(
-      msg,
-      isMessagingPermissionError(msg) ? ["pages_messaging"] : undefined,
-    );
-  }
-  const row = data as Record<string, unknown>;
-  const participants = graphPeople(row.participants);
-  const peer = peerFromParticipants(participants, account.platformUserId);
-  const avatars = participantAvatars(participants);
-  const msgs =
-    (row.messages as { data?: Array<Record<string, unknown>> } | undefined)
-      ?.data ?? [];
-  const messages = graphMessagesToInbox(msgs, account, avatars);
-  const last = messages[messages.length - 1];
-  return {
-    messages,
-    status: "ok",
-    thread: threadMeta(account, {
-      conversationId,
-      peerId: peer.id,
-      peerName: peer.name,
-      peerHandle: peer.handle,
-      peerAvatarUrl: peer.avatarUrl,
-      lastMessageAt: last?.createdAt ?? (typeof row.updated_time === "string" ? row.updated_time : null),
-      snippet: snippetOf(last?.text || (last?.attachment ? `[${last.attachment.type}]` : "")),
-      canReply: Boolean(peer.id),
-    }),
-  };
 }
 
 async function fetchInstagramThread(

@@ -107,7 +107,7 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 | LinkedIn | best-effort read | No | MDP often required |
 | TikTok / Pinterest | — | — | no usable comments API |
 
-If `FACEBOOK_LOGIN_CONFIG_ID` is set, add `pages_manage_engagement` **and** `pages_messaging` in that Login config too.
+If `FACEBOOK_LOGIN_CONFIG_ID` is set, add `pages_manage_engagement` in that Login config too.
 
 ## Inbox DMs
 
@@ -116,12 +116,11 @@ Comments | DMs toggle on the same page. DMs are **account-level** (not limited t
 | Platform | API | Extra OAuth / setup |
 | -------- | --- | ------------------- |
 | Instagram | `/{ig-id}/conversations?platform=instagram` + `/{ig-id}/messages` | `instagram_business_manage_messages` (Instagram Login) |
-| Facebook Pages | `/{page-id}/conversations` + `/{page-id}/messages` | `pages_messaging` |
 | X | v2 `dm_events` + `dm_conversations/with/:id/messages` | App permission **Direct Messages Read and Write** (OAuth 1.0a — no extra scope string). Reconnect after enabling it on the X developer app. |
 | Bluesky | `chat.bsky.convo.*` via `api.bsky.chat` + `Atproto-Proxy` | App password with **chat** enabled |
 | TikTok | Business Messaging `/business/message/*` | Separate TikTok for Business product (not Login Kit). Unavailable in US/EEA/UK. |
 
-**Not shipped** (no public messaging API we can call): Threads, YouTube, Pinterest, LinkedIn (partner-only).
+**Not shipped** (no public messaging API we can call, or skipped): Facebook Pages, Threads, YouTube, Pinterest, LinkedIn (partner-only).
 
 ## What users see before App Review
 

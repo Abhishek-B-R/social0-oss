@@ -125,7 +125,8 @@ Same gate as Analytics: `LIVE_PLATFORMS.inboxComments` / `inboxDms`. **Today onl
 | -------- | -------- | --- |
 | **X (Twitter)** | Live | Live |
 | **Bluesky** | Live | Live |
-| Instagram, Facebook, TikTok | Hidden | Hidden |
+| Instagram, TikTok | Hidden | Hidden |
+| Facebook | Hidden | Not supported |
 | Threads, YouTube, LinkedIn, Pinterest | Hidden | Not in the DMs map yet |
 
 FIXME: empty-state copy on Inbox still names platforms that are not live yet; chips and fetches already hide them.

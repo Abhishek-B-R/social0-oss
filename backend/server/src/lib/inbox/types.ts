@@ -68,7 +68,6 @@ export type InboxListResult = {
 
 export const INBOX_DM_PLATFORMS = [
   "instagram",
-  "facebook",
   "twitter_x",
   "bluesky",
   "tiktok",
@@ -170,7 +169,6 @@ export const INBOX_UNSUPPORTED = new Set(["tiktok", "pinterest"]);
 /** Extra scopes for DMs. Empty = current token is enough (app-level X / Bluesky app password). */
 export const INBOX_DM_REQUIRED_SCOPES: Record<string, string[]> = {
   instagram: ["instagram_business_manage_messages"],
-  facebook: ["pages_messaging"],
   twitter_x: [],
   bluesky: [],
   // Login Kit tokens have no extra scope string; Business Messaging is a

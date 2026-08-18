@@ -86,7 +86,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "FACEBOOK_CLIENT_SECRET",
     authUrl: "https://www.facebook.com/dialog/oauth",
     tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
-    // read_insights + pages_manage_engagement + pages_messaging. If FACEBOOK_LOGIN_CONFIG_ID is set, add them in Meta Login config too.
+    // Extra insights/comment scopes are requested here. Page DMs are not supported.
     scope: FACEBOOK_PAGE_SCOPES,
   },
 };

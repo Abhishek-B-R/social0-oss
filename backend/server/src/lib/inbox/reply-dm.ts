@@ -139,12 +139,6 @@ async function replyGraphMessenger(
   return fail(lastError);
 }
 
-async function replyFacebook(input: DmReplyInput): Promise<DmReplyResult> {
-  return replyGraphMessenger("graph.facebook.com", input, {
-    messagingType: "RESPONSE",
-  });
-}
-
 async function replyInstagram(input: DmReplyInput): Promise<DmReplyResult> {
   return replyGraphMessenger("graph.instagram.com", input);
 }
@@ -301,8 +295,6 @@ export async function replyToDmOnPlatform(
   }
 
   switch (input.platform) {
-    case "facebook":
-      return replyFacebook(input);
     case "instagram":
       return replyInstagram(input);
     case "twitter_x":

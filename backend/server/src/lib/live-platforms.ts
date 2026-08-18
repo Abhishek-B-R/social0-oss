@@ -32,7 +32,6 @@ export const LIVE_PLATFORMS: Record<LiveFeature, Partial<Record<Platform, boolea
   },
   inboxDms: {
     instagram: false,
-    facebook: false,
     twitter_x: true,
     bluesky: true,
     tiktok: false,
